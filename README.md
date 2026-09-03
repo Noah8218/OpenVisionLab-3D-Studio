@@ -18,11 +18,21 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.9-dev`
+Current version: `v0.5.0-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.0-dev` (2026-09-04)
+
+- Batches Shell and Viewer lifetime, cancellation, dispatcher, and resource
+  ownership refactors behind explicit coordinators while keeping the public
+  recipe and Preview/Publish/Run contracts.
+- Adds a dedicated Verification project and an independent Viewer binary-host
+  consumer path for DLL boundary and control-lifecycle checks.
+- Preserves the V2 integration exchange, existing recipe/storage formats, and
+  the software-only measurement boundary.
 
 #### `v0.4.9-dev` (2026-09-01)
 
@@ -62,37 +72,6 @@ This project is maintained using explicit version numbers.
 
 - Extracted Viewer workspace presentation/layout Smoke orchestration into a dedicated Shell verification owner.
 - Preserved Viewer workspace state, layout precedence, camera-link evidence, and explicit workflow semantics.
-
-#### `v0.4.3-dev` (2026-09-01)
-
-- Extracts Surface Match collection navigation, disabled-state, Published
-  focus/hover, and popup evidence Smoke policy from `MainWindow` into an
-  explicit Shell verification owner.
-- Preserves recipe, Run Record, explicit Preview/Publish/Run, automation-ID,
-  and popup report contracts; this internal refactor adds no calibration claim.
-
-#### `v0.4.2-dev` (2026-09-01)
-
-- Extracts Validation Threshold Assistant Smoke dock preparation and visual
-  evidence formatting from `MainWindow` into an explicit Shell verification
-  owner.
-- Preserves recipe, Run Record, explicit Preview/Publish/Run, and automation-ID
-  contracts; this internal refactor adds no calibration claim.
-
-#### `v0.4.1-dev` (2026-09-01)
-
-- Extracts the Preparation Preset Assistant Smoke setup, popup capture, and
-  evidence projection from `MainWindow` into an explicit Shell verification
-  owner.
-- Preserves the existing recipe, Preview/Publish/Run, automation-ID, and
-  screenshot contracts; this internal refactor adds no calibration claim.
-
-#### `v0.4.0-dev` (2026-09-01)
-
-- Adds authenticated TCP transaction transfer for the 3D integration
-  workspace, with explicit listener, push, pull, and peer-ping actions.
-- Keeps receipt, acknowledgement, inspection, and result publication as
-  separate explicit steps; network receipt never runs an inspection.
 
 #### `v0.3.1-dev` (2026-09-01)
 

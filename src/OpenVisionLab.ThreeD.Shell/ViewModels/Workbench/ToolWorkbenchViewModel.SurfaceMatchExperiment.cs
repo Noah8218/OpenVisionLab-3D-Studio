@@ -124,39 +124,17 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void InvalidateSurfaceEdgeAcquisitionDirectionEvidence()
     {
-        var sessionHadEvidence = surfaceMatchExperiment.ClearAcquisitionDirectionEvidence();
-        var hadEvidence = surfaceEdgeAcquisitionDirection is not null
-            || sessionHadEvidence;
-        if (!hadEvidence)
+        if (!surfaceMatchExperiment.ClearAcquisitionDirectionEvidence())
         {
             return;
         }
 
-        surfaceEdgeAcquisitionDirection = null;
         isSurfaceEdgeAcquisitionDirectionStale = true;
+        RaisePublishedSurfaceMatchProperties();
         if (surfaceMatchExperiment.Published is { } published)
         {
-            ApplyPublishedSurfaceMatchEvidence(published);
             RaiseSurfaceMatchExperimentDisplay(published);
         }
-        else
-        {
-            RaisePublishedSurfaceMatchProperties();
-        }
-    }
-
-    private void ApplyPublishedSurfaceMatchEvidence(
-        SurfaceMatchExperimentEvidence evidence)
-    {
-        surfaceMatchEvidence = evidence.Execution;
-        surfaceMatchAssessment = evidence.Assessment;
-        surfaceMatchRuntime = evidence.Runtime;
-        surfaceEdgeScore = evidence.EdgeScore;
-        surfaceEdgeDiagnosticOverlay = evidence.EdgeDiagnosticOverlay;
-        surfaceEdgeAcquisitionDirection = evidence.AcquisitionDirectionOrientation;
-        surfaceEdgeAssessment = evidence.EdgeAssessment;
-        surfaceMatchFalsePositiveReview = evidence.FalsePositiveReview;
-        RaisePublishedSurfaceMatchProperties();
     }
 
     private void RaiseSurfaceMatchExperimentDisplay(

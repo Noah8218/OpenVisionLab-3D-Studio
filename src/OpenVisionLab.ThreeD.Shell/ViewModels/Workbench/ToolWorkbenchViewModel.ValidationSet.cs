@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Windows.Input;
 using OpenVisionLab;
@@ -11,62 +12,19 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 public sealed partial class ToolWorkbenchViewModel
 {
-    private readonly ObservableCollection<ValidationSetSampleRow> validationSetSamples = [];
-    private readonly ObservableCollection<ValidationSetSampleRow> filteredValidationSetSamples = [];
-    private readonly ObservableCollection<ValidationSetStepRow> selectedValidationSetSteps = [];
-    private readonly ObservableCollection<ValidationEvidenceDistributionRow>
-        validationEvidenceDistributions = [];
-    private readonly ObservableCollection<ValidationThresholdCandidateRow>
-        validationThresholdCandidates = [];
-    private readonly ObservableCollection<ValidationThresholdDecisionRow>
-        selectedValidationThresholdDecisions = [];
-    private readonly ObservableCollection<ValidationThresholdParameterChangeRow>
-        validationThresholdParameterChanges = [];
-    private readonly ObservableCollection<ValidationThresholdHeldOutSampleRow>
-        validationThresholdHeldOutSamples = [];
-    private readonly ObservableCollection<ValidationThresholdDevelopmentSampleRow>
-        validationThresholdDevelopmentSamples = [];
+    private ToolWorkbenchValidationSetDefinitionOwner
+        validationSetDefinitionOwner = null!;
+    private ToolWorkbenchValidationSetReviewOwner validationSetReviewOwner = null!;
+    private ToolWorkbenchValidationThresholdWorkflowOwner
+        validationThresholdWorkflowOwner = null!;
     private RelayCommand selectValidationSetSourcesCommand = null!;
     private RelayCommand addCurrentSourceToValidationSetCommand = null!;
     private RelayCommand runValidationSetCommand = null!;
     private RelayCommand clearValidationSetCommand = null!;
     private RelayCommand cancelValidationSetCommand = null!;
-    private RelayCommand setValidationSetFilterCommand = null!;
-    private RelayCommand previousValidationSetIssueCommand = null!;
-    private RelayCommand nextValidationSetIssueCommand = null!;
-    private RelayCommand openValidationSetComparisonCommand = null!;
     private RelayCommand setValidationSampleRoleCommand = null!;
-    private RelayCommand proposeValidationThresholdCandidateCommand = null!;
-    private RelayCommand reviewValidationThresholdCandidateCommand = null!;
-    private RelayCommand cancelValidationThresholdReviewCommand = null!;
-    private RelayCommand applyValidationThresholdCandidateCommand = null!;
-    private RelayCommand revalidateValidationThresholdCorrectionCommand = null!;
-    private RelayCommand replayValidationThresholdHeldOutCommand = null!;
-    private ValidationSetSampleRow? selectedValidationSetSample;
-    private ValidationSetStepRow? selectedValidationSetStep;
-    private ValidationSetStatusFilter validationSetFilter = ValidationSetStatusFilter.All;
     private string validationSetSummary = string.Empty;
     private string validationSetCapability = string.Empty;
-    private string validationSetProgressText = string.Empty;
-    private double validationSetProgress;
-    private ToolRecipeLabeledEvidenceReport? validationEvidenceReport;
-    private ToolRecipeThresholdCandidateReport? validationThresholdReport;
-    private ValidationThresholdCandidateRow? selectedValidationThresholdCandidate;
-    private ToolRecipeThresholdParameterProposal? validationThresholdReviewProposal;
-    private ToolRecipeThresholdCorrectionEvidence? validationThresholdCorrectionEvidence;
-    private ToolRecipeValidationSetResult?
-        validationThresholdBeforeDevelopmentResult;
-    private ToolRecipeValidationSetResult?
-        validationThresholdAfterDevelopmentResult;
-    private IReadOnlyList<ToolRecipeThresholdManualParameterChange>
-        validationThresholdManualChanges = [];
-    private bool isValidationThresholdReviewActive;
-    private bool isValidationThresholdCandidateApplied;
-    private bool isValidationThresholdManualCorrectionCommitted;
-    private bool isValidationThresholdDevelopmentValidated;
-    private string validationThresholdCorrectionSummary =
-        "Select a mapped candidate, then use Review before applying it to the PropertyGrid draft.";
-    private bool isValidationSetDefinitionDirty;
     private bool isValidationEvidenceExpanded;
     private bool isValidationThresholdExpanded;
     private ValidationFailureCorrectionContext? activeValidationFailureCorrectionContext;
@@ -74,27 +32,35 @@ public sealed partial class ToolWorkbenchViewModel
     public event EventHandler? SelectValidationSetSourcesRequested;
     public event EventHandler? ValidationSetComparisonRequested;
 
-    public ReadOnlyObservableCollection<ValidationSetSampleRow> ValidationSetSamples { get; private set; } = null!;
+    public ReadOnlyObservableCollection<ValidationSetSampleRow> ValidationSetSamples =>
+        validationSetReviewOwner.ValidationSetSamples;
 
-    public ReadOnlyObservableCollection<ValidationSetStepRow> SelectedValidationSetSteps { get; private set; } = null!;
+    public ReadOnlyObservableCollection<ValidationSetStepRow> SelectedValidationSetSteps =>
+        validationSetReviewOwner.SelectedValidationSetSteps;
 
     public ReadOnlyObservableCollection<ValidationEvidenceDistributionRow>
-        ValidationEvidenceDistributions { get; private set; } = null!;
+        ValidationEvidenceDistributions =>
+        validationThresholdWorkflowOwner.ValidationEvidenceDistributions;
 
     public ReadOnlyObservableCollection<ValidationThresholdCandidateRow>
-        ValidationThresholdCandidates { get; private set; } = null!;
+        ValidationThresholdCandidates =>
+        validationThresholdWorkflowOwner.ValidationThresholdCandidates;
 
     public ReadOnlyObservableCollection<ValidationThresholdDecisionRow>
-        SelectedValidationThresholdDecisions { get; private set; } = null!;
+        SelectedValidationThresholdDecisions =>
+        validationThresholdWorkflowOwner.SelectedValidationThresholdDecisions;
 
     public ReadOnlyObservableCollection<ValidationThresholdParameterChangeRow>
-        ValidationThresholdParameterChanges { get; private set; } = null!;
+        ValidationThresholdParameterChanges =>
+        validationThresholdWorkflowOwner.ValidationThresholdParameterChanges;
 
     public ReadOnlyObservableCollection<ValidationThresholdHeldOutSampleRow>
-        ValidationThresholdHeldOutSamples { get; private set; } = null!;
+        ValidationThresholdHeldOutSamples =>
+        validationThresholdWorkflowOwner.ValidationThresholdHeldOutSamples;
 
     public ReadOnlyObservableCollection<ValidationThresholdDevelopmentSampleRow>
-        ValidationThresholdDevelopmentSamples { get; private set; } = null!;
+        ValidationThresholdDevelopmentSamples =>
+        validationThresholdWorkflowOwner.ValidationThresholdDevelopmentSamples;
 
     public ICommand SelectValidationSetSourcesCommand => selectValidationSetSourcesCommand;
 
@@ -106,80 +72,53 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand CancelValidationSetCommand => cancelValidationSetCommand;
 
-    public ICommand SetValidationSetFilterCommand => setValidationSetFilterCommand;
+    public ICommand SetValidationSetFilterCommand =>
+        validationSetReviewOwner.SetValidationSetFilterCommand;
 
-    public ICommand PreviousValidationSetIssueCommand => previousValidationSetIssueCommand;
+    public ICommand PreviousValidationSetIssueCommand =>
+        validationSetReviewOwner.PreviousValidationSetIssueCommand;
 
-    public ICommand NextValidationSetIssueCommand => nextValidationSetIssueCommand;
+    public ICommand NextValidationSetIssueCommand =>
+        validationSetReviewOwner.NextValidationSetIssueCommand;
 
-    public ICommand OpenValidationSetComparisonCommand => openValidationSetComparisonCommand;
+    public ICommand OpenValidationSetComparisonCommand =>
+        validationSetReviewOwner.OpenValidationSetComparisonCommand;
 
     public ICommand SetValidationSampleRoleCommand =>
         setValidationSampleRoleCommand;
 
     public ICommand ProposeValidationThresholdCandidateCommand =>
-        proposeValidationThresholdCandidateCommand;
+        validationThresholdWorkflowOwner.ProposeValidationThresholdCandidateCommand;
 
     public ICommand ReviewValidationThresholdCandidateCommand =>
-        reviewValidationThresholdCandidateCommand;
+        validationThresholdWorkflowOwner.ReviewValidationThresholdCandidateCommand;
 
     public ICommand CancelValidationThresholdReviewCommand =>
-        cancelValidationThresholdReviewCommand;
+        validationThresholdWorkflowOwner.CancelValidationThresholdReviewCommand;
 
     public ICommand ApplyValidationThresholdCandidateCommand =>
-        applyValidationThresholdCandidateCommand;
+        validationThresholdWorkflowOwner.ApplyValidationThresholdCandidateCommand;
 
     public ICommand RevalidateValidationThresholdCorrectionCommand =>
-        revalidateValidationThresholdCorrectionCommand;
+        validationThresholdWorkflowOwner.RevalidateValidationThresholdCorrectionCommand;
 
     public ICommand ReplayValidationThresholdHeldOutCommand =>
-        replayValidationThresholdHeldOutCommand;
+        validationThresholdWorkflowOwner.ReplayValidationThresholdHeldOutCommand;
 
     public ValidationSetSampleRow? SelectedValidationSetSample
     {
-        get => selectedValidationSetSample;
-        set
-        {
-            if (ReferenceEquals(selectedValidationSetSample, value))
-            {
-                return;
-            }
-
-            selectedValidationSetSample = value;
-            selectedValidationSetSteps.Clear();
-            foreach (var step in value?.Steps ?? [])
-            {
-                selectedValidationSetSteps.Add(step);
-            }
-            SelectedValidationSetStep =
-                value?.Steps.FirstOrDefault(step => step.Status is "Fail" or "Error")
-                ?? value?.Steps.FirstOrDefault();
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSelectedValidationSetSample));
-            OnPropertyChanged(nameof(IsSelectedValidationRoleGood));
-            OnPropertyChanged(nameof(IsSelectedValidationRoleBad));
-            OnPropertyChanged(nameof(IsSelectedValidationRoleHeldOut));
-            previousValidationSetIssueCommand.RaiseCanExecuteChanged();
-            nextValidationSetIssueCommand.RaiseCanExecuteChanged();
-            openValidationSetComparisonCommand.RaiseCanExecuteChanged();
-            setValidationSampleRoleCommand.RaiseCanExecuteChanged();
-            RefreshValidationThresholdCorrectionCommands();
-        }
+        get => validationSetReviewOwner.SelectedValidationSetSample;
+        set => validationSetReviewOwner.SelectedValidationSetSample = value;
     }
 
     public ValidationSetStepRow? SelectedValidationSetStep
     {
-        get => selectedValidationSetStep;
-        set
-        {
-            if (ReferenceEquals(selectedValidationSetStep, value)) return;
-            selectedValidationSetStep = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSelectedValidationSetStep));
-        }
+        get => validationSetReviewOwner.SelectedValidationSetStep;
+        set => validationSetReviewOwner.SelectedValidationSetStep = value;
     }
 
-    public bool HasSelectedValidationSetStep => SelectedValidationSetStep is not null;
+    public bool HasSelectedValidationSetStep =>
+        validationSetReviewOwner.HasSelectedValidationSetStep;
 
     public ValidationFailureCorrectionContext? ActiveValidationFailureCorrectionContext
     {
@@ -242,107 +181,52 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ValidationSetStatusFilter ValidationSetFilter
     {
-        get => validationSetFilter;
-        private set
-        {
-            if (validationSetFilter == value) return;
-            validationSetFilter = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(IsValidationSetFilterAll));
-            OnPropertyChanged(nameof(IsValidationSetFilterPass));
-            OnPropertyChanged(nameof(IsValidationSetFilterFail));
-            OnPropertyChanged(nameof(IsValidationSetFilterError));
-            RefreshFilteredValidationSetSamples();
-        }
+        get => validationSetReviewOwner.ValidationSetFilter;
+        private set => validationSetReviewOwner.SetFilter(value);
     }
 
-    public bool IsValidationSetFilterAll => ValidationSetFilter == ValidationSetStatusFilter.All;
-    public bool IsValidationSetFilterPass => ValidationSetFilter == ValidationSetStatusFilter.Pass;
-    public bool IsValidationSetFilterFail => ValidationSetFilter == ValidationSetStatusFilter.Fail;
-    public bool IsValidationSetFilterError => ValidationSetFilter == ValidationSetStatusFilter.Error;
+    public bool IsValidationSetFilterAll => validationSetReviewOwner.IsValidationSetFilterAll;
+    public bool IsValidationSetFilterPass => validationSetReviewOwner.IsValidationSetFilterPass;
+    public bool IsValidationSetFilterFail => validationSetReviewOwner.IsValidationSetFilterFail;
+    public bool IsValidationSetFilterError => validationSetReviewOwner.IsValidationSetFilterError;
 
-    public int ValidationSetAllCount => validationSetSamples.Count;
-    public int ValidationSetPassCount => validationSetSamples.Count(row => row.Status == "Pass");
-    public int ValidationSetFailCount => validationSetSamples.Count(row => row.Status == "Fail");
-    public int ValidationSetErrorCount => validationSetSamples.Count(row => row.Status == "Error");
-    public int ValidationSetGoodCount => validationSetSamples.Count(row =>
+    public int ValidationSetAllCount => validationSetDefinitionOwner.Samples.Count;
+    public int ValidationSetPassCount => validationSetDefinitionOwner.Samples.Count(row => row.Status == "Pass");
+    public int ValidationSetFailCount => validationSetDefinitionOwner.Samples.Count(row => row.Status == "Fail");
+    public int ValidationSetErrorCount => validationSetDefinitionOwner.Samples.Count(row => row.Status == "Error");
+    public int ValidationSetGoodCount => validationSetDefinitionOwner.Samples.Count(row =>
         row.Role == ToolRecipeValidationSampleRole.Good);
-    public int ValidationSetBadCount => validationSetSamples.Count(row =>
+    public int ValidationSetBadCount => validationSetDefinitionOwner.Samples.Count(row =>
         row.Role == ToolRecipeValidationSampleRole.Bad);
-    public int ValidationSetHeldOutCount => validationSetSamples.Count(row =>
+    public int ValidationSetHeldOutCount => validationSetDefinitionOwner.Samples.Count(row =>
         row.Role == ToolRecipeValidationSampleRole.HeldOut);
-    public bool HasValidationSetIssues => validationSetSamples.Any(row =>
+    public bool HasValidationSetIssues => validationSetDefinitionOwner.Samples.Any(row =>
         row.Status is "Fail" or "Error");
     public bool IsSelectedValidationRoleGood =>
-        SelectedValidationSetSample?.Role == ToolRecipeValidationSampleRole.Good;
+        validationSetReviewOwner.IsSelectedValidationRoleGood;
     public bool IsSelectedValidationRoleBad =>
-        SelectedValidationSetSample?.Role == ToolRecipeValidationSampleRole.Bad;
+        validationSetReviewOwner.IsSelectedValidationRoleBad;
     public bool IsSelectedValidationRoleHeldOut =>
-        SelectedValidationSetSample?.Role == ToolRecipeValidationSampleRole.HeldOut;
+        validationSetReviewOwner.IsSelectedValidationRoleHeldOut;
     public bool HasValidationEvidence =>
-        validationEvidenceDistributions.Count > 0;
+        validationThresholdWorkflowOwner.HasValidationEvidence;
     public bool HasValidationThresholdCandidates =>
-        validationThresholdCandidates.Count > 0;
+        validationThresholdWorkflowOwner.HasValidationThresholdCandidates;
 
     public bool HasValidationThresholdAssistantAnalysis =>
-        validationThresholdReport is not null;
+        validationThresholdWorkflowOwner.HasValidationThresholdAssistantAnalysis;
 
     public bool HasValidationThresholdAssistantProposal =>
-        validationThresholdReviewProposal is not null;
+        validationThresholdWorkflowOwner.HasValidationThresholdAssistantProposal;
 
     public ValidationThresholdAssistantStage ValidationThresholdAssistantStage =>
-        !HasValidationThresholdAssistantAnalysis
-            || !HasValidationThresholdCandidates
-            || IsValidationSetRunning
-            ? ValidationThresholdAssistantStage.Analyze
-            : IsValidationThresholdCandidateApplied
-                ? ValidationThresholdAssistantStage.Apply
-                : IsValidationThresholdReviewActive
-                    ? ValidationThresholdAssistantStage.Review
-                    : ValidationThresholdAssistantStage.Propose;
+        validationThresholdWorkflowOwner.ValidationThresholdAssistantStage;
 
     public string ValidationThresholdAssistantStageText =>
-        ValidationThresholdAssistantStage switch
-        {
-            ValidationThresholdAssistantStage.Analyze =>
-                Localize("분석", "Analyze"),
-            ValidationThresholdAssistantStage.Propose =>
-                Localize("제안", "Propose"),
-            ValidationThresholdAssistantStage.Review =>
-                Localize("검토", "Review"),
-            ValidationThresholdAssistantStage.Apply =>
-                Localize("초안 적용", "Apply draft"),
-            _ => Localize("분석", "Analyze")
-        };
+        validationThresholdWorkflowOwner.ValidationThresholdAssistantStageText;
 
     public string ValidationThresholdAssistantSummary =>
-        IsValidationSetRunning
-            ? Localize(
-                "Validation Set을 분석하는 중입니다. 완료될 때까지 적용할 수 없습니다.",
-                "Analyzing the Validation Set. Apply remains unavailable until it completes.")
-            : !HasValidationThresholdAssistantAnalysis
-                ? Localize(
-                    "분석을 실행하면 결정론적 임계값 후보가 생성됩니다.",
-                    "Run analysis to generate deterministic threshold candidates.")
-                : !HasSelectedValidationThresholdCandidate
-                    ? Localize(
-                        "후보를 선택한 뒤 제안을 만들 수 있습니다.",
-                        "Select a candidate to create a proposal.")
-                    : IsValidationThresholdCandidateApplied
-                        ? Localize(
-                            "PropertyGrid 초안에만 적용되었습니다. 일반 Apply와 실행은 별도입니다.",
-                            "Applied to the PropertyGrid draft only. Normal Apply and execution remain separate.")
-                        : IsValidationThresholdReviewActive
-                            ? Localize(
-                                "제안을 검토 중입니다. Apply 전에는 레시피와 실행 상태가 변하지 않습니다.",
-                                "Reviewing the proposal. Recipe and execution remain unchanged until Apply.")
-                            : HasValidationThresholdAssistantProposal
-                                ? Localize(
-                                    "제안이 준비되었습니다. 검토를 거친 뒤 초안에 적용하세요.",
-                                    "Proposal ready. Review it before applying to the draft.")
-                                : Localize(
-                                    "선택한 후보에서 초안 제안을 만드세요.",
-                                    "Create a draft proposal from the selected candidate.");
+        validationThresholdWorkflowOwner.ValidationThresholdAssistantSummary;
 
     public bool IsValidationEvidenceExpanded
     {
@@ -356,7 +240,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     public bool IsValidationSetDefinitionDirty =>
-        isValidationSetDefinitionDirty;
+        validationSetDefinitionOwner.IsValidationSetDefinitionDirty;
 
     public bool IsValidationThresholdExpanded
     {
@@ -372,115 +256,45 @@ public sealed partial class ToolWorkbenchViewModel
     public ValidationThresholdCandidateRow?
         SelectedValidationThresholdCandidate
     {
-        get => selectedValidationThresholdCandidate;
-        set
-        {
-            if (ReferenceEquals(selectedValidationThresholdCandidate, value))
-            {
-                return;
-            }
-
-            if (validationThresholdReviewProposal is { } proposal
-                && !string.Equals(
-                    proposal.CandidateId,
-                    value?.CandidateId,
-                    StringComparison.Ordinal))
-            {
-                ClearValidationThresholdCorrectionState(
-                    "Candidate selection changed. Start Review again.");
-            }
-            selectedValidationThresholdCandidate = value;
-            selectedValidationThresholdDecisions.Clear();
-            foreach (var decision in value?.Candidate.Decisions ?? [])
-            {
-                selectedValidationThresholdDecisions.Add(
-                    new ValidationThresholdDecisionRow(
-                        decision.SampleOrder,
-                        Path.GetFileName(decision.SourcePath),
-                        decision.SampleIdentity,
-                        decision.ExpectedRole.ToString(),
-                        decision.PredictedRole.ToString(),
-                        decision.Decision.ToString(),
-                        decision.Value.ToString(
-                            "G6",
-                            System.Globalization.CultureInfo.InvariantCulture),
-                        decision.EvidenceLocator));
-            }
-            OnPropertyChanged();
-            OnPropertyChanged(
-                nameof(HasSelectedValidationThresholdCandidate));
-            OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
-            OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
-            OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
-            RefreshValidationThresholdCorrectionCommands();
-        }
+        get => validationThresholdWorkflowOwner.SelectedValidationThresholdCandidate;
+        set => validationThresholdWorkflowOwner.SelectedValidationThresholdCandidate = value;
     }
 
     public bool HasSelectedValidationThresholdCandidate =>
-        SelectedValidationThresholdCandidate is not null;
+        validationThresholdWorkflowOwner.HasSelectedValidationThresholdCandidate;
 
     public bool IsValidationThresholdReviewActive =>
-        isValidationThresholdReviewActive;
+        validationThresholdWorkflowOwner.IsValidationThresholdReviewActive;
 
     public bool IsValidationThresholdCandidateApplied =>
-        isValidationThresholdCandidateApplied;
+        validationThresholdWorkflowOwner.IsValidationThresholdCandidateApplied;
 
     public bool IsValidationThresholdManualCorrectionCommitted =>
-        isValidationThresholdManualCorrectionCommitted;
+        validationThresholdWorkflowOwner.IsValidationThresholdManualCorrectionCommitted;
 
     public bool IsValidationThresholdDevelopmentValidated =>
-        isValidationThresholdDevelopmentValidated;
-
-    private bool RequiresValidationThresholdDevelopmentReplay =>
-        string.Equals(
-            validationThresholdReviewProposal?.ToolId,
-            "completeness-grid",
-            StringComparison.Ordinal);
+        validationThresholdWorkflowOwner.IsValidationThresholdDevelopmentValidated;
 
     public bool HasValidationThresholdParameterChanges =>
-        validationThresholdParameterChanges.Count > 0;
+        validationThresholdWorkflowOwner.HasValidationThresholdParameterChanges;
 
     public bool HasValidationThresholdHeldOutEvidence =>
-        validationThresholdHeldOutSamples.Count > 0;
+        validationThresholdWorkflowOwner.HasValidationThresholdHeldOutEvidence;
 
     public bool HasValidationThresholdDevelopmentEvidence =>
-        validationThresholdDevelopmentSamples.Count > 0;
+        validationThresholdWorkflowOwner.HasValidationThresholdDevelopmentEvidence;
 
-    public string ValidationThresholdCorrectionSummary
-    {
-        get => validationThresholdCorrectionSummary;
-        private set
-        {
-            if (string.Equals(
-                    validationThresholdCorrectionSummary,
-                    value,
-                    StringComparison.Ordinal))
-            {
-                return;
-            }
-            validationThresholdCorrectionSummary = value;
-            OnPropertyChanged();
-        }
-    }
+    public string ValidationThresholdCorrectionSummary =>
+        validationThresholdWorkflowOwner.ValidationThresholdCorrectionSummary;
 
     public string ValidationEvidenceSummary =>
-        validationEvidenceReport?.Message
-        ?? "Run the labeled Validation Set to calculate step and ROI distributions.";
+        validationThresholdWorkflowOwner.ValidationEvidenceSummary;
     public string ValidationEvidenceWarning =>
-        validationEvidenceReport?.Warnings.Count > 0
-            ? string.Join(" ", validationEvidenceReport.Warnings)
-            : string.Empty;
+        validationThresholdWorkflowOwner.ValidationEvidenceWarning;
     public string ValidationThresholdSummary =>
-        validationThresholdReport?.Message
-        ?? "Run the labeled Validation Set to calculate review-only threshold candidates.";
+        validationThresholdWorkflowOwner.ValidationThresholdSummary;
     public string ValidationThresholdWarning =>
-        validationThresholdReport is not { } report
-            ? string.Empty
-            : report.EvidenceWarnings.Count > 0
-                ? FormatThresholdEvidenceWarnings(report.EvidenceWarnings)
-                : report.Warnings.Count > 0
-                    ? string.Join(" ", report.Warnings)
-                    : string.Empty;
+        validationThresholdWorkflowOwner.ValidationThresholdWarning;
 
     public string ValidationSetSummary
     {
@@ -504,146 +318,88 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    public string ValidationSetProgressText
-    {
-        get => validationSetProgressText;
-        private set
-        {
-            if (validationSetProgressText == value) return;
-            validationSetProgressText = value;
-            OnPropertyChanged();
-        }
-    }
+    public string ValidationSetProgressText =>
+        validationThresholdWorkflowOwner.ValidationSetProgressText;
 
-    public double ValidationSetProgress
-    {
-        get => validationSetProgress;
-        private set
-        {
-            if (Math.Abs(validationSetProgress - value) < 0.001) return;
-            validationSetProgress = value;
-            OnPropertyChanged();
-        }
-    }
+    public double ValidationSetProgress =>
+        validationThresholdWorkflowOwner.ValidationSetProgress;
 
     public bool IsValidationSetRunning => validationSetExecutionOwner.IsRunning;
 
     public bool IsValidationSetIdle => !IsValidationSetRunning;
 
-    public bool HasValidationSetSamples => validationSetSamples.Count > 0;
+    public bool HasValidationSetSamples => validationSetDefinitionOwner.Samples.Count > 0;
 
-    public bool HasSelectedValidationSetSample => SelectedValidationSetSample is not null;
+    public bool HasSelectedValidationSetSample =>
+        validationSetReviewOwner.HasSelectedValidationSetSample;
 
     private void InitializeValidationSet()
     {
-        ValidationSetSamples = new ReadOnlyObservableCollection<ValidationSetSampleRow>(filteredValidationSetSamples);
-        SelectedValidationSetSteps = new ReadOnlyObservableCollection<ValidationSetStepRow>(selectedValidationSetSteps);
-        ValidationEvidenceDistributions =
-            new ReadOnlyObservableCollection<ValidationEvidenceDistributionRow>(
-                validationEvidenceDistributions);
-        ValidationThresholdCandidates =
-            new ReadOnlyObservableCollection<ValidationThresholdCandidateRow>(
-                validationThresholdCandidates);
-        SelectedValidationThresholdDecisions =
-            new ReadOnlyObservableCollection<ValidationThresholdDecisionRow>(
-                selectedValidationThresholdDecisions);
-        ValidationThresholdParameterChanges =
-            new ReadOnlyObservableCollection<ValidationThresholdParameterChangeRow>(
-                validationThresholdParameterChanges);
-        ValidationThresholdHeldOutSamples =
-            new ReadOnlyObservableCollection<ValidationThresholdHeldOutSampleRow>(
-                validationThresholdHeldOutSamples);
-        ValidationThresholdDevelopmentSamples =
-            new ReadOnlyObservableCollection<ValidationThresholdDevelopmentSampleRow>(
-                validationThresholdDevelopmentSamples);
+        validationSetDefinitionOwner =
+            new ToolWorkbenchValidationSetDefinitionOwner(
+                CreateDocument,
+                () => RecipeName,
+                Localize,
+                OnValidationSetDefinitionChanged,
+                OnValidationSetDefinitionDirtyChanged);
+        validationSetDefinitionOwner.PropertyChanged += (_, args) =>
+            OnPropertyChanged(args.PropertyName);
+        validationSetReviewOwner = new ToolWorkbenchValidationSetReviewOwner(
+            validationSetDefinitionOwner.Samples,
+            () => IsValidationSetRunning,
+            () => IsSourceReadyForRecipe,
+            OpenSelectedValidationSetComparison);
+        validationSetReviewOwner.PropertyChanged +=
+            OnValidationSetReviewOwnerPropertyChanged;
+        validationThresholdWorkflowOwner =
+            new ToolWorkbenchValidationThresholdWorkflowOwner(
+                validationSetExecutionOwner,
+                validationSetDefinitionOwner.Samples,
+                PipelineSteps,
+                CreateDocument,
+                () => HasPendingStepParameterChanges,
+                () => SelectedPipelineStep,
+                TrySelectValidationThresholdPipelineStep,
+                stepPropertySession,
+                () => RecipePath,
+                (category, message) => AppendLog(category, message),
+                Localize,
+                LocalizeStatus);
+        validationThresholdWorkflowOwner.PropertyChanged += (_, args) =>
+            OnPropertyChanged(args.PropertyName);
         selectValidationSetSourcesCommand = new RelayCommand(
             _ => SelectValidationSetSourcesRequested?.Invoke(this, EventArgs.Empty),
-            _ => !IsValidationSetRunning);
+            _ => validationSetExecutionOwner.CanStart);
         addCurrentSourceToValidationSetCommand = new RelayCommand(
             _ => AddCurrentSourceToValidationSet(),
-            _ => !IsValidationSetRunning
+            _ => validationSetExecutionOwner.CanStart
                  && IsSourceReadyForRecipe
                  && !string.IsNullOrWhiteSpace(Source.Path)
                  && File.Exists(Source.Path));
         runValidationSetCommand = new RelayCommand(
             _ => _ = RunValidationSetAsync(),
-            _ => !IsValidationSetRunning && validationSetSamples.Count > 0);
+            _ => validationSetExecutionOwner.CanStart
+                 && validationSetDefinitionOwner.Samples.Count > 0);
         clearValidationSetCommand = new RelayCommand(
             _ => ClearValidationSet(),
-            _ => !IsValidationSetRunning && validationSetSamples.Count > 0);
+            _ => validationSetExecutionOwner.CanStart
+                 && validationSetDefinitionOwner.Samples.Count > 0);
         cancelValidationSetCommand = new RelayCommand(
             _ => validationSetExecutionOwner.Cancel(),
-            _ => IsValidationSetRunning);
-        setValidationSetFilterCommand = new RelayCommand(
-            parameter => SetValidationSetFilter(parameter?.ToString()));
-        previousValidationSetIssueCommand = new RelayCommand(
-            _ => MoveValidationSetIssue(-1),
-            _ => !IsValidationSetRunning && VisibleValidationSetIssues().Count > 0);
-        nextValidationSetIssueCommand = new RelayCommand(
-            _ => MoveValidationSetIssue(1),
-            _ => !IsValidationSetRunning && VisibleValidationSetIssues().Count > 0);
-        openValidationSetComparisonCommand = new RelayCommand(
-            _ => OpenSelectedValidationSetComparison(),
-            _ => !IsValidationSetRunning
-                 && SelectedValidationSetSample is { SourcePath: var path }
-                 && File.Exists(path)
-                 && IsSourceReadyForRecipe);
+            _ => !validationSetExecutionOwner.IsDisposed
+                 && IsValidationSetRunning);
         setValidationSampleRoleCommand = new RelayCommand(
             parameter => SetSelectedValidationSampleRole(parameter?.ToString()),
-            _ => !IsValidationSetRunning
+            _ => validationSetExecutionOwner.CanStart
                  && SelectedValidationSetSample is not null);
-        proposeValidationThresholdCandidateCommand = new RelayCommand(
-            _ => ProposeSelectedValidationThresholdCandidate(),
-            _ => !IsValidationSetRunning
-                 && !HasPendingStepParameterChanges
-                 && HasSelectedValidationThresholdCandidate
-                 && !HasValidationThresholdAssistantProposal
-                 && !IsValidationThresholdReviewActive
-                 && !IsValidationThresholdCandidateApplied);
-        reviewValidationThresholdCandidateCommand = new RelayCommand(
-            _ => ReviewSelectedValidationThresholdCandidate(),
-            _ => !IsValidationSetRunning
-                 && !HasPendingStepParameterChanges
-                 && HasSelectedValidationThresholdCandidate
-                 && !IsValidationThresholdReviewActive
-                 && !IsValidationThresholdCandidateApplied);
-        cancelValidationThresholdReviewCommand = new RelayCommand(
-            _ => CancelValidationThresholdReview(),
-            _ => !IsValidationSetRunning
-                 && HasValidationThresholdAssistantProposal
-                 && !IsValidationThresholdCandidateApplied);
-        applyValidationThresholdCandidateCommand = new RelayCommand(
-            _ => ApplyReviewedValidationThresholdCandidate(),
-            _ => !IsValidationSetRunning
-                 && IsValidationThresholdReviewActive
-                 && !IsValidationThresholdCandidateApplied);
-        revalidateValidationThresholdCorrectionCommand = new RelayCommand(
-            _ => _ = RevalidateValidationThresholdCorrectionAsync(),
-            _ => !IsValidationSetRunning
-                 && (IsValidationThresholdManualCorrectionCommitted
-                     || RequiresValidationThresholdDevelopmentReplay)
-                 && IsValidationThresholdCandidateApplied
-                 && !IsValidationThresholdDevelopmentValidated
-                 && (!IsValidationThresholdManualCorrectionCommitted
-                     || !HasPendingStepParameterChanges)
-                 && validationThresholdBeforeDevelopmentResult is not null);
-        replayValidationThresholdHeldOutCommand = new RelayCommand(
-            _ => _ = ReplayValidationThresholdHeldOutAsync(),
-            _ => !IsValidationSetRunning
-                 && IsValidationThresholdCandidateApplied
-                 && ((!IsValidationThresholdManualCorrectionCommitted
-                      && !RequiresValidationThresholdDevelopmentReplay)
-                     || (IsValidationThresholdDevelopmentValidated
-                         && validationThresholdBeforeDevelopmentResult
-                             is not null
-                         && validationThresholdAfterDevelopmentResult
-                             is not null))
-                 && validationSetSamples.Any(sample =>
-                     sample.Role == ToolRecipeValidationSampleRole.HeldOut));
-        Localization.PropertyChanged += (_, _) => RefreshValidationSetLocalization();
         RefreshValidationSetCapability();
         RefreshValidationSetSummary();
     }
+
+    private void OnValidationSetLocalizationChanged(
+        object? sender,
+        PropertyChangedEventArgs args) =>
+        RefreshValidationSetLocalization();
 
     private void AddCurrentSourceToValidationSet()
     {
@@ -655,7 +411,7 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         SetValidationSetSources(
-            validationSetSamples
+            validationSetDefinitionOwner.Samples
                 .Select(sample => sample.SourcePath)
                 .Append(Source.Path));
         AppendLog(
@@ -665,133 +421,61 @@ public sealed partial class ToolWorkbenchViewModel
 
     public void SetValidationSetSources(IEnumerable<string> sourcePaths)
     {
-        ArgumentNullException.ThrowIfNull(sourcePaths);
-        var existingRoles = validationSetSamples.ToDictionary(
-            sample => sample.SourcePath,
-            sample => sample.Role,
-            StringComparer.OrdinalIgnoreCase);
-        var paths = sourcePaths
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(Path.GetFullPath)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        validationSetSamples.Clear();
-        foreach (var (path, index) in paths.Select((path, index) => (path, index)))
-        {
-            validationSetSamples.Add(new ValidationSetSampleRow(
-                index + 1,
-                path,
-                existingRoles.GetValueOrDefault(
-                    path,
-                    ToolRecipeValidationSampleRole.Good),
-                "Pending",
-                Localize("대기", "Pending"),
-                Localize(
-                    "미실행 · '샘플 세트 실행'을 선택하세요.",
-                    "Not run · choose Run sample set."),
-                string.Empty,
-                []));
-        }
-
-        ClearValidationEvidence();
-        SetValidationSetDefinitionDirty(true);
-        ValidationSetFilter = ValidationSetStatusFilter.All;
-        RefreshFilteredValidationSetSamples();
-        NotifyValidationSetCountsChanged();
-        RebuildOutputCompareCandidates();
-        runValidationSetCommand.RaiseCanExecuteChanged();
-        clearValidationSetCommand.RaiseCanExecuteChanged();
-        RefreshValidationSetSummary();
+        validationSetDefinitionOwner.SetValidationSetSources(sourcePaths);
     }
 
     internal async Task RunValidationSetAsync()
     {
-        if (IsValidationSetRunning || validationSetSamples.Count == 0)
+        if (validationSetExecutionOwner.IsDisposed
+            || IsValidationSetRunning
+            || validationSetDefinitionOwner.Samples.Count == 0)
         {
             return;
         }
 
-        validationThresholdBeforeDevelopmentResult = null;
-        ValidationSetProgress = 0;
-        ValidationSetProgressText = Localize("반복 검증 준비 중", "Preparing repeat validation");
+        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
         ValidationSetSummary = Localize(
-            $"{validationSetSamples.Count}개 샘플을 순서대로 실행하고 있습니다.",
-            $"Running {validationSetSamples.Count} sample(s) sequentially.");
+            $"{validationSetDefinitionOwner.Samples.Count}개 샘플을 순서대로 실행하고 있습니다.",
+            $"Running {validationSetDefinitionOwner.Samples.Count} sample(s) sequentially.");
         try
         {
             var document = CreateDocument();
-            var samples = validationSetSamples.Select(row =>
+            var samples = validationSetDefinitionOwner.Samples.Select(row =>
                 new ToolRecipeValidationSampleInput(
                     row.SourcePath,
                     row.Role)).ToArray();
-            var progress = new Progress<ToolRecipeValidationProgress>(ReportValidationSetProgress);
-            var result = await validationSetExecutionOwner.ExecuteAsync(
+            var result = await validationThresholdWorkflowOwner.AnalyzeAsync(
                 document,
                 samples,
-                progress);
-            validationSetSamples.Clear();
-            foreach (var sample in result.Samples)
-            {
-                var steps = sample.Steps.Select(step => new ValidationSetStepRow(
-                    step.Order,
-                    step.StepId,
-                    step.ToolName,
-                    step.Status.ToString(),
-                    LocalizeStatus(step.Status),
-                    step.Evidence,
-                    step.Metrics.Select(metric => new ValidationSetMetricRow(
-                        metric.Name,
-                        metric.Value.ToString("G6", System.Globalization.CultureInfo.InvariantCulture),
-                        metric.Unit,
-                        metric.Status?.ToString() ?? string.Empty,
-                        metric.Status is { } metricStatus ? LocalizeStatus(metricStatus) : string.Empty)).ToArray(),
-                    step.Overlays.Select(overlay => new ValidationSetOverlayRow(
-                        overlay.Kind.ToString(),
-                        overlay.Label,
-                        overlay.Status?.ToString() ?? string.Empty,
-                        overlay.Status is { } overlayStatus ? LocalizeStatus(overlayStatus) : string.Empty)).ToArray())).ToArray();
-                validationSetSamples.Add(new ValidationSetSampleRow(
-                    sample.Order,
-                    sample.SourcePath,
-                    sample.Role,
-                    sample.Status.ToString(),
-                    LocalizeStatus(sample.Status),
-                    LocalizeResultMessage(sample),
-                    sample.Duration.TotalMilliseconds.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " ms",
-                    steps));
-            }
-
-            SetValidationEvidence(
-                ToolRecipeLabeledEvidenceAnalyzer.Analyze(document, result));
-            SetValidationThresholdEvidence(
-                ToolRecipeThresholdCandidateAnalyzer.Analyze(
-                    document,
-                    result));
-            validationThresholdBeforeDevelopmentResult =
-                CreateDevelopmentResult(result);
+                ProjectValidationSetResult);
             ValidationSetFilter = ValidationSetStatusFilter.All;
-            RefreshFilteredValidationSetSamples();
+            RefreshValidationSetReviewSamples();
             NotifyValidationSetCountsChanged();
-            RebuildOutputCompareCandidates();
+            RebuildRenderableC3DConsumers();
             ValidationSetSummary = result.Samples.Count == 0
                 ? Localize(result.Message, result.Message)
                 : LocalizeResultSummary(result);
             SelectedValidationSetSample =
-                validationSetSamples.FirstOrDefault(row => row.Status is "Fail" or "Error")
-                ?? validationSetSamples.FirstOrDefault();
-            ValidationSetProgress = 100;
-            ValidationSetProgressText = Localize(
-                $"완료 {result.Samples.Count}개",
-                $"{result.Samples.Count} completed");
+                validationSetDefinitionOwner.Samples.FirstOrDefault(row => row.Status is "Fail" or "Error")
+                ?? validationSetDefinitionOwner.Samples.FirstOrDefault();
+            validationThresholdWorkflowOwner.CompleteAnalysis(
+                result.Samples.Count);
             AppendLog("Validation Set", result.Message);
         }
         catch (OperationCanceledException)
         {
+            if (System.Threading.Volatile.Read(ref disposalState) != 0)
+            {
+                return;
+            }
+
             ValidationSetSummary = Localize(
                 "반복 검증이 취소되었습니다. 작성 중인 레시피와 3D 뷰 입력은 변경되지 않았습니다.",
                 "Repeat validation was canceled. The authored recipe and 3D Viewer input were not changed.");
-            ValidationSetProgressText = Localize("사용자 취소", "Canceled");
             AppendLog("Validation Set", "Canceled by operator.");
         }
         catch (Exception exception) when (exception is IOException
@@ -802,6 +486,11 @@ public sealed partial class ToolWorkbenchViewModel
             or NotSupportedException
             or OverflowException)
         {
+            if (System.Threading.Volatile.Read(ref disposalState) != 0)
+            {
+                return;
+            }
+
             ValidationSetSummary = Localize(
                 $"반복 검증을 시작할 수 없습니다: {exception.Message}",
                 $"Validation Set could not start: {exception.Message}");
@@ -809,25 +498,68 @@ public sealed partial class ToolWorkbenchViewModel
         }
         finally
         {
-            OnPropertyChanged(nameof(HasValidationSetSamples));
+            if (System.Threading.Volatile.Read(ref disposalState) == 0)
+            {
+                OnPropertyChanged(nameof(HasValidationSetSamples));
+            }
         }
+    }
+
+    private void ProjectValidationSetResult(ToolRecipeValidationSetResult result)
+    {
+        validationSetDefinitionOwner.ReplaceExecutionResult(
+            result.Samples.Select(sample =>
+        {
+            var steps = sample.Steps.Select(step => new ValidationSetStepRow(
+                step.Order,
+                step.StepId,
+                step.ToolName,
+                step.Status.ToString(),
+                LocalizeStatus(step.Status),
+                step.Evidence,
+                step.Metrics.Select(metric => new ValidationSetMetricRow(
+                    metric.Name,
+                    metric.Value.ToString(
+                        "G6",
+                        System.Globalization.CultureInfo.InvariantCulture),
+                    metric.Unit,
+                    metric.Status?.ToString() ?? string.Empty,
+                    metric.Status is { } metricStatus
+                        ? LocalizeStatus(metricStatus)
+                        : string.Empty)).ToArray(),
+                step.Overlays.Select(overlay => new ValidationSetOverlayRow(
+                    overlay.Kind.ToString(),
+                    overlay.Label,
+                    overlay.Status?.ToString() ?? string.Empty,
+                    overlay.Status is { } overlayStatus
+                        ? LocalizeStatus(overlayStatus)
+                        : string.Empty)).ToArray())).ToArray();
+            return new ValidationSetSampleRow(
+                sample.Order,
+                sample.SourcePath,
+                sample.Role,
+                sample.Status.ToString(),
+                LocalizeStatus(sample.Status),
+                LocalizeResultMessage(sample),
+                sample.Duration.TotalMilliseconds.ToString(
+                    "N0",
+                    System.Globalization.CultureInfo.InvariantCulture) + " ms",
+                steps);
+        }));
     }
 
     private void ClearValidationSet()
     {
-        validationSetSamples.Clear();
-        filteredValidationSetSamples.Clear();
-        ClearValidationEvidence();
+        validationSetDefinitionOwner.ClearDefinition();
         ActiveValidationFailureCorrectionContext = null;
-        SetValidationSetDefinitionDirty(true);
         SelectedValidationSetSample = null;
         SelectedValidationSetStep = null;
         ValidationSetFilter = ValidationSetStatusFilter.All;
-        ValidationSetProgress = 0;
-        ValidationSetProgressText = string.Empty;
+        RefreshValidationSetReviewSamples();
+        validationThresholdWorkflowOwner.ResetProgress();
         ClearValidationSetComparePins();
         NotifyValidationSetCountsChanged();
-        RebuildOutputCompareCandidates();
+        RebuildRenderableC3DConsumers();
         runValidationSetCommand.RaiseCanExecuteChanged();
         clearValidationSetCommand.RaiseCanExecuteChanged();
         RefreshValidationSetSummary();
@@ -835,39 +567,15 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void SetSelectedValidationSampleRole(string? value)
     {
-        if (SelectedValidationSetSample is not { } selected
-            || !Enum.TryParse<ToolRecipeValidationSampleRole>(
-                value,
-                ignoreCase: true,
-                out var role)
-            || !Enum.IsDefined(role)
-            || selected.Role == role)
+        var updated = validationSetDefinitionOwner.SetSelectedSampleRole(
+            SelectedValidationSetSample,
+            value);
+        if (updated is null)
         {
             return;
         }
 
-        var index = validationSetSamples.IndexOf(selected);
-        if (index < 0)
-        {
-            return;
-        }
-
-        var updated = selected with
-        {
-            Role = role,
-            Status = "Pending",
-            StatusText = Localize("대기", "Pending"),
-            Message = Localize(
-                "기대 역할이 변경됐습니다. '샘플 세트 실행'을 선택하세요.",
-                "Expected role changed; choose Run sample set."),
-            Duration = string.Empty,
-            Steps = []
-        };
-        validationSetSamples[index] = updated;
-        ClearValidationEvidence();
-        SetValidationSetDefinitionDirty(true);
-        RefreshFilteredValidationSetSamples();
-        SelectedValidationSetSample = validationSetSamples.FirstOrDefault(
+        SelectedValidationSetSample = validationSetDefinitionOwner.Samples.FirstOrDefault(
             sample => string.Equals(
                 sample.SourcePath,
                 updated.SourcePath,
@@ -876,68 +584,25 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshValidationSetSummary();
         AppendLog(
             "Validation Set",
-            $"Sample role changed without execution: {updated.FileName} -> {role}.");
+            $"Sample role changed without execution: {updated.FileName} -> {updated.Role}.");
     }
 
-    private void SetValidationSetFilter(string? value)
+    private void RefreshValidationSetReviewSamples()
     {
-        if (Enum.TryParse<ValidationSetStatusFilter>(value, ignoreCase: true, out var filter))
-        {
-            ValidationSetFilter = filter;
-        }
-    }
-
-    private void RefreshFilteredValidationSetSamples()
-    {
-        var selectedPath = SelectedValidationSetSample?.SourcePath;
-        filteredValidationSetSamples.Clear();
-        foreach (var sample in validationSetSamples.Where(MatchesValidationSetFilter))
-        {
-            filteredValidationSetSamples.Add(sample);
-        }
-
-        SelectedValidationSetSample = selectedPath is null
-            ? filteredValidationSetSamples.FirstOrDefault()
-            : filteredValidationSetSamples.FirstOrDefault(sample =>
-                string.Equals(sample.SourcePath, selectedPath, StringComparison.OrdinalIgnoreCase))
-              ?? filteredValidationSetSamples.FirstOrDefault();
+        validationSetReviewOwner.RefreshSamples();
         OnPropertyChanged(nameof(HasValidationSetSamples));
-        previousValidationSetIssueCommand.RaiseCanExecuteChanged();
-        nextValidationSetIssueCommand.RaiseCanExecuteChanged();
     }
 
-    private bool MatchesValidationSetFilter(ValidationSetSampleRow sample) =>
-        ValidationSetFilter switch
-        {
-            ValidationSetStatusFilter.Pass => sample.Status == "Pass",
-            ValidationSetStatusFilter.Fail => sample.Status == "Fail",
-            ValidationSetStatusFilter.Error => sample.Status == "Error",
-            _ => true
-        };
-
-    private IReadOnlyList<ValidationSetSampleRow> VisibleValidationSetIssues() =>
-        filteredValidationSetSamples
-            .Where(sample => sample.Status is "Fail" or "Error")
-            .ToArray();
-
-    private void MoveValidationSetIssue(int offset)
+    private void OnValidationSetReviewOwnerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
     {
-        var issues = VisibleValidationSetIssues();
-        if (issues.Count == 0) return;
-
-        var currentIndex = -1;
-        for (var index = 0; index < issues.Count; index++)
+        OnPropertyChanged(args.PropertyName);
+        if (args.PropertyName == nameof(SelectedValidationSetSample))
         {
-            if (ReferenceEquals(issues[index], SelectedValidationSetSample))
-            {
-                currentIndex = index;
-                break;
-            }
+            setValidationSampleRoleCommand?.RaiseCanExecuteChanged();
+            RefreshValidationThresholdCorrectionCommands();
         }
-        var nextIndex = currentIndex < 0
-            ? 0
-            : (currentIndex + offset + issues.Count) % issues.Count;
-        SelectedValidationSetSample = issues[nextIndex];
     }
 
     private void OpenSelectedValidationSetComparison()
@@ -947,25 +612,11 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
-        RebuildOutputCompareCandidates();
+        RebuildRenderableC3DConsumers();
         CompareSlotAArtifactId = Source.Id;
         CompareSlotBArtifactId = GetValidationSetCompareArtifactId(sample);
         CompareSlotCArtifactId = string.Empty;
         ValidationSetComparisonRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void ReportValidationSetProgress(ToolRecipeValidationProgress progress)
-    {
-        ValidationSetProgress = progress.TotalCount == 0
-            ? 0
-            : progress.CompletedCount * 100d / progress.TotalCount;
-        ValidationSetProgressText = progress.CompletedStatus is null
-            ? Localize(
-                $"{progress.CompletedCount + 1}/{progress.TotalCount} 실행 중 · {Path.GetFileName(progress.CurrentSourcePath)}",
-                $"Running {progress.CompletedCount + 1}/{progress.TotalCount} · {Path.GetFileName(progress.CurrentSourcePath)}")
-            : Localize(
-                $"{progress.CompletedCount}/{progress.TotalCount} 완료 · {LocalizeStatus(progress.CompletedStatus.Value)}",
-                $"{progress.CompletedCount}/{progress.TotalCount} completed · {LocalizeStatus(progress.CompletedStatus.Value)}");
     }
 
     private void NotifyValidationSetCountsChanged()
@@ -982,440 +633,19 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedValidationRoleGood));
         OnPropertyChanged(nameof(IsSelectedValidationRoleBad));
         OnPropertyChanged(nameof(IsSelectedValidationRoleHeldOut));
-        previousValidationSetIssueCommand.RaiseCanExecuteChanged();
-        nextValidationSetIssueCommand.RaiseCanExecuteChanged();
-        openValidationSetComparisonCommand.RaiseCanExecuteChanged();
+        validationSetReviewOwner.RefreshCommandStates();
         setValidationSampleRoleCommand.RaiseCanExecuteChanged();
         RefreshValidationThresholdCorrectionCommands();
     }
 
-    private void SetValidationEvidence(
-        ToolRecipeLabeledEvidenceReport report)
-    {
-        validationEvidenceReport = report;
-        validationEvidenceDistributions.Clear();
-        foreach (var distribution in report.Distributions)
-        {
-            validationEvidenceDistributions.Add(
-                new ValidationEvidenceDistributionRow(
-                    distribution.Scope.ToString(),
-                    distribution.OwnerId,
-                    distribution.OwnerName,
-                    distribution.MetricName,
-                    distribution.Unit,
-                    FormatStatistics(distribution, ToolRecipeValidationSampleRole.Good),
-                    FormatStatistics(distribution, ToolRecipeValidationSampleRole.Bad),
-                    FormatStatistics(distribution, ToolRecipeValidationSampleRole.HeldOut)));
-        }
+    private void ClearValidationEvidence() =>
+        validationThresholdWorkflowOwner.ClearAnalysis();
 
-        NotifyValidationEvidenceChanged();
-    }
+    internal Task RevalidateValidationThresholdCorrectionAsync() =>
+        validationThresholdWorkflowOwner.RevalidateAsync();
 
-    private void ClearValidationEvidence()
-    {
-        validationThresholdBeforeDevelopmentResult = null;
-        validationEvidenceReport = null;
-        validationThresholdReport = null;
-        validationEvidenceDistributions.Clear();
-        validationThresholdCandidates.Clear();
-        SelectedValidationThresholdCandidate = null;
-        ClearValidationThresholdCorrectionState(
-            "Run the labeled Validation Set, select a mapped candidate, then start Review.");
-        NotifyValidationEvidenceChanged();
-    }
-
-    private void NotifyValidationEvidenceChanged()
-    {
-        OnPropertyChanged(nameof(HasValidationEvidence));
-        OnPropertyChanged(nameof(ValidationEvidenceSummary));
-        OnPropertyChanged(nameof(ValidationEvidenceWarning));
-        OnPropertyChanged(nameof(HasValidationThresholdCandidates));
-        OnPropertyChanged(nameof(HasValidationThresholdAssistantAnalysis));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
-        OnPropertyChanged(nameof(ValidationThresholdSummary));
-        OnPropertyChanged(nameof(ValidationThresholdWarning));
-    }
-
-    private void SetValidationThresholdEvidence(
-        ToolRecipeThresholdCandidateReport report)
-    {
-        ClearValidationThresholdCorrectionState(
-            "Select a mapped candidate, then use Review before applying it to the PropertyGrid draft.");
-        validationThresholdReport = report;
-        validationThresholdCandidates.Clear();
-        foreach (var candidate in report.Candidates)
-        {
-            validationThresholdCandidates.Add(
-                new ValidationThresholdCandidateRow(
-                    candidate.CandidateId,
-                    candidate.Scope.ToString(),
-                    candidate.OwnerName,
-                    candidate.MetricName,
-                    candidate.Unit,
-                    candidate.LimitKind.ToString(),
-                    FormatThresholdLimits(candidate),
-                    candidate.CorrectCount,
-                    candidate.ErrorCount,
-                    candidate.BadAcceptedCount,
-                    candidate.GoodRejectedCount,
-                    candidate));
-        }
-
-        SelectedValidationThresholdCandidate =
-            validationThresholdCandidates.FirstOrDefault();
-        NotifyValidationEvidenceChanged();
-    }
-
-    private static string FormatThresholdEvidenceWarnings(
-        IReadOnlyList<ToolRecipeThresholdEvidenceWarning> warnings)
-    {
-        const int visibleWarningCount = 3;
-        var visible = warnings
-            .Take(visibleWarningCount)
-            .Select(warning => warning.Message);
-        var remaining = warnings.Count - visibleWarningCount;
-        return $"{warnings.Count} evidence warning(s): "
-               + string.Join(" ", visible)
-               + (remaining > 0
-                   ? $" +{remaining} more in the Runner contract."
-                   : string.Empty);
-    }
-
-    private void ProposeSelectedValidationThresholdCandidate()
-    {
-        if (!TryPrepareValidationThresholdProposal(out var message))
-        {
-            return;
-        }
-
-        isValidationThresholdReviewActive = false;
-        ValidationThresholdCorrectionSummary =
-            $"{message} Proposal ready. Review it before Apply.";
-        NotifyValidationThresholdCorrectionChanged();
-    }
-
-    private void ReviewSelectedValidationThresholdCandidate()
-    {
-        if (!TryPrepareValidationThresholdProposal(out var message))
-        {
-            return;
-        }
-
-        isValidationThresholdReviewActive = true;
-        ValidationThresholdCorrectionSummary =
-            $"{message} Review is read-only until Apply.";
-        NotifyValidationThresholdCorrectionChanged();
-    }
-
-    private bool TryPrepareValidationThresholdProposal(out string message)
-    {
-        if (SelectedValidationThresholdCandidate is not { } selected
-            || HasPendingStepParameterChanges)
-        {
-            message =
-                "Finish or discard the current PropertyGrid draft before creating a threshold proposal.";
-            ValidationThresholdCorrectionSummary = message;
-            return false;
-        }
-
-        var document = CreateDocument();
-        if (!ToolRecipeThresholdCandidateParameterMapper.TryCreateProposal(
-                document,
-                selected.Candidate,
-                out var proposal,
-                out message)
-            || proposal is null)
-        {
-            ValidationThresholdCorrectionSummary = message;
-            return false;
-        }
-
-        var step = PipelineSteps.FirstOrDefault(item =>
-            string.Equals(item.Id, proposal.StepId, StringComparison.Ordinal));
-        if (step is null)
-        {
-            message = $"Mapped step '{proposal.StepId}' is not available in the current Workbench.";
-            ValidationThresholdCorrectionSummary = message;
-            return false;
-        }
-
-        SelectedPipelineStep = step;
-        if (!ReferenceEquals(SelectedPipelineStep, step))
-        {
-            message =
-                "The mapped step could not be selected. Finish the current editing session first.";
-            ValidationThresholdCorrectionSummary = message;
-            return false;
-        }
-
-        validationThresholdReviewProposal = proposal;
-        validationThresholdCorrectionEvidence = null;
-        validationThresholdAfterDevelopmentResult = null;
-        validationThresholdManualChanges = [];
-        isValidationThresholdCandidateApplied = false;
-        isValidationThresholdManualCorrectionCommitted = false;
-        isValidationThresholdDevelopmentValidated = false;
-        validationThresholdParameterChanges.Clear();
-        foreach (var change in proposal.Changes)
-        {
-            validationThresholdParameterChanges.Add(
-                new ValidationThresholdParameterChangeRow(
-                    change.ParameterName,
-                    change.BeforeValue,
-                    change.ProposedValue));
-        }
-        validationThresholdHeldOutSamples.Clear();
-        validationThresholdDevelopmentSamples.Clear();
-        return true;
-    }
-
-    private void CancelValidationThresholdReview()
-    {
-        if (!HasValidationThresholdAssistantProposal
-            || IsValidationThresholdCandidateApplied)
-        {
-            return;
-        }
-        ClearValidationThresholdCorrectionState(
-            "Threshold Review canceled. Recipe, PropertyGrid draft, and execution state were unchanged.");
-    }
-
-    private void ApplyReviewedValidationThresholdCandidate()
-    {
-        if (!IsValidationThresholdReviewActive
-            || validationThresholdReviewProposal is not { } proposal
-            || SelectedPipelineStep is not { } step)
-        {
-            return;
-        }
-        if (!stepPropertySession.TryApplyThresholdProposal(
-                step,
-                proposal,
-                out var message))
-        {
-            ValidationThresholdCorrectionSummary = message;
-            return;
-        }
-
-        isValidationThresholdReviewActive = false;
-        isValidationThresholdCandidateApplied = true;
-        ValidationThresholdCorrectionSummary =
-            RequiresValidationThresholdDevelopmentReplay
-                ? "Completeness candidate applied to the PropertyGrid draft only. Explicit development revalidation is required before the separate Held-out replay."
-                : "Candidate applied to the PropertyGrid draft only. Recipe Apply remains a separate explicit action; Held-out replay uses a projected copy.";
-        NotifyValidationThresholdCorrectionChanged();
-    }
-
-    internal async Task RevalidateValidationThresholdCorrectionAsync()
-    {
-        var candidateReplay =
-            RequiresValidationThresholdDevelopmentReplay
-            && !IsValidationThresholdManualCorrectionCommitted;
-        if (IsValidationSetRunning
-            || (!IsValidationThresholdManualCorrectionCommitted
-                && !candidateReplay)
-            || (IsValidationThresholdManualCorrectionCommitted
-                && HasPendingStepParameterChanges)
-            || validationThresholdBeforeDevelopmentResult is not { } before
-            || validationThresholdReviewProposal is not { } proposal)
-        {
-            return;
-        }
-
-        var beforeMismatchCount = before.Samples.Count(sample =>
-            !ToolRecipeThresholdCorrectionEvidenceBuilder.IsExpectedMatch(
-                sample));
-        if (!candidateReplay && beforeMismatchCount == 0)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Manual correction evidence rejected: the preserved pre-correction development run has no genuine expected-role mismatch.";
-            return;
-        }
-
-        var development = validationSetSamples
-            .Where(sample => sample.Role is
-                ToolRecipeValidationSampleRole.Good
-                or ToolRecipeValidationSampleRole.Bad)
-            .Select(sample => new ToolRecipeValidationSampleInput(
-                sample.SourcePath,
-                sample.Role))
-            .ToArray();
-        if (development.Length == 0)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Development revalidation requires Good/Bad samples.";
-            return;
-        }
-
-        ValidationSetProgress = 0;
-        ValidationSetProgressText = "Preparing corrected development replay";
-        try
-        {
-            var progress = new Progress<ToolRecipeValidationProgress>(
-                ReportValidationSetProgress);
-            var replayDocument = candidateReplay
-                ? ToolRecipeThresholdCandidateParameterMapper.ApplyProposal(
-                    CreateDocument(),
-                    proposal)
-                : CreateDocument();
-            var result = await validationSetExecutionOwner.ExecuteAsync(
-                replayDocument,
-                development,
-                progress);
-            validationThresholdAfterDevelopmentResult = result;
-            var afterMismatchCount = result.Samples.Count(sample =>
-                !ToolRecipeThresholdCorrectionEvidenceBuilder.IsExpectedMatch(
-                    sample));
-            isValidationThresholdDevelopmentValidated =
-                result.Samples.Count == development.Length
-                && afterMismatchCount == 0;
-            validationThresholdDevelopmentSamples.Clear();
-            AddDevelopmentRows("Before", before);
-            AddDevelopmentRows("After", result);
-            ValidationSetProgress = 100;
-            ValidationSetProgressText =
-                $"{result.Samples.Count} corrected development sample(s) completed";
-            ValidationThresholdCorrectionSummary =
-                IsValidationThresholdDevelopmentValidated
-                    ? candidateReplay
-                        ? $"Completeness candidate validated explicitly on development samples: mismatch {beforeMismatchCount}->{afterMismatchCount}. Held-out replay remains separate."
-                        : $"Development correction validated explicitly: before mismatch {beforeMismatchCount}, after mismatch 0. Held-out replay remains separate."
-                    : candidateReplay
-                        ? $"Completeness candidate development replay has {afterMismatchCount} expected-role mismatch(es). Held-out replay remains locked."
-                        : $"Development correction is not valid: before mismatch {beforeMismatchCount}, after mismatch {afterMismatchCount}. Held-out replay remains locked.";
-            AppendLog(
-                "Validation Set",
-                $"Threshold {(candidateReplay ? "candidate" : "manual correction")} development replay | beforeMismatch={beforeMismatchCount} | afterMismatch={afterMismatchCount} | heldOutRun=false.");
-            NotifyValidationThresholdCorrectionChanged();
-        }
-        catch (OperationCanceledException)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Corrected development replay canceled. Held-out replay remains locked.";
-            ValidationSetProgressText = Localize("?ъ슜??痍⑥냼", "Canceled");
-        }
-        catch (Exception exception) when (exception is IOException
-            or UnauthorizedAccessException
-            or InvalidDataException
-            or ArgumentException
-            or InvalidOperationException
-            or NotSupportedException
-            or OverflowException)
-        {
-            isValidationThresholdDevelopmentValidated = false;
-            ValidationThresholdCorrectionSummary =
-                $"Corrected development replay could not complete: {exception.Message}";
-            AppendLog("Validation Set", exception.Message);
-        }
-        finally
-        {
-            RefreshValidationThresholdCorrectionCommands();
-        }
-    }
-
-    internal async Task ReplayValidationThresholdHeldOutAsync()
-    {
-        if (IsValidationSetRunning
-            || !IsValidationThresholdCandidateApplied
-            || validationThresholdReviewProposal is not { } proposal
-            || ((IsValidationThresholdManualCorrectionCommitted
-                 || RequiresValidationThresholdDevelopmentReplay)
-                && (!IsValidationThresholdDevelopmentValidated
-                    || validationThresholdBeforeDevelopmentResult is null
-                    || validationThresholdAfterDevelopmentResult is null)))
-        {
-            return;
-        }
-        var heldOut = validationSetSamples
-            .Where(sample =>
-                sample.Role == ToolRecipeValidationSampleRole.HeldOut)
-            .Select(sample => new ToolRecipeValidationSampleInput(
-                sample.SourcePath,
-                ToolRecipeValidationSampleRole.HeldOut))
-            .ToArray();
-        if (heldOut.Length == 0)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Held-out replay requires at least one sample with the HeldOut role.";
-            return;
-        }
-
-        ValidationSetProgress = 0;
-        ValidationSetProgressText =
-            Localize("Held-out 재실행 준비 중", "Preparing Held-out replay");
-        try
-        {
-            var projectedDocument =
-                IsValidationThresholdManualCorrectionCommitted
-                    ? CreateDocument()
-                    : ToolRecipeThresholdCandidateParameterMapper.ApplyProposal(
-                        CreateDocument(),
-                        proposal);
-            var progress = new Progress<ToolRecipeValidationProgress>(
-                ReportValidationSetProgress);
-            var result = await validationSetExecutionOwner.ExecuteAsync(
-                projectedDocument,
-                heldOut,
-                progress);
-            var evidence =
-                IsValidationThresholdManualCorrectionCommitted
-                    ? ToolRecipeThresholdCorrectionEvidenceBuilder
-                        .BuildManualCorrection(
-                            projectedDocument,
-                            proposal,
-                            validationThresholdManualChanges,
-                            validationThresholdBeforeDevelopmentResult!,
-                            validationThresholdAfterDevelopmentResult!,
-                            result)
-                    : ToolRecipeThresholdCorrectionEvidenceBuilder.Build(
-                        projectedDocument,
-                        proposal,
-                        result);
-            SetValidationThresholdCorrectionEvidence(evidence);
-            if (!string.IsNullOrWhiteSpace(RecipePath))
-            {
-                ToolRecipeThresholdCorrectionEvidenceStore.SaveForRecipe(
-                    RecipePath,
-                    evidence);
-            }
-
-            ValidationSetProgress = 100;
-            ValidationSetProgressText =
-                Localize(
-                    $"Held-out 완료 {result.Samples.Count}개",
-                    $"{result.Samples.Count} Held-out completed");
-            ValidationThresholdCorrectionSummary =
-                IsValidationThresholdManualCorrectionCommitted
-                    ? FormatManualCorrectionSummary(evidence)
-                    : $"Held-out replay completed against the projected threshold draft only: {result.Message}";
-            AppendLog(
-                "Validation Set",
-                $"Threshold Held-out replay | candidate={proposal.CandidateId} | {result.Message}");
-        }
-        catch (OperationCanceledException)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Held-out replay canceled. Recipe and PropertyGrid draft were not changed.";
-            ValidationSetProgressText = Localize("사용자 취소", "Canceled");
-        }
-        catch (Exception exception) when (exception is IOException
-            or UnauthorizedAccessException
-            or InvalidDataException
-            or ArgumentException
-            or InvalidOperationException
-            or NotSupportedException
-            or OverflowException)
-        {
-            ValidationThresholdCorrectionSummary =
-                $"Held-out replay could not complete: {exception.Message}";
-            AppendLog("Validation Set", exception.Message);
-        }
-        finally
-        {
-        }
-    }
+    internal Task ReplayValidationThresholdHeldOutAsync() =>
+        validationThresholdWorkflowOwner.ReplayHeldOutAsync();
 
     private void RefreshValidationSetExecutionState()
     {
@@ -1426,492 +656,73 @@ public sealed partial class ToolWorkbenchViewModel
         clearValidationSetCommand.RaiseCanExecuteChanged();
         selectValidationSetSourcesCommand.RaiseCanExecuteChanged();
         cancelValidationSetCommand.RaiseCanExecuteChanged();
-        previousValidationSetIssueCommand.RaiseCanExecuteChanged();
-        nextValidationSetIssueCommand.RaiseCanExecuteChanged();
-        openValidationSetComparisonCommand.RaiseCanExecuteChanged();
+        validationSetReviewOwner.RefreshCommandStates();
         setValidationSampleRoleCommand.RaiseCanExecuteChanged();
-    }
-
-    private void SetValidationThresholdCorrectionEvidence(
-        ToolRecipeThresholdCorrectionEvidence evidence)
-    {
-        var preservedCandidateBefore =
-            validationThresholdBeforeDevelopmentResult;
-        var preservedCandidateAfter =
-            validationThresholdAfterDevelopmentResult;
-        var preserveCandidateDevelopment =
-            evidence.ManualCorrection is null
-            && RequiresValidationThresholdDevelopmentReplay
-            && isValidationThresholdDevelopmentValidated
-            && preservedCandidateBefore is not null
-            && preservedCandidateAfter is not null;
-        validationThresholdCorrectionEvidence = evidence;
-        validationThresholdReviewProposal = evidence.Proposal;
-        isValidationThresholdReviewActive = false;
-        isValidationThresholdCandidateApplied = true;
-        isValidationThresholdManualCorrectionCommitted =
-            evidence.ManualCorrection is not null;
-        isValidationThresholdDevelopmentValidated =
-            evidence.ManualCorrection?.AfterMismatchCount == 0
-            || preserveCandidateDevelopment;
-        validationThresholdManualChanges =
-            evidence.ManualCorrection?.ParameterChanges ?? [];
-        validationThresholdBeforeDevelopmentResult =
-            preserveCandidateDevelopment
-                ? preservedCandidateBefore
-                : null;
-        validationThresholdAfterDevelopmentResult =
-            preserveCandidateDevelopment
-                ? preservedCandidateAfter
-                : null;
-        validationThresholdParameterChanges.Clear();
-        foreach (var change in evidence.Proposal.Changes)
-        {
-            validationThresholdParameterChanges.Add(
-                new ValidationThresholdParameterChangeRow(
-                    change.ParameterName,
-                    change.BeforeValue,
-                    change.ProposedValue,
-                    evidence.ManualCorrection?.ParameterChanges.FirstOrDefault(
-                        manual => string.Equals(
-                            manual.ParameterName,
-                            change.ParameterName,
-                            StringComparison.Ordinal))?.ManualValue
-                    ?? string.Empty));
-        }
-        validationThresholdDevelopmentSamples.Clear();
-        if (evidence.ManualCorrection is { } manualCorrection)
-        {
-            AddDevelopmentRows(
-                "Before",
-                manualCorrection.BeforeDevelopmentSamples);
-            AddDevelopmentRows(
-                "After",
-                manualCorrection.AfterDevelopmentSamples);
-        }
-        else if (preserveCandidateDevelopment)
-        {
-            AddDevelopmentRows("Before", preservedCandidateBefore!);
-            AddDevelopmentRows("After", preservedCandidateAfter!);
-        }
-        validationThresholdHeldOutSamples.Clear();
-        foreach (var sample in evidence.HeldOutSamples)
-        {
-            validationThresholdHeldOutSamples.Add(
-                new ValidationThresholdHeldOutSampleRow(
-                    sample.SampleOrder,
-                    Path.GetFileName(sample.SourcePath),
-                    sample.SampleIdentity,
-                    sample.Status.ToString(),
-                    string.Join(
-                        " | ",
-                        sample.Metrics.Select(metric =>
-                            $"{metric.StepName}.{metric.MetricName}={metric.Value:G6} {metric.Unit} ({metric.Status})"))));
-        }
-        NotifyValidationThresholdCorrectionChanged();
-    }
-
-    private void ClearValidationThresholdCorrectionState(string summary)
-    {
-        validationThresholdReviewProposal = null;
-        validationThresholdCorrectionEvidence = null;
-        isValidationThresholdReviewActive = false;
-        isValidationThresholdCandidateApplied = false;
-        isValidationThresholdManualCorrectionCommitted = false;
-        isValidationThresholdDevelopmentValidated = false;
-        validationThresholdAfterDevelopmentResult = null;
-        validationThresholdManualChanges = [];
-        validationThresholdParameterChanges.Clear();
-        validationThresholdHeldOutSamples.Clear();
-        validationThresholdDevelopmentSamples.Clear();
-        ValidationThresholdCorrectionSummary = summary;
-        NotifyValidationThresholdCorrectionChanged();
-    }
-
-    private void NotifyValidationThresholdCorrectionChanged()
-    {
-        OnPropertyChanged(nameof(IsValidationThresholdReviewActive));
-        OnPropertyChanged(nameof(IsValidationThresholdCandidateApplied));
-        OnPropertyChanged(nameof(HasValidationThresholdAssistantProposal));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
-        OnPropertyChanged(
-            nameof(IsValidationThresholdManualCorrectionCommitted));
-        OnPropertyChanged(nameof(IsValidationThresholdDevelopmentValidated));
-        OnPropertyChanged(nameof(HasValidationThresholdParameterChanges));
-        OnPropertyChanged(nameof(HasValidationThresholdHeldOutEvidence));
-        OnPropertyChanged(nameof(HasValidationThresholdDevelopmentEvidence));
         RefreshValidationThresholdCorrectionCommands();
     }
 
-    private void RefreshValidationThresholdCorrectionCommands()
-    {
-        proposeValidationThresholdCandidateCommand?.RaiseCanExecuteChanged();
-        reviewValidationThresholdCandidateCommand?.RaiseCanExecuteChanged();
-        cancelValidationThresholdReviewCommand?.RaiseCanExecuteChanged();
-        applyValidationThresholdCandidateCommand?.RaiseCanExecuteChanged();
-        revalidateValidationThresholdCorrectionCommand?.RaiseCanExecuteChanged();
-        replayValidationThresholdHeldOutCommand?.RaiseCanExecuteChanged();
-    }
+    private void RefreshValidationThresholdCorrectionCommands() =>
+        validationThresholdWorkflowOwner.RefreshCommandStates();
 
     private void NotifyValidationThresholdDraftCommitted(
         ToolWorkbenchPipelineStepItem step,
-        bool changed)
+        bool changed) =>
+        validationThresholdWorkflowOwner.NotifyDraftCommitted(step, changed);
+
+    private void NotifyValidationThresholdDraftDiscarded(string? stepId) =>
+        validationThresholdWorkflowOwner.NotifyDraftDiscarded(stepId);
+
+    private bool TrySelectValidationThresholdPipelineStep(
+        ToolWorkbenchPipelineStepItem step)
     {
-        if (validationThresholdReviewProposal is not { } proposal
-            || !string.Equals(
-                proposal.StepId,
-                step.Id,
-                StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        if (!changed)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Normal PropertyGrid Apply found no additional recipe parameter change.";
-            RefreshValidationThresholdCorrectionCommands();
-            return;
-        }
-
-        validationThresholdManualChanges = proposal.Changes.Select(change =>
-        {
-            var manualValue = step.Parameters.First(parameter =>
-                string.Equals(
-                    parameter.Name,
-                    change.ParameterName,
-                    StringComparison.Ordinal)).Value;
-            return new ToolRecipeThresholdManualParameterChange(
-                change.ParameterName,
-                change.ProposedValue,
-                manualValue);
-        }).ToArray();
-        isValidationThresholdManualCorrectionCommitted =
-            validationThresholdManualChanges.Any(change => !string.Equals(
-                change.SuggestedValue,
-                change.ManualValue,
-                StringComparison.Ordinal));
-        if (!IsValidationThresholdManualCorrectionCommitted)
-        {
-            ValidationThresholdCorrectionSummary =
-                "Candidate values committed by the normal PropertyGrid Apply action. Preview, Publish, Run, and Held-out replay were not invoked.";
-            NotifyValidationThresholdCorrectionChanged();
-            return;
-        }
-
-        isValidationThresholdDevelopmentValidated = false;
-        validationThresholdAfterDevelopmentResult = null;
-        validationThresholdCorrectionEvidence = null;
-        validationThresholdHeldOutSamples.Clear();
-        validationThresholdDevelopmentSamples.Clear();
-        validationThresholdParameterChanges.Clear();
-        foreach (var change in proposal.Changes)
-        {
-            validationThresholdParameterChanges.Add(
-                new ValidationThresholdParameterChangeRow(
-                    change.ParameterName,
-                    change.BeforeValue,
-                    change.ProposedValue,
-                    validationThresholdManualChanges.Single(manual =>
-                        string.Equals(
-                            manual.ParameterName,
-                            change.ParameterName,
-                            StringComparison.Ordinal)).ManualValue));
-        }
-        ValidationThresholdCorrectionSummary =
-            "Manual values committed through the ordinary PropertyGrid. Explicit development revalidation is required before Held-out replay.";
-        NotifyValidationThresholdCorrectionChanged();
-        RefreshValidationThresholdCorrectionCommands();
+        SelectedPipelineStep = step;
+        return ReferenceEquals(SelectedPipelineStep, step);
     }
 
-    private void AddDevelopmentRows(
-        string stage,
-        ToolRecipeValidationSetResult result)
+    private void SetValidationSetDefinitionDirty(bool value) =>
+        validationSetDefinitionOwner.SetDefinitionDirty(value);
+
+    private void OnValidationSetDefinitionDirtyChanged(bool value)
     {
-        foreach (var sample in result.Samples)
-        {
-            validationThresholdDevelopmentSamples.Add(
-                new ValidationThresholdDevelopmentSampleRow(
-                    stage,
-                    sample.Order,
-                    Path.GetFileName(sample.SourcePath),
-                    sample.SourceContentSha256,
-                    sample.Role.ToString(),
-                    sample.Status.ToString(),
-                    ToolRecipeThresholdCorrectionEvidenceBuilder
-                        .IsExpectedMatch(sample)
-                        ? "Match"
-                        : "Mismatch",
-                    FormatDevelopmentMetrics(sample)));
-        }
-    }
-
-    private void AddDevelopmentRows(
-        string stage,
-        IReadOnlyList<ToolRecipeThresholdDevelopmentSampleEvidence> samples)
-    {
-        foreach (var sample in samples)
-        {
-            validationThresholdDevelopmentSamples.Add(
-                new ValidationThresholdDevelopmentSampleRow(
-                    stage,
-                    sample.SampleOrder,
-                    Path.GetFileName(sample.SourcePath),
-                    sample.SampleIdentity,
-                    sample.Role.ToString(),
-                    sample.Status.ToString(),
-                    sample.ExpectedMatch ? "Match" : "Mismatch",
-                    string.Join(
-                        " | ",
-                        sample.Metrics.Select(metric =>
-                            $"{metric.StepName}.{metric.MetricName}={metric.Value:G6} {metric.Unit} ({metric.Status})"))));
-        }
-    }
-
-    private static string FormatDevelopmentMetrics(
-        ToolRecipeValidationSampleResult sample) =>
-        string.Join(
-            " | ",
-            sample.Steps.SelectMany(step => step.Metrics.Select(metric =>
-                $"{step.ToolName}.{metric.Name}={metric.Value:G6} {metric.Unit} ({metric.Status ?? step.Status})")));
-
-    private static string FormatManualCorrectionSummary(
-        ToolRecipeThresholdCorrectionEvidence evidence)
-    {
-        if (evidence.ManualCorrection is not { } manual)
-        {
-            return evidence.Message;
-        }
-
-        var before = string.Join(
-            ", ",
-            evidence.Proposal.Changes.Select(change =>
-                $"{change.ParameterName}={change.BeforeValue}"));
-        var suggested = string.Join(
-            ", ",
-            evidence.Proposal.Changes.Select(change =>
-                $"{change.ParameterName}={change.ProposedValue}"));
-        var committed = string.Join(
-            ", ",
-            manual.ParameterChanges.Select(change =>
-                $"{change.ParameterName}={change.ManualValue}"));
-        var heldOutPassCount = evidence.HeldOutSamples.Count(sample =>
-            sample.Status == ResultStatus.Pass);
-        return
-            $"Before [{before}] | Suggested [{suggested}] | Manual [{committed}] | Development mismatch {manual.BeforeMismatchCount}->{manual.AfterMismatchCount} | Held-out Pass {heldOutPassCount}/{evidence.HeldOutSamples.Count}.";
-    }
-
-    private static ToolRecipeValidationSetResult CreateDevelopmentResult(
-        ToolRecipeValidationSetResult result)
-    {
-        var samples = result.Samples.Where(sample =>
-            sample.Role is ToolRecipeValidationSampleRole.Good
-                or ToolRecipeValidationSampleRole.Bad).ToArray();
-        return new ToolRecipeValidationSetResult(
-            samples.Any(sample => sample.Status == ResultStatus.Error)
-                ? ResultStatus.Error
-                : samples.Any(sample => sample.Status == ResultStatus.Fail)
-                    ? ResultStatus.Fail
-                    : ResultStatus.Pass,
-            $"{samples.Length} development sample(s) preserved before correction.",
-            result.Duration,
-            samples);
-    }
-
-    private void NotifyValidationThresholdDraftDiscarded(string? stepId)
-    {
-        if (validationThresholdReviewProposal is not { } proposal
-            || !string.Equals(
-                proposal.StepId,
-                stepId,
-                StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        ClearValidationThresholdCorrectionState(
-            "Candidate draft discarded. Recipe parameters and execution state were unchanged.");
-    }
-
-    private static string FormatThresholdLimits(
-        ToolRecipeThresholdCandidate candidate)
-    {
-        var culture = System.Globalization.CultureInfo.InvariantCulture;
-        return candidate.LimitKind switch
-        {
-            ToolRecipeThresholdLimitKind.Minimum =>
-                $"≥ {candidate.Minimum?.ToString("G6", culture)}",
-            ToolRecipeThresholdLimitKind.Maximum =>
-                $"≤ {candidate.Maximum?.ToString("G6", culture)}",
-            ToolRecipeThresholdLimitKind.Range =>
-                $"{candidate.Minimum?.ToString("G6", culture)} .. "
-                + $"{candidate.Maximum?.ToString("G6", culture)}",
-            _ => "—"
-        };
-    }
-
-    private static string FormatStatistics(
-        ToolRecipeLabeledMetricDistribution distribution,
-        ToolRecipeValidationSampleRole role)
-    {
-        var statistics = distribution.RoleStatistics.Single(item =>
-            item.Role == role);
-        return statistics.ValueCount == 0
-            ? "—"
-            : $"n={statistics.SampleCount} | μ={statistics.Mean:G6} | {statistics.Minimum:G6}..{statistics.Maximum:G6}";
-    }
-
-    private void SetValidationSetDefinitionDirty(bool value)
-    {
-        if (isValidationSetDefinitionDirty == value)
-        {
-            return;
-        }
-
-        isValidationSetDefinitionDirty = value;
         OnPropertyChanged(nameof(IsValidationSetDefinitionDirty));
         OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
         OnPropertyChanged(nameof(RecipeStateSummary));
         OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
     }
 
-    private void SaveValidationSetDefinition(string recipePath)
+    private void OnValidationSetDefinitionChanged(bool resetFilter)
     {
-        if (validationSetSamples.Count == 0)
+        ClearValidationEvidence();
+        if (resetFilter)
         {
-            var manifestPath =
-                ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(
-                    recipePath);
-            if (File.Exists(manifestPath))
-            {
-                File.Delete(manifestPath);
-            }
-            SetValidationSetDefinitionDirty(false);
-            return;
+            ValidationSetFilter = ValidationSetStatusFilter.All;
         }
 
-        var sourceHash = CreateDocument().Source.ContentSha256;
-        if (string.IsNullOrWhiteSpace(sourceHash))
-        {
-            throw new InvalidDataException(
-                "Validation Set roles cannot be saved without the identified recipe source SHA-256.");
-        }
-
-        ToolRecipeValidationSetDefinitionStore.SaveForRecipe(
-            recipePath,
-            new ToolRecipeValidationSetDefinition(
-                ToolRecipeValidationSetDefinition.CurrentSchemaVersion,
-                RecipeName,
-                sourceHash,
-                validationSetSamples.Select((sample, index) =>
-                    new ToolRecipeValidationSampleDefinition(
-                        index + 1,
-                        sample.SourcePath,
-                        sample.Role)).ToArray()));
-        SetValidationSetDefinitionDirty(false);
+        RefreshValidationSetReviewSamples();
+        NotifyValidationSetCountsChanged();
+        RebuildRenderableC3DConsumers();
+        runValidationSetCommand.RaiseCanExecuteChanged();
+        clearValidationSetCommand.RaiseCanExecuteChanged();
+        RefreshValidationSetSummary();
     }
 
-    private void SaveValidationThresholdCorrectionEvidence(string recipePath)
-    {
-        if (validationThresholdCorrectionEvidence is { } evidence)
-        {
-            ToolRecipeThresholdCorrectionEvidenceStore.SaveForRecipe(
-                recipePath,
-                evidence);
-            return;
-        }
+    private void SaveValidationSetDefinition(string recipePath) =>
+        validationSetDefinitionOwner.SaveForRecipe(recipePath);
 
-        var path =
-            ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(
-                recipePath);
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-        }
-    }
+    private void SaveValidationThresholdCorrectionEvidence(string recipePath) =>
+        validationThresholdWorkflowOwner.SaveCorrectionEvidence(recipePath);
 
     private void LoadValidationSetDefinition(
         string recipePath,
         ToolRecipeDocument document)
-    {
-        var definition =
-            ToolRecipeValidationSetDefinitionStore.LoadForRecipe(recipePath);
-        if (definition is null
-            || !string.Equals(
-                definition.RecipeSourceSha256,
-                document.Source.ContentSha256,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            validationSetSamples.Clear();
-            filteredValidationSetSamples.Clear();
-            ClearValidationEvidence();
-            SetValidationSetDefinitionDirty(false);
-            RefreshFilteredValidationSetSamples();
-            NotifyValidationSetCountsChanged();
-            RefreshValidationSetSummary();
-            return;
-        }
-
-        validationSetSamples.Clear();
-        foreach (var sample in definition.Samples.OrderBy(sample => sample.Order))
-        {
-            validationSetSamples.Add(new ValidationSetSampleRow(
-                sample.Order,
-                sample.SourcePath,
-                sample.Role,
-                "Pending",
-                Localize("대기", "Pending"),
-                Localize(
-                    "저장된 역할을 불러왔습니다. 명시적 전체 실행을 기다립니다.",
-                    "Saved role loaded; waiting for explicit Run All."),
-                string.Empty,
-                []));
-        }
-
-        ClearValidationEvidence();
-        SetValidationSetDefinitionDirty(false);
-        ValidationSetFilter = ValidationSetStatusFilter.All;
-        RefreshFilteredValidationSetSamples();
-        NotifyValidationSetCountsChanged();
-        RefreshValidationSetSummary();
-    }
+        => validationSetDefinitionOwner.LoadForRecipe(recipePath, document);
 
     private void LoadValidationThresholdCorrectionEvidence(
         string recipePath,
-        ToolRecipeDocument document)
-    {
-        var evidence =
-            ToolRecipeThresholdCorrectionEvidenceStore.LoadForRecipe(
-                recipePath);
-        if (evidence is null)
-        {
-            return;
-        }
-        if (!string.Equals(
-                evidence.RecipeSourceSha256,
-                document.Source.ContentSha256,
-                StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(
-                evidence.RecipeName,
-                document.Name,
-                StringComparison.Ordinal))
-        {
-            ValidationThresholdCorrectionSummary =
-                "Stored threshold correction evidence does not match the current recipe identity.";
-            return;
-        }
-
-        _ = ToolRecipeThresholdCandidateParameterMapper.ApplyProposal(
-            document,
-            evidence.Proposal);
-        SetValidationThresholdCorrectionEvidence(evidence);
-        ValidationThresholdCorrectionSummary =
-            evidence.ManualCorrection is null
-                ? $"Loaded durable Held-out replay evidence for candidate {evidence.Proposal.CandidateId}."
-                : FormatManualCorrectionSummary(evidence);
-    }
+        ToolRecipeDocument document) =>
+        validationThresholdWorkflowOwner.LoadCorrectionEvidence(
+            recipePath,
+            document);
 
     private void ClearValidationSetComparePins()
     {
@@ -1938,70 +749,36 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshValidationSetSummary()
     {
-        ValidationSetSummary = validationSetSamples.Count == 0
+        ValidationSetSummary = validationSetDefinitionOwner.Samples.Count == 0
             ? Localize(
                 "C3D 샘플을 추가하고 기대 역할을 지정한 다음 '샘플 세트 실행'을 선택하세요. 샘플 선택만으로 검사는 실행되지 않습니다.",
                 "Add C3D samples, assign expected roles, then choose Run sample set. Selecting samples never runs inspection.")
             : Localize(
-                $"{validationSetSamples.Count}개 샘플 준비됨 · 실행 전",
-                $"{validationSetSamples.Count} sample(s) ready · not run");
+                $"{validationSetDefinitionOwner.Samples.Count}개 샘플 준비됨 · 실행 전",
+                $"{validationSetDefinitionOwner.Samples.Count} sample(s) ready · not run");
     }
 
     private void RefreshValidationSetLocalization()
     {
-        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
-        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
+        validationThresholdWorkflowOwner.RefreshLocalization();
         RefreshValidationSetCapability();
-        for (var index = 0; index < validationSetSamples.Count; index++)
-        {
-            var sample = validationSetSamples[index];
-            var status = Enum.TryParse<ResultStatus>(sample.Status, out var parsed)
-                ? parsed
-                : (ResultStatus?)null;
-            var steps = sample.Steps.Select(step =>
-            {
-                var stepStatus = Enum.TryParse<ResultStatus>(step.Status, out var parsedStep)
-                    ? parsedStep
-                    : ResultStatus.Error;
-                return step with
-                {
-                    StatusText = LocalizeStatus(stepStatus),
-                    Metrics = step.Metrics.Select(metric => metric with
-                    {
-                        StatusText = Enum.TryParse<ResultStatus>(metric.Status, out var metricStatus)
-                            ? LocalizeStatus(metricStatus)
-                            : string.Empty
-                    }).ToArray(),
-                    Overlays = step.Overlays.Select(overlay => overlay with
-                    {
-                        StatusText = Enum.TryParse<ResultStatus>(overlay.Status, out var overlayStatus)
-                            ? LocalizeStatus(overlayStatus)
-                            : string.Empty
-                    }).ToArray()
-                };
-            }).ToArray();
-            validationSetSamples[index] = sample with
-            {
-                StatusText = status is null ? Localize("대기", "Pending") : LocalizeStatus(status.Value),
-                Steps = steps
-            };
-        }
+        validationSetDefinitionOwner.RefreshLocalization(LocalizeStatus);
 
-        RefreshFilteredValidationSetSamples();
+        RefreshValidationSetReviewSamples();
         NotifyValidationSetCountsChanged();
-        RebuildOutputCompareCandidates();
-        if (validationSetSamples.All(sample => sample.Status == "Pending"))
+        RebuildRenderableC3DConsumers();
+        if (validationSetDefinitionOwner.Samples.All(sample => sample.Status == "Pending"))
         {
             RefreshValidationSetSummary();
         }
-        else if (validationSetSamples.Count > 0)
+        else if (validationSetDefinitionOwner.Samples.Count > 0)
         {
-            var pass = validationSetSamples.Count(sample => sample.Status == "Pass");
-            var fail = validationSetSamples.Count(sample => sample.Status == "Fail");
-            var error = validationSetSamples.Count(sample => sample.Status == "Error");
+            var pass = validationSetDefinitionOwner.Samples.Count(sample => sample.Status == "Pass");
+            var fail = validationSetDefinitionOwner.Samples.Count(sample => sample.Status == "Fail");
+            var error = validationSetDefinitionOwner.Samples.Count(sample => sample.Status == "Error");
             ValidationSetSummary = Localize(
-                $"완료 {validationSetSamples.Count}개 · 통과 {pass} · 실패 {fail} · 오류 {error}",
-                $"Completed {validationSetSamples.Count} · Pass {pass} · Fail {fail} · Error {error}");
+                $"완료 {validationSetDefinitionOwner.Samples.Count}개 · 통과 {pass} · 실패 {fail} · 오류 {error}",
+                $"Completed {validationSetDefinitionOwner.Samples.Count} · Pass {pass} · Fail {fail} · Error {error}");
         }
     }
 

@@ -4,7 +4,7 @@ using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 
-internal sealed record ViewerRecipeFile(string Path, string RecipeType)
+public sealed record ViewerRecipeFile(string Path, string RecipeType)
 {
     public static ViewerRecipeFile Open(string path)
     {

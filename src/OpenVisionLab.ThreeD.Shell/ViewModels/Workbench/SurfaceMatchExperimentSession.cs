@@ -14,7 +14,7 @@ internal sealed class SurfaceMatchExperimentSession
     private readonly Func<bool> isSelectedSurfaceMatch;
     private readonly Func<bool> hasPendingStepParameterChanges;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
-    private readonly Action<SurfaceMatchExperimentEvidence> applyPublishedEvidence;
+    private readonly Action notifyPublishedEvidenceChanged;
     private readonly Action<SurfaceMatchExperimentEvidence> requestDisplay;
     private readonly Action<string, string> appendLog;
     private readonly Action onStateChanged;
@@ -32,7 +32,7 @@ internal sealed class SurfaceMatchExperimentSession
         Func<bool> isSelectedSurfaceMatch,
         Func<bool> hasPendingStepParameterChanges,
         Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep,
-        Action<SurfaceMatchExperimentEvidence> applyPublishedEvidence,
+        Action notifyPublishedEvidenceChanged,
         Action<SurfaceMatchExperimentEvidence> requestDisplay,
         Action<string, string> appendLog,
         Action onStateChanged)
@@ -40,7 +40,7 @@ internal sealed class SurfaceMatchExperimentSession
         this.isSelectedSurfaceMatch = isSelectedSurfaceMatch;
         this.hasPendingStepParameterChanges = hasPendingStepParameterChanges;
         this.getSelectedPipelineStep = getSelectedPipelineStep;
-        this.applyPublishedEvidence = applyPublishedEvidence;
+        this.notifyPublishedEvidenceChanged = notifyPublishedEvidenceChanged;
         this.requestDisplay = requestDisplay;
         this.appendLog = appendLog;
         this.onStateChanged = onStateChanged;
@@ -198,7 +198,7 @@ internal sealed class SurfaceMatchExperimentSession
         }
 
         var published = PublishCandidate();
-        applyPublishedEvidence(published);
+        notifyPublishedEvidenceChanged();
         isCandidateDisplayed = false;
         stepStateBeforePreview = null;
         step.State = "Published";
@@ -294,7 +294,7 @@ internal sealed class SurfaceMatchExperimentSession
         IsCandidateStale = false;
         isCandidateDisplayed = false;
         stepStateBeforePreview = null;
-        applyPublishedEvidence(evidence);
+        notifyPublishedEvidenceChanged();
         SetStatus(
             "게시 기준선이 준비되었습니다. 파라미터 변경을 적용한 뒤 명시적으로 Preview하여 비교하세요.",
             "Published baseline ready. Apply parameter changes, then Preview explicitly to compare.");
@@ -323,6 +323,7 @@ internal sealed class SurfaceMatchExperimentSession
         IsCandidateStale = false;
         isCandidateDisplayed = false;
         stepStateBeforePreview = null;
+        notifyPublishedEvidenceChanged();
         SetStatus(
             "파라미터를 비교하려면 게시된 정합 결과를 먼저 불러오세요.",
             "Load a published match result before comparing parameters.");

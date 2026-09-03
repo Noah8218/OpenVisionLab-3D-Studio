@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -8,7 +9,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// Workbench facade supplies recipe identity and current Published CornerAnchor
 /// access without sharing this owner's private execution state.
 /// </summary>
-internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
+internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelected;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedStep;
@@ -39,6 +40,7 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Teach four explicit CornerAnchor/reference pairs and the reference descriptor, then publish every named CornerAnchor before Preview.";
+    private int disposalState;
 
     public ToolWorkbenchLandmarkCorrespondenceExecutionOwner(
         Func<bool> isSelected,
@@ -82,17 +84,19 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         this.onStateChanged = onStateChanged;
     }
 
-    public bool IsSelected => isSelected();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public C3DLandmarkCorrespondenceSet? CurrentOutput => previewOutput;
-    public string ExecutionSummary => executionSummary;
-    public string OutputHashSummary => previewOutput is null
+    public bool IsSelected => !IsDisposed && isSelected();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public C3DLandmarkCorrespondenceSet? CurrentOutput => IsDisposed ? null : previewOutput;
+    public string ExecutionSummary => IsDisposed
+        ? "Landmark Correspondence execution owner has been disposed."
+        : executionSummary;
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
-    public string EvidenceSummary => previewOutput is null
+    public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No correspondence evidence until Preview completes."
         : $"{previewOutput.Pairs.Count} pairs | source rank {previewOutput.SourceRank}/4 | reference rank {previewOutput.ReferenceRank}/4 | normalized volume {previewOutput.SourceNormalizedTetrahedronVolume:G6} / {previewOutput.ReferenceNormalizedTetrahedronVolume:G6}";
 
@@ -100,6 +104,11 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Landmark Correspondence execution owner has been disposed.";
+            }
+
             if (!TryGetSelectedSelection(out var selection))
             {
                 return "One routed landmark-correspondence selection is required.";
@@ -112,15 +121,25 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         }
     }
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DLandmarkCorrespondenceSet? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DLandmarkCorrespondenceSet? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
 
     public bool TryGetCurrentInputs(out IReadOnlyList<C3DLineIntersectionFeature> anchors)
     {
         anchors = [];
-        if (!TryGetSelectedSelection(out var selection))
+        if (IsDisposed || !TryGetSelectedSelection(out var selection))
         {
             return false;
         }
@@ -146,6 +165,12 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         out string message)
     {
         ArgumentNullException.ThrowIfNull(output);
+        if (IsDisposed)
+        {
+            message = "Landmark Correspondence execution owner has been disposed.";
+            return false;
+        }
+
         if (getSelectedStep() is not { ToolId: "xyz-affine-solve", InputEntityIds.Count: 1 } solveStep
             || !string.Equals(solveStep.InputEntityIds[0], output.OutputEntityId, StringComparison.OrdinalIgnoreCase)
             || !string.Equals(getSourceId(), output.RootSourceEntityId, StringComparison.OrdinalIgnoreCase)
@@ -162,26 +187,78 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         appendLog(
             "Smoke",
             $"Registered deterministic synthetic Published CorrespondenceSet prerequisite {output.OutputEntityId} ({output.ContentSha256}); normal Landmark Correspondence Preview/Publish remains explicit.");
-        refreshAffineState();
+        if (IsDisposed)
+        {
+            message = "Landmark Correspondence execution owner has been disposed.";
+            return false;
+        }
+
+        if (!IsDisposed)
+        {
+            refreshAffineState();
+        }
+
         message = $"Synthetic Published CorrespondenceSet registered for smoke-only execution: {output.ContentSha256}";
         return true;
     }
 
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
+
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedStep() is not { } step
+        if (IsDisposed || !CanPreview() || getSelectedStep() is not { } step
             || !TryGetCurrentInputs(out var anchors))
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Landmark Correspondence Preview validates only the four exact Published CornerAnchors and explicit reference coordinates.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Landmark Correspondence Preview started: {step.Id}.");
         try
         {
@@ -190,13 +267,23 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
                     createDocument(),
                     step.Id,
                     anchors,
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 appendLog("Error", $"Landmark Correspondence Preview failed: {evaluation.Result.Message}");
                 return false;
             }
@@ -204,29 +291,60 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
             previewOutput = evaluation.Output;
             step.State = "Preview ready";
             SetSummary($"Preview ready | {EvidenceSummary} | no affine matrix or OK/NG");
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             appendLog("Preview", $"Landmark Correspondence Preview ready: {evaluation.Output.ContentSha256}.");
-            requestDisplay(new ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs(
-                anchors,
-                evaluation.Output,
-                false));
+            if (IsCurrentPreview(currentCancellation))
+            {
+                requestDisplay(new ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs(
+                    anchors,
+                    evaluation.Output,
+                    false));
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. Published CornerAnchors and authored recipe were not changed.");
-            appendLog("Preview", "Landmark Correspondence Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "Landmark Correspondence Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelected || !isSourceReady() || hasPendingParameterChanges()
+        if (IsDisposed || !IsSelected || !isSourceReady() || hasPendingParameterChanges()
             || isPreviewRunning || getSelectedStep() is not { } step
             || !TryGetCurrentInputs(out var anchors))
         {
@@ -243,7 +361,7 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -252,8 +370,13 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | correspondence evidence only, no affine matrix or OK/NG");
+        if (IsDisposed)
+        {
+            return;
+        }
+
         appendLog("Publish", $"Landmark Correspondence output published without re-running: {step.OutputEntityId}.");
-        if (TryGetCurrentInputs(out var anchors))
+        if (!IsDisposed && TryGetCurrentInputs(out var anchors))
         {
             requestDisplay(new ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs(
                 anchors,
@@ -261,14 +384,32 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
                 true));
         }
 
-        refreshAffineState();
+        if (!IsDisposed)
+        {
+            refreshAffineState();
+        }
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (previewOutput is null || isPreviewRunning)
+        if (IsDisposed || previewOutput is null || isPreviewRunning)
         {
             return;
         }
@@ -283,26 +424,66 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         }
 
         clearDisplay();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetSummary("Recipe, correspondence row, descriptor, or published CornerAnchor changed. Preview again before Publish.");
+        if (IsDisposed)
+        {
+            return;
+        }
+
         markAffineSolveStale();
-        refreshAffineState();
+        if (!IsDisposed)
+        {
+            refreshAffineState();
+        }
     }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
+        SetRunning(false);
         isPreviewStale = false;
         isPreviewPublished = false;
         clearDisplay();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetSummary(summary);
+        if (IsDisposed)
+        {
+            return;
+        }
+
         clearAffineSolve("Published CorrespondenceSet was cleared. XYZ Affine Solve Preview was cleared without execution.");
-        refreshAffineState();
+        if (!IsDisposed)
+        {
+            refreshAffineState();
+        }
     }
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedStep() is { } step && IsSelected
             && (previewOutput is null
                 || !string.Equals(previewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
@@ -331,13 +512,16 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
         }
 
         onStateChanged();
-        refreshAffineState();
+        if (!IsDisposed)
+        {
+            refreshAffineState();
+        }
     }
 
     private bool TryGetSelectedSelection(out ToolRecipeSelection selection)
     {
         selection = null!;
-        if (getSelectedStep() is not { InputEntityIds.Count: 1 } step)
+        if (IsDisposed || getSelectedStep() is not { InputEntityIds.Count: 1 } step)
         {
             return false;
         }
@@ -358,13 +542,47 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 }

@@ -14,6 +14,7 @@ public partial class XYZAffineSolveToolLabWindow : ToolLabWindowBase
         InitializeComponent();
         DataContext = Workbench;
         SourceViewerHost.Content = sourceViewer;
+        OwnViewer(sourceViewer);
     }
 
     public override void RefreshViews()

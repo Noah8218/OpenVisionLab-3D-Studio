@@ -42,6 +42,69 @@ internal sealed class ToolWorkbenchOutputCompareSession : INotifyPropertyChanged
     public string CompareSlotBSummary => DescribeCompareSlot(CompareSlotBArtifactId);
     public string CompareSlotCSummary => DescribeCompareSlot(CompareSlotCArtifactId);
 
+    public bool HasEmptyCompareSlot =>
+        string.IsNullOrWhiteSpace(CompareSlotAArtifactId)
+        || string.IsNullOrWhiteSpace(CompareSlotBArtifactId)
+        || string.IsNullOrWhiteSpace(CompareSlotCArtifactId);
+
+    public string GetComparePins(string artifactId)
+    {
+        var slots = new List<string>(3);
+        if (string.Equals(
+                CompareSlotAArtifactId,
+                artifactId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            slots.Add("A");
+        }
+
+        if (string.Equals(
+                CompareSlotBArtifactId,
+                artifactId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            slots.Add("B");
+        }
+
+        if (string.Equals(
+                CompareSlotCArtifactId,
+                artifactId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            slots.Add("C");
+        }
+
+        return slots.Count == 0 ? string.Empty : string.Join(", ", slots);
+    }
+
+    public bool TryPin(string artifactId)
+    {
+        if (string.IsNullOrWhiteSpace(artifactId))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(CompareSlotAArtifactId))
+        {
+            CompareSlotAArtifactId = artifactId;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(CompareSlotBArtifactId))
+        {
+            CompareSlotBArtifactId = artifactId;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(CompareSlotCArtifactId))
+        {
+            CompareSlotCArtifactId = artifactId;
+            return true;
+        }
+
+        return false;
+    }
+
     public ToolWorkbenchCompareCandidateItem? GetCompareCandidate(string? artifactId) =>
         string.IsNullOrWhiteSpace(artifactId)
             ? null

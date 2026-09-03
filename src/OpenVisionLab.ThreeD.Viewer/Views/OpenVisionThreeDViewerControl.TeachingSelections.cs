@@ -1628,10 +1628,9 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private bool IsSelectionForCurrentC3DGrid(ToolRecipeSelection selection) =>
         c3dSample is not null
-        && string.Equals(selection.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
-        && string.Equals(selection.SourceBinding.ContentSha256, c3dSample.ContentSha256, StringComparison.OrdinalIgnoreCase)
-        && selection.SourceBinding.GridWidth == c3dSample.Width
-        && selection.SourceBinding.GridHeight == c3dSample.Height;
+        && TeachingSelectionSourcePolicy.IsCurrentC3DGrid(
+            selection,
+            TeachingCaptureSourceSnapshot.From(c3dSample));
 
     private void DrawTeachingSelection(
         OpenGL gl,
@@ -2004,24 +2003,4 @@ public sealed partial class OpenVisionThreeDViewerControl
         int RowCount,
         int ColumnCount);
 
-    private void ApplyTeachingCaptureViewModelVerification(string[] args)
-    {
-        var verificationIndex = Array.IndexOf(args, "--verify-teaching-capture-viewmodel");
-        if (verificationIndex < 0)
-        {
-            return;
-        }
-
-        if (verificationIndex + 1 >= args.Length
-            || args[verificationIndex + 1].StartsWith("--", StringComparison.Ordinal))
-        {
-            SetSmokeFailure("Teaching-capture ViewModel verification requires a report path.");
-            return;
-        }
-
-        if (!TeachingCaptureViewModelVerification.Verify(args[verificationIndex + 1], out var summary))
-        {
-            SetSmokeFailure(summary);
-        }
-    }
 }

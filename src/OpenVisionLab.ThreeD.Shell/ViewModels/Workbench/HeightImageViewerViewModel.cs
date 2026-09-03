@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -14,7 +15,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// and the composed ROI interaction surface. Recipe mutation remains outside
 /// this type and inspection is never invoked by its presentation commands.
 /// </summary>
-public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
+public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ThreeDLocalization localization;
     private readonly SharedHeightCursorSession sharedCursor;
@@ -24,7 +25,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     private readonly RelayCommand zoomOutCommand;
     private readonly RelayCommand autoRangeCommand;
     private readonly RelayCommand applyManualRangeCommand;
-    private CancellationTokenSource? loadCancellation;
+    private AsyncLoadCancellation? loadCancellation;
     private C3DHeightImageFrame? frame;
     private C3DHeightImageDisplayFrame? displayFrame;
     private string loadedSourceKey = string.Empty;
@@ -46,6 +47,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     private string? selectedCompletenessCellId;
     private int loadGeneration;
     private int displayRangeRevision;
+    private int disposalState;
 
     public HeightImageViewerViewModel(
         ThreeDLocalization localization,
@@ -73,6 +75,19 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler<HeightImageDisplayRequest>? DisplayRequest;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        localization.PropertyChanged -= OnLocalizationChanged;
+        sharedCursor.PropertyChanged -= OnSharedCursorChanged;
+        Clear(localization.HeightImageUnavailable);
+        RoiWorkspace.Dispose();
+    }
 
     public C3DHeightImageFrame? Frame
     {
@@ -372,10 +387,10 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
             return;
         }
 
-        loadCancellation?.Cancel();
-        loadCancellation?.Dispose();
-        loadCancellation = new CancellationTokenSource();
-        var cancellationToken = loadCancellation.Token;
+        var cancellation = new AsyncLoadCancellation();
+        var previousCancellation = Interlocked.Exchange(ref loadCancellation, cancellation);
+        previousCancellation?.Cancel();
+        var cancellationToken = cancellation.Token;
         var generation = ++loadGeneration;
         IsLoading = true;
         Error = string.Empty;
@@ -421,6 +436,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
             {
                 IsLoading = false;
             }
+
+            cancellation.Dispose();
         }
     }
 
@@ -505,9 +522,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
 
     private void Clear(string nextStatus)
     {
-        loadCancellation?.Cancel();
-        loadCancellation?.Dispose();
-        loadCancellation = null;
+        var cancellation = Interlocked.Exchange(ref loadCancellation, null);
+        cancellation?.Cancel();
         loadGeneration++;
         loadedSourceKey = string.Empty;
         Frame = null;

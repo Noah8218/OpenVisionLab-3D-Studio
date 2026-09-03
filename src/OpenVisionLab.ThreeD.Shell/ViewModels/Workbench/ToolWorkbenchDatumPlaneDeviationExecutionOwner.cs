@@ -1,10 +1,11 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
+internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepDatumPlaneDeviation;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -30,6 +31,7 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Publish one 3-Point Plane, capture a measurement rectangle, teach the raw-height P2V limit, then Preview explicitly.";
+    private int disposalState;
 
     public ToolWorkbenchDatumPlaneDeviationExecutionOwner(
         Func<bool> isSelectedStepDatumPlaneDeviation,
@@ -63,15 +65,19 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepDatumPlaneDeviation => isSelectedStepDatumPlaneDeviation();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public C3DDatumPlaneDeviationFeature? CurrentOutput => previewOutput;
-    public string ExecutionSummary => executionSummary;
+    public bool IsSelectedStepDatumPlaneDeviation => !IsDisposed && isSelectedStepDatumPlaneDeviation();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public C3DDatumPlaneDeviationFeature? CurrentOutput => IsDisposed ? null : previewOutput;
+    public string ExecutionSummary => IsDisposed
+        ? "Datum Plane Deviation execution owner has been disposed."
+        : executionSummary;
 
-    public string OutputHashSummary => previewOutput is null
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
 
@@ -79,6 +85,11 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Datum Plane Deviation is disposed.";
+            }
+
             var step = getSelectedPipelineStep();
             if (step is null || step.InputEntityIds.Count != 3)
             {
@@ -94,37 +105,91 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
         }
     }
 
-    public string EvidenceSummary => previewOutput is null
+    public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No residual evidence until Preview completes."
         : $"{previewOutput.OutputRole} | P2V {previewOutput.PeakToValleyRawHeight:G6} raw-height | RMS {previewOutput.RmsRawHeightResidual:G6} | {previewOutput.ValidSampleCount:N0} valid samples";
 
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DDatumPlaneDeviationFeature? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DDatumPlaneDeviationFeature? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step
             || !TryGetCurrentInputs(out var plane, out var selection)
             || plane is null || selection is null)
         {
-            if (getSelectedPipelineStep() is { } waiting)
+            if (!IsDisposed && getSelectedPipelineStep() is { } waiting)
             {
                 waiting.State = "Waiting for upstream";
             }
 
-            SetSummary("The current raw C3D, a Published 3-Point Plane, and a current GridRectangle are required.");
+            if (!IsDisposed)
+            {
+                SetSummary("The current raw C3D, a Published 3-Point Plane, and a current GridRectangle are required.");
+            }
+
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Datum Plane Raw-Height Deviation Preview is evaluating the exact Published plane and recipe-owned measurement rectangle.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Datum Plane Raw-Height Deviation Preview started: {step.Id}.");
         try
         {
@@ -134,40 +199,90 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
                     step.Id,
                     plane,
                     GetRecipeDirectory(),
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Output is null || evaluation.Result.Status is not (ResultStatus.Pass or ResultStatus.Fail))
             {
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"Datum Plane Raw-Height Deviation Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(currentCancellation))
+                {
+                    appendLog("Error", $"Datum Plane Raw-Height Deviation Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
             previewOutput = evaluation.Output;
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetSummary($"Preview ready | {EvidenceSummary} | local raw-height software result only; source C3D is unchanged.");
-            appendLog("Preview", $"Datum Plane Raw-Height Deviation Preview ready: {evaluation.Output.ContentSha256}.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", $"Datum Plane Raw-Height Deviation Preview ready: {evaluation.Output.ContentSha256}.");
+            }
+
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             requestDisplay(new ToolWorkbenchDatumPlaneDeviationDisplayRequestEventArgs(plane, selection, evaluation.Output, false));
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. The source, Published PlaneFeature, ROI, and authored recipe were not changed.");
-            appendLog("Preview", "Datum Plane Raw-Height Deviation Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "Datum Plane Raw-Height Deviation Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelectedStepDatumPlaneDeviation || !isSourceReadyForRecipe()
+        if (IsDisposed || !IsSelectedStepDatumPlaneDeviation || !isSourceReadyForRecipe()
             || hasPendingStepParameterChanges() || isPreviewRunning
             || getSelectedPipelineStep() is not { InputEntityIds.Count: 3 } step
             || !TryGetCurrentInputs(out var plane, out _) || plane is null)
@@ -186,7 +301,7 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview
             || !TryGetCurrentInputs(out var plane, out var selection)
             || plane is null || selection is null)
         {
@@ -201,11 +316,26 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
         requestDisplay(new ToolWorkbenchDatumPlaneDeviationDisplayRequestEventArgs(plane, selection, previewOutput, true));
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender = null, string? upstreamPlaneOutputId = null)
     {
-        if (previewOutput is null || isPreviewRunning)
+        if (IsDisposed || previewOutput is null || isPreviewRunning)
         {
             return;
         }
@@ -246,9 +376,18 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
+        isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
         clearDisplay();
@@ -257,6 +396,11 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepDatumPlaneDeviation
             && (previewOutput is null
                 || !string.Equals(previewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
@@ -295,6 +439,11 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
     {
         plane = null;
         measurementSelection = null;
+        if (IsDisposed)
+        {
+            return false;
+        }
+
         if (getSelectedPipelineStep() is not { InputEntityIds.Count: 3 } step)
         {
             return false;
@@ -312,14 +461,48 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    {
+        if (currentCancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            currentCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        currentCancellation.Dispose();
     }
 
     private string GetRecipeDirectory()

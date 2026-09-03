@@ -12,34 +12,6 @@ public sealed partial class ToolWorkbenchViewModel
         OrientedBoxEditor.DraftChanged += OnOrientedBoxDraftChanged;
     }
 
-    private void ApplyActiveSelectionCandidate()
-    {
-        if (IsTeachingSelectionCaptureActive)
-        {
-            ApplyTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty);
-            return;
-        }
-
-        if (OrientedBoxEditor.ApplyCommand.CanExecute(null))
-        {
-            OrientedBoxEditor.ApplyCommand.Execute(null);
-        }
-    }
-
-    private void CancelActiveSelectionCandidate()
-    {
-        if (IsTeachingSelectionCaptureActive)
-        {
-            CancelTeachingSelectionCapture();
-            return;
-        }
-
-        if (OrientedBoxEditor.CancelCommand.CanExecute(null))
-        {
-            OrientedBoxEditor.CancelCommand.Execute(null);
-        }
-    }
-
     private void OnOrientedBoxDraftChanged(
         object? sender,
         OrientedBox3DDraftChangedEventArgs args)
@@ -51,7 +23,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
         OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
         OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
-        RefreshTeachingSelectionCaptureCommands();
+        teachingSelectionCaptureOwner.RefreshCommandStates();
     }
 
     private void OnOrientedBoxApplyRequested(
@@ -77,23 +49,14 @@ public sealed partial class ToolWorkbenchViewModel
         MutateRecipe(() =>
         {
             PromoteRecipeSchemaForSelection();
-            var existing = Selections.FirstOrDefault(item =>
-                string.Equals(item.Id, selection.Id, StringComparison.OrdinalIgnoreCase));
-            if (existing is null)
-            {
-                Selections.Add(selection);
-            }
-            else
-            {
-                Selections[Selections.IndexOf(existing)] = selection;
-            }
+            teachingSelectionStoreOwner.Upsert(selection);
         });
 
         OrientedBoxEditor.SelectedSelection = Selections.First(item =>
             string.Equals(item.Id, selection.Id, StringComparison.OrdinalIgnoreCase));
         OrientedBoxEditor.SetStatus(
             "OrientedBox3D applied to the recipe. Inspection was not run.");
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         AppendLog(
             "Teach",
             $"OrientedBox3D applied | selection={selection.Id} | frame={selection.FrameId} | recipeChanged=true | inspectionRun=false.");
@@ -120,9 +83,9 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
-        MutateRecipe(() => Selections.Remove(selection));
+        MutateRecipe(() => teachingSelectionStoreOwner.Remove(selection));
         OrientedBoxEditor.CompleteDelete();
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         AppendLog(
             "Teach",
             $"OrientedBox3D deleted | selection={selection.Id} | recipeChanged=true | inspectionRun=false.");

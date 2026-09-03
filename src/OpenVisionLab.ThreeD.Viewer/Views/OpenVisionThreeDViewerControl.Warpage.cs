@@ -1,7 +1,5 @@
 using System.IO;
-using System.Text.Json;
 using System.Windows;
-using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
@@ -24,51 +22,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         return ApplyRecipeFile(path, isSmoke: false);
     }
 
-    public bool PreviewC3DWarpage()
-    {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Warpage requires a visible C3D height grid";
-            return false;
-        }
-
-        if (!viewModel.WarpageConfigured)
-        {
-            viewModel.ViewerStatus = "Warpage requires one taught C3D grid ROI";
-            return false;
-        }
-
-        var step = viewModel.CreateWarpageRecipeStep();
-        C3DWarpageEvaluation evaluation;
-        try
-        {
-            evaluation = C3DWarpageRule.Evaluate(new C3DWarpageInput(
-                step.SourceEntityId,
-                c3dSample.Height,
-                c3dSample.Width,
-                c3dSample.ReadHeightMapValues(),
-                step.Roi,
-                step.Acceptance,
-                step.Unit,
-                step.FrameId,
-                step.MinimumValidSamples));
-        }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
-        {
-            viewModel.ViewerStatus = $"Warpage sample load failed: {exception.Message}";
-            return false;
-        }
-
-        viewModel.SetWarpagePreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
-    }
-
     private bool ApplyC3DWarpageRecipe(
         ViewerRecipeFile recipeFile,
         C3DWarpageRecipe recipe,
@@ -76,106 +29,30 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
-            c3dSample = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
-            if (!IsC3DGridRoiInside(recipe.Step.Roi, c3dSample))
-            {
-                throw new InvalidDataException("Warpage recipe ROI is outside the loaded C3D grid.");
-            }
-
-            SetC3DSampleStatus();
-            planeFlatnessEvaluation = null;
-            planeReferenceMeasurement = null;
-            ClearWarpageTransientInspectionState();
-            viewModel.ClearWarpagePreview();
-            viewModel.ClearThicknessPreview();
-            viewModel.ClearPlaneFlatnessRecipeStep();
-            viewModel.ClearPointPairDimensionsRecipeStep();
-            viewModel.ClearGapFlushRecipeStep();
-            viewModel.ClearVolumeRecipeStep();
-            viewModel.ClearCrossSectionRecipeStep();
-            viewModel.UseC3DSmokeScene();
-            viewModel.SetC3DAlignment(ModelTransform.Identity, "C3D grid-index scalar frame", recipe.Source.Name);
-            viewModel.SetWarpageRecipeStep(recipe.Step);
-            viewModel.SetWarpageRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit);
-            viewModel.SelectedSelectionMode = MainWindowViewModel.WarpageRoiSelectionMode;
-            viewModel.SelectionOverlayVisible = true;
-
-            if (isSmoke && recipe.OutputEnabled && recipe.Step.Enabled && !PreviewC3DWarpage())
-            {
-                throw new InvalidDataException("Warpage preview failed for the configured grid ROI.");
-            }
-
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke Warpage recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"Warpage recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            var plan = C3DWarpageRecipeLoadPlan.Create(
+                recipeFile,
+                recipe,
+                viewModel.C3DMaxRenderedPoints);
+            c3dSample = plan.Grid;
+            return C3DWarpageRecipeApplyCoordinator.Apply(
+                plan,
+                viewModel,
+                isSmoke,
+                SetC3DSampleStatus,
+                ClearWarpageTransientInspectionState,
+                RenderNow);
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(isSmoke ? "Smoke Warpage recipe" : "Warpage recipe", exception);
         }
     }
 
     private bool ShouldSaveCurrentWarpageRecipe() =>
-        c3dSample is not null
-        && viewModel.C3DSampleVisible
-        && viewModel.WarpageConfigured
-        && (!viewModel.RecipeOutputEnabled
-            || (viewModel.WarpageVisible
-                && viewModel.PreviewToolResult.ToolName.Equals(C3DWarpageRule.ToolName, StringComparison.Ordinal)
-                && viewModel.PreviewToolResult.Status != ResultStatus.Error));
+        C3DWarpageRecipeSaveCoordinator.CanSave(c3dSample, viewModel);
 
     private bool SaveCurrentWarpageRecipe(string path, bool isSmoke)
-    {
-        try
-        {
-            if (c3dSample is null || !ShouldSaveCurrentWarpageRecipe())
-            {
-                viewModel.ViewerStatus = viewModel.RecipeOutputEnabled
-                    ? "Warpage recipe save requires a current non-error Warpage Preview"
-                    : "Warpage recipe save requires a taught Warpage ROI when output is disabled";
-                return false;
-            }
-
-            var step = viewModel.CreateWarpageRecipeStep();
-            if (!IsC3DGridRoiInside(step.Roi, c3dSample))
-            {
-                viewModel.ViewerStatus = "Warpage recipe save requires an ROI inside the loaded C3D grid";
-                return false;
-            }
-
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
-            var sourcePath = Path.GetFullPath(c3dSample.SourcePath);
-            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
-            var recipe = new C3DWarpageRecipe(
-                C3DWarpageRecipe.SupportedRecipeType,
-                "1.0",
-                new HeightDeviationRecipeSource(
-                    step.SourceEntityId,
-                    viewModel.RecipeSourceName,
-                    sourceRecipePath,
-                    viewModel.RecipeSourceUnit),
-                step,
-                viewModel.RecipeOutputEnabled);
-
-            recipe.Save(fullRecipePath);
-            viewModel.SetRecipeSaved(fullRecipePath);
-            SetRecipeValidationOk();
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke Warpage recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"Warpage recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke Warpage recipe save" : "Warpage recipe save")} failed: {exception.Message}";
-            return false;
-        }
-    }
+        => C3DWarpageRecipeSaveCoordinator.Save(path, isSmoke, viewModel, c3dSample);
 
     private bool TryHandleWarpageRoiPick(Point screenPoint)
     {
@@ -238,6 +115,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ClearWarpageTransientInspectionState()
     {
+        planeFlatnessEvaluation = null;
+        planeReferenceMeasurement = null;
         twoPointFirst = null;
         twoPointSecond = null;
         roiStepLeftBounds = null;

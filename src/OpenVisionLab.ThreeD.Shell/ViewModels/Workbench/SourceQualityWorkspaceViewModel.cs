@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -15,13 +16,13 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// injected Apply callback may change a recipe. This type never invokes Preview,
 /// Publish, Run, Validation Set, or Save.
 /// </summary>
-public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
+public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ThreeDLocalization localization;
     private readonly Action<ToolRecipeAcquisitionProvenance>? applyAcquisitionProvenance;
     private readonly RelayCommand applyAcquisitionProvenanceCommand;
     private readonly RelayCommand resetAcquisitionProvenanceCommand;
-    private CancellationTokenSource? loadCancellation;
+    private AsyncLoadCancellation? loadCancellation;
     private SourceQualityReport? report;
     private string loadedSourceKey = string.Empty;
     private string error = string.Empty;
@@ -48,6 +49,7 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
     private string acquisitionDirectionYDraft = string.Empty;
     private string acquisitionDirectionZDraft = string.Empty;
     private bool isAcquisitionDirectionPersisted;
+    private int disposalState;
 
     public SourceQualityWorkspaceViewModel(
         ThreeDLocalization localization,
@@ -68,6 +70,17 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        localization.PropertyChanged -= OnLocalizationChanged;
+        Clear();
+    }
 
     public ThreeDLocalization Localization => localization;
     public SourceQualityReport? Report => report;
@@ -553,10 +566,10 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
             return;
         }
 
-        loadCancellation?.Cancel();
-        loadCancellation?.Dispose();
-        loadCancellation = new CancellationTokenSource();
-        var cancellationToken = loadCancellation.Token;
+        var cancellation = new AsyncLoadCancellation();
+        var previousCancellation = Interlocked.Exchange(ref loadCancellation, cancellation);
+        previousCancellation?.Cancel();
+        var cancellationToken = cancellation.Token;
         var generation = ++loadGeneration;
         IsLoading = true;
         Error = string.Empty;
@@ -603,14 +616,15 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
             {
                 IsLoading = false;
             }
+
+            cancellation.Dispose();
         }
     }
 
     public void Clear()
     {
-        loadCancellation?.Cancel();
-        loadCancellation?.Dispose();
-        loadCancellation = null;
+        var cancellation = Interlocked.Exchange(ref loadCancellation, null);
+        cancellation?.Cancel();
         loadGeneration++;
         loadedSourceKey = string.Empty;
         Error = string.Empty;

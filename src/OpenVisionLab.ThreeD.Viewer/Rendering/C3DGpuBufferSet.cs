@@ -131,11 +131,12 @@ internal sealed class C3DGpuBufferSet
         }
     }
 
-    public void Release(OpenGL gl)
+    public bool Release(OpenGL gl)
     {
         ArgumentNullException.ThrowIfNull(gl);
-        TryDelete(gl, bufferIds);
+        var deleted = TryDelete(gl, bufferIds);
         Array.Clear(bufferIds);
+        return deleted;
     }
 
     public void DrawPoints(OpenGL gl, float pointSize)
@@ -271,20 +272,22 @@ internal sealed class C3DGpuBufferSet
         }
     }
 
-    private static void TryDelete(OpenGL gl, uint[] ids)
+    private static bool TryDelete(OpenGL gl, uint[] ids)
     {
         if (!ids.Any(id => id != 0))
         {
-            return;
+            return true;
         }
 
         try
         {
             gl.DeleteBuffers(ids.Length, ids);
+            return true;
         }
         catch
         {
             // Context teardown already releases its objects. Fallback rendering remains available.
+            return false;
         }
     }
 }

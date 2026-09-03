@@ -107,7 +107,6 @@ public sealed partial class ToolWorkbenchViewModel
             _ => CancelThicknessRepeatGrid("Operator cancelled repeat-grid review."),
             _ => ThicknessRepeatGrid.IsActive);
         ThicknessRepeatGrid.PropertyChanged += OnThicknessRepeatGridPropertyChanged;
-        Localization.PropertyChanged += OnThicknessRepeatGridLocalizationChanged;
     }
 
     private void BeginThicknessRepeatGrid()
@@ -142,7 +141,7 @@ public sealed partial class ToolWorkbenchViewModel
             draft.CandidateDocument,
             draft.FirstGeneratedStepId,
             "Thickness repeat grid applied; Preview and Run remain explicit.");
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         AppendLog(
             "Teach",
             $"Thickness repeat-grid applied | sourceStep={draft.SourceStepId} | "

@@ -1,11 +1,17 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchRoiCropExecutionOwner
+/// <summary>
+/// Owns ROI / Crop Preview state, output persistence, and cancellation. The
+/// registered cancellation source identifies the operation allowed to publish
+/// the derived HeightField or request a display update.
+/// </summary>
+internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelected;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedStep;
@@ -25,6 +31,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
     private bool isStale;
     private bool isPublished;
     private string summary = "Select ROI / Crop, teach one GridRectangle, then Preview.";
+    private int disposalState;
 
     public ToolWorkbenchRoiCropExecutionOwner(
         Func<bool> isSelected,
@@ -50,24 +57,52 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
         this.onStateChanged = onStateChanged;
     }
 
-    public bool IsSelected => isSelected();
-    public bool IsRunning => isRunning;
-    public bool HasCurrentPreview => preview?.Output is not null && !isStale;
-    public bool IsStale => isStale;
-    public bool IsPublished => isPublished;
-    public C3DHeightFieldSnapshot? CurrentOutput => preview?.Output;
-    public ToolRecipeGridRectangle? CurrentRegion => preview?.SourceRegion;
-    public string? CurrentPreviewPath => previewPath;
-    public string Summary => summary;
-    public string RegionSummary => preview?.SourceRegion is not { } region
+    public bool IsSelected => !IsDisposed && isSelected();
+    public bool IsRunning => !IsDisposed && isRunning;
+    public bool HasCurrentPreview => !IsDisposed && preview?.Output is not null && !isStale;
+    public bool IsStale => !IsDisposed && isStale;
+    public bool IsPublished => !IsDisposed && isPublished;
+    public C3DHeightFieldSnapshot? CurrentOutput => IsDisposed ? null : preview?.Output;
+    public ToolRecipeGridRectangle? CurrentRegion => IsDisposed ? null : preview?.SourceRegion;
+    public string? CurrentPreviewPath => IsDisposed ? null : previewPath;
+    public string Summary => IsDisposed
+        ? "ROI / Crop execution owner has been disposed."
+        : summary;
+    public string RegionSummary => IsDisposed || preview?.SourceRegion is not { } region
         ? "No crop region evidence until Preview completes."
         : $"Source row {region.Row}, column {region.Column} | {region.RowCount} x {region.ColumnCount}";
-    public string OutputSummary => preview?.Output is not { } output
+    public string OutputSummary => IsDisposed || preview?.Output is not { } output
         ? "No cropped HeightField output."
         : $"{output.Width} x {output.Height} | source origin ({output.GridOriginColumn}, {output.GridOriginRow}) | valid {output.ValidCount:N0} | missing {output.MissingCount:N0} | {(isPublished ? "Published" : "Preview only")}";
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref cancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        preview = null;
+        previewPath = null;
+        isRunning = false;
+        isStale = false;
+        isPublished = false;
+    }
+
     public bool TryGetPublishedOutput(string outputEntityId, out C3DHeightFieldSnapshot? output)
     {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
         var current = preview?.Output;
         output = isPublished && !isStale
             && string.Equals(current?.EntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)
@@ -78,18 +113,44 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedStep() is not { } step)
+        if (IsDisposed
+            || !CanPreview()
+            || getSelectedStep() is not { } step)
         {
             return false;
         }
 
-        cancellation?.Dispose();
-        cancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref cancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref cancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isStale = false;
         isPublished = false;
         step.State = "Preview running";
         SetSummary("ROI / Crop Preview is copying the selected source cells without changing the source.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"ROI / Crop Preview started: {step.Id}.");
         try
         {
@@ -99,24 +160,52 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
                     document,
                     step.Id,
                     GetRecipeDirectory(),
-                    cancellation.Token),
-                cancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 preview = evaluation;
                 previewPath = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"ROI / Crop Preview did not produce output: {evaluation.Result.Message}");
+                if (IsCurrentPreview(currentCancellation))
+                {
+                    appendLog("Error", $"ROI / Crop Preview did not produce output: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
             preview = evaluation;
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
             evaluation.Output.SaveC3D(previewPath);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetSummary($"Preview ready | {RegionSummary} | output {evaluation.Output.ContentSha256} | source unchanged");
-            appendLog("Preview", $"ROI / Crop Preview ready: output={evaluation.Output.ContentSha256}; {RegionSummary}.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", $"ROI / Crop Preview ready: output={evaluation.Output.ContentSha256}; {RegionSummary}.");
+            }
+
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             requestDisplay(new ToolWorkbenchFilterDisplayRequestEventArgs(
                 previewPath,
                 evaluation.Output.ContentSha256,
@@ -126,18 +215,42 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. Source and authored recipe were not changed.");
-            appendLog("Preview", "ROI / Crop Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "ROI / Crop Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref cancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+            }
+
+            if (ownsCancellation && !IsDisposed)
+            {
+                SetRunning(false);
+            }
         }
     }
 
-    public bool CanPreview() => IsSelected
+    public bool CanPreview() => !IsDisposed
+        && IsSelected
         && isSourceReady()
         && !hasPendingParameters()
         && !isRunning
@@ -146,7 +259,9 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed
+            || getSelectedStep() is not { } step
+            || !HasCurrentPreview)
         {
             return;
         }
@@ -156,11 +271,28 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
         appendLog("Publish", $"ROI / Crop output published without re-running: {step.OutputEntityId}.");
     }
 
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref cancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender)
     {
-        if (preview is null || isRunning)
+        if (IsDisposed
+            || preview is null
+            || isRunning)
         {
             return;
         }
@@ -184,16 +316,30 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
 
     public void Clear(string value)
     {
-        cancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref cancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         preview = null;
         previewPath = null;
         isStale = false;
         isPublished = false;
+        SetRunning(false);
         SetSummary(value);
     }
 
     public void Refresh()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedStep() is { } step
             && IsSelected
             && preview is null
@@ -209,14 +355,48 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isRunning = value;
         onStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         summary = value;
         onStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource currentCancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref cancellation),
+            currentCancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    {
+        if (currentCancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            currentCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        currentCancellation.Dispose();
     }
 
     private string GetRecipeDirectory()

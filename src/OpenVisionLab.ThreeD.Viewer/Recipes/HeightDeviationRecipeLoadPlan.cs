@@ -3,7 +3,7 @@ using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 
-internal sealed record HeightDeviationRecipeLoadPlan(
+public sealed record HeightDeviationRecipeLoadPlan(
     string FullRecipePath,
     string SourcePath,
     HeightDeviationRecipe Recipe,

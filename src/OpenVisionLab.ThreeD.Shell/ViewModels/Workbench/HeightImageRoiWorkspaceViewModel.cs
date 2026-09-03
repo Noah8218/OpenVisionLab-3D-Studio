@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
@@ -11,7 +12,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// native-grid Height Image. Recipe mutation remains owned by
 /// <see cref="ToolWorkbenchViewModel"/> and is requested only through events.
 /// </summary>
-public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged
+public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ThreeDLocalization localization;
     private readonly RelayCommand applyCommand;
@@ -32,6 +33,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged
     private int moveColumnOffset;
     private int gridWidth;
     private int gridHeight;
+    private int disposalState;
 
     public HeightImageRoiWorkspaceViewModel(ThreeDLocalization localization)
     {
@@ -54,6 +56,16 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged
     public event EventHandler? ApplyRequested;
     public event EventHandler? CancelRequested;
     public event EventHandler? DeleteRequested;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        localization.PropertyChanged -= OnLocalizationChanged;
+    }
 
     public ICommand ApplyCommand => applyCommand;
     public ICommand CancelCommand => cancelCommand;

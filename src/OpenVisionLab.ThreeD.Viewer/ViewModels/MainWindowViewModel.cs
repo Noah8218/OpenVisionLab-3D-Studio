@@ -35,6 +35,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private const string ThicknessRoiReferenceId = "reference.c3d-thickness-roi";
     private const string ThicknessDefaultFrameId = "frame.c3d-grid-index";
     public const string ThicknessRoiSelectionMode = "Thickness ROI Teach";
+    public const string PointPairSelectionMode = "Two Point Measure";
     public const string ProfileSelectionMode = "Profile";
     private const string PointPairDimensionsStepId = "step.c3d-point-pair-dimensions";
     private const string PointPairFirstReferenceId = "reference.point-a";

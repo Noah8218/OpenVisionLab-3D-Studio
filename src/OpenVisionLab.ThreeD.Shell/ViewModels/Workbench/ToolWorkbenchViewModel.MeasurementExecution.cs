@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
@@ -63,10 +64,10 @@ public sealed partial class ToolWorkbenchViewModel
     public string PlaneFlatnessReferenceState => PlaneFlatnessReferenceSelection is null ? Localization.RoiWaiting : Localization.RoiComplete;
     public string PlaneFlatnessMeasurementState => PlaneFlatnessMeasurementSelection is null ? Localization.RoiWaiting : Localization.RoiComplete;
     public string PlaneFlatnessReferenceSummary => PlaneFlatnessReferenceSelection is { } selection
-        ? FormatTeachingSelection(selection)
+        ? ToolWorkbenchTeachingSelectionPolicy.FormatSelection(selection)
         : Localization.NoRoiTaught;
     public string PlaneFlatnessMeasurementSummary => PlaneFlatnessMeasurementSelection is { } selection
-        ? FormatTeachingSelection(selection)
+        ? ToolWorkbenchTeachingSelectionPolicy.FormatSelection(selection)
         : CanTeachPlaneFlatnessMeasurementRoi ? Localization.NoRoiTaught : DualRoiFirstRequired;
     public string PlaneFlatnessReferenceActionText => PlaneFlatnessReferenceSelection is null ? Localization.DrawRoi : Localization.EditRoi;
     public string PlaneFlatnessMeasurementActionText => PlaneFlatnessMeasurementSelection is null ? Localization.DrawRoi : Localization.EditRoi;
@@ -116,8 +117,12 @@ public sealed partial class ToolWorkbenchViewModel
         removePlaneFlatnessMeasurementRoiCommand = new RelayCommand(
             _ => RemovePlaneFlatnessRoleSelection(measurementRole: true),
             _ => CanRemovePlaneFlatnessRoleSelection(measurementRole: true));
-        Localization.PropertyChanged += (_, _) => NotifyPlaneFlatnessTeachingState();
     }
+
+    private void OnPlaneFlatnessLocalizationChanged(
+        object? sender,
+        PropertyChangedEventArgs args) =>
+        NotifyPlaneFlatnessTeachingState();
 
     private ToolRecipeSelection? GetPlaneFlatnessRoleSelection(int inputIndex)
     {

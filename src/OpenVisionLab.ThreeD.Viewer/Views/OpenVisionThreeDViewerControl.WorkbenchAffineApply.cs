@@ -15,6 +15,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void ShowWorkbenchAffineApply(C3DTransformedPointCloud output, bool isPublished, bool standaloneReferenceDisplay = true)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         ArgumentNullException.ThrowIfNull(output);
         PrepareAffineApplyRenderData(output);
         viewModel.C3DSampleVisible = !standaloneReferenceDisplay;

@@ -126,4 +126,42 @@ internal static class ShellRecipeLifecycleSmoke
 
         return passed;
     }
+
+    public static bool RunWindowLifetime(
+        Action showRecipeManager,
+        Action closeRecipeManager,
+        Func<object?> getRecipeManagerWindow,
+        Func<bool> isRecipeManagerVisible,
+        Action disposeLifecycle,
+        string? reportPath)
+    {
+        showRecipeManager();
+        var firstWindow = getRecipeManagerWindow();
+        closeRecipeManager();
+        var hiddenKeepsInstance = firstWindow is not null
+            && ReferenceEquals(firstWindow, getRecipeManagerWindow())
+            && !isRecipeManagerVisible();
+
+        showRecipeManager();
+        var reopenedSameInstance = firstWindow is not null
+            && ReferenceEquals(firstWindow, getRecipeManagerWindow())
+            && isRecipeManagerVisible();
+
+        disposeLifecycle();
+        var disposedClearsWindow = getRecipeManagerWindow() is null;
+        showRecipeManager();
+        var disposedRejectsShow = getRecipeManagerWindow() is null;
+        var passed = hiddenKeepsInstance && reopenedSameInstance && disposedClearsWindow && disposedRejectsShow;
+        if (!string.IsNullOrWhiteSpace(reportPath))
+        {
+            var fullReportPath = Path.GetFullPath(reportPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            File.AppendAllLines(fullReportPath,
+            [
+                $"RecipeManagerWindowLifetime|hiddenKeepsInstance={hiddenKeepsInstance}|reopenedSameInstance={reopenedSameInstance}|disposedClearsWindow={disposedClearsWindow}|disposedRejectsShow={disposedRejectsShow}|pass={passed}"
+            ]);
+        }
+
+        return passed;
+    }
 }

@@ -7,6 +7,7 @@ using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts;
+using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
@@ -19,17 +20,14 @@ internal sealed class ShellPreparationPresetAssistantSmoke
 {
     private readonly ToolWorkbenchViewModel workbench;
     private readonly ToolRecipeWorkbenchView workbenchView;
-    private readonly Func<int, int, bool> setCursorPos;
 
     public ShellPreparationPresetAssistantSmoke(
         ToolWorkbenchViewModel workbench,
-        ToolRecipeWorkbenchView workbenchView,
-        Func<int, int, bool> setCursorPos)
+        ToolRecipeWorkbenchView workbenchView)
     {
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
         this.workbenchView = workbenchView
             ?? throw new ArgumentNullException(nameof(workbenchView));
-        this.setCursorPos = setCursorPos ?? throw new ArgumentNullException(nameof(setCursorPos));
     }
 
     public bool Configure(string requestedState, out string failure)
@@ -195,7 +193,7 @@ internal sealed class ShellPreparationPresetAssistantSmoke
             new Point(
                 selector.ActualWidth / 2.0,
                 selector.ActualHeight / 2.0));
-        _ = setCursorPos(
+        _ = SetCursorPos(
             (int)Math.Round(center.X),
             (int)Math.Round(center.Y + selector.ActualHeight * 2.5));
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);

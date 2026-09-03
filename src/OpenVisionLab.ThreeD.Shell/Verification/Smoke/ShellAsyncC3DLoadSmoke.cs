@@ -24,27 +24,35 @@ internal static class ShellAsyncC3DLoadSmoke
         var dispatcherTicks = 0;
         var cancelIssued = false;
         var previousPath = viewer.CurrentC3DSourcePath;
+        EventHandler timerTick = (_, _) =>
+        {
+            dispatcherTicks++;
+            if (!cancelIssued
+                && cancelAtPercent is { } cancelAt
+                && workbench.IsC3DSourceLoading
+                && workbench.C3DSourceLoadProgressPercent >= cancelAt)
+            {
+                cancelIssued = true;
+                workbench.CancelC3DSourceLoadCommand.Execute(null);
+            }
+        };
         var timer = new DispatcherTimer(
             TimeSpan.FromMilliseconds(1),
-            DispatcherPriority.Input,
-            (_, _) =>
-            {
-                dispatcherTicks++;
-                if (!cancelIssued
-                    && cancelAtPercent is { } cancelAt
-                    && workbench.IsC3DSourceLoading
-                    && workbench.C3DSourceLoadProgressPercent >= cancelAt)
-                {
-                    cancelIssued = true;
-                    workbench.CancelC3DSourceLoadCommand.Execute(null);
-                }
-            },
+            DispatcherPriority.Send,
+            timerTick,
             dispatcher);
         var stopwatch = Stopwatch.StartNew();
         timer.Start();
-        await loadSourceAsync(sourcePath);
-        timer.Stop();
-        stopwatch.Stop();
+        try
+        {
+            await loadSourceAsync(sourcePath);
+        }
+        finally
+        {
+            timer.Stop();
+            timer.Tick -= timerTick;
+            stopwatch.Stop();
+        }
 
         var expectedPath = Path.GetFullPath(sourcePath);
         var loadPerformance = viewer.LastC3DSourceLoadPerformance;

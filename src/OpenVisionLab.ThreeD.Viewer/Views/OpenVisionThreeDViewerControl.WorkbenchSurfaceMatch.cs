@@ -31,6 +31,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null,
         SurfaceEdgeAcquisitionDirectionArtifact? acquisitionDirectionOrientation = null)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var displayPreparation = SurfaceMatchDisplayPreparation.Prepare(
             model,
             scene,
@@ -71,6 +76,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void ClearWorkbenchSurfaceMatch()
     {
+        ClearSurfaceMatchRenderData();
+        viewModel.ClearWorkbenchSurfaceMatch();
+        RenderNow();
+    }
+
+    private void ClearSurfaceMatchRenderData()
+    {
         surfaceMatchRenderExecution = null;
         surfaceMatchOverlayPositions = null;
         surfaceMatchOverlayTriangles = null;
@@ -80,8 +92,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         surfaceEdgeSceneSegments = null;
         surfaceAcquisitionDirectionMarker = null;
         surfaceMatchDisplayFrame = default;
-        viewModel.ClearWorkbenchSurfaceMatch();
-        RenderNow();
     }
 
     private void DrawWorkbenchSurfaceMatch(OpenGL gl)

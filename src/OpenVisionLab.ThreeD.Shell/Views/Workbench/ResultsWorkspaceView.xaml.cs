@@ -1,17 +1,43 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Threading;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
-public partial class ResultsWorkspaceView : UserControl
+public partial class ResultsWorkspaceView : UserControl, IDisposable
 {
+    private int disposalState;
+
     public ResultsWorkspaceView()
     {
         InitializeComponent();
         RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
-        Loaded += (_, _) => RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
+        Loaded += OnLoaded;
+    }
+
+    /// <summary>
+    /// Releases the Results-owned compare surface at the explicit Shell close
+    /// boundary. Results navigation remains reusable across reversible unloads.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        Loaded -= OnLoaded;
+        OutputCompareWorkspace.Dispose();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        if (Volatile.Read(ref disposalState) == 0)
+        {
+            RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
+        }
     }
 
     public ResultsWorkspaceSection ActiveSection =>

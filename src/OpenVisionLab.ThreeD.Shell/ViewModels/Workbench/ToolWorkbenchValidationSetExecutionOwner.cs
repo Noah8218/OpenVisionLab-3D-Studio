@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -7,10 +8,12 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// Owns the cancellable execution lifetime shared by explicit Validation Set
 /// Run, development revalidation, and Held-out replay.
 /// </summary>
-internal sealed class ToolWorkbenchValidationSetExecutionOwner
+internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
 {
     private readonly Action onStateChanged;
     private CancellationTokenSource? cancellation;
+    private int executionGate;
+    private int disposalState;
 
     public ToolWorkbenchValidationSetExecutionOwner(Action onStateChanged)
     {
@@ -19,40 +22,113 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner
 
     public bool IsRunning { get; private set; }
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public bool CanStart => !IsDisposed && !IsRunning;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(ref cancellation, null);
+        CancelAndDispose(currentCancellation);
+        IsRunning = false;
+    }
+
     public async Task<ToolRecipeValidationSetResult> ExecuteAsync(
         ToolRecipeDocument document,
         IReadOnlyList<ToolRecipeValidationSampleInput> samples,
         IProgress<ToolRecipeValidationProgress> progress)
     {
-        cancellation?.Dispose();
-        cancellation = new CancellationTokenSource();
-        var currentCancellation = cancellation;
-        SetRunning(true);
+        if (IsDisposed)
+        {
+            throw new OperationCanceledException();
+        }
+
+        // Validation Set commands normally serialize through CanExecute, but
+        // threshold replay and verification callers can arrive concurrently.
+        // Reject the second logical execution before it can replace the first
+        // cancellation source or publish an early idle state.
+        if (Interlocked.CompareExchange(ref executionGate, 1, 0) != 0)
+        {
+            throw new InvalidOperationException(
+                "Validation Set execution is already running.");
+        }
+
         try
         {
-            return await Task.Run(() =>
-                ToolRecipeValidationSetExecution.Execute(
+            if (IsDisposed)
+            {
+                throw new OperationCanceledException();
+            }
+
+            var currentCancellation = new CancellationTokenSource();
+            var currentToken = currentCancellation.Token;
+            var previousCancellation = Interlocked.Exchange(
+                ref cancellation,
+                currentCancellation);
+            CancelAndDispose(previousCancellation);
+            if (IsDisposed)
+            {
+                if (ReferenceEquals(
+                    Interlocked.CompareExchange(ref cancellation, null, currentCancellation),
+                    currentCancellation))
+                {
+                    currentCancellation.Dispose();
+                }
+
+                throw new OperationCanceledException(currentToken);
+            }
+
+            SetRunning(true);
+            return await Task.Run(
+                () => ToolRecipeValidationSetExecution.Execute(
                     document,
                     samples,
-                    currentCancellation.Token,
-                    progress));
+                    currentToken,
+                    progress),
+                currentToken);
         }
         finally
         {
-            if (ReferenceEquals(cancellation, currentCancellation))
+            var currentCancellation = Interlocked.Exchange(ref cancellation, null);
+            if (currentCancellation is not null)
             {
                 currentCancellation.Dispose();
-                cancellation = null;
             }
 
             SetRunning(false);
+            Volatile.Write(ref executionGate, 0);
         }
     }
 
-    public void Cancel() => cancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref cancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (IsRunning == value)
         {
             return;
@@ -60,5 +136,24 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner
 
         IsRunning = value;
         onStateChanged();
+    }
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 }

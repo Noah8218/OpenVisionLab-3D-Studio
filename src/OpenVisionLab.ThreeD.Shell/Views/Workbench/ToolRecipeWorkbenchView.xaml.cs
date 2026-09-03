@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -10,10 +11,13 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
-public sealed partial class ToolRecipeWorkbenchView : UserControl
+public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 {
     private ViewerWorkspaceView? viewerWorkspaceSurface;
+    private RecipePipelineReviewView? pipelineReview;
     private ShellMainWindowViewModel? shell;
+    private DispatcherOperation? teachStageActivationOperation;
+    private int disposalState;
 
     public static readonly DependencyProperty ViewerContentProperty =
         DependencyProperty.Register(
@@ -57,13 +61,45 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         }
         if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
+            pipelineReview = review;
             review.SetBinding(
                 RecipePipelineReviewView.RunRecordContextProperty,
                 new Binding("DataContext") { Source = this });
-            review.ActiveReviewChanged += (_, _) =>
-                DockWorkspace.SetEvidenceAnalysisHeight(review.IsValidationSetSelected);
+            review.ActiveReviewChanged += OnActiveReviewChanged;
             DockWorkspace.SetEvidenceAnalysisHeight(review.IsValidationSetSelected);
         }
+    }
+
+    /// <summary>
+    /// Releases resources owned by nested viewer workspace surfaces when the
+    /// containing Shell Window closes. Unloaded remains a reversible WPF event.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        CancelTeachStageActivation();
+        if (pipelineReview is not null)
+        {
+            pipelineReview.ActiveReviewChanged -= OnActiveReviewChanged;
+            pipelineReview = null;
+        }
+        DetachShell();
+        if (DockWorkspace.ResultsContent is ResultsWorkspaceView resultsWorkspace)
+        {
+            resultsWorkspace.Dispose();
+        }
+        if (DockWorkspace.OutputCompareContent is OutputCompareView outputCompare)
+        {
+            outputCompare.Dispose();
+        }
+        ViewerWorkspaceSurface?.Dispose();
+        DataContextChanged -= OnDataContextChanged;
+        Loaded -= OnLoaded;
+        Unloaded -= OnUnloaded;
     }
 
     public OpenVisionOperatorStage OperatorStage => DockWorkspace.OperatorStage;
@@ -450,8 +486,16 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
             default,
             string.Empty));
 
-    private void ViewerWorkspaceSurface_Loaded(object sender, RoutedEventArgs args) =>
+    private void ViewerWorkspaceSurface_Loaded(object sender, RoutedEventArgs args)
+    {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            (sender as ViewerWorkspaceView)?.Dispose();
+            return;
+        }
+
         viewerWorkspaceSurface = sender as ViewerWorkspaceView;
+    }
 
     private static T? FindLogicalChild<T>(object? parent)
         where T : DependencyObject
@@ -732,8 +776,11 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         ApplyOperatorStage();
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs args) =>
+    private void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        CancelTeachStageActivation();
         DetachShell();
+    }
 
     private void AttachShell(ShellMainWindowViewModel? candidate)
     {
@@ -763,8 +810,20 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         }
     }
 
+    private void OnActiveReviewChanged(object? sender, EventArgs args)
+    {
+        if (Volatile.Read(ref disposalState) != 0
+            || pipelineReview is null)
+        {
+            return;
+        }
+
+        DockWorkspace.SetEvidenceAnalysisHeight(pipelineReview.IsValidationSetSelected);
+    }
+
     private void ApplyOperatorStage()
     {
+        CancelTeachStageActivation();
         var stage = shell?.SelectedWorkspaceMode switch
         {
             ShellWorkspaceMode.Workbench => OpenVisionOperatorStage.Teach,
@@ -802,18 +861,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
                 DockWorkspace.ActivateToolInspectorPane();
             }
 
-            Dispatcher.BeginInvoke(
-                () =>
-                {
-                    if (shell?.SelectedWorkspaceMode == ShellWorkspaceMode.Teach
-                        && shell.Workbench.HasActiveValidationFailureCorrectionContext)
-                    {
-                        DockWorkspace.ActivateToolInspectorPane();
-                    }
-
-                    ViewerWorkspaceSurface?.ReactivateMainViewer(ViewerContent);
-                },
-                DispatcherPriority.ContextIdle);
+            QueueTeachStageActivation();
         }
 
         if (stage == OpenVisionOperatorStage.Validate)
@@ -823,6 +871,59 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         else if (stage == OpenVisionOperatorStage.Results)
         {
             shell!.Workbench.SelectedReviewTabIndex = 3;
+        }
+    }
+
+    private void QueueTeachStageActivation()
+    {
+        if (Volatile.Read(ref disposalState) != 0
+            || Dispatcher.HasShutdownStarted
+            || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (teachStageActivationOperation?.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing)
+        {
+            return;
+        }
+
+        try
+        {
+            teachStageActivationOperation = Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(ApplyTeachStageActivation));
+        }
+        catch (InvalidOperationException)
+        {
+            teachStageActivationOperation = null;
+        }
+    }
+
+    private void ApplyTeachStageActivation()
+    {
+        teachStageActivationOperation = null;
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        if (shell?.SelectedWorkspaceMode == ShellWorkspaceMode.Teach
+            && shell.Workbench.HasActiveValidationFailureCorrectionContext)
+        {
+            DockWorkspace.ActivateToolInspectorPane();
+        }
+
+        ViewerWorkspaceSurface?.ReactivateMainViewer(ViewerContent);
+    }
+
+    private void CancelTeachStageActivation()
+    {
+        var operation = teachStageActivationOperation;
+        teachStageActivationOperation = null;
+        if (operation?.Status == DispatcherOperationStatus.Pending)
+        {
+            operation.Abort();
         }
     }
 

@@ -248,6 +248,17 @@ public sealed partial class ToolWorkbenchViewModel
         return true;
     }
 
+    private (bool Success, string Message) TryApplyFilterKernelPresetDraftForAssistant(
+        ToolWorkbenchPipelineStepItem step,
+        int kernelSize)
+    {
+        var success = stepPropertySession.TryApplyFilterKernelPresetDraft(
+            step,
+            kernelSize,
+            out var message);
+        return (success, message);
+    }
+
     public void DiscardSelectedStepParameterDraft()
     {
         var stepId = SelectedPipelineStep?.Id;

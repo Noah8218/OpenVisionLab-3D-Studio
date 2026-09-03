@@ -1,10 +1,11 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
+internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepThreePointPlane;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -31,6 +32,7 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Capture exactly three ordered non-collinear C3D grid cells, teach an output role, then Preview explicitly.";
+    private int disposalState;
 
     public ToolWorkbenchThreePointPlaneExecutionOwner(
         Func<bool> isSelectedStepThreePointPlane,
@@ -70,45 +72,102 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
             previewOutput.OutputEntityId,
             StringComparison.OrdinalIgnoreCase);
 
-    public bool IsSelectedStepThreePointPlane => isSelectedStepThreePointPlane();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => IsPreviewForSelectedStep && !IsPreviewStale;
-    public bool IsPreviewStale => getSelectedPipelineStep() is { } step
+    public bool IsSelectedStepThreePointPlane => !IsDisposed && isSelectedStepThreePointPlane();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && IsPreviewForSelectedStep && !IsPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && getSelectedPipelineStep() is { } step
         && staleOutputIds.Contains(step.OutputEntityId);
-    public bool IsPreviewPublished => isPreviewPublished && IsPreviewForSelectedStep;
-    public C3DThreePointPlaneFeature? CurrentOutput => IsPreviewForSelectedStep
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished && IsPreviewForSelectedStep;
+    public C3DThreePointPlaneFeature? CurrentOutput => !IsDisposed && IsPreviewForSelectedStep
         ? previewOutput
         : null;
-    public string ExecutionSummary => executionSummary;
+    public string ExecutionSummary => IsDisposed
+        ? "3-Point Plane execution owner has been disposed."
+        : executionSummary;
 
-    public string OutputHashSummary => previewOutput is null
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
 
-    public string SelectionSummary => getSelectedTeachingSelection()?.Points is { Count: 3 } points
+    public string SelectionSummary => IsDisposed
+        ? "No 3-Point Plane selection after the execution owner has been disposed."
+        : getSelectedTeachingSelection()?.Points is { Count: 3 } points
         ? $"Ordered picks: ({points[0].Locator.Row}, {points[0].Locator.Column}) -> ({points[1].Locator.Row}, {points[1].Locator.Column}) -> ({points[2].Locator.Row}, {points[2].Locator.Column})"
         : "Capture exactly three ordered non-collinear grid-cell picks before Preview.";
 
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DThreePointPlaneFeature? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DThreePointPlaneFeature? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        staleOutputIds.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         staleOutputIds.Remove(step.OutputEntityId);
         step.State = "Preview running";
         SetSummary("3-Point Plane Preview is resolving the exact current raw C3D values for the authored ordered picks.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"3-Point Plane Preview started: {step.Id}.");
         try
         {
@@ -117,40 +176,90 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
                     createDocument(),
                     step.Id,
                     GetRecipeDirectory(),
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"3-Point Plane Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(currentCancellation))
+                {
+                    appendLog("Error", $"3-Point Plane Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
             previewOutput = evaluation.Output;
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetSummary($"Preview ready | {SelectionSummary} | oriented normal {evaluation.Output.NormalX:G4}, {evaluation.Output.NormalY:G4}, {evaluation.Output.NormalZ:G4} | no fit or OK/NG");
-            appendLog("Preview", $"3-Point Plane Preview ready: {evaluation.Output.ContentSha256}.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", $"3-Point Plane Preview ready: {evaluation.Output.ContentSha256}.");
+            }
+
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             requestDisplay(new ToolWorkbenchThreePointPlaneDisplayRequestEventArgs(evaluation.Output, false));
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. The source, picks, and authored recipe were not changed.");
-            appendLog("Preview", "3-Point Plane Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "3-Point Plane Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelectedStepThreePointPlane || !isSourceReadyForRecipe()
+        if (IsDisposed || !IsSelectedStepThreePointPlane || !isSourceReadyForRecipe()
             || hasPendingStepParameterChanges() || isPreviewRunning
             || getSelectedPipelineStep() is not { } step)
         {
@@ -167,7 +276,7 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -180,10 +289,30 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
         requestDisplay(new ToolWorkbenchThreePointPlaneDisplayRequestEventArgs(previewOutput, true));
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var preview = previewOutput;
         if (isPreviewRunning)
         {
@@ -245,10 +374,19 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
         staleOutputIds.Clear();
+        isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
         clearDisplay();
@@ -258,6 +396,11 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepThreePointPlane
             && (previewOutput is null
                 || !string.Equals(
@@ -289,14 +432,48 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    {
+        if (currentCancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            currentCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        currentCancellation.Dispose();
     }
 
     private string? GetRecipeDirectory()

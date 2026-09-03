@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -8,7 +9,7 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
-public partial class OutputCompareView : UserControl
+public partial class OutputCompareView : UserControl, IDisposable
 {
     private ToolWorkbenchViewModel? workbench;
     private OpenVisionThreeDViewerControl? slotAViewer;
@@ -17,16 +18,52 @@ public partial class OutputCompareView : UserControl
     private string slotALoadedPath = string.Empty;
     private string slotBLoadedPath = string.Empty;
     private string slotCLoadedPath = string.Empty;
+    private int disposalState;
 
     public OutputCompareView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
-        Loaded += (_, _) => RefreshCompareViews();
+        Loaded += OnLoaded;
+    }
+
+    private bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    /// <summary>
+    /// Releases the compare-slot Viewer controls owned by this view. Unloaded
+    /// remains a reversible WPF event; the composition owner calls this only
+    /// when the Shell closes.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        DetachWorkbench();
+        DataContextChanged -= OnDataContextChanged;
+        Loaded -= OnLoaded;
+        DisposeSlot(SlotAViewerHost, ref slotAViewer, ref slotALoadedPath);
+        DisposeSlot(SlotBViewerHost, ref slotBViewer, ref slotBLoadedPath);
+        DisposeSlot(SlotCViewerHost, ref slotCViewer, ref slotCLoadedPath);
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        if (!IsDisposed)
+        {
+            RefreshCompareViews();
+        }
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs args)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         DetachWorkbench();
         workbench = args.NewValue as ToolWorkbenchViewModel;
         if (workbench is null)
@@ -54,6 +91,11 @@ public partial class OutputCompareView : UserControl
 
     private void OnWorkbenchPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.CompareSlotAArtifactId)
             or nameof(ToolWorkbenchViewModel.CompareSlotBArtifactId)
             or nameof(ToolWorkbenchViewModel.CompareSlotCArtifactId))
@@ -62,11 +104,21 @@ public partial class OutputCompareView : UserControl
         }
     }
 
-    private void OnCompareCandidatesChanged(object? sender, NotifyCollectionChangedEventArgs args) =>
-        RefreshCompareViews();
+    private void OnCompareCandidatesChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        if (!IsDisposed)
+        {
+            RefreshCompareViews();
+        }
+    }
 
     private void RefreshCompareViews()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         RefreshSlot(SlotAViewerHost, SlotAEmptyText, workbench?.CompareSlotAArtifactId, ref slotAViewer, ref slotALoadedPath);
         RefreshSlot(SlotBViewerHost, SlotBEmptyText, workbench?.CompareSlotBArtifactId, ref slotBViewer, ref slotBLoadedPath);
         RefreshSlot(SlotCViewerHost, SlotCEmptyText, workbench?.CompareSlotCArtifactId, ref slotCViewer, ref slotCLoadedPath);
@@ -79,6 +131,11 @@ public partial class OutputCompareView : UserControl
         ref OpenVisionThreeDViewerControl? viewer,
         ref string loadedPath)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var candidate = workbench?.GetCompareCandidate(artifactId);
         if (candidate is null || !File.Exists(candidate.C3DPath))
         {
@@ -108,5 +165,16 @@ public partial class OutputCompareView : UserControl
 
         viewer.ViewModel.HudDetailsVisible = false;
         loadedPath = candidate.C3DPath;
+    }
+
+    private static void DisposeSlot(
+        ContentControl host,
+        ref OpenVisionThreeDViewerControl? viewer,
+        ref string loadedPath)
+    {
+        host.Content = null;
+        viewer?.Dispose();
+        viewer = null;
+        loadedPath = string.Empty;
     }
 }

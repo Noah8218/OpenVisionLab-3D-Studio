@@ -1,12 +1,18 @@
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
+/// <summary>
+/// Owns the Level Surface Preview lifecycle and its typed leveling artifacts.
+/// The registered cancellation source identifies the operation allowed to
+/// publish output, persist state, or request a Viewer update.
+/// </summary>
+internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepLevelSurface;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -27,6 +33,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
     private bool isLevelSurfacePreviewPublished;
     private string levelSurfaceExecutionSummary =
         "Select Level Surface, teach one or more reference ROIs, then Preview.";
+    private int disposalState;
 
     public ToolWorkbenchLevelSurfaceExecutionOwner(
         Func<bool> isSelectedStepLevelSurface,
@@ -52,79 +59,130 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepLevelSurface => isSelectedStepLevelSurface();
+    public bool IsSelectedStepLevelSurface => !IsDisposed && isSelectedStepLevelSurface();
 
-    public bool IsLevelSurfacePreviewRunning => isLevelSurfacePreviewRunning;
+    public bool IsLevelSurfacePreviewRunning => !IsDisposed && isLevelSurfacePreviewRunning;
     public bool HasCurrentLevelSurfacePreview =>
-        levelSurfacePreview?.Output is not null
+        !IsDisposed
+        && levelSurfacePreview?.Output is not null
         && levelSurfacePreview.Transform is not null
         && levelSurfacePreview.LevelFrame is not null
         && levelSurfacePreview.FrameChain is not null
         && !isLevelSurfacePreviewStale;
-    public bool IsLevelSurfacePreviewStale => isLevelSurfacePreviewStale;
-    public bool IsLevelSurfacePreviewPublished => isLevelSurfacePreviewPublished;
+    public bool IsLevelSurfacePreviewStale => !IsDisposed && isLevelSurfacePreviewStale;
+    public bool IsLevelSurfacePreviewPublished => !IsDisposed && isLevelSurfacePreviewPublished;
     public C3DHeightFieldSnapshot? CurrentLevelSurfacePreviewOutput =>
-        levelSurfacePreview?.Output;
+        IsDisposed ? null : levelSurfacePreview?.Output;
     public C3DLevelingTransform? CurrentLevelSurfaceTransform =>
-        levelSurfacePreview?.Transform;
+        IsDisposed ? null : levelSurfacePreview?.Transform;
     public C3DLevelFrameArtifact? CurrentLevelSurfaceLevelFrame =>
-        levelSurfacePreview?.LevelFrame;
+        IsDisposed ? null : levelSurfacePreview?.LevelFrame;
     public C3DLevelFrameQualityEvidence? CurrentLevelSurfaceQualityEvidence =>
-        levelSurfacePreview?.QualityEvidence;
+        IsDisposed ? null : levelSurfacePreview?.QualityEvidence;
     public C3DLevelSurfaceCoordinateFrameChain? CurrentLevelSurfaceFrameChain =>
-        levelSurfacePreview?.FrameChain;
+        IsDisposed ? null : levelSurfacePreview?.FrameChain;
     public double CurrentLevelSurfaceOutputSlopeX =>
-        levelSurfacePreview?.OutputReferenceSlopeX ?? double.NaN;
+        IsDisposed ? double.NaN : levelSurfacePreview?.OutputReferenceSlopeX ?? double.NaN;
     public double CurrentLevelSurfaceOutputSlopeZ =>
-        levelSurfacePreview?.OutputReferenceSlopeZ ?? double.NaN;
-    public string? CurrentLevelSurfacePreviewPath => levelSurfacePreviewPath;
-    public string LevelSurfaceExecutionSummary => levelSurfaceExecutionSummary;
+        IsDisposed ? double.NaN : levelSurfacePreview?.OutputReferenceSlopeZ ?? double.NaN;
+    public string? CurrentLevelSurfacePreviewPath => IsDisposed ? null : levelSurfacePreviewPath;
+    public string LevelSurfaceExecutionSummary => IsDisposed
+        ? "Level Surface execution owner has been disposed."
+        : levelSurfaceExecutionSummary;
+
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 
     public string LevelSurfaceReferenceSummary =>
-        getSelectedPipelineStep() is not { } step || !IsSelectedStepLevelSurface
+        IsDisposed
+            || getSelectedPipelineStep() is not { } step
+            || !IsSelectedStepLevelSurface
             ? "No Level Surface reference routing."
             : $"{Math.Max(0, step.InputEntityIds.Count - 1)} explicit reference ROI(s) | unique finite cells | overlap counted once";
 
     public string LevelSurfaceTransformSummary =>
-        levelSurfacePreview?.Transform is not { } transform
+        IsDisposed || levelSurfacePreview?.Transform is not { } transform
             ? "No typed leveling transform until Preview completes."
             : $"Transform {transform.ContentSha256} | input slope X {transform.FittedSlopeX:G6}, Z {transform.FittedSlopeZ:G6} | target {transform.TargetHeight:G6} {transform.SourceUnit}";
 
     public string LevelSurfaceFrameSummary =>
-        levelSurfacePreview?.LevelFrame is not { } frame
+        IsDisposed || levelSurfacePreview?.LevelFrame is not { } frame
             ? "No reusable Level Frame until Preview completes."
             : $"Level Frame {frame.ContentSha256} | {frame.LevelFrameId} | U/V/H right-handed software frame | source unchanged";
 
     public string LevelSurfaceFrameChainSummary =>
-        levelSurfacePreview?.FrameChain is not { } chain
+        IsDisposed || levelSurfacePreview?.FrameChain is not { } chain
             ? "No named Source / Reference / Result / Level frame chain until Preview completes."
             : $"Source: {chain.Source.FrameId} | Reference: {chain.Reference.FrameId} ({chain.Reference.SelectionIds.Count} ROI) | Result: {chain.Result?.FrameId ?? "(none; source preserved)"} | Level: {chain.Level.FrameId}";
 
     public string LevelSurfaceResidualSummary =>
-        levelSurfacePreview is not { Transform: { } transform }
+        IsDisposed || levelSurfacePreview is not { Transform: { } transform }
             ? "Reference residual and output slope evidence are available after Preview."
             : $"Reference RMS {transform.ReferenceResidualRms:G6} | P2V {transform.ReferenceResidualPeakToValley:G6} | output slope X {levelSurfacePreview.OutputReferenceSlopeX:G6}, Z {levelSurfacePreview.OutputReferenceSlopeZ:G6} | software confidence {levelSurfacePreview.QualityEvidence?.State.ToString() ?? "Unavailable"} | minimum reference coverage {levelSurfacePreview.QualityEvidence?.MinimumObservedCoverageRatio.ToString("P1") ?? "Unavailable"}";
 
     public string LevelSurfaceOutputSummary =>
-        levelSurfacePreview?.Output is not { } output
+        IsDisposed || levelSurfacePreview?.Output is not { } output
             ? "No leveled C3D output."
             : $"{output.Width} x {output.Height} | valid {output.ValidCount:N0} | missing {output.MissingCount:N0} | {(isLevelSurfacePreviewPublished ? "Published" : "Preview only")}";
 
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref levelSurfacePreviewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        levelSurfacePreview = null;
+        levelSurfacePreviewPath = null;
+        isLevelSurfacePreviewRunning = false;
+        isLevelSurfacePreviewStale = false;
+        isLevelSurfacePreviewPublished = false;
+    }
+
     public async Task<bool> PreviewSelectedLevelSurfaceAsync()
     {
-        if (!CanPreviewSelectedLevelSurface() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed
+            || !CanPreviewSelectedLevelSurface()
+            || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        levelSurfacePreviewCancellation?.Dispose();
-        levelSurfacePreviewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref levelSurfacePreviewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref levelSurfacePreviewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetLevelSurfaceRunning(true);
         isLevelSurfacePreviewStale = false;
         isLevelSurfacePreviewPublished = false;
         step.State = "Preview running";
         SetLevelSurfaceSummary(
             "Level Surface Preview is fitting the explicit reference regions without changing the source.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Level Surface Preview started: {step.Id}.");
         try
         {
@@ -135,35 +193,68 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
                     document,
                     step.Id,
                     recipeDirectory,
-                    levelSurfacePreviewCancellation.Token),
-                levelSurfacePreviewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass
                 || evaluation.Output is null
                 || evaluation.Transform is null
                 || evaluation.LevelFrame is null
                 || evaluation.FrameChain is null)
             {
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 levelSurfacePreview = evaluation;
                 levelSurfacePreviewPath = null;
                 step.State = evaluation.Result.Status == ResultStatus.Fail
                     ? "Reference gate failed"
                     : "Error";
                 SetLevelSurfaceSummary(evaluation.Result.Message);
-                appendLog(
-                    evaluation.Result.Status == ResultStatus.Fail ? "Preview" : "Error",
-                    $"Level Surface Preview did not produce output: {evaluation.Result.Message}");
+                if (IsCurrentPreview(currentCancellation))
+                {
+                    appendLog(
+                        evaluation.Result.Status == ResultStatus.Fail ? "Preview" : "Error",
+                        $"Level Surface Preview did not produce output: {evaluation.Result.Message}");
+                }
+
+                return false;
+            }
+
+            if (!IsCurrentPreview(currentCancellation))
+            {
                 return false;
             }
 
             levelSurfacePreview = evaluation;
             levelSurfacePreviewPath = CreateLevelSurfacePreviewPath(evaluation.Output.ContentSha256);
             evaluation.Output.SaveC3D(levelSurfacePreviewPath);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetLevelSurfaceSummary(
                 $"Preview ready | {evaluation.Transform.ReferenceRegions.Count} reference ROI(s) | input slope X {evaluation.Transform.FittedSlopeX:G6}, Z {evaluation.Transform.FittedSlopeZ:G6} | output slope X {evaluation.OutputReferenceSlopeX:G6}, Z {evaluation.OutputReferenceSlopeZ:G6} | level frame {evaluation.LevelFrame.ContentSha256[..12]} | frame chain {evaluation.FrameChain.ContentSha256[..12]} | source unchanged");
-            appendLog(
-                "Preview",
-                $"Level Surface Preview ready: output={evaluation.Output.ContentSha256}; transform={evaluation.Transform.ContentSha256}; levelFrame={evaluation.LevelFrame.ContentSha256}; frameChain={evaluation.FrameChain.ContentSha256}; referenceRms={evaluation.Transform.ReferenceResidualRms:R}.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog(
+                    "Preview",
+                    $"Level Surface Preview ready: output={evaluation.Output.ContentSha256}; transform={evaluation.Transform.ContentSha256}; levelFrame={evaluation.LevelFrame.ContentSha256}; frameChain={evaluation.FrameChain.ContentSha256}; referenceRms={evaluation.Transform.ReferenceResidualRms:R}.");
+            }
+
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             requestDisplay(
                 new ToolWorkbenchFilterDisplayRequestEventArgs(
                     levelSurfacePreviewPath,
@@ -174,6 +265,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetLevelSurfaceSummary("Preview canceled. Source and authored recipe were not changed.");
             appendLog("Preview", "Level Surface Preview canceled.");
@@ -181,12 +277,27 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
         }
         finally
         {
-            SetLevelSurfaceRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref levelSurfacePreviewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+            }
+
+            if (ownsCancellation && !IsDisposed)
+            {
+                SetLevelSurfaceRunning(false);
+            }
         }
     }
 
     public bool CanPreviewSelectedLevelSurface() =>
-        IsSelectedStepLevelSurface
+        !IsDisposed
+        && IsSelectedStepLevelSurface
         && isSourceReadyForRecipe()
         && !hasPendingStepParameterChanges()
         && !isLevelSurfacePreviewRunning
@@ -195,7 +306,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
 
     public void PublishSelectedLevelSurface()
     {
-        if (getSelectedPipelineStep() is not { } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { } step
             || !HasCurrentLevelSurfacePreview)
         {
             return;
@@ -210,12 +322,28 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
             $"Level Surface output, typed transform, and Level Frame published without re-running: {step.OutputEntityId}.");
     }
 
-    public void CancelLevelSurfacePreview() =>
-        levelSurfacePreviewCancellation?.Cancel();
+    public void CancelLevelSurfacePreview()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref levelSurfacePreviewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     public void MarkLevelSurfacePreviewStaleIfNeeded(object? sender)
     {
-        if (levelSurfacePreview is null || isLevelSurfacePreviewRunning)
+        if (IsDisposed
+            || levelSurfacePreview is null
+            || isLevelSurfacePreviewRunning)
         {
             return;
         }
@@ -245,7 +373,15 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
 
     public void ClearLevelSurfacePreview(string summary)
     {
-        levelSurfacePreviewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref levelSurfacePreviewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         levelSurfacePreview = null;
         levelSurfacePreviewPath = null;
         isLevelSurfacePreviewStale = false;
@@ -255,6 +391,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
 
     public void RefreshLevelSurfaceExecutionState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step
             && IsSelectedStepLevelSurface
             && levelSurfacePreview is null
@@ -271,13 +412,19 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
 
     public void SetLevelSurfaceRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isLevelSurfacePreviewRunning = value;
         onExecutionStateChanged();
     }
 
     public void PersistPublishedArtifactIfPossible()
     {
-        if (!isLevelSurfacePreviewPublished
+        if (IsDisposed
+            || !isLevelSurfacePreviewPublished
             || isLevelSurfacePreviewStale
             || levelSurfacePreview is not
             {
@@ -319,12 +466,22 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
                 sidecarPath,
                 JsonSerializer.Serialize(sidecar, new JsonSerializerOptions { WriteIndented = true }));
             levelSurfacePreviewPath = c3dPath;
+            if (IsDisposed)
+            {
+                return;
+            }
+
             appendLog("Save", $"Level Surface output and Level Frame sidecar saved: {sidecarPath}.");
             onExecutionStateChanged();
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             SetLevelSurfaceSummary($"Published in this session, but the Level Surface sidecar could not be saved: {exception.Message}");
             appendLog("Error", $"Level Surface sidecar save failed: {exception.Message}");
         }
@@ -332,6 +489,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
 
     public void RestorePublishedArtifact()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var recipePath = getRecipePath();
         var document = createDocument();
         var step = document.Steps.FirstOrDefault(candidate =>
@@ -354,6 +516,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
                 File.ReadAllText(sidecarPath),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidDataException("Level Surface sidecar is empty.");
+            if (IsDisposed)
+            {
+                return;
+            }
+
             if (!string.Equals(record.StepId, step.Id, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.OutputEntityId, record.OutputArtifactId, StringComparison.OrdinalIgnoreCase))
@@ -423,6 +590,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
                 throw new InvalidDataException("Level Surface sidecar frame chain does not match the current source, result, transform, and Level Frame.");
             }
 
+            if (IsDisposed)
+            {
+                return;
+            }
+
             levelSurfacePreview = new C3DLevelSurfaceEvaluation(
                 new ToolResult(
                     C3DLevelSurfaceRule.ToolName,
@@ -455,6 +627,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or JsonException)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             SetLevelSurfaceSummary($"Saved Level Surface output was not restored: {exception.Message}");
             appendLog("Warning", $"Level Surface sidecar restore skipped: {exception.Message}");
         }
@@ -462,8 +639,37 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
 
     private void SetLevelSurfaceSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         levelSurfaceExecutionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref levelSurfacePreviewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    {
+        if (currentCancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            currentCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        currentCancellation.Dispose();
     }
 
     private string GetRecipeDirectory()

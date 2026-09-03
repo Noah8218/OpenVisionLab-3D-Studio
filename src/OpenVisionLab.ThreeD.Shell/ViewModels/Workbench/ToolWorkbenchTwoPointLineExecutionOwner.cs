@@ -1,10 +1,11 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
+internal sealed class ToolWorkbenchTwoPointLineExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepTwoPointLine;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -32,6 +33,7 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Capture exactly two ordered C3D grid cells, teach an output role, then Preview explicitly.";
+    private int disposalState;
 
     public ToolWorkbenchTwoPointLineExecutionOwner(
         Func<bool> isSelectedStepTwoPointLine,
@@ -67,24 +69,26 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    private bool IsPreviewForSelectedStep => previewOutput is not null
+    private bool IsPreviewForSelectedStep => !IsDisposed && previewOutput is not null
         && string.Equals(
             getSelectedPipelineStep()?.OutputEntityId,
             previewOutput.OutputEntityId,
             StringComparison.OrdinalIgnoreCase);
 
-    public bool IsSelectedStepTwoPointLine => isSelectedStepTwoPointLine();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => IsPreviewForSelectedStep && !IsPreviewStale;
-    public bool IsPreviewStale => getSelectedPipelineStep() is { } step
+    public bool IsSelectedStepTwoPointLine => !IsDisposed && isSelectedStepTwoPointLine();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && IsPreviewForSelectedStep && !IsPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && getSelectedPipelineStep() is { } step
         && staleOutputIds.Contains(step.OutputEntityId);
-    public bool IsPreviewPublished => isPreviewPublished && IsPreviewForSelectedStep;
-    public C3DTwoPointLineFeature? CurrentOutput => IsPreviewForSelectedStep
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished && IsPreviewForSelectedStep;
+    public C3DTwoPointLineFeature? CurrentOutput => IsDisposed ? null : IsPreviewForSelectedStep
         ? previewOutput
         : null;
-    public string ExecutionSummary => executionSummary;
+    public string ExecutionSummary => IsDisposed
+        ? "2-Point Line execution owner has been disposed."
+        : executionSummary;
 
-    public string OutputHashSummary => previewOutput is null
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
 
@@ -92,6 +96,11 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "2-Point Line execution owner has been disposed.";
+            }
+
             var selection = getSelectedTeachingSelection();
             return (selection?.Points is { Count: 2 } points
                 ? $"Ordered picks: row {points[0].Locator.Row}, column {points[0].Locator.Column} → row {points[1].Locator.Row}, column {points[1].Locator.Column}"
@@ -104,39 +113,84 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
 
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DTwoPointLineFeature? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DTwoPointLineFeature? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
+
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         staleOutputIds.Remove(step.OutputEntityId);
         step.State = "Preview running";
         SetSummary("2-Point Line Preview is resolving the exact current raw C3D values for the authored ordered picks.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"2-Point Line Preview started: {step.Id}.");
         try
         {
+            var recipeDirectory = GetRecipeDirectory();
             var evaluation = await Task.Run(
                 () => ToolRecipeTwoPointLineExecution.Execute(
                     createDocument(),
                     step.Id,
-                    GetRecipeDirectory(),
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    recipeDirectory,
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 appendLog("Error", $"2-Point Line Preview failed: {evaluation.Result.Message}");
                 return false;
             }
@@ -144,26 +198,57 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
             previewOutput = evaluation.Output;
             step.State = "Preview ready";
             SetSummary($"Preview ready | {SelectionSummary} | segment {evaluation.Output.SegmentLength:G6} source-coordinate | no fitting or OK/NG");
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             appendLog("Preview", $"2-Point Line Preview ready: {evaluation.Output.ContentSha256}.");
-            requestDisplay(new ToolWorkbenchTwoPointLineDisplayRequestEventArgs(evaluation.Output, false));
+            if (IsCurrentPreview(currentCancellation))
+            {
+                requestDisplay(new ToolWorkbenchTwoPointLineDisplayRequestEventArgs(evaluation.Output, false));
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. The source, picks, and authored recipe were not changed.");
-            appendLog("Preview", "2-Point Line Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "2-Point Line Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelectedStepTwoPointLine || !isSourceReadyForRecipe()
+        if (IsDisposed || !IsSelectedStepTwoPointLine || !isSourceReadyForRecipe()
             || hasPendingStepParameterChanges() || isPreviewRunning
             || getSelectedPipelineStep() is not { } step)
         {
@@ -180,7 +265,7 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -189,15 +274,47 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
         publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | construction evidence only, no fit or OK/NG");
+        if (IsDisposed)
+        {
+            return;
+        }
+
         appendLog("Publish", $"2-Point Line output published without re-running: {step.OutputEntityId}.");
-        requestDisplay(new ToolWorkbenchTwoPointLineDisplayRequestEventArgs(previewOutput, true));
-        refreshLineIntersection();
+        if (!IsDisposed)
+        {
+            requestDisplay(new ToolWorkbenchTwoPointLineDisplayRequestEventArgs(previewOutput, true));
+        }
+
+        if (!IsDisposed)
+        {
+            refreshLineIntersection();
+        }
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var preview = previewOutput;
         if (isPreviewRunning)
         {
@@ -251,27 +368,52 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
             isPreviewPublished = false;
         }
 
-        markLineIntersectionStale();
+        if (!IsDisposed)
+        {
+            markLineIntersectionStale();
+        }
+
         affectedStep.State = "Preview stale";
-        clearDisplay();
+        if (!IsDisposed)
+        {
+            clearDisplay();
+        }
+
         SetSummary("Input, ordered picks, 2-Point Line parameters, route, or output changed. Preview again before Publish.");
     }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
         staleOutputIds.Clear();
         isPreviewStale = false;
         isPreviewPublished = false;
-        clearLineIntersection();
-        clearDisplay();
+        if (!IsDisposed)
+        {
+            clearLineIntersection();
+            clearDisplay();
+        }
+
         SetSummary(summary);
     }
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepTwoPointLine
             && (previewOutput is null
                 || !string.Equals(
@@ -303,14 +445,67 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        staleOutputIds.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 
     private string? GetRecipeDirectory()

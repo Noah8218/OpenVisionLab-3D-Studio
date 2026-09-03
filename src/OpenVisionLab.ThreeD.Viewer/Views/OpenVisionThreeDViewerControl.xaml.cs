@@ -16,6 +16,7 @@ using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Localization;
 using OpenVisionLab.ThreeD.Viewer.Models;
@@ -27,7 +28,7 @@ using SharpGL.WPF;
 
 namespace OpenVisionLab.ThreeD.Viewer;
 
-public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVisionThreeDViewerHost
+public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVisionThreeDViewerHost, IDisposable
 {
     private static bool useSoftwareRenderingForProcess;
 
@@ -43,7 +44,6 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private const string DefaultGlbSamplePath = @"3D\PublicSamples\glTF\Box.glb";
     private const string DefaultLazSamplePath = @"3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
-    private const int PlaneFitMaxSampledPoints = 140000;
     private const string TwoPointSelectionMode = "Two Point Measure";
     private const string RoiStepSelectionMode = "ROI Step Compare";
     private const uint GlTexture2D = 0x0DE1;
@@ -59,6 +59,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private const uint GlUnpackAlignment = 0x0CF5;
 
     private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
+    private readonly ViewerSourceLoadOperationCoordinator sourceLoadOperations = new();
     private C3DHeightGrid? c3dSample;
     private C3DHeightGrid? c3dRenderProxySource;
     private C3DHeightGridRenderProxy? c3dRenderProxy;
@@ -72,6 +73,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private bool c3dGpuReleasePending;
     private bool c3dGpuBuffersAvailable;
     private int c3dGpuUploadCount;
+    private int c3dGpuReleaseCount;
+    private int c3dGpuReleaseFailureCount;
     private int c3dGpuFallbackCount;
     private int c3dGpuDrawCount;
     private long c3dGpuUploadedBytes;
@@ -108,6 +111,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private bool importedMeshTextureReleasePending;
     private int importedMeshTextureUploadCount;
     private int importedMeshTextureReleaseCount;
+    private int importedMeshTextureReleaseFailureCount;
     private bool importedMeshTextureUploadFailed;
     private string importedMeshTextureUploadSummary = "texture none";
     private string? smokeScreenshotPath;
@@ -152,6 +156,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private readonly PropertyChangedEventHandler nominalActualPropertyChangedHandler;
     private readonly EventHandler languageChangedHandler;
     private readonly NominalActualComparisonExecutor nominalActualComparisonExecutor = new();
+    private int disposalState;
     private bool viewModelEventsSubscribed;
     private bool isOrbiting;
     private bool isPanning;
@@ -206,6 +211,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private double accumulatedFrameIntervalMilliseconds;
     private double accumulatedDrawMilliseconds;
     private int c3dDisplayListBuildCount;
+    private int c3dDisplayListReleaseCount;
+    private int c3dDisplayListReleaseFailureCount;
     private double lastC3DDisplayListBuildMilliseconds;
     private string lastC3DDisplayListBuildReason = "none";
     private string pendingC3DDisplayListBuildReason = "initial";
@@ -215,7 +222,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private int c3dSourceApplySuppressedRenderRequestCount;
     private int c3dSourceApplyRenderExecutionCount;
     private double c3dSourceApplyRenderExecutionMilliseconds;
+    private int openGLResourceRetirementAttemptCount;
+    private int openGLResourceRetirementCallbackCount;
+    private int openGLResourceRetirementContextUnavailableCount;
+    private int openGLResourceRetirementFailureCount;
     private Point lastMousePosition;
+
+    internal bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 
     private readonly record struct CameraSnapshot(
         double Yaw,

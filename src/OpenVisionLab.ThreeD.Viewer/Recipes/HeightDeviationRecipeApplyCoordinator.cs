@@ -5,7 +5,7 @@ using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 
-internal static class HeightDeviationRecipeApplyCoordinator
+public static class HeightDeviationRecipeApplyCoordinator
 {
     public static bool Apply(
         HeightDeviationRecipeLoadPlan plan,

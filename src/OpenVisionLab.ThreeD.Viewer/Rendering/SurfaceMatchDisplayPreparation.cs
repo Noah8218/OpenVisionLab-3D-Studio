@@ -143,6 +143,7 @@ internal static class SurfaceMatchDisplayPreparation
             acquisitionDirectionMarker);
     }
 }
+
 internal sealed record SurfaceMatchDisplayPreparationResult(
     SurfaceMatchDisplayFrame DisplayFrame,
     Vector3[] OverlayPositions,

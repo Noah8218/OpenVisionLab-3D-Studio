@@ -17,6 +17,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void ShowWorkbenchRegridHeightField(C3DTransformedHeightField output, bool isPublished, bool standaloneReferenceDisplay = true)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         ArgumentNullException.ThrowIfNull(output);
         PrepareRegridHeightFieldRenderData(output);
         viewModel.C3DSampleVisible = !standaloneReferenceDisplay;
@@ -26,13 +31,18 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void ClearWorkbenchRegridHeightField()
     {
+        ClearRegridHeightFieldRenderData();
+        viewModel.ClearWorkbenchRegridHeightField();
+        RenderNow();
+    }
+
+    private void ClearRegridHeightFieldRenderData()
+    {
         regridHeightFieldRenderOutput = null;
         regridHeightFieldPositions = null;
         regridHeightFieldPopulated = null;
         regridHeightFieldDisplayCenter = default;
         regridHeightFieldDisplayScale = 1f;
-        viewModel.ClearWorkbenchRegridHeightField();
-        RenderNow();
     }
 
     private void PrepareRegridHeightFieldRenderData(C3DTransformedHeightField output)

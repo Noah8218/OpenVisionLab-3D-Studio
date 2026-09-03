@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
@@ -9,10 +10,11 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 public sealed partial class ToolWorkbenchViewModel
 {
-    private RelayCommand previewSelectedStepCommand => filterExecutionOwner.PreviewSelectedStepCommand;
-    private RelayCommand runTeachingRecipeCommand => filterExecutionOwner.RunTeachingRecipeCommand;
-    private RelayCommand publishSelectedStepCommand => filterExecutionOwner.PublishSelectedStepCommand;
-    private RelayCommand cancelFilterPreviewCommand => filterExecutionOwner.CancelFilterPreviewCommand;
+    private RelayCommand previewSelectedStepCommand => selectedStepExecutionOwner.PreviewCommand;
+    private RelayCommand runTeachingRecipeCommand => orderedRunExecutionOwner.RunCommand;
+    private RelayCommand cancelTeachingRecipeCommand => orderedRunExecutionOwner.CancelCommand;
+    private RelayCommand publishSelectedStepCommand => selectedStepExecutionOwner.PublishCommand;
+    private RelayCommand cancelFilterPreviewCommand => selectedStepExecutionOwner.CancelCommand;
     private RelayCommand showFilterSourceCommand => filterExecutionOwner.ShowFilterSourceCommand;
     private RelayCommand setFilterKernel3Command => filterExecutionOwner.SetFilterKernel3Command;
     private RelayCommand setFilterKernel5Command => filterExecutionOwner.SetFilterKernel5Command;
@@ -24,25 +26,13 @@ public sealed partial class ToolWorkbenchViewModel
     private bool isFilterPreviewPublished => filterExecutionOwner.IsFilterPreviewPublished;
     private string filterExecutionSummary => filterExecutionOwner.FilterExecutionSummary;
     private bool isOrderedRunRunning
-    {
-        get => filterExecutionOwner.IsOrderedRunRunning;
-        set => filterExecutionOwner.IsOrderedRunRunning = value;
-    }
+        => orderedRunExecutionOwner.IsRunning;
     private ToolRecipeOrderedGraphExecutionResult? orderedRunResult
-    {
-        get => filterExecutionOwner.OrderedRunResult;
-        set => filterExecutionOwner.OrderedRunResult = value;
-    }
+        => orderedRunExecutionOwner.Result;
     private string? orderedRunRecordPath
-    {
-        get => filterExecutionOwner.OrderedRunRecordPath;
-        set => filterExecutionOwner.OrderedRunRecordPath = value;
-    }
+        => orderedRunExecutionOwner.RecordPath;
     private string orderedRunSummary
-    {
-        get => filterExecutionOwner.OrderedRunSummary;
-        set => filterExecutionOwner.OrderedRunSummary = value;
-    }
+        => orderedRunExecutionOwner.Summary;
 
     public event EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs>? FilterDisplayRequested;
     public event EventHandler<ToolWorkbenchOrderedRunCompletedEventArgs>? OrderedRunCompleted;
@@ -50,6 +40,7 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand PreviewSelectedStepCommand { get; private set; } = null!;
     public ICommand RunTeachingRecipeCommand { get; private set; } = null!;
+    public ICommand CancelTeachingRecipeCommand { get; private set; } = null!;
     public ICommand PublishSelectedStepCommand { get; private set; } = null!;
     public ICommand CancelFilterPreviewCommand { get; private set; } = null!;
     public ICommand CancelSelectedPreviewCommand { get; private set; } = null!;
@@ -62,26 +53,7 @@ public sealed partial class ToolWorkbenchViewModel
         string.Equals(SelectedPipelineStep?.ToolId, "filter", StringComparison.Ordinal);
 
     public bool IsFilterPreviewRunning => isFilterPreviewRunning;
-    public bool IsSelectedStepPreviewRunning =>
-        IsSelectedStepSurfaceMatch ? IsSurfaceMatchExperimentRunning
-            : IsSelectedStepFilter ? isFilterPreviewRunning
-            : IsSelectedStepRemoveOutlierPixels ? IsRemoveOutlierPreviewRunning
-            : IsSelectedStepConnectedRegion ? IsConnectedRegionPreviewRunning
-            : IsSelectedStepDomainMask ? IsDomainMaskPreviewRunning
-            : IsSelectedStepEditableRegion ? IsEditableRegionPreviewRunning
-            : IsSelectedStepLevelSurface ? IsLevelSurfacePreviewRunning
-            : IsSelectedStepRoiCrop ? IsRoiCropPreviewRunning
-            : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
-            : IsSelectedStepTwoPointLine ? IsTwoPointLinePreviewRunning
-            : IsSelectedStepThreePointPlane ? IsThreePointPlanePreviewRunning
-            : IsSelectedStepDatumPlaneDeviation ? IsDatumPlaneDeviationPreviewRunning
-            : IsSelectedStepLineFit ? IsLineFitPreviewRunning
-            : IsSelectedStepLineIntersection ? IsLineIntersectionPreviewRunning
-            : IsSelectedStepLandmarkCorrespondence ? IsLandmarkCorrespondencePreviewRunning
-            : IsSelectedStepXYZAffineSolve ? IsAffineSolvePreviewRunning
-            : IsSelectedStepXYZAffineApply ? IsAffineApplyPreviewRunning
-            : IsSelectedStepRegridHeightField ? IsRegridHeightFieldPreviewRunning
-            : IsSelectedStepMeasurement && IsMeasurementPreviewRunning;
+    public bool IsSelectedStepPreviewRunning => selectedStepExecutionOwner.IsRunning;
     public bool HasCurrentFilterPreview => filterPreviewOutput is not null && !isFilterPreviewStale;
     public bool IsFilterPreviewStale => isFilterPreviewStale;
     public bool IsFilterPreviewPublished => isFilterPreviewPublished;
@@ -138,6 +110,7 @@ public sealed partial class ToolWorkbenchViewModel
     {
         PreviewSelectedStepCommand = previewSelectedStepCommand;
         RunTeachingRecipeCommand = runTeachingRecipeCommand;
+        CancelTeachingRecipeCommand = cancelTeachingRecipeCommand;
         PublishSelectedStepCommand = publishSelectedStepCommand;
         CancelFilterPreviewCommand = cancelFilterPreviewCommand;
         CancelSelectedPreviewCommand = cancelFilterPreviewCommand;
@@ -147,345 +120,191 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel7Command = setFilterKernel7Command;
     }
 
+    private IReadOnlyDictionary<string, ToolWorkbenchSelectedStepExecutionRoute>
+        CreateSelectedStepExecutionRoutes()
+    {
+        var routes = new Dictionary<string, ToolWorkbenchSelectedStepExecutionRoute>(
+            StringComparer.Ordinal)
+        {
+            ["filter"] = new(
+                PreviewSelectedFilterAsync,
+                CanPreviewSelectedFilter,
+                PublishSelectedFilter,
+                () => HasCurrentFilterPreview && !IsFilterPreviewPublished,
+                filterExecutionOwner.CancelPreview,
+                () => IsFilterPreviewRunning,
+                RefreshFilterExecutionState),
+            ["remove-outlier-pixels"] = new(
+                PreviewSelectedRemoveOutlierPixelsAsync,
+                CanPreviewSelectedRemoveOutlierPixels,
+                PublishSelectedRemoveOutlierPixels,
+                () => HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished,
+                CancelRemoveOutlierPreview,
+                () => IsRemoveOutlierPreviewRunning,
+                RefreshRemoveOutlierExecutionState),
+            ["connected-region"] = new(
+                PreviewSelectedConnectedRegionAsync,
+                CanPreviewSelectedConnectedRegion,
+                PublishSelectedConnectedRegion,
+                () => HasCurrentConnectedRegionPreview && !IsConnectedRegionPreviewPublished,
+                CancelConnectedRegionPreview,
+                () => IsConnectedRegionPreviewRunning,
+                RefreshConnectedRegionExecutionState),
+            ["domain-mask"] = new(
+                PreviewSelectedDomainMaskAsync,
+                CanPreviewSelectedDomainMask,
+                PublishSelectedDomainMask,
+                () => HasCurrentDomainMaskPreview && !IsDomainMaskPreviewPublished,
+                CancelDomainMaskPreview,
+                () => IsDomainMaskPreviewRunning,
+                RefreshDomainMaskExecutionState),
+            ["editable-region"] = new(
+                PreviewSelectedEditableRegionAsync,
+                CanPreviewSelectedEditableRegion,
+                PublishSelectedEditableRegion,
+                () => HasCurrentEditableRegionPreview && !IsEditableRegionPreviewPublished,
+                CancelEditableRegionPreview,
+                () => IsEditableRegionPreviewRunning,
+                RefreshEditableRegionExecutionState),
+            ["level-surface"] = new(
+                PreviewSelectedLevelSurfaceAsync,
+                CanPreviewSelectedLevelSurface,
+                PublishSelectedLevelSurface,
+                () => HasCurrentLevelSurfacePreview && !IsLevelSurfacePreviewPublished,
+                CancelLevelSurfacePreview,
+                () => IsLevelSurfacePreviewRunning,
+                RefreshLevelSurfaceExecutionState),
+            ["roi-crop"] = new(
+                PreviewSelectedRoiCropAsync,
+                CanPreviewSelectedRoiCrop,
+                PublishSelectedRoiCrop,
+                () => HasCurrentRoiCropPreview && !IsRoiCropPreviewPublished,
+                CancelRoiCropPreview,
+                () => IsRoiCropPreviewRunning,
+                RefreshRoiCropExecutionState),
+            ["height-difference-edge"] = new(
+                PreviewSelectedHeightDifferenceEdgeAsync,
+                CanPreviewSelectedHeightDifferenceEdge,
+                PublishSelectedHeightDifferenceEdge,
+                () => HasCurrentEdgePreview && !IsEdgePreviewPublished,
+                CancelHeightDifferenceEdgePreview,
+                () => IsEdgePreviewRunning,
+                RefreshHeightDifferenceEdgeExecutionState),
+            ["two-point-line"] = new(
+                PreviewSelectedTwoPointLineAsync,
+                CanPreviewSelectedTwoPointLine,
+                PublishSelectedTwoPointLine,
+                () => HasCurrentTwoPointLinePreview && !IsTwoPointLinePreviewPublished,
+                CancelTwoPointLinePreview,
+                () => IsTwoPointLinePreviewRunning,
+                RefreshTwoPointLineExecutionState),
+            ["three-point-plane"] = new(
+                PreviewSelectedThreePointPlaneAsync,
+                CanPreviewSelectedThreePointPlane,
+                PublishSelectedThreePointPlane,
+                () => HasCurrentThreePointPlanePreview && !IsThreePointPlanePreviewPublished,
+                CancelThreePointPlanePreview,
+                () => IsThreePointPlanePreviewRunning,
+                RefreshThreePointPlaneExecutionState),
+            ["datum-plane-raw-height-deviation"] = new(
+                PreviewSelectedDatumPlaneDeviationAsync,
+                CanPreviewSelectedDatumPlaneDeviation,
+                PublishSelectedDatumPlaneDeviation,
+                () => HasCurrentDatumPlaneDeviationPreview && !IsDatumPlaneDeviationPreviewPublished,
+                CancelDatumPlaneDeviationPreview,
+                () => IsDatumPlaneDeviationPreviewRunning,
+                RefreshDatumPlaneDeviationExecutionState),
+            ["three-d-line-fit"] = new(
+                PreviewSelectedLineFitAsync,
+                CanPreviewSelectedLineFit,
+                PublishSelectedLineFit,
+                () => HasCurrentLineFitPreview && !IsLineFitPreviewPublished,
+                CancelLineFitPreview,
+                () => IsLineFitPreviewRunning,
+                RefreshLineFitExecutionState),
+            ["line-intersection"] = new(
+                PreviewSelectedLineIntersectionAsync,
+                CanPreviewSelectedLineIntersection,
+                PublishSelectedLineIntersection,
+                () => HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished,
+                CancelLineIntersectionPreview,
+                () => IsLineIntersectionPreviewRunning,
+                RefreshLineIntersectionExecutionState),
+            ["landmark-correspondence"] = new(
+                PreviewSelectedLandmarkCorrespondenceAsync,
+                CanPreviewSelectedLandmarkCorrespondence,
+                PublishSelectedLandmarkCorrespondence,
+                () => HasCurrentLandmarkCorrespondencePreview && !IsLandmarkCorrespondencePreviewPublished,
+                CancelLandmarkCorrespondencePreview,
+                () => IsLandmarkCorrespondencePreviewRunning,
+                RefreshLandmarkCorrespondenceExecutionState),
+            ["xyz-affine-solve"] = new(
+                PreviewSelectedXYZAffineSolveAsync,
+                CanPreviewSelectedXYZAffineSolve,
+                PublishSelectedXYZAffineSolve,
+                () => HasCurrentAffineSolvePreview && !IsAffineSolvePreviewPublished,
+                CancelXYZAffineSolvePreview,
+                () => IsAffineSolvePreviewRunning,
+                RefreshXYZAffineSolveExecutionState),
+            ["xyz-affine-apply"] = new(
+                PreviewSelectedXYZAffineApplyAsync,
+                CanPreviewSelectedXYZAffineApply,
+                PublishSelectedXYZAffineApply,
+                () => HasCurrentAffineApplyPreview && !IsAffineApplyPreviewPublished,
+                CancelXYZAffineApplyPreview,
+                () => IsAffineApplyPreviewRunning,
+                RefreshXYZAffineApplyExecutionState),
+            ["re-grid-height-map"] = new(
+                PreviewSelectedRegridHeightFieldAsync,
+                CanPreviewSelectedRegridHeightField,
+                PublishSelectedRegridHeightField,
+                () => CanPublishRegridHeightFieldPreview,
+                CancelRegridHeightFieldPreview,
+                () => IsRegridHeightFieldPreviewRunning,
+                RefreshRegridHeightFieldExecutionState),
+            ["surface-match"] = new(
+                PreviewSelectedSurfaceMatchExperimentAsync,
+                CanPreviewSelectedSurfaceMatchExperiment,
+                PublishSelectedSurfaceMatchExperiment,
+                CanPublishSelectedSurfaceMatchExperiment,
+                CancelSurfaceMatchExperimentPreview,
+                () => IsSurfaceMatchExperimentRunning,
+                RefreshSurfaceMatchExperimentState)
+        };
+
+        var measurementRoute = new ToolWorkbenchSelectedStepExecutionRoute(
+            PreviewSelectedMeasurementAsync,
+            CanPreviewSelectedMeasurement,
+            PublishSelectedMeasurement,
+            () => HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished,
+            CancelMeasurementPreview,
+            () => IsMeasurementPreviewRunning,
+            RefreshMeasurementExecutionState);
+        foreach (var toolId in new[]
+                 {
+                     "thickness",
+                     "warpage",
+                     "plane-flatness",
+                     "point-pair-dimensions",
+                     "gap-flush",
+                     "volume",
+                     "cross-section-dimensions",
+                     "completeness-grid"
+                 })
+        {
+            routes.Add(toolId, measurementRoute);
+        }
+
+        return routes;
+    }
+
     private bool CanShowFilterSource() =>
         filterExecutionOwner.FilterPreviewOutput is not null && File.Exists(Source.Path);
-
-    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepSurfaceMatch
-        ? PreviewSelectedSurfaceMatchExperimentAsync()
-        : IsSelectedStepMeasurement ? PreviewSelectedMeasurementAsync()
-        : IsSelectedStepRemoveOutlierPixels
-        ? PreviewSelectedRemoveOutlierPixelsAsync()
-        : IsSelectedStepConnectedRegion
-        ? PreviewSelectedConnectedRegionAsync()
-        : IsSelectedStepDomainMask
-        ? PreviewSelectedDomainMaskAsync()
-        : IsSelectedStepEditableRegion
-        ? PreviewSelectedEditableRegionAsync()
-        : IsSelectedStepLevelSurface
-        ? PreviewSelectedLevelSurfaceAsync()
-        : IsSelectedStepRoiCrop
-        ? PreviewSelectedRoiCropAsync()
-        : IsSelectedStepRegridHeightField
-        ? PreviewSelectedRegridHeightFieldAsync()
-        : IsSelectedStepXYZAffineApply
-        ? PreviewSelectedXYZAffineApplyAsync()
-        : IsSelectedStepXYZAffineSolve
-        ? PreviewSelectedXYZAffineSolveAsync()
-        : IsSelectedStepDatumPlaneDeviation
-        ? PreviewSelectedDatumPlaneDeviationAsync()
-        : IsSelectedStepLandmarkCorrespondence
-        ? PreviewSelectedLandmarkCorrespondenceAsync()
-        : IsSelectedStepLineIntersection
-        ? PreviewSelectedLineIntersectionAsync()
-        : IsSelectedStepTwoPointLine ? PreviewSelectedTwoPointLineAsync()
-        : IsSelectedStepThreePointPlane ? PreviewSelectedThreePointPlaneAsync()
-        : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
-        : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
-
-    private bool CanPreviewSelectedStep() => SelectedPipelineStep?.OutputEnabled == true
-        && (IsSelectedStepSurfaceMatch
-        ? CanPreviewSelectedSurfaceMatchExperiment()
-        : IsSelectedStepMeasurement ? CanPreviewSelectedMeasurement()
-        : IsSelectedStepRemoveOutlierPixels
-        ? CanPreviewSelectedRemoveOutlierPixels()
-        : IsSelectedStepConnectedRegion
-        ? CanPreviewSelectedConnectedRegion()
-        : IsSelectedStepDomainMask
-        ? CanPreviewSelectedDomainMask()
-        : IsSelectedStepEditableRegion
-        ? CanPreviewSelectedEditableRegion()
-        : IsSelectedStepLevelSurface
-        ? CanPreviewSelectedLevelSurface()
-        : IsSelectedStepRoiCrop
-        ? CanPreviewSelectedRoiCrop()
-        : IsSelectedStepRegridHeightField
-        ? CanPreviewSelectedRegridHeightField()
-        : IsSelectedStepXYZAffineApply
-        ? CanPreviewSelectedXYZAffineApply()
-        : IsSelectedStepXYZAffineSolve
-        ? CanPreviewSelectedXYZAffineSolve()
-        : IsSelectedStepDatumPlaneDeviation
-        ? CanPreviewSelectedDatumPlaneDeviation()
-        : IsSelectedStepLandmarkCorrespondence
-        ? CanPreviewSelectedLandmarkCorrespondence()
-        : IsSelectedStepLineIntersection
-        ? CanPreviewSelectedLineIntersection()
-        : IsSelectedStepTwoPointLine ? CanPreviewSelectedTwoPointLine()
-        : IsSelectedStepThreePointPlane ? CanPreviewSelectedThreePointPlane()
-        : IsSelectedStepLineFit ? CanPreviewSelectedLineFit()
-        : IsSelectedStepHeightDifferenceEdge ? CanPreviewSelectedHeightDifferenceEdge() : CanPreviewSelectedFilter());
-
-    private void PublishSelectedStep()
-    {
-        if (SelectedPipelineStep?.OutputEnabled == false)
-        {
-            return;
-        }
-
-        if (IsSelectedStepSurfaceMatch)
-        {
-            PublishSelectedSurfaceMatchExperiment();
-        }
-        else if (IsSelectedStepMeasurement)
-        {
-            PublishSelectedMeasurement();
-        }
-        else if (IsSelectedStepRemoveOutlierPixels)
-        {
-            PublishSelectedRemoveOutlierPixels();
-        }
-        else if (IsSelectedStepConnectedRegion)
-        {
-            PublishSelectedConnectedRegion();
-        }
-        else if (IsSelectedStepDomainMask)
-        {
-            PublishSelectedDomainMask();
-        }
-        else if (IsSelectedStepEditableRegion)
-        {
-            PublishSelectedEditableRegion();
-        }
-        else if (IsSelectedStepLevelSurface)
-        {
-            PublishSelectedLevelSurface();
-        }
-        else if (IsSelectedStepRoiCrop)
-        {
-            PublishSelectedRoiCrop();
-        }
-        else if (IsSelectedStepRegridHeightField)
-        {
-            PublishSelectedRegridHeightField();
-        }
-        else if (IsSelectedStepXYZAffineApply)
-        {
-            PublishSelectedXYZAffineApply();
-        }
-        else if (IsSelectedStepXYZAffineSolve)
-        {
-            PublishSelectedXYZAffineSolve();
-        }
-        else if (IsSelectedStepDatumPlaneDeviation)
-        {
-            PublishSelectedDatumPlaneDeviation();
-        }
-        else if (IsSelectedStepLandmarkCorrespondence)
-        {
-            PublishSelectedLandmarkCorrespondence();
-        }
-        else if (IsSelectedStepLineIntersection)
-        {
-            PublishSelectedLineIntersection();
-        }
-        else if (IsSelectedStepTwoPointLine)
-        {
-            PublishSelectedTwoPointLine();
-        }
-        else if (IsSelectedStepThreePointPlane)
-        {
-            PublishSelectedThreePointPlane();
-        }
-        else if (IsSelectedStepLineFit)
-        {
-            PublishSelectedLineFit();
-        }
-        else if (IsSelectedStepHeightDifferenceEdge)
-        {
-            PublishSelectedHeightDifferenceEdge();
-        }
-        else
-        {
-            PublishSelectedFilter();
-        }
-    }
-
-    private bool CanPublishSelectedStep() => SelectedPipelineStep?.OutputEnabled == true
-        && (IsSelectedStepSurfaceMatch
-        ? CanPublishSelectedSurfaceMatchExperiment()
-        : IsSelectedStepMeasurement ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
-        : IsSelectedStepRemoveOutlierPixels
-        ? HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished
-        : IsSelectedStepConnectedRegion
-        ? HasCurrentConnectedRegionPreview && !IsConnectedRegionPreviewPublished
-        : IsSelectedStepDomainMask
-        ? HasCurrentDomainMaskPreview && !IsDomainMaskPreviewPublished
-        : IsSelectedStepEditableRegion
-        ? HasCurrentEditableRegionPreview && !IsEditableRegionPreviewPublished
-        : IsSelectedStepLevelSurface
-        ? HasCurrentLevelSurfacePreview && !IsLevelSurfacePreviewPublished
-        : IsSelectedStepRoiCrop
-        ? HasCurrentRoiCropPreview && !IsRoiCropPreviewPublished
-        : IsSelectedStepRegridHeightField
-        ? CanPublishRegridHeightFieldPreview
-        : IsSelectedStepXYZAffineApply
-        ? HasCurrentAffineApplyPreview && !IsAffineApplyPreviewPublished
-        : IsSelectedStepXYZAffineSolve
-        ? HasCurrentAffineSolvePreview && !IsAffineSolvePreviewPublished
-        : IsSelectedStepDatumPlaneDeviation
-        ? HasCurrentDatumPlaneDeviationPreview && !IsDatumPlaneDeviationPreviewPublished
-        : IsSelectedStepLandmarkCorrespondence
-        ? HasCurrentLandmarkCorrespondencePreview && !IsLandmarkCorrespondencePreviewPublished
-        : IsSelectedStepLineIntersection
-        ? HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished
-        : IsSelectedStepTwoPointLine
-        ? HasCurrentTwoPointLinePreview && !IsTwoPointLinePreviewPublished
-        : IsSelectedStepThreePointPlane
-        ? HasCurrentThreePointPlanePreview && !IsThreePointPlanePreviewPublished
-        : IsSelectedStepLineFit
-        ? HasCurrentLineFitPreview && !IsLineFitPreviewPublished
-        : IsSelectedStepHeightDifferenceEdge ? HasCurrentEdgePreview && !IsEdgePreviewPublished : IsSelectedStepFilter && HasCurrentFilterPreview && !isFilterPreviewPublished);
-
-    private void CancelSelectedPreview()
-    {
-        if (IsSelectedStepSurfaceMatch)
-        {
-            CancelSurfaceMatchExperimentPreview();
-        }
-        else if (IsSelectedStepMeasurement)
-        {
-            CancelMeasurementPreview();
-        }
-        else if (IsSelectedStepRemoveOutlierPixels)
-        {
-            CancelRemoveOutlierPreview();
-        }
-        else if (IsSelectedStepConnectedRegion)
-        {
-            CancelConnectedRegionPreview();
-        }
-        else if (IsSelectedStepDomainMask)
-        {
-            CancelDomainMaskPreview();
-        }
-        else if (IsSelectedStepEditableRegion)
-        {
-            CancelEditableRegionPreview();
-        }
-        else if (IsSelectedStepLevelSurface)
-        {
-            CancelLevelSurfacePreview();
-        }
-        else if (IsSelectedStepRoiCrop)
-        {
-            CancelRoiCropPreview();
-        }
-        else if (IsSelectedStepRegridHeightField)
-        {
-            CancelRegridHeightFieldPreview();
-        }
-        else if (IsSelectedStepXYZAffineApply)
-        {
-            CancelXYZAffineApplyPreview();
-        }
-        else if (IsSelectedStepXYZAffineSolve)
-        {
-            CancelXYZAffineSolvePreview();
-        }
-        else if (IsSelectedStepDatumPlaneDeviation)
-        {
-            CancelDatumPlaneDeviationPreview();
-        }
-        else if (IsSelectedStepLandmarkCorrespondence)
-        {
-            CancelLandmarkCorrespondencePreview();
-        }
-        else if (IsSelectedStepLineIntersection)
-        {
-            CancelLineIntersectionPreview();
-        }
-        else if (IsSelectedStepTwoPointLine)
-        {
-            CancelTwoPointLinePreview();
-        }
-        else if (IsSelectedStepThreePointPlane)
-        {
-            CancelThreePointPlanePreview();
-        }
-        else if (IsSelectedStepLineFit)
-        {
-            CancelLineFitPreview();
-        }
-        else if (IsSelectedStepHeightDifferenceEdge)
-        {
-            CancelHeightDifferenceEdgePreview();
-        }
-        else
-        {
-            filterExecutionOwner.CancelPreview();
-        }
-    }
 
     public Task<bool> PreviewSelectedFilterAsync() =>
         filterExecutionOwner.PreviewAsync();
 
-    public async Task<bool> RunTeachingRecipeAsync()
-    {
-        var document = CreateDocument();
-        if (!TryGetOrderedRunCapability(document, out var message)
-            || RecipePath is not { } recipePath)
-        {
-            orderedRunSummary = message;
-            NotifyOrderedRunState();
-            AppendLog("Run", message);
-            return false;
-        }
-
-        orderedRunResult = null;
-        orderedRunRecordPath = null;
-        isOrderedRunRunning = true;
-        orderedRunSummary = Localize(
-            $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
-            $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
-        foreach (var step in PipelineSteps)
-        {
-            step.State = "Run running";
-        }
-        NotifyOrderedRunState();
-        AppendLog("Run", $"Ordered recipe Run started: {Path.GetFileName(recipePath)} | steps={document.Steps.Count}.");
-
-        try
-        {
-            var execution = await Task.Run(() =>
-                ToolRecipeOrderedGraphExecution.Execute(
-                    document,
-                    Source.Path,
-                    SourceQuality.Report));
-            orderedRunResult = execution;
-            foreach (var step in PipelineSteps)
-            {
-                step.State = "Not run";
-            }
-            foreach (var stepResult in execution.Steps)
-            {
-                var step = PipelineSteps.FirstOrDefault(candidate =>
-                    string.Equals(candidate.Id, stepResult.StepId, StringComparison.Ordinal));
-                if (step is not null)
-                {
-                    step.State = $"Run {stepResult.Result.Status}";
-                }
-            }
-
-            orderedRunSummary = CreateOrderedRunSummary(execution);
-            NotifyOrderedRunState();
-            AppendLog(
-                "Run",
-                $"Ordered recipe Run completed: status={execution.Status} | steps={execution.Steps.Count} | elapsedMs={execution.Duration.TotalMilliseconds:F3}.");
-            OrderedRunCompleted?.Invoke(
-                this,
-                new ToolWorkbenchOrderedRunCompletedEventArgs(
-                    Path.GetFullPath(recipePath),
-                    document,
-                    Path.GetFullPath(Source.Path),
-                    execution));
-            return execution.Status is not (ResultStatus.Error or ResultStatus.NotRun);
-        }
-        finally
-        {
-            isOrderedRunRunning = false;
-            NotifyOrderedRunState();
-        }
-    }
+    public Task<bool> RunTeachingRecipeAsync() => orderedRunExecutionOwner.RunAsync();
 
     private void PublishSelectedFilter() => filterExecutionOwner.Publish();
 
@@ -507,8 +326,7 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool CanPreviewSelectedFilter() => filterExecutionOwner.CanPreview();
 
-    private bool CanRunTeachingRecipe() =>
-        TryGetOrderedRunCapability(out _);
+    private bool CanRunTeachingRecipe() => orderedRunExecutionOwner.CanRun();
 
     private bool TryGetOrderedRunCapability(out string message) =>
         TryGetOrderedRunCapability(CreateDocument(), out message);
@@ -594,31 +412,17 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal void AttachOrderedRunRecord(string path)
     {
-        orderedRunRecordPath = Path.GetFullPath(path);
-        NotifyOrderedRunState();
+        orderedRunExecutionOwner.AttachRecord(path);
     }
 
     internal void ReportOrderedRunRecordFailure(string message)
     {
-        orderedRunSummary = Localize(
-            $"실행은 완료되었지만 Run Record 저장에 실패했습니다: {message}",
-            $"Run completed, but its Run Record could not be saved: {message}");
-        AppendLog("Error", orderedRunSummary);
-        NotifyOrderedRunState();
+        orderedRunExecutionOwner.ReportRecordFailure(message);
     }
 
     private void InvalidateOrderedRun(string summary)
     {
-        if (orderedRunResult is null && orderedRunRecordPath is null)
-        {
-            return;
-        }
-
-        orderedRunResult = null;
-        orderedRunRecordPath = null;
-        orderedRunSummary = summary;
-        NotifyOrderedRunState();
-        OrderedRunInvalidated?.Invoke(this, EventArgs.Empty);
+        orderedRunExecutionOwner.Invalidate(summary);
     }
 
     private void NotifyOrderedRunState()
@@ -661,14 +465,12 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshFilterCommands()
     {
-        if (previewSelectedStepCommand is null)
+        if (selectedStepExecutionOwner is null)
         {
             return;
         }
-        previewSelectedStepCommand.RaiseCanExecuteChanged();
+        selectedStepExecutionOwner.RefreshCommandStates();
         runTeachingRecipeCommand.RaiseCanExecuteChanged();
-        publishSelectedStepCommand.RaiseCanExecuteChanged();
-        cancelFilterPreviewCommand.RaiseCanExecuteChanged();
         showFilterSourceCommand.RaiseCanExecuteChanged();
         setFilterKernel3Command.RaiseCanExecuteChanged();
         setFilterKernel5Command.RaiseCanExecuteChanged();

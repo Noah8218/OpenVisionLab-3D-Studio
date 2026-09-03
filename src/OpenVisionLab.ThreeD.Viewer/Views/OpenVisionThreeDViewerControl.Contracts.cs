@@ -17,6 +17,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -81,6 +82,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             ? "C3DRenderProxy|loaded=False"
             : $"C3DRenderProxy|loaded=True|points={c3dRenderProxyForContract.Points.Length}|triangles={c3dRenderProxyForContract.TriangleCount}|edges={c3dRenderProxyForContract.EdgeCount}|gridEdges={c3dRenderProxyForContract.GridEdgeCount}|mediumGridEdges={c3dRenderProxyForContract.InteractionGridEdgeCount}|coarseGridEdges={c3dRenderProxyForContract.CoarseInteractionGridEdgeCount}|mediumLineInterval={C3DHeightGridRenderProxy.MediumWireframeLineInterval}|coarseLineInterval={C3DHeightGridRenderProxy.CoarseWireframeLineInterval}|surfaceEdges={c3dRenderProxyForContract.SurfaceEdgeCount}|surfaceEdgeInterval={C3DHeightGridRenderProxy.SurfaceEdgeSampleInterval}|topology=sampled-grid-neighbors|effectiveStyle={displaySettings.GeometryStyle}|renderCache={(c3dGpuBuffersAvailable ? "OpenGLVboIbo" : "OpenGLDisplayListFallback")}|renderCacheReady={c3dGpuBuffersAvailable || c3dDisplayListId != 0}|gpuBufferReady={c3dGpuBuffersAvailable}|wireframeLod={interactionWireframeLodLevel}|interactionLodActive={interactionWireframeLodActive}|displayOnly=True|measurementGeometry=SourceCells");
         lines.Add($"OpenGLCapabilities|vendor={CleanContractText(openGLVendor)}|renderer={CleanContractText(openGLRenderer)}|version={CleanContractText(openGLVersion)}|c3dPath={(c3dGpuBuffersAvailable ? "VBO+IBO+DrawElements" : "DisplayListFallback")}|usage=GL_STATIC_DRAW|uploads={c3dGpuUploadCount}|draws={c3dGpuDrawCount}|uploadedBytes={c3dGpuUploadedBytes}|lastUploadMs={FormatContractNumber(lastC3DGpuUploadMilliseconds)}|fallbacks={c3dGpuFallbackCount}|failure={CleanContractText(lastC3DGpuFailure)}");
+        var managedOpenGLHandlesCleared = c3dGpuBuffers is null
+            && c3dDisplayListId == 0
+            && c3dInteractionDisplayListId == 0
+            && importedMeshTextureId == 0;
+        var renderContextProvider = Viewport.OpenGL.RenderContextProvider;
+        var renderContextHandleActive = renderContextProvider?.RenderContextHandle != IntPtr.Zero;
+        lines.Add($"OpenGLResourceLifetime|disposed={IsDisposed}|c3dGpuActive={c3dGpuBuffers is not null}|c3dGpuAvailable={c3dGpuBuffersAvailable}|c3dGpuReleases={c3dGpuReleaseCount}|c3dGpuReleaseFailures={c3dGpuReleaseFailureCount}|displayListReleases={c3dDisplayListReleaseCount}|displayListReleaseFailures={c3dDisplayListReleaseFailureCount}|meshTextureReleases={importedMeshTextureReleaseCount}|meshTextureReleaseFailures={importedMeshTextureReleaseFailureCount}|retirementAttempts={openGLResourceRetirementAttemptCount}|retirementCallbacks={openGLResourceRetirementCallbackCount}|retirementContextUnavailable={openGLResourceRetirementContextUnavailableCount}|retirementFailures={openGLResourceRetirementFailureCount}|managedHandlesCleared={managedOpenGLHandlesCleared}|renderContextDisposeAttempted={renderContextLifetime.DisposeAttempted}|renderContextDisposed={renderContextLifetime.DisposeSucceeded}|renderContextDisposeAttempts={renderContextLifetime.DisposeAttempts}|renderContextDisposeFailures={renderContextLifetime.DisposeFailures}|renderContextDisposeFailureType={CleanContractText(renderContextLifetime.FailureType)}|renderContextHandleActive={renderContextHandleActive}");
         lines.Add($"PointCloudPerformance|loadMs={FormatContractNumber(viewModel.LazLoadMilliseconds)}|samplePercent={FormatContractNumber(viewModel.LazSamplePercent)}|sampleStride={viewModel.LazSampleStride}|summary={CleanContractText(viewModel.LazSamplingSummary)}");
         lines.Add($"PointCloudLoadLifecycle|running={viewModel.IsLazPointCloudLoading}|progress={FormatContractNumber(viewModel.LazPointCloudLoadProgress)}|requests={lazPointCloudLoadRequestCount}|densityEventReloads={lazPointCloudDensityEventReloadCount}|smokeReloads={lazPointCloudSmokeReloadCount}|decodes={lazPointCloudDecodeCount}|cacheHits={lazPointCloudCacheHitCount}|cancellations={lazPointCloudCancellationCount}|progressUpdates={lazPointCloudProgressUpdateCount}|lastProgress={FormatContractNumber(lazPointCloudLastProgress)}|progressCapture={smokeLazProgressScreenshotCaptured}");
         lines.Add("ImportedMesh");
@@ -208,7 +216,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         else lines.Add("CrossSectionStep|configured=False");
         lines.Add($"CrossSection|visible={viewModel.CrossSectionVisible}|status={(viewModel.CrossSectionVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|width={FormatContractNumber(viewModel.CrossSectionWidth)}|heightRange={FormatContractNumber(viewModel.CrossSectionHeightRange)}|rawMinimum={FormatContractNumber(viewModel.CrossSectionRawMinimum)}|rawMaximum={FormatContractNumber(viewModel.CrossSectionRawMaximum)}|validSamples={viewModel.CrossSectionValidSampleCount}|summary={CleanContractText(viewModel.CrossSectionSummary)}|details={CleanContractText(viewModel.CrossSectionDetails)}");
         lines.Add("PlaneReferenceMeasurement");
-        lines.Add($"PlaneReference|visible={viewModel.PlaneReferenceMeasurementVisible}|fit=least-squares-height-field|sampleBudget={PlaneFitMaxSampledPoints}|samples={viewModel.PlaneReferenceSampleCount}|normal=({FormatContractNumber(viewModel.PlaneReferenceNormalX)},{FormatContractNumber(viewModel.PlaneReferenceNormalY)},{FormatContractNumber(viewModel.PlaneReferenceNormalZ)})|rms={FormatContractNumber(viewModel.PlaneReferenceFitRms)}|signedDistance={FormatContractNumber(viewModel.PlaneReferenceSignedDistance)}|absoluteDistance={FormatContractNumber(viewModel.PlaneReferenceAbsoluteDistance)}|referenceY={FormatContractNumber(viewModel.PlaneReferenceY)}|targetY={FormatContractNumber(viewModel.PlaneReferenceTargetY)}|rawHeightDelta={FormatContractNumber(viewModel.PlaneReferenceRawHeightDelta)}|summary={CleanContractText(viewModel.PlaneReferenceMeasurementDetails)}");
+        lines.Add($"PlaneReference|visible={viewModel.PlaneReferenceMeasurementVisible}|fit=least-squares-height-field|sampleBudget={C3DReferencePlaneFitCoordinator.MaxSampledPoints}|samples={viewModel.PlaneReferenceSampleCount}|normal=({FormatContractNumber(viewModel.PlaneReferenceNormalX)},{FormatContractNumber(viewModel.PlaneReferenceNormalY)},{FormatContractNumber(viewModel.PlaneReferenceNormalZ)})|rms={FormatContractNumber(viewModel.PlaneReferenceFitRms)}|signedDistance={FormatContractNumber(viewModel.PlaneReferenceSignedDistance)}|absoluteDistance={FormatContractNumber(viewModel.PlaneReferenceAbsoluteDistance)}|referenceY={FormatContractNumber(viewModel.PlaneReferenceY)}|targetY={FormatContractNumber(viewModel.PlaneReferenceTargetY)}|rawHeightDelta={FormatContractNumber(viewModel.PlaneReferenceRawHeightDelta)}|summary={CleanContractText(viewModel.PlaneReferenceMeasurementDetails)}");
         lines.Add("PlaneFlatnessInspection");
         if (viewModel.PlaneFlatnessConfigured)
         {
@@ -592,6 +600,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void RenderNow()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (c3dSourceApplyActive)
         {
             c3dSourceApplyRenderRequestCount++;

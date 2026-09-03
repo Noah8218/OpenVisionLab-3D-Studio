@@ -67,26 +67,38 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             Interval = InteractionLodStepDelay
         };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            if (isOrbiting || isPanning || profileDraggedEndpoint != 0)
-            {
-                timer.Start();
-                return;
-            }
-
-            if (interactionWireframeLodLevel == C3DWireframeLodLevel.Coarse)
-            {
-                interactionWireframeLodLevel = C3DWireframeLodLevel.Medium;
-                interactionLodMediumTransitionCount++;
-                timer.Start();
-                return;
-            }
-
-            RestoreInteractionWireframeLod();
-        };
+        timer.Tick += OnInteractionLodRestoreTimerTick;
         return timer;
+    }
+
+    private void OnInteractionLodRestoreTimerTick(object? sender, EventArgs args)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (interactionLodRestoreTimer is not { } timer)
+        {
+            return;
+        }
+
+        timer.Stop();
+        if (isOrbiting || isPanning || profileDraggedEndpoint != 0)
+        {
+            timer.Start();
+            return;
+        }
+
+        if (interactionWireframeLodLevel == C3DWireframeLodLevel.Coarse)
+        {
+            interactionWireframeLodLevel = C3DWireframeLodLevel.Medium;
+            interactionLodMediumTransitionCount++;
+            timer.Start();
+            return;
+        }
+
+        RestoreInteractionWireframeLod();
     }
 
     private void RestoreInteractionWireframeLod()
@@ -115,6 +127,18 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void StopInteractionWireframeLod()
     {
         interactionLodRestoreTimer?.Stop();
+        interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
+    }
+
+    private void DisposeInteractionWireframeLod()
+    {
+        if (interactionLodRestoreTimer is { } timer)
+        {
+            timer.Stop();
+            timer.Tick -= OnInteractionLodRestoreTimerTick;
+            interactionLodRestoreTimer = null;
+        }
+
         interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
     }
 }

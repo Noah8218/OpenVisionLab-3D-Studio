@@ -30,6 +30,12 @@ public sealed partial class ToolWorkbenchViewModel
         out string message)
     {
         ArgumentNullException.ThrowIfNull(output);
+        if (lineIntersectionExecutionOwner.IsDisposed)
+        {
+            message = "Line Intersection execution owner has been disposed.";
+            return false;
+        }
+
         var isRoutedLandmarkInput = Selections
             .Where(selection => string.Equals(
                 selection.Kind,
@@ -52,6 +58,12 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         lineIntersectionExecutionOwner.RegisterSyntheticPublishedOutput(output);
+        if (lineIntersectionExecutionOwner.IsDisposed)
+        {
+            message = "Line Intersection execution owner has been disposed.";
+            return false;
+        }
+
         message = $"Synthetic Published CornerAnchor registered for smoke-only execution: {output.ContentSha256}";
         return true;
     }

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -11,7 +12,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// It keeps Preview, Publish, persistence, and stale-state policy here while
 /// the typed mask operation remains in the Tools adapter and SDK.
 /// </summary>
-internal sealed class ToolWorkbenchDomainMaskExecutionOwner
+internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepDomainMask;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -36,6 +37,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
     private string? previewDomainArtifactId;
     private string executionSummary =
         "Select Domain / Mask after publishing a Connected Region, then Preview.";
+    private int disposalState;
 
     public ToolWorkbenchDomainMaskExecutionOwner(
         Func<bool> isSelectedStepDomainMask,
@@ -65,21 +67,46 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepDomainMask => isSelectedStepDomainMask();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => preview is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public C3DHeightFieldSnapshot? CurrentOutput => preview;
-    public string? CurrentOutputPath => previewPath;
-    public string ExecutionSummary => executionSummary;
-    public string OutputSummary => preview is not { } output
+    public bool IsSelectedStepDomainMask => !IsDisposed && isSelectedStepDomainMask();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && preview is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public C3DHeightFieldSnapshot? CurrentOutput => IsDisposed ? null : preview;
+    public string? CurrentOutputPath => IsDisposed ? null : previewPath;
+    public string ExecutionSummary => IsDisposed
+        ? "Domain / Mask execution owner has been disposed."
+        : executionSummary;
+    public string OutputSummary => IsDisposed || preview is not { } output
         ? "No Domain / Mask output."
         : $"{output.Width} × {output.Height} | valid {output.ValidCount:N0} | missing {output.MissingCount:N0} | {(isPreviewPublished ? "Published" : "Preview only")}";
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(cancellation);
+        preview = null;
+        previewPath = null;
+        previewInputEntityId = null;
+        previewDomainArtifactId = null;
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
+
     internal bool TryGetPublishedOutput(string outputEntityId, out C3DHeightFieldSnapshot? output)
     {
-        output = isPreviewPublished
+        output = !IsDisposed
+            && isPreviewPublished
             && !isPreviewStale
             && preview is not null
             && string.Equals(preview.EntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)
@@ -90,18 +117,44 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed
+            || !CanPreview()
+            || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
-        isPreviewRunning = true;
+        var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            cancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    cancellation),
+                cancellation))
+            {
+                cancellation.Dispose();
+            }
+
+            return false;
+        }
+
+        SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Domain / Mask Preview is reducing the complete validated Connected Region domain without changing inputs.");
+        if (!IsCurrentPreview(cancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Domain / Mask Preview started: {step.Id}.");
 
         try
@@ -109,9 +162,18 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
             var document = createDocument();
             if (!TryResolveInputs(document, step.InputEntityIds, out var source, out var domain, out var reason))
             {
+                if (!IsCurrentPreview(cancellation))
+                {
+                    return false;
+                }
+
                 step.State = "Taught / needs correction";
                 SetSummary(reason);
-                appendLog("Warning", $"Domain / Mask Preview blocked: {reason}");
+                if (IsCurrentPreview(cancellation))
+                {
+                    appendLog("Warning", $"Domain / Mask Preview blocked: {reason}");
+                }
+
                 return false;
             }
 
@@ -121,8 +183,13 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
                     step.Id,
                     source,
                     domain,
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 preview = null;
@@ -131,7 +198,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
                 previewDomainArtifactId = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"Domain / Mask Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(cancellation))
+                {
+                    appendLog("Error", $"Domain / Mask Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
@@ -140,12 +211,26 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
             previewDomainArtifactId = domain.ArtifactId;
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
             evaluation.Output.SaveC3D(previewPath);
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetSummary(
                 $"Preview ready | domain {domain.Regions.Count:N0} region(s) | valid {evaluation.Output.ValidCount:N0} | missing {evaluation.Output.MissingCount:N0} | source unchanged");
-            appendLog(
-                "Preview",
-                $"Domain / Mask Preview ready: output={evaluation.Output.ContentSha256}; source={source.EntityId}; domain={domain.ContentSha256}.");
+            if (IsCurrentPreview(cancellation))
+            {
+                appendLog(
+                    "Preview",
+                    $"Domain / Mask Preview ready: output={evaluation.Output.ContentSha256}; source={source.EntityId}; domain={domain.ContentSha256}.");
+            }
+
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             requestDisplay(
                 new ToolWorkbenchFilterDisplayRequestEventArgs(
                     previewPath,
@@ -156,6 +241,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             if (getSelectedPipelineStep() is { } canceledStep)
             {
                 canceledStep.State = "Ready";
@@ -167,13 +257,27 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         }
         finally
         {
-            isPreviewRunning = false;
-            onExecutionStateChanged();
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    cancellation),
+                cancellation);
+            if (ownsCancellation)
+            {
+                cancellation.Dispose();
+            }
+
+            if (ownsCancellation && !IsDisposed)
+            {
+                SetRunning(false);
+            }
         }
     }
 
     public bool CanPreview() =>
-        isSelectedStepDomainMask()
+        !IsDisposed
+        && isSelectedStepDomainMask()
         && isSourceReadyForRecipe()
         && !hasPendingStepParameterChanges()
         && !isPreviewRunning
@@ -184,7 +288,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { } step
+            || !HasCurrentPreview)
         {
             return;
         }
@@ -197,11 +303,28 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         PersistPublishedArtifactIfPossible();
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender)
     {
-        if (preview is null || isPreviewRunning)
+        if (IsDisposed
+            || preview is null
+            || isPreviewRunning)
         {
             return;
         }
@@ -220,7 +343,8 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public void MarkStaleIfUpstreamChanged()
     {
-        if (preview is null
+        if (IsDisposed
+            || preview is null
             || isPreviewRunning
             || getSelectedPipelineStep() is not { } step
             || step.InputEntityIds.Count != 2)
@@ -246,7 +370,15 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(cancellation);
         preview = null;
         previewPath = null;
         previewInputEntityId = null;
@@ -258,6 +390,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step
             && IsSelectedStepDomainMask
             && preview is null
@@ -272,13 +409,19 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     public void PersistPublishedArtifactIfPossible()
     {
-        if (!isPreviewPublished
+        if (IsDisposed
+            || !isPreviewPublished
             || isPreviewStale
             || preview is null
             || string.IsNullOrWhiteSpace(getRecipePath()))
@@ -315,12 +458,22 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
                 sidecarPath,
                 JsonSerializer.Serialize(sidecar, new JsonSerializerOptions { WriteIndented = true }));
             previewPath = c3dPath;
+            if (IsDisposed)
+            {
+                return;
+            }
+
             appendLog("Save", $"Domain / Mask output sidecar saved: {sidecarPath}.");
             onExecutionStateChanged();
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             SetSummary($"Published in this session, but the Domain / Mask sidecar could not be saved: {exception.Message}");
             appendLog("Error", $"Domain / Mask sidecar save failed: {exception.Message}");
         }
@@ -328,6 +481,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     public void RestorePublishedArtifact()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var recipePath = getRecipePath();
         var document = createDocument();
         var step = document.Steps.FirstOrDefault(candidate =>
@@ -348,6 +506,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         {
             var record = JsonSerializer.Deserialize<DomainMaskArtifactRecord>(File.ReadAllText(sidecarPath))
                 ?? throw new InvalidDataException("Domain / Mask sidecar is empty.");
+            if (IsDisposed)
+            {
+                return;
+            }
+
             if (!string.Equals(record.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.StepId, step.Id, StringComparison.OrdinalIgnoreCase))
             {
@@ -402,6 +565,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
                 throw new InvalidDataException("Domain / Mask sidecar output hash could not be reproduced.");
             }
 
+            if (IsDisposed)
+            {
+                return;
+            }
+
             preview = restored;
             previewPath = c3dPath;
             previewInputEntityId = source.EntityId;
@@ -421,6 +589,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or JsonException)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             SetSummary($"Saved Domain / Mask output was not restored: {exception.Message}");
             appendLog("Warning", $"Domain / Mask output restore skipped: {exception.Message}");
         }
@@ -436,6 +609,12 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
         source = null!;
         domain = null!;
         reason = string.Empty;
+        if (IsDisposed)
+        {
+            reason = "Domain / Mask owner is disposed.";
+            return false;
+        }
+
         if (inputEntityIds.Count != 2)
         {
             reason = "Domain / Mask requires one HeightField followed by one Published ConnectedRegionArtifact.";
@@ -488,6 +667,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     private void MarkStale(ToolWorkbenchPipelineStepItem step, string summary)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewStale = true;
         isPreviewPublished = false;
         step.State = "Preview stale";
@@ -496,8 +680,37 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 
     private static string reasonOrDefault(string reason) =>

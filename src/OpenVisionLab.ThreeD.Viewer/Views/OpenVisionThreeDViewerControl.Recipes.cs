@@ -200,23 +200,12 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void SaveCurrentRecipeWithDialog()
     {
+        var savePlan = ResolveCurrentRecipeSavePlan();
         var dialog = new SaveFileDialog
         {
             Title = "Save 3D Recipe",
             Filter = "OpenVisionLab 3D recipe (*.json)|*.json|All files (*.*)|*.*",
-            FileName = ShouldSaveCurrentNominalActualRecipe()
-                ? "nominal-actual-surface-deviation.recipe.json"
-                : ShouldSaveCurrentLazTwoPointRecipe()
-                ? "laz-two-point-measurement.recipe.json"
-                : ShouldSaveCurrentWarpageRecipe()
-                    ? "c3d-warpage.recipe.json"
-                : ShouldSaveCurrentThicknessRecipe()
-                    ? "c3d-thickness.recipe.json"
-                : ShouldSaveCurrentGapFlushRecipe()
-                    ? "c3d-gap-flush.recipe.json"
-                : ShouldSaveCurrentPointPairDimensionsRecipe()
-                    ? "c3d-point-pair-dimensions.recipe.json"
-                    : "c3d-height-deviation.recipe.json",
+            FileName = savePlan.DefaultFileName,
             OverwritePrompt = true
         };
 
@@ -226,20 +215,29 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
-    public bool SaveCurrentRecipe(string path, bool isSmoke) =>
-        ShouldSaveCurrentNominalActualRecipe()
-            ? SaveCurrentNominalActualRecipe(path, isSmoke)
-            : ShouldSaveCurrentLazTwoPointRecipe()
-            ? SaveCurrentLazTwoPointRecipe(path, isSmoke)
-            : ShouldSaveCurrentWarpageRecipe()
-                ? SaveCurrentWarpageRecipe(path, isSmoke)
-            : ShouldSaveCurrentThicknessRecipe()
-                ? SaveCurrentThicknessRecipe(path, isSmoke)
-            : ShouldSaveCurrentGapFlushRecipe()
-                ? SaveCurrentGapFlushRecipe(path, isSmoke)
-            : ShouldSaveCurrentPointPairDimensionsRecipe()
-                ? SaveCurrentPointPairDimensionsRecipe(path, isSmoke)
-                : SaveCurrentHeightDeviationRecipe(path, isSmoke);
+    public bool SaveCurrentRecipe(string path, bool isSmoke)
+    {
+        var savePlan = ResolveCurrentRecipeSavePlan();
+        return savePlan.Route switch
+        {
+            ViewerRecipeSaveRoute.NominalActual => SaveCurrentNominalActualRecipe(path, isSmoke),
+            ViewerRecipeSaveRoute.LazTwoPoint => SaveCurrentLazTwoPointRecipe(path, isSmoke),
+            ViewerRecipeSaveRoute.Warpage => SaveCurrentWarpageRecipe(path, isSmoke),
+            ViewerRecipeSaveRoute.Thickness => SaveCurrentThicknessRecipe(path, isSmoke),
+            ViewerRecipeSaveRoute.GapFlush => SaveCurrentGapFlushRecipe(path, isSmoke),
+            ViewerRecipeSaveRoute.PointPairDimensions => SaveCurrentPointPairDimensionsRecipe(path, isSmoke),
+            _ => SaveCurrentHeightDeviationRecipe(path, isSmoke)
+        };
+    }
+
+    private ViewerRecipeSavePlan ResolveCurrentRecipeSavePlan() =>
+        ViewerRecipeSavePlan.Resolve(
+            ShouldSaveCurrentNominalActualRecipe(),
+            ShouldSaveCurrentLazTwoPointRecipe(),
+            ShouldSaveCurrentWarpageRecipe(),
+            C3DThicknessRecipeSaveCoordinator.CanSave(c3dSample, viewModel),
+            ShouldSaveCurrentGapFlushRecipe(),
+            C3DPointPairDimensionsRecipeSaveCoordinator.CanSave(c3dSample, viewModel));
 
     private bool ShouldSaveCurrentNominalActualRecipe() =>
         viewModel.NominalActualInput is not null
@@ -255,27 +253,6 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && lazTwoPointSecond is not null
                 && viewModel.SelectedEntity.Contains("Two Point Measurement", StringComparison.OrdinalIgnoreCase)))
         && viewModel.LazSampleVisible;
-
-    private bool ShouldSaveCurrentPointPairDimensionsRecipe() =>
-        c3dSample is not null
-        && viewModel.C3DSampleVisible
-        && viewModel.PointPairDimensionsConfigured
-        && viewModel.HasPointPairReferences;
-
-    private bool ShouldSaveCurrentThicknessRecipe() =>
-        c3dSample is not null
-        && viewModel.C3DSampleVisible
-        && viewModel.ThicknessConfigured
-        && (!viewModel.RecipeOutputEnabled
-            || (viewModel.ThicknessVisible
-                && viewModel.PreviewToolResult.ToolName.Equals(C3DThicknessRule.ToolName, StringComparison.Ordinal)
-                && viewModel.PreviewToolResult.Status != ResultStatus.Error));
-
-    private bool ShouldSaveCurrentGapFlushRecipe() =>
-        c3dSample is not null
-        && viewModel.C3DSampleVisible
-        && viewModel.GapFlushConfigured
-        && (!viewModel.RecipeOutputEnabled || viewModel.GapFlushVisible);
 
     private bool EnsureRecipeOutputEnabled()
     {
@@ -872,84 +849,29 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private bool ApplyRecipeFile(string path, bool isSmoke)
-    {
-        ViewerRecipeFile recipeFile;
-        try
-        {
-            recipeFile = ViewerRecipeFile.Open(path);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
-        {
-            return SetRecipeLoadFailure(isSmoke ? "Smoke recipe" : "Recipe", ex);
-        }
+        => ViewerRecipeLoadCoordinator.Apply(
+            path,
+            isSmoke,
+            CreateRecipeLoadRoutes(),
+            SetRecipeLoadFailure);
 
-        try
-        {
-            return ApplyRecipeDocument(recipeFile, recipeFile.LoadDocument(), isSmoke);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
-        {
-            return SetRecipeLoadFailure(GetRecipeLoadFailureLabel(recipeFile.RecipeType, isSmoke), ex);
-        }
-    }
+    private Task<bool> ApplyRecipeFileAsync(string path, bool isSmoke) =>
+        ViewerRecipeLoadCoordinator.ApplyAsync(
+            path,
+            isSmoke,
+            CreateRecipeLoadRoutes(),
+            SetRecipeLoadFailure);
 
-    private async Task<bool> ApplyRecipeFileAsync(string path, bool isSmoke)
-    {
-        ViewerRecipeFile recipeFile;
-        try
-        {
-            recipeFile = ViewerRecipeFile.Open(path);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
-        {
-            return SetRecipeLoadFailure(isSmoke ? "Smoke recipe" : "Recipe", ex);
-        }
-
-        try
-        {
-            var document = recipeFile.LoadDocument();
-            return document is LazTwoPointMeasurementRecipe lazRecipe
-                ? await ApplyLazTwoPointRecipeAsync(recipeFile, lazRecipe, isSmoke)
-                : ApplyRecipeDocument(recipeFile, document, isSmoke);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
-        {
-            return SetRecipeLoadFailure(GetRecipeLoadFailureLabel(recipeFile.RecipeType, isSmoke), ex);
-        }
-    }
-
-    private bool ApplyRecipeDocument(ViewerRecipeFile recipeFile, object document, bool isSmoke) =>
-        document switch
-        {
-            NominalActualComparisonRecipe recipe => ApplyNominalActualRecipe(recipeFile, recipe, isSmoke),
-            LazTwoPointMeasurementRecipe recipe => ApplyLazTwoPointRecipe(recipeFile, recipe, isSmoke),
-            C3DThicknessRecipe recipe => ApplyC3DThicknessRecipe(recipeFile, recipe, isSmoke),
-            C3DWarpageRecipe recipe => ApplyC3DWarpageRecipe(recipeFile, recipe, isSmoke),
-            C3DGapFlushRecipe recipe => ApplyC3DGapFlushRecipe(recipeFile, recipe, isSmoke),
-            C3DPointPairDimensionsRecipe recipe => ApplyC3DPointPairDimensionsRecipe(recipeFile, recipe, isSmoke),
-            HeightDeviationRecipe recipe => ApplyHeightDeviationRecipe(recipeFile, recipe, isSmoke),
-            _ => throw new InvalidDataException($"Unsupported recipe type: {recipeFile.RecipeType}")
-        };
-
-    private static string GetRecipeLoadFailureLabel(string recipeType, bool isSmoke)
-    {
-        var label = recipeType.Equals(NominalActualComparisonRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-            ? "nominal/actual recipe"
-            : recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-                ? "LAZ/LAS recipe"
-                : recipeType.Equals(C3DThicknessRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-                    ? "Thickness recipe"
-                    : recipeType.Equals(C3DWarpageRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-                        ? "Warpage recipe"
-                        : recipeType.Equals(C3DGapFlushRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-                            ? "Gap / Flush recipe"
-                            : recipeType.Equals(C3DPointPairDimensionsRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-                                ? "point pair recipe"
-                                : "recipe";
-        return isSmoke
-            ? $"Smoke {label}"
-            : char.ToUpperInvariant(label[0]) + label[1..];
-    }
+    private ViewerRecipeLoadRoutes CreateRecipeLoadRoutes() =>
+        new(
+            ApplyNominalActualRecipe,
+            ApplyLazTwoPointRecipe,
+            ApplyC3DThicknessRecipe,
+            ApplyC3DWarpageRecipe,
+            ApplyC3DGapFlushRecipe,
+            ApplyC3DPointPairDimensionsRecipe,
+            ApplyHeightDeviationRecipe,
+            ApplyLazTwoPointRecipeAsync);
 
     private bool ApplyNominalActualRecipe(
         ViewerRecipeFile recipeFile,
@@ -958,27 +880,21 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var input = recipe.ToInput(fullRecipePath);
-            viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
-            ApplySmokeStl(input.NominalSource.Path);
-            if (importedMesh is null)
-            {
-                throw new InvalidDataException("The nominal comparison mesh could not be loaded for display.");
-            }
-
-            viewModel.ConfigureNominalActualComparison(input);
-            viewModel.SetNominalActualRecipeLoaded(fullRecipePath);
-            if (isSmoke && recipe.OutputEnabled)
-            {
-                smokeNominalActualPreview = true;
-                viewModel.NominalActual.PreviewCommand.Execute(null);
-            }
-
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke nominal/actual recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"Nominal/actual recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            var plan = NominalActualComparisonRecipeLoadPlan.Create(recipeFile, recipe);
+            return NominalActualComparisonRecipeApplyCoordinator.Apply(
+                plan,
+                viewModel,
+                isSmoke,
+                path =>
+                {
+                    ApplySmokeStl(path);
+                    return importedMesh is not null;
+                },
+                () =>
+                {
+                    smokeNominalActualPreview = true;
+                    viewModel.NominalActual.PreviewCommand.Execute(null);
+                });
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
@@ -1023,40 +939,22 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
-            c3dSample = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
-            if (!IsC3DGridRoiInside(recipe.Step.Roi, c3dSample))
-            {
-                throw new InvalidDataException("Thickness recipe ROI is outside the loaded C3D grid.");
-            }
-
-            SetC3DSampleStatus();
-            planeFlatnessEvaluation = null;
-            planeReferenceMeasurement = null;
-            viewModel.ClearThicknessPreview();
-            viewModel.ClearPlaneFlatnessRecipeStep();
-            viewModel.ClearPointPairDimensionsRecipeStep();
-            viewModel.ClearGapFlushRecipeStep();
-            viewModel.ClearVolumeRecipeStep();
-            viewModel.ClearCrossSectionRecipeStep();
-            viewModel.UseC3DSmokeScene();
-            viewModel.SetC3DAlignment(ModelTransform.Identity, "C3D grid-index scalar frame", recipe.Source.Name);
-            viewModel.SetThicknessRecipeStep(recipe.Step);
-            viewModel.SetThicknessRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit);
-            viewModel.SelectedSelectionMode = MainWindowViewModel.ThicknessRoiSelectionMode;
-            viewModel.SelectionOverlayVisible = true;
-
-            if (isSmoke && recipe.OutputEnabled && recipe.Step.Enabled && !PreviewC3DThickness())
-            {
-                throw new InvalidDataException("Thickness preview failed for the configured grid ROI.");
-            }
-
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke Thickness recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"Thickness recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            var plan = C3DThicknessRecipeLoadPlan.Create(
+                recipeFile,
+                recipe,
+                viewModel.C3DMaxRenderedPoints);
+            c3dSample = plan.Grid;
+            return C3DThicknessRecipeApplyCoordinator.Apply(
+                plan,
+                viewModel,
+                isSmoke,
+                SetC3DSampleStatus,
+                () =>
+                {
+                    planeFlatnessEvaluation = null;
+                    planeReferenceMeasurement = null;
+                },
+                RenderNow);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
@@ -1071,94 +969,28 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
-            var grid = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
-            var first = grid.ReadPoint(recipe.Step.First.Row, recipe.Step.First.Column);
-            var second = grid.ReadPoint(recipe.Step.Second.Row, recipe.Step.Second.Column);
-
-            c3dSample = grid;
-            SetC3DSampleStatus();
-            planeFlatnessEvaluation = null;
-            planeReferenceMeasurement = null;
-            viewModel.ClearPlaneFlatnessRecipeStep();
-            viewModel.ClearPointPairDimensionsRecipeStep();
-            viewModel.ClearGapFlushRecipeStep();
-            viewModel.ClearVolumeRecipeStep();
-            viewModel.ClearCrossSectionRecipeStep();
-            viewModel.UseC3DSmokeScene();
-            viewModel.SetC3DAlignment(
-                recipe.Transform ?? ModelTransform.Identity,
-                recipe.Transform is null ? "Recipe identity alignment" : "Recipe alignment",
-                recipe.Source.Name);
-            ApplyRecipeRoiStep(null);
-            viewModel.SetPointPairDimensionsRecipeStep(recipe.Step);
-            viewModel.SetPointPairRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit);
-            SetTwoPointMeasurement(first, second, updatePointPairReferences: false);
-            viewModel.SelectedSelectionMode = TwoPointSelectionMode;
-            viewModel.SelectionOverlayVisible = true;
-
-            if (isSmoke && recipe.OutputEnabled && recipe.Step.Enabled && !PreviewC3DPointPairDimensions())
-            {
-                throw new InvalidDataException("Point pair dimensions preview failed for the configured source cells.");
-            }
-
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke point pair recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"Point pair recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            var plan = C3DPointPairDimensionsRecipeLoadPlan.Create(
+                recipeFile,
+                recipe,
+                viewModel.C3DMaxRenderedPoints);
+            c3dSample = plan.Grid;
+            return C3DPointPairDimensionsRecipeApplyCoordinator.Apply(
+                plan,
+                viewModel,
+                isSmoke,
+                SetC3DSampleStatus,
+                () =>
+                {
+                    planeFlatnessEvaluation = null;
+                    planeReferenceMeasurement = null;
+                },
+                () => ApplyRecipeRoiStep(null),
+                (first, second) => SetTwoPointMeasurement(first, second, updatePointPairReferences: false),
+                RenderNow);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(isSmoke ? "Smoke point pair recipe" : "Point pair recipe", ex);
-        }
-    }
-
-    private bool ApplyC3DGapFlushRecipe(
-        ViewerRecipeFile recipeFile,
-        C3DGapFlushRecipe recipe,
-        bool isSmoke)
-    {
-        try
-        {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
-            c3dSample = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
-            SetC3DSampleStatus();
-            planeFlatnessEvaluation = null;
-            planeReferenceMeasurement = null;
-            viewModel.ClearPlaneFlatnessRecipeStep();
-            viewModel.ClearPointPairDimensionsRecipeStep();
-            viewModel.ClearGapFlushRecipeStep();
-            viewModel.ClearVolumeRecipeStep();
-            viewModel.ClearCrossSectionRecipeStep();
-            viewModel.UseC3DSmokeScene();
-            viewModel.SetC3DAlignment(
-                recipe.Transform ?? ModelTransform.Identity,
-                recipe.Transform is null ? "Recipe identity alignment" : "Recipe alignment",
-                recipe.Source.Name);
-            viewModel.SetGapFlushRecipeStep(recipe.Step);
-            viewModel.SetPointPairRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit);
-            roiStepLeftRecipeRegion = recipe.Step.LeftRegion;
-            roiStepRightRecipeRegion = recipe.Step.RightRegion;
-            roiStepInteractiveSelection = false;
-            roiStepNextPickSetsRight = false;
-
-            if (isSmoke && recipe.OutputEnabled && recipe.Step.Enabled && !PreviewC3DGapFlush())
-            {
-                throw new InvalidDataException("Gap / Flush preview failed for the configured regions.");
-            }
-
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke Gap / Flush recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"Gap / Flush recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
-        {
-            return SetRecipeLoadFailure(isSmoke ? "Smoke Gap / Flush recipe" : "Gap / Flush recipe", ex);
         }
     }
 
@@ -1169,16 +1001,26 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            lazPointCloud = LoadLazPointCloud(sourcePath, recipe.Measurement.MaxSampledPoints);
+            var plan = LazTwoPointRecipeLoadPlan.Create(recipeFile, recipe);
+            lazPointCloud = LoadLazPointCloud(plan.SourcePath, recipe.Measurement.MaxSampledPoints);
             lazSample = lazPointCloud?.Metadata;
             if (lazPointCloud is null || lazSample is null)
             {
                 throw new InvalidDataException("LAZ/LAS two-point recipe source could not be decoded.");
             }
 
-            return ApplyLoadedLazTwoPointRecipe(recipe, isSmoke, fullRecipePath, sourcePath);
+            return LazTwoPointRecipeApplyCoordinator.Apply(
+                plan,
+                lazPointCloud,
+                viewModel,
+                isSmoke,
+                clearTransientMeasurement: () =>
+                {
+                    lazTwoPointFirst = null;
+                    lazTwoPointSecond = null;
+                    selectedLazPoint = null;
+                },
+                applySmokeMeasurement: ApplySmokeLazTwoPointMeasurement);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
@@ -1193,9 +1035,10 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            var loaded = await LoadLazPointCloudAsync(sourcePath, recipe.Measurement.MaxSampledPoints);
+            var plan = LazTwoPointRecipeLoadPlan.Create(recipeFile, recipe);
+            var loaded = await LoadLazPointCloudAsync(
+                plan.SourcePath,
+                recipe.Measurement.MaxSampledPoints);
             if (loaded is null)
             {
                 return false;
@@ -1203,7 +1046,18 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             lazPointCloud = loaded;
             lazSample = loaded.Metadata;
-            return ApplyLoadedLazTwoPointRecipe(recipe, isSmoke, fullRecipePath, sourcePath);
+            return LazTwoPointRecipeApplyCoordinator.Apply(
+                plan,
+                loaded,
+                viewModel,
+                isSmoke,
+                clearTransientMeasurement: () =>
+                {
+                    lazTwoPointFirst = null;
+                    lazTwoPointSecond = null;
+                    selectedLazPoint = null;
+                },
+                applySmokeMeasurement: ApplySmokeLazTwoPointMeasurement);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
@@ -1211,37 +1065,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
-    private bool ApplyLoadedLazTwoPointRecipe(
-        LazTwoPointMeasurementRecipe recipe,
-        bool isSmoke,
-        string fullRecipePath,
-        string sourcePath)
-    {
-        viewModel.SetLazSampleSource(sourcePath, recipe.Source.Name);
-        viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
-        viewModel.LazTwoPointExpectedDistance = recipe.Acceptance.ExpectedDistance;
-        viewModel.LazTwoPointDistanceTolerance = recipe.Acceptance.DistanceTolerance;
-        viewModel.LazTwoPointExpectedHeightDelta = recipe.Acceptance.ExpectedHeightDelta;
-        viewModel.LazTwoPointHeightDeltaTolerance = recipe.Acceptance.HeightDeltaTolerance;
-        if (isSmoke && recipe.OutputEnabled)
-        {
-            ApplySmokeLazTwoPointMeasurement(recipe.Measurement.HeightUnit);
-        }
-        else
-        {
-            lazTwoPointFirst = null;
-            lazTwoPointSecond = null;
-            selectedLazPoint = null;
-            viewModel.ClearTwoPointMeasurement();
-            viewModel.UseLazPointSmokeScene();
-        }
-
-        viewModel.SetLazRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath);
-        viewModel.ViewerStatus = isSmoke
-            ? $"Smoke LAZ/LAS recipe: {Path.GetFileName(fullRecipePath)}"
-            : $"LAZ/LAS recipe loaded: {Path.GetFileName(fullRecipePath)}";
-        return true;
-    }
 
     private bool SetRecipeLoadFailure(string label, Exception exception)
     {
@@ -1252,46 +1075,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private bool SaveCurrentNominalActualRecipe(string path, bool isSmoke)
-    {
-        try
-        {
-            var comparison = viewModel.NominalActual;
-            var input = viewModel.NominalActualInput;
-            if (input is null
-                || (viewModel.RecipeOutputEnabled
-                    && (comparison.PreviewResult is not { } result
-                        || comparison.State is not (NominalActualComparisonState.PreviewReady
-                            or NominalActualComparisonState.Published)
-                        || !result.Input.ExecutionFingerprint.Equals(
-                            comparison.CompletedPreviewFingerprint,
-                            StringComparison.Ordinal))))
-            {
-                viewModel.ViewerStatus =
-                    viewModel.RecipeOutputEnabled
-                        ? "Nominal/actual recipe save requires a current completed Preview"
-                        : "Nominal/actual recipe save requires connected comparison inputs when output is disabled";
-                return false;
-            }
-
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipe = NominalActualComparisonRecipe.FromInput(input, fullRecipePath) with
-            {
-                OutputEnabled = viewModel.RecipeOutputEnabled
-            };
-            recipe.Save(fullRecipePath);
-            viewModel.SetNominalActualRecipeSaved(fullRecipePath);
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke nominal/actual recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"Nominal/actual recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            viewModel.ViewerStatus =
-                $"{(isSmoke ? "Smoke nominal/actual recipe save" : "Nominal/actual recipe save")} failed: {ex.Message}";
-            return false;
-        }
-    }
+        => NominalActualComparisonRecipeSaveCoordinator.Save(path, isSmoke, viewModel);
 
     private bool SaveCurrentHeightDeviationRecipe(string path, bool isSmoke)
     {
@@ -1334,192 +1118,19 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private bool SaveCurrentLazTwoPointRecipe(string path, bool isSmoke)
-    {
-        try
-        {
-            if (lazPointCloud is null
-                || (viewModel.RecipeOutputEnabled && (lazTwoPointFirst is null || lazTwoPointSecond is null))
-                || !viewModel.LazSampleVisible)
-            {
-                viewModel.ViewerStatus = viewModel.RecipeOutputEnabled
-                    ? "LAZ/LAS two-point recipe save requires a measured LAZ/LAS pair"
-                    : "LAZ/LAS two-point recipe save requires a loaded point cloud when output is disabled";
-                return false;
-            }
-
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
-            var sourcePath = Path.GetFullPath(lazPointCloud.SourcePath);
-            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
-            var recipe = new LazTwoPointMeasurementRecipe(
-                LazTwoPointMeasurementRecipe.SupportedRecipeType,
-                "1.0",
-                new HeightDeviationRecipeSource(
-                    MainWindowViewModel.LazEntityId,
-                    viewModel.LazSampleName,
-                    sourceRecipePath,
-                    "source-units"),
-                new LazTwoPointMeasurementRecipeMeasurement(
-                    "sample-extreme-x",
-                    Math.Max(2, lazPointCloud.SampledPoints.Length),
-                    "source-z-units"),
-                new LazTwoPointMeasurementRecipeAcceptance(
-                    viewModel.LazTwoPointExpectedDistance,
-                    viewModel.LazTwoPointDistanceTolerance,
-                    viewModel.LazTwoPointExpectedHeightDelta,
-                    viewModel.LazTwoPointHeightDeltaTolerance),
-                viewModel.RecipeOutputEnabled);
-
-            recipe.Save(fullRecipePath);
-            viewModel.SetRecipeSaved(fullRecipePath);
-            SetRecipeValidationOk();
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke LAZ recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"LAZ recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke LAZ recipe save" : "LAZ recipe save")} failed: {ex.Message}";
-            return false;
-        }
-    }
+        => LazTwoPointRecipeSaveCoordinator.Save(
+            path,
+            isSmoke,
+            viewModel,
+            lazPointCloud,
+            lazTwoPointFirst is not null && lazTwoPointSecond is not null,
+            SetRecipeValidationOk);
 
     private bool SaveCurrentThicknessRecipe(string path, bool isSmoke)
-    {
-        try
-        {
-            if (c3dSample is null || !ShouldSaveCurrentThicknessRecipe())
-            {
-                viewModel.ViewerStatus = viewModel.RecipeOutputEnabled
-                    ? "Thickness recipe save requires a current non-error Thickness Preview"
-                    : "Thickness recipe save requires a taught ROI when output is disabled";
-                return false;
-            }
-
-            var step = viewModel.CreateThicknessRecipeStep();
-            if (!IsC3DGridRoiInside(step.Roi, c3dSample))
-            {
-                viewModel.ViewerStatus = "Thickness recipe save requires an ROI inside the loaded C3D grid";
-                return false;
-            }
-
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
-            var sourcePath = Path.GetFullPath(c3dSample.SourcePath);
-            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
-            var recipe = new C3DThicknessRecipe(
-                C3DThicknessRecipe.SupportedRecipeType,
-                "1.0",
-                new HeightDeviationRecipeSource(
-                    MainWindowViewModel.C3DEntityId,
-                    viewModel.RecipeSourceName,
-                    sourceRecipePath,
-                    viewModel.RecipeSourceUnit),
-                step,
-                viewModel.RecipeOutputEnabled);
-
-            recipe.Save(fullRecipePath);
-            viewModel.SetRecipeSaved(fullRecipePath);
-            SetRecipeValidationOk();
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke Thickness recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"Thickness recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke Thickness recipe save" : "Thickness recipe save")} failed: {ex.Message}";
-            return false;
-        }
-    }
+        => C3DThicknessRecipeSaveCoordinator.Save(path, isSmoke, viewModel, c3dSample);
 
     private bool SaveCurrentPointPairDimensionsRecipe(string path, bool isSmoke)
-    {
-        try
-        {
-            var step = viewModel.CreatePointPairDimensionsRecipeStep();
-            if (c3dSample is null || step is null)
-            {
-                viewModel.ViewerStatus = "Point pair recipe save requires two selected C3D source cells";
-                return false;
-            }
-
-            c3dSample.ReadPoint(step.First.Row, step.First.Column);
-            c3dSample.ReadPoint(step.Second.Row, step.Second.Column);
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
-            var sourcePath = Path.GetFullPath(c3dSample.SourcePath);
-            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
-            var recipe = new C3DPointPairDimensionsRecipe(
-                C3DPointPairDimensionsRecipe.SupportedRecipeType,
-                "1.0",
-                new HeightDeviationRecipeSource(
-                    MainWindowViewModel.C3DEntityId,
-                    viewModel.RecipeSourceName,
-                    sourceRecipePath,
-                    viewModel.RecipeSourceUnit),
-                viewModel.C3DModelTransform,
-                step,
-                viewModel.RecipeOutputEnabled);
-
-            recipe.Save(fullRecipePath);
-            viewModel.SetRecipeSaved(fullRecipePath);
-            SetRecipeValidationOk();
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke point pair recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"Point pair recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke point pair recipe save" : "Point pair recipe save")} failed: {ex.Message}";
-            return false;
-        }
-    }
-
-    private bool SaveCurrentGapFlushRecipe(string path, bool isSmoke)
-    {
-        try
-        {
-            if (c3dSample is null || !ShouldSaveCurrentGapFlushRecipe())
-            {
-                viewModel.ViewerStatus = viewModel.RecipeOutputEnabled
-                    ? "Gap / Flush recipe save requires a successful preview"
-                    : "Gap / Flush recipe save requires configured regions when output is disabled";
-                return false;
-            }
-
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
-            var sourcePath = Path.GetFullPath(c3dSample.SourcePath);
-            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
-            var recipe = new C3DGapFlushRecipe(
-                C3DGapFlushRecipe.SupportedRecipeType,
-                "1.0",
-                new HeightDeviationRecipeSource(
-                    MainWindowViewModel.C3DEntityId,
-                    viewModel.RecipeSourceName,
-                    sourceRecipePath,
-                    viewModel.RecipeSourceUnit),
-                viewModel.C3DModelTransform,
-                viewModel.CreateGapFlushRecipeStep(),
-                viewModel.RecipeOutputEnabled);
-
-            recipe.Save(fullRecipePath);
-            viewModel.SetRecipeSaved(fullRecipePath);
-            SetRecipeValidationOk();
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke Gap / Flush recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"Gap / Flush recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke Gap / Flush recipe save" : "Gap / Flush recipe save")} failed: {ex.Message}";
-            return false;
-        }
-    }
+        => C3DPointPairDimensionsRecipeSaveCoordinator.Save(path, isSmoke, viewModel, c3dSample);
 
     private HeightDeviationRecipeRoiStep? CreateCurrentRoiStepRecipe()
     {

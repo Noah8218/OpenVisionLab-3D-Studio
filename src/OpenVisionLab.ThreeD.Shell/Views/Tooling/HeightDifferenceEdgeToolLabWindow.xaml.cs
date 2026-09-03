@@ -18,6 +18,8 @@ public partial class HeightDifferenceEdgeToolLabWindow : ToolLabWindowBase
         DataContext = Workbench;
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
+        OwnViewer(inputViewer);
+        OwnViewer(outputViewer);
     }
 
     public override void RefreshViews()

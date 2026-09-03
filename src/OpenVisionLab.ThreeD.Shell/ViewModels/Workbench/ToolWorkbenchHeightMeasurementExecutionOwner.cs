@@ -1,11 +1,12 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
+internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepMeasurement;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -28,6 +29,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Route a verified HeightField and recipe-owned GridRectangle, then Preview explicitly.";
+    private int disposalState;
 
     public ToolWorkbenchHeightMeasurementExecutionOwner(
         Func<bool> isSelectedStepMeasurement,
@@ -59,35 +61,86 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public ToolRecipeHeightMeasurementOutput? CurrentOutput => previewOutput;
-    public string ExecutionSummary => executionSummary;
-    public string EvidenceSummary => previewOutput?.EvidenceSummary
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public ToolRecipeHeightMeasurementOutput? CurrentOutput => IsDisposed ? null : previewOutput;
+    public string ExecutionSummary => IsDisposed
+        ? "Height Measurement execution owner has been disposed."
+        : executionSummary;
+    public string EvidenceSummary => IsDisposed
+        ? "No measurement evidence after the execution owner has been disposed."
+        : previewOutput?.EvidenceSummary
         ?? "No measurement evidence until Preview completes.";
+
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step)
         {
-            if (getSelectedPipelineStep() is { } waiting)
+            if (!IsDisposed && getSelectedPipelineStep() is { } waiting)
             {
                 waiting.State = "Taught incomplete";
             }
 
-            SetSummary("A current raw or Published transformed HeightField and its owned GridRectangle are required.");
+            if (!IsDisposed)
+            {
+                SetSummary("A current raw or Published transformed HeightField and its owned GridRectangle are required.");
+            }
+
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
-        isPreviewRunning = true;
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
+        SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary($"{step.ToolName} Preview is evaluating only the selected tool step.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"{step.ToolName} Preview started: {step.Id}.");
         try
         {
@@ -99,41 +152,86 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
                     GetCurrentTransformedHeightField(),
                     GetCurrentEditableRegion(),
                     GetRecipeDirectory(),
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Output is null || evaluation.Result.Status == ResultStatus.Error)
             {
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 previewOutput = null;
-                updateCompletenessPresentation(null);
+                UpdateCompletenessPresentation(null);
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"{step.ToolName} Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(currentCancellation))
+                {
+                    appendLog("Error", $"{step.ToolName} Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
             previewOutput = evaluation.Output;
-            updateCompletenessPresentation(previewOutput);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
+            UpdateCompletenessPresentation(previewOutput);
             step.State = "Preview ready";
             SetSummary($"Preview ready | {previewOutput.EvidenceSummary} | {evaluation.Result.Status} | declared source units only.");
-            appendLog("Preview", $"{step.ToolName} Preview ready: {previewOutput.ContentSha256}.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", $"{step.ToolName} Preview ready: {previewOutput.ContentSha256}.");
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. The source, ROI, and authored recipe were not changed.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", $"{step.ToolName} Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            isPreviewRunning = false;
-            onExecutionStateChanged();
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!isSelectedStepMeasurement() || hasPendingStepParameterChanges()
+        if (IsDisposed || !isSelectedStepMeasurement() || hasPendingStepParameterChanges()
             || isPreviewRunning || getSelectedPipelineStep() is not { } step)
         {
             return false;
@@ -152,7 +250,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -163,13 +261,37 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         appendLog("Publish", $"{step.ToolName} output published without re-running: {step.OutputEntityId}.");
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
-        updateCompletenessPresentation(null);
+        UpdateCompletenessPresentation(null);
+        SetRunning(false);
         isPreviewStale = false;
         isPreviewPublished = false;
         SetSummary(summary);
@@ -177,7 +299,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (previewOutput is null || isPreviewRunning)
+        if (IsDisposed || previewOutput is null || isPreviewRunning)
         {
             return;
         }
@@ -198,14 +320,14 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
         isPreviewStale = true;
         isPreviewPublished = false;
-        updateCompletenessPresentation(null);
+        UpdateCompletenessPresentation(null);
         step.State = "Preview stale";
         SetSummary("Source, route, ROI, output, or parameter changed. Preview again before Publish.");
     }
 
     public void MarkInputStaleIfNeeded(string? inputEntityId)
     {
-        if (previewOutput is null || isPreviewRunning || string.IsNullOrWhiteSpace(inputEntityId))
+        if (IsDisposed || previewOutput is null || isPreviewRunning || string.IsNullOrWhiteSpace(inputEntityId))
         {
             return;
         }
@@ -219,13 +341,18 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
         isPreviewStale = true;
         isPreviewPublished = false;
-        updateCompletenessPresentation(null);
+        UpdateCompletenessPresentation(null);
         step.State = "Preview stale";
         SetSummary("The Published input HeightField changed. Preview this measurement again before Publish.");
     }
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && isSelectedStepMeasurement()
             && (previewOutput is null || isPreviewStale)
             && !isPreviewRunning)
@@ -255,7 +382,8 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
     private C3DTransformedHeightField? GetCurrentTransformedHeightField()
     {
-        if (getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
             || string.Equals(
                 step.InputEntityIds[0],
                 getSourceEntityId(),
@@ -269,7 +397,8 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
     private C3DHeightFieldSnapshot? GetCurrentCroppedHeightField()
     {
-        if (getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
             || string.Equals(
                 step.InputEntityIds[0],
                 getSourceEntityId(),
@@ -283,7 +412,8 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
     private C3DEditableRegionArtifact? GetCurrentEditableRegion()
     {
-        if (getSelectedPipelineStep() is not { } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { } step
             || !string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal)
             || step.InputEntityIds.Count < 3)
         {
@@ -303,7 +433,58 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private void SetRunning(bool value)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        isPreviewRunning = value;
+        onExecutionStateChanged();
+    }
+
+    private void UpdateCompletenessPresentation(
+        ToolRecipeHeightMeasurementOutput? output)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        updateCompletenessPresentation(output);
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    {
+        if (currentCancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            currentCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        currentCancellation.Dispose();
     }
 }

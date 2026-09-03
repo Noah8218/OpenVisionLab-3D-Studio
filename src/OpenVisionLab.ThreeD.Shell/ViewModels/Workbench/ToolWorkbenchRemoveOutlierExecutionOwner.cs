@@ -1,11 +1,17 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
+/// <summary>
+/// Owns Remove Outlier Pixels Preview state and cancellation. Each asynchronous
+/// operation must still own the registered token before it can update the
+/// downstream Connected Region input or Workbench state.
+/// </summary>
+internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepRemoveOutlier;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -26,6 +32,7 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
     private bool isRemoveOutlierPreviewPublished;
     private string removeOutlierExecutionSummary =
         "Select Remove Outlier Pixels, review its explicit rule, then Preview.";
+    private int disposalState;
 
     public ToolWorkbenchRemoveOutlierExecutionOwner(
         Func<bool> isSelectedStepRemoveOutlier,
@@ -51,22 +58,48 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepRemoveOutlierPixels => isSelectedStepRemoveOutlier();
+    public bool IsSelectedStepRemoveOutlierPixels => !IsDisposed && isSelectedStepRemoveOutlier();
 
-    public bool IsRemoveOutlierPreviewRunning => isRemoveOutlierPreviewRunning;
+    public bool IsRemoveOutlierPreviewRunning => !IsDisposed && isRemoveOutlierPreviewRunning;
     public bool HasCurrentRemoveOutlierPreview =>
-        removeOutlierPreview?.Output is not null && !isRemoveOutlierPreviewStale;
-    public bool IsRemoveOutlierPreviewStale => isRemoveOutlierPreviewStale;
-    public bool IsRemoveOutlierPreviewPublished => isRemoveOutlierPreviewPublished;
-    public C3DHeightFieldSnapshot? CurrentRemoveOutlierPreviewOutput => removeOutlierPreview?.Output;
-    public C3DOutlierCellMap? CurrentRemoveOutlierMask => removeOutlierPreview?.OutlierMask;
-    public string? CurrentRemoveOutlierPreviewPath => removeOutlierPreviewPath;
-    public string RemoveOutlierExecutionSummary => removeOutlierExecutionSummary;
+        !IsDisposed && removeOutlierPreview?.Output is not null && !isRemoveOutlierPreviewStale;
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+    public bool IsRemoveOutlierPreviewStale => !IsDisposed && isRemoveOutlierPreviewStale;
+    public bool IsRemoveOutlierPreviewPublished => !IsDisposed && isRemoveOutlierPreviewPublished;
+    public C3DHeightFieldSnapshot? CurrentRemoveOutlierPreviewOutput => IsDisposed ? null : removeOutlierPreview?.Output;
+    public C3DOutlierCellMap? CurrentRemoveOutlierMask => IsDisposed ? null : removeOutlierPreview?.OutlierMask;
+    public string? CurrentRemoveOutlierPreviewPath => IsDisposed ? null : removeOutlierPreviewPath;
+    public string RemoveOutlierExecutionSummary => IsDisposed
+        ? "Remove Outlier execution owner has been disposed."
+        : removeOutlierExecutionSummary;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(
+            ref removeOutlierPreviewCancellation,
+            null);
+        CancelAndDispose(cancellation);
+        removeOutlierPreview = null;
+        removeOutlierPreviewPath = null;
+        isRemoveOutlierPreviewRunning = false;
+        isRemoveOutlierPreviewStale = false;
+        isRemoveOutlierPreviewPublished = false;
+    }
 
     public string RemoveOutlierRuleSummary
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Remove Outlier execution owner has been disposed.";
+            }
+
             var step = getSelectedPipelineStep();
             if (!isSelectedStepRemoveOutlier() || step is null)
             {
@@ -82,19 +115,20 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
     }
 
     public string RemoveOutlierOutputSummary =>
-        removeOutlierPreview is not { Output: { } output, OutlierMask: { } mask }
+        IsDisposed || removeOutlierPreview is not { Output: { } output, OutlierMask: { } mask }
             ? "No outlier-removal Preview output."
             : $"Removed {mask.OutlierCellCount:N0} | valid {output.ValidCount:N0} | missing {output.MissingCount:N0} | {(isRemoveOutlierPreviewPublished ? "Published" : "Preview only")}";
 
     public string RemoveOutlierMaskSummary =>
-        removeOutlierPreview?.OutlierMask is not { } mask
+        IsDisposed || removeOutlierPreview?.OutlierMask is not { } mask
             ? "Outlier mask SHA-256 is available after Preview."
             : $"Outlier mask SHA-256 {mask.Sha256}";
 
     internal (C3DHeightFieldSnapshot Output, C3DOutlierCellMap Mask)? TryGetPublishedInput(
         string entityId)
     {
-        if (!isRemoveOutlierPreviewPublished
+        if (IsDisposed
+            || !isRemoveOutlierPreviewPublished
             || isRemoveOutlierPreviewStale
             || removeOutlierPreview?.Output is not { } output
             || removeOutlierPreview.OutlierMask is not { } mask
@@ -108,19 +142,45 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
 
     public async Task<bool> PreviewSelectedRemoveOutlierPixelsAsync()
     {
-        if (!CanPreviewSelectedRemoveOutlierPixels() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed
+            || !CanPreviewSelectedRemoveOutlierPixels()
+            || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        removeOutlierPreviewCancellation?.Dispose();
-        removeOutlierPreviewCancellation = new CancellationTokenSource();
+        var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref removeOutlierPreviewCancellation,
+            cancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref removeOutlierPreviewCancellation,
+                    null,
+                    cancellation),
+                cancellation))
+            {
+                cancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRemoveOutlierRunning(true);
         isRemoveOutlierPreviewStale = false;
         isRemoveOutlierPreviewPublished = false;
         step.State = "Preview running";
         SetRemoveOutlierSummary(
             "Remove Outlier Pixels Preview is evaluating the verified source without changing it.");
+        if (!IsCurrentPreview(cancellation))
+        {
+            return false;
+        }
+
         appendLog(
             "Preview",
             $"Remove Outlier Pixels Preview started: {step.Id}.");
@@ -134,8 +194,13 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
                     document,
                     step.Id,
                     recipeDirectory,
-                    removeOutlierPreviewCancellation.Token),
-                removeOutlierPreviewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
 
             if (evaluation.Result.Status != ResultStatus.Pass
                 || evaluation.Output is null
@@ -145,9 +210,13 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
                 removeOutlierPreviewPath = null;
                 step.State = "Error";
                 SetRemoveOutlierSummary(evaluation.Result.Message);
-                appendLog(
-                    "Error",
-                    $"Remove Outlier Pixels Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(cancellation))
+                {
+                    appendLog(
+                        "Error",
+                        $"Remove Outlier Pixels Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
@@ -155,12 +224,26 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
             removeOutlierPreviewPath =
                 CreateRemoveOutlierPreviewPath(evaluation.Output.ContentSha256);
             evaluation.Output.SaveC3D(removeOutlierPreviewPath);
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetRemoveOutlierSummary(
                 $"Preview ready | input valid {evaluation.Output.ValidCount + evaluation.OutlierMask.OutlierCellCount:N0} | removed {evaluation.OutlierMask.OutlierCellCount:N0} | output valid {evaluation.Output.ValidCount:N0} | source unchanged");
-            appendLog(
-                "Preview",
-                $"Remove Outlier Pixels Preview ready: output={evaluation.Output.ContentSha256}; mask={evaluation.OutlierMask.Sha256}; removed={evaluation.OutlierMask.OutlierCellCount}.");
+            if (IsCurrentPreview(cancellation))
+            {
+                appendLog(
+                    "Preview",
+                    $"Remove Outlier Pixels Preview ready: output={evaluation.Output.ContentSha256}; mask={evaluation.OutlierMask.Sha256}; removed={evaluation.OutlierMask.OutlierCellCount}.");
+            }
+
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             requestDisplay(
                 new ToolWorkbenchFilterDisplayRequestEventArgs(
                     removeOutlierPreviewPath,
@@ -171,6 +254,11 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetRemoveOutlierSummary(
                 "Preview canceled. Source and authored recipe were not changed.");
@@ -179,12 +267,27 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
         }
         finally
         {
-            SetRemoveOutlierRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref removeOutlierPreviewCancellation,
+                    null,
+                    cancellation),
+                cancellation);
+            if (ownsCancellation)
+            {
+                cancellation.Dispose();
+            }
+
+            if (ownsCancellation && !IsDisposed)
+            {
+                SetRemoveOutlierRunning(false);
+            }
         }
     }
 
     public bool CanPreviewSelectedRemoveOutlierPixels() =>
-        isSelectedStepRemoveOutlier()
+        !IsDisposed
+        && isSelectedStepRemoveOutlier()
         && isSourceReadyForRecipe()
         && !hasPendingStepParameterChanges()
         && !isRemoveOutlierPreviewRunning
@@ -193,7 +296,8 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
 
     public void PublishSelectedRemoveOutlierPixels()
     {
-        if (getSelectedPipelineStep() is not { } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { } step
             || !HasCurrentRemoveOutlierPreview)
         {
             return;
@@ -208,12 +312,28 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
             $"Remove Outlier Pixels output published without re-running: {step.OutputEntityId}.");
     }
 
-    public void CancelRemoveOutlierPreview() =>
-        removeOutlierPreviewCancellation?.Cancel();
+    public void CancelRemoveOutlierPreview()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref removeOutlierPreviewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     public void MarkRemoveOutlierPreviewStaleIfNeeded(object? sender)
     {
-        if (removeOutlierPreview is null || isRemoveOutlierPreviewRunning)
+        if (IsDisposed
+            || removeOutlierPreview is null
+            || isRemoveOutlierPreviewRunning)
         {
             return;
         }
@@ -239,7 +359,15 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
 
     public void ClearRemoveOutlierPreview(string summary)
     {
-        removeOutlierPreviewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(
+            ref removeOutlierPreviewCancellation,
+            null);
+        CancelAndDispose(cancellation);
         removeOutlierPreview = null;
         removeOutlierPreviewPath = null;
         isRemoveOutlierPreviewStale = false;
@@ -249,6 +377,11 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
 
     public void RefreshRemoveOutlierExecutionState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step
             && IsSelectedStepRemoveOutlierPixels
             && removeOutlierPreview is null
@@ -265,14 +398,48 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
 
     public void SetRemoveOutlierRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isRemoveOutlierPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetRemoveOutlierSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         removeOutlierExecutionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref removeOutlierPreviewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 
     private string GetRecipeDirectory()

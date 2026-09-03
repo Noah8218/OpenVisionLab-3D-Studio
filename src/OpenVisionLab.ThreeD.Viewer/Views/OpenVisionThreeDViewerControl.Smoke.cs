@@ -32,6 +32,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void EnableSmokeFromCommandLine(bool ownsApplicationLifecycle)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var args = Environment.GetCommandLineArgs();
         var smokeIndex = Array.IndexOf(args, "--smoke-screenshot");
         if (smokeIndex >= 0 && smokeIndex + 1 < args.Length)
@@ -1022,85 +1027,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             smokeSaveRecipePath = args[saveRecipeIndex + 1];
         }
 
-        ApplyNominalActualViewModelVerification(args);
-        ApplyDisplayViewModelVerification(args);
-        ApplyInspectionSessionVerification(args);
-        ApplyTeachingCaptureViewModelVerification(args);
         ApplyTeachingCapturePointerSmokeArguments(args);
 
         smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
         if (smokePublishResult && smokeScreenshotPath is null && !smokeNominalActualPreview)
         {
             PublishCurrentPreviewResult();
-        }
-    }
-
-    private void ApplyNominalActualViewModelVerification(string[] args)
-    {
-        var verificationIndex = Array.IndexOf(args, "--verify-nominal-actual-viewmodel");
-        if (verificationIndex < 0)
-        {
-            return;
-        }
-
-        if (verificationIndex + 1 >= args.Length
-            || args[verificationIndex + 1].StartsWith("--", StringComparison.Ordinal))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = "Nominal/actual ViewModel verification requires a report path.";
-            return;
-        }
-
-        if (!NominalActualComparisonViewModelVerification.Verify(args[verificationIndex + 1], out var summary))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = summary;
-        }
-    }
-
-    private void ApplyDisplayViewModelVerification(string[] args)
-    {
-        var verificationIndex = Array.IndexOf(args, "--verify-display-viewmodel");
-        if (verificationIndex < 0)
-        {
-            return;
-        }
-
-        if (verificationIndex + 1 >= args.Length
-            || args[verificationIndex + 1].StartsWith("--", StringComparison.Ordinal))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = "Display-settings ViewModel verification requires a report path.";
-            return;
-        }
-
-        if (!ViewerDisplaySettingsViewModelVerification.Verify(args[verificationIndex + 1], out var summary))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = summary;
-        }
-    }
-
-    private void ApplyInspectionSessionVerification(string[] args)
-    {
-        var verificationIndex = Array.IndexOf(args, "--verify-inspection-session");
-        if (verificationIndex < 0)
-        {
-            return;
-        }
-
-        if (verificationIndex + 1 >= args.Length
-            || args[verificationIndex + 1].StartsWith("--", StringComparison.Ordinal))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = "Viewer inspection-session verification requires a report path.";
-            return;
-        }
-
-        if (!ViewerInspectionSessionVerification.Verify(args[verificationIndex + 1], out var summary))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = summary;
         }
     }
 

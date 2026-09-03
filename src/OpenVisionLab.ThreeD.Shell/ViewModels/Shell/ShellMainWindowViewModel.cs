@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -32,7 +34,7 @@ public enum ShellInspectionTask
     Warpage
 }
 
-public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
+public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly RelayCommand selectWorkspaceCommand;
     private readonly RelayCommand openSelectedValidationIssueInTeachCommand;
@@ -72,9 +74,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Workbench;
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
     private readonly IReadOnlyList<OpenVisionLanguageOption> languageOptions;
+    private readonly NotifyCollectionChangedEventHandler inspectionStepsChangedHandler;
+    private readonly EventHandler languageChangedHandler;
     private OpenVisionLanguageOption? selectedLanguageOption;
     private double lastLanguageChangeMilliseconds;
     private RunRecordRecentItem? selectedRecentRunRecord;
+    private int disposalState;
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -93,6 +98,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? ExportPrivacySafeSupportBundleRequested;
     public event EventHandler<EvidenceArtifactOpenRequestEventArgs>? OpenEvidenceArtifactRequested;
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public ShellMainWindowViewModel(
         string? comparisonContractPath = null,
         string? comparisonReportPath = null,
@@ -102,7 +109,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         string? csvReportPath = null,
         string? recentRunRecordsPath = null,
         string? recentRecipesPath = null,
-        string? orderedRunRecordRoot = null)
+        string? orderedRunRecordRoot = null,
+        string? integrationSettingsPath = null)
     {
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
@@ -129,9 +137,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             ?? languageOptions[0];
         ResultsWorkspace = new ResultsWorkspaceViewModel();
         Workbench = new ToolWorkbenchViewModel(recentRecipesPath);
-        IntegrationExchange = new ThreeDIntegrationViewModel(() => currentRunRecordPath);
-        InspectionSteps.CollectionChanged += (_, _) =>
+        IntegrationExchange = new ThreeDIntegrationViewModel(
+            () => currentRunRecordPath,
+            integrationSettingsPath);
+        inspectionStepsChangedHandler = (_, _) =>
             RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
+        InspectionSteps.CollectionChanged += inspectionStepsChangedHandler;
         Calibration = new CalibrationCenterViewModel();
         selectWorkspaceCommand = new RelayCommand(
             parameter => SelectWorkspace(parameter),
@@ -145,7 +156,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         Workbench.PropertyChanged += OnWorkbenchNavigationStateChanged;
         Workbench.OrderedRunCompleted += OnWorkbenchOrderedRunCompleted;
         Workbench.OrderedRunInvalidated += OnWorkbenchOrderedRunInvalidated;
-        OpenVisionLanguageService.LanguageChanged += (_, _) => RefreshLocalizedPresentation();
+        languageChangedHandler = (_, _) => RefreshLocalizedPresentation();
+        OpenVisionLanguageService.LanguageChanged += languageChangedHandler;
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
@@ -186,6 +198,22 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             ClearCurrentRunEvidenceForRecipeContext();
         }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        InspectionSteps.CollectionChanged -= inspectionStepsChangedHandler;
+        Workbench.PropertyChanged -= OnWorkbenchNavigationStateChanged;
+        Workbench.OrderedRunCompleted -= OnWorkbenchOrderedRunCompleted;
+        Workbench.OrderedRunInvalidated -= OnWorkbenchOrderedRunInvalidated;
+        OpenVisionLanguageService.LanguageChanged -= languageChangedHandler;
+        Calibration.Dispose();
+        Workbench.Dispose();
     }
 
     public ICommand ApplyRoiAlignmentCommand { get; }

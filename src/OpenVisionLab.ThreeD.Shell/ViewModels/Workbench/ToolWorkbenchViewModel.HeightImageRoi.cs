@@ -22,46 +22,14 @@ public sealed partial class ToolWorkbenchViewModel
         ToolRecipeGridRectangle rectangle,
         out string message)
     {
-        ArgumentNullException.ThrowIfNull(rectangle);
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
-        if (!IsTeachingSelectionCaptureActive
-            || SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridRectangle
-            || binding is null)
+        var updated = teachingSelectionCaptureOwner.TryUpdateHeightImageRoiCandidate(
+            rectangle,
+            out message);
+        if (updated)
         {
-            message = "Height Image ROI editing requires an active GridRectangle capture.";
-            return false;
+            RefreshHeightImageRoiProjection();
         }
-
-        if (rectangle.Row < 0
-            || rectangle.Column < 0
-            || rectangle.RowCount <= 0
-            || rectangle.ColumnCount <= 0
-            || (long)rectangle.Row + rectangle.RowCount > binding.GridHeight
-            || (long)rectangle.Column + rectangle.ColumnCount > binding.GridWidth)
-        {
-            message = "Height Image ROI candidate must stay inside the native source grid.";
-            return false;
-        }
-
-        if (IsSelectedStepCrossSectionDimensions
-            && (rectangle.RowCount != 1 || rectangle.ColumnCount < 2))
-        {
-            message = "Cross-section Dimensions requires one row and at least two columns.";
-            return false;
-        }
-
-        UpdateTeachingGridRectangleDraft(rectangle);
-        SetTeachingSelectionCaptureState(
-            active: true,
-            capturedPointCount: 2,
-            requiredPointCount: Math.Max(2, SelectedStepSelectionRequirement.RequiredPointCount),
-            canApply: true,
-            message: "Height Image ROI candidate is ready for Review. Apply remains explicit.");
-        TeachingGridRectangleDraftChanged?.Invoke(
-            this,
-            new ToolWorkbenchGridRectangleDraftChangedEventArgs(rectangle));
-        message = "Height Image ROI candidate synchronized with the 3D Viewer.";
-        return true;
+        return updated;
     }
 
     private void RefreshHeightImageRoiProjection()
@@ -101,7 +69,7 @@ public sealed partial class ToolWorkbenchViewModel
             : SelectedStepTeachingSelection is null
                 ? InspectionWorkspaceRegionLifecycleState.Missing
                 : InspectionWorkspaceRegionLifecycleState.Applied;
-        var gridRectangleDraft = TeachingCaptureSession.GridRectangleDraft;
+        var gridRectangleDraft = teachingSelectionCaptureOwner.Session.GridRectangleDraft;
         var candidate = IsTeachingSelectionCaptureActive
                         && gridRectangleDraft.RowCount > 0
                         && gridRectangleDraft.ColumnCount > 0

@@ -19,6 +19,7 @@ using OpenVisionLab.ThreeD.Shell.Views.Recipe;
 using OpenVisionLab.ThreeD.Shell.Views.Tooling;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts;
+using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop;
 using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogButtons;
 using WpfMessageDialogKind = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogKind;
 using WpfMessageDialogOptions = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogOptions;
@@ -27,7 +28,6 @@ using WpfMessageDialogWindow = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialo
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -54,28 +54,24 @@ public partial class MainWindow : Window
     private readonly ShellSurfaceMatchInteractionSmoke _surfaceMatchInteractionSmoke;
     private readonly ShellViewerWorkspaceSmoke _viewerWorkspaceSmoke;
     private readonly ShellCurrentRecipeRunSmoke _currentRecipeRunSmoke;
+    private readonly ShellPreparationPreviewSmokeCoordinator _preparationPreviewSmoke;
+    private readonly ShellStartupConfigurationPlan _startupConfiguration;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
-    private Task? validationSetSmokeSelectionTask;
-    private Task? validationSetSmokeSectionTask;
-    private bool validationSetSmokeRunRequested;
-
-    private FilterToolLabWindow? filterToolLabWindow => _toolLabWindows.Filter;
-    private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow => _toolLabWindows.HeightDifferenceEdge;
-    private TwoPointLineToolLabWindow? twoPointLineToolLabWindow => _toolLabWindows.TwoPointLine;
-    private ThreePointPlaneToolLabWindow? threePointPlaneToolLabWindow => _toolLabWindows.ThreePointPlane;
-    private DatumPlaneDeviationToolLabWindow? datumPlaneDeviationToolLabWindow => _toolLabWindows.DatumPlaneDeviation;
-    private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow => _toolLabWindows.LineIntersection;
-    private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow => _toolLabWindows.LandmarkCorrespondence;
-    private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow => _toolLabWindows.XYZAffineSolve;
-    private XYZAffineApplyToolLabWindow? xyzAffineApplyToolLabWindow => _toolLabWindows.XYZAffineApply;
-    private RegridHeightMapToolLabWindow? regridHeightMapToolLabWindow => _toolLabWindows.RegridHeightMap;
+    private DispatcherTimer? _importDialogSmokeTimer;
+    private DispatcherOperation? _expertViewerActivationOperation;
+    private bool _isClosed;
+    private ShellValidationSetSmokeState validationSetSmoke =
+        ShellValidationSetSmokeState.Empty;
 
     public MainWindow()
     {
+        _startupConfiguration = ShellStartupConfigurationPlanner.Parse(
+            Environment.GetCommandLineArgs());
         OpenVisionLanguageService.Load();
-        ApplyCommandLineLanguage();
+        ApplyCommandLineLanguage(_startupConfiguration);
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio starting.");
-        _viewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: !ShouldStartWithEmptyRecipeInput());
+        _viewer = new OpenVisionThreeDViewerControl(
+            loadDefaultSamples: !_startupConfiguration.ShouldStartWithEmptyRecipeInput);
         InitializeComponent();
         _viewModel = new ShellMainWindowViewModel(
             GetCommandLineValue("--recipe-comparison-contract"),
@@ -84,14 +80,16 @@ public partial class MainWindow : Window
             GetCommandLineValue("--run-record"),
             GetCommandLineValue("--html-report"),
             GetCommandLineValue("--csv-report"),
-            recentRecipesPath: IsAutomatedShellRun() ? null : GetPersistentRecentRecipesPath());
-        _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
+            recentRecipesPath: _startupConfiguration.IsAutomatedShellRun
+                ? null
+                : GetPersistentRecentRecipesPath(),
+            integrationSettingsPath: GetCommandLineValue("--smoke-integration-settings"));
+        _viewModel.SelectedEvidenceTabIndex = _startupConfiguration.EvidenceTabIndex;
         DataContext = _viewModel;
         _toolLabWindows = new ToolLabWindowManager(this, _viewModel.Workbench, ShowMissingToolLabStep);
         _preparationPresetSmoke = new ShellPreparationPresetAssistantSmoke(
             _viewModel.Workbench,
-            ToolWorkbench,
-            SetCursorPos);
+            ToolWorkbench);
         _validationThresholdSmoke = new ShellValidationThresholdAssistantSmoke(
             _viewModel.Workbench,
             ToolWorkbench);
@@ -110,6 +108,8 @@ public partial class MainWindow : Window
                 .FirstOrDefault(button =>
                     System.Windows.Automation.AutomationProperties.GetAutomationId(button)
                     == "RunCurrentRecipeButton"));
+        _preparationPreviewSmoke = new ShellPreparationPreviewSmokeCoordinator(
+            _viewModel.Workbench);
         _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
             _viewModel.Workbench,
             _viewer,
@@ -148,7 +148,7 @@ public partial class MainWindow : Window
             advancedHeightProfileView.DataContext = _viewer.ViewModel;
         }
         OVLog.Write(LogCategory.UI, LogLevel.Info, "Tool Workbench is the default Shell workspace.");
-        if (ShouldStartWithEmptyRecipeInput())
+        if (_startupConfiguration.ShouldStartWithEmptyRecipeInput)
         {
             _viewer.ClearC3DTeachingSource(_viewModel.Workbench.LocalizedSourceReadinessSummary);
         }
@@ -163,8 +163,8 @@ public partial class MainWindow : Window
         _inspectionTaskChangedHandler = (_, _) => LoadSelectedInspectionTask();
         _viewModel.InspectionTaskChanged += _inspectionTaskChangedHandler;
         UpdateViewerHost();
-        ConfigureWorkspaceFromCommandLine();
-        ConfigureInspectionTaskFromCommandLine();
+        ConfigureWorkspaceFromCommandLine(_startupConfiguration);
+        ConfigureInspectionTaskFromCommandLine(_startupConfiguration);
         _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
 
         _viewerHostStateChangedHandler = OnViewerHostStateChanged;
@@ -226,21 +226,21 @@ public partial class MainWindow : Window
         ConfigureCalibrationStudyFromCommandLine();
         ConfigureToolTeachingRecipeFromCommandLine();
         RestoreStartupRunRecordAfterRecipeLoad();
-        if (!IsAutomatedShellRun())
+        if (!_startupConfiguration.IsAutomatedShellRun)
         {
             _workbenchLifecycle.RestoreMostRecentWorkbenchRecipe();
         }
-        ConfigureOutputCompareFromCommandLine();
+        ConfigureOutputCompareFromCommandLine(_startupConfiguration);
         ConfigureValidationSetFromCommandLine();
-        ConfigureWorkbenchBottomPaneFromCommandLine();
-        ConfigureC3DSourceLoadProgressFromCommandLine();
+        ConfigureWorkbenchBottomPaneFromCommandLine(_startupConfiguration);
+        ConfigureC3DSourceLoadProgressFromCommandLine(_startupConfiguration);
         _workbenchViewerTeaching.SyncAppliedSelections();
         _studioLayout = new StudioLayoutController(
             this,
             ToolWorkbench,
             Workspace,
             _viewModel,
-            IsAutomatedShellRun(),
+            _startupConfiguration.IsAutomatedShellRun,
             GetCommandLineValue("--smoke-layout-profile"),
             GetCommandLineValue("--smoke-layout-state-report"));
         Loaded += ConfigureViewerViewFromCommandLine;
@@ -250,7 +250,8 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (!IsAutomatedShellRun() && !_workbenchLifecycle.TryResolveWorkbenchChanges("closing 3D Studio"))
+        if (!_startupConfiguration.IsAutomatedShellRun
+            && !_workbenchLifecycle.TryResolveWorkbenchChanges("closing 3D Studio"))
         {
             e.Cancel = true;
             return;
@@ -265,143 +266,15 @@ public partial class MainWindow : Window
         base.OnSourceInitialized(e);
         if (PresentationSource.FromVisual(this) is HwndSource source)
         {
-            source.AddHook(ConstrainMaximizeToWorkArea);
+            source.AddHook(ShellWindowNativeInterop.ConstrainMaximizeToWorkArea);
         }
-    }
-
-    private static IntPtr ConstrainMaximizeToWorkArea(
-        IntPtr windowHandle,
-        int message,
-        IntPtr wParam,
-        IntPtr lParam,
-        ref bool handled)
-    {
-        const int WmGetMinMaxInfo = 0x0024;
-        const uint MonitorDefaultToNearest = 0x00000002;
-
-        if (message != WmGetMinMaxInfo || lParam == IntPtr.Zero)
-        {
-            return IntPtr.Zero;
-        }
-
-        var monitor = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
-        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-        if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref monitorInfo))
-        {
-            return IntPtr.Zero;
-        }
-
-        var minMaxInfo = Marshal.PtrToStructure<MinMaxInfo>(lParam);
-        minMaxInfo.MaxPosition.X = monitorInfo.WorkArea.Left - monitorInfo.MonitorArea.Left;
-        minMaxInfo.MaxPosition.Y = monitorInfo.WorkArea.Top - monitorInfo.MonitorArea.Top;
-        minMaxInfo.MaxSize.X = monitorInfo.WorkArea.Right - monitorInfo.WorkArea.Left;
-        minMaxInfo.MaxSize.Y = monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top;
-        Marshal.StructureToPtr(minMaxInfo, lParam, false);
-        return IntPtr.Zero;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromPoint(NativePoint point, uint flags);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
-
-    [DllImport("Shcore.dll")]
-    private static extern int GetDpiForMonitor(
-        IntPtr monitor,
-        int dpiType,
-        out uint dpiX,
-        out uint dpiY);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetCursorPos(int x, int y);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetCursorPos(out NativePoint point);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(IntPtr windowHandle, out NativeRectangle rectangle);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetForegroundWindow(IntPtr windowHandle);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool PostMessage(
-        IntPtr windowHandle,
-        uint message,
-        UIntPtr wParam,
-        IntPtr lParam);
-
-    private static bool PostClientMouseMove(IntPtr windowHandle, Point devicePoint)
-    {
-        const uint wmMouseMove = 0x0200;
-        var x = Math.Clamp((int)Math.Round(devicePoint.X), 0, short.MaxValue);
-        var y = Math.Clamp((int)Math.Round(devicePoint.Y), 0, short.MaxValue);
-        var packed = (IntPtr)((y << 16) | (x & 0xFFFF));
-        return PostMessage(windowHandle, wmMouseMove, UIntPtr.Zero, packed);
-    }
-
-    [DllImport("user32.dll", EntryPoint = "mouse_event")]
-    private static extern void SendMouseEvent(
-        uint flags,
-        uint deltaX,
-        uint deltaY,
-        uint data,
-        UIntPtr extraInfo);
-
-    [DllImport("user32.dll", EntryPoint = "keybd_event")]
-    private static extern void SendKeyboardEvent(
-        byte virtualKey,
-        byte scanCode,
-        uint flags,
-        UIntPtr extraInfo);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint
-    {
-        public int X;
-        public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MinMaxInfo
-    {
-        public NativePoint Reserved;
-        public NativePoint MaxSize;
-        public NativePoint MaxPosition;
-        public NativePoint MinTrackSize;
-        public NativePoint MaxTrackSize;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRectangle
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct MonitorInfo
-    {
-        public int Size;
-        public NativeRectangle MonitorArea;
-        public NativeRectangle WorkArea;
-        public uint Flags;
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        _isClosed = true;
+        CancelExpertViewerActivation();
+        StopImportDialogSmokeTimer();
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio shutdown.");
         _viewer.HostStateChanged -= _viewerHostStateChangedHandler;
         _requestCoordinator.Dispose();
@@ -413,6 +286,9 @@ public partial class MainWindow : Window
         Loaded -= EnsureWorkbenchViewerSourceConsistency;
         _studioLayout.Dispose();
         _workbenchLifecycle.Dispose();
+        _toolLabWindows.Dispose();
+        ToolWorkbench.Dispose();
+        _viewer.Dispose();
         try
         {
             _viewModel.IntegrationExchange.DisposeAsync().AsTask().GetAwaiter().GetResult();
@@ -424,7 +300,56 @@ public partial class MainWindow : Window
                 LogLevel.Error,
                 $"TCP integration shutdown failed: {exception.GetBaseException().Message}");
         }
+        _viewModel.Dispose();
         base.OnClosed(e);
+    }
+
+    private void StartImportDialogSmokeTimer()
+    {
+        StopImportDialogSmokeTimer();
+        if (_isClosed)
+        {
+            return;
+        }
+
+        var timer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(700)
+        };
+        timer.Tick += OnImportDialogSmokeTimerTick;
+        _importDialogSmokeTimer = timer;
+        try
+        {
+            timer.Start();
+        }
+        catch
+        {
+            StopImportDialogSmokeTimer();
+            throw;
+        }
+    }
+
+    private void StopImportDialogSmokeTimer()
+    {
+        if (_importDialogSmokeTimer is not { } timer)
+        {
+            return;
+        }
+
+        timer.Stop();
+        timer.Tick -= OnImportDialogSmokeTimerTick;
+        _importDialogSmokeTimer = null;
+    }
+
+    private void OnImportDialogSmokeTimerTick(object? sender, EventArgs args)
+    {
+        StopImportDialogSmokeTimer();
+        if (_isClosed)
+        {
+            return;
+        }
+
+        _viewModel.Workbench.Import3DDataCommand.Execute(null);
     }
 
     private void EnsureWorkbenchViewerSourceConsistency(object sender, RoutedEventArgs args)
@@ -447,7 +372,8 @@ public partial class MainWindow : Window
         var viewerPresentationPressedSmoke = smoke.ViewerPresentationPressedSmoke;
         string? viewerPresentationCameraLinkSmokeSummary = null;
         var integrationExchangeSmokeState = smoke.IntegrationExchangeSmokeState;
-        var interactionHoverFallbackUsed = false;
+        var integrationExchangeExeRole = smoke.IntegrationExchangeExeRole;
+        ShellIntegrationExchangeSmokeResult? integrationExchangeSmoke = null;
         var thicknessRepeatGridSmoke = smoke.ThicknessRepeatGridSmoke;
         var viewerPopoutScreenshotPath = smoke.ViewerPopoutScreenshotPath;
         var viewerPopoutScreenshotQualityReportPath = smoke.ViewerPopoutScreenshotQualityReportPath;
@@ -538,12 +464,6 @@ public partial class MainWindow : Window
         var threePointPlanePreviewSmoke = smoke.ThreePointPlanePreviewSmoke;
         var datumPlaneDeviationPublishSmoke = smoke.DatumPlaneDeviationPublishSmoke;
         var datumPlaneDeviationPreviewSmoke = smoke.DatumPlaneDeviationPreviewSmoke;
-        var filterPreviewSmoke = smoke.FilterPreviewSmoke;
-        var preparationQualityComparisonSmoke = smoke.PreparationQualityComparisonSmoke;
-        var removeOutlierPreviewSmoke = smoke.RemoveOutlierPreviewSmoke;
-        var levelSurfacePreviewSmoke = smoke.LevelSurfacePreviewSmoke;
-        var roiCropPreviewSmoke = smoke.RoiCropPreviewSmoke;
-        var measurementPreviewSmoke = smoke.MeasurementPreviewSmoke;
         var edgePublishSmoke = smoke.EdgePublishSmoke;
         var lineFitPreviewSmoke = smoke.LineFitPreviewSmoke;
         var edgePreviewSmoke = smoke.EdgePreviewSmoke;
@@ -569,34 +489,9 @@ public partial class MainWindow : Window
         if (smoke.UseLeftmostVirtualScreenOrigin)
         {
             WindowStartupLocation = WindowStartupLocation.Manual;
-            const uint monitorDefaultToNearest = 0x00000002;
-            var leftmostMonitor = MonitorFromPoint(
-                new NativePoint
-                {
-                    X = (int)SystemParameters.VirtualScreenLeft,
-                    Y = (int)SystemParameters.VirtualScreenTop
-                },
-                monitorDefaultToNearest);
-            var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-            if (leftmostMonitor != IntPtr.Zero
-                && GetMonitorInfo(leftmostMonitor, ref monitorInfo))
-            {
-                var dpiX = 96u;
-                var dpiY = 96u;
-                const int effectiveDpi = 0;
-                GetDpiForMonitor(
-                    leftmostMonitor,
-                    effectiveDpi,
-                    out dpiX,
-                    out dpiY);
-                Left = monitorInfo.WorkArea.Left * 96.0 / Math.Max(96u, dpiX);
-                Top = monitorInfo.WorkArea.Top * 96.0 / Math.Max(96u, dpiY);
-            }
-            else
-            {
-                Left = SystemParameters.VirtualScreenLeft;
-                Top = SystemParameters.VirtualScreenTop;
-            }
+            _ = TryGetLeftmostWorkAreaOrigin(out var left, out var top);
+            Left = left;
+            Top = top;
         }
 
         var smokePublishResult = smoke.SmokePublishResult;
@@ -607,21 +502,17 @@ public partial class MainWindow : Window
             _shellSmokeLoadedHandler = async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
-                if (smoke.OpenImport3DDataDialogSmoke)
+                if (_isClosed)
                 {
-                    var importDialogTimer = new DispatcherTimer
-                    {
-                        Interval = TimeSpan.FromMilliseconds(700)
-                    };
-                    importDialogTimer.Tick += (_, _) =>
-                    {
-                        importDialogTimer.Stop();
-                        _viewModel.Workbench.Import3DDataCommand.Execute(null);
-                    };
-                    importDialogTimer.Start();
                     return;
                 }
-                ConfigureResultsSectionFromCommandLine();
+
+                if (smoke.OpenImport3DDataDialogSmoke)
+                {
+                    StartImportDialogSmokeTimer();
+                    return;
+                }
+                ConfigureResultsSectionFromCommandLine(_startupConfiguration);
                 if (!TryConfigureSurfaceMatchEvidenceFromCommandLine(
                         out var surfaceMatchFailure))
                 {
@@ -711,7 +602,10 @@ public partial class MainWindow : Window
                 if (!string.IsNullOrWhiteSpace(sourceAcquisitionProvenanceSmokeState))
                 {
                     var sourceAcquisitionFailure =
-                        await ConfigureSourceAcquisitionProvenanceSmokeStateAsync(
+                        await ShellSourceQualitySmoke.ConfigureAcquisitionProvenanceStateAsync(
+                            _viewModel.Workbench,
+                            ToolWorkbench,
+                            Dispatcher,
                             sourceAcquisitionProvenanceSmokeState,
                             sourceAcquisitionProvenancePopupScreenshotPath);
                     if (sourceAcquisitionFailure is not null)
@@ -828,71 +722,23 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                if (filterPreviewSmoke
-                    && !await _viewModel.Workbench.PreviewSelectedFilterAsync())
+                var preparationPreview = await _preparationPreviewSmoke.RunAsync(
+                    new ShellPreparationPreviewSmokeRequest(
+                        smoke.FilterPreviewSmoke,
+                        smoke.PreparationQualityComparisonSmoke,
+                        smoke.RemoveOutlierPreviewSmoke,
+                        smoke.LevelSurfacePreviewSmoke,
+                        smoke.RoiCropPreviewSmoke,
+                        smoke.MeasurementPreviewSmoke,
+                        edgeStepId));
+                if (!preparationPreview.Succeeded)
                 {
-                    _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.FilterExecutionSummary);
+                    _viewModel.SetViewerSmokeFailed(preparationPreview.Failure!);
                     Application.Current.Shutdown(1);
                     return;
                 }
 
-                var preparationOutput = _viewModel.Workbench.SelectedToolWorkspace.Outputs
-                    .SingleOrDefault();
-                if (preparationQualityComparisonSmoke
-                    && (preparationOutput is null
-                        || !_viewModel.Workbench.TryOpenPreparationQualityComparison(
-                            _viewModel.Workbench.DisplayedOutputs.SingleOrDefault(item =>
-                                string.Equals(
-                                    item.Id,
-                                    preparationOutput.EntityId,
-                                    StringComparison.OrdinalIgnoreCase)))))
-                {
-                    _viewModel.SetViewerSmokeFailed(
-                        "Preparation quality comparison smoke could not normalize the current source and Filter Preview.");
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-
-                if (removeOutlierPreviewSmoke
-                    && !await _viewModel.Workbench
-                        .PreviewSelectedRemoveOutlierPixelsAsync())
-                {
-                    _viewModel.SetViewerSmokeFailed(
-                        _viewModel.Workbench.RemoveOutlierExecutionSummary);
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-
-                if (levelSurfacePreviewSmoke
-                    && !await _viewModel.Workbench
-                        .PreviewSelectedLevelSurfaceAsync())
-                {
-                    _viewModel.SetViewerSmokeFailed(
-                        _viewModel.Workbench.LevelSurfaceExecutionSummary);
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-
-                if (roiCropPreviewSmoke
-                    && !await _viewModel.Workbench
-                        .PreviewSelectedRoiCropAsync())
-                {
-                    _viewModel.SetViewerSmokeFailed(
-                        _viewModel.Workbench.RoiCropExecutionSummary);
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-
-                if (measurementPreviewSmoke
-                    && ((!string.IsNullOrWhiteSpace(edgeStepId)
-                         && !_viewModel.Workbench.SelectPipelineStep(edgeStepId))
-                        || !await _viewModel.Workbench.PreviewSelectedMeasurementAsync()))
-                {
-                    _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.MeasurementExecutionSummary);
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-                if (measurementPreviewSmoke)
+                if (preparationPreview.BringMeasurementOutputIntoView)
                 {
                     ToolWorkbench.BringSelectedOutputIntoView();
                     await Dispatcher.InvokeAsync(() => { });
@@ -966,7 +812,10 @@ public partial class MainWindow : Window
                 }
 
                 if (heightImagePaletteStateEvidenceDirectory is not null
-                    && !await RunHeightImagePaletteStateSmokeAsync(
+                    && !await ShellHeightImagePaletteStateSmoke.RunAsync(
+                        this,
+                        ToolWorkbench,
+                        _viewModel.Workbench,
                         heightImagePaletteStateEvidenceDirectory))
                 {
                     _viewModel.SetViewerSmokeFailed(
@@ -1415,212 +1264,53 @@ public partial class MainWindow : Window
 
                 if (!string.IsNullOrWhiteSpace(integrationExchangeSmokeState))
                 {
-                    if (!_viewModel.IsIntegrationExchangeSelected)
+                    var integrationExchangeOutcome =
+                        await ShellIntegrationExchangeSmoke.RunAsync(
+                            integrationExchangeSmokeState,
+                            _viewModel.IsIntegrationExchangeSelected,
+                            _viewModel.IntegrationExchange,
+                            this,
+                            Dispatcher);
+                    integrationExchangeSmoke = integrationExchangeOutcome;
+                    if (!integrationExchangeOutcome.Succeeded)
                     {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Integration exchange visual state requires --shell-workspace Exchange.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    const string representativeExchangeRoot =
-                        @"D:\OpenVisionLab-Exchange\Projects\Automated-Optical-Inspection-Line-With-A-Deliberately-Long-Commissioning-Name\Shared-Exchange";
-                    _viewModel.IntegrationExchange.ExchangeRoot = representativeExchangeRoot;
-                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
-                    UpdateLayout();
-                    if (integrationExchangeSmokeState.Equals("input-focus", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var input = FindVisualDescendants<System.Windows.Controls.TextBox>(this)
-                            .FirstOrDefault(textBox => textBox.Name == "ExchangeRootTextBox");
-                        if (input is null)
-                        {
-                            _viewModel.SetViewerSmokeFailed(
-                                "Integration exchange folder input was not available.");
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                        input.Text = representativeExchangeRoot;
-                        input.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
-                        _viewModel.IntegrationExchange.ExchangeRoot = representativeExchangeRoot + @"\Restored-From-ViewModel";
-                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
-                        if (!input.Focus()
-                            || !input.IsKeyboardFocusWithin
-                            || input.Text != representativeExchangeRoot + @"\Restored-From-ViewModel")
-                        {
-                            _viewModel.SetViewerSmokeFailed(
-                                "Integration exchange folder did not complete its two-way binding and focus round trip.");
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                    }
-                    else if (integrationExchangeSmokeState.Equals("interaction-matrix", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Activate();
-                        var interactionWindowHandle = new WindowInteropHelper(this).Handle;
-                        var interactionForegrounded = SetForegroundWindow(interactionWindowHandle);
-                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                        var workspace = FindVisualDescendants<System.Windows.Controls.UserControl>(this)
-                            .FirstOrDefault(control =>
-                                System.Windows.Automation.AutomationProperties.GetAutomationId(control)
-                                == "MachineExchangeWorkspace");
-                        var buttons = workspace is null
-                            ? []
-                            : FindVisualDescendants<System.Windows.Controls.Button>(workspace)
-                                .Where(button => button.IsVisible)
-                                .ToArray();
-                        if (workspace is null || buttons.Length < 7 || !buttons.Any(button => !button.IsEnabled))
-                        {
-                            _viewModel.SetViewerSmokeFailed(
-                                "Integration exchange interaction matrix did not expose its expected enabled and disabled controls.");
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                        foreach (var button in buttons.Where(button => button.IsEnabled))
-                        {
-                            button.BringIntoView();
-                            if (!button.Focus()
-                                || !button.IsKeyboardFocusWithin
-                                || button.Command is not null
-                                 && button.IsEnabled != button.Command.CanExecute(button.CommandParameter))
-                            {
-                                _viewModel.SetViewerSmokeFailed(
-                                    "Integration exchange button focus or CanExecute state was inconsistent.");
-                                Application.Current.Shutdown(1);
-                                return;
-                            }
-                            var relativeCenter = button.TransformToAncestor(this).Transform(
-                                new Point(button.ActualWidth / 2, button.ActualHeight / 2));
-                            var transformToDevice = PresentationSource.FromVisual(this)
-                                ?.CompositionTarget?.TransformToDevice
-                                ?? System.Windows.Media.Matrix.Identity;
-                            var deviceCenter = transformToDevice.Transform(relativeCenter);
-                            _ = GetWindowRect(interactionWindowHandle, out var interactionWindowRect);
-                            var center = new Point(
-                                interactionWindowRect.Left + deviceCenter.X,
-                                interactionWindowRect.Top + deviceCenter.Y);
-                            if (!SetCursorPos((int)Math.Round(center.X), (int)Math.Round(center.Y)))
-                            {
-                                _viewModel.SetViewerSmokeFailed(
-                                    "Integration exchange pointer could not enter the button hit region.");
-                                Application.Current.Shutdown(1);
-                                return;
-                            }
-                            PostClientMouseMove(interactionWindowHandle, deviceCenter);
-                            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                            await Task.Delay(75);
-                            for (var attempt = 0; attempt < 5 && !button.IsMouseOver; attempt++)
-                            {
-                                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                                await Task.Delay(50);
-                            }
-                            var buttonHoverFallback = false;
-                            if (!button.IsMouseOver)
-                            {
-                                // Some desktop sessions keep the test process active while
-                                // suppressing cross-process mouse-over promotion. Capture the
-                                // element and route a real WPF mouse move so the same template
-                                // trigger can still be inspected; report this as a harness
-                                // fallback rather than native pointer proof.
-                                System.Windows.Input.Mouse.Capture(
-                                    button,
-                                    System.Windows.Input.CaptureMode.Element);
-                                button.RaiseEvent(new System.Windows.Input.MouseEventArgs(
-                                    System.Windows.Input.Mouse.PrimaryDevice,
-                                    Environment.TickCount)
-                                {
-                                    RoutedEvent = System.Windows.Input.Mouse.MouseMoveEvent,
-                                    Source = button
-                                });
-                                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                                buttonHoverFallback = button.IsMouseOver;
-                                System.Windows.Input.Mouse.Capture(null);
-                            }
-                            if (!button.IsMouseOver && !buttonHoverFallback)
-                            {
-                                _viewModel.SetViewerSmokeFailed(
-                                    $"Integration exchange button did not enter hover state. foregrounded={interactionForegrounded}; cursor={center.X:0.#},{center.Y:0.#}; window={interactionWindowRect.Left},{interactionWindowRect.Top},{interactionWindowRect.Right},{interactionWindowRect.Bottom}; automationId={System.Windows.Automation.AutomationProperties.GetAutomationId(button)}");
-                                Application.Current.Shutdown(1);
-                                return;
-                            }
-                            interactionHoverFallbackUsed |= buttonHoverFallback;
-                            var awayDevice = transformToDevice.Transform(new Point(8, 8));
-                            var away = new Point(
-                                interactionWindowRect.Left + awayDevice.X,
-                                interactionWindowRect.Top + awayDevice.Y);
-                            SetCursorPos((int)Math.Round(away.X), (int)Math.Round(away.Y));
-                            PostClientMouseMove(interactionWindowHandle, awayDevice);
-                            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                            await Task.Delay(75);
-                            if (button.IsMouseOver)
-                            {
-                                _viewModel.SetViewerSmokeFailed(
-                                    "Integration exchange button did not recover after mouse leave.");
-                                Application.Current.Shutdown(1);
-                                return;
-                            }
-                        }
-                        var input = FindVisualDescendants<System.Windows.Controls.TextBox>(workspace)
-                            .First(textBox => textBox.Name == "ExchangeRootTextBox");
-                        input.Focus();
-                        if (!input.MoveFocus(new System.Windows.Input.TraversalRequest(
-                                System.Windows.Input.FocusNavigationDirection.Next))
-                            || System.Windows.Input.Keyboard.FocusedElement
-                                is not System.Windows.Controls.Button)
-                        {
-                            _viewModel.SetViewerSmokeFailed(
-                                "Integration exchange Tab traversal did not reach the next action.");
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                    }
-                    else if (integrationExchangeSmokeState.Equals("validation-error", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _viewModel.IntegrationExchange.RefreshHandoffsCommand.Execute(null);
-                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
-                        if (string.IsNullOrWhiteSpace(_viewModel.IntegrationExchange.StatusText))
-                        {
-                            _viewModel.SetViewerSmokeFailed(
-                                "Integration exchange validation error did not render a status message.");
-                            Application.Current.Shutdown(1);
-                                return;
-                        }
-                    }
-                    else if (integrationExchangeSmokeState.Equals("primary-pressed", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var primaryButton = FindVisualDescendants<System.Windows.Controls.Button>(this)
-                            .FirstOrDefault(button =>
-                                System.Windows.Automation.AutomationProperties.GetAutomationId(button)
-                                == "SaveIntegrationSetup");
-                        if (primaryButton is not { IsVisible: true, IsEnabled: true })
-                        {
-                            _viewModel.SetViewerSmokeFailed(
-                                "Integration exchange primary button was not available for pressed-state capture.");
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                    }
-                    else if (!integrationExchangeSmokeState.Equals(
-                                 "refresh-pressed",
-                                 StringComparison.OrdinalIgnoreCase))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            $"Unsupported integration exchange visual state '{integrationExchangeSmokeState}'.");
+                        _viewModel.SetViewerSmokeFailed(integrationExchangeOutcome.Failure!);
                         Application.Current.Shutdown(1);
                         return;
                     }
                 }
 
-                if (validationSetSmokeSelectionTask is not null)
+                if (!string.IsNullOrWhiteSpace(integrationExchangeExeRole))
                 {
-                    await validationSetSmokeSelectionTask;
+                    var integrationExchangeExeOutcome =
+                        await ShellIntegrationExchangeExeSmoke.RunAsync(
+                            integrationExchangeExeRole,
+                            _viewModel,
+                            () => IsVisible,
+                            () => Dispatcher.InvokeAsync(
+                                () => { },
+                                DispatcherPriority.ApplicationIdle).Task,
+                            smoke.IntegrationExchangeExeReportPath);
+                    if (!integrationExchangeExeOutcome.Succeeded)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            integrationExchangeExeOutcome.Failure!);
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (validationSetSmoke.ThresholdSelectionTask is not null)
+                {
+                    await validationSetSmoke.ThresholdSelectionTask;
                     await Dispatcher.InvokeAsync(
                         () => { },
                         DispatcherPriority.Render);
                 }
 
-                if (validationSetSmokeSectionTask is not null)
+                if (validationSetSmoke.SectionSelectionTask is not null)
                 {
-                    await validationSetSmokeSectionTask;
+                    await validationSetSmoke.SectionSelectionTask;
                     await Dispatcher.InvokeAsync(
                         () => { },
                         DispatcherPriority.Render);
@@ -1695,24 +1385,13 @@ public partial class MainWindow : Window
                             shellScreenshotPath,
                             screenshotQualityReportPath,
                             "CurrentRecipeRunPressed")
-                        : integrationExchangeSmokeState?.Equals(
-                            "refresh-pressed",
-                            StringComparison.OrdinalIgnoreCase) == true
+                        : integrationExchangeSmoke?.HasPressedCapture == true
                         ? await CaptureButtonPressedForSmokeAsync(
                             this,
-                            "RefreshIntegrationHandoffs",
+                            integrationExchangeSmoke.PressedCaptureAutomationId!,
                             shellScreenshotPath,
                             screenshotQualityReportPath,
-                            "IntegrationExchangeRefreshPressed")
-                        : integrationExchangeSmokeState?.Equals(
-                            "primary-pressed",
-                            StringComparison.OrdinalIgnoreCase) == true
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "SaveIntegrationSetup",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "IntegrationExchangePrimaryPressed")
+                            integrationExchangeSmoke.PressedCaptureScope!)
                         : preparationPresetAssistantSmoke?.Equals(
                             "apply-pressed",
                             StringComparison.OrdinalIgnoreCase) == true
@@ -1745,39 +1424,19 @@ public partial class MainWindow : Window
                     AppendWindowMonitorEvidence(
                         this,
                         screenshotQualityReportPath);
-                    if (validationSetSmokeSelectionTask is not null
+                    if (validationSetSmoke.ThresholdSelectionTask is not null
                         && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
                     {
                         _validationThresholdSmoke.AppendEvidence(
                             this,
                             screenshotQualityReportPath);
                     }
-                    if (integrationExchangeSmokeState?.Equals(
-                            "input-focus",
-                            StringComparison.OrdinalIgnoreCase) == true
+                    if (integrationExchangeSmoke?.EvidenceLine is { } integrationExchangeEvidence
                         && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
                     {
                         File.AppendAllLines(
                             Path.GetFullPath(screenshotQualityReportPath),
-                            ["IntegrationExchangeInput|focus=true|longValue=true|textToViewModel=true|viewModelToText=true"]);
-                    }
-                    if (integrationExchangeSmokeState?.Equals(
-                            "interaction-matrix",
-                            StringComparison.OrdinalIgnoreCase) == true
-                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
-                    {
-                        File.AppendAllLines(
-                            Path.GetFullPath(screenshotQualityReportPath),
-                            [$"IntegrationExchangeInteraction|focus=true|hover=true|mouseLeave=true|disabled=true|canExecute=true|tabTraversal=true|hoverFallback={interactionHoverFallbackUsed}"]);
-                    }
-                    if (integrationExchangeSmokeState?.Equals(
-                            "validation-error",
-                            StringComparison.OrdinalIgnoreCase) == true
-                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
-                    {
-                        File.AppendAllLines(
-                            Path.GetFullPath(screenshotQualityReportPath),
-                            ["IntegrationExchangeValidation|statusRendered=true|processStable=true|actionExecuted=false"]);
+                            [integrationExchangeEvidence]);
                     }
                     if (preparationPresetAssistantSmoke is not null)
                     {
@@ -1867,6 +1526,19 @@ public partial class MainWindow : Window
                 {
                     messageDialogSmokeWindow.Close();
                 }
+                if (recipeManagerScreenshotPath is not null
+                    && !ShellRecipeLifecycleSmoke.RunWindowLifetime(
+                        _workbenchLifecycle.ShowRecipeManagerWindow,
+                        _workbenchLifecycle.CloseRecipeManager,
+                        () => _workbenchLifecycle.RecipeManagerWindow,
+                        () => _workbenchLifecycle.IsRecipeManagerVisible,
+                        _workbenchLifecycle.Dispose,
+                        recipeManagerScreenshotQualityReportPath))
+                {
+                    _viewModel.SetViewerSmokeFailed("Recipe Manager window lifetime did not preserve hide/reopen semantics or clear the forced-close reference.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
                 Application.Current.Shutdown(
                     nominalActualReady ? _viewer.SmokeExitCode : 1);
             };
@@ -1874,7 +1546,6 @@ public partial class MainWindow : Window
             Loaded += _shellSmokeLoadedHandler;
         }
     }
-
 
     private async Task<bool> WaitForNominalActualPreviewAsync(TimeSpan timeout)
     {
@@ -1897,200 +1568,20 @@ public partial class MainWindow : Window
     }
 
     private bool TryConfigureSurfaceMatchEvidenceFromCommandLine(
-        out string failure)
+        out string failure) =>
+        ShellSurfaceMatchSmoke.TryConfigureEvidenceFromCommandLine(
+            Environment.GetCommandLineArgs(),
+            _viewModel.Workbench,
+            out failure);
+
+    private static void ApplyCommandLineLanguage(ShellStartupConfigurationPlan configuration)
     {
-        failure = string.Empty;
-        var modelPath =
-            GetCommandLineValue("--smoke-surface-match-model");
-        var scenePath =
-            GetCommandLineValue("--smoke-surface-match-scene");
-        var executionPath =
-            GetCommandLineValue("--smoke-surface-match-execution");
-        var assessmentPath =
-            GetCommandLineValue("--smoke-surface-match-assessment");
-        var runtimePath =
-            GetCommandLineValue("--smoke-surface-match-runtime");
-        var collectionPath =
-            GetCommandLineValue("--smoke-surface-match-collection");
-        var edgeScorePath =
-            GetCommandLineValue("--smoke-surface-edge-score");
-        var edgeOverlayPath =
-            GetCommandLineValue("--smoke-surface-edge-overlay");
-        var edgeAssessmentPath =
-            GetCommandLineValue("--smoke-surface-edge-assessment");
-        var falsePositiveReviewPath =
-            GetCommandLineValue("--smoke-surface-match-review");
-        if (modelPath is null
-            && scenePath is null
-            && executionPath is null
-            && assessmentPath is null
-            && runtimePath is null
-            && collectionPath is null
-            && edgeScorePath is null
-            && edgeOverlayPath is null
-            && edgeAssessmentPath is null
-            && falsePositiveReviewPath is null)
-        {
-            return true;
-        }
-
-        if (collectionPath is not null)
-        {
-            if (string.IsNullOrWhiteSpace(modelPath)
-                || string.IsNullOrWhiteSpace(scenePath)
-                || string.IsNullOrWhiteSpace(collectionPath)
-                || executionPath is not null
-                || assessmentPath is not null
-                || runtimePath is not null
-                || edgeScorePath is not null
-                || edgeOverlayPath is not null
-                || edgeAssessmentPath is not null
-                || falsePositiveReviewPath is not null)
-            {
-                failure =
-                    "Multiple Surface Match smoke requires model, scene, and collection paths without single-result evidence paths.";
-                return false;
-            }
-
-            try
-            {
-                var model = SurfaceModelArtifactStore.Load(modelPath);
-                var scene = PreparedSceneArtifactStore.Load(scenePath);
-                var collection = SurfaceMatchCollectionArtifactStore.Load(
-                    collectionPath);
-                _viewModel.Workbench.ShowSurfaceMatchCollectionEvidence(
-                    model,
-                    scene,
-                    collection);
-                var selectionText = GetCommandLineValue(
-                    "--smoke-surface-match-select-index");
-                if (selectionText is not null
-                    && (!int.TryParse(selectionText, out var selectionIndex)
-                        || selectionIndex < 0
-                        || selectionIndex >= collection.Items.Length
-                        || !_viewModel.Workbench.SelectSurfaceMatchCollectionItem(
-                            collection.Items[selectionIndex].MatchId)))
-                {
-                    failure =
-                        "Multiple Surface Match smoke selection index is invalid or could not be selected.";
-                    return false;
-                }
-
-                return true;
-            }
-            catch (Exception exception)
-            {
-                failure =
-                    $"Multiple Surface Match smoke evidence failed: {exception.Message}";
-                return false;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(modelPath)
-            || string.IsNullOrWhiteSpace(scenePath)
-            || string.IsNullOrWhiteSpace(executionPath)
-            || edgeScorePath is not null
-                && string.IsNullOrWhiteSpace(edgeScorePath)
-            || edgeOverlayPath is not null
-                && string.IsNullOrWhiteSpace(edgeOverlayPath)
-            || edgeAssessmentPath is not null
-                && string.IsNullOrWhiteSpace(edgeAssessmentPath)
-            || falsePositiveReviewPath is not null
-                && string.IsNullOrWhiteSpace(falsePositiveReviewPath)
-            || (edgeOverlayPath is not null
-                    || edgeAssessmentPath is not null
-                    || falsePositiveReviewPath is not null)
-                && string.IsNullOrWhiteSpace(edgeScorePath)
-            || runtimePath is not null
-                && string.IsNullOrWhiteSpace(assessmentPath))
-        {
-            failure =
-                "Surface match smoke requires model, scene, and execution paths; runtime also requires an assessment path.";
-            return false;
-        }
-
-        try
-        {
-            var model =
-                SurfaceModelArtifactStore.Load(modelPath);
-            var scene =
-                PreparedSceneArtifactStore.Load(scenePath);
-            var execution =
-                SurfaceMatchExecutionArtifactStore.Load(
-                    executionPath);
-            var assessment = string.IsNullOrWhiteSpace(assessmentPath)
-                ? null
-                : SurfaceMatchAssessmentArtifactStore.Load(
-                    assessmentPath);
-            var runtime = string.IsNullOrWhiteSpace(runtimePath)
-                ? null
-                : SurfaceMatchAssessmentArtifactStore.LoadRuntime(
-                    runtimePath);
-            var edgeScore = string.IsNullOrWhiteSpace(edgeScorePath)
-                ? null
-                : SurfaceEdgeArtifactStore.LoadScore(edgeScorePath);
-            var edgeOverlay = string.IsNullOrWhiteSpace(edgeOverlayPath)
-                ? null
-                : SurfaceEdgeDiagnosticReviewArtifactStore.LoadOverlay(
-                    edgeOverlayPath);
-            var edgeAssessment = string.IsNullOrWhiteSpace(edgeAssessmentPath)
-                ? null
-                : SurfaceEdgeDiagnosticReviewArtifactStore.LoadAssessment(
-                    edgeAssessmentPath);
-            var falsePositiveReview = string.IsNullOrWhiteSpace(falsePositiveReviewPath)
-                ? null
-                : SurfaceEdgeDiagnosticReviewArtifactStore.LoadReview(
-                    falsePositiveReviewPath);
-            _viewModel.Workbench.ShowSurfaceMatchEvidence(
-                model,
-                scene,
-                execution,
-                assessment,
-                runtime,
-                edgeScore,
-                edgeOverlay,
-                edgeAssessment,
-                falsePositiveReview);
-            return true;
-        }
-        catch (Exception exception)
-        {
-            failure =
-                $"Surface match smoke evidence failed: {exception.Message}";
-            return false;
-        }
-    }
-
-    private static void ApplyCommandLineLanguage()
-    {
-        var requestedLanguage = GetCommandLineValue("--ui-language")?.Trim();
-        if (requestedLanguage is null)
+        if (configuration.RequestedLanguage is not { } requestedLanguage)
         {
             return;
         }
 
-        if (requestedLanguage.Equals("ko", StringComparison.OrdinalIgnoreCase)
-            || requestedLanguage.Equals("korean", StringComparison.OrdinalIgnoreCase))
-        {
-            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
-        }
-        else if (requestedLanguage.Equals("en", StringComparison.OrdinalIgnoreCase)
-                 || requestedLanguage.Equals("english", StringComparison.OrdinalIgnoreCase))
-        {
-            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
-        }
-    }
-
-    private static int GetEvidenceTabIndex(string? tabName)
-    {
-        return tabName?.Trim().ToLowerInvariant() switch
-        {
-            "runner" or "runner-report" => 1,
-            "snapshot" or "run" or "run-record" => 2,
-            "steps" or "timeline" => 3,
-            "history" => 4,
-            _ => 0
-        };
+        OpenVisionLanguageService.SetLanguage(requestedLanguage, save: false);
     }
 
     private void ConfigureCalibrationStudyFromCommandLine()
@@ -2201,1057 +1692,59 @@ public partial class MainWindow : Window
             $"Startup Run Record could not be restored after recipe load: {message}");
     }
 
-    private async Task<string?> ConfigureSourceAcquisitionProvenanceSmokeStateAsync(
-        string requestedState,
-        string? popupScreenshotPath)
-    {
-        var workbench = _viewModel.Workbench;
-        var quality = workbench.SourceQuality;
-        if (!workbench.IsSourceQualityWorkspaceVisible)
-        {
-            return "Acquisition provenance state smoke requires the visible Source Quality workspace.";
-        }
-
-        ToolWorkbench.ActivateSelectedToolPane();
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-        var beforeDirty = workbench.IsDirty;
-        var beforeSteps = workbench.PipelineSteps.Count;
-        var beforeSelections = workbench.Selections.Count;
-        var beforeLogs = workbench.RunLog.Count;
-        var beforePreview = workbench.IsSelectedStepPreviewRunning;
-        var beforeValidation = workbench.IsValidationSetRunning;
-
-        switch (requestedState.Trim().ToLowerInvariant())
-        {
-            case "validation-focus":
-            {
-                quality.AcquisitionEvidenceDraft = string.Empty;
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                var evidence = FindVisualDescendants<System.Windows.Controls.TextBox>(
-                        ToolWorkbench)
-                    .FirstOrDefault(textBox =>
-                        System.Windows.Automation.AutomationProperties.GetAutomationId(textBox)
-                        == "SourceAcquisitionEvidence");
-                if (evidence is null
-                    || !evidence.Focus()
-                    || !quality.HasAcquisitionValidationError
-                    || quality.ApplyAcquisitionProvenanceCommand.CanExecute(null))
-                {
-                    return "Acquisition provenance validation state or keyboard focus was unavailable.";
-                }
-
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                break;
-            }
-            case "available-hover":
-            {
-                quality.SelectedAcquisitionStateOption =
-                    quality.AcquisitionStateOptions.Single(option =>
-                        option.State == ToolRecipeAcquisitionProvenanceState.Available);
-                quality.AcquisitionEvidenceDraft =
-                    "Verified acquisition record ACQ-20260804-17 is available.";
-                quality.AcquisitionLimitationNotesDraft =
-                    "Viewpoint, sensor pose, calibration, and capture conditions were not supplied.";
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                var apply = FindVisualDescendants<System.Windows.Controls.Button>(ToolWorkbench)
-                    .FirstOrDefault(button =>
-                        System.Windows.Automation.AutomationProperties.GetAutomationId(button)
-                        == "ApplySourceAcquisitionProvenance");
-                if (apply is null
-                    || !apply.IsEnabled
-                    || !quality.ApplyAcquisitionProvenanceCommand.CanExecute(null)
-                    || !apply.Focus())
-                {
-                    return "Acquisition provenance enabled Apply state was unavailable.";
-                }
-
-                var center = apply.PointToScreen(
-                    new System.Windows.Point(
-                        apply.ActualWidth / 2.0,
-                        apply.ActualHeight / 2.0));
-                if (!SetCursorPos(
-                        (int)Math.Round(center.X),
-                        (int)Math.Round(center.Y)))
-                {
-                    return "Acquisition provenance Apply hover state was unavailable.";
-                }
-
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                await Task.Delay(100);
-                break;
-            }
-            case "direction-available-focus":
-            {
-                quality.SelectedAcquisitionStateOption =
-                    quality.AcquisitionStateOptions.Single(option =>
-                        option.State == ToolRecipeAcquisitionProvenanceState.Available);
-                quality.SelectedAcquisitionDirectionStateOption =
-                    quality.AcquisitionDirectionStateOptions.Single(option =>
-                        option.State == ToolRecipeAcquisitionDirectionState.Available);
-                quality.AcquisitionEvidenceDraft =
-                    "Verified acquisition record ACQ-20260804-17 is available.";
-                quality.AcquisitionLimitationNotesDraft =
-                    "Direction is explicit; camera pose and calibration were not supplied.";
-                quality.AcquisitionDirectionXDraft = "0";
-                quality.AcquisitionDirectionYDraft = "0";
-                quality.AcquisitionDirectionZDraft = "-1";
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                var zDirection = FindVisualDescendants<System.Windows.Controls.TextBox>(
-                        ToolWorkbench)
-                    .FirstOrDefault(textBox =>
-                        System.Windows.Automation.AutomationProperties.GetAutomationId(textBox)
-                        == "SourceAcquisitionDirectionZ");
-                if (zDirection is null || !zDirection.IsEnabled)
-                {
-                    return "Acquisition direction enabled input or keyboard-focus state was unavailable.";
-                }
-
-                zDirection.BringIntoView();
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                if (!zDirection.Focus()
-                    || !quality.ApplyAcquisitionProvenanceCommand.CanExecute(null))
-                {
-                    return "Acquisition direction enabled input or keyboard-focus state was unavailable.";
-                }
-
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                break;
-            }
-            case "open-dropdown":
-            {
-                var selectors = FindVisualDescendants<System.Windows.Controls.ComboBox>(
-                        ToolWorkbench)
-                    .Where(comboBox =>
-                        System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
-                        == "SourceAcquisitionProvenanceState")
-                    .ToArray();
-                var selector = selectors.FirstOrDefault(comboBox =>
-                    comboBox.IsVisible
-                    && comboBox.IsEnabled
-                    && comboBox.ActualWidth > 0.0
-                    && comboBox.ActualHeight > 0.0);
-                if (selector is null)
-                {
-                    var candidateStates = string.Join(
-                        "; ",
-                        selectors.Select(comboBox =>
-                            $"visible={comboBox.IsVisible}, enabled={comboBox.IsEnabled}, "
-                            + $"size={comboBox.ActualWidth:0.#}x{comboBox.ActualHeight:0.#}"));
-                    return "Acquisition provenance state selector was unavailable. "
-                           + $"Candidates={selectors.Length}: {candidateStates}";
-                }
-
-                _ = selector.Focus();
-                selector.IsDropDownOpen = true;
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                var center = selector.PointToScreen(
-                    new System.Windows.Point(
-                        selector.ActualWidth / 2.0,
-                        selector.ActualHeight / 2.0));
-                if (!SetCursorPos(
-                        (int)Math.Round(center.X),
-                        (int)Math.Round(center.Y + selector.ActualHeight * 2.5)))
-                {
-                    return "Acquisition provenance popup hover state was unavailable.";
-                }
-
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                await Task.Delay(100);
-                if (!string.IsNullOrWhiteSpace(popupScreenshotPath))
-                {
-                    selector.ApplyTemplate();
-                    var popup = selector.Template.FindName("PART_Popup", selector)
-                        as System.Windows.Controls.Primitives.Popup
-                        ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
-                            .FirstOrDefault();
-                    if (popup?.Child is not FrameworkElement popupChild || !popup.IsOpen)
-                    {
-                        return "Acquisition provenance popup was closed or had no captureable child.";
-                    }
-
-                    var fullPopupPath = Path.GetFullPath(popupScreenshotPath);
-                    Directory.CreateDirectory(
-                        Path.GetDirectoryName(fullPopupPath) ?? Environment.CurrentDirectory);
-                    popupChild.UpdateLayout();
-                    var capture = WpfScreenshotCapture.Capture(popupChild);
-                    WpfScreenshotCapture.Save(capture.Bitmap, fullPopupPath);
-                    WriteTextReport(
-                        fullPopupPath + ".quality.txt",
-                    [
-                        $"SourceAcquisitionProvenancePopup|{capture.Quality.Summary}",
-                        "Boundary|App-owned WPF popup child only; no desktop or unrelated application pixels."
-                    ]);
-                }
-
-                break;
-            }
-            default:
-                return $"Unknown acquisition provenance smoke state: {requestedState}.";
-        }
-
-        var boundaryPreserved = workbench.IsDirty == beforeDirty
-                                && workbench.PipelineSteps.Count == beforeSteps
-                                && workbench.Selections.Count == beforeSelections
-                                && workbench.RunLog.Count == beforeLogs
-                                && workbench.IsSelectedStepPreviewRunning == beforePreview
-                                && workbench.IsValidationSetRunning == beforeValidation;
-        return boundaryPreserved
-            ? null
-            : "Acquisition provenance visual-state smoke changed recipe or execution state.";
-    }
-
-    private async Task<bool> RunHeightImageDisplayRangeSmokeAsync(
+    private Task<bool> RunHeightImageDisplayRangeSmokeAsync(
         string? paletteText,
         double? minimum,
         double? maximum,
-        string? reportPath)
-    {
-        var heightImage = _viewModel.Workbench.HeightImageViewer;
-        var source = _viewModel.Workbench.Source;
-        if (string.IsNullOrWhiteSpace(source.Path)
-            || minimum is not { } requestedMinimum
-            || maximum is not { } requestedMaximum
-            || !Enum.TryParse<C3DHeightImagePalette>(
-                paletteText,
-                ignoreCase: true,
-                out var requestedPalette)
-            || !Enum.IsDefined(requestedPalette))
-        {
-            WriteHeightImageDisplayRangeFailure(
-                reportPath,
-                source,
-                "The source or requested palette/range was unavailable.");
-            return false;
-        }
-
-        var beforeDirty = _viewModel.Workbench.IsDirty;
-        var beforeStepCount = _viewModel.Workbench.PipelineSteps.Count;
-        var beforeSelectionCount = _viewModel.Workbench.Selections.Count;
-        var beforeLogCount = _viewModel.Workbench.RunLog.Count;
-        var beforePreviewRunning = _viewModel.Workbench.IsSelectedStepPreviewRunning;
-        var beforeOutput = _viewModel.Workbench.CurrentMeasurementOutput;
-
-        await heightImage.EnsureSourceAsync(
-            source.Path,
-            source.Id,
-            source.Unit,
-            source.FrameId);
-        if (!heightImage.HasImage || heightImage.HasError)
-        {
-            WriteHeightImageDisplayRangeFailure(
-                reportPath,
-                source,
-                heightImage.Error);
-            return false;
-        }
-
-        var nativePixelSha256 = heightImage.Frame!.PixelSha256;
-        heightImage.SelectedPalette = requestedPalette;
-        var rangeApplied = heightImage.TryApplyManualRange(
-            requestedMinimum,
-            requestedMaximum);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-        var heightImageToThreeDPassed =
-            !_viewer.ViewModel.C3DHeightColorRangeAuto
-            && _viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
-            && _viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
-
-        var mismatchedSourcePath = Path.GetFullPath(Path.Combine(
-            Environment.CurrentDirectory,
-            "3D",
-            "SyntheticValidation",
-            "AffineInspectionPlateV1",
-            "source-affine-inspection-plate-v1.C3D"));
-        var mismatchedSourceIsolationPassed = false;
-        if (File.Exists(mismatchedSourcePath))
-        {
-            await heightImage.EnsureSourceAsync(
-                mismatchedSourcePath,
-                "source.c3d.display-range-mismatch",
-                source.Unit,
-                source.FrameId);
-            var mismatchedRangeApplied = heightImage.TryApplyManualRange(-10.0, 10.0);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            mismatchedSourceIsolationPassed = mismatchedRangeApplied
-                && heightImage.Frame is { } mismatchedFrame
-                && !string.Equals(
-                    mismatchedFrame.SourceContentSha256,
-                    _viewer.ViewModel.C3DHeightDistributionSourceSha256,
-                    StringComparison.OrdinalIgnoreCase)
-                && _viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
-                && _viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
-
-            await heightImage.EnsureSourceAsync(
-                source.Path,
-                source.Id,
-                source.Unit,
-                source.FrameId);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        }
-
-        var nativeSpan = heightImage.Frame.Maximum - heightImage.Frame.Minimum;
-        var reciprocalMinimum = heightImage.Frame.Minimum + nativeSpan * 0.25;
-        var reciprocalMaximum = heightImage.Frame.Maximum - nativeSpan * 0.25;
-        var reciprocalApplied = _viewer.ViewModel.TryApplyLinkedC3DHeightColorRange(
-            reciprocalMinimum,
-            reciprocalMaximum);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var threeDToHeightImagePassed = reciprocalApplied
-            && !heightImage.IsAutoRange
-            && heightImage.DisplayFrame?.Minimum == reciprocalMinimum
-            && heightImage.DisplayFrame?.Maximum == reciprocalMaximum;
-
-        _viewer.ViewModel.ResetC3DHeightColorRange();
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var autoRangePassed = _viewer.ViewModel.C3DHeightColorRangeAuto
-            && heightImage.IsAutoRange
-            && heightImage.DisplayFrame?.Minimum == heightImage.Frame.Minimum
-            && heightImage.DisplayFrame?.Maximum == heightImage.Frame.Maximum;
-
-        rangeApplied = heightImage.TryApplyManualRange(
-            requestedMinimum,
-            requestedMaximum);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var finalLinkedRangePassed = heightImageToThreeDPassed
-            && mismatchedSourceIsolationPassed
-            && threeDToHeightImagePassed
-            && autoRangePassed
-            && !_viewer.ViewModel.C3DHeightColorRangeAuto
-            && _viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
-            && _viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
-
-        var passed = rangeApplied
-                     && finalLinkedRangePassed
-                     && !heightImage.IsAutoRange
-                     && heightImage.SelectedPalette == requestedPalette
-                     && heightImage.DisplayFrame is
-                     {
-                         Minimum: var actualMinimum,
-                         Maximum: var actualMaximum,
-                         Palette: var actualPalette
-                     }
-                     && actualMinimum == requestedMinimum
-                     && actualMaximum == requestedMaximum
-                     && actualPalette == requestedPalette
-                     && heightImage.DisplayPixelSha256 != nativePixelSha256
-                     && _viewModel.Workbench.IsDirty == beforeDirty
-                     && _viewModel.Workbench.PipelineSteps.Count == beforeStepCount
-                     && _viewModel.Workbench.Selections.Count == beforeSelectionCount
-                     && _viewModel.Workbench.RunLog.Count == beforeLogCount
-                     && _viewModel.Workbench.IsSelectedStepPreviewRunning == beforePreviewRunning
-                     && ReferenceEquals(
-                         _viewModel.Workbench.CurrentMeasurementOutput,
-                         beforeOutput);
-
-        if (!string.IsNullOrWhiteSpace(reportPath))
-        {
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(
-                Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
-                fullReportPath,
-                [
-                    $"HeightImageDisplayRangeSmoke|{(passed ? "Pass" : "Fail")}|viewOnly=true|recipeChanged=false|inspectionRun=false",
-                    $"Source|path={source.Path}|entity={source.Id}|frame={source.FrameId}|unit={source.Unit}",
-                    $"Native|width={heightImage.Frame.Width}|height={heightImage.Frame.Height}|min={heightImage.Frame.Minimum:R}|max={heightImage.Frame.Maximum:R}|pixelSha256={nativePixelSha256}|maskSha256={heightImage.Frame.InvalidCellMap.Sha256}",
-                    $"Display|mode={heightImage.DisplayRangeMode}|palette={heightImage.SelectedPalette}|min={heightImage.DisplayFrame?.Minimum:R}|max={heightImage.DisplayFrame?.Maximum:R}|pixelSha256={heightImage.DisplayPixelSha256}",
-                    $"LinkedRange|sourceMatch={string.Equals(_viewer.ViewModel.C3DHeightDistributionSourceSha256, heightImage.Frame.SourceContentSha256, StringComparison.OrdinalIgnoreCase)}|heightImageToThreeD={heightImageToThreeDPassed}|mismatchedSourceIsolated={mismatchedSourceIsolationPassed}|threeDToHeightImage={threeDToHeightImagePassed}|auto={autoRangePassed}|finalShared={finalLinkedRangePassed}|threeDMin={_viewer.ViewModel.C3DHeightColorMinimumRaw:R}|threeDMax={_viewer.ViewModel.C3DHeightColorMaximumRaw:R}",
-                    $"Boundary|dirty={beforeDirty}->{_viewModel.Workbench.IsDirty}|steps={beforeStepCount}->{_viewModel.Workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{_viewModel.Workbench.Selections.Count}|logs={beforeLogCount}->{_viewModel.Workbench.RunLog.Count}|previewRunning={beforePreviewRunning}->{_viewModel.Workbench.IsSelectedStepPreviewRunning}|outputSame={ReferenceEquals(_viewModel.Workbench.CurrentMeasurementOutput, beforeOutput)}",
-                    $"Error|{heightImage.RangeError}"
-                ]);
-        }
-
-        return passed;
-    }
-
-    private async Task<bool> RunHeightImagePaletteStateSmokeAsync(
-        string evidenceDirectory)
-    {
-        const uint leftButtonDown = 0x0002;
-        const uint leftButtonUp = 0x0004;
-        const uint keyUp = 0x0002;
-        const byte downKey = 0x28;
-        const byte enterKey = 0x0D;
-        var directory = Path.GetFullPath(evidenceDirectory);
-        Directory.CreateDirectory(directory);
-        var workbench = _viewModel.Workbench;
-        var heightImage = workbench.HeightImageViewer;
-        var beforePalette = heightImage.SelectedPalette;
-        var beforeDirty = workbench.IsDirty;
-        var beforeStepCount = workbench.PipelineSteps.Count;
-        var beforeSelectionCount = workbench.Selections.Count;
-        var beforeLogCount = workbench.RunLog.Count;
-        var beforePreviewRunning = workbench.IsSelectedStepPreviewRunning;
-        var beforeValidationRunning = workbench.IsValidationSetRunning;
-        var lines = new List<string>
-        {
-            "Height Image palette selector runtime-state verification",
-            "Boundary|viewOnly=true|recipeChange=false|preview=false|run=false"
-        };
-
-        System.Windows.Controls.ComboBox? selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
-            .FirstOrDefault(comboBox =>
-                System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
-                == "HeightImagePaletteSelector");
-        if (selector is not { IsVisible: true, IsEnabled: true }
-            && workbench.OpenHeightImageCommand.CanExecute(null))
-        {
-            // The palette selector is created only when the height-image
-            // workspace is opened. Opening that presentation-only workspace
-            // here keeps this smoke proof independent of the user's restored
-            // docking layout and does not change recipe/source/ROI state.
-            workbench.OpenHeightImageCommand.Execute(null);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            await Task.Delay(200);
-            ToolWorkbench.UpdateLayout();
-            selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
-                .FirstOrDefault(comboBox =>
-                    System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
-                    == "HeightImagePaletteSelector");
-            lines.Add(
-                $"OpenHeightImage|commandExecuted=true|selectorVisible={selector?.IsVisible}|selectorEnabled={selector?.IsEnabled}");
-        }
-        if (selector is not { IsVisible: true, IsEnabled: true })
-        {
-            WriteTextReport(Path.Combine(directory, "report.txt"),
-            [
-                .. lines,
-                "Result=FAIL|selector unavailable"
-            ]);
-            return false;
-        }
-
-        var selectorWindow = Window.GetWindow(selector) ?? this;
-        selectorWindow.Activate();
-        var selectorWindowHandle = new WindowInteropHelper(selectorWindow).Handle;
-        var foregrounded = SetForegroundWindow(selectorWindowHandle);
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        await Task.Delay(150);
-        selector.ApplyTemplate();
-        selector.UpdateLayout();
-        var selectorRelativeOrigin = selector.TransformToAncestor(selectorWindow).Transform(new System.Windows.Point());
-        var selectorRelativeCenter = new System.Windows.Point(
-            selectorRelativeOrigin.X + selector.ActualWidth / 2.0,
-            selectorRelativeOrigin.Y + selector.ActualHeight / 2.0);
-        var hitElement = selectorWindow.InputHitTest(selectorRelativeCenter) as DependencyObject;
-        lines.Add(
-            $"Geometry|owner={selectorWindow.GetType().Name}|active={selectorWindow.IsActive}|hitTestVisible={selector.IsHitTestVisible}|visibility={selector.Visibility}|opacity={selector.Opacity:0.###}|origin={selectorRelativeOrigin.X:0.###},{selectorRelativeOrigin.Y:0.###}|size={selector.ActualWidth:0.###}x{selector.ActualHeight:0.###}|hit={hitElement?.GetType().Name ?? "(none)"}");
-        void Capture(string name, FrameworkElement element)
-        {
-            element.UpdateLayout();
-            var capture = WpfScreenshotCapture.Capture(element);
-            WpfScreenshotCapture.Save(
-                capture.Bitmap,
-                Path.Combine(directory, name + ".png"));
-            lines.Add(
-                $"Capture|state={name}|elementOnly=true|pixels={capture.Bitmap.PixelWidth}x{capture.Bitmap.PixelHeight}|fullWindowBlankHeuristic=not-applicable");
-        }
-
-        Capture("normal", selector);
-        var selectedValueMatches = Equals(selector.SelectedValue, beforePalette);
-        lines.Add(
-            $"Normal|size={selector.ActualWidth:0.###}x{selector.ActualHeight:0.###}|selectedIndex={selector.SelectedIndex}|selectedValue={selector.SelectedValue}|vm={beforePalette}|twoWayVmToUi={selectedValueMatches}");
-
-        var focused = selector.Focus();
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var focusedWithin = selector.IsKeyboardFocusWithin;
-        Capture("focused", selector);
-        lines.Add($"Focused|focusAccepted={focused}|isKeyboardFocusWithin={focusedWithin}");
-
-        var relativeCenter = selector.TransformToAncestor(selectorWindow).Transform(
-            new System.Windows.Point(
-                selector.ActualWidth / 2.0,
-                selector.ActualHeight / 2.0));
-        var transformToDevice = PresentationSource.FromVisual(selectorWindow)
-            ?.CompositionTarget?.TransformToDevice
-            ?? System.Windows.Media.Matrix.Identity;
-        var deviceCenter = transformToDevice.Transform(relativeCenter);
-        _ = GetWindowRect(selectorWindowHandle, out var selectorWindowRect);
-        var center = new System.Windows.Point(
-            selectorWindowRect.Left + deviceCenter.X,
-            selectorWindowRect.Top + deviceCenter.Y);
-        var cursorPositioned = SetCursorPos(
-            (int)Math.Round(center.X),
-            (int)Math.Round(center.Y));
-        var pointerMessagePosted = PostClientMouseMove(selectorWindowHandle, deviceCenter);
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        for (var attempt = 0; attempt < 10 && !selector.IsMouseOver; attempt++)
-        {
-            await Task.Delay(50);
-            await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        }
-        var hoverFallback = false;
-        if (!selector.IsMouseOver)
-        {
-            // A restored docking layout can leave the owner window behind the
-            // launching terminal. Retry activation before treating hover as
-            // unavailable; this remains a real pointer hit-test, not a visual
-            // state assignment.
-            selectorWindow.Activate();
-            foregrounded |= SetForegroundWindow(selectorWindowHandle);
-            cursorPositioned &= SetCursorPos(
-                (int)Math.Round(center.X),
-                (int)Math.Round(center.Y));
-            pointerMessagePosted |= PostClientMouseMove(selectorWindowHandle, deviceCenter);
-            await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-            await Task.Delay(150);
-            if (!selector.IsMouseOver)
-            {
-                // Some desktop sessions keep the test process active while
-                // suppressing cross-process mouse-over promotion. Capture the
-                // element and raise a real WPF mouse-move route so the same
-                // template trigger can still be inspected; record this as a
-                // harness fallback rather than native pointer proof.
-                System.Windows.Input.Mouse.Capture(
-                    selector,
-                    System.Windows.Input.CaptureMode.Element);
-                selector.RaiseEvent(new System.Windows.Input.MouseEventArgs(
-                    System.Windows.Input.Mouse.PrimaryDevice,
-                    Environment.TickCount)
-                {
-                    RoutedEvent = System.Windows.Input.Mouse.MouseMoveEvent,
-                    Source = selector
-                });
-                await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                hoverFallback = selector.IsMouseOver;
-            }
-        }
-        Capture("hover", selector);
-        var hovered = selector.IsMouseOver;
-        if (hoverFallback)
-        {
-            System.Windows.Input.Mouse.Capture(null);
-        }
-        _ = GetCursorPos(out var actualCursor);
-        _ = GetWindowRect(selectorWindowHandle, out var stateWindowRect);
-        lines.Add(
-            $"Hover|foregrounded={foregrounded}|cursorPositioned={cursorPositioned}|pointerMessagePosted={pointerMessagePosted}|requested={center.X:0.#},{center.Y:0.#}|actual={actualCursor.X},{actualCursor.Y}|window={stateWindowRect.Left},{stateWindowRect.Top},{stateWindowRect.Right},{stateWindowRect.Bottom}|isMouseOver={hovered}");
-
-        var pressed = false;
-        var pressedFallback = false;
-        SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
-        try
-        {
-            await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-            await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            var toggle = FindVisualDescendants<System.Windows.Controls.Primitives.ToggleButton>(selector)
-                .FirstOrDefault();
-            if (toggle is not null && !toggle.IsPressed)
-            {
-                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
-                    "SetIsPressed",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                setIsPressed?.Invoke(toggle, [true]);
-                pressedFallback = toggle.IsPressed;
-            }
-            Capture("pressed", selector);
-            var inputPressed = System.Windows.Input.Mouse.LeftButton
-                               == System.Windows.Input.MouseButtonState.Pressed;
-            pressed = inputPressed && selector.IsMouseOver || toggle?.IsPressed == true;
-            lines.Add(
-                $"Pressed|actualPointerDown=true|inputPressed={inputPressed}|isMouseOver={selector.IsMouseOver}|togglePressed={toggle?.IsPressed}|fallback={pressedFallback}");
-            if (pressedFallback && toggle is not null)
-            {
-                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
-                    "SetIsPressed",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                setIsPressed?.Invoke(toggle, [false]);
-            }
-        }
-        finally
-        {
-            SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
-        }
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        await Task.Delay(120);
-
-        var popup = selector.Template.FindName("PART_Popup", selector)
-            as System.Windows.Controls.Primitives.Popup
-            ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
-                .FirstOrDefault();
-        var popupFallback = false;
-        if (!selector.IsDropDownOpen)
-        {
-            selector.IsDropDownOpen = true;
-            popupFallback = true;
-            await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            await Task.Delay(120);
-            popup = selector.Template.FindName("PART_Popup", selector)
-                as System.Windows.Controls.Primitives.Popup
-                ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
-                    .FirstOrDefault();
-        }
-        var popupOpen = selector.IsDropDownOpen
-                        && popup is { IsOpen: true, Child: FrameworkElement };
-        if (popup?.Child is FrameworkElement popupChild)
-        {
-            Capture("open-popup", popupChild);
-        }
-        var visiblePopupItems = popup?.Child is DependencyObject popupRoot
-            ? FindVisualDescendants<System.Windows.Controls.ComboBoxItem>(popupRoot)
-                .Count(item => item.IsVisible && item.ActualHeight > 0.0)
-            : 0;
-        lines.Add(
-            $"OpenPopup|open={popupOpen}|items={selector.Items.Count}|visibleItems={visiblePopupItems}|programmaticFallback={popupFallback}");
-
-        SendKeyboardEvent(downKey, 0, 0, UIntPtr.Zero);
-        SendKeyboardEvent(downKey, 0, keyUp, UIntPtr.Zero);
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        SendKeyboardEvent(enterKey, 0, 0, UIntPtr.Zero);
-        SendKeyboardEvent(enterKey, 0, keyUp, UIntPtr.Zero);
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        await Task.Delay(120);
-        var keyboardPalette = heightImage.SelectedPalette;
-        var keyboardFallback = false;
-        if (Equals(keyboardPalette, beforePalette) && selector.Items.Count > 1)
-        {
-            // Preserve the UI-to-ViewModel assertion when the desktop session
-            // suppresses synthetic key delivery: changing the selected item
-            // through the actual ComboBox dependency property exercises the
-            // same two-way binding contract and is recorded separately.
-            selector.SelectedIndex = (selector.SelectedIndex + 1) % selector.Items.Count;
-            await selectorWindow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
-            keyboardPalette = heightImage.SelectedPalette;
-            keyboardFallback = !Equals(keyboardPalette, beforePalette);
-        }
-        var uiToVmPassed = !Equals(keyboardPalette, beforePalette)
-                           && Equals(selector.SelectedValue, keyboardPalette);
-        selector.IsDropDownOpen = false;
-        lines.Add(
-            $"KeyboardSelection|before={beforePalette}|after={keyboardPalette}|uiToVm={uiToVmPassed}|popupClosed={!selector.IsDropDownOpen}|fallback={keyboardFallback}");
-
-        heightImage.SelectedPalette = beforePalette;
-        selector.IsDropDownOpen = false;
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var leavePoint = PointToScreen(new System.Windows.Point(20, 20));
-        var leavePositioned = SetCursorPos(
-            (int)Math.Round(leavePoint.X),
-            (int)Math.Round(leavePoint.Y));
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        await Task.Delay(120);
-        Capture("mouse-leave-recovery", selector);
-        var mouseLeaveRecovered = !selector.IsMouseOver;
-        var restored = Equals(selector.SelectedValue, beforePalette)
-                       && heightImage.SelectedPalette == beforePalette;
-        lines.Add(
-            $"MouseLeaveRecovery|cursorPositioned={leavePositioned}|isMouseOver={selector.IsMouseOver}|restored={restored}");
-        lines.Add(
-            "NotApplicable|disabled/readOnly/validationError=palette selector is enabled, selectable view state and has no validation contract");
-
-        var boundaryPreserved = workbench.IsDirty == beforeDirty
-                                && workbench.PipelineSteps.Count == beforeStepCount
-                                && workbench.Selections.Count == beforeSelectionCount
-                                && workbench.RunLog.Count == beforeLogCount
-                                && workbench.IsSelectedStepPreviewRunning == beforePreviewRunning
-                                && workbench.IsValidationSetRunning == beforeValidationRunning;
-        var passed = selector.ActualHeight > 30.0
-                     && selectedValueMatches
-                     && focused
-                     && focusedWithin
-                     && cursorPositioned
-                     && hovered
-                     && pressed
-                     && popupOpen
-                     && visiblePopupItems == selector.Items.Count
-                     && uiToVmPassed
-                     && leavePositioned
-                     && mouseLeaveRecovered
-                     && restored
-                     && boundaryPreserved;
-        lines.Add(
-            $"BoundaryCheck|dirty={beforeDirty}->{workbench.IsDirty}|steps={beforeStepCount}->{workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{workbench.Selections.Count}|logs={beforeLogCount}->{workbench.RunLog.Count}|preview={beforePreviewRunning}->{workbench.IsSelectedStepPreviewRunning}|validation={beforeValidationRunning}->{workbench.IsValidationSetRunning}");
-        lines.Add($"Result={(passed ? "PASS" : "FAIL")}");
-        WriteTextReport(Path.Combine(directory, "report.txt"), lines);
-        return passed;
-    }
-
-    private static void WriteHeightImageDisplayRangeFailure(
-        string? reportPath,
-        ToolWorkbenchSourceItem source,
-        string failure)
-    {
-        if (string.IsNullOrWhiteSpace(reportPath))
-        {
-            return;
-        }
-
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(
-            Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-        File.WriteAllLines(
-            fullReportPath,
-            [
-                "HeightImageDisplayRangeSmoke|Fail|viewOnly=true|recipeChanged=false|inspectionRun=false",
-                $"Source|path={source.Path}|entity={source.Id}|frame={source.FrameId}|unit={source.Unit}",
-                $"Error|{failure}"
-            ]);
-    }
-
-    private async Task<bool> RunSharedHeightHoverSmokeAsync(
+        string? reportPath) =>
+        ShellHeightImageDisplayRangeSmoke.RunAsync(
+            paletteText,
+            minimum,
+            maximum,
+            reportPath,
+            _viewModel.Workbench,
+            _viewer,
+            Dispatcher);
+    private Task<bool> RunSharedHeightHoverSmokeAsync(
         int? row,
         int? column,
-        string? reportPath)
-    {
-        var workbench = _viewModel.Workbench;
-        var heightImage = workbench.HeightImageViewer;
-        var source = workbench.Source;
-        if (string.IsNullOrWhiteSpace(source.Path)
-            || row is not { } requestedRow
-            || column is not { } requestedColumn)
-        {
-            return false;
-        }
+        string? reportPath) =>
+        ShellSharedHeightHoverSmoke.RunAsync(
+            _viewModel.Workbench,
+            _viewer,
+            Dispatcher,
+            row,
+            column,
+            reportPath);
 
-        var beforeDirty = workbench.IsDirty;
-        var beforeStepCount = workbench.PipelineSteps.Count;
-        var beforeSelectionCount = workbench.Selections.Count;
-        var beforeLogCount = workbench.RunLog.Count;
-        var beforePreviewRunning = workbench.IsSelectedStepPreviewRunning;
-        var beforeOutput = workbench.CurrentMeasurementOutput;
-        var beforeCamera = (
-            _viewer.ViewModel.YawDegrees,
-            _viewer.ViewModel.PitchDegrees,
-            _viewer.ViewModel.CameraDistance,
-            _viewer.ViewModel.CameraTargetX,
-            _viewer.ViewModel.CameraTargetY,
-            _viewer.ViewModel.CameraTargetZ);
-
-        await heightImage.EnsureSourceAsync(
-            source.Path,
-            source.Id,
-            source.Unit,
-            source.FrameId);
-        if (heightImage.Frame is not { } frame
-            || !frame.TryGetCell(
-                requestedColumn,
-                requestedRow,
-                out var requestedCell)
-            || !requestedCell.IsValid)
-        {
-            return false;
-        }
-
-        heightImage.UpdateHover(requestedColumn, requestedRow);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var fromHeightImagePassed =
-            workbench.SharedHeightCursor.Cursor is
-            {
-                Origin: SharedHeightCursorOrigin.HeightImage,
-                Row: var heightRow,
-                Column: var heightColumn,
-                IsValid: true
-            }
-            && heightRow == requestedRow
-            && heightColumn == requestedColumn
-            && _viewer.LinkedHeightCursor is
-            {
-                Origin: C3DGridCursorOrigin.HeightImage,
-                Row: var viewerHeightRow,
-                Column: var viewerHeightColumn,
-                IsValid: true
-            }
-            && viewerHeightRow == requestedRow
-            && viewerHeightColumn == requestedColumn;
-
-        var viewerPublished = _viewer.TryPublishC3DGridHoverForSmoke(
-            requestedRow,
-            requestedColumn);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var fromThreeDPassed =
-            viewerPublished
-            && workbench.SharedHeightCursor.Cursor is
-            {
-                Origin: SharedHeightCursorOrigin.ThreeDViewer,
-                Row: var threeDRow,
-                Column: var threeDColumn,
-                IsValid: true
-            }
-            && threeDRow == requestedRow
-            && threeDColumn == requestedColumn
-            && heightImage.HasLinkedCursor
-            && heightImage.LinkedCursorRow == requestedRow
-            && heightImage.LinkedCursorColumn == requestedColumn
-            && heightImage.HoverSummary.Contains("3D", StringComparison.Ordinal);
-
-        var missingCell = FindFirstMissingCell(frame);
-        var missingPassed = false;
-        if (missingCell is { } missing)
-        {
-            heightImage.UpdateHover(missing.Column, missing.Row);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            missingPassed =
-                workbench.SharedHeightCursor.Cursor is
-                {
-                    Origin: SharedHeightCursorOrigin.HeightImage,
-                    IsValid: false,
-                    Row: var missingRow,
-                    Column: var missingColumn
-                }
-                && missingRow == missing.Row
-                && missingColumn == missing.Column
-                && heightImage.HasLinkedCursor
-                && !heightImage.LinkedCursorIsValid
-                && heightImage.HoverSummary.Contains(
-                    workbench.Localization.HeightImageMissingValue,
-                    StringComparison.Ordinal);
-        }
-
-        viewerPublished = _viewer.TryPublishC3DGridHoverForSmoke(
-            requestedRow,
-            requestedColumn);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        await Task.Delay(120);
-
-        var afterCamera = (
-            _viewer.ViewModel.YawDegrees,
-            _viewer.ViewModel.PitchDegrees,
-            _viewer.ViewModel.CameraDistance,
-            _viewer.ViewModel.CameraTargetX,
-            _viewer.ViewModel.CameraTargetY,
-            _viewer.ViewModel.CameraTargetZ);
-        var boundaryPassed =
-            workbench.IsDirty == beforeDirty
-            && workbench.PipelineSteps.Count == beforeStepCount
-            && workbench.Selections.Count == beforeSelectionCount
-            && workbench.RunLog.Count == beforeLogCount
-            && workbench.IsSelectedStepPreviewRunning == beforePreviewRunning
-            && ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput)
-            && beforeCamera == afterCamera;
-        var passed =
-            fromHeightImagePassed
-            && fromThreeDPassed
-            && missingPassed
-            && viewerPublished
-            && boundaryPassed;
-
-        if (!string.IsNullOrWhiteSpace(reportPath))
-        {
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(
-                Path.GetDirectoryName(fullReportPath)
-                ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
-                fullReportPath,
-                [
-                    $"SharedHeightHoverSmoke|{(passed ? "Pass" : "Fail")}|viewOnly=true|recipeChanged=false|inspectionRun=false",
-                    $"Source|path={source.Path}|entity={source.Id}|frame={source.FrameId}|unit={source.Unit}|sha256={frame.SourceContentSha256}",
-                    $"FromHeightImage|pass={fromHeightImagePassed}|row={requestedRow}|column={requestedColumn}|rawHeight={requestedCell.RawHeight:R}|viewerMarker={_viewer.LinkedHeightCursor is not null}",
-                    $"FromThreeD|pass={fromThreeDPassed}|row={heightImage.LinkedCursorRow}|column={heightImage.LinkedCursorColumn}|summary={heightImage.HoverSummary}",
-                    $"Missing|pass={missingPassed}|row={missingCell?.Row}|column={missingCell?.Column}|state={workbench.Localization.HeightImageMissingValue}",
-                    $"Boundary|pass={boundaryPassed}|dirty={beforeDirty}->{workbench.IsDirty}|steps={beforeStepCount}->{workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{workbench.Selections.Count}|logs={beforeLogCount}->{workbench.RunLog.Count}|previewRunning={beforePreviewRunning}->{workbench.IsSelectedStepPreviewRunning}|outputSame={ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput)}|cameraSame={beforeCamera == afterCamera}"
-                ]);
-        }
-
-        return passed;
-    }
-
-    private async Task<bool> RunHeightImageRoiPointerSmokeAsync(
+    private Task<bool> RunHeightImageRoiPointerSmokeAsync(
         string mode,
         string? reportPath,
-        string? savePath)
+        string? savePath) =>
+        ShellHeightImageRoiPointerSmoke.RunAsync(
+            mode,
+            reportPath,
+            savePath,
+            _viewModel.Workbench,
+            ToolWorkbench,
+            _viewer,
+            Dispatcher);
+
+    private void ConfigureWorkspaceFromCommandLine(ShellStartupConfigurationPlan configuration)
     {
-        var workbench = _viewModel.Workbench;
-        var normalizedMode = mode.Trim().ToLowerInvariant();
-        if (normalizedMode is not ("review" or "cancel" or "apply")
-            || workbench.SelectedPipelineStep is not { } step
-            || !workbench.IsSelectedStepThickness
-            || workbench.PlaneFlatnessMeasurementSelection?.GridRectangle is not { } beforeGeometry)
-        {
-            return false;
-        }
-
-        var measurement = workbench.PlaneFlatnessMeasurementSelection;
-        var beforeSelectionId = measurement.Id;
-        var beforeRoute = step.InputEntityIdsText;
-        var beforeDirty = workbench.IsDirty;
-        var beforeStepCount = workbench.PipelineSteps.Count;
-        var beforeSelectionCount = workbench.Selections.Count;
-        var beforeOutput = workbench.CurrentMeasurementOutput;
-        var beforeCamera = (
-            _viewer.ViewModel.YawDegrees,
-            _viewer.ViewModel.PitchDegrees,
-            _viewer.ViewModel.CameraDistance,
-            _viewer.ViewModel.CameraTargetX,
-            _viewer.ViewModel.CameraTargetY,
-            _viewer.ViewModel.CameraTargetZ);
-
-        await workbench.HeightImageViewer.EnsureSourceAsync(
-            workbench.Source.Path,
-            workbench.Source.Id,
-            workbench.Source.Unit,
-            workbench.Source.FrameId);
-        workbench.WorkspaceSelection.SelectRegion(
-            InspectionWorkspaceRegionRole.Measurement,
-            beforeSelectionId);
-        if (!workbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null))
-        {
-            return false;
-        }
-
-        workbench.CapturePlaneFlatnessMeasurementRoiCommand.Execute(null);
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        await Task.Delay(200);
-        var pointer = await ToolWorkbench.RunHeightImageRoiPointerSmokeAsync();
-        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        ToolRecipeSelection? viewerCandidate = null;
-        var viewerCandidateMessage = "Viewer candidate was not queried.";
-        var candidateSynchronized =
-            pointer.Passed
-            && pointer.After is { } pointerCandidate
-            && workbench.HeightImageViewer.RoiWorkspace.Candidate == pointerCandidate
-            && _viewer.TryGetC3DTeachingCandidate(
-                out viewerCandidate,
-                out viewerCandidateMessage)
-            && viewerCandidate?.GridRectangle == pointerCandidate
-            && workbench.HeightImageViewer.RoiWorkspace.Lifecycle
-                == InspectionWorkspaceRegionLifecycleState.Review;
-        var transientBoundary =
-            workbench.IsDirty == beforeDirty
-            && workbench.PipelineSteps.Count == beforeStepCount
-            && workbench.Selections.Count == beforeSelectionCount
-            && step.InputEntityIdsText == beforeRoute
-            && workbench.Selections.Single(item => item.Id == beforeSelectionId).GridRectangle
-                == beforeGeometry
-            && ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput);
-
-        var actionPassed = candidateSynchronized && transientBoundary;
-        var saved = false;
-        var reopened = false;
-        var actionMessage = normalizedMode;
-        if (actionPassed && normalizedMode == "cancel")
-        {
-            workbench.HeightImageViewer.RoiWorkspace.CancelCommand.Execute(null);
-            actionPassed =
-                !workbench.IsTeachingSelectionCaptureActive
-                && workbench.Selections.Single(item => item.Id == beforeSelectionId).GridRectangle
-                    == beforeGeometry
-                && workbench.IsDirty == beforeDirty
-                && ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput);
-        }
-        else if (actionPassed && normalizedMode == "apply")
-        {
-            workbench.HeightImageViewer.RoiWorkspace.ApplyCommand.Execute(null);
-            var applied = workbench.Selections.SingleOrDefault(item =>
-                item.Id == beforeSelectionId);
-            actionPassed =
-                applied?.GridRectangle == pointer.After
-                && workbench.Selections.Count(item => item.Id == beforeSelectionId) == 1
-                && !workbench.IsTeachingSelectionCaptureActive
-                && workbench.PipelineSteps.Count == beforeStepCount
-                && step.InputEntityIdsText == beforeRoute
-                && ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput);
-            if (actionPassed && !string.IsNullOrWhiteSpace(savePath))
-            {
-                var fullSavePath = Path.GetFullPath(savePath);
-                saved = workbench.TrySaveTeachingRecipe(fullSavePath, out actionMessage);
-                var reopenedWorkbench = new ToolWorkbenchViewModel(
-                    Path.Combine(
-                        Path.GetDirectoryName(fullSavePath)!,
-                        $"height-image-roi-reopen-{Environment.ProcessId}.json"));
-                reopened = saved
-                    && reopenedWorkbench.TryOpenTeachingRecipe(
-                        fullSavePath,
-                        out actionMessage)
-                    && reopenedWorkbench.SelectPipelineStep(step.Id)
-                    && reopenedWorkbench.Selections.SingleOrDefault(item =>
-                        item.Id == beforeSelectionId)?.GridRectangle == pointer.After
-                    && reopenedWorkbench.HeightImageViewer.RoiWorkspace.Overlays.Any(item =>
-                        item.SelectionId == beforeSelectionId
-                        && item.Rectangle == pointer.After);
-                actionPassed &= saved && reopened;
-            }
-        }
-
-        var afterCamera = (
-            _viewer.ViewModel.YawDegrees,
-            _viewer.ViewModel.PitchDegrees,
-            _viewer.ViewModel.CameraDistance,
-            _viewer.ViewModel.CameraTargetX,
-            _viewer.ViewModel.CameraTargetY,
-            _viewer.ViewModel.CameraTargetZ);
-        var cameraPassed = beforeCamera == afterCamera;
-        var passed = actionPassed && cameraPassed;
-        if (!string.IsNullOrWhiteSpace(reportPath))
-        {
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(
-                Path.GetDirectoryName(fullReportPath)
-                ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
-                fullReportPath,
-                [
-                    $"HeightImageRoiPointerSmoke|{(passed ? "Pass" : "Fail")}|mode={normalizedMode}|actualWindowsPointer=true",
-                    $"Pointer|pass={pointer.Passed}|start={pointer.StartScreenPoint}|end={pointer.EndScreenPoint}|failure={pointer.Failure}|target={pointer.TargetDiagnostic}",
-                    $"Candidate|before={pointer.Before}|after={pointer.After}|heightImage={workbench.HeightImageViewer.RoiWorkspace.Candidate}|viewer={viewerCandidate?.GridRectangle}|viewerMessage={viewerCandidateMessage}|synchronized={candidateSynchronized}",
-                    $"ReviewBoundary|pass={transientBoundary}|dirty={beforeDirty}->{workbench.IsDirty}|steps={beforeStepCount}->{workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{workbench.Selections.Count}|routeSame={step.InputEntityIdsText == beforeRoute}|appliedBeforeReview={beforeGeometry}|inspectionOutputSame={ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput)}",
-                    $"Action|mode={normalizedMode}|pass={actionPassed}|selectionId={beforeSelectionId}|saved={saved}|reopened={reopened}|message={actionMessage}",
-                    $"Camera|pass={cameraPassed}|before={beforeCamera}|after={afterCamera}",
-                    $"Result={(passed ? "PASS" : "FAIL")}"
-                ]);
-        }
-
-        return passed;
-    }
-
-    private static (int Row, int Column)? FindFirstMissingCell(
-        C3DHeightImageFrame frame)
-    {
-        var packedBits = frame.InvalidCellMap.PackedBits.Span;
-        for (var byteIndex = 0; byteIndex < packedBits.Length; byteIndex++)
-        {
-            var value = packedBits[byteIndex];
-            if (value == 0)
-            {
-                continue;
-            }
-
-            for (var bit = 0; bit < 8; bit++)
-            {
-                if ((value & (1 << bit)) == 0)
-                {
-                    continue;
-                }
-
-                var index = checked(byteIndex * 8 + bit);
-                if (index >= frame.Width * frame.Height)
-                {
-                    return null;
-                }
-
-                return (index / frame.Width, index % frame.Width);
-            }
-        }
-
-        return null;
-    }
-
-    private void ConfigureWorkspaceFromCommandLine()
-    {
-        var requestedWorkspace = GetCommandLineValue("--shell-workspace");
-        if (Enum.TryParse<ShellWorkspaceMode>(requestedWorkspace, ignoreCase: true, out var workspace)
-            && Enum.IsDefined(typeof(ShellWorkspaceMode), workspace))
+        if (configuration.Workspace is { } workspace)
         {
             _viewModel.SelectWorkspaceCommand.Execute(workspace);
         }
 
-        ConfigureResultsSectionFromCommandLine();
+        ConfigureResultsSectionFromCommandLine(configuration);
     }
 
-    private void ConfigureResultsSectionFromCommandLine()
+    private void ConfigureResultsSectionFromCommandLine(
+        ShellStartupConfigurationPlan configuration)
     {
-        var requestedResultsSection = GetCommandLineValue("--shell-results-section");
         if (_viewModel.IsResultsWorkspaceSelected
-            && Enum.TryParse<ResultsWorkspaceSection>(
-                requestedResultsSection,
-                ignoreCase: true,
-                out var resultsSection)
-            && Enum.IsDefined(typeof(ResultsWorkspaceSection), resultsSection))
+            && configuration.ResultsSection is { } resultsSection)
         {
             ToolWorkbench.SetResultsWorkspaceSection(resultsSection);
         }
@@ -3259,62 +1752,52 @@ public partial class MainWindow : Window
 
     private void ConfigureViewerViewFromCommandLine(object sender, RoutedEventArgs e)
     {
-        switch (GetCommandLineValue("--smoke-stage")?.Trim().ToLowerInvariant())
+        switch (_startupConfiguration.StageWorkspace)
         {
-            case "setup":
+            case ShellWorkspaceMode.Workbench:
                 _viewModel.IsSetupWorkspaceSelected = true;
                 break;
-            case "teach":
+            case ShellWorkspaceMode.Teach:
                 _viewModel.IsTeachWorkspaceSelected = true;
                 break;
-            case "validate":
+            case ShellWorkspaceMode.Inspect:
                 _viewModel.IsValidateWorkspaceSelected = true;
                 break;
-            case "results":
+            case ShellWorkspaceMode.Review:
                 _viewModel.IsResultsWorkspaceSelected = true;
                 break;
         }
 
-        var requestedView = GetCommandLineValue("--smoke-view")?.Trim();
-        if (string.Equals(requestedView, "top", StringComparison.OrdinalIgnoreCase))
+        switch (_startupConfiguration.ViewerView)
         {
-            _viewer.UseTopView();
-        }
-        else if (string.Equals(requestedView, "perspective", StringComparison.OrdinalIgnoreCase))
-        {
-            _viewer.UsePerspectiveView();
+            case ShellStartupViewerView.Top:
+                _viewer.UseTopView();
+                break;
+            case ShellStartupViewerView.Perspective:
+                _viewer.UsePerspectiveView();
+                break;
         }
 
-        if (Environment.GetCommandLineArgs()
-            .Contains("--smoke-fit-roi", StringComparer.OrdinalIgnoreCase))
+        if (_startupConfiguration.FitRoi)
         {
             _viewer.FitRoi();
         }
 
-        if (double.TryParse(
-                GetCommandLineValue("--smoke-height-color-min"),
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var requestedHeightColorMinimum))
+        if (_startupConfiguration.HeightColorMinimumRaw is { } requestedHeightColorMinimum)
         {
             _viewer.ViewModel.C3DHeightColorMinimumRaw = requestedHeightColorMinimum;
         }
 
-        if (double.TryParse(
-                GetCommandLineValue("--smoke-height-color-max"),
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var requestedHeightColorMaximum))
+        if (_startupConfiguration.HeightColorMaximumRaw is { } requestedHeightColorMaximum)
         {
             _viewer.ViewModel.C3DHeightColorMaximumRaw = requestedHeightColorMaximum;
         }
     }
 
-    private void ConfigureInspectionTaskFromCommandLine()
+    private void ConfigureInspectionTaskFromCommandLine(
+        ShellStartupConfigurationPlan configuration)
     {
-        var requestedTask = GetCommandLineValue("--shell-task");
-        if (Enum.TryParse<ShellInspectionTask>(requestedTask, ignoreCase: true, out var task)
-            && Enum.IsDefined(typeof(ShellInspectionTask), task))
+        if (configuration.InspectionTask is { } task)
         {
             _viewModel.SelectInspectionTask(task);
         }
@@ -3322,324 +1805,84 @@ public partial class MainWindow : Window
 
     private void ConfigureValidationSetFromCommandLine()
     {
-        var recipePath = GetCommandLineValue("--smoke-validation-set-recipe");
-        var sourceList = GetCommandLineValue("--smoke-validation-set-sources");
-        if (string.IsNullOrWhiteSpace(recipePath) || string.IsNullOrWhiteSpace(sourceList))
-        {
-            return;
-        }
-
-        if (!_viewModel.Workbench.TryOpenTeachingRecipe(recipePath, out var message))
-        {
-            throw new InvalidDataException($"Validation Set smoke recipe could not be opened: {message}");
-        }
-
-        var sources = sourceList
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(Path.GetFullPath)
-            .ToArray();
-        _viewModel.Workbench.SetValidationSetSources(sources);
-        var requestedRoles = GetCommandLineValue(
-            "--smoke-validation-set-roles");
-        if (!string.IsNullOrWhiteSpace(requestedRoles))
-        {
-            var roles = requestedRoles.Split(
-                ';',
-                StringSplitOptions.RemoveEmptyEntries
-                | StringSplitOptions.TrimEntries);
-            for (var index = 0;
-                 index < roles.Length
-                 && index < _viewModel.Workbench.ValidationSetSamples.Count;
-                 index++)
+        validationSetSmoke = ShellValidationSetSmoke.Configure(
+            Environment.GetCommandLineArgs(),
+            _viewModel.Workbench,
+            () =>
             {
-                _viewModel.Workbench.SelectedValidationSetSample =
-                    _viewModel.Workbench.ValidationSetSamples[index];
-                _viewModel.Workbench.SetValidationSampleRoleCommand.Execute(
-                    roles[index]);
-            }
-        }
-        ToolWorkbench.IsBottomPaneExpanded = true;
-        ToolWorkbench.ActivateValidationSet();
-        if (Environment.GetCommandLineArgs().Contains(
-                "--smoke-validation-set-expand-evidence",
-                StringComparer.OrdinalIgnoreCase))
-        {
-            _viewModel.Workbench.IsValidationEvidenceExpanded = true;
-        }
-        if (Environment.GetCommandLineArgs().Contains(
-                "--smoke-validation-set-expand-thresholds",
-                StringComparer.OrdinalIgnoreCase))
-        {
-            _viewModel.Workbench.IsValidationThresholdExpanded = true;
-        }
-        if (Environment.GetCommandLineArgs().Contains("--smoke-validation-set-run", StringComparer.OrdinalIgnoreCase))
-        {
-            validationSetSmokeRunRequested = true;
-            _viewModel.Workbench.RunValidationSetCommand.Execute(null);
-            var thresholdMetric = GetCommandLineValue(
-                "--smoke-validation-threshold-metric");
-            var thresholdKind = GetCommandLineValue(
-                "--smoke-validation-threshold-kind");
-            if (!string.IsNullOrWhiteSpace(thresholdMetric)
-                || !string.IsNullOrWhiteSpace(thresholdKind))
-            {
-                validationSetSmokeSelectionTask = SelectValidationThresholdCandidateForSmokeAsync(
-                    thresholdMetric,
-                    thresholdKind);
-            }
-            if (Environment.GetCommandLineArgs().Contains(
-                    "--smoke-validation-set-open-compare",
-                    StringComparer.OrdinalIgnoreCase))
-            {
-                _ = OpenValidationSetComparisonForSmokeAsync();
-            }
-        }
-
-        var requestedSection = GetCommandLineValue(
-            "--smoke-validation-section");
-        if (Enum.TryParse<ValidationWorkspaceSection>(
-                requestedSection,
-                ignoreCase: true,
-                out var validationSection)
-            && Enum.IsDefined(typeof(ValidationWorkspaceSection), validationSection))
-        {
-            validationSetSmokeSectionTask = SelectValidationSectionForSmokeAsync(validationSection);
-        }
+                ToolWorkbench.IsBottomPaneExpanded = true;
+                ToolWorkbench.ActivateValidationSet();
+            },
+            () => _viewModel.Workbench.IsValidationEvidenceExpanded = true,
+            () => _viewModel.Workbench.IsValidationThresholdExpanded = true,
+            ApplyValidationWorkspaceSectionForSmokeAsync,
+            section => ToolWorkbench.ActiveValidationWorkspaceSection == section);
     }
 
-    private async Task SelectValidationSectionForSmokeAsync(
+    private async Task ApplyValidationWorkspaceSectionForSmokeAsync(
         ValidationWorkspaceSection section)
     {
-        while (_viewModel.Workbench.IsValidationSetRunning
-               || validationSetSmokeRunRequested
-               && !_viewModel.Workbench.HasValidationThresholdAssistantAnalysis)
-        {
-            await Task.Delay(25);
-        }
-
-        for (var attempt = 0; attempt < 40; attempt++)
-        {
-            await Dispatcher.InvokeAsync(
-                () => ToolWorkbench.SetValidationWorkspaceSection(section),
-                DispatcherPriority.Loaded);
-            if (ToolWorkbench.ActiveValidationWorkspaceSection == section)
-            {
-                return;
-            }
-
-            await Dispatcher.InvokeAsync(
-                () => { },
-                DispatcherPriority.Render);
-            await Task.Delay(50);
-        }
+        await Dispatcher.InvokeAsync(
+            () => ToolWorkbench.SetValidationWorkspaceSection(section),
+            DispatcherPriority.Loaded);
+        await Dispatcher.InvokeAsync(
+            () => { },
+            DispatcherPriority.Render);
     }
 
-    private async Task SelectValidationThresholdCandidateForSmokeAsync(
-        string? metric,
-        string? kind)
+    private void ConfigureWorkbenchBottomPaneFromCommandLine(
+        ShellStartupConfigurationPlan configuration)
     {
-        while (_viewModel.Workbench.IsValidationSetRunning
-               || !_viewModel.Workbench.HasValidationThresholdAssistantAnalysis)
+        switch (configuration.BottomPane)
         {
-            await Task.Delay(25);
-        }
-
-        var arguments = Environment.GetCommandLineArgs();
-        var shouldClearSelection = arguments.Contains(
-            "--smoke-validation-threshold-assistant-disabled",
-            StringComparer.OrdinalIgnoreCase);
-        if (shouldClearSelection)
-        {
-            _viewModel.Workbench.SelectedValidationThresholdCandidate = null;
-            return;
-        }
-
-        var candidate =
-            _viewModel.Workbench.ValidationThresholdCandidates.FirstOrDefault(
-                item =>
-                    (string.IsNullOrWhiteSpace(metric)
-                     || string.Equals(
-                         item.MetricName,
-                         metric,
-                         StringComparison.OrdinalIgnoreCase))
-                    && (string.IsNullOrWhiteSpace(kind)
-                        || string.Equals(
-                            item.LimitKind,
-                            kind,
-                            StringComparison.OrdinalIgnoreCase)));
-        if (candidate is not null)
-        {
-            _viewModel.Workbench.SelectedValidationThresholdCandidate =
-                candidate;
-            var shouldPropose = arguments.Contains(
-                "--smoke-validation-threshold-propose",
-                StringComparer.OrdinalIgnoreCase);
-            var shouldReview = arguments.Contains(
-                "--smoke-validation-threshold-review",
-                StringComparer.OrdinalIgnoreCase);
-            var shouldApply = arguments.Contains(
-                "--smoke-validation-threshold-apply",
-                StringComparer.OrdinalIgnoreCase);
-            var shouldReplay = arguments.Contains(
-                "--smoke-validation-threshold-replay-heldout",
-                StringComparer.OrdinalIgnoreCase);
-            var shouldRevalidate = arguments.Contains(
-                "--smoke-validation-threshold-revalidate-development",
-                StringComparer.OrdinalIgnoreCase);
-            var manualValues = GetCommandLineValue(
-                "--smoke-validation-threshold-manual-values");
-            if (shouldPropose
-                && _viewModel.Workbench
-                    .ProposeValidationThresholdCandidateCommand
-                    .CanExecute(null))
-            {
-                _viewModel.Workbench
-                    .ProposeValidationThresholdCandidateCommand
-                    .Execute(null);
-            }
-            if ((shouldReview || shouldApply || shouldReplay)
-                && _viewModel.Workbench
-                    .ReviewValidationThresholdCandidateCommand
-                    .CanExecute(null))
-            {
-                _viewModel.Workbench
-                    .ReviewValidationThresholdCandidateCommand
-                    .Execute(null);
-            }
-            if ((shouldApply || shouldReplay)
-                && _viewModel.Workbench
-                    .ApplyValidationThresholdCandidateCommand
-                    .CanExecute(null))
-            {
-                _viewModel.Workbench
-                    .ApplyValidationThresholdCandidateCommand
-                    .Execute(null);
-            }
-            if (!string.IsNullOrWhiteSpace(manualValues)
-                && _viewModel.Workbench.SelectedStepPropertyDraft
-                    is ThicknessStepProperties thickness)
-            {
-                var values = manualValues.Split(
-                    ';',
-                    StringSplitOptions.RemoveEmptyEntries
-                    | StringSplitOptions.TrimEntries)
-                    .Select(value => value.Split(
-                        '=',
-                        2,
-                        StringSplitOptions.TrimEntries))
-                    .Where(parts => parts.Length == 2)
-                    .ToDictionary(
-                        parts => parts[0],
-                        parts => double.Parse(
-                            parts[1],
-                            System.Globalization.CultureInfo.InvariantCulture),
-                        StringComparer.Ordinal);
-                if (values.TryGetValue(
-                        "MinimumThickness",
-                        out var minimum))
-                {
-                    thickness.MinimumThickness = minimum;
-                }
-                if (values.TryGetValue(
-                        "MaximumThickness",
-                        out var maximum))
-                {
-                    thickness.MaximumThickness = maximum;
-                }
-                _viewModel.Workbench.MarkSelectedStepParameterDraftDirty();
-                if (!_viewModel.Workbench.TryApplySelectedStepParameterDraft(
-                        out var manualApplyMessage))
-                {
-                    throw new InvalidDataException(
-                        $"Threshold manual-value smoke Apply failed: {manualApplyMessage}");
-                }
-            }
-            if (shouldRevalidate
-                && _viewModel.Workbench
-                    .RevalidateValidationThresholdCorrectionCommand
-                    .CanExecute(null))
-            {
-                await _viewModel.Workbench
-                    .RevalidateValidationThresholdCorrectionAsync();
-            }
-            if (shouldReplay
-                && _viewModel.Workbench
-                    .ReplayValidationThresholdHeldOutCommand
-                    .CanExecute(null))
-            {
-                await _viewModel.Workbench
-                    .ReplayValidationThresholdHeldOutAsync();
-            }
-        }
-    }
-
-    private async Task OpenValidationSetComparisonForSmokeAsync()
-    {
-        while (_viewModel.Workbench.IsValidationSetRunning)
-        {
-            await Task.Delay(25);
-        }
-
-        if (_viewModel.Workbench.OpenValidationSetComparisonCommand.CanExecute(null))
-        {
-            _viewModel.Workbench.OpenValidationSetComparisonCommand.Execute(null);
-        }
-    }
-
-    private void ConfigureWorkbenchBottomPaneFromCommandLine()
-    {
-        switch (GetCommandLineValue("--workbench-bottom-pane")?.Trim().ToLowerInvariant())
-        {
-            case "flow" or "flow-map":
+            case ShellStartupBottomPane.FlowMap:
                 ToolWorkbench.ActivateFlowMap();
                 break;
-            case "problems" or "flow-problems":
+            case ShellStartupBottomPane.Problems:
                 ToolWorkbench.ActivateProblems();
                 break;
-            case "run-record" or "record" or "execution-record":
+            case ShellStartupBottomPane.RunRecord:
                 ToolWorkbench.ActivateRunRecord();
                 break;
-            case "validation-set" or "repeat-validation":
+            case ShellStartupBottomPane.ValidationSet:
                 ToolWorkbench.ActivateValidationSet();
                 break;
-            case "compare" or "output-compare":
+            case ShellStartupBottomPane.OutputCompare:
                 ToolWorkbench.ActivateOutputComparePane();
                 break;
-            case "outputs" or "displayed-outputs":
+            case ShellStartupBottomPane.DisplayedOutputs:
                 ToolWorkbench.ActivateDisplayedOutputsPane();
                 break;
-            case "session" or "session-log":
+            case ShellStartupBottomPane.SessionLog:
                 ToolWorkbench.ActivateSessionLogPane();
                 break;
-            case "profile" or "height-profile":
+            case ShellStartupBottomPane.Profile:
                 ToolWorkbench.ActivateProfilePane();
                 break;
-            case "fit" or "fit-diagnostics":
+            case ShellStartupBottomPane.FitDiagnostics:
                 ToolWorkbench.ActivateFitDiagnosticsPane();
                 break;
-            case "intersection" or "intersection-evidence":
+            case ShellStartupBottomPane.IntersectionEvidence:
                 ToolWorkbench.ActivateIntersectionEvidencePane();
                 break;
-            case "correspondence" or "correspondence-evidence":
+            case ShellStartupBottomPane.CorrespondenceEvidence:
                 ToolWorkbench.ActivateCorrespondenceEvidencePane();
                 break;
         }
     }
 
-    private void ConfigureOutputCompareFromCommandLine()
+    private void ConfigureOutputCompareFromCommandLine(
+        ShellStartupConfigurationPlan configuration)
     {
-        _viewModel.Workbench.CompareSlotAArtifactId = GetCommandLineValue("--workbench-compare-slot-a") ?? string.Empty;
-        _viewModel.Workbench.CompareSlotBArtifactId = GetCommandLineValue("--workbench-compare-slot-b") ?? string.Empty;
-        _viewModel.Workbench.CompareSlotCArtifactId = GetCommandLineValue("--workbench-compare-slot-c") ?? string.Empty;
+        _viewModel.Workbench.CompareSlotAArtifactId = configuration.CompareSlotAArtifactId;
+        _viewModel.Workbench.CompareSlotBArtifactId = configuration.CompareSlotBArtifactId;
+        _viewModel.Workbench.CompareSlotCArtifactId = configuration.CompareSlotCArtifactId;
     }
 
-    private void ConfigureC3DSourceLoadProgressFromCommandLine()
+    private void ConfigureC3DSourceLoadProgressFromCommandLine(
+        ShellStartupConfigurationPlan configuration)
     {
-        if (!double.TryParse(
-                GetCommandLineValue("--smoke-c3d-load-progress"),
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var progress))
+        if (configuration.C3DSourceLoadProgress is not { } progress)
         {
             return;
         }
@@ -3731,7 +1974,7 @@ public partial class MainWindow : Window
 
     private void OpenFilterToolLabRequested(object? sender, EventArgs args)
     {
-        ShowFilterToolLabWindow(showMissingFilterMessage: true);
+        _toolLabWindows.ShowForTool("filter", showMissing: true);
     }
 
     private void OnWorkbenchSelectValidationSetSourcesRequested(object? sender, EventArgs args)
@@ -3760,118 +2003,56 @@ public partial class MainWindow : Window
 
     private void OnWorkbenchToolLabRequested(object? sender, ToolWorkbenchToolLabRequestEventArgs args)
     {
-        switch (args.ToolId)
-        {
-            case "filter":
-                ShowFilterToolLabWindow(showMissingFilterMessage: false, preserveSelectedStep: true);
-                break;
-            case "height-difference-edge":
-                ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: false, preserveSelectedStep: true);
-                break;
-            case "two-point-line":
-                ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: false, preserveSelectedStep: true);
-                break;
-            case "three-point-plane":
-                ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: false, preserveSelectedStep: true);
-                break;
-            case "datum-plane-raw-height-deviation":
-                ShowDatumPlaneDeviationToolLabWindow(showMissingDatumDeviationMessage: false, preserveSelectedStep: true);
-                break;
-            case "line-intersection":
-                ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false, preserveSelectedStep: true);
-                break;
-            case "landmark-correspondence":
-                ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: false, preserveSelectedStep: true);
-                break;
-            case "xyz-affine-solve":
-                ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: false, preserveSelectedStep: true);
-                break;
-            case "xyz-affine-apply":
-                ShowXYZAffineApplyToolLabWindow(showMissingAffineApplyMessage: false, preserveSelectedStep: true);
-                break;
-            case "re-grid-height-map":
-                ShowRegridHeightMapToolLabWindow(showMissingRegridMessage: false, preserveSelectedStep: true);
-                break;
-        }
+        _toolLabWindows.ShowForTool(
+            args.ToolId,
+            showMissing: false,
+            preserveSelectedStep: true);
     }
-
-    private bool EnsureToolLabStepSelected(string toolId, bool preserveSelectedStep) =>
-        _toolLabWindows.EnsureStepSelected(toolId, preserveSelectedStep);
-
-    private bool ShowFilterToolLabWindow(bool showMissingFilterMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowFilter(showMissingFilterMessage, preserveSelectedStep);
 
     private void OpenEdgeToolLabRequested(object? sender, EventArgs args)
     {
-        ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: true);
+        _toolLabWindows.ShowForTool("height-difference-edge", showMissing: true);
     }
-
-    private bool ShowHeightDifferenceEdgeToolLabWindow(bool showMissingEdgeMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowHeightDifferenceEdge(showMissingEdgeMessage, preserveSelectedStep);
 
     private void OpenLineIntersectionToolLabRequested(object? sender, EventArgs args)
     {
-        ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: true);
+        _toolLabWindows.ShowForTool("line-intersection", showMissing: true);
     }
 
     private void OpenTwoPointLineToolLabRequested(object? sender, EventArgs args)
     {
-        ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: true);
+        _toolLabWindows.ShowForTool("two-point-line", showMissing: true);
     }
 
     private void OpenThreePointPlaneToolLabRequested(object? sender, EventArgs args)
     {
-        ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: true);
+        _toolLabWindows.ShowForTool("three-point-plane", showMissing: true);
     }
 
     private void OpenDatumPlaneDeviationToolLabRequested(object? sender, EventArgs args)
     {
-        ShowDatumPlaneDeviationToolLabWindow(showMissingDatumDeviationMessage: true);
+        _toolLabWindows.ShowForTool("datum-plane-raw-height-deviation", showMissing: true);
     }
-
-    private bool ShowTwoPointLineToolLabWindow(bool showMissingTwoPointLineMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowTwoPointLine(showMissingTwoPointLineMessage, preserveSelectedStep);
-
-    private bool ShowThreePointPlaneToolLabWindow(bool showMissingThreePointPlaneMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowThreePointPlane(showMissingThreePointPlaneMessage, preserveSelectedStep);
-
-    private bool ShowDatumPlaneDeviationToolLabWindow(bool showMissingDatumDeviationMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowDatumPlaneDeviation(showMissingDatumDeviationMessage, preserveSelectedStep);
-
-    private bool ShowLineIntersectionToolLabWindow(bool showMissingLineIntersectionMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowLineIntersection(showMissingLineIntersectionMessage, preserveSelectedStep);
 
     private void OpenLandmarkCorrespondenceToolLabRequested(object? sender, EventArgs args)
     {
-        ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: true);
+        _toolLabWindows.ShowForTool("landmark-correspondence", showMissing: true);
     }
-
-    private bool ShowLandmarkCorrespondenceToolLabWindow(bool showMissingCorrespondenceMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowLandmarkCorrespondence(showMissingCorrespondenceMessage, preserveSelectedStep);
 
     private void OpenXYZAffineSolveToolLabRequested(object? sender, EventArgs args)
     {
-        ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: true);
+        _toolLabWindows.ShowForTool("xyz-affine-solve", showMissing: true);
     }
 
     private void OpenXYZAffineApplyToolLabRequested(object? sender, EventArgs args)
     {
-        ShowXYZAffineApplyToolLabWindow(showMissingAffineApplyMessage: true);
+        _toolLabWindows.ShowForTool("xyz-affine-apply", showMissing: true);
     }
 
     private void OpenRegridHeightMapToolLabRequested(object? sender, EventArgs args)
     {
-        ShowRegridHeightMapToolLabWindow(showMissingRegridMessage: true);
+        _toolLabWindows.ShowForTool("re-grid-height-map", showMissing: true);
     }
-
-    private bool ShowXYZAffineSolveToolLabWindow(bool showMissingAffineSolveMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowXYZAffineSolve(showMissingAffineSolveMessage, preserveSelectedStep);
-
-    private bool ShowXYZAffineApplyToolLabWindow(bool showMissingAffineApplyMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowXYZAffineApply(showMissingAffineApplyMessage, preserveSelectedStep);
-
-    private bool ShowRegridHeightMapToolLabWindow(bool showMissingRegridMessage, bool preserveSelectedStep = false) =>
-        _toolLabWindows.ShowRegridHeightMap(showMissingRegridMessage, preserveSelectedStep);
 
     private void OnWorkbenchNewTeachingRecipeRequested(object? sender, EventArgs args) =>
         _workbenchLifecycle.NewTeachingRecipeRequested(sender, args);
@@ -3925,226 +2106,6 @@ public partial class MainWindow : Window
             qualityReportPath,
             "RecipeHealthNavigationPressed");
 
-    private static void AppendWindowMonitorEvidence(Window window, string? reportPath)
-    {
-        if (string.IsNullOrWhiteSpace(reportPath))
-        {
-            return;
-        }
-
-        const uint monitorDefaultToNearest = 0x00000002;
-        var handle = new WindowInteropHelper(window).Handle;
-        var monitor = MonitorFromWindow(handle, monitorDefaultToNearest);
-        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-        if (handle == IntPtr.Zero
-            || monitor == IntPtr.Zero
-            || !GetMonitorInfo(monitor, ref monitorInfo)
-            || !GetWindowRect(handle, out var windowRect))
-        {
-            return;
-        }
-
-        var intersects = windowRect.Left < monitorInfo.MonitorArea.Right
-            && windowRect.Right > monitorInfo.MonitorArea.Left
-            && windowRect.Top < monitorInfo.MonitorArea.Bottom
-            && windowRect.Bottom > monitorInfo.MonitorArea.Top;
-        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(window);
-        File.AppendAllLines(
-            Path.GetFullPath(reportPath),
-        [
-            $"WindowMonitor|selected=leftmost|monitorBounds={monitorInfo.MonitorArea.Left},{monitorInfo.MonitorArea.Top},{monitorInfo.MonitorArea.Right},{monitorInfo.MonitorArea.Bottom}|workingArea={monitorInfo.WorkArea.Left},{monitorInfo.WorkArea.Top},{monitorInfo.WorkArea.Right},{monitorInfo.WorkArea.Bottom}|windowRect={windowRect.Left},{windowRect.Top},{windowRect.Right},{windowRect.Bottom}|intersects={intersects}",
-            $"WindowDpi|scaleX={dpi.DpiScaleX:F2}|scaleY={dpi.DpiScaleY:F2}|pixelsPerInchX={dpi.PixelsPerInchX:F0}|pixelsPerInchY={dpi.PixelsPerInchY:F0}"
-        ]);
-    }
-
-    private static async Task<bool> CaptureButtonPressedForSmokeAsync(
-        Window window,
-        string automationId,
-        string screenshotPath,
-        string? qualityReportPath,
-        string scope)
-    {
-        const uint leftButtonDown = 0x0002;
-        const uint leftButtonUp = 0x0004;
-        var mouseDown = false;
-        var routedPointerDown = false;
-        var forcedPressedState = false;
-        System.Windows.Controls.Primitives.ButtonBase? pressedButton = null;
-        try
-        {
-            window.Activate();
-            SetForegroundWindow(new WindowInteropHelper(window).Handle);
-            await window.Dispatcher.InvokeAsync(
-                () => { },
-                DispatcherPriority.Input);
-            // Force template realization before resolving a named button. The
-            // validation pane is hosted through a docked ContentControl and its
-            // deferred template can otherwise remain outside the visual tree
-            // until the first bitmap render.
-            window.UpdateLayout();
-            _ = WpfScreenshotCapture.Capture(window);
-            System.Windows.Controls.Primitives.ButtonBase? button = null;
-            for (var attempt = 0; attempt < 40 && button is null; attempt++)
-            {
-                window.UpdateLayout();
-                button = FindVisualDescendants<System.Windows.Controls.Primitives.ButtonBase>(window)
-                    .FirstOrDefault(candidate =>
-                        System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
-                        == automationId);
-                if (button is null)
-                {
-                    button = FindVisualDescendants<RecipePipelineReviewView>(window)
-                        .Select(review => review.FindName(automationId) as System.Windows.Controls.Primitives.ButtonBase)
-                        .FirstOrDefault(candidate => candidate is not null);
-                }
-                if (button is not null && !button.IsDescendantOf(window))
-                {
-                    button = null;
-                }
-                if (button is null)
-                {
-                    await window.Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Render);
-                    await Task.Delay(50);
-                }
-            }
-            if (button is null)
-            {
-                var visibleIds = string.Join(
-                    ",",
-                    FindVisualDescendants<System.Windows.Controls.Primitives.ButtonBase>(window)
-                        .Where(candidate => candidate.Visibility == Visibility.Visible)
-                        .Select(candidate => System.Windows.Automation.AutomationProperties.GetAutomationId(candidate))
-                        .Where(id => !string.IsNullOrWhiteSpace(id))
-                        .Distinct(StringComparer.Ordinal));
-                WriteTextReport(
-                    qualityReportPath,
-                    [$"{scope}|failure=button-not-found|automationId={automationId}|visibleAutomationIds={visibleIds}"]);
-                return false;
-            }
-            pressedButton = button;
-            if (!button.IsEnabled)
-            {
-                WriteTextReport(qualityReportPath, [$"{scope}|failure=button-disabled|automationId={automationId}"]);
-                return false;
-            }
-            if (!button.Focus())
-            {
-                WriteTextReport(qualityReportPath, [$"{scope}|failure=focus-rejected|automationId={automationId}"]);
-                return false;
-            }
-            var focusedBeforePointer = button.IsKeyboardFocusWithin;
-
-            var relativeCenter = button.TransformToAncestor(window).Transform(new System.Windows.Point(
-                button.ActualWidth / 2.0,
-                button.ActualHeight / 2.0));
-            var transformToDevice = PresentationSource.FromVisual(window)?.CompositionTarget?.TransformToDevice
-                ?? System.Windows.Media.Matrix.Identity;
-            var deviceCenter = transformToDevice.Transform(relativeCenter);
-            var windowHandle = new WindowInteropHelper(window).Handle;
-            if (!GetWindowRect(windowHandle, out var windowRectangle))
-            {
-                WriteTextReport(qualityReportPath, [$"{scope}|failure=window-rectangle"]);
-                return false;
-            }
-            var center = new System.Windows.Point(
-                windowRectangle.Left + deviceCenter.X,
-                windowRectangle.Top + deviceCenter.Y);
-            if (!SetCursorPos(
-                    (int)Math.Round(center.X),
-                    (int)Math.Round(center.Y)))
-            {
-                WriteTextReport(qualityReportPath, [$"{scope}|failure=cursor-position|x={center.X:F1}|y={center.Y:F1}"]);
-                return false;
-            }
-
-            await Task.Delay(150);
-            var hoveredBeforePointer = button.IsMouseOver;
-            SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
-            mouseDown = true;
-            await window.Dispatcher.InvokeAsync(
-                () => { },
-                DispatcherPriority.Input);
-            await window.Dispatcher.InvokeAsync(
-                () => { },
-                DispatcherPriority.Render);
-            await Task.Delay(150);
-            if (!button.IsPressed)
-            {
-                button.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
-                    System.Windows.Input.Mouse.PrimaryDevice,
-                    Environment.TickCount,
-                    System.Windows.Input.MouseButton.Left)
-                {
-                    RoutedEvent = UIElement.MouseLeftButtonDownEvent,
-                    Source = button
-                });
-                routedPointerDown = true;
-                await window.Dispatcher.InvokeAsync(
-                    () => { },
-                    DispatcherPriority.Render);
-            }
-            if (!button.IsPressed)
-            {
-                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
-                    "SetIsPressed",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                setIsPressed?.Invoke(button, [true]);
-                forcedPressedState = button.IsPressed;
-            }
-            if (!button.IsPressed)
-            {
-                WriteTextReport(
-                    qualityReportPath,
-                [
-                    $"{scope}|failure=pressed-state-not-held|x={center.X:F1}|y={center.Y:F1}|window={windowRectangle.Left},{windowRectangle.Top},{windowRectangle.Right},{windowRectangle.Bottom}|relative={relativeCenter.X:F1},{relativeCenter.Y:F1}|device={deviceCenter.X:F1},{deviceCenter.Y:F1}"
-                ]);
-                return false;
-            }
-
-            var captured = await CaptureWindowWithRetryAsync(
-                window,
-                screenshotPath,
-                qualityReportPath,
-                scope);
-            if (captured && !string.IsNullOrWhiteSpace(qualityReportPath))
-            {
-                File.AppendAllLines(
-                    Path.GetFullPath(qualityReportPath),
-                [
-                    $"PointerDown|scope={scope}|state=held|osInjection={mouseDown}|routedEvent={routedPointerDown}|buttonBasePressedFallback={forcedPressedState}|focused={focusedBeforePointer}|hovered={hoveredBeforePointer}"
-                ]);
-            }
-            return captured;
-        }
-        finally
-        {
-            if (forcedPressedState && pressedButton is not null)
-            {
-                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
-                    "SetIsPressed",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                setIsPressed?.Invoke(pressedButton, [false]);
-            }
-            if (routedPointerDown && pressedButton is not null)
-            {
-                pressedButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
-                    System.Windows.Input.Mouse.PrimaryDevice,
-                    Environment.TickCount,
-                    System.Windows.Input.MouseButton.Left)
-                {
-                    RoutedEvent = UIElement.MouseLeftButtonUpEvent,
-                    Source = pressedButton
-                });
-            }
-            if (mouseDown)
-            {
-                SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
-            }
-        }
-    }
-
     private static async Task<bool> CaptureMessageDialogForSmokeAsync(
         WpfMessageDialogWindow dialog,
         string screenshotPath,
@@ -4190,25 +2151,6 @@ public partial class MainWindow : Window
     private void RestoreMostRecentWorkbenchRecipe() => _workbenchLifecycle.RestoreMostRecentWorkbenchRecipe();
 
     private bool TryResolveWorkbenchChanges(string reason) => _workbenchLifecycle.TryResolveWorkbenchChanges(reason);
-
-    private static bool IsAutomatedShellRun() => Environment.GetCommandLineArgs().Any(argument =>
-        argument.StartsWith("--smoke-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--two-point-line-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--three-point-plane-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--datum-plane-deviation-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--xyz-affine-apply-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--regrid-height-map-tool-lab-", StringComparison.OrdinalIgnoreCase)
-        || argument.StartsWith("--message-dialog-", StringComparison.OrdinalIgnoreCase)
-        || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
-
-    private static bool ShouldStartWithEmptyRecipeInput() =>
-        !IsAutomatedShellRun()
-        || Environment.GetCommandLineArgs().Any(argument =>
-            argument.Equals("--smoke-input-first-start", StringComparison.OrdinalIgnoreCase));
 
     private static string GetPersistentRecentRecipesPath() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -4263,6 +2205,13 @@ public partial class MainWindow : Window
 
     private void UpdateViewerHost()
     {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        CancelExpertViewerActivation();
+
         if (!_viewModel.IsWorkbenchWorkspaceSelected && _viewer.TeachingCaptureSnapshot.IsActive)
         {
             _viewer.CancelC3DTeachingCapture();
@@ -4289,17 +2238,7 @@ public partial class MainWindow : Window
             TaskWorkspace.ViewerContent = null;
             Workspace.ReactivateViewerContent(_viewer);
 
-            Dispatcher.BeginInvoke(
-                () =>
-                {
-                    if (_viewModel.IsExpertWorkspaceSelected
-                        && ReferenceEquals(Workspace.ViewerContent, _viewer))
-                    {
-                        Workspace.UpdateLayout();
-                        _viewer.RequestVisibleFrame();
-                    }
-                },
-                DispatcherPriority.ContextIdle);
+            QueueExpertViewerActivation();
             return;
         }
 
@@ -4318,5 +2257,55 @@ public partial class MainWindow : Window
         ToolWorkbench.ViewerContent = null;
         Workspace.ViewerContent = null;
         TaskWorkspace.ViewerContent = null;
+    }
+
+    private void QueueExpertViewerActivation()
+    {
+        if (_isClosed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (_expertViewerActivationOperation?.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing)
+        {
+            return;
+        }
+
+        try
+        {
+            _expertViewerActivationOperation = Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(ApplyExpertViewerActivation));
+        }
+        catch (InvalidOperationException)
+        {
+            _expertViewerActivationOperation = null;
+        }
+    }
+
+    private void ApplyExpertViewerActivation()
+    {
+        _expertViewerActivationOperation = null;
+        if (_isClosed)
+        {
+            return;
+        }
+
+        if (_viewModel.IsExpertWorkspaceSelected
+            && ReferenceEquals(Workspace.ViewerContent, _viewer))
+        {
+            Workspace.UpdateLayout();
+            _viewer.RequestVisibleFrame();
+        }
+    }
+
+    private void CancelExpertViewerActivation()
+    {
+        var operation = _expertViewerActivationOperation;
+        _expertViewerActivationOperation = null;
+        if (operation?.Status == DispatcherOperationStatus.Pending)
+        {
+            operation.Abort();
+        }
     }
 }

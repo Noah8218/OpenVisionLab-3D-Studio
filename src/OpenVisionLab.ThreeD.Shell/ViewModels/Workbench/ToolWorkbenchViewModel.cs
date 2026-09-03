@@ -19,11 +19,13 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// Deterministic algorithms remain owned by the Tools execution adapters; this
 /// ViewModel composes teach-time state, execution owners, and evidence routing.
 /// </summary>
-public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
+public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDisposable
 {
-    internal const int MaximumRunLogEntries = 3000;
+    internal const int MaximumRunLogEntries = ToolWorkbenchRunLogOwner.MaximumEntries;
 
+    private readonly ToolWorkbenchRunLogOwner runLogOwner;
     private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner;
+    private readonly ToolWorkbenchSelectedStepExecutionOwner selectedStepExecutionOwner;
     private readonly ToolWorkbenchRemoveOutlierExecutionOwner removeOutlierExecutionOwner;
     private readonly ToolWorkbenchConnectedRegionExecutionOwner connectedRegionExecutionOwner;
     private readonly ToolWorkbenchDomainMaskExecutionOwner domainMaskExecutionOwner;
@@ -41,26 +43,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private readonly ToolWorkbenchRegridHeightFieldExecutionOwner regridHeightFieldExecutionOwner;
     private readonly ToolWorkbenchHeightMeasurementExecutionOwner heightMeasurementExecutionOwner;
     private readonly ToolWorkbenchValidationSetExecutionOwner validationSetExecutionOwner;
+    private readonly ToolWorkbenchSourceLoadOwner sourceLoadOwner;
+    private readonly ToolWorkbenchLocalizationSubscriptionOwner localizationSubscriptionOwner;
+    private readonly ToolWorkbenchOrderedRunExecutionOwner orderedRunExecutionOwner;
+    private readonly ToolWorkbenchTeachingSelectionStoreOwner teachingSelectionStoreOwner;
+    private readonly ToolWorkbenchTeachingSelectionCaptureOwner teachingSelectionCaptureOwner;
+    private readonly ToolWorkbenchLandmarkCorrespondenceEditorOwner
+        landmarkCorrespondenceEditorOwner;
+    private readonly ToolWorkbenchReferenceCatalogOwner referenceCatalogOwner;
     private readonly RelayCommand addSelectedToolCommand;
     private readonly RelayCommand removeSelectedStepCommand;
     private readonly RelayCommand moveSelectedStepUpCommand;
     private readonly RelayCommand moveSelectedStepDownCommand;
     private readonly RelayCommand selectPipelineStepCommand;
-    private readonly RelayCommand addReferenceCommand;
-    private readonly RelayCommand removeSelectedReferenceCommand;
-    private readonly RelayCommand beginTeachingSelectionCaptureCommand;
-    private readonly RelayCommand beginAdditionalLevelSurfaceReferenceCommand;
-    private readonly RelayCommand undoTeachingSelectionCaptureCommand;
-    private readonly RelayCommand cancelTeachingSelectionCaptureCommand;
-    private readonly RelayCommand applyTeachingSelectionCaptureCommand;
-    private readonly RelayCommand addTeachingGridPolygonVertexCommand;
-    private readonly RelayCommand removeTeachingGridPolygonVertexCommand;
-    private readonly RelayCommand moveTeachingGridPolygonVertexUpCommand;
-    private readonly RelayCommand moveTeachingGridPolygonVertexDownCommand;
-    private readonly RelayCommand removeSelectedTeachingSelectionCommand;
-    private readonly RelayCommand useExistingTeachingSelectionCommand;
-    private readonly RelayCommand addOrUpdateCorrespondenceRowCommand;
-    private readonly RelayCommand removeSelectedCorrespondenceRowCommand;
     private readonly RelayCommand openSelectedToolLabCommand;
     private string toolSearchText = string.Empty;
     private ToolWorkbenchToolItem? selectedTool;
@@ -73,31 +68,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private double lastRecipeExecutionStateMilliseconds;
     private double lastRecipeNotificationMilliseconds;
     private double lastRecipeRefreshMilliseconds;
-    private ToolWorkbenchReferenceItem? selectedReference;
-    private ToolRecipeSelection? selectedCompatibleSelection;
-    private ToolRecipeLandmarkCorrespondence? selectedCorrespondenceRow;
     private bool suppressRecipeRefresh;
     private bool deferSelectedStepStateRefresh;
-    private string newReferenceId = "reference.fixture-landmarks";
-    private string newReferenceName = "Fixture landmarks";
-    private string newReferenceKind = "Landmark set";
-    private bool suppressTeachingGridRectangleDraftChanged;
-    private bool suppressTeachingGridCircleDraftChanged;
-    private bool suppressTeachingGridPolygonDraftChanged;
-    private string correspondenceSourceEntityId = string.Empty;
-    private string correspondenceReferenceLandmarkId = "fixture.landmark.01";
-    private double correspondenceReferenceX;
-    private double correspondenceReferenceY;
-    private double correspondenceReferenceZ;
-    private string correspondenceReferenceFrameId = "frame.fixture";
-    private string correspondenceReferenceUnit = string.Empty;
-    private string correspondenceReferenceProvenance = string.Empty;
-    private string correspondenceReferenceRevision = string.Empty;
-    private double correspondenceMinimumNormalizedTetrahedronVolume;
     private int selectedReviewTabIndex;
+    private int disposalState;
 
     public ToolWorkbenchViewModel(string? recentRecipesPath = null)
     {
+        runLogOwner = new ToolWorkbenchRunLogOwner();
         sourceQualityUiDispatcher =
             System.Threading.SynchronizationContext.Current
                 is System.Windows.Threading.DispatcherSynchronizationContext
@@ -106,6 +84,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                     : null;
         validationSetExecutionOwner = new ToolWorkbenchValidationSetExecutionOwner(
             RefreshValidationSetExecutionState);
+        sourceLoadOwner = new ToolWorkbenchSourceLoadOwner(
+            Localization,
+            propertyName => OnPropertyChanged(propertyName),
+            (category, message) => AppendLog(category, message));
         surfaceMatchExperiment = new SurfaceMatchExperimentSession(
             () => string.Equals(
                 SelectedPipelineStep?.ToolId,
@@ -113,7 +95,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 StringComparison.Ordinal),
             () => HasPendingStepParameterChanges,
             () => SelectedPipelineStep,
-            ApplyPublishedSurfaceMatchEvidence,
+            RaisePublishedSurfaceMatchProperties,
             RaiseSurfaceMatchExperimentDisplay,
             (category, message) => AppendLog(category, message),
             RefreshSurfaceMatchExperimentState);
@@ -145,15 +127,39 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             "frame.c3d-grid-index",
             string.Empty);
         Source.PropertyChanged += OnRecipePartChanged;
+        referenceCatalogOwner = new ToolWorkbenchReferenceCatalogOwner(NormalizeId);
+        referenceCatalogOwner.PropertyChanged += OnReferenceCatalogPropertyChanged;
+        referenceCatalogOwner.ReferencePropertyChanged += OnRecipePartChanged;
+        referenceCatalogOwner.Mutated += OnReferenceCatalogMutated;
+        teachingSelectionStoreOwner = new ToolWorkbenchTeachingSelectionStoreOwner(
+            () => Source.Id,
+            () => Source.FrameId,
+            () => SourceSession.SourceBinding,
+            GetPublishedSelectionBindingState,
+            () => SelectedStepTeachingSelection,
+            () => IsSelectedStepViewerCaptureSupported,
+            RemoveTeachingSelection,
+            UseExistingTeachingSelection);
+        teachingSelectionStoreOwner.PropertyChanged +=
+            OnTeachingSelectionStoreOwnerPropertyChanged;
+        orderedRunExecutionOwner = new ToolWorkbenchOrderedRunExecutionOwner(
+            CreateDocument,
+            document =>
+            {
+                var canRun = TryGetOrderedRunCapability(document, out var message);
+                return (canRun, message);
+            },
+            () => RecipePath,
+            () => Source.Path,
+            () => SourceQuality.Report,
+            () => PipelineSteps,
+            CreateOrderedRunSummary,
+            Localize,
+            (category, message) => AppendLog(category, message),
+            NotifyOrderedRunState,
+            args => OrderedRunCompleted?.Invoke(this, args),
+            () => OrderedRunInvalidated?.Invoke(this, EventArgs.Empty));
         filterExecutionOwner = new ToolWorkbenchFilterExecutionOwner(
-            () => PreviewSelectedStepAsync(),
-            CanPreviewSelectedStep,
-            () => RunTeachingRecipeAsync(),
-            CanRunTeachingRecipe,
-            PublishSelectedStep,
-            CanPublishSelectedStep,
-            CancelSelectedPreview,
-            () => IsSelectedStepPreviewRunning,
             CanShowFilterSource,
             ShowFilterSource,
             () => SetFilterKernel(3),
@@ -483,7 +489,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 : null,
             CreateDocument,
             (category, message) => AppendLog(category, message),
-            () => AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty),
+            teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged,
             RefreshRegridHeightFieldStateFromOwner);
         heightMeasurementExecutionOwner = new ToolWorkbenchHeightMeasurementExecutionOwner(
             () => IsSelectedStepMeasurement,
@@ -510,9 +516,43 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             (category, message) => AppendLog(category, message),
             UpdateMeasurementCompletenessPresentation,
             RefreshHeightMeasurementStateFromOwner);
+        selectedStepExecutionOwner = new ToolWorkbenchSelectedStepExecutionOwner(
+            () => SelectedPipelineStep,
+            CreateSelectedStepExecutionRoutes());
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
         InitializeOrientedBox3DEditing();
+        teachingSelectionCaptureOwner = new ToolWorkbenchTeachingSelectionCaptureOwner(
+            TeachingCaptureSession,
+            CreateTeachingCaptureContext,
+            () => SelectedStepSelectionRequirement,
+            () => SelectedStepTeachingSelection,
+            () => SelectedStepTeachingSelection?.SourceBinding
+                  ?? SourceSession.SourceBinding,
+            () => IsSelectedStepCrossSectionDimensions,
+            PersistSelectionForSelectedStep,
+            AdvancePlaneFlatnessTeachingRole,
+            teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged,
+            AppendLog,
+            () => OrientedBoxEditor.IsDraftOpen,
+            () => OrientedBoxEditor.ApplyCommand.CanExecute(null),
+            () => OrientedBoxEditor.ApplyCommand.Execute(null),
+            () => OrientedBoxEditor.CancelCommand.CanExecute(null),
+            () => OrientedBoxEditor.CancelCommand.Execute(null));
+        teachingSelectionCaptureOwner.PropertyChanged +=
+            OnTeachingSelectionCaptureOwnerPropertyChanged;
+        teachingSelectionCaptureOwner.StateChanged +=
+            OnTeachingSelectionCaptureOwnerStateChanged;
+        landmarkCorrespondenceEditorOwner =
+            new ToolWorkbenchLandmarkCorrespondenceEditorOwner(
+                CreateLandmarkCorrespondenceEditorContext,
+                (step, requirement) => CreateSelectionId(step, requirement),
+                PersistSelectionForSelectedStep,
+                RemoveTeachingSelection,
+                teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged,
+                AppendLog);
+        landmarkCorrespondenceEditorOwner.PropertyChanged +=
+            OnLandmarkCorrespondenceEditorOwnerPropertyChanged;
 
         addSelectedToolCommand = new RelayCommand(
             parameter => AddSelectedTool(parameter as ToolWorkbenchToolItem),
@@ -532,61 +572,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             },
             parameter => parameter is string stepId
                          && PipelineSteps.Any(step => string.Equals(step.Id, stepId, StringComparison.Ordinal)));
-        addReferenceCommand = new RelayCommand(_ => AddReference());
-        removeSelectedReferenceCommand = new RelayCommand(_ => RemoveSelectedReference(), _ => SelectedReference is not null);
-        beginTeachingSelectionCaptureCommand = new RelayCommand(
-            _ => BeginTeachingSelectionCapture(),
-            _ => CanBeginTeachingSelectionCapture);
-        beginAdditionalLevelSurfaceReferenceCommand = new RelayCommand(
-            _ => BeginAdditionalLevelSurfaceReferenceCapture(),
-            _ => IsSelectedStepLevelSurface
-                 && IsSourceReadyForRecipe
-                 && !IsTeachingSelectionCaptureActive);
-        undoTeachingSelectionCaptureCommand = new RelayCommand(
-            _ => UndoTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty),
-            _ => IsTeachingSelectionCaptureActive && TeachingSelectionCapturedPointCount > 0);
-        cancelTeachingSelectionCaptureCommand = new RelayCommand(
-            _ => CancelActiveSelectionCandidate(),
-            _ => IsTeachingSelectionCaptureActive
-                || OrientedBoxEditor.CancelCommand.CanExecute(null));
-        applyTeachingSelectionCaptureCommand = new RelayCommand(
-            _ => ApplyActiveSelectionCandidate(),
-            _ => IsTeachingSelectionCaptureActive
-                ? CanApplyTeachingSelectionCapture
-                  && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridRectangle
-                      || IsTeachingGridRectangleDraftValid)
-                  && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridCircle
-                      || IsTeachingGridCircleDraftValid)
-                  && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridPolygon
-                      || IsTeachingGridPolygonDraftValid)
-                : OrientedBoxEditor.ApplyCommand.CanExecute(null));
-        addTeachingGridPolygonVertexCommand = new RelayCommand(
-            _ => AddTeachingGridPolygonVertex(),
-            _ => IsTeachingGridPolygonEditorEnabled
-                && TeachingGridPolygonVertices.Count < ToolRecipeGridPolygonGeometry.MaximumVertexCount);
-        removeTeachingGridPolygonVertexCommand = new RelayCommand(
-            parameter => RemoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem),
-            parameter => IsTeachingGridPolygonEditorEnabled
-                && parameter is ToolWorkbenchGridPolygonVertexItem item
-                && TeachingGridPolygonVertices.Contains(item));
-        moveTeachingGridPolygonVertexUpCommand = new RelayCommand(
-            parameter => MoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, -1),
-            parameter => CanMoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, -1));
-        moveTeachingGridPolygonVertexDownCommand = new RelayCommand(
-            parameter => MoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, 1),
-            parameter => CanMoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, 1));
-        removeSelectedTeachingSelectionCommand = new RelayCommand(
-            _ => RemoveSelectedTeachingSelection(),
-            _ => SelectedStepTeachingSelection is not null);
-        useExistingTeachingSelectionCommand = new RelayCommand(
-            _ => UseExistingTeachingSelection(),
-            _ => SelectedCompatibleSelection is not null && IsSelectedStepViewerCaptureSupported);
-        addOrUpdateCorrespondenceRowCommand = new RelayCommand(
-            _ => AddOrUpdateCorrespondenceRow(),
-            _ => CanEditCorrespondenceRows);
-        removeSelectedCorrespondenceRowCommand = new RelayCommand(
-            _ => RemoveSelectedCorrespondenceRow(),
-            _ => SelectedCorrespondenceRow is not null && IsSelectedStepCorrespondence);
 
         InitializePropertyGridEditing();
         InitializePreparationPresetAssistant();
@@ -598,25 +583,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MoveSelectedStepUpCommand = moveSelectedStepUpCommand;
         MoveSelectedStepDownCommand = moveSelectedStepDownCommand;
         SelectPipelineStepCommand = selectPipelineStepCommand;
-        AddReferenceCommand = addReferenceCommand;
-        RemoveSelectedReferenceCommand = removeSelectedReferenceCommand;
-        BeginTeachingSelectionCaptureCommand = beginTeachingSelectionCaptureCommand;
-        BeginAdditionalLevelSurfaceReferenceCommand =
-            beginAdditionalLevelSurfaceReferenceCommand;
-        UndoTeachingSelectionCaptureCommand = undoTeachingSelectionCaptureCommand;
-        CancelTeachingSelectionCaptureCommand = cancelTeachingSelectionCaptureCommand;
-        ApplyTeachingSelectionCaptureCommand = applyTeachingSelectionCaptureCommand;
-        AddTeachingGridPolygonVertexCommand = addTeachingGridPolygonVertexCommand;
-        RemoveTeachingGridPolygonVertexCommand = removeTeachingGridPolygonVertexCommand;
-        MoveTeachingGridPolygonVertexUpCommand = moveTeachingGridPolygonVertexUpCommand;
-        MoveTeachingGridPolygonVertexDownCommand = moveTeachingGridPolygonVertexDownCommand;
-        RemoveSelectedTeachingSelectionCommand = removeSelectedTeachingSelectionCommand;
-        UseExistingTeachingSelectionCommand = useExistingTeachingSelectionCommand;
-        AddOrUpdateCorrespondenceRowCommand = addOrUpdateCorrespondenceRowCommand;
-        RemoveSelectedCorrespondenceRowCommand = removeSelectedCorrespondenceRowCommand;
         InitializeHeightImageRoiEditing();
-        SelectNavigatorItemCommand = new RelayCommand(parameter => SelectNavigatorItem(parameter as ToolWorkbenchNavigatorItem));
-        openSelectedToolLabCommand = new RelayCommand(_ => RequestSelectedToolLab(), _ => IsSelectedToolLabAvailable);
+        InitializeArtifactRegistryAndNavigator();
+        SelectNavigatorItemCommand = artifactNavigatorOwner.SelectNavigatorItemCommand;
+        openSelectedToolLabCommand = artifactNavigatorOwner.OpenSelectedToolLabCommand;
         OpenSelectedToolLabCommand = openSelectedToolLabCommand;
         ValidateTeachingRecipeCommand = new RelayCommand(_ => ValidateTeachingRecipe());
         SaveTeachingRecipeCommand = new RelayCommand(
@@ -627,23 +597,70 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             _ => CanSaveTeachingRecipe);
         OpenToolLibraryCommand = new RelayCommand(_ => OpenToolLibraryRequested?.Invoke(this, EventArgs.Empty));
         OpenTeachingRecipeCommand = new RelayCommand(_ => OpenTeachingRecipeRequested?.Invoke(this, EventArgs.Empty));
-        InitializeC3DSourceLoading();
         InitializeFilterExecution();
         InitializeOutputCompareSession();
         InitializeViewerWorkspace();
-        InitializeSurfaceMatchCollectionNavigation();
+        InitializeSurfaceMatchCollectionOwner();
         InitializeDisplayedOutputs();
-        Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
         InitializeFlowDiagnostics();
-        Localization.PropertyChanged += OnFlowDiagnosticsLocalizationChanged;
         InitializeCompatibleToolCatalog();
-        Localization.PropertyChanged += OnCompatibleToolCatalogLocalizationChanged;
-        Localization.PropertyChanged += OnTeachingLocalizationChanged;
         InitializeValidationSet();
+        localizationSubscriptionOwner = new ToolWorkbenchLocalizationSubscriptionOwner(
+            Localization,
+            OnCompletenessLocalizationChanged,
+            OnPlaneFlatnessLocalizationChanged,
+            OnValidationSetLocalizationChanged,
+            OnDisplayedOutputsLocalizationChanged,
+            OnCompatibleToolCatalogLocalizationChanged,
+            OnTeachingLocalizationChanged,
+            OnOutputCompareLocalizationChanged,
+            OnThicknessRepeatGridLocalizationChanged,
+            OnViewerWorkspaceLocalizationChanged,
+            OnFirstRecipeLanguageChanged);
         ValidationWorkspace = new RecipePipelineReviewValidationViewModel(this);
         AppendLog("System", "Tool recipe teaching is ready. Source, routing, parameters, and save/reopen are explicit.");
         SelectedTool = Tools[0];
         RefreshRecipeState();
+    }
+
+    /// <summary>
+    /// Releases Workbench-owned subscriptions, source-viewer load resources,
+    /// and active execution resources. The Shell owns this boundary and
+    /// invokes it during Window shutdown; repeated calls are safe.
+    /// </summary>
+    public void Dispose()
+    {
+        if (System.Threading.Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        localizationSubscriptionOwner.Dispose();
+        sourceLoadOwner.Dispose();
+        firstRecipeSetupOwner.Dispose();
+        flowDiagnosticsOwner.Dispose();
+        orderedRunExecutionOwner.Dispose();
+        validationThresholdWorkflowOwner.Dispose();
+        validationSetExecutionOwner.Dispose();
+        filterExecutionOwner.Dispose();
+        heightMeasurementExecutionOwner.Dispose();
+        editableRegionExecutionOwner.Dispose();
+        regridHeightFieldExecutionOwner.Dispose();
+        xyzAffineExecutionOwner.Dispose();
+        landmarkCorrespondenceExecutionOwner.Dispose();
+        lineIntersectionExecutionOwner.Dispose();
+        lineFitExecutionOwner.Dispose();
+        twoPointLineExecutionOwner.Dispose();
+        heightDifferenceEdgeExecutionOwner.Dispose();
+        levelSurfaceExecutionOwner.Dispose();
+        datumPlaneDeviationExecutionOwner.Dispose();
+        threePointPlaneExecutionOwner.Dispose();
+        roiCropExecutionOwner.Dispose();
+        domainMaskExecutionOwner.Dispose();
+        connectedRegionExecutionOwner.Dispose();
+        removeOutlierExecutionOwner.Dispose();
+        HeightImageViewer.Dispose();
+        SourceQuality.Dispose();
     }
 
     internal ToolWorkbenchTeachingCaptureSession TeachingCaptureSession { get; } = new();
@@ -659,15 +676,55 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? SelectedStepSetupRequested;
     public event EventHandler? SourceQualityWorkspaceRequested;
     public event EventHandler? OpenTeachingRecipeRequested;
-    public event EventHandler? LoadC3DSourceRequested;
-    public event EventHandler<ToolWorkbenchTeachingCaptureRequestEventArgs>? BeginTeachingSelectionCaptureRequested;
-    public event EventHandler? UndoTeachingSelectionCaptureRequested;
-    public event EventHandler? CancelTeachingSelectionCaptureRequested;
-    public event EventHandler? ApplyTeachingSelectionCaptureRequested;
-    public event EventHandler? AppliedTeachingSelectionsChanged;
-    public event EventHandler<ToolWorkbenchGridRectangleDraftChangedEventArgs>? TeachingGridRectangleDraftChanged;
-    public event EventHandler<ToolWorkbenchGridCircleDraftChangedEventArgs>? TeachingGridCircleDraftChanged;
-    public event EventHandler<ToolWorkbenchGridPolygonDraftChangedEventArgs>? TeachingGridPolygonDraftChanged;
+    public event EventHandler? LoadC3DSourceRequested
+    {
+        add => sourceLoadOwner.LoadC3DSourceRequested += value;
+        remove => sourceLoadOwner.LoadC3DSourceRequested -= value;
+    }
+    public event EventHandler<ToolWorkbenchTeachingCaptureRequestEventArgs>?
+        BeginTeachingSelectionCaptureRequested
+    {
+        add => teachingSelectionCaptureOwner.BeginRequested += value;
+        remove => teachingSelectionCaptureOwner.BeginRequested -= value;
+    }
+    public event EventHandler? UndoTeachingSelectionCaptureRequested
+    {
+        add => teachingSelectionCaptureOwner.UndoRequested += value;
+        remove => teachingSelectionCaptureOwner.UndoRequested -= value;
+    }
+    public event EventHandler? CancelTeachingSelectionCaptureRequested
+    {
+        add => teachingSelectionCaptureOwner.CancelRequested += value;
+        remove => teachingSelectionCaptureOwner.CancelRequested -= value;
+    }
+    public event EventHandler? ApplyTeachingSelectionCaptureRequested
+    {
+        add => teachingSelectionCaptureOwner.ApplyRequested += value;
+        remove => teachingSelectionCaptureOwner.ApplyRequested -= value;
+    }
+    public event EventHandler? AppliedTeachingSelectionsChanged
+    {
+        add => teachingSelectionStoreOwner.AppliedSelectionsChanged += value;
+        remove => teachingSelectionStoreOwner.AppliedSelectionsChanged -= value;
+    }
+    public event EventHandler<ToolWorkbenchGridRectangleDraftChangedEventArgs>?
+        TeachingGridRectangleDraftChanged
+    {
+        add => teachingSelectionCaptureOwner.GridRectangleDraftChanged += value;
+        remove => teachingSelectionCaptureOwner.GridRectangleDraftChanged -= value;
+    }
+    public event EventHandler<ToolWorkbenchGridCircleDraftChangedEventArgs>?
+        TeachingGridCircleDraftChanged
+    {
+        add => teachingSelectionCaptureOwner.GridCircleDraftChanged += value;
+        remove => teachingSelectionCaptureOwner.GridCircleDraftChanged -= value;
+    }
+    public event EventHandler<ToolWorkbenchGridPolygonDraftChangedEventArgs>?
+        TeachingGridPolygonDraftChanged
+    {
+        add => teachingSelectionCaptureOwner.GridPolygonDraftChanged += value;
+        remove => teachingSelectionCaptureOwner.GridPolygonDraftChanged -= value;
+    }
     public event EventHandler<ToolWorkbenchToolLabRequestEventArgs>? ToolLabRequested;
     public event EventHandler<ToolWorkbenchStepRemovalRequestEventArgs>? RemoveSelectedStepRequested;
 
@@ -702,29 +759,37 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         set => SetField(ref selectedReviewTabIndex, Math.Clamp(value, 0, 4));
     }
 
-    public ObservableCollection<ToolWorkbenchReferenceItem> References { get; } = [];
+    public ObservableCollection<ToolWorkbenchReferenceItem> References =>
+        referenceCatalogOwner.References;
 
     public ResettableObservableCollection<ToolWorkbenchEntityItem> Entities { get; } = [];
 
-    public ResettableObservableCollection<ToolWorkbenchArtifactItem> ArtifactRegistry { get; } = [];
+    public ResettableObservableCollection<ToolWorkbenchArtifactItem> ArtifactRegistry =>
+        artifactNavigatorOwner.ArtifactRegistry;
 
-    public ResettableObservableCollection<ToolWorkbenchNavigatorItem> NavigatorRoots { get; } = [];
+    public ResettableObservableCollection<ToolWorkbenchNavigatorItem> NavigatorRoots =>
+        artifactNavigatorOwner.NavigatorRoots;
 
     public ObservableCollection<ToolWorkbenchPipelineStepItem> PipelineSteps { get; } = [];
 
-    public ObservableCollection<ToolRecipeSelection> Selections { get; } = [];
+    public ObservableCollection<ToolRecipeSelection> Selections =>
+        teachingSelectionStoreOwner.Selections;
 
-    public ObservableCollection<ToolRecipeSelection> AvailableCompatibleSelections { get; } = [];
+    public ObservableCollection<ToolRecipeSelection> AvailableCompatibleSelections =>
+        teachingSelectionStoreOwner.AvailableCompatibleSelections;
 
-    public ObservableCollection<ToolRecipeLandmarkCorrespondence> SelectedCorrespondenceRows { get; } = [];
+    public ObservableCollection<ToolRecipeLandmarkCorrespondence> SelectedCorrespondenceRows =>
+        landmarkCorrespondenceEditorOwner.Rows;
 
-    public ObservableCollection<ToolWorkbenchGridPolygonVertexItem> TeachingGridPolygonVertices { get; } = [];
+    public ObservableCollection<ToolWorkbenchGridPolygonVertexItem> TeachingGridPolygonVertices =>
+        teachingSelectionCaptureOwner.GridPolygonVertices;
 
-    public ObservableCollection<string> AvailableCorrespondenceSourceEntityIds { get; } = [];
+    public ObservableCollection<string> AvailableCorrespondenceSourceEntityIds =>
+        landmarkCorrespondenceEditorOwner.AvailableSourceEntityIds;
 
     public ObservableCollection<ToolWorkbenchValidationItem> ValidationMessages { get; } = [];
 
-    public ObservableCollection<ToolWorkbenchLogItem> RunLog { get; } = [];
+    public ObservableCollection<ToolWorkbenchLogItem> RunLog => runLogOwner.Entries;
 
     public ICommand NewTeachingRecipeCommand { get; }
     public ICommand AddSelectedToolCommand { get; }
@@ -732,21 +797,35 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public ICommand MoveSelectedStepUpCommand { get; }
     public ICommand MoveSelectedStepDownCommand { get; }
     public ICommand SelectPipelineStepCommand { get; }
-    public ICommand AddReferenceCommand { get; }
-    public ICommand RemoveSelectedReferenceCommand { get; }
-    public ICommand BeginTeachingSelectionCaptureCommand { get; }
-    public ICommand BeginAdditionalLevelSurfaceReferenceCommand { get; }
-    public ICommand UndoTeachingSelectionCaptureCommand { get; }
-    public ICommand CancelTeachingSelectionCaptureCommand { get; }
-    public ICommand ApplyTeachingSelectionCaptureCommand { get; }
-    public ICommand AddTeachingGridPolygonVertexCommand { get; }
-    public ICommand RemoveTeachingGridPolygonVertexCommand { get; }
-    public ICommand MoveTeachingGridPolygonVertexUpCommand { get; }
-    public ICommand MoveTeachingGridPolygonVertexDownCommand { get; }
-    public ICommand RemoveSelectedTeachingSelectionCommand { get; }
-    public ICommand UseExistingTeachingSelectionCommand { get; }
-    public ICommand AddOrUpdateCorrespondenceRowCommand { get; }
-    public ICommand RemoveSelectedCorrespondenceRowCommand { get; }
+    public ICommand AddReferenceCommand => referenceCatalogOwner.AddReferenceCommand;
+    public ICommand RemoveSelectedReferenceCommand =>
+        referenceCatalogOwner.RemoveSelectedReferenceCommand;
+    public ICommand BeginTeachingSelectionCaptureCommand =>
+        teachingSelectionCaptureOwner.BeginCommand;
+    public ICommand BeginAdditionalLevelSurfaceReferenceCommand =>
+        teachingSelectionCaptureOwner.BeginAdditionalLevelSurfaceReferenceCommand;
+    public ICommand UndoTeachingSelectionCaptureCommand =>
+        teachingSelectionCaptureOwner.UndoCommand;
+    public ICommand CancelTeachingSelectionCaptureCommand =>
+        teachingSelectionCaptureOwner.CancelCommand;
+    public ICommand ApplyTeachingSelectionCaptureCommand =>
+        teachingSelectionCaptureOwner.ApplyCommand;
+    public ICommand AddTeachingGridPolygonVertexCommand =>
+        teachingSelectionCaptureOwner.AddPolygonVertexCommand;
+    public ICommand RemoveTeachingGridPolygonVertexCommand =>
+        teachingSelectionCaptureOwner.RemovePolygonVertexCommand;
+    public ICommand MoveTeachingGridPolygonVertexUpCommand =>
+        teachingSelectionCaptureOwner.MovePolygonVertexUpCommand;
+    public ICommand MoveTeachingGridPolygonVertexDownCommand =>
+        teachingSelectionCaptureOwner.MovePolygonVertexDownCommand;
+    public ICommand RemoveSelectedTeachingSelectionCommand =>
+        teachingSelectionStoreOwner.RemoveSelectedTeachingSelectionCommand;
+    public ICommand UseExistingTeachingSelectionCommand =>
+        teachingSelectionStoreOwner.UseExistingTeachingSelectionCommand;
+    public ICommand AddOrUpdateCorrespondenceRowCommand =>
+        landmarkCorrespondenceEditorOwner.AddOrUpdateRowCommand;
+    public ICommand RemoveSelectedCorrespondenceRowCommand =>
+        landmarkCorrespondenceEditorOwner.RemoveSelectedRowCommand;
     public ICommand SelectNavigatorItemCommand { get; }
     public ICommand OpenSelectedToolLabCommand { get; }
     public ICommand ValidateTeachingRecipeCommand { get; }
@@ -754,7 +833,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public ICommand SaveTeachingRecipeAsCommand { get; }
     public ICommand OpenToolLibraryCommand { get; }
     public ICommand OpenTeachingRecipeCommand { get; }
-    public ICommand LoadC3DSourceCommand { get; private set; } = null!;
+    public ICommand LoadC3DSourceCommand => sourceLoadOwner.LoadC3DSourceCommand;
 
     public ToolWorkbenchToolItem? SelectedTool
     {
@@ -849,62 +928,20 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public ToolWorkbenchReferenceItem? SelectedReference
     {
-        get => selectedReference;
-        set
-        {
-            if (ReferenceEquals(selectedReference, value))
-            {
-                return;
-            }
-
-            selectedReference = value;
-            OnPropertyChanged();
-            removeSelectedReferenceCommand.RaiseCanExecuteChanged();
-        }
+        get => referenceCatalogOwner.SelectedReference;
+        set => referenceCatalogOwner.SelectedReference = value;
     }
 
     public ToolRecipeSelection? SelectedCompatibleSelection
     {
-        get => selectedCompatibleSelection;
-        set
-        {
-            if (ReferenceEquals(selectedCompatibleSelection, value))
-            {
-                return;
-            }
-
-            selectedCompatibleSelection = value;
-            OnPropertyChanged();
-            useExistingTeachingSelectionCommand.RaiseCanExecuteChanged();
-            NotifyPlaneFlatnessTeachingState();
-        }
+        get => teachingSelectionStoreOwner.SelectedCompatibleSelection;
+        set => teachingSelectionStoreOwner.SelectedCompatibleSelection = value;
     }
 
     public ToolRecipeLandmarkCorrespondence? SelectedCorrespondenceRow
     {
-        get => selectedCorrespondenceRow;
-        set
-        {
-            if (Equals(selectedCorrespondenceRow, value))
-            {
-                return;
-            }
-
-            selectedCorrespondenceRow = value;
-            OnPropertyChanged();
-            if (value is not null)
-            {
-                CorrespondenceSourceEntityId = value.SourceEntityId;
-                CorrespondenceReferenceLandmarkId = value.ReferenceLandmarkId;
-                CorrespondenceReferenceX = value.ReferencePosition.X;
-                CorrespondenceReferenceY = value.ReferencePosition.Y;
-                CorrespondenceReferenceZ = value.ReferencePosition.Z;
-                CorrespondenceReferenceFrameId = value.ReferenceFrameId;
-            }
-
-            OnPropertyChanged(nameof(CorrespondenceCommitActionText));
-            removeSelectedCorrespondenceRowCommand.RaiseCanExecuteChanged();
-        }
+        get => landmarkCorrespondenceEditorOwner.SelectedRow;
+        set => landmarkCorrespondenceEditorOwner.SelectedRow = value;
     }
 
     public string RecipeName
@@ -956,122 +993,80 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public string NewReferenceId
     {
-        get => newReferenceId;
-        set => SetField(ref newReferenceId, value ?? string.Empty);
+        get => referenceCatalogOwner.NewReferenceId;
+        set => referenceCatalogOwner.NewReferenceId = value;
     }
 
     public string NewReferenceName
     {
-        get => newReferenceName;
-        set => SetField(ref newReferenceName, value ?? string.Empty);
+        get => referenceCatalogOwner.NewReferenceName;
+        set => referenceCatalogOwner.NewReferenceName = value;
     }
 
     public string NewReferenceKind
     {
-        get => newReferenceKind;
-        set => SetField(ref newReferenceKind, value ?? string.Empty);
+        get => referenceCatalogOwner.NewReferenceKind;
+        set => referenceCatalogOwner.NewReferenceKind = value;
     }
 
     public string CorrespondenceSourceEntityId
     {
-        get => correspondenceSourceEntityId;
-        set
-        {
-            if (SetField(ref correspondenceSourceEntityId, value ?? string.Empty))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.SourceEntityId;
+        set => landmarkCorrespondenceEditorOwner.SourceEntityId = value;
     }
 
     public string CorrespondenceReferenceLandmarkId
     {
-        get => correspondenceReferenceLandmarkId;
-        set
-        {
-            if (SetField(ref correspondenceReferenceLandmarkId, value ?? string.Empty))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.ReferenceLandmarkId;
+        set => landmarkCorrespondenceEditorOwner.ReferenceLandmarkId = value;
     }
 
     public double CorrespondenceReferenceX
     {
-        get => correspondenceReferenceX;
-        set => SetField(ref correspondenceReferenceX, value);
+        get => landmarkCorrespondenceEditorOwner.ReferenceX;
+        set => landmarkCorrespondenceEditorOwner.ReferenceX = value;
     }
 
     public double CorrespondenceReferenceY
     {
-        get => correspondenceReferenceY;
-        set => SetField(ref correspondenceReferenceY, value);
+        get => landmarkCorrespondenceEditorOwner.ReferenceY;
+        set => landmarkCorrespondenceEditorOwner.ReferenceY = value;
     }
 
     public double CorrespondenceReferenceZ
     {
-        get => correspondenceReferenceZ;
-        set => SetField(ref correspondenceReferenceZ, value);
+        get => landmarkCorrespondenceEditorOwner.ReferenceZ;
+        set => landmarkCorrespondenceEditorOwner.ReferenceZ = value;
     }
 
     public string CorrespondenceReferenceFrameId
     {
-        get => correspondenceReferenceFrameId;
-        set
-        {
-            if (SetField(ref correspondenceReferenceFrameId, value ?? string.Empty))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.ReferenceFrameId;
+        set => landmarkCorrespondenceEditorOwner.ReferenceFrameId = value;
     }
 
     public string CorrespondenceReferenceUnit
     {
-        get => correspondenceReferenceUnit;
-        set
-        {
-            if (SetField(ref correspondenceReferenceUnit, value ?? string.Empty))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.ReferenceUnit;
+        set => landmarkCorrespondenceEditorOwner.ReferenceUnit = value;
     }
 
     public string CorrespondenceReferenceProvenance
     {
-        get => correspondenceReferenceProvenance;
-        set
-        {
-            if (SetField(ref correspondenceReferenceProvenance, value ?? string.Empty))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.ReferenceProvenance;
+        set => landmarkCorrespondenceEditorOwner.ReferenceProvenance = value;
     }
 
     public string CorrespondenceReferenceRevision
     {
-        get => correspondenceReferenceRevision;
-        set
-        {
-            if (SetField(ref correspondenceReferenceRevision, value ?? string.Empty))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.ReferenceRevision;
+        set => landmarkCorrespondenceEditorOwner.ReferenceRevision = value;
     }
 
     public double CorrespondenceMinimumNormalizedTetrahedronVolume
     {
-        get => correspondenceMinimumNormalizedTetrahedronVolume;
-        set
-        {
-            if (SetField(ref correspondenceMinimumNormalizedTetrahedronVolume, value))
-            {
-                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-            }
-        }
+        get => landmarkCorrespondenceEditorOwner.MinimumNormalizedTetrahedronVolume;
+        set => landmarkCorrespondenceEditorOwner.MinimumNormalizedTetrahedronVolume = value;
     }
 
     public bool HasSelectedPipelineStep => SelectedPipelineStep is not null;
@@ -1224,13 +1219,16 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ? (isPlaneFlatnessMeasurementRole ? PlaneFlatnessMeasurementSelection : PlaneFlatnessReferenceSelection)
             : Selections.FirstOrDefault(selection =>
                 SelectedPipelineStep.InputEntityIds.Contains(selection.Id, StringComparer.OrdinalIgnoreCase)
-                && SelectionMatchesRequirement(selection, SelectedStepSelectionRequirement));
+                && ToolWorkbenchTeachingSelectionPolicy.MatchesRequirement(
+                    selection,
+                    SelectedStepSelectionRequirement));
 
     public string SelectedStepTeachingSelectionSummary => SelectedStepTeachingSelection is null
         ? (SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
             ? Localization.NoRoiTaught
             : "No recipe-owned selection is routed to this step.")
-        : FormatTeachingSelection(SelectedStepTeachingSelection);
+        : ToolWorkbenchTeachingSelectionPolicy.FormatSelection(
+            SelectedStepTeachingSelection);
 
     public string SelectionCaptureActionText => SelectedStepTeachingSelection is null
         ? (SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
@@ -1242,55 +1240,47 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public string ThicknessRoiTeachingDetail => Localization.ThicknessRoiTeachingDetail;
 
-    public bool IsTeachingSelectionCaptureActive => TeachingCaptureSession.IsActive;
+    public bool IsTeachingSelectionCaptureActive => teachingSelectionCaptureOwner.IsActive;
 
     public bool IsSelectionCandidateActive =>
-        IsTeachingSelectionCaptureActive || OrientedBoxEditor.IsDraftOpen;
+        teachingSelectionCaptureOwner.IsCandidateActive;
 
     public bool IsPipelineReviewExpanded => !IsSelectionCandidateActive && HasPipelineSteps;
 
-    public int TeachingSelectionCapturedPointCount => TeachingCaptureSession.CapturedPointCount;
+    public int TeachingSelectionCapturedPointCount =>
+        teachingSelectionCaptureOwner.CapturedPointCount;
 
-    public int TeachingSelectionRequiredPointCount => TeachingCaptureSession.RequiredPointCount;
+    public int TeachingSelectionRequiredPointCount =>
+        teachingSelectionCaptureOwner.RequiredPointCount;
 
-    public bool CanApplyTeachingSelectionCapture => TeachingCaptureSession.CanApply;
+    public bool CanApplyTeachingSelectionCapture => teachingSelectionCaptureOwner.CanApply;
 
     public bool IsTeachingGridRectangleEditorVisible =>
-        SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
-        && SelectedStepTeachingSelection?.GridRectangle is not null;
+        teachingSelectionCaptureOwner.IsGridRectangleEditorVisible;
 
     public bool IsTeachingGridRectangleEditorEnabled =>
-        IsTeachingSelectionCaptureActive
-        && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
-        && TeachingSelectionCapturedPointCount == 2;
+        teachingSelectionCaptureOwner.IsGridRectangleEditorEnabled;
 
     public bool IsTeachingGridCircleEditorVisible =>
-        SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridCircle
-        && SelectedStepTeachingSelection?.GridCircle is not null;
+        teachingSelectionCaptureOwner.IsGridCircleEditorVisible;
 
     public bool IsTeachingGridCircleEditorEnabled =>
-        IsTeachingSelectionCaptureActive
-        && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridCircle
-        && TeachingSelectionCapturedPointCount == 2;
+        teachingSelectionCaptureOwner.IsGridCircleEditorEnabled;
 
     public bool IsTeachingGridPolygonEditorVisible =>
-        SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon
-        && (IsTeachingSelectionCaptureActive
-            || SelectedStepTeachingSelection?.GridPolygon is not null);
+        teachingSelectionCaptureOwner.IsGridPolygonEditorVisible;
 
     public bool IsTeachingGridPolygonEditorEnabled =>
-        IsTeachingSelectionCaptureActive
-        && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon;
+        teachingSelectionCaptureOwner.IsGridPolygonEditorEnabled;
 
     public bool IsTeachingGridPolygonDraftValid =>
-        TryValidateTeachingGridPolygonDraft(out _);
+        teachingSelectionCaptureOwner.IsGridPolygonDraftValid;
 
     public string TeachingGridPolygonValidationSummary
     {
         get
         {
-            TryValidateTeachingGridPolygonDraft(out var message);
-            return message;
+            return teachingSelectionCaptureOwner.GridPolygonValidationSummary;
         }
     }
 
@@ -1301,37 +1291,30 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public int TeachingGridCircleCenterRow
     {
-        get => TeachingCaptureSession.GridCircleDraft.CenterRow;
-        set => SetTeachingGridCircleDraftValue(
-            TeachingCaptureSession.GridCircleDraft with { CenterRow = value },
-            nameof(TeachingGridCircleCenterRow));
+        get => teachingSelectionCaptureOwner.GridCircleCenterRow;
+        set => teachingSelectionCaptureOwner.GridCircleCenterRow = value;
     }
 
     public int TeachingGridCircleCenterColumn
     {
-        get => TeachingCaptureSession.GridCircleDraft.CenterColumn;
-        set => SetTeachingGridCircleDraftValue(
-            TeachingCaptureSession.GridCircleDraft with { CenterColumn = value },
-            nameof(TeachingGridCircleCenterColumn));
+        get => teachingSelectionCaptureOwner.GridCircleCenterColumn;
+        set => teachingSelectionCaptureOwner.GridCircleCenterColumn = value;
     }
 
     public double TeachingGridCircleRadius
     {
-        get => TeachingCaptureSession.GridCircleDraft.Radius;
-        set => SetTeachingGridCircleDraftValue(
-            TeachingCaptureSession.GridCircleDraft with { Radius = value },
-            nameof(TeachingGridCircleRadius));
+        get => teachingSelectionCaptureOwner.GridCircleRadius;
+        set => teachingSelectionCaptureOwner.GridCircleRadius = value;
     }
 
     public bool IsTeachingGridCircleDraftValid =>
-        TryValidateTeachingGridCircleDraft(out _);
+        teachingSelectionCaptureOwner.IsGridCircleDraftValid;
 
     public string TeachingGridCircleValidationSummary
     {
         get
         {
-            TryValidateTeachingGridCircleDraft(out var message);
-            return message;
+            return teachingSelectionCaptureOwner.GridCircleValidationSummary;
         }
     }
 
@@ -1342,45 +1325,36 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public int TeachingGridRectangleRow
     {
-        get => TeachingCaptureSession.GridRectangleDraft.Row;
-        set => SetTeachingGridRectangleDraftValue(
-            TeachingCaptureSession.GridRectangleDraft with { Row = value },
-            nameof(TeachingGridRectangleRow));
+        get => teachingSelectionCaptureOwner.GridRectangleRow;
+        set => teachingSelectionCaptureOwner.GridRectangleRow = value;
     }
 
     public int TeachingGridRectangleColumn
     {
-        get => TeachingCaptureSession.GridRectangleDraft.Column;
-        set => SetTeachingGridRectangleDraftValue(
-            TeachingCaptureSession.GridRectangleDraft with { Column = value },
-            nameof(TeachingGridRectangleColumn));
+        get => teachingSelectionCaptureOwner.GridRectangleColumn;
+        set => teachingSelectionCaptureOwner.GridRectangleColumn = value;
     }
 
     public int TeachingGridRectangleRowCount
     {
-        get => TeachingCaptureSession.GridRectangleDraft.RowCount;
-        set => SetTeachingGridRectangleDraftValue(
-            TeachingCaptureSession.GridRectangleDraft with { RowCount = value },
-            nameof(TeachingGridRectangleRowCount));
+        get => teachingSelectionCaptureOwner.GridRectangleRowCount;
+        set => teachingSelectionCaptureOwner.GridRectangleRowCount = value;
     }
 
     public int TeachingGridRectangleColumnCount
     {
-        get => TeachingCaptureSession.GridRectangleDraft.ColumnCount;
-        set => SetTeachingGridRectangleDraftValue(
-            TeachingCaptureSession.GridRectangleDraft with { ColumnCount = value },
-            nameof(TeachingGridRectangleColumnCount));
+        get => teachingSelectionCaptureOwner.GridRectangleColumnCount;
+        set => teachingSelectionCaptureOwner.GridRectangleColumnCount = value;
     }
 
     public bool IsTeachingGridRectangleDraftValid =>
-        TryValidateTeachingGridRectangleDraft(out _);
+        teachingSelectionCaptureOwner.IsGridRectangleDraftValid;
 
     public string TeachingGridRectangleValidationSummary
     {
         get
         {
-            TryValidateTeachingGridRectangleDraft(out var message);
-            return message;
+            return teachingSelectionCaptureOwner.GridRectangleValidationSummary;
         }
     }
 
@@ -1455,48 +1429,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshSelectedToolWorkspaceProjection();
     }
 
-    public string CorrespondenceCommitActionText => SelectedCorrespondenceRow is null
-        ? "Add row"
-        : "Update row";
+    public string CorrespondenceCommitActionText =>
+        landmarkCorrespondenceEditorOwner.CommitActionText;
 
-    public string CorrespondenceSelectionSummary => SelectedCorrespondenceRows.Count switch
-    {
-        0 => "No correspondence rows. Teach exactly four Published CornerAnchor/reference mappings before Preview.",
-        < 4 => $"{SelectedCorrespondenceRows.Count}/4 rows taught. Correspondence Preview remains blocked.",
-        > 4 => $"{SelectedCorrespondenceRows.Count}/4 rows taught. v1 accepts exactly four; remove the extra rows.",
-        _ when string.IsNullOrWhiteSpace(CorrespondenceReferenceUnit)
-            || string.IsNullOrWhiteSpace(CorrespondenceReferenceProvenance)
-            || string.IsNullOrWhiteSpace(CorrespondenceReferenceRevision)
-            || !double.IsFinite(CorrespondenceMinimumNormalizedTetrahedronVolume)
-            || CorrespondenceMinimumNormalizedTetrahedronVolume <= 0
-            || CorrespondenceMinimumNormalizedTetrahedronVolume >= 1
-            => "Four rows exist, but reference unit/provenance/revision and a normalized tetrahedron-volume threshold are required.",
-        _ => "Four correspondence rows and reference descriptor are taught. Preview validates only current Published anchors; no affine matrix is calculated."
-    };
-
-    private bool CanBeginTeachingSelectionCapture =>
-        IsSelectedStepViewerCaptureSupported
-        && !IsTeachingSelectionCaptureActive
-        && CanUseActivePlaneFlatnessRole()
-        && !string.IsNullOrWhiteSpace(Source.Path)
-        && SelectedPipelineStep is { } step
-        && TryGetSelectionCaptureContext(step, out _, out _);
-
-    private bool CanEditCorrespondenceRows =>
-        IsSelectedStepCorrespondence
-        && SourceSession.SourceBinding is not null
-        && !string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
-        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceLandmarkId)
-        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceFrameId)
-        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceUnit)
-        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceProvenance)
-        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceRevision)
-        && double.IsFinite(CorrespondenceMinimumNormalizedTetrahedronVolume)
-        && CorrespondenceMinimumNormalizedTetrahedronVolume > 0
-        && CorrespondenceMinimumNormalizedTetrahedronVolume < 1
-        && double.IsFinite(CorrespondenceReferenceX)
-        && double.IsFinite(CorrespondenceReferenceY)
-        && double.IsFinite(CorrespondenceReferenceZ);
+    public string CorrespondenceSelectionSummary =>
+        landmarkCorrespondenceEditorOwner.SelectionSummary;
 
     public string PipelineEmptyHint => PipelineSteps.Count == 0
         ? "No taught tools yet. Select a Toolbox item and add it to this recipe."
@@ -1613,7 +1550,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshRecipeState();
             recipeStateMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
             stageStart = Stopwatch.GetTimestamp();
-            AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+            teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
             selectionSyncMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
             BeginSourceQualityLoad();
             RecordPerformance();
@@ -1636,7 +1573,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         recipeStateMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
         stageStart = Stopwatch.GetTimestamp();
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         selectionSyncMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
         stageStart = Stopwatch.GetTimestamp();
         AppendLog("Source", $"C3D source taught: {Path.GetFileName(fullPath)}.");
@@ -1725,7 +1662,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             SetDirty(false);
             RecordRecentRecipe(fullPath);
             ToolSearchText = string.Empty;
-            AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+            teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
             message = $"Teaching recipe opened: {Path.GetFileName(fullPath)}";
             AppendLog("Teach", message);
             OVLog.Write(LogCategory.UI, LogLevel.Info, message);
@@ -1766,11 +1703,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Unit = "raw-height";
             Source.FrameId = "frame.c3d-grid-index";
             Source.Path = string.Empty;
-            References.Clear();
-            Selections.Clear();
+            referenceCatalogOwner.Clear();
+            teachingSelectionStoreOwner.Clear();
             PipelineSteps.Clear();
             SelectedPipelineStep = null;
-            SelectedReference = null;
             RecipePath = null;
         }, markDirty: false);
         SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
@@ -1780,7 +1716,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         SetValidationSetDefinitionDirty(false);
         ToolSearchText = string.Empty;
         OnPropertyChanged(nameof(RecipeSchemaVersion));
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         AppendLog("Teach", "New empty teaching recipe created. Select a C3D source before adding an inspection step.");
     }
 
@@ -1842,79 +1778,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void RefreshSelectedStepExecutionState()
     {
-        if (SelectedPipelineStep is { OutputEnabled: false } disabledStep)
+        selectedStepExecutionOwner.RefreshSelectedStepState();
+        if (SelectedPipelineStep is { OutputEnabled: false })
         {
-            disabledStep.State = "Disabled";
             RefreshSelectedToolWorkspaceProjection();
-            return;
-        }
-
-        switch (SelectedPipelineStep?.ToolId)
-        {
-            case "filter":
-                RefreshFilterExecutionState();
-                break;
-            case "remove-outlier-pixels":
-                RefreshRemoveOutlierExecutionState();
-                break;
-            case "connected-region":
-                RefreshConnectedRegionExecutionState();
-                break;
-            case "domain-mask":
-                RefreshDomainMaskExecutionState();
-                break;
-            case "editable-region":
-                RefreshEditableRegionExecutionState();
-                break;
-            case "level-surface":
-                RefreshLevelSurfaceExecutionState();
-                break;
-            case "roi-crop":
-                RefreshRoiCropExecutionState();
-                break;
-            case "height-difference-edge":
-                RefreshHeightDifferenceEdgeExecutionState();
-                break;
-            case "two-point-line":
-                RefreshTwoPointLineExecutionState();
-                break;
-            case "three-point-plane":
-                RefreshThreePointPlaneExecutionState();
-                break;
-            case "datum-plane-raw-height-deviation":
-                RefreshDatumPlaneDeviationExecutionState();
-                break;
-            case "three-d-line-fit":
-                RefreshLineFitExecutionState();
-                break;
-            case "line-intersection":
-                RefreshLineIntersectionExecutionState();
-                break;
-            case "landmark-correspondence":
-                RefreshLandmarkCorrespondenceExecutionState();
-                break;
-            case "xyz-affine-solve":
-                RefreshXYZAffineSolveExecutionState();
-                break;
-            case "xyz-affine-apply":
-                RefreshXYZAffineApplyExecutionState();
-                break;
-            case "re-grid-height-map":
-                RefreshRegridHeightFieldExecutionState();
-                break;
-            case "surface-match":
-                RefreshSurfaceMatchExperimentState();
-                break;
-            case "thickness":
-            case "warpage":
-            case "plane-flatness":
-            case "point-pair-dimensions":
-            case "gap-flush":
-            case "volume":
-            case "cross-section-dimensions":
-            case "completeness-grid":
-                RefreshMeasurementExecutionState();
-                break;
         }
     }
 
@@ -2255,7 +2122,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             output?.CompletenessGrid?.CellOverlays ?? []);
         if (output is not null)
         {
-            SetSelectedCompletenessCellId(null);
+            completenessReviewOwner.ClearSelection();
         }
 
         RefreshCompletenessCellReview();
@@ -2313,13 +2180,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var orphanedSelections = GetOrphanedSelections(step);
         UnsubscribeStep(step);
         PipelineSteps.Remove(step);
-        foreach (var orphan in orphanedSelections)
-        {
-            Selections.Remove(orphan);
-        }
+        teachingSelectionStoreOwner.RemoveRange(orphanedSelections);
         SelectedPipelineStep = PipelineSteps.LastOrDefault();
         RefreshAuthoredRecipeState();
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         AppendLog("Teach", $"Removed taught step: {step.ToolName}.");
         return true;
     }
@@ -2364,109 +2228,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         return index >= 0 && target >= 0 && target < PipelineSteps.Count;
     }
 
-    private void AddReference()
-    {
-        var id = string.IsNullOrWhiteSpace(NewReferenceId)
-            ? $"reference.{NormalizeId(NewReferenceName)}"
-            : NewReferenceId.Trim();
-        var reference = new ToolWorkbenchReferenceItem(
-            id,
-            string.IsNullOrWhiteSpace(NewReferenceName) ? id : NewReferenceName.Trim(),
-            string.IsNullOrWhiteSpace(NewReferenceKind) ? "Reference" : NewReferenceKind.Trim());
-        reference.PropertyChanged += OnRecipePartChanged;
-        References.Add(reference);
-        SelectedReference = reference;
-        NewReferenceId = $"reference.{NormalizeId(NewReferenceName)}";
-        RefreshAuthoredRecipeState();
-        AppendLog("Teach", $"Declared reference: {reference.Id}.");
-    }
+    private void BeginTeachingSelectionCapture() => teachingSelectionCaptureOwner.Begin();
 
-    private void RemoveSelectedReference()
-    {
-        if (SelectedReference is null)
-        {
-            return;
-        }
+    private void CancelTeachingSelectionCapture() => teachingSelectionCaptureOwner.Cancel();
 
-        var reference = SelectedReference;
-        reference.PropertyChanged -= OnRecipePartChanged;
-        References.Remove(reference);
-        SelectedReference = References.LastOrDefault();
-        RefreshAuthoredRecipeState();
-        AppendLog("Teach", $"Removed reference: {reference.Id}.");
-    }
-
-    private void BeginTeachingSelectionCapture()
-    {
-        var step = SelectedPipelineStep;
-        var requirement = SelectedStepSelectionRequirement;
-        if (step is null
-            || requirement is not { UsesViewerCapture: true }
-            || !TryGetSelectionCaptureContext(step, out var captureBinding, out var captureFrameId))
-        {
-            AppendLog(
-                "Warning",
-                $"Selection capture rejected | step={step?.Id ?? "(none)"} | role={GetActiveTeachingRoleName()} | reason=missing step, Viewer requirement, or current source binding.");
-            return;
-        }
-
-        var existing = TeachingCaptureSession.IsAdditionalLevelSurfaceReference
-            ? null
-            : SelectedStepTeachingSelection;
-        TeachingCaptureSession.SetOwningStep(step.Id);
-        UpdateTeachingGridRectangleDraft(existing?.GridRectangle);
-        UpdateTeachingGridPolygonDraft(existing?.GridPolygon);
-        SetTeachingSelectionCaptureState(
-            active: true,
-            capturedPointCount: 0,
-            requiredPointCount: requirement.RequiredPointCount,
-            canApply: false,
-            message: $"Pick the first {captureBinding.Format} grid cell.");
-        BeginTeachingSelectionCaptureRequested?.Invoke(
-            this,
-            new ToolWorkbenchTeachingCaptureRequestEventArgs(
-                step.Id,
-                existing?.Id ?? CreateSelectionId(step, requirement),
-                existing?.Name ?? (TeachingCaptureSession.IsAdditionalLevelSurfaceReference
-                    ? $"Level Surface reference {Math.Max(2, step.InputEntityIds.Count)}"
-                    : IsSelectedStepDualRoiMeasurement
-                        ? CreatePlaneFlatnessSelectionName(step)
-                        : $"{step.ToolName} selection"),
-                requirement.Kind,
-                requirement.RequiredPointCount,
-                Source.Id,
-                captureFrameId,
-                captureBinding,
-                existing));
-        if (IsTeachingSelectionCaptureActive)
-        {
-            // The Viewer may switch the displayed artifact before it starts the new
-            // capture. That transition clears the preceding Viewer state, so commit
-            // the owning step only after the synchronous begin request has settled.
-            TeachingCaptureSession.SetOwningStep(step.Id);
-        }
-        AppendLog(
-            "Teach",
-            $"Selection capture started | step={step.Id} | tool={step.ToolId} | role={GetActiveTeachingRoleName()} | selection={existing?.Id ?? CreateSelectionId(step, requirement)} | kind={requirement.Kind} | requiredPoints={requirement.RequiredPointCount} | existing={existing is not null} | inspectionRun=false.");
-    }
-
-    private void CancelTeachingSelectionCapture()
-    {
-        if (!IsTeachingSelectionCaptureActive)
-        {
-            return;
-        }
-
-        CancelTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty);
-        ClearTeachingSelectionCaptureState("Capture cancelled; no recipe geometry changed.");
-        AppendLog("Teach", "Selection capture cancelled; authored recipe unchanged.");
-    }
-
-    private void BeginAdditionalLevelSurfaceReferenceCapture()
-    {
-        TeachingCaptureSession.BeginAdditionalLevelSurfaceReference();
-        BeginTeachingSelectionCapture();
-    }
+    private void BeginAdditionalLevelSurfaceReferenceCapture() =>
+        teachingSelectionCaptureOwner.BeginAdditionalLevelSurfaceReference();
 
     public void UpdateTeachingSelectionCaptureState(
         bool active,
@@ -2474,142 +2241,33 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         int requiredPointCount,
         bool canApply,
         string message)
-    {
-        if (!active)
-        {
-            ClearTeachingSelectionCaptureState(message);
-            return;
-        }
-
-        SetTeachingSelectionCaptureState(
+        => teachingSelectionCaptureOwner.UpdateState(
             active,
-            Math.Max(0, capturedPointCount),
-            Math.Max(1, requiredPointCount),
+            capturedPointCount,
+            requiredPointCount,
             canApply,
-            string.IsNullOrWhiteSpace(message) ? "Capture in progress." : message);
-    }
+            message);
 
     public void UpdateTeachingGridRectangleDraft(ToolRecipeGridRectangle? rectangle)
     {
-        suppressTeachingGridRectangleDraftChanged = true;
-        try
-        {
-            TeachingCaptureSession.SetGridRectangleDraft(rectangle);
-            OnPropertyChanged(nameof(TeachingGridRectangleRow));
-            OnPropertyChanged(nameof(TeachingGridRectangleColumn));
-            OnPropertyChanged(nameof(TeachingGridRectangleRowCount));
-            OnPropertyChanged(nameof(TeachingGridRectangleColumnCount));
-            RefreshTeachingGridRectangleDraftState();
-        }
-        finally
-        {
-            suppressTeachingGridRectangleDraftChanged = false;
-        }
-
+        teachingSelectionCaptureOwner.UpdateGridRectangleDraft(rectangle);
         RefreshHeightImageRoiProjection();
     }
 
     public void UpdateTeachingGridCircleDraft(ToolRecipeGridCircle? circle)
-    {
-        suppressTeachingGridCircleDraftChanged = true;
-        try
-        {
-            TeachingCaptureSession.SetGridCircleDraft(circle);
-            OnPropertyChanged(nameof(TeachingGridCircleCenterRow));
-            OnPropertyChanged(nameof(TeachingGridCircleCenterColumn));
-            OnPropertyChanged(nameof(TeachingGridCircleRadius));
-            RefreshTeachingGridCircleDraftState();
-        }
-        finally
-        {
-            suppressTeachingGridCircleDraftChanged = false;
-        }
-    }
+        => teachingSelectionCaptureOwner.UpdateGridCircleDraft(circle);
 
     public void UpdateTeachingGridPolygonDraft(ToolRecipeGridPolygon? polygon)
-    {
-        suppressTeachingGridPolygonDraftChanged = true;
-        try
-        {
-            TeachingCaptureSession.SetGridPolygonDraft(polygon);
-            foreach (var vertex in TeachingGridPolygonVertices)
-            {
-                vertex.Changed = null;
-            }
-
-            TeachingGridPolygonVertices.Clear();
-            foreach (var (vertex, index) in (polygon?.Vertices ?? []).Select((vertex, index) => (vertex, index)))
-            {
-                var item = new ToolWorkbenchGridPolygonVertexItem(
-                    index + 1,
-                    vertex.Row,
-                    vertex.Column,
-                    OnTeachingGridPolygonVertexChanged);
-                TeachingGridPolygonVertices.Add(item);
-            }
-            RefreshTeachingGridPolygonDraftState();
-        }
-        finally
-        {
-            suppressTeachingGridPolygonDraftChanged = false;
-        }
-    }
+        => teachingSelectionCaptureOwner.UpdateGridPolygonDraft(polygon);
 
     public void RejectTeachingSelectionCapture(string message)
-    {
-        ClearTeachingSelectionCaptureState(message);
-        AppendLog("Warning", message);
-    }
+        => teachingSelectionCaptureOwner.Reject(message);
 
     public bool TryApplyCapturedTeachingSelection(ToolRecipeSelection? selection, out string message)
-    {
-        var step = SelectedPipelineStep;
-        var requirement = SelectedStepSelectionRequirement;
-        if (!IsTeachingSelectionCaptureActive)
-        {
-            message = "The teaching capture is no longer active.";
-            AppendLog("Warning", $"Selection apply rejected | role={GetActiveTeachingRoleName()} | reason={message}");
-            return false;
-        }
-        if (step is null || requirement is not { UsesViewerCapture: true })
-        {
-            message = "The selected recipe step no longer supports Viewer teaching capture.";
-            AppendLog("Warning", $"Selection apply rejected | role={GetActiveTeachingRoleName()} | reason={message}");
-            return false;
-        }
-        if (!string.Equals(TeachingCaptureSession.OwningStepId, step.Id, StringComparison.OrdinalIgnoreCase))
-        {
-            message = $"The teaching capture belongs to '{TeachingCaptureSession.OwningStepId ?? "(none)"}', not the selected step '{step.Id}'.";
-            AppendLog("Warning", $"Selection apply rejected | role={GetActiveTeachingRoleName()} | reason={message}");
-            return false;
-        }
+        => teachingSelectionCaptureOwner.TryApplyCapturedSelection(selection, out message);
 
-        if (selection is null
-            || !SelectionMatchesRequirement(selection, requirement)
-            || !string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)
-            || !TryGetSelectionCaptureContext(step, out var expectedBinding, out var expectedFrameId)
-            || !string.Equals(selection.FrameId, expectedFrameId, StringComparison.Ordinal)
-            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, expectedBinding))
-        {
-            message = "The captured selection kind, owner artifact, bytes, grid, or frame does not match the selected step.";
-            AppendLog("Warning", $"Selection apply rejected | step={step.Id} | role={GetActiveTeachingRoleName()} | selection={selection?.Id ?? "(none)"} | reason={message}");
-            return false;
-        }
-
-        PersistSelectionForSelectedStep(selection);
-        ClearTeachingSelectionCaptureState("Selection applied to the authored recipe.");
-        AdvancePlaneFlatnessTeachingRole();
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
-        message = $"Selection applied: {selection.Name}";
-        AppendLog(
-            "Teach",
-            $"{message} | step={step.Id} | role={GetAppliedTeachingRoleName(step, selection.Id)} | geometry={FormatSelectionGeometryForLog(selection)} | route={string.Join(';', step.InputEntityIds)} | inspectionRun=false.");
-        return true;
-    }
-
-    public IReadOnlyList<ToolRecipeSelection> GetCurrentAppliedTeachingSelections() => Selections
-        .Where(IsSelectionCurrent)
-        .ToArray();
+    public IReadOnlyList<ToolRecipeSelection> GetCurrentAppliedTeachingSelections() =>
+        teachingSelectionStoreOwner.GetCurrent();
 
     public bool SelectPipelineStep(string stepId)
     {
@@ -2651,7 +2309,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         SelectedPipelineStep = step;
         if (IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion)
         {
-            SetPlaneFlatnessTeachingRole(IsMeasurementRoleSelection(step, selectionId));
+            SetPlaneFlatnessTeachingRole(
+                ToolWorkbenchTeachingSelectionPolicy.IsMeasurementRoleSelection(
+                    step,
+                    selectionId,
+                    IsSelectedStepThickness,
+                    RecipeSchemaVersion));
         }
         return true;
     }
@@ -2664,6 +2327,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             return;
         }
 
+        RemoveTeachingSelection(selection);
+    }
+
+    private void RemoveTeachingSelection(ToolRecipeSelection selection)
+    {
         var step = SelectedPipelineStep;
         var wasDualRoi = IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion;
         var removedMeasurementRole = wasDualRoi && isPlaneFlatnessMeasurementRole;
@@ -2674,7 +2342,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var measurementSelectionId = PlaneFlatnessMeasurementSelection?.Id;
         MutateRecipe(() =>
         {
-            Selections.Remove(selection);
+            teachingSelectionStoreOwner.Remove(selection);
             foreach (var step in PipelineSteps)
             {
                 RemoveInputEntity(step, selection.Id);
@@ -2706,17 +2374,26 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
         MarkMeasurementPreviewStaleIfNeeded();
         RefreshTeachingSelectionContext();
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
         AppendLog(
             "Teach",
-            $"Selection deleted | step={step?.Id ?? "(none)"} | role={(removedMeasurementRole ? "measurement" : wasDualRoi ? "reference" : "selection")} | selection={selection.Id} | geometry={FormatSelectionGeometryForLog(selection)} | route={string.Join(';', step?.InputEntityIds ?? [])}.");
+            $"Selection deleted | step={step?.Id ?? "(none)"} | role={(removedMeasurementRole ? "measurement" : wasDualRoi ? "reference" : "selection")} | selection={selection.Id} | geometry={ToolWorkbenchTeachingSelectionPolicy.FormatSelectionGeometryForLog(selection)} | route={string.Join(';', step?.InputEntityIds ?? [])}.");
     }
 
     private void UseExistingTeachingSelection()
     {
-        if (SelectedCompatibleSelection is not { } selection
-            || SelectedPipelineStep is null
-            || !SelectionMatchesRequirement(selection, SelectedStepSelectionRequirement))
+        if (SelectedCompatibleSelection is { } selection)
+        {
+            UseExistingTeachingSelection(selection);
+        }
+    }
+
+    private void UseExistingTeachingSelection(ToolRecipeSelection selection)
+    {
+        if (SelectedPipelineStep is null
+            || !ToolWorkbenchTeachingSelectionPolicy.MatchesRequirement(
+                selection,
+                SelectedStepSelectionRequirement))
         {
             return;
         }
@@ -2743,93 +2420,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         AppendLog("Teach", $"Routed existing selection '{selection.Name}' to {SelectedPipelineStep.ToolName}.");
     }
 
-    private void AddOrUpdateCorrespondenceRow()
-    {
-        if (!CanEditCorrespondenceRows || SelectedPipelineStep is null || SourceSession.SourceBinding is null)
-        {
-            return;
-        }
-
-        var row = new ToolRecipeLandmarkCorrespondence(
-            CorrespondenceSourceEntityId.Trim(),
-            CorrespondenceReferenceLandmarkId.Trim(),
-            new ToolRecipeXyz(
-                CorrespondenceReferenceX,
-                CorrespondenceReferenceY,
-                CorrespondenceReferenceZ),
-            CorrespondenceReferenceFrameId.Trim());
-        var existingSelection = SelectedStepTeachingSelection;
-        var rows = existingSelection?.Rows?.ToList() ?? [];
-        if (SelectedCorrespondenceRow is { } selectedRow)
-        {
-            var index = rows.FindIndex(item => Equals(item, selectedRow));
-            if (index >= 0)
-            {
-                rows[index] = row;
-            }
-            else
-            {
-                rows.Add(row);
-            }
-        }
-        else
-        {
-            rows.Add(row);
-        }
-
-        var requirement = SelectedStepSelectionRequirement!;
-        var descriptor = new ToolRecipeLandmarkCorrespondenceDescriptor(
-            CorrespondenceReferenceFrameId.Trim(),
-            CorrespondenceReferenceUnit.Trim(),
-            CorrespondenceReferenceProvenance.Trim(),
-            CorrespondenceReferenceRevision.Trim(),
-            "ExactlyFour",
-            "CurrentPublishedCornerAnchor",
-            "RequireNonDegenerateTetrahedra",
-            CorrespondenceMinimumNormalizedTetrahedronVolume);
-        var selection = new ToolRecipeSelection(
-            existingSelection?.Id ?? CreateSelectionId(SelectedPipelineStep, requirement),
-            existingSelection?.Name ?? $"{SelectedPipelineStep.ToolName} correspondences",
-            ToolRecipeSelectionKinds.LandmarkCorrespondenceSet,
-            Source.Id,
-            Source.FrameId,
-            SourceSession.SourceBinding,
-            null,
-            null,
-            rows,
-            descriptor);
-        PersistSelectionForSelectedStep(selection);
-        SelectedCorrespondenceRow = null;
-        ResetCorrespondenceEditor();
-        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
-        AppendLog("Teach", $"Correspondence row authored for {SelectedPipelineStep.ToolName}; no affine calculation was run.");
-    }
-
-    private void RemoveSelectedCorrespondenceRow()
-    {
-        if (SelectedCorrespondenceRow is not { } selectedRow
-            || SelectedStepTeachingSelection is not { } selection)
-        {
-            return;
-        }
-
-        var rows = (selection.Rows ?? [])
-            .Where(row => !Equals(row, selectedRow))
-            .ToArray();
-        if (rows.Length == 0)
-        {
-            RemoveSelectedTeachingSelection();
-        }
-        else
-        {
-            PersistSelectionForSelectedStep(selection with { Rows = rows });
-            AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        SelectedCorrespondenceRow = null;
-        ResetCorrespondenceEditor();
-    }
-
     private void PersistSelectionForSelectedStep(ToolRecipeSelection selection)
     {
         if (SelectedPipelineStep is null)
@@ -2839,17 +2429,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         MutateRecipe(() =>
         {
-            var existing = Selections.FirstOrDefault(item =>
-                string.Equals(item.Id, selection.Id, StringComparison.OrdinalIgnoreCase));
-            if (existing is not null)
-            {
-                var index = Selections.IndexOf(existing);
-                Selections[index] = selection;
-            }
-            else
-            {
-                Selections.Add(selection);
-            }
+            teachingSelectionStoreOwner.Upsert(selection);
 
             if (string.Equals(SelectedPipelineStep.ToolId, "landmark-correspondence", StringComparison.Ordinal))
             {
@@ -2940,24 +2520,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Path = document.Source.Path;
             SourceSession.SetSourceAcquisitionProvenance(document.Source.AcquisitionProvenance);
 
-            foreach (var existing in References)
-            {
-                existing.PropertyChanged -= OnRecipePartChanged;
-            }
+            referenceCatalogOwner.ReplaceAll(document.References);
 
-            References.Clear();
-            foreach (var reference in document.References)
-            {
-                var item = new ToolWorkbenchReferenceItem(reference.Id, reference.Name, reference.Kind);
-                item.PropertyChanged += OnRecipePartChanged;
-                References.Add(item);
-            }
-
-            Selections.Clear();
-            foreach (var selection in document.Selections ?? [])
-            {
-                Selections.Add(selection);
-            }
+            teachingSelectionStoreOwner.ReplaceAll(document.Selections ?? []);
 
             foreach (var existing in PipelineSteps)
             {
@@ -2998,7 +2563,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 : PipelineSteps.FirstOrDefault(step =>
                     string.Equals(step.Id, selectedStepId, StringComparison.OrdinalIgnoreCase))
                   ?? PipelineSteps.FirstOrDefault();
-            SelectedReference = References.FirstOrDefault();
         }, markDirty);
         SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
@@ -3020,7 +2584,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             SourceSession.SourceBinding?.GridWidth,
             SourceSession.SourceBinding?.GridHeight,
             SourceSession.SourceAcquisitionProvenance),
-        References.Select(reference => new ToolRecipeReference(reference.Id.Trim(), reference.Name.Trim(), reference.Kind.Trim())).ToArray(),
+        referenceCatalogOwner.CreateSnapshot(),
         PipelineSteps.Select(step => new ToolRecipeStep(
             step.Id.Trim(),
             step.ToolId,
@@ -3219,71 +2783,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void RefreshTeachingSelectionContext()
     {
-        AvailableCompatibleSelections.Clear();
-        var requirement = SelectedStepSelectionRequirement;
-        foreach (var selection in Selections.Where(selection =>
-                     SelectionMatchesRequirement(selection, requirement)
-                     && IsSelectionCurrent(selection)))
-        {
-            AvailableCompatibleSelections.Add(selection);
-        }
-
-        if (SelectedCompatibleSelection is null
-            || !AvailableCompatibleSelections.Contains(SelectedCompatibleSelection))
-        {
-            SelectedCompatibleSelection = AvailableCompatibleSelections.FirstOrDefault();
-        }
-
-        SelectedCorrespondenceRows.Clear();
-        foreach (var row in SelectedStepTeachingSelection?.Rows ?? [])
-        {
-            SelectedCorrespondenceRows.Add(row);
-        }
-
-        if (SelectedCorrespondenceRow is not null
-            && !SelectedCorrespondenceRows.Contains(SelectedCorrespondenceRow))
-        {
-            SelectedCorrespondenceRow = null;
-        }
-
-        AvailableCorrespondenceSourceEntityIds.Clear();
-        if (SelectedPipelineStep is not null)
-        {
-            foreach (var step in PipelineSteps)
-            {
-                if (ReferenceEquals(step, SelectedPipelineStep))
-                {
-                    break;
-                }
-
-                if (string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal))
-                {
-                    AvailableCorrespondenceSourceEntityIds.Add(step.OutputEntityId);
-                }
-            }
-        }
-
-        if (SelectedStepTeachingSelection?.CorrespondenceDescriptor is { } descriptor)
-        {
-            CorrespondenceReferenceFrameId = descriptor.ReferenceFrameId;
-            CorrespondenceReferenceUnit = descriptor.ReferenceUnit;
-            CorrespondenceReferenceProvenance = descriptor.ReferenceProvenance;
-            CorrespondenceReferenceRevision = descriptor.ReferenceRevision;
-            CorrespondenceMinimumNormalizedTetrahedronVolume = descriptor.MinimumNormalizedTetrahedronVolume ?? 0;
-        }
-
-        if (!IsTeachingSelectionCaptureActive)
-        {
-            UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
-            UpdateTeachingGridCircleDraft(SelectedStepTeachingSelection?.GridCircle);
-            UpdateTeachingGridPolygonDraft(SelectedStepTeachingSelection?.GridPolygon);
-        }
-
-        if (string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
-            || !AvailableCorrespondenceSourceEntityIds.Contains(CorrespondenceSourceEntityId, StringComparer.OrdinalIgnoreCase))
-        {
-            CorrespondenceSourceEntityId = AvailableCorrespondenceSourceEntityIds.FirstOrDefault() ?? string.Empty;
-        }
+        teachingSelectionStoreOwner.RefreshCompatibleSelections(
+            SelectedStepSelectionRequirement);
+        landmarkCorrespondenceEditorOwner.Refresh();
+        teachingSelectionCaptureOwner.RefreshContext();
 
         RefreshPlaneFlatnessTeachingState();
         OnPropertyChanged(nameof(SelectedStepSelectionRequirement));
@@ -3304,88 +2807,114 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ThicknessRoiTeachingDetail));
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(CorrespondenceSelectionSummary));
-        beginTeachingSelectionCaptureCommand.RaiseCanExecuteChanged();
-        beginAdditionalLevelSurfaceReferenceCommand.RaiseCanExecuteChanged();
-        removeSelectedTeachingSelectionCommand.RaiseCanExecuteChanged();
-        useExistingTeachingSelectionCommand.RaiseCanExecuteChanged();
-        addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
-        removeSelectedCorrespondenceRowCommand.RaiseCanExecuteChanged();
+        teachingSelectionStoreOwner.RefreshCommandStates();
+        teachingSelectionCaptureOwner.RefreshCommandStates();
+        landmarkCorrespondenceEditorOwner.RefreshCommandStates();
         SynchronizeInspectionWorkspace();
     }
 
-    private IReadOnlyList<string> ValidateSelectionSourceBindings()
+    private IReadOnlyList<string> ValidateSelectionSourceBindings() =>
+        teachingSelectionStoreOwner.ValidateSourceBindings();
+
+    private bool IsSelectionCurrent(ToolRecipeSelection selection) =>
+        teachingSelectionStoreOwner.IsCurrent(selection);
+
+    private ToolWorkbenchPublishedSelectionBindingState GetPublishedSelectionBindingState(
+        ToolRecipeSelection selection)
     {
-        if (Selections.Count == 0)
+        if (string.Equals(
+            selection.SourceBinding.Format,
+            "TransformedHeightField",
+            StringComparison.Ordinal))
         {
-            return [];
+            if (!TryGetPublishedRegridHeightFieldOutput(
+                    selection.SourceBinding.OwnerEntityId ?? string.Empty,
+                    out var output)
+                || output is null)
+            {
+                return ToolWorkbenchPublishedSelectionBindingState.Unavailable;
+            }
+
+            return ToolRecipeSelectionSourceBindingVerifier
+                    .Verify(output, selection.SourceBinding)
+                    .IsCurrent
+                ? ToolWorkbenchPublishedSelectionBindingState.Current
+                : ToolWorkbenchPublishedSelectionBindingState.Stale;
         }
 
-        var errors = new List<string>();
-        foreach (var selection in Selections)
+        if (string.Equals(
+            selection.SourceBinding.Format,
+            "HeightField",
+            StringComparison.Ordinal))
         {
-            if (!string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase))
+            if (!TryGetPublishedRoiCropOutput(
+                    selection.SourceBinding.OwnerEntityId ?? string.Empty,
+                    out var output)
+                || output is null)
             {
-                errors.Add($"Selection '{selection.Id}' does not match root source '{Source.Id}'.");
-                continue;
+                return ToolWorkbenchPublishedSelectionBindingState.Unavailable;
             }
 
-            if (string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
-            {
-                if (TryGetPublishedRegridHeightFieldOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
-                    && output is not null
-                    && !ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent)
-                {
-                    errors.Add($"Selection '{selection.Id}' is stale because its Published TransformedHeightField identity changed.");
-                }
-                continue;
-            }
-
-            if (string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.Ordinal))
-            {
-                if (!TryGetPublishedRoiCropOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
-                    || output is null
-                    || !ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent)
-                {
-                    errors.Add($"Selection '{selection.Id}' is stale because its Published HeightField identity is unavailable or changed.");
-                }
-                continue;
-            }
-
-            if (SourceSession.SourceBinding is null)
-            {
-                errors.Add($"Selection '{selection.Id}' cannot be verified because the C3D source identity is unavailable.");
-                continue;
-            }
-
-            if (!string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
-                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, SourceSession.SourceBinding))
-            {
-                errors.Add($"Selection '{selection.Id}' is stale because the C3D source bytes or grid dimensions changed.");
-            }
+            return ToolRecipeSelectionSourceBindingVerifier
+                    .Verify(output, selection.SourceBinding)
+                    .IsCurrent
+                ? ToolWorkbenchPublishedSelectionBindingState.Current
+                : ToolWorkbenchPublishedSelectionBindingState.Stale;
         }
 
-        return errors;
+        return ToolWorkbenchPublishedSelectionBindingState.Unavailable;
     }
 
-    private bool IsSelectionCurrent(ToolRecipeSelection selection)
+    private ToolWorkbenchTeachingCaptureContext? CreateTeachingCaptureContext(
+        bool additionalLevelSurfaceReference)
     {
-        if (!string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)) return false;
-        if (string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
+        var step = SelectedPipelineStep;
+        var requirement = SelectedStepSelectionRequirement;
+        if (step is null
+            || requirement is not { UsesViewerCapture: true }
+            || !CanUseActivePlaneFlatnessRole()
+            || string.IsNullOrWhiteSpace(Source.Path)
+            || !TryGetSelectionCaptureContext(
+                step,
+                out var captureBinding,
+                out var captureFrameId))
         {
-            return TryGetPublishedRegridHeightFieldOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
-                && output is not null
-                && ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent;
+            return null;
         }
-        if (string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.Ordinal))
-        {
-            return TryGetPublishedRoiCropOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
-                && output is not null
-                && ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent;
-        }
-        return SourceSession.SourceBinding is not null
-            && string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
-            && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, SourceSession.SourceBinding);
+
+        var existing = additionalLevelSurfaceReference
+            ? null
+            : SelectedStepTeachingSelection;
+        var selectionId = existing?.Id ?? CreateSelectionId(step, requirement);
+        var selectionName = existing?.Name
+            ?? (additionalLevelSurfaceReference
+                ? $"Level Surface reference {Math.Max(2, step.InputEntityIds.Count)}"
+                : IsSelectedStepDualRoiMeasurement
+                    ? CreatePlaneFlatnessSelectionName(step)
+                    : $"{step.ToolName} selection");
+        return new ToolWorkbenchTeachingCaptureContext(
+            step,
+            requirement,
+            existing,
+            selectionId,
+            selectionName,
+            Source.Id,
+            captureFrameId,
+            captureBinding,
+            GetActiveTeachingRoleName());
     }
+
+    private ToolWorkbenchLandmarkCorrespondenceEditorContext
+        CreateLandmarkCorrespondenceEditorContext() =>
+        new(
+            SelectedPipelineStep,
+            IsSelectedStepCorrespondence,
+            SelectedStepTeachingSelection,
+            SourceSession.SourceBinding,
+            Source.Id,
+            Source.FrameId,
+            SelectedStepSelectionRequirement,
+            PipelineSteps);
 
     private bool TryGetSelectionCaptureContext(
         ToolWorkbenchPipelineStepItem step,
@@ -3444,18 +2973,97 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
-    private void SetTeachingSelectionCaptureState(
-        bool active,
-        int capturedPointCount,
-        int requiredPointCount,
-        bool canApply,
-        string message)
+    private void OnTeachingSelectionStoreOwnerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
     {
-        TeachingCaptureSession.SetState(active, capturedPointCount, requiredPointCount, canApply);
-        NotifyTeachingSelectionCaptureStateChanged();
+        OnPropertyChanged(args.PropertyName);
+        if (args.PropertyName is nameof(
+                ToolWorkbenchTeachingSelectionStoreOwner.SelectedCompatibleSelection))
+        {
+            NotifyPlaneFlatnessTeachingState();
+        }
     }
 
-    private void NotifyTeachingSelectionCaptureStateChanged()
+    private void OnTeachingSelectionCaptureOwnerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        var propertyName = args.PropertyName switch
+        {
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleRow) =>
+                nameof(TeachingGridRectangleRow),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumn) =>
+                nameof(TeachingGridRectangleColumn),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleRowCount) =>
+                nameof(TeachingGridRectangleRowCount),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumnCount) =>
+                nameof(TeachingGridRectangleColumnCount),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.IsGridRectangleDraftValid) =>
+                nameof(IsTeachingGridRectangleDraftValid),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleValidationSummary) =>
+                nameof(TeachingGridRectangleValidationSummary),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleCenterRow) =>
+                nameof(TeachingGridCircleCenterRow),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleCenterColumn) =>
+                nameof(TeachingGridCircleCenterColumn),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleRadius) =>
+                nameof(TeachingGridCircleRadius),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.IsGridCircleDraftValid) =>
+                nameof(IsTeachingGridCircleDraftValid),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleValidationSummary) =>
+                nameof(TeachingGridCircleValidationSummary),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.IsGridPolygonDraftValid) =>
+                nameof(IsTeachingGridPolygonDraftValid),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridPolygonValidationSummary) =>
+                nameof(TeachingGridPolygonValidationSummary),
+            _ => null
+        };
+        if (propertyName is not null)
+        {
+            OnPropertyChanged(propertyName);
+        }
+
+        if (args.PropertyName is nameof(
+                ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleRow)
+            or nameof(
+                ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumn)
+            or nameof(
+                ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleRowCount)
+            or nameof(
+                ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumnCount)
+            or nameof(
+                ToolWorkbenchTeachingSelectionCaptureOwner.IsGridRectangleDraftValid)
+            or nameof(
+                ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleValidationSummary))
+        {
+            OnPropertyChanged(nameof(TeachingGridRectangleSourceFrameSummary));
+        }
+        else if (args.PropertyName is nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleCenterRow)
+                 or nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleCenterColumn)
+                 or nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleRadius)
+                 or nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.IsGridCircleDraftValid)
+                 or nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.GridCircleValidationSummary))
+        {
+            OnPropertyChanged(nameof(TeachingGridCircleSourceFrameSummary));
+        }
+        else if (args.PropertyName is nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.IsGridPolygonDraftValid)
+                 or nameof(
+                     ToolWorkbenchTeachingSelectionCaptureOwner.GridPolygonValidationSummary))
+        {
+            OnPropertyChanged(nameof(TeachingGridPolygonSourceFrameSummary));
+        }
+    }
+
+    private void OnTeachingSelectionCaptureOwnerStateChanged(
+        object? sender,
+        EventArgs args)
     {
         OnPropertyChanged(nameof(IsTeachingSelectionCaptureActive));
         OnPropertyChanged(nameof(IsSelectionCandidateActive));
@@ -3463,6 +3071,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingSelectionCapturedPointCount));
         OnPropertyChanged(nameof(TeachingSelectionRequiredPointCount));
         OnPropertyChanged(nameof(CanApplyTeachingSelectionCapture));
+        OnPropertyChanged(nameof(IsTeachingGridRectangleEditorVisible));
         OnPropertyChanged(nameof(IsTeachingGridRectangleEditorEnabled));
         OnPropertyChanged(nameof(IsTeachingGridCircleEditorVisible));
         OnPropertyChanged(nameof(IsTeachingGridCircleEditorEnabled));
@@ -3471,294 +3080,53 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
-        RefreshTeachingSelectionCaptureCommands();
-        beginAdditionalLevelSurfaceReferenceCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
+        OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
         RefreshSelectedToolWorkspaceProjection();
+        RefreshHeightImageRoiProjection();
     }
 
-    private void ClearTeachingSelectionCaptureState(string message)
+    private void OnLandmarkCorrespondenceEditorOwnerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
     {
-        TeachingCaptureSession.Clear();
-        NotifyTeachingSelectionCaptureStateChanged();
-        UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
-        UpdateTeachingGridCircleDraft(SelectedStepTeachingSelection?.GridCircle);
-        UpdateTeachingGridPolygonDraft(SelectedStepTeachingSelection?.GridPolygon);
-    }
-
-    private void SetTeachingGridRectangleDraftValue(
-        ToolRecipeGridRectangle rectangle,
-        string propertyName)
-    {
-        if (TeachingCaptureSession.GridRectangleDraft == rectangle)
+        var propertyName = args.PropertyName switch
         {
-            return;
-        }
-
-        TeachingCaptureSession.SetGridRectangleDraft(rectangle);
-        OnPropertyChanged(propertyName);
-        RefreshTeachingGridRectangleDraftState();
-        if (suppressTeachingGridRectangleDraftChanged
-            || !IsTeachingGridRectangleEditorEnabled
-            || !TryValidateTeachingGridRectangleDraft(out _))
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.SelectedRow) =>
+                nameof(SelectedCorrespondenceRow),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.SourceEntityId) =>
+                nameof(CorrespondenceSourceEntityId),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceLandmarkId) =>
+                nameof(CorrespondenceReferenceLandmarkId),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceX) =>
+                nameof(CorrespondenceReferenceX),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceY) =>
+                nameof(CorrespondenceReferenceY),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceZ) =>
+                nameof(CorrespondenceReferenceZ),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceFrameId) =>
+                nameof(CorrespondenceReferenceFrameId),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceUnit) =>
+                nameof(CorrespondenceReferenceUnit),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceProvenance) =>
+                nameof(CorrespondenceReferenceProvenance),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.ReferenceRevision) =>
+                nameof(CorrespondenceReferenceRevision),
+            nameof(
+                ToolWorkbenchLandmarkCorrespondenceEditorOwner
+                    .MinimumNormalizedTetrahedronVolume) =>
+                nameof(CorrespondenceMinimumNormalizedTetrahedronVolume),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.CommitActionText) =>
+                nameof(CorrespondenceCommitActionText),
+            nameof(ToolWorkbenchLandmarkCorrespondenceEditorOwner.SelectionSummary) =>
+                nameof(CorrespondenceSelectionSummary),
+            _ => null
+        };
+        if (propertyName is not null)
         {
-            return;
-        }
-
-        TeachingGridRectangleDraftChanged?.Invoke(
-            this,
-            new ToolWorkbenchGridRectangleDraftChangedEventArgs(rectangle));
-    }
-
-    private void RefreshTeachingGridRectangleDraftState()
-    {
-        OnPropertyChanged(nameof(IsTeachingGridRectangleDraftValid));
-        OnPropertyChanged(nameof(TeachingGridRectangleValidationSummary));
-        OnPropertyChanged(nameof(TeachingGridRectangleSourceFrameSummary));
-        RefreshTeachingSelectionCaptureCommands();
-    }
-
-    private void SetTeachingGridCircleDraftValue(
-        ToolRecipeGridCircle circle,
-        string propertyName)
-    {
-        if (TeachingCaptureSession.GridCircleDraft == circle)
-        {
-            return;
-        }
-
-        TeachingCaptureSession.SetGridCircleDraft(circle);
-        OnPropertyChanged(propertyName);
-        RefreshTeachingGridCircleDraftState();
-        if (suppressTeachingGridCircleDraftChanged
-            || !IsTeachingGridCircleEditorEnabled
-            || !TryValidateTeachingGridCircleDraft(out _))
-        {
-            return;
-        }
-
-        TeachingGridCircleDraftChanged?.Invoke(
-            this,
-            new ToolWorkbenchGridCircleDraftChangedEventArgs(circle));
-    }
-
-    private void RefreshTeachingGridCircleDraftState()
-    {
-        OnPropertyChanged(nameof(IsTeachingGridCircleDraftValid));
-        OnPropertyChanged(nameof(TeachingGridCircleValidationSummary));
-        OnPropertyChanged(nameof(TeachingGridCircleSourceFrameSummary));
-        RefreshTeachingSelectionCaptureCommands();
-    }
-
-    private void OnTeachingGridPolygonVertexChanged(ToolWorkbenchGridPolygonVertexItem item)
-    {
-        if (suppressTeachingGridPolygonDraftChanged)
-        {
-            return;
-        }
-
-        UpdateTeachingGridPolygonDraftFromItems();
-    }
-
-    private void AddTeachingGridPolygonVertex()
-    {
-        if (!IsTeachingGridPolygonEditorEnabled
-            || TeachingGridPolygonVertices.Count >= ToolRecipeGridPolygonGeometry.MaximumVertexCount)
-        {
-            return;
-        }
-
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
-        var last = TeachingGridPolygonVertices.LastOrDefault();
-        var row = last?.Row ?? (binding is null ? 0 : Math.Max(0, (binding.GridHeight - 1) / 2.0));
-        var column = last?.Column ?? (binding is null ? 0 : Math.Max(0, (binding.GridWidth - 1) / 2.0));
-        if (last is not null)
-        {
-            var maxRow = binding is null ? row + 1 : Math.Max(0, binding.GridHeight - 1);
-            var maxColumn = binding is null ? column + 1 : Math.Max(0, binding.GridWidth - 1);
-            row = Math.Min(maxRow, row + 1);
-            column = Math.Min(maxColumn, column + 1);
-        }
-
-        var item = new ToolWorkbenchGridPolygonVertexItem(
-            TeachingGridPolygonVertices.Count + 1,
-            row,
-            column,
-            OnTeachingGridPolygonVertexChanged);
-        TeachingGridPolygonVertices.Add(item);
-        UpdateTeachingGridPolygonDraftFromItems();
-    }
-
-    private void RemoveTeachingGridPolygonVertex(ToolWorkbenchGridPolygonVertexItem? item)
-    {
-        if (!IsTeachingGridPolygonEditorEnabled
-            || item is null
-            || !TeachingGridPolygonVertices.Remove(item))
-        {
-            return;
-        }
-
-        ReindexTeachingGridPolygonVertices();
-        UpdateTeachingGridPolygonDraftFromItems();
-    }
-
-    private bool CanMoveTeachingGridPolygonVertex(
-        ToolWorkbenchGridPolygonVertexItem? item,
-        int offset)
-    {
-        if (!IsTeachingGridPolygonEditorEnabled || item is null)
-        {
-            return false;
-        }
-
-        var index = TeachingGridPolygonVertices.IndexOf(item);
-        var target = index + offset;
-        return index >= 0 && target >= 0 && target < TeachingGridPolygonVertices.Count;
-    }
-
-    private void MoveTeachingGridPolygonVertex(
-        ToolWorkbenchGridPolygonVertexItem? item,
-        int offset)
-    {
-        if (!CanMoveTeachingGridPolygonVertex(item, offset) || item is null)
-        {
-            return;
-        }
-
-        TeachingGridPolygonVertices.Move(
-            TeachingGridPolygonVertices.IndexOf(item),
-            TeachingGridPolygonVertices.IndexOf(item) + offset);
-        ReindexTeachingGridPolygonVertices();
-        UpdateTeachingGridPolygonDraftFromItems();
-    }
-
-    private void ReindexTeachingGridPolygonVertices()
-    {
-        for (var index = 0; index < TeachingGridPolygonVertices.Count; index++)
-        {
-            TeachingGridPolygonVertices[index].SetOrder(index + 1);
+            OnPropertyChanged(propertyName);
         }
     }
-
-    private void UpdateTeachingGridPolygonDraftFromItems()
-    {
-        TeachingCaptureSession.SetGridPolygonDraft(CreateGridPolygonDraftFromItems());
-        RefreshTeachingGridPolygonDraftState();
-        if (!IsTeachingGridPolygonEditorEnabled
-            || !TryValidateTeachingGridPolygonDraft(out _))
-        {
-            return;
-        }
-
-        TeachingGridPolygonDraftChanged?.Invoke(
-            this,
-            new ToolWorkbenchGridPolygonDraftChangedEventArgs(
-                TeachingCaptureSession.GridPolygonDraft));
-    }
-
-    private ToolRecipeGridPolygon CreateGridPolygonDraftFromItems() =>
-        new(TeachingGridPolygonVertices
-            .Select(vertex => new ToolRecipeGridPolygonVertex(vertex.Row, vertex.Column))
-            .ToArray());
-
-    private void RefreshTeachingGridPolygonDraftState()
-    {
-        OnPropertyChanged(nameof(IsTeachingGridPolygonDraftValid));
-        OnPropertyChanged(nameof(TeachingGridPolygonValidationSummary));
-        OnPropertyChanged(nameof(TeachingGridPolygonSourceFrameSummary));
-        RefreshTeachingSelectionCaptureCommands();
-        addTeachingGridPolygonVertexCommand.RaiseCanExecuteChanged();
-        removeTeachingGridPolygonVertexCommand.RaiseCanExecuteChanged();
-        moveTeachingGridPolygonVertexUpCommand.RaiseCanExecuteChanged();
-        moveTeachingGridPolygonVertexDownCommand.RaiseCanExecuteChanged();
-    }
-
-    private bool TryValidateTeachingGridPolygonDraft(out string message)
-    {
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
-        if (binding is null)
-        {
-            message = "The selected polygon has no current source-grid identity.";
-            return false;
-        }
-
-        var errors = ToolRecipeGridPolygonGeometry.Validate(
-            TeachingCaptureSession.GridPolygonDraft,
-            binding.GridWidth,
-            binding.GridHeight);
-        if (errors.Count > 0)
-        {
-            message = string.Join(" ", errors.Select(error => $"{error}."));
-            return false;
-        }
-
-        message = "Valid ordered source-grid polygon. Apply remains explicit and does not run inspection.";
-        return true;
-    }
-
-    private bool TryValidateTeachingGridCircleDraft(out string message)
-    {
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
-        if (binding is null)
-        {
-            message = "The selected circle has no current source-grid identity.";
-            return false;
-        }
-
-        var errors = ToolRecipeGridCircleGeometry.Validate(
-            TeachingCaptureSession.GridCircleDraft,
-            binding.GridWidth,
-            binding.GridHeight);
-        if (errors.Count > 0)
-        {
-            message = string.Join(" ", errors.Select(error => $"{error}."));
-            return false;
-        }
-
-        message = "Valid circular source-grid footprint. Apply remains explicit and does not run inspection.";
-        return true;
-    }
-
-    private bool TryValidateTeachingGridRectangleDraft(out string message)
-    {
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
-        if (binding is null || binding.GridWidth <= 0 || binding.GridHeight <= 0)
-        {
-            message = "The selected ROI has no current source-grid identity.";
-            return false;
-        }
-        if (TeachingGridRectangleRow < 0
-            || TeachingGridRectangleColumn < 0
-            || TeachingGridRectangleRowCount <= 0
-            || TeachingGridRectangleColumnCount <= 0)
-        {
-            message = "Row and column must be zero or greater; width and height must be greater than zero.";
-            return false;
-        }
-        if ((long)TeachingGridRectangleRow + TeachingGridRectangleRowCount > binding.GridHeight
-            || (long)TeachingGridRectangleColumn + TeachingGridRectangleColumnCount > binding.GridWidth)
-        {
-            message = $"ROI must stay inside rows 0..{binding.GridHeight - 1} and columns 0..{binding.GridWidth - 1}.";
-            return false;
-        }
-        if (IsSelectedStepCrossSectionDimensions
-            && (TeachingGridRectangleRowCount != 1 || TeachingGridRectangleColumnCount < 2))
-        {
-            message = "Cross-section Dimensions requires one row and at least two columns.";
-            return false;
-        }
-
-        message = "Valid source-grid footprint. Apply remains explicit and does not run inspection.";
-        return true;
-    }
-
-    private void RefreshTeachingSelectionCaptureCommands()
-    {
-        beginTeachingSelectionCaptureCommand.RaiseCanExecuteChanged();
-        undoTeachingSelectionCaptureCommand.RaiseCanExecuteChanged();
-        cancelTeachingSelectionCaptureCommand.RaiseCanExecuteChanged();
-        applyTeachingSelectionCaptureCommand.RaiseCanExecuteChanged();
-    }
-
     private void PromoteRecipeSchemaForSelection()
     {
         SetRecipeSchemaVersion(ToolRecipeDocument.CurrentSchemaVersion);
@@ -3808,152 +3176,26 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     }
 
     private ToolWorkbenchTeachingSelectionRequirement? CreateSelectionRequirement(
-        ToolWorkbenchPipelineStepItem? step)
-    {
-        if (step is null)
-        {
-            return null;
-        }
-
-        var presentation = step.ToolId switch
-        {
-            "roi-crop" => new ToolWorkbenchTeachingSelectionRequirement("Grid rectangle", string.Empty, 0, true, "Pick two opposite grid-cell corners for the crop ROI."),
-            "height-difference-edge" => new("Edge search band", string.Empty, 0, true, "Pick two opposite grid-cell corners for the explicit edge search band."),
-            "level-surface" => new("Level reference ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners on a stable reference surface. Additional reference ROIs may be routed to the same step."),
-            "thickness" => CreatePlaneFlatnessSelectionRequirement(),
-            "warpage" => new("Warpage measurement ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners for the measurement ROI."),
-            "plane-flatness" => CreatePlaneFlatnessSelectionRequirement(),
-            "point-pair-dimensions" => new("Point pair", string.Empty, 0, true, "Pick exactly two distinct cells in the Published TransformedHeightField."),
-            "gap-flush" => CreatePlaneFlatnessSelectionRequirement(),
-            "volume" => CreatePlaneFlatnessSelectionRequirement(),
-            "cross-section-dimensions" => new(Localization.CrossSectionSelection, string.Empty, 0, true, Localization.CrossSectionSelectionDetail),
-            "completeness-grid" => CreatePlaneFlatnessSelectionRequirement(),
-            "two-point-line" => new("Line points", string.Empty, 0, true, "Pick exactly two distinct C3D grid cells."),
-            "three-point-plane" => new("Plane points", string.Empty, 0, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
-            "datum-plane-raw-height-deviation" => new("Datum measurement ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
-            "grid-circle-authoring" => new("Circular surface ROI", string.Empty, 0, true, "Pick the center cell, then one boundary cell. Radius is measured between grid-cell centers."),
-            "grid-polygon-authoring" => new("Irregular surface region", string.Empty, 3, true, "Pick three or more ordered grid vertices. This slice stores the outline only; no mask or inspection is generated."),
-            "landmark-correspondence" => new("Landmark correspondences", string.Empty, 0, false, "Enter explicit source entities and fixture coordinates."),
-            _ => null
-        };
-        if (presentation is null)
-        {
-            return null;
-        }
-
-        var inputIndex = step.ToolId switch
-        {
-            "landmark-correspondence" => 0,
-            "datum-plane-raw-height-deviation" => 2,
-            "level-surface" => Math.Max(1, step.InputEntityIds.Count),
-            "thickness" or "plane-flatness" or "gap-flush" or "volume" or "completeness-grid"
-                => isPlaneFlatnessMeasurementRole ? 2 : 1,
-            _ => 1
-        };
-        return ToolRecipeSelectionContract.TryGetRequirement(step.ToolId, inputIndex, out var requirement)
-            ? presentation with
-            {
-                Kind = requirement.Kind,
-                    RequiredPointCount = requirement.RequiredPointCount > 0
-                    ? requirement.RequiredPointCount
-                    : requirement.Kind is ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle ? 2
-                        : requirement.Kind == ToolRecipeSelectionKinds.GridPolygon ? 3 : 0
-            }
-            : null;
-    }
-
-    private static bool SelectionMatchesRequirement(
-        ToolRecipeSelection selection,
-        ToolWorkbenchTeachingSelectionRequirement? requirement)
-    {
-        if (requirement is null
-            || !string.Equals(selection.Kind, requirement.Kind, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return requirement.Kind switch
-        {
-            ToolRecipeSelectionKinds.GridRectangle => selection.GridRectangle is not null,
-            ToolRecipeSelectionKinds.GridCircle => selection.GridCircle is not null,
-            ToolRecipeSelectionKinds.GridPolygon => selection.GridPolygon is not null,
-            ToolRecipeSelectionKinds.PointSet => selection.Points?.Count == requirement.RequiredPointCount,
-            ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => selection.Rows is not null,
-            _ => false
-        };
-    }
+        ToolWorkbenchPipelineStepItem? step) =>
+        ToolWorkbenchTeachingSelectionPolicy.CreateRequirement(
+            step,
+            CreatePlaneFlatnessSelectionRequirement(),
+            Localization.CrossSectionSelection,
+            Localization.CrossSectionSelectionDetail,
+            isPlaneFlatnessMeasurementRole);
 
     private string CreateSelectionId(
         ToolWorkbenchPipelineStepItem step,
-        ToolWorkbenchTeachingSelectionRequirement requirement)
-    {
-        var suffix = IsSelectedStepDualRoiMeasurement
-            ? IsSelectedStepGapFlush
-                ? (isPlaneFlatnessMeasurementRole ? "second-roi" : "first-roi")
-                : IsSelectedStepCompletenessGrid
-                    ? (isPlaneFlatnessMeasurementRole ? "inspection-grid-roi" : "reference-roi")
-                    : (isPlaneFlatnessMeasurementRole ? "measurement-roi" : "reference-roi")
-            : requirement.Kind switch
-        {
-            ToolRecipeSelectionKinds.GridRectangle => "roi",
-            ToolRecipeSelectionKinds.GridPolygon => "polygon",
-            ToolRecipeSelectionKinds.PointSet => "points",
-            ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => "correspondences",
-            _ => "selection"
-        };
-        var baseId =
-            $"selection.{NormalizeId(step.Id.StartsWith("step.", StringComparison.OrdinalIgnoreCase) ? step.Id[5..] : step.Id)}.{suffix}";
-        if (!TeachingCaptureSession.IsAdditionalLevelSurfaceReference
-            || !string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal))
-        {
-            return baseId;
-        }
-
-        var ordinal = 2;
-        var candidate = $"{baseId}.{ordinal:D2}";
-        while (Selections.Any(selection => string.Equals(
-                   selection.Id,
-                   candidate,
-                   StringComparison.OrdinalIgnoreCase)))
-        {
-            ordinal++;
-            candidate = $"{baseId}.{ordinal:D2}";
-        }
-
-        return candidate;
-    }
-
-    private static string FormatTeachingSelection(ToolRecipeSelection selection)
-    {
-        var geometry = selection.GridRectangle is { } rectangle
-            ? $"row {rectangle.Row}..{rectangle.Row + rectangle.RowCount - 1}, column {rectangle.Column}..{rectangle.Column + rectangle.ColumnCount - 1}"
-            : selection.GridCircle is { } circle
-                ? $"center row {circle.CenterRow}, column {circle.CenterColumn}, radius {circle.Radius:G6} cells"
-            : selection.GridPolygon is { Vertices: { } vertices }
-                ? $"{vertices.Count} ordered vertices ({FormatGridPolygonVertex(vertices.FirstOrDefault())} → {FormatGridPolygonVertex(vertices.LastOrDefault())})"
-            : selection.Points is { } points
-                ? $"{points.Count} grid point(s)"
-                : selection.Rows is { } rows
-                    ? $"{rows.Count} correspondence row(s)"
-                    : "geometry unavailable";
-        var hash = selection.SourceBinding.ContentSha256.Length >= 8
-            ? selection.SourceBinding.ContentSha256[..8]
-            : selection.SourceBinding.ContentSha256;
-        return $"{selection.Name} | {geometry} | {selection.FrameId} | sha256 {hash}";
-    }
-
-    private static string FormatGridPolygonVertex(ToolRecipeGridPolygonVertex? vertex) =>
-        vertex is null ? "(none)" : $"X {vertex.Column:G6}, Z {vertex.Row:G6}";
-
-    private void ResetCorrespondenceEditor()
-    {
-        CorrespondenceSourceEntityId = AvailableCorrespondenceSourceEntityIds.FirstOrDefault() ?? string.Empty;
-        CorrespondenceReferenceLandmarkId = "fixture.landmark.01";
-        CorrespondenceReferenceX = 0;
-        CorrespondenceReferenceY = 0;
-        CorrespondenceReferenceZ = 0;
-    }
-
+        ToolWorkbenchTeachingSelectionRequirement requirement) =>
+        ToolWorkbenchTeachingSelectionPolicy.CreateSelectionId(
+            step,
+            requirement,
+            IsSelectedStepDualRoiMeasurement,
+            IsSelectedStepGapFlush,
+            IsSelectedStepCompletenessGrid,
+            isPlaneFlatnessMeasurementRole,
+            TeachingCaptureSession.IsAdditionalLevelSurfaceReference,
+            Selections);
     private void SubscribeStep(ToolWorkbenchPipelineStepItem step)
     {
         step.PropertyChanged += OnRecipePartChanged;
@@ -3970,6 +3212,25 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             parameter.PropertyChanged -= OnRecipePartChanged;
         }
+    }
+
+    private void OnReferenceCatalogPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        OnPropertyChanged(args.PropertyName);
+    }
+
+    private void OnReferenceCatalogMutated(
+        object? sender,
+        ToolWorkbenchReferenceMutationEventArgs args)
+    {
+        RefreshAuthoredRecipeState();
+        AppendLog(
+            "Teach",
+            args.Added
+                ? $"Declared reference: {args.Reference.Id}."
+                : $"Removed reference: {args.Reference.Id}.");
     }
 
     private void OnRecipePartChanged(object? sender, PropertyChangedEventArgs args)
@@ -4145,78 +3406,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     }
 
     internal void AppendLog(string category, string message)
-    {
-        var level = category.Equals("Error", StringComparison.OrdinalIgnoreCase)
-            ? LogLevel.Error
-            : category.Equals("Warning", StringComparison.OrdinalIgnoreCase)
-                ? LogLevel.Warning
-                : LogLevel.Info;
-        OVLog.Write(LogCategory.UI, level, $"Workbench[{category}] {message}");
-        RunLog.Insert(0, new ToolWorkbenchLogItem(DateTime.Now.ToString("HH:mm:ss"), category, message));
-        while (RunLog.Count > MaximumRunLogEntries)
-        {
-            RunLog.RemoveAt(RunLog.Count - 1);
-        }
-    }
+        => runLogOwner.Append(category, message);
 
     private string GetActiveTeachingRoleName() =>
         IsSelectedStepDualRoiMeasurement
             ? isPlaneFlatnessMeasurementRole ? "measurement" : "reference"
             : "selection";
-
-    private static string FormatGridRectangleForLog(ToolRecipeGridRectangle? rectangle) =>
-        rectangle is null
-            ? "(none)"
-            : $"row={rectangle.Row},column={rectangle.Column},rowCount={rectangle.RowCount},columnCount={rectangle.ColumnCount}";
-
-    private static string FormatSelectionGeometryForLog(ToolRecipeSelection selection) =>
-        selection.GridPolygon is { Vertices: { } vertices }
-            ? $"polygonVertices={vertices.Count};first={FormatGridPolygonVertex(vertices.FirstOrDefault())};last={FormatGridPolygonVertex(vertices.LastOrDefault())}"
-            : selection.GridCircle is { } circle
-                ? $"circleCenter=({circle.CenterRow},{circle.CenterColumn});radius={circle.Radius:G6}"
-                : $"rectangle={FormatGridRectangleForLog(selection.GridRectangle)}";
-
-    private static string GetAppliedTeachingRoleName(ToolWorkbenchPipelineStepItem step, string selectionId)
-    {
-        if (step.DualRoiRouting is { } routing)
-        {
-            if (string.Equals(routing.FirstRegionSelectionId, selectionId, StringComparison.OrdinalIgnoreCase))
-            {
-                return "reference";
-            }
-            if (string.Equals(routing.SecondRegionSelectionId, selectionId, StringComparison.OrdinalIgnoreCase))
-            {
-                return "measurement";
-            }
-        }
-
-        var index = step.InputEntityIds
-            .Select((id, inputIndex) => (id, inputIndex))
-            .FirstOrDefault(item => string.Equals(item.id, selectionId, StringComparison.OrdinalIgnoreCase))
-            .inputIndex;
-        return index == 1 ? "reference" : index == 2 ? "measurement" : "selection";
-    }
-
-    private bool IsMeasurementRoleSelection(ToolWorkbenchPipelineStepItem step, string selectionId)
-    {
-        if (step.DualRoiRouting is { } routing)
-        {
-            return string.Equals(
-                routing.SecondRegionSelectionId,
-                selectionId,
-                StringComparison.OrdinalIgnoreCase);
-        }
-
-        var inputIndex = step.InputEntityIds
-            .Select((id, index) => (id, index))
-            .FirstOrDefault(item => string.Equals(item.id, selectionId, StringComparison.OrdinalIgnoreCase))
-            .index;
-        return inputIndex == 2
-            || (IsSelectedStepThickness
-                && step.InputEntityIds.Count == 2
-                && !ToolRecipeDocument.SupportsArtifactOwnedSelections(RecipeSchemaVersion)
-                && inputIndex == 1);
-    }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
@@ -4637,8 +3832,6 @@ public sealed class ToolWorkbenchParameterItem : INotifyPropertyChanged
 public sealed record ToolWorkbenchEntityItem(string Id, string Kind, string State, string Detail);
 
 public sealed record ToolWorkbenchValidationItem(string Level, string Message);
-
-public sealed record ToolWorkbenchLogItem(string Time, string Category, string Message);
 
 public sealed record ToolWorkbenchC3DSourceStatePerformance(
     double CaptureMilliseconds,

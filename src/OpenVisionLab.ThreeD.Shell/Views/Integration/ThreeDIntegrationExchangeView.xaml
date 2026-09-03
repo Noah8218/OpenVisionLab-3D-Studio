@@ -34,14 +34,11 @@
                 <ColumnDefinition Width="2*" MinWidth="360" />
             </Grid.ColumnDefinitions>
 
-            <ScrollViewer Grid.Column="0"
-                          HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
                 <Border Padding="14"
                         Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -239,8 +236,7 @@
                         </ListBox>
                     </Grid>
                 </Border>
-                </Grid>
-            </ScrollViewer>
+            </Grid>
 
             <Border Grid.Column="2"
                     Padding="14"
@@ -248,8 +244,7 @@
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                     BorderThickness="1"
                     CornerRadius="4">
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock FontSize="14" FontWeight="SemiBold"
                                    Text="{views:ThreeDText Key=ThreeD.Exchange.Review, Korean='검토 및 결과', English='Review and result'}" />
@@ -261,7 +256,6 @@
                         <TextBlock Margin="0,14,0,4" FontWeight="SemiBold"
                                    Text="{views:ThreeDText Key=ThreeD.Exchange.Transfer, Korean='TCP 거래 전송', English='TCP transaction transfer'}" />
                         <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                   MaxWidth="430"
                                    TextWrapping="Wrap"
                                    Text="{views:ThreeDText Key=ThreeD.Exchange.TransferHint, Korean='선택 거래를 상대에게 보내거나, 상대에서 최신 ACK/Result를 다시 받습니다. 전송만으로 검토나 검사는 실행되지 않습니다.', English='Push the selected transaction to the peer or pull its latest ACK/Result. Transfer alone never reviews or runs an inspection.'}" />
                         <WrapPanel Margin="0,9,0,0">

@@ -1,9 +1,10 @@
 using System.Windows;
+using System.Threading;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-internal sealed class ToolLabWindowManager
+internal sealed class ToolLabWindowManager : IDisposable
 {
     private readonly Window owner;
     private readonly ToolWorkbenchViewModel workbench;
@@ -18,6 +19,7 @@ internal sealed class ToolLabWindowManager
     private XYZAffineSolveToolLabWindow? xyzAffineSolve;
     private XYZAffineApplyToolLabWindow? xyzAffineApply;
     private RegridHeightMapToolLabWindow? regridHeightMap;
+    private int disposalState;
 
     public ToolLabWindowManager(
         Window owner,
@@ -49,10 +51,32 @@ internal sealed class ToolLabWindowManager
 
     public RegridHeightMapToolLabWindow? RegridHeightMap => regridHeightMap;
 
+    internal bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public bool EnsureStepSelected(string toolId, bool preserveSelectedStep) =>
-        (preserveSelectedStep
+        !IsDisposed
+        && ((preserveSelectedStep
             && string.Equals(workbench.SelectedPipelineStep?.ToolId, toolId, StringComparison.Ordinal))
-        || workbench.SelectFirstPipelineStepForTool(toolId);
+        || workbench.SelectFirstPipelineStepForTool(toolId));
+
+    public bool ShowForTool(
+        string toolId,
+        bool showMissing,
+        bool preserveSelectedStep = false) =>
+        toolId switch
+        {
+            "filter" => ShowFilter(showMissing, preserveSelectedStep),
+            "height-difference-edge" => ShowHeightDifferenceEdge(showMissing, preserveSelectedStep),
+            "two-point-line" => ShowTwoPointLine(showMissing, preserveSelectedStep),
+            "three-point-plane" => ShowThreePointPlane(showMissing, preserveSelectedStep),
+            "datum-plane-raw-height-deviation" => ShowDatumPlaneDeviation(showMissing, preserveSelectedStep),
+            "line-intersection" => ShowLineIntersection(showMissing, preserveSelectedStep),
+            "landmark-correspondence" => ShowLandmarkCorrespondence(showMissing, preserveSelectedStep),
+            "xyz-affine-solve" => ShowXYZAffineSolve(showMissing, preserveSelectedStep),
+            "xyz-affine-apply" => ShowXYZAffineApply(showMissing, preserveSelectedStep),
+            "re-grid-height-map" => ShowRegridHeightMap(showMissing, preserveSelectedStep),
+            _ => false
+        };
 
     public bool ShowFilter(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -63,8 +87,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new FilterToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => filter = null);
+            window => window.RefreshViews());
 
     public bool ShowHeightDifferenceEdge(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -75,8 +98,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new HeightDifferenceEdgeToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => heightDifferenceEdge = null);
+            window => window.RefreshViews());
 
     public bool ShowTwoPointLine(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -87,8 +109,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new TwoPointLineToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => twoPointLine = null);
+            window => window.RefreshViews());
 
     public bool ShowThreePointPlane(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -99,8 +120,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new ThreePointPlaneToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => threePointPlane = null);
+            window => window.RefreshViews());
 
     public bool ShowDatumPlaneDeviation(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -111,8 +131,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new DatumPlaneDeviationToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => datumPlaneDeviation = null);
+            window => window.RefreshViews());
 
     public bool ShowLineIntersection(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -123,8 +142,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new LineIntersectionToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => lineIntersection = null);
+            window => window.RefreshViews());
 
     public bool ShowLandmarkCorrespondence(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -135,8 +153,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new LandmarkCorrespondenceToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => landmarkCorrespondence = null);
+            window => window.RefreshViews());
 
     public bool ShowXYZAffineSolve(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -147,8 +164,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new XYZAffineSolveToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => xyzAffineSolve = null);
+            window => window.RefreshViews());
 
     public bool ShowXYZAffineApply(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -159,8 +175,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new XYZAffineApplyToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => xyzAffineApply = null);
+            window => window.RefreshViews());
 
     public bool ShowRegridHeightMap(bool showMissing, bool preserveSelectedStep = false) =>
         Show(
@@ -171,8 +186,7 @@ internal sealed class ToolLabWindowManager
             preserveSelectedStep,
             step => new RegridHeightMapToolLabWindow(workbench, step),
             (window, step) => window.SetLabStep(step),
-            window => window.RefreshViews(),
-            () => regridHeightMap = null);
+            window => window.RefreshViews());
 
     private bool Show<TWindow>(
         ref TWindow? window,
@@ -182,10 +196,14 @@ internal sealed class ToolLabWindowManager
         bool preserveSelectedStep,
         Func<ToolWorkbenchPipelineStepItem, TWindow> create,
         Action<TWindow, ToolWorkbenchPipelineStepItem> setStep,
-        Action<TWindow> refresh,
-        Action clear)
-        where TWindow : Window
+        Action<TWindow> refresh)
+        where TWindow : ToolLabWindowBase
     {
+        if (IsDisposed)
+        {
+            return false;
+        }
+
         if (!EnsureStepSelected(toolId, preserveSelectedStep))
         {
             if (showMissing)
@@ -200,7 +218,7 @@ internal sealed class ToolLabWindowManager
         {
             window = create(step);
             window.Owner = owner;
-            window.Closed += (_, _) => clear();
+            window.Closed += OnToolLabWindowClosed;
         }
         else
         {
@@ -211,5 +229,114 @@ internal sealed class ToolLabWindowManager
         window.Show();
         window.Activate();
         return true;
+    }
+
+    private void OnToolLabWindowClosed(object? sender, EventArgs args)
+    {
+        if (sender is not ToolLabWindowBase window)
+        {
+            return;
+        }
+
+        window.Closed -= OnToolLabWindowClosed;
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        ClearWindowReference(window);
+    }
+
+    private void ClearWindowReference(ToolLabWindowBase window)
+    {
+        if (ReferenceEquals(filter, window))
+        {
+            filter = null;
+        }
+        else if (ReferenceEquals(heightDifferenceEdge, window))
+        {
+            heightDifferenceEdge = null;
+        }
+        else if (ReferenceEquals(twoPointLine, window))
+        {
+            twoPointLine = null;
+        }
+        else if (ReferenceEquals(threePointPlane, window))
+        {
+            threePointPlane = null;
+        }
+        else if (ReferenceEquals(datumPlaneDeviation, window))
+        {
+            datumPlaneDeviation = null;
+        }
+        else if (ReferenceEquals(lineIntersection, window))
+        {
+            lineIntersection = null;
+        }
+        else if (ReferenceEquals(landmarkCorrespondence, window))
+        {
+            landmarkCorrespondence = null;
+        }
+        else if (ReferenceEquals(xyzAffineSolve, window))
+        {
+            xyzAffineSolve = null;
+        }
+        else if (ReferenceEquals(xyzAffineApply, window))
+        {
+            xyzAffineApply = null;
+        }
+        else if (ReferenceEquals(regridHeightMap, window))
+        {
+            regridHeightMap = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var windows = new ToolLabWindowBase?[]
+        {
+            filter,
+            heightDifferenceEdge,
+            twoPointLine,
+            threePointPlane,
+            datumPlaneDeviation,
+            lineIntersection,
+            landmarkCorrespondence,
+            xyzAffineSolve,
+            xyzAffineApply,
+            regridHeightMap
+        };
+        filter = null;
+        heightDifferenceEdge = null;
+        twoPointLine = null;
+        threePointPlane = null;
+        datumPlaneDeviation = null;
+        lineIntersection = null;
+        landmarkCorrespondence = null;
+        xyzAffineSolve = null;
+        xyzAffineApply = null;
+        regridHeightMap = null;
+
+        foreach (var window in windows)
+        {
+            if (window is null)
+            {
+                continue;
+            }
+
+            window.Closed -= OnToolLabWindowClosed;
+            window.Dispose();
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
+        }
+
+        GC.SuppressFinalize(this);
     }
 }

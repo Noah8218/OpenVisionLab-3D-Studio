@@ -1,11 +1,12 @@
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
+internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposable
 {
     private static readonly string[] AxisOptions =
         ["Select comparison axis", "AcrossColumns (+X)", "AcrossRows (+Z)"];
@@ -40,6 +41,7 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Teach a search band and explicit MinimumDelta, then publish Filter before Preview.";
+    private int disposalState;
 
     public ToolWorkbenchHeightDifferenceEdgeExecutionOwner(
         Func<bool> isSelectedStepHeightDifferenceEdge,
@@ -81,15 +83,17 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepHeightDifferenceEdge => isSelectedStepHeightDifferenceEdge();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public C3DHeightDifferenceEdgePointSet? CurrentOutput => previewOutput;
+    public bool IsSelectedStepHeightDifferenceEdge => !IsDisposed && isSelectedStepHeightDifferenceEdge();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public C3DHeightDifferenceEdgePointSet? CurrentOutput => IsDisposed ? null : previewOutput;
     public IReadOnlyList<string> ComparisonAxisOptions => AxisOptions;
     public IReadOnlyList<string> EdgePolarityOptions => PolarityOptions;
-    public string ExecutionSummary => executionSummary;
+    public string ExecutionSummary => IsDisposed
+        ? "Height Difference Edge execution owner has been disposed."
+        : executionSummary;
 
     public string SelectedComparisonAxis
     {
@@ -135,6 +139,11 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Height Difference Edge execution owner has been disposed.";
+            }
+
             var step = getSelectedPipelineStep();
             if (step is null || step.InputEntityIds.Count == 0)
             {
@@ -160,6 +169,11 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Height Difference Edge execution owner has been disposed.";
+            }
+
             var rectangle = getSelectedTeachingSelection()?.GridRectangle;
             return rectangle is null
                 ? "No recipe-owned GridRectangle routed"
@@ -167,45 +181,97 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
         }
     }
 
-    public string OutputHashSummary => previewOutput is null
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DHeightDifferenceEdgePointSet? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DHeightDifferenceEdgePointSet? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Height Difference Edge Preview is running from the exact Published Filter output.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Height Difference Edge Preview started: {step.Id}.");
 
         try
         {
+            var filterOutput = getFilterPreviewOutput();
+            if (filterOutput is null)
+            {
+                step.State = "Waiting for upstream";
+                SetSummary("The routed Filter output is not current and Published.");
+                return false;
+            }
+
             var evaluation = await Task.Run(
                 () => ToolRecipeHeightDifferenceEdgeExecution.Execute(
                     createDocument(),
                     step.Id,
-                    getFilterPreviewOutput()!,
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    filterOutput,
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 appendLog("Error", $"Height Difference Edge Preview failed: {evaluation.Result.Message}");
                 return false;
             }
@@ -214,31 +280,67 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
             step.State = "Preview ready";
             var diagnostics = evaluation.Output.Diagnostics;
             SetSummary($"Preview ready | points {diagnostics.AcceptedScanlineCount:N0}/{diagnostics.ScanlineCount:N0} | eligible pairs {diagnostics.EligiblePairCount:N0} | missing skips {diagnostics.SkippedMissingPairCount:N0} | no OK/NG");
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             appendLog("Preview", $"Height Difference Edge Preview ready: {evaluation.Output.ContentSha256}.");
-            RequestDisplay(evaluation.Output, false);
+            if (IsCurrentPreview(currentCancellation))
+            {
+                RequestDisplay(evaluation.Output, false);
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. Published Filter output and authored recipe were not changed.");
-            appendLog("Preview", "Height Difference Edge Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "Height Difference Edge Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        var filterOutput = getFilterPreviewOutput();
-        if (!IsSelectedStepHeightDifferenceEdge || !isSourceReadyForRecipe()
+        if (IsDisposed || !IsSelectedStepHeightDifferenceEdge || !isSourceReadyForRecipe()
             || hasPendingStepParameterChanges() || isPreviewRunning
-            || isFilterPreviewRunning() || filterOutput is null
-            || isFilterPreviewStale() || !isFilterPreviewPublished()
-            || getSelectedPipelineStep() is not { } step)
+            || isFilterPreviewRunning() || getSelectedPipelineStep() is not { } step)
+        {
+            return false;
+        }
+
+        var filterOutput = getFilterPreviewOutput();
+        if (filterOutput is null
+            || isFilterPreviewStale()
+            || !isFilterPreviewPublished())
         {
             return false;
         }
@@ -249,7 +351,7 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -258,16 +360,43 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
         publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | feature extraction only, no OK/NG");
+        if (IsDisposed)
+        {
+            return;
+        }
+
         refreshLineFit();
-        appendLog("Publish", $"Height Difference Edge output published without re-running: {step.OutputEntityId}.");
-        RequestDisplay(previewOutput, true);
+        if (!IsDisposed)
+        {
+            appendLog("Publish", $"Height Difference Edge output published without re-running: {step.OutputEntityId}.");
+        }
+
+        if (!IsDisposed)
+        {
+            RequestDisplay(previewOutput, true);
+        }
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void SetParameter(string name, string value)
     {
-        if (!IsSelectedStepHeightDifferenceEdge)
+        if (IsDisposed || !IsSelectedStepHeightDifferenceEdge)
         {
             return;
         }
@@ -284,7 +413,7 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (previewOutput is null || isPreviewRunning)
+        if (IsDisposed || previewOutput is null || isPreviewRunning)
         {
             return;
         }
@@ -316,7 +445,7 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
 
     public void MarkStale(string summary)
     {
-        if (previewOutput is null)
+        if (IsDisposed || previewOutput is null)
         {
             return;
         }
@@ -330,23 +459,45 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
             step.State = "Preview stale";
         }
 
-        markLineFitStale();
+        if (!IsDisposed)
+        {
+            markLineFitStale();
+        }
+
         SetSummary(summary);
     }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         isPreviewStale = false;
         isPreviewPublished = false;
         publishedOutputs.Clear();
-        SetSummary(summary);
         clearLineFit();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        SetSummary(summary);
     }
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepHeightDifferenceEdge
             && (previewOutput is null
                 || !string.Equals(
@@ -384,27 +535,87 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner
 
     private void RequestDisplay(C3DHeightDifferenceEdgePointSet output, bool isPublished)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var path = getFilterPreviewPath();
         if (path is null || !File.Exists(path))
         {
             return;
         }
 
-        requestDisplay(new ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs(
-            path,
-            output,
-            isPublished));
+        if (!IsDisposed)
+        {
+            requestDisplay(new ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs(
+                path,
+                output,
+                isPublished));
+        }
     }
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 }

@@ -79,8 +79,10 @@ internal sealed class ShellSourceLoadOperationCoordinator : IDisposable
             current = null;
         }
 
+        // The operation owns the final cancellation-source disposal. The
+        // async load may still be observing the token after cancellation, so
+        // disposing it here would race with an older continuation.
         active?.Cancel();
-        active?.DisposeCancellation();
     }
 }
 

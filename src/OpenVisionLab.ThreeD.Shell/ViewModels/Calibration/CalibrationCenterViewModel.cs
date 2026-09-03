@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading;
 using System.Windows.Input;
 using LiveChartsCore.Kernel;
 using OpenVisionLab;
@@ -23,7 +24,7 @@ public enum CalibrationSection
     History = 4
 }
 
-public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
+public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly ReadOnlyCollection<string> SectionNames = Array.AsReadOnly(
         new[] { "Overview", "Height Calibration", "Sensor Alignment", "Repeatability", "History" });
@@ -33,6 +34,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
     private readonly RelayCommand validateCommand;
     private readonly RelayCommand activateCommand;
     private readonly RelayCommand selectRepeatabilityChartPointCommand;
+    private readonly EventHandler languageChangedHandler;
     private readonly List<CalibrationRepeatabilityRunItem> repeatabilityChartRuns = [];
     private CalibrationSection selectedSection = CalibrationSection.Repeatability;
     private CalibrationRepeatabilityRunItem? selectedRepeatabilityRun;
@@ -40,6 +42,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
     private ThicknessRepeatabilityInputValidation? inputValidation;
     private ThicknessRepeatabilityEvaluation? evaluation;
     private string repeatabilityOperationStatus = "No repeatability study loaded";
+    private int disposalState;
 
     public CalibrationCenterViewModel()
     {
@@ -52,11 +55,22 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
             SelectRepeatabilityChartPoint,
             CanSelectRepeatabilityChartPoint);
         RepeatabilityChartSeries.Add(new CalibrationRepeatabilityChartSeriesModel(RepeatabilityChartValues));
-        OpenVisionLanguageService.LanguageChanged += (_, _) => RefreshLanguage();
+        languageChangedHandler = (_, _) => RefreshLanguage();
+        OpenVisionLanguageService.LanguageChanged += languageChangedHandler;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? LoadStudyRequested;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        OpenVisionLanguageService.LanguageChanged -= languageChangedHandler;
+    }
 
     public IReadOnlyList<string> Sections => SectionNames;
     public IReadOnlyList<string> RepeatabilityMetricOptions => [SelectedRepeatabilityMetric];

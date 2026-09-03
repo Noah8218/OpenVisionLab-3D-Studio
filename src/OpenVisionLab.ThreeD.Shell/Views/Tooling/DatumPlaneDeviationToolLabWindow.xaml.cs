@@ -15,6 +15,8 @@ public partial class DatumPlaneDeviationToolLabWindow : ToolLabWindowBase
         InitializeComponent();
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
+        OwnViewer(inputViewer);
+        OwnViewer(outputViewer);
         DataContext = Workbench;
     }
 

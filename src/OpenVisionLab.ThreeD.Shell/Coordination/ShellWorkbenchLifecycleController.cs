@@ -10,6 +10,7 @@ using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using System.IO;
+using System.Threading;
 using System.Windows;
 
 using WpfMessageDialogWindow = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogWindow;
@@ -52,6 +53,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
     private readonly ShellWorkbenchLifecycleCallbacks _callbacks;
     private RecipeManagerWindow? _recipeManagerWindow;
     private readonly ShellSourceLoadOperationCoordinator _sourceLoadOperations = new();
+    private int disposalState;
 
     public ShellWorkbenchLifecycleController(
         Window owner,
@@ -73,12 +75,19 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
     public bool IsRecipeManagerVisible => _recipeManagerWindow?.IsVisible == true;
 
+    internal bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public double LastWorkbenchSourceBindingMilliseconds { get; private set; }
 
     public Window GetRecipeLifecycleDialogOwner() => IsRecipeManagerVisible ? _recipeManagerWindow! : _owner;
 
     public void ShowRecipeManagerWindow()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (_recipeManagerWindow is null)
         {
             _recipeManagerWindow = new RecipeManagerWindow
@@ -86,7 +95,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
                 Owner = _owner,
                 DataContext = _viewModel.Workbench
             };
-            _recipeManagerWindow.Closed += (_, _) => _recipeManagerWindow = null;
+            _recipeManagerWindow.Closed += OnRecipeManagerWindowClosed;
         }
 
         _recipeManagerWindow.Show();
@@ -626,9 +635,29 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
         _sourceLoadOperations.Dispose();
-        _recipeManagerWindow?.Close();
+        var window = _recipeManagerWindow;
         _recipeManagerWindow = null;
+        if (window is not null)
+        {
+            window.Closed -= OnRecipeManagerWindowClosed;
+            window.CloseForOwner();
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    private void OnRecipeManagerWindowClosed(object? sender, EventArgs args)
+    {
+        if (ReferenceEquals(_recipeManagerWindow, sender))
+        {
+            _recipeManagerWindow = null;
+        }
     }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)

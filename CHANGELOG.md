@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.4.9-dev` development line onward. It does not claim that a version was
+`0.5.0-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.4.9-dev
+## [Unreleased] - 0.5.0-dev
 
 ### Added
 
@@ -13,8 +13,19 @@ released; publication state is owned by the release and version policy.
   controls.
 - Preserved the file-first lifecycle: receiving bytes does not acknowledge,
   load a recipe, run an inspection, or publish a Result automatically.
+- Added a dedicated `OpenVisionLab.ThreeD.Verification` project and moved
+  verification owners out of the Shell and Viewer assemblies.
+- Added a binary-host consumer lifecycle path that exercises Viewer DLL
+  loading, scene replacement, selection, overlays, and disposal without a
+  Shell or Reporting project reference.
 
 ### Changed
+
+- Bounded Shell and Viewer asynchronous load, dispatcher refresh, timer,
+  callback, event, and GPU/managed-buffer lifetimes with explicit owners and
+  shutdown disposal; stale operations are cancelled or ignored.
+- Updated the vendored integration contract pair to alpha.3 while retaining
+  V1/V2 fixture compatibility and the public V2 exchange contract.
 
 - Isolated Shell C3D and Viewer-only source-load operation lifetime in a
   WPF-neutral coordinator with latest-operation cancellation, current checks,

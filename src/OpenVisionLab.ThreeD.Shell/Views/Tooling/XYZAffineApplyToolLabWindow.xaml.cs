@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -10,6 +11,8 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
 {
     private readonly OpenVisionThreeDViewerControl sourceViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
+    private readonly object refreshViewsOperationGate = new();
+    private DispatcherOperation? refreshViewsOperation;
     private string displayedSourcePath = string.Empty;
 
     public XYZAffineApplyToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
@@ -19,7 +22,8 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
         DataContext = Workbench;
         SourceViewerHost.Content = sourceViewer;
         OutputViewerHost.Content = outputViewer;
-        Closed += OnClosed;
+        OwnViewer(sourceViewer);
+        OwnViewer(outputViewer);
         Workbench.PropertyChanged += OnWorkbenchPropertyChanged;
     }
 
@@ -52,16 +56,80 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
 
     private void OnWorkbenchPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.CurrentAffineApplyOutput)
             or nameof(ToolWorkbenchViewModel.IsAffineApplyPreviewPublished)
             or nameof(ToolWorkbenchViewModel.AffineApplyExecutionSummary))
         {
-            Dispatcher.BeginInvoke(UpdateOutputViewer);
+            QueueRefreshViews();
+        }
+    }
+
+    private void QueueRefreshViews()
+    {
+        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        lock (refreshViewsOperationGate)
+        {
+            if (refreshViewsOperation?.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing)
+            {
+                return;
+            }
+
+            try
+            {
+                refreshViewsOperation = Dispatcher.BeginInvoke(
+                    DispatcherPriority.DataBind,
+                    new Action(RefreshViewsFromDispatcher));
+            }
+            catch (InvalidOperationException)
+            {
+                refreshViewsOperation = null;
+            }
+        }
+    }
+
+    private void RefreshViewsFromDispatcher()
+    {
+        lock (refreshViewsOperationGate)
+        {
+            refreshViewsOperation = null;
+        }
+
+        if (!IsDisposed)
+        {
+            UpdateOutputViewer();
+        }
+    }
+
+    private void CancelPendingRefreshViews()
+    {
+        DispatcherOperation? operation;
+        lock (refreshViewsOperationGate)
+        {
+            operation = refreshViewsOperation;
+            refreshViewsOperation = null;
+        }
+
+        if (operation?.Status == DispatcherOperationStatus.Pending)
+        {
+            operation.Abort();
         }
     }
 
     private void RefreshViewsButton_Click(object sender, RoutedEventArgs args) => RefreshViews();
 
-    private void OnClosed(object? sender, EventArgs args) =>
+    public override void Dispose()
+    {
+        CancelPendingRefreshViews();
         Workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+        base.Dispose();
+    }
 }

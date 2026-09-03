@@ -17,6 +17,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -340,12 +341,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private static bool IsC3DGridRoiInside(C3DGridRoi roi, C3DHeightGrid grid) =>
-        roi.Row >= 0
-        && roi.Column >= 0
-        && roi.RowCount > 0
-        && roi.ColumnCount > 0
-        && roi.Row <= grid.Height - roi.RowCount
-        && roi.Column <= grid.Width - roi.ColumnCount;
+        C3DThicknessRecipeLoadPlan.IsRoiInside(roi, grid);
 
     private static void DrawRoiBounds(OpenGL gl, (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY) bounds, double red, double green, double blue)
     {
@@ -700,7 +696,19 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ReleaseC3DGpuBuffers(OpenGL gl)
     {
-        c3dGpuBuffers?.Release(gl);
+        var buffers = c3dGpuBuffers;
+        if (buffers is not null)
+        {
+            if (buffers.Release(gl))
+            {
+                c3dGpuReleaseCount++;
+            }
+            else
+            {
+                c3dGpuReleaseFailureCount++;
+            }
+        }
+
         c3dGpuBuffers = null;
         c3dGpuBufferKey = null;
         c3dGpuReleasePending = false;
@@ -724,11 +732,22 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ReleaseC3DDisplayLists(OpenGL gl)
     {
-        ReleaseC3DDisplayList(gl, ref c3dDisplayListId, ref c3dDisplayListKey);
-        ReleaseC3DDisplayList(
-            gl,
-            ref c3dInteractionDisplayListId,
-            ref c3dInteractionDisplayListKey);
+        var releaseCount = (c3dDisplayListId != 0 ? 1 : 0)
+            + (c3dInteractionDisplayListId != 0 ? 1 : 0);
+        try
+        {
+            ReleaseC3DDisplayList(gl, ref c3dDisplayListId, ref c3dDisplayListKey);
+            ReleaseC3DDisplayList(
+                gl,
+                ref c3dInteractionDisplayListId,
+                ref c3dInteractionDisplayListKey);
+            c3dDisplayListReleaseCount += releaseCount;
+        }
+        catch
+        {
+            c3dDisplayListReleaseFailureCount++;
+            throw;
+        }
     }
 
     private static void ReleaseC3DDisplayList(

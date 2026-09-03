@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,7 +12,7 @@ using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
-public partial class ViewerWorkspaceView : UserControl
+public partial class ViewerWorkspaceView : UserControl, IDisposable
 {
     public static readonly DependencyProperty MainViewerContentProperty =
         DependencyProperty.Register(
@@ -34,6 +35,7 @@ public partial class ViewerWorkspaceView : UserControl
     private ViewerWorkspaceLayout roiFocusLayout;
     private GridLength roiFocusFirstLength;
     private GridLength roiFocusSecondLength;
+    private int disposalState;
 
     public ViewerWorkspaceView()
     {
@@ -47,6 +49,60 @@ public partial class ViewerWorkspaceView : UserControl
     {
         get => GetValue(MainViewerContentProperty);
         set => SetValue(MainViewerContentProperty, value);
+    }
+
+    /// <summary>
+    /// Releases resources created by this workspace at the owning Window close
+    /// boundary. Transient UserControl unloads intentionally remain reversible.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        DetachSubscriptions();
+        AttachMainViewer(null);
+
+        var currentOwner = ownerWindow;
+        ownerWindow = null;
+        if (currentOwner is not null)
+        {
+            currentOwner.Closed -= OnOwnerClosed;
+        }
+
+        var currentPopout = popout;
+        popout = null;
+        if (currentPopout is not null)
+        {
+            currentPopout.Dismissed -= OnPopoutDismissed;
+            currentPopout.AuxiliarySlotFocused -= OnAuxiliarySlotFocused;
+            currentPopout.ReleaseViewerContent();
+            try
+            {
+                currentPopout.CloseForOwner();
+            }
+            catch (InvalidOperationException)
+            {
+                // The owner may have already closed the child Window.
+            }
+        }
+
+        AuxiliaryViewerHost.Content = null;
+        AuxiliaryViewerPresentationBar.ViewerViewModel = null;
+        AuxiliaryEmptyText.Visibility = Visibility.Visible;
+        heightImageViewer = null;
+        loadedAuxiliaryPath = string.Empty;
+
+        var currentAuxiliaryViewer = auxiliaryViewer;
+        auxiliaryViewer = null;
+        currentAuxiliaryViewer?.Dispose();
+
+        workbench = null;
+        DataContextChanged -= OnDataContextChanged;
+        Loaded -= OnLoaded;
+        Unloaded -= OnUnloaded;
     }
 
     public bool IsPopoutVisible => popout?.IsVisible == true;
@@ -131,6 +187,11 @@ public partial class ViewerWorkspaceView : UserControl
 
     public bool ReactivateMainViewer(object? requestedContent)
     {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return false;
+        }
+
         var viewer = requestedContent as OpenVisionThreeDViewerControl;
         if (viewer is null)
         {
@@ -170,6 +231,11 @@ public partial class ViewerWorkspaceView : UserControl
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs args)
     {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
         DetachSubscriptions();
         workbench = args.NewValue as ToolWorkbenchViewModel;
         AttachSubscriptions();
@@ -178,6 +244,11 @@ public partial class ViewerWorkspaceView : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
         AttachSubscriptions();
         RefreshWorkspace();
     }
@@ -187,7 +258,9 @@ public partial class ViewerWorkspaceView : UserControl
 
     private void AttachSubscriptions()
     {
-        if (subscriptionsAttached || workbench is null)
+        if (Volatile.Read(ref disposalState) != 0
+            || subscriptionsAttached
+            || workbench is null)
         {
             return;
         }

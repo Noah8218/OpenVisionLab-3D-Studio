@@ -1,12 +1,18 @@
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
+/// <summary>
+/// Owns Connected Region Preview state and cancellation. Each asynchronous
+/// operation must still own the registered token before it can update the
+/// downstream artifact or Workbench state.
+/// </summary>
+internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepConnectedRegion;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -28,6 +34,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
     private bool isConnectedRegionPreviewPublished;
     private string connectedRegionExecutionSummary =
         "Select Connected Region after publishing Remove Outlier Pixels, then Preview.";
+    private int disposalState;
 
     public ToolWorkbenchConnectedRegionExecutionOwner(
         Func<bool> isSelectedStepConnectedRegion,
@@ -53,19 +60,42 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepConnectedRegion => isSelectedStepConnectedRegion();
-    public bool IsConnectedRegionPreviewRunning => isConnectedRegionPreviewRunning;
+    public bool IsSelectedStepConnectedRegion => !IsDisposed && isSelectedStepConnectedRegion();
+    public bool IsConnectedRegionPreviewRunning => !IsDisposed && isConnectedRegionPreviewRunning;
     public bool HasCurrentConnectedRegionPreview =>
-        connectedRegionPreview is not null && !isConnectedRegionPreviewStale;
-    public bool IsConnectedRegionPreviewStale => isConnectedRegionPreviewStale;
-    public bool IsConnectedRegionPreviewPublished => isConnectedRegionPreviewPublished;
-    public C3DConnectedRegionArtifact? CurrentConnectedRegionArtifact => connectedRegionPreview;
-    public string? CurrentConnectedRegionArtifactPath => connectedRegionPreviewPath;
-    public string ConnectedRegionExecutionSummary => connectedRegionExecutionSummary;
+        !IsDisposed && connectedRegionPreview is not null && !isConnectedRegionPreviewStale;
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+    public bool IsConnectedRegionPreviewStale => !IsDisposed && isConnectedRegionPreviewStale;
+    public bool IsConnectedRegionPreviewPublished => !IsDisposed && isConnectedRegionPreviewPublished;
+    public C3DConnectedRegionArtifact? CurrentConnectedRegionArtifact => IsDisposed ? null : connectedRegionPreview;
+    public string? CurrentConnectedRegionArtifactPath => IsDisposed ? null : connectedRegionPreviewPath;
+    public string ConnectedRegionExecutionSummary => IsDisposed
+        ? "Connected Region execution owner has been disposed."
+        : connectedRegionExecutionSummary;
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(
+            ref connectedRegionPreviewCancellation,
+            null);
+        CancelAndDispose(cancellation);
+        connectedRegionPreview = null;
+        restoredUpstream = null;
+        connectedRegionPreviewPath = null;
+        isConnectedRegionPreviewRunning = false;
+        isConnectedRegionPreviewStale = false;
+        isConnectedRegionPreviewPublished = false;
+    }
 
     internal C3DConnectedRegionArtifact? TryGetPublishedArtifact(string entityId)
     {
-        return isConnectedRegionPreviewPublished
+        return !IsDisposed
+            && isConnectedRegionPreviewPublished
             && !isConnectedRegionPreviewStale
             && connectedRegionPreview is { } artifact
             && string.Equals(artifact.ArtifactId, entityId, StringComparison.OrdinalIgnoreCase)
@@ -76,7 +106,8 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
     internal (C3DHeightFieldSnapshot Output, C3DOutlierCellMap Mask)? TryGetRestoredUpstreamInput(
         string entityId)
     {
-        if (restoredUpstream is not { } upstream
+        if (IsDisposed
+            || restoredUpstream is not { } upstream
             || !string.Equals(upstream.Output.EntityId, entityId, StringComparison.OrdinalIgnoreCase))
         {
             return null;
@@ -87,7 +118,8 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public async Task<bool> PreviewSelectedConnectedRegionAsync()
     {
-        if (!CanPreviewSelectedConnectedRegion()
+        if (IsDisposed
+            || !CanPreviewSelectedConnectedRegion()
             || getSelectedPipelineStep() is not { } step
             || step.InputEntityIds.Count != 1
             || TryGetUpstream(step.InputEntityIds[0]) is not { } upstream)
@@ -95,14 +127,38 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
             return false;
         }
 
-        connectedRegionPreviewCancellation?.Dispose();
-        connectedRegionPreviewCancellation = new CancellationTokenSource();
-        isConnectedRegionPreviewRunning = true;
+        var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref connectedRegionPreviewCancellation,
+            cancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref connectedRegionPreviewCancellation,
+                    null,
+                    cancellation),
+                cancellation))
+            {
+                cancellation.Dispose();
+            }
+
+            return false;
+        }
+
+        SetConnectedRegionRunning(true);
         isConnectedRegionPreviewStale = false;
         isConnectedRegionPreviewPublished = false;
         step.State = "Preview running";
         SetSummary(
             "Connected Region Preview is labeling the exact published outlier mask without changing source data.");
+        if (!IsCurrentPreview(cancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Connected Region Preview started: {step.Id}.");
 
         try
@@ -114,8 +170,13 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
                     step.Id,
                     upstream.Output,
                     upstream.Mask,
-                    connectedRegionPreviewCancellation.Token),
-                connectedRegionPreviewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
 
             if (evaluation.Result.Status != ResultStatus.Pass
                 || evaluation.Output is null)
@@ -124,22 +185,40 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
                 connectedRegionPreviewPath = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"Connected Region Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(cancellation))
+                {
+                    appendLog("Error", $"Connected Region Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
             connectedRegionPreview = evaluation.Output;
             connectedRegionPreviewPath = null;
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             step.State = "Preview ready";
             SetSummary(
                 $"Preview ready | regions {evaluation.Output.Regions.Count:N0} | artifact SHA-256 {evaluation.Output.ContentSha256} | source unchanged");
-            appendLog(
-                "Preview",
-                $"Connected Region Preview ready: artifact={evaluation.Output.ContentSha256}; regions={evaluation.Output.Regions.Count}; mask={evaluation.Output.MaskContentSha256}.");
+            if (IsCurrentPreview(cancellation))
+            {
+                appendLog(
+                    "Preview",
+                    $"Connected Region Preview ready: artifact={evaluation.Output.ContentSha256}; regions={evaluation.Output.Regions.Count}; mask={evaluation.Output.MaskContentSha256}.");
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. Source, published upstream, and authored recipe were not changed.");
             appendLog("Preview", "Connected Region Preview canceled.");
@@ -147,13 +226,27 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
         }
         finally
         {
-            isConnectedRegionPreviewRunning = false;
-            onExecutionStateChanged();
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref connectedRegionPreviewCancellation,
+                    null,
+                    cancellation),
+                cancellation);
+            if (ownsCancellation)
+            {
+                cancellation.Dispose();
+            }
+
+            if (ownsCancellation && !IsDisposed)
+            {
+                SetConnectedRegionRunning(false);
+            }
         }
     }
 
     public bool CanPreviewSelectedConnectedRegion() =>
-        isSelectedStepConnectedRegion()
+        !IsDisposed
+        && isSelectedStepConnectedRegion()
         && isSourceReadyForRecipe()
         && !hasPendingStepParameterChanges()
         && !isConnectedRegionPreviewRunning
@@ -164,7 +257,8 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void PublishSelectedConnectedRegion()
     {
-        if (getSelectedPipelineStep() is not { } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { } step
             || !HasCurrentConnectedRegionPreview)
         {
             return;
@@ -182,7 +276,8 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void PersistPublishedArtifactIfPossible()
     {
-        if (!isConnectedRegionPreviewPublished
+        if (IsDisposed
+            || !isConnectedRegionPreviewPublished
             || isConnectedRegionPreviewStale
             || connectedRegionPreview is null
             || string.IsNullOrWhiteSpace(getRecipePath()))
@@ -194,12 +289,22 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
         {
             connectedRegionPreviewPath = GetArtifactPath(getRecipePath()!, connectedRegionPreview.ArtifactId);
             C3DConnectedRegionArtifactStore.Save(connectedRegionPreviewPath, connectedRegionPreview);
+            if (IsDisposed)
+            {
+                return;
+            }
+
             appendLog("Save", $"Connected Region artifact sidecar saved: {connectedRegionPreviewPath}.");
             onExecutionStateChanged();
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             connectedRegionPreviewPath = null;
             SetSummary(
                 $"Published in this session, but the Connected Region artifact sidecar could not be saved: {exception.Message}");
@@ -209,6 +314,11 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void RestorePublishedConnectedRegionArtifact()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var recipePath = getRecipePath();
         var document = createDocument();
         var recipeStep = document.Steps.FirstOrDefault(candidate =>
@@ -227,6 +337,11 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
         try
         {
             var artifact = C3DConnectedRegionArtifactStore.Load(artifactPath);
+            if (IsDisposed)
+            {
+                return;
+            }
+
             if (!TryReconstructUpstream(document, recipeStep, artifact, out var upstream, out var reason))
             {
                 SetSummary($"Saved Connected Region artifact was not restored: {reason}");
@@ -252,17 +367,38 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             SetSummary($"Saved Connected Region artifact was not restored: {exception.Message}");
             appendLog("Warning", $"Connected Region artifact restore skipped: {exception.Message}");
         }
     }
 
-    public void CancelConnectedRegionPreview() =>
-        connectedRegionPreviewCancellation?.Cancel();
+    public void CancelConnectedRegionPreview()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref connectedRegionPreviewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     public void MarkConnectedRegionPreviewStaleIfNeeded(object? sender)
     {
-        if (connectedRegionPreview is null || isConnectedRegionPreviewRunning)
+        if (IsDisposed
+            || connectedRegionPreview is null
+            || isConnectedRegionPreviewRunning)
         {
             return;
         }
@@ -284,7 +420,8 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void MarkStaleIfUpstreamChanged()
     {
-        if (connectedRegionPreview is null
+        if (IsDisposed
+            || connectedRegionPreview is null
             || isConnectedRegionPreviewRunning
             || getSelectedPipelineStep() is not { } step
             || step.InputEntityIds.Count != 1)
@@ -309,7 +446,15 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void ClearConnectedRegionPreview(string summary)
     {
-        connectedRegionPreviewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(
+            ref connectedRegionPreviewCancellation,
+            null);
+        CancelAndDispose(cancellation);
         connectedRegionPreview = null;
         restoredUpstream = null;
         connectedRegionPreviewPath = null;
@@ -320,6 +465,11 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void RefreshConnectedRegionExecutionState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step
             && IsSelectedStepConnectedRegion
             && connectedRegionPreview is null
@@ -336,16 +486,28 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     public void SetConnectedRegionRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isConnectedRegionPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private (C3DHeightFieldSnapshot Output, C3DOutlierCellMap Mask)? TryGetUpstream(
         string entityId) =>
-        getPublishedRemoveOutlierInput(entityId) ?? TryGetRestoredUpstreamInput(entityId);
+        IsDisposed
+            ? null
+            : getPublishedRemoveOutlierInput(entityId) ?? TryGetRestoredUpstreamInput(entityId);
 
     private void MarkStale(ToolWorkbenchPipelineStepItem step, string summary)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isConnectedRegionPreviewStale = true;
         isConnectedRegionPreviewPublished = false;
         step.State = "Preview stale";
@@ -478,8 +640,37 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         connectedRegionExecutionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref connectedRegionPreviewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 
     private static string GetArtifactPath(string recipePath, string outputEntityId)

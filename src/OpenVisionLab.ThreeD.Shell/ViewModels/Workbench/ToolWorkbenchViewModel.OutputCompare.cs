@@ -62,7 +62,6 @@ public sealed partial class ToolWorkbenchViewModel
     {
         outputCompareSession.PropertyChanged += OnOutputCompareSessionPropertyChanged;
         outputCompareSession.PinsChanged += (_, _) => RefreshDisplayedOutputPresentation();
-        Localization.PropertyChanged += OnOutputCompareLocalizationChanged;
     }
 
     private void OnOutputCompareSessionPropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -90,143 +89,20 @@ public sealed partial class ToolWorkbenchViewModel
         {
             new(string.Empty, "—", string.Empty, string.Empty, string.Empty, string.Empty, false),
         };
-        if (ArtifactRegistry.FirstOrDefault() is { } source
-            && IsSourceReadyForRecipe
-            && File.Exists(Source.Path))
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                source.Id,
-                source.DisplayName,
-                source.Contract,
-                source.State,
-                Source.Path,
-                source.Detail,
-                true));
-        }
-
-        foreach (var sample in validationSetSamples.Where(sample => File.Exists(sample.SourcePath)))
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                GetValidationSetCompareArtifactId(sample),
-                $"{Localization.ValidationSet} #{sample.Order} · {sample.FileName}",
-                "ValidationSample / C3D",
-                sample.StatusText,
-                sample.SourcePath,
-                sample.Message,
-                true));
-        }
-
-        var filterPreviewPath = CurrentFilterPreviewPath;
-        if (HasCurrentFilterPreview
-            && !string.IsNullOrWhiteSpace(filterPreviewPath)
-            && File.Exists(filterPreviewPath)
-            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
-                item.Id,
-                SelectedFilterOutputEntityId,
-                StringComparison.OrdinalIgnoreCase)) is { } filter)
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                filter.Id,
-                filter.DisplayName,
-                filter.Contract,
-                filter.State,
-                filterPreviewPath,
-                filter.Detail,
-                false,
-                filter.PreparationQualityDelta));
-        }
-
-        var outlierPreviewPath = CurrentRemoveOutlierPreviewPath;
-        if (HasCurrentRemoveOutlierPreview
-            && !string.IsNullOrWhiteSpace(outlierPreviewPath)
-            && File.Exists(outlierPreviewPath)
-            && CurrentRemoveOutlierPreviewOutput is { } outlierOutput
-            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
-                item.Id,
-                outlierOutput.EntityId,
-                StringComparison.OrdinalIgnoreCase)) is { } outlierArtifact)
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                outlierArtifact.Id,
-                outlierArtifact.DisplayName,
-                outlierArtifact.Contract,
-                outlierArtifact.State,
-                outlierPreviewPath,
-                outlierArtifact.Detail,
-                false,
-                outlierArtifact.PreparationQualityDelta));
-        }
-
-        var domainMaskPreviewPath = CurrentDomainMaskPreviewPath;
-        if (HasCurrentDomainMaskPreview
-            && !string.IsNullOrWhiteSpace(domainMaskPreviewPath)
-            && File.Exists(domainMaskPreviewPath)
-            && CurrentDomainMaskPreviewOutput is { } domainMaskOutput
-            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
-                item.Id,
-                domainMaskOutput.EntityId,
-                StringComparison.OrdinalIgnoreCase)) is { } domainMaskArtifact)
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                domainMaskArtifact.Id,
-                domainMaskArtifact.DisplayName,
-                domainMaskArtifact.Contract,
-                domainMaskArtifact.State,
-                domainMaskPreviewPath,
-                domainMaskArtifact.Detail,
-                false,
-                domainMaskArtifact.PreparationQualityDelta));
-        }
-
-        var levelSurfacePreviewPath = CurrentLevelSurfacePreviewPath;
-        if (HasCurrentLevelSurfacePreview
-            && !string.IsNullOrWhiteSpace(levelSurfacePreviewPath)
-            && File.Exists(levelSurfacePreviewPath)
-            && CurrentLevelSurfacePreviewOutput is { } leveledOutput
-            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
-                item.Id,
-                leveledOutput.EntityId,
-                StringComparison.OrdinalIgnoreCase)) is { } levelArtifact)
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                levelArtifact.Id,
-                levelArtifact.DisplayName,
-                levelArtifact.Contract,
-                levelArtifact.State,
-                levelSurfacePreviewPath,
-                levelArtifact.Detail,
-                false,
-                levelArtifact.PreparationQualityDelta));
-        }
-
-        var roiCropPreviewPath = CurrentRoiCropPreviewPath;
-        if (HasCurrentRoiCropPreview
-            && !string.IsNullOrWhiteSpace(roiCropPreviewPath)
-            && File.Exists(roiCropPreviewPath)
-            && CurrentRoiCropPreviewOutput is { } cropOutput
-            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
-                item.Id,
-                cropOutput.EntityId,
-                StringComparison.OrdinalIgnoreCase)) is { } cropArtifact)
-        {
-            candidates.Add(new ToolWorkbenchCompareCandidateItem(
-                cropArtifact.Id,
-                cropArtifact.DisplayName,
-                cropArtifact.Contract,
-                cropArtifact.State,
-                roiCropPreviewPath,
-                cropArtifact.Detail,
-                false,
-                cropArtifact.PreparationQualityDelta));
-        }
+        candidates.AddRange(RenderableC3DCatalog
+            .Where(target => target.IsDisplayable)
+            .Select(target => new ToolWorkbenchCompareCandidateItem(
+                target.Id,
+                target.DisplayName,
+                target.Contract,
+                target.State,
+                target.C3DPath,
+                target.Detail,
+                target.IsSource,
+                target.PreparationQualityDelta)));
 
         outputCompareSession.ReplaceCandidates(candidates, Localization.OutputCompareNoSelection);
-        ReconcileViewerWorkspaceContents();
     }
-
-    private string SelectedFilterOutputEntityId => PipelineSteps
-        .FirstOrDefault(step => string.Equals(step.ToolId, "filter", StringComparison.OrdinalIgnoreCase))
-        ?.OutputEntityId ?? string.Empty;
 
     private void RefreshCompareSlotSummaries() =>
         outputCompareSession.RefreshSummaries(Localization.OutputCompareNoSelection);
@@ -326,14 +202,26 @@ public sealed partial class ToolWorkbenchViewModel
     {
         delta = null!;
         if (candidate is not { IsSource: false, PreparationQualityDelta: { } candidateDelta }
+            || GetRenderableC3DTarget(candidate.Id) is not
+            {
+                IsSource: false,
+                IsDisplayable: true,
+                C3DPath: var preparedPath,
+                State: var preparedState
+            }
             || string.Equals(candidate.State, "Stale", StringComparison.OrdinalIgnoreCase)
-            || !File.Exists(candidate.C3DPath)
+            || string.Equals(preparedState, "Stale", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(preparedPath, candidate.C3DPath, StringComparison.OrdinalIgnoreCase)
             || !IsSourceReadyForRecipe
             || SourceSession.SourceBinding is not { ContentSha256: { Length: > 0 } sourceContentSha256 }
-            || !File.Exists(Source.Path)
-            || GetCompareCandidate(Source.Id) is not { IsSource: true, C3DPath: var sourcePath }
+            || GetRenderableC3DTarget(Source.Id) is not
+            {
+                IsSource: true,
+                IsDisplayable: true,
+                C3DPath: var sourcePath
+            }
             || !string.Equals(sourcePath, Source.Path, StringComparison.OrdinalIgnoreCase)
-            || !File.Exists(sourcePath))
+            )
         {
             return false;
         }

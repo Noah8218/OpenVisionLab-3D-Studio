@@ -1,10 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchLineFitExecutionOwner
+internal sealed class ToolWorkbenchLineFitExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepLineFit;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -33,6 +34,7 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
     private C3DLineFeaturePointDiagnostic? selectedDiagnostic;
     private string executionSummary =
         "Teach all four Line Fit limits, then publish the exact upstream EdgePointSet before Preview.";
+    private int disposalState;
 
     public ToolWorkbenchLineFitExecutionOwner(
         Func<bool> isSelectedStepLineFit,
@@ -83,20 +85,22 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
             _ => HasCurrentPreview);
     }
 
-    public bool IsSelectedStepLineFit => isSelectedStepLineFit();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public C3DLineFeature? CurrentOutput => previewOutput;
-    public C3DLineFeaturePointDiagnostic? SelectedDiagnostic => selectedDiagnostic;
+    public bool IsSelectedStepLineFit => !IsDisposed && isSelectedStepLineFit();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public C3DLineFeature? CurrentOutput => IsDisposed ? null : previewOutput;
+    public C3DLineFeaturePointDiagnostic? SelectedDiagnostic => IsDisposed ? null : selectedDiagnostic;
     public IReadOnlyList<C3DLineFeaturePointDiagnostic> PointDiagnostics =>
-        previewOutput?.PointDiagnostics ?? [];
+        IsDisposed ? [] : previewOutput?.PointDiagnostics ?? [];
     public ObservableCollection<LineFitResidualPlotPoint> ResidualPlotPoints { get; } = [];
     public RelayCommand SelectDiagnosticCommand { get; }
-    public string ExecutionSummary => executionSummary;
+    public string ExecutionSummary => IsDisposed
+        ? "Line Fit execution owner has been disposed."
+        : executionSummary;
 
-    public string OutputHashSummary => previewOutput is null
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
 
@@ -104,6 +108,11 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Line Fit execution owner has been disposed.";
+            }
+
             var step = getSelectedPipelineStep();
             if (step is null || step.InputEntityIds.Count != 1)
             {
@@ -117,27 +126,61 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
         }
     }
 
-    public string SelectedDiagnosticSummary => selectedDiagnostic is null
+    public string SelectedDiagnosticSummary => IsDisposed || selectedDiagnostic is null
         ? "Select an inlier/outlier diagnostic to review its source-coordinate residual."
         : $"scanline {selectedDiagnostic.ScanlineIndex} | residual {selectedDiagnostic.OrthogonalResidual:G6} source-coordinate | {(selectedDiagnostic.IsInlier ? "inlier" : "outlier")} | XYZ ({selectedDiagnostic.X:G6}, {selectedDiagnostic.Y:G6}, {selectedDiagnostic.Z:G6})";
 
-    public bool TryGetPublishedOutput(string outputEntityId, out C3DLineFeature? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public bool TryGetPublishedOutput(string outputEntityId, out C3DLineFeature? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("3D Line Fit Preview is running from the exact Published EdgePointSet.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"3D Line Fit Preview started: {step.Id}.");
         try
         {
@@ -154,14 +197,24 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
                     createDocument(),
                     step.Id,
                     publishedEdge,
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 previewOutput = null;
                 selectedDiagnostic = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 appendLog("Error", $"3D Line Fit Preview failed: {evaluation.Result.Message}");
                 return false;
             }
@@ -172,26 +225,57 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
             step.State = "Preview ready";
             var diagnostics = evaluation.Output.Diagnostics;
             SetSummary($"Preview ready | inliers {diagnostics.InlierCount:N0}/{diagnostics.InputPointCount:N0} ({diagnostics.InlierRatio:P1}) | residual RMS {diagnostics.ResidualRms:G6} source-coordinate | no OK/NG");
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             appendLog("Preview", $"3D Line Fit Preview ready: {evaluation.Output.ContentSha256}.");
-            requestDisplay(new ToolWorkbenchLineFitDisplayRequestEventArgs(evaluation.Output, false));
+            if (IsCurrentPreview(currentCancellation))
+            {
+                requestDisplay(new ToolWorkbenchLineFitDisplayRequestEventArgs(evaluation.Output, false));
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. Published EdgePointSet and authored recipe were not changed.");
-            appendLog("Preview", "3D Line Fit Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "3D Line Fit Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelectedStepLineFit || !isSourceReadyForRecipe()
+        if (IsDisposed || !IsSelectedStepLineFit || !isSourceReadyForRecipe()
             || hasPendingStepParameterChanges() || isPreviewRunning
             || isEdgePreviewRunning() || getSelectedPipelineStep() is not { } step)
         {
@@ -210,7 +294,7 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -219,15 +303,47 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
         publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | feature extraction only, no OK/NG");
+        if (IsDisposed)
+        {
+            return;
+        }
+
         appendLog("Publish", $"3D Line Fit output published without re-running: {step.OutputEntityId}.");
-        requestDisplay(new ToolWorkbenchLineFitDisplayRequestEventArgs(previewOutput, true));
-        refreshLineIntersection();
+        if (!IsDisposed)
+        {
+            requestDisplay(new ToolWorkbenchLineFitDisplayRequestEventArgs(previewOutput, true));
+        }
+
+        if (!IsDisposed)
+        {
+            refreshLineIntersection();
+        }
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void SelectDiagnostic(int inputPointIndex)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var value = PointDiagnostics.FirstOrDefault(point => point.InputPointIndex == inputPointIndex);
         if (ReferenceEquals(selectedDiagnostic, value))
         {
@@ -240,7 +356,7 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (previewOutput is null || isPreviewRunning)
+        if (IsDisposed || previewOutput is null || isPreviewRunning)
         {
             return;
         }
@@ -270,8 +386,17 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
         isPreviewStale = true;
         isPreviewPublished = false;
         publishedOutputs.Clear();
-        markLineIntersectionStale();
+        if (!IsDisposed)
+        {
+            markLineIntersectionStale();
+        }
+
         ResidualPlotPoints.Clear();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var step = findStepByOutputEntityId(previewOutput.OutputEntityId);
         if (step is not null)
         {
@@ -279,25 +404,53 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
         }
 
         clearDisplay();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetSummary("Input, Line Fit parameter, route, or output changed. Preview again before Publish.");
     }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
         clearLineIntersection();
         selectedDiagnostic = null;
         ResidualPlotPoints.Clear();
+        SelectDiagnosticCommand.RaiseCanExecuteChanged();
         isPreviewStale = false;
         isPreviewPublished = false;
         clearDisplay();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetSummary(summary);
+        if (IsDisposed)
+        {
+            return;
+        }
     }
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepLineFit
             && (previewOutput is null
                 || !string.Equals(
@@ -334,6 +487,11 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         SelectDiagnosticCommand.RaiseCanExecuteChanged();
         onExecutionStateChanged();
@@ -341,9 +499,59 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         SelectDiagnosticCommand.RaiseCanExecuteChanged();
         onExecutionStateChanged();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        selectedDiagnostic = null;
+        ResidualPlotPoints.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+        SelectDiagnosticCommand.RaiseCanExecuteChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 
     private void RebuildResidualPlot(C3DLineFeature output)

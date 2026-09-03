@@ -1163,7 +1163,7 @@ internal static class ToolWorkbenchDockingVerification
                 "MainWindow.xaml.cs"));
             Check(
                 "Button audit covers all declarations, style owners, custom templates, and dynamic dialog buttons",
-                buttonBaseControls.Length == 354
+                buttonBaseControls.Length == 359
                  && buttonBaseStyles.Length == 35
                 && appButtonTemplates.Length == 11
                 && messageDialogSource.Contains("var button = new Button", StringComparison.Ordinal)

@@ -17,6 +17,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -519,42 +520,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!PreviewC3DCrossSection()) SetSmokeFailure("Smoke Cross-section Dimensions preview failed");
     }
 
-    public bool FitC3DReferencePlane()
+    public bool FitC3DReferencePlane() =>
+        C3DReferencePlaneFitCoordinator.Fit(
+            c3dSample,
+            viewModel,
+            ClearC3DReferencePlaneFitViewState,
+            ApplyC3DReferencePlaneFitOverlay,
+            RenderNow);
+
+    private void ClearC3DReferencePlaneFitViewState()
     {
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Plane fit requires a visible C3D height grid";
-            return false;
-        }
-
-        C3DHeightGrid fitSample;
-        try
-        {
-            fitSample = c3dSample.WithMaxRenderedPoints(PlaneFitMaxSampledPoints);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
-        {
-            viewModel.ViewerStatus = $"Plane fit sample load failed: {ex.Message}";
-            return false;
-        }
-
-        var transformed = fitSample.Points
-            .Select(point => (Point: point, Position: TransformC3DPosition(point.Position)))
-            .ToArray();
-        HeightFieldPlaneFitResult result;
-        try
-        {
-            result = HeightFieldPlaneFit.Fit(
-                transformed
-                    .Select(item => new HeightFieldPlaneSample(item.Position, item.Point.RawValue))
-                    .ToArray());
-        }
-        catch (ArgumentException ex)
-        {
-            viewModel.ViewerStatus = $"Plane fit failed: {ex.Message}";
-            return false;
-        }
-
+        planeReferenceMeasurement = null;
         twoPointFirst = null;
         twoPointSecond = null;
         importedMeshTwoPointFirst = null;
@@ -567,17 +543,13 @@ public sealed partial class OpenVisionThreeDViewerControl
         roiStepRightBounds = null;
         roiStepLeftCenter = null;
         roiStepRightCenter = null;
-        viewModel.ClearTwoPointMeasurement();
-        viewModel.ClearRoiStepMeasurement();
-        viewModel.SelectedSelectionMode = "Plane Distance";
-        viewModel.SelectionOverlayVisible = true;
-        viewModel.MeasurementVisible = true;
+    }
 
-        var bounds = (
-            MinX: transformed.Min(item => item.Position.X),
-            MaxX: transformed.Max(item => item.Position.X),
-            MinZ: transformed.Min(item => item.Position.Z),
-            MaxZ: transformed.Max(item => item.Position.Z));
+    private void ApplyC3DReferencePlaneFitOverlay(
+        HeightFieldPlaneFitResult result,
+        HeightGridPoint targetPoint,
+        (float MinX, float MaxX, float MinZ, float MaxZ) bounds)
+    {
         planeReferenceMeasurement = (
             CreatePlaneCorner(result, bounds.MinX, bounds.MinZ),
             CreatePlaneCorner(result, bounds.MaxX, bounds.MinZ),
@@ -585,64 +557,26 @@ public sealed partial class OpenVisionThreeDViewerControl
             CreatePlaneCorner(result, bounds.MinX, bounds.MaxZ),
             result.Target,
             result.TargetProjection);
-        var target = transformed.MinBy(item => Vector3.DistanceSquared(item.Position, result.Target));
-        viewModel.SetPlaneReferenceMeasurement(result, "C3D least-squares height field / fixed sample");
-        viewModel.SelectedEntity = "Plane Distance Measurement";
-        viewModel.PickCoordinate = FormatC3DPoint(target.Point);
-        viewModel.ViewerStatus = "Fitted C3D plane and maximum residual measured";
-        RenderNow();
-        return true;
+        viewModel.PickCoordinate = FormatC3DPoint(targetPoint);
     }
 
-    public bool PreviewC3DPlaneFlatness()
+    public bool PreviewC3DPlaneFlatness() =>
+        C3DPlaneFlatnessRuleCoordinator.Preview(
+            c3dSample,
+            viewModel,
+            ApplyC3DPlaneFlatnessPreviewOverlay,
+            RenderNow);
+
+    private void ApplyC3DPlaneFlatnessPreviewOverlay(
+        HeightDeviationRecipePlaneFlatness step,
+        PlaneFlatnessEvaluation evaluation)
     {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Plane flatness requires a visible C3D height grid";
-            return false;
-        }
-
-        var step = viewModel.CreatePlaneFlatnessRecipeStep();
-        C3DHeightGrid measurementSample;
-        try
-        {
-            measurementSample = c3dSample.WithMaxRenderedPoints(step.MaxSampledPoints);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
-        {
-            viewModel.ViewerStatus = $"Plane flatness sample load failed: {ex.Message}";
-            return false;
-        }
-
-        var measurementSamples = measurementSample.Points
-            .Select(point => new HeightFieldPlaneSample(TransformC3DPosition(point.Position), point.RawValue))
-            .ToArray();
-        var referenceSamples = measurementSamples
-            .Where(sample => Contains(step.ReferenceRegion, sample.Position))
-            .ToArray();
-        var evaluation = PlaneFlatnessRule.Evaluate(new PlaneFlatnessRuleInput(
-            step.SourceEntityId,
-            referenceSamples,
-            measurementSamples,
-            step.Tolerance,
-            step.Unit));
-
         twoPointFirst = null;
         twoPointSecond = null;
         roiStepLeftBounds = null;
         roiStepRightBounds = null;
         roiStepLeftCenter = null;
         roiStepRightCenter = null;
-        viewModel.ClearTwoPointMeasurement();
-        viewModel.ClearPlaneReferenceMeasurement();
-        viewModel.ClearRoiStepMeasurement();
-        viewModel.SelectionOverlayVisible = true;
-        viewModel.MeasurementVisible = true;
         planeFlatnessEvaluation = evaluation;
 
         if (evaluation.ReferencePlane is { } plane)
@@ -664,238 +598,33 @@ public sealed partial class OpenVisionThreeDViewerControl
             planeReferenceMeasurement = null;
             viewModel.PickCoordinate = "(invalid reference ROI)";
         }
-
-        viewModel.SetPlaneFlatnessPreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
     }
 
     public bool PreviewC3DThickness()
-    {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
+        => C3DThicknessRuleCoordinator.Preview(c3dSample, viewModel, RenderNow);
 
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Thickness requires a visible C3D height grid";
-            return false;
-        }
-
-        if (!viewModel.ThicknessConfigured)
-        {
-            viewModel.ViewerStatus = "Thickness requires one taught C3D grid ROI";
-            return false;
-        }
-
-        var step = viewModel.CreateThicknessRecipeStep();
-        C3DThicknessEvaluation evaluation;
-        try
-        {
-            evaluation = C3DThicknessRule.Evaluate(new C3DThicknessInput(
-                step.SourceEntityId,
-                c3dSample.Height,
-                c3dSample.Width,
-                c3dSample.ReadHeightMapValues(),
-                step.Roi,
-                step.Acceptance,
-                step.Unit,
-                step.FrameId,
-                step.MinimumValidSamples));
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
-        {
-            viewModel.ViewerStatus = $"Thickness sample load failed: {ex.Message}";
-            return false;
-        }
-
-        viewModel.SetThicknessPreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
-    }
+    public bool PreviewC3DWarpage()
+        => C3DWarpageRuleCoordinator.Preview(c3dSample, viewModel, RenderNow);
 
     public bool PreviewC3DPointPairDimensions()
+        => C3DPointPairDimensionsRuleCoordinator.Preview(
+            c3dSample,
+            viewModel,
+            (first, second) => SetTwoPointMeasurement(first, second, updatePointPairReferences: false),
+            RenderNow);
+
+    public bool PreviewC3DVolume() =>
+        C3DVolumeRuleCoordinator.Preview(
+            c3dSample,
+            viewModel,
+            ApplyC3DVolumePreviewOverlay,
+            RenderNow);
+
+    private void ApplyC3DVolumePreviewOverlay(
+        HeightDeviationRecipeVolume step,
+        VolumeEvaluation evaluation,
+        double meanY)
     {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Point pair dimensions require a visible C3D height grid";
-            return false;
-        }
-
-        var step = viewModel.CreatePointPairDimensionsRecipeStep();
-        if (step is null)
-        {
-            viewModel.ViewerStatus = "Point pair dimensions require two selected C3D source cells";
-            return false;
-        }
-
-        HeightGridPoint first;
-        HeightGridPoint second;
-        try
-        {
-            first = c3dSample.ReadPoint(step.First.Row, step.First.Column);
-            second = c3dSample.ReadPoint(step.Second.Row, step.Second.Column);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentOutOfRangeException)
-        {
-            viewModel.ViewerStatus = $"Point pair dimensions failed: {ex.Message}";
-            return false;
-        }
-
-        SetTwoPointMeasurement(first, second, updatePointPairReferences: false);
-        var evaluation = PointPairDimensionsRule.Evaluate(new PointPairDimensionsInput(
-            step.SourceEntityId,
-            TransformC3DPosition(first.Position),
-            TransformC3DPosition(second.Position),
-            first.RawValue,
-            second.RawValue,
-            step.Acceptance,
-            step.Unit,
-            viewModel.RecipeSourceUnit));
-        viewModel.SetPointPairDimensionsPreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
-    }
-
-    public bool PreviewC3DGapFlush()
-    {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Gap / Flush requires a visible C3D height grid";
-            return false;
-        }
-
-        var step = viewModel.CreateGapFlushRecipeStep();
-        C3DHeightGrid measurementSample;
-        try
-        {
-            measurementSample = c3dSample.WithMaxRenderedPoints(step.MaxSampledPoints);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
-        {
-            viewModel.ViewerStatus = $"Gap / Flush sample load failed: {ex.Message}";
-            return false;
-        }
-
-        TryCalculateGapFlushStats(measurementSample.Points, step.LeftRegion, out var left);
-        TryCalculateGapFlushStats(measurementSample.Points, step.RightRegion, out var right);
-        var evaluation = GapFlushRule.Evaluate(new GapFlushInput(
-            step.SourceEntityId,
-            step.LeftRegion,
-            step.RightRegion,
-            left,
-            right,
-            step.Acceptance,
-            step.GapUnit,
-            step.FlushUnit));
-
-        roiStepLeftRecipeRegion = step.LeftRegion;
-        roiStepRightRecipeRegion = step.RightRegion;
-        roiStepInteractiveSelection = false;
-        roiStepNextPickSetsRight = false;
-        roiStepLeftBounds = (
-            (float)(step.LeftRegion.CenterX - step.LeftRegion.HalfWidth),
-            (float)(step.LeftRegion.CenterX + step.LeftRegion.HalfWidth),
-            (float)(step.LeftRegion.CenterZ - step.LeftRegion.HalfDepth),
-            (float)(step.LeftRegion.CenterZ + step.LeftRegion.HalfDepth),
-            (float)left.ModelYMean);
-        roiStepRightBounds = (
-            (float)(step.RightRegion.CenterX - step.RightRegion.HalfWidth),
-            (float)(step.RightRegion.CenterX + step.RightRegion.HalfWidth),
-            (float)(step.RightRegion.CenterZ - step.RightRegion.HalfDepth),
-            (float)(step.RightRegion.CenterZ + step.RightRegion.HalfDepth),
-            (float)right.ModelYMean);
-        roiStepLeftCenter = new Vector3((float)step.LeftRegion.CenterX, (float)left.ModelYMean, (float)step.LeftRegion.CenterZ);
-        roiStepRightCenter = new Vector3((float)step.RightRegion.CenterX, (float)right.ModelYMean, (float)step.RightRegion.CenterZ);
-        viewModel.SetRoiStepMeasurement(
-            left.PointCount,
-            left.RawMean,
-            left.ModelYMean,
-            right.PointCount,
-            right.RawMean,
-            right.ModelYMean,
-            "GapFlush");
-        viewModel.SelectionOverlayVisible = true;
-        viewModel.MeasurementVisible = true;
-        viewModel.SetGapFlushPreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
-    }
-
-    private bool TryCalculateGapFlushStats(
-        IReadOnlyList<HeightGridPoint> points,
-        HeightDeviationRecipeRoiRegion region,
-        out GapFlushRegionStats stats)
-    {
-        var count = 0;
-        var rawSum = 0.0;
-        var modelYSum = 0.0;
-        foreach (var point in points)
-        {
-            var position = TransformC3DPosition(point.Position);
-            if (!Contains(region, position))
-            {
-                continue;
-            }
-
-            count++;
-            rawSum += point.RawValue;
-            modelYSum += position.Y;
-        }
-
-        if (count == 0)
-        {
-            stats = new GapFlushRegionStats(0, double.NaN, double.NaN);
-            return false;
-        }
-
-        stats = new GapFlushRegionStats(count, rawSum / count, modelYSum / count);
-        return true;
-    }
-
-    public bool PreviewC3DVolume()
-    {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Volume requires a visible C3D height grid";
-            return false;
-        }
-
-        var step = viewModel.CreateVolumeRecipeStep();
-        C3DHeightGrid measurementGrid;
-        try { measurementGrid = c3dSample.WithMaxRenderedPoints(step.MaxSampledPoints); }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
-        {
-            viewModel.ViewerStatus = $"Volume sample load failed: {ex.Message}";
-            return false;
-        }
-
-        var samples = measurementGrid.Points
-            .Select(point => new HeightFieldPlaneSample(TransformC3DPosition(point.Position), point.RawValue))
-            .ToArray();
-        var reference = samples.Where(sample => Contains(step.ReferenceRegion, sample.Position)).ToArray();
-        var measured = samples.Where(sample => Contains(step.MeasurementRegion, sample.Position)).ToArray();
-        var spacing = measurementGrid.HorizontalScale * measurementGrid.PointStride * viewModel.C3DModelTransform.Scale;
-        var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
-            step.SourceEntityId, reference, measured, spacing * spacing,
-            step.ExpectedNetVolume, step.Tolerance, step.Unit));
-
         if (evaluation.ReferencePlane is { } plane)
         {
             var region = step.ReferenceRegion;
@@ -908,7 +637,6 @@ public sealed partial class OpenVisionThreeDViewerControl
                 plane.TargetProjection);
         }
 
-        var meanY = measured.Length == 0 ? 0.0 : measured.Average(sample => sample.Position.Y);
         roiStepLeftBounds = (
             (float)(step.MeasurementRegion.CenterX - step.MeasurementRegion.HalfWidth),
             (float)(step.MeasurementRegion.CenterX + step.MeasurementRegion.HalfWidth),
@@ -916,74 +644,30 @@ public sealed partial class OpenVisionThreeDViewerControl
             (float)(step.MeasurementRegion.CenterZ + step.MeasurementRegion.HalfDepth),
             (float)meanY);
         roiStepRightBounds = null;
-        viewModel.SelectionOverlayVisible = true;
-        viewModel.MeasurementVisible = true;
-        viewModel.SetVolumePreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
     }
 
-    public bool PreviewC3DCrossSection()
+    public bool PreviewC3DCrossSection() =>
+        C3DCrossSectionRuleCoordinator.Preview(
+            c3dSample,
+            viewModel,
+            ApplyC3DCrossSectionProfile,
+            RenderNow);
+
+    private void ApplyC3DCrossSectionProfile(
+        HeightDeviationRecipeCrossSection step,
+        HeightGridPoint[] sourcePoints,
+        double minimum,
+        double maximum,
+        double mean)
     {
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (c3dSample is null || !viewModel.C3DSampleVisible)
-        {
-            viewModel.ViewerStatus = "Cross-section Dimensions requires a visible C3D height grid";
-            return false;
-        }
-
-        var step = viewModel.CreateCrossSectionRecipeStep();
-        HeightGridPoint[] sourcePoints;
-        try
-        {
-            sourcePoints = c3dSample.ReadRowRange(step.Row, step.StartColumn, step.EndColumn);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentOutOfRangeException)
-        {
-            viewModel.ViewerStatus = $"Cross-section source read failed: {ex.Message}";
-            return false;
-        }
-
-        var samples = sourcePoints
-            .Select(point => new CrossSectionSample(point.Column, TransformC3DPosition(point.Position), point.RawValue))
-            .ToArray();
-        var evaluation = CrossSectionDimensionsRule.Evaluate(new CrossSectionDimensionsInput(
-            step.SourceEntityId,
+        viewModel.SetSectionProfile(
+            viewModel.RecipeSourceName,
             step.Row,
-            step.StartColumn,
-            step.EndColumn,
-            samples,
-            step.ExpectedWidth,
-            step.WidthTolerance,
-            step.ExpectedHeightRange,
-            step.HeightTolerance,
-            step.WidthUnit,
-            step.HeightUnit));
-
-        if (sourcePoints.Length >= 2)
-        {
-            var minimum = sourcePoints.Min(point => point.RawValue);
-            var maximum = sourcePoints.Max(point => point.RawValue);
-            var mean = sourcePoints.Average(point => point.RawValue);
-            viewModel.SetSectionProfile(
-                viewModel.RecipeSourceName,
-                step.Row,
-                sourcePoints.Length,
-                minimum,
-                maximum,
-                mean,
-                BuildSectionProfilePath(sourcePoints, minimum, maximum));
-        }
-
-        viewModel.SelectionOverlayVisible = true;
-        viewModel.MeasurementVisible = true;
-        viewModel.SetCrossSectionPreview(evaluation);
-        RenderNow();
-        return evaluation.Result.Status != ResultStatus.Error;
+            sourcePoints.Length,
+            minimum,
+            maximum,
+            mean,
+            BuildSectionProfilePath(sourcePoints, minimum, maximum));
     }
 
     private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>

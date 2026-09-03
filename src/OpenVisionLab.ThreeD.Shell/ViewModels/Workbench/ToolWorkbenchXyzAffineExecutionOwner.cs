@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -8,7 +9,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// facade supplies recipe/source identity, upstream publication, and downstream
 /// Re-grid callbacks without sharing this owner's private execution state.
 /// </summary>
-internal sealed class ToolWorkbenchXyzAffineExecutionOwner
+internal sealed class ToolWorkbenchXyzAffineExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedSolve;
     private readonly Func<bool> isSelectedApply;
@@ -44,6 +45,7 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
     private bool isApplyPublished;
     private string applySummary =
         "Route the verified raw C3D first and the current Published AffineTransform3D second, then Preview explicitly.";
+    private int disposalState;
 
     public ToolWorkbenchXyzAffineExecutionOwner(
         Func<bool> isSelectedSolve,
@@ -77,12 +79,12 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         this.onStateChanged = onStateChanged;
     }
 
-    public bool IsSelectedSolve => isSelectedSolve();
-    public bool IsSolveRunning => isSolveRunning;
-    public bool HasCurrentSolvePreview => solveOutput is not null && !isSolveStale;
-    public bool IsSolveStale => isSolveStale;
-    public bool IsSolvePublished => isSolvePublished;
-    public C3DAffineTransform3D? CurrentSolveOutput => solveOutput;
+    public bool IsSelectedSolve => !IsDisposed && isSelectedSolve();
+    public bool IsSolveRunning => !IsDisposed && isSolveRunning;
+    public bool HasCurrentSolvePreview => !IsDisposed && solveOutput is not null && !isSolveStale;
+    public bool IsSolveStale => !IsDisposed && isSolveStale;
+    public bool IsSolvePublished => !IsDisposed && isSolvePublished;
+    public C3DAffineTransform3D? CurrentSolveOutput => IsDisposed ? null : solveOutput;
     public string SolveSummary => solveSummary;
     public string SolveOutputHashSummary => solveOutput is null
         ? "No affine output hash until Preview completes."
@@ -102,12 +104,12 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
             $"Zref = {solveOutput.Matrix.M31:G8} X + {solveOutput.Matrix.M32:G8} Y + {solveOutput.Matrix.M33:G8} Z + {solveOutput.Matrix.M34:G8}"
         ]);
 
-    public bool IsSelectedApply => isSelectedApply();
-    public bool IsApplyRunning => isApplyRunning;
-    public bool HasCurrentApplyPreview => applyOutput is not null && !isApplyStale;
-    public bool IsApplyStale => isApplyStale;
-    public bool IsApplyPublished => isApplyPublished;
-    public C3DTransformedPointCloud? CurrentApplyOutput => applyOutput;
+    public bool IsSelectedApply => !IsDisposed && isSelectedApply();
+    public bool IsApplyRunning => !IsDisposed && isApplyRunning;
+    public bool HasCurrentApplyPreview => !IsDisposed && applyOutput is not null && !isApplyStale;
+    public bool IsApplyStale => !IsDisposed && isApplyStale;
+    public bool IsApplyPublished => !IsDisposed && isApplyPublished;
+    public C3DTransformedPointCloud? CurrentApplyOutput => IsDisposed ? null : applyOutput;
     public string ApplySummary => applySummary;
     public string ApplyOutputHashSummary => applyOutput is null
         ? "No TransformedPointCloud hash until Preview completes."
@@ -119,26 +121,90 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         ? "No transformed point evidence until Preview completes."
         : $"finite {applyOutput.FinitePointCount:N0} | missing source cells {applyOutput.MissingPointCount:N0} | source-grid order retained | re-grid excluded";
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public bool TryGetPublishedSolveOutput(
         string outputEntityId,
-        out C3DAffineTransform3D? output) =>
-        publishedSolveOutputs.TryGetValue(outputEntityId, out output);
+        out C3DAffineTransform3D? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedSolveOutputs.TryGetValue(outputEntityId, out output);
+    }
 
     public bool TryGetPublishedApplyOutput(
         string outputEntityId,
-        out C3DTransformedPointCloud? output) =>
-        publishedApplyOutputs.TryGetValue(outputEntityId, out output);
+        out C3DTransformedPointCloud? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedApplyOutputs.TryGetValue(outputEntityId, out output);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentSolveCancellation = Interlocked.Exchange(
+            ref solveCancellation,
+            null);
+        CancelAndDispose(currentSolveCancellation);
+        var currentApplyCancellation = Interlocked.Exchange(
+            ref applyCancellation,
+            null);
+        CancelAndDispose(currentApplyCancellation);
+        solveOutput = null;
+        publishedSolveOutputs.Clear();
+        isSolveRunning = false;
+        isSolveStale = false;
+        isSolvePublished = false;
+        applyOutput = null;
+        publishedApplyOutputs.Clear();
+        isApplyRunning = false;
+        isApplyStale = false;
+        isApplyPublished = false;
+    }
 
     public async Task<bool> PreviewSolveAsync()
     {
-        if (!CanPreviewSolve() || getSelectedStep() is not { } step
+        if (IsDisposed || !CanPreviewSolve() || getSelectedStep() is not { } step
             || !TryGetSolveInput(out var correspondence))
         {
             return false;
         }
 
-        solveCancellation?.Dispose();
-        solveCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref solveCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref solveCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetSolveRunning(true);
         isSolveStale = false;
         isSolvePublished = false;
@@ -152,8 +218,13 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
                     createDocument(),
                     step.Id,
                     correspondence,
-                    solveCancellation.Token),
-                solveCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentSolve(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 solveOutput = null;
@@ -171,6 +242,11 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentSolve(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSolveSummary("Preview canceled. Published CorrespondenceSet and authored recipe were not changed.");
             appendLog("Preview", "XYZ Affine Solve Preview canceled.");
@@ -178,13 +254,26 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         }
         finally
         {
-            SetSolveRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref solveCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetSolveRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreviewSolve()
     {
-        if (!IsSelectedSolve || !isSourceReady() || hasPendingParameterChanges()
+        if (IsDisposed || !IsSelectedSolve || !isSourceReady() || hasPendingParameterChanges()
             || isSolveRunning || getSelectedStep() is not { } step
             || !TryGetSolveInput(out var correspondence))
         {
@@ -197,7 +286,7 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     public void PublishSolve()
     {
-        if (getSelectedStep() is not { } step || !HasCurrentSolvePreview)
+        if (IsDisposed || getSelectedStep() is not { } step || !HasCurrentSolvePreview)
         {
             return;
         }
@@ -210,11 +299,26 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         RefreshApplyState();
     }
 
-    public void CancelSolve() => solveCancellation?.Cancel();
+    public void CancelSolve()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref solveCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void MarkSolveStaleIfNeeded(object? sender = null)
     {
-        if (solveOutput is null || isSolveRunning)
+        if (IsDisposed || solveOutput is null || isSolveRunning)
         {
             return;
         }
@@ -248,9 +352,18 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     public void ClearSolve(string summary)
     {
-        solveCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref solveCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         solveOutput = null;
         publishedSolveOutputs.Clear();
+        SetSolveRunning(false);
         isSolveStale = false;
         isSolvePublished = false;
         ClearApply("Published AffineTransform3D was cleared. Apply XYZ Affine Preview was cleared without execution.");
@@ -259,6 +372,11 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     public void RefreshSolveState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedStep() is { } step && IsSelectedSolve
             && (solveOutput is null
                 || !string.Equals(solveOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
@@ -289,14 +407,33 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     public async Task<bool> PreviewApplyAsync()
     {
-        if (!CanPreviewApply() || getSelectedStep() is not { } step
+        if (IsDisposed || !CanPreviewApply() || getSelectedStep() is not { } step
             || !TryGetApplyInput(out var transform))
         {
             return false;
         }
 
-        applyCancellation?.Dispose();
-        applyCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref applyCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref applyCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetApplyRunning(true);
         isApplyStale = false;
         isApplyPublished = false;
@@ -310,8 +447,13 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
                     createDocument(),
                     step.Id,
                     transform,
-                    cancellationToken: applyCancellation.Token),
-                applyCancellation.Token);
+                    cancellationToken: cancellationToken),
+                cancellationToken);
+            if (!IsCurrentApply(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 applyOutput = null;
@@ -329,6 +471,11 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentApply(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetApplySummary("Preview canceled. The raw C3D, Published AffineTransform3D, and authored recipe were not changed.");
             appendLog("Preview", "Apply XYZ Affine Preview canceled.");
@@ -336,13 +483,26 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         }
         finally
         {
-            SetApplyRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref applyCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetApplyRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreviewApply()
     {
-        if (!IsSelectedApply || !isSourceReady() || hasPendingParameterChanges()
+        if (IsDisposed || !IsSelectedApply || !isSourceReady() || hasPendingParameterChanges()
             || isApplyRunning || !TryGetApplyInput(out var transform)
             || getSelectedStep() is not { } step)
         {
@@ -355,7 +515,7 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     public void PublishApply()
     {
-        if (getSelectedStep() is not { } step || !HasCurrentApplyPreview)
+        if (IsDisposed || getSelectedStep() is not { } step || !HasCurrentApplyPreview)
         {
             return;
         }
@@ -367,13 +527,37 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         appendLog("Publish", $"Apply XYZ Affine output published without re-running: {step.OutputEntityId}.");
     }
 
-    public void CancelApply() => applyCancellation?.Cancel();
+    public void CancelApply()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref applyCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void ClearApply(string summary)
     {
-        applyCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref applyCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         applyOutput = null;
         publishedApplyOutputs.Clear();
+        SetApplyRunning(false);
         isApplyStale = false;
         isApplyPublished = false;
         SetApplySummary(summary);
@@ -382,6 +566,11 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     public void RefreshApplyState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedStep() is { } step && IsSelectedApply)
         {
             var hasCurrentRoute = TryGetApplyInput(out var transform);
@@ -426,6 +615,12 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
         out string message)
     {
         ArgumentNullException.ThrowIfNull(output);
+        if (IsDisposed)
+        {
+            message = "XYZ Affine execution owner has been disposed.";
+            return false;
+        }
+
         if (getSelectedStep() is not { ToolId: "re-grid-height-map", InputEntityIds.Count: 1 } regridStep
             || !string.Equals(regridStep.InputEntityIds[0], output.OutputEntityId, StringComparison.OrdinalIgnoreCase)
             || getStepByOutputId(output.OutputEntityId) is not { ToolId: "xyz-affine-apply" }
@@ -451,7 +646,8 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
     private bool TryGetSolveInput(out C3DLandmarkCorrespondenceSet correspondence)
     {
         correspondence = null!;
-        if (getSelectedStep() is not { InputEntityIds.Count: 1 } step
+        if (IsDisposed
+            || getSelectedStep() is not { InputEntityIds.Count: 1 } step
             || getPublishedCorrespondence(step.InputEntityIds[0]) is not { } published)
         {
             return false;
@@ -464,7 +660,8 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
     private bool TryGetApplyInput(out C3DAffineTransform3D transform)
     {
         transform = null!;
-        if (getSelectedStep() is not { InputEntityIds.Count: 2 } step
+        if (IsDisposed
+            || getSelectedStep() is not { InputEntityIds.Count: 2 } step
             || !string.Equals(step.InputEntityIds[0], getSourceId(), StringComparison.OrdinalIgnoreCase)
             || !publishedSolveOutputs.TryGetValue(step.InputEntityIds[1], out var published))
         {
@@ -477,25 +674,74 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner
 
     private void SetSolveRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isSolveRunning = value;
         onStateChanged();
     }
 
     private void SetSolveSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         solveSummary = value;
         onStateChanged();
     }
 
     private void SetApplyRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isApplyRunning = value;
         onStateChanged();
     }
 
     private void SetApplySummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         applySummary = value;
         onStateChanged();
+    }
+
+    private bool IsCurrentSolve(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref solveCancellation),
+            cancellation);
+
+    private bool IsCurrentApply(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref applyCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 }

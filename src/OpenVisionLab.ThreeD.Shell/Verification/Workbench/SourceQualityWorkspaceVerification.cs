@@ -88,6 +88,7 @@ internal static class SourceQualityWorkspaceVerification
                     9.0, 10.0, 11.0, 12.0
                 ]);
             source.SaveC3D(sourcePath);
+            await VerifyCancellationSourceLifetimeAsync(source, sourcePath, Check);
 
             var streamedSnapshot = C3DHeightFieldSnapshot.LoadIdentified(
                 sourcePath,
@@ -161,7 +162,7 @@ internal static class SourceQualityWorkspaceVerification
                 staleBindingRejected,
                 $"rejected={staleBindingRejected}");
 
-            var viewModel = new SourceQualityWorkspaceViewModel(
+            using var viewModel = new SourceQualityWorkspaceViewModel(
                 ThreeDLocalization.Shared);
             Check(
                 "initial-state-is-unavailable",
@@ -411,6 +412,87 @@ internal static class SourceQualityWorkspaceVerification
         }
 
         return (passed, total, lines);
+    }
+
+    private static async Task VerifyCancellationSourceLifetimeAsync(
+        C3DHeightFieldSnapshot source,
+        string sourcePath,
+        Action<string, bool, string> check)
+    {
+        using var sourceQuality = new SourceQualityWorkspaceViewModel(
+            ThreeDLocalization.Shared);
+        var sourceQualityEntered = new TaskCompletionSource<CancellationToken>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var sourceQualityRelease = new TaskCompletionSource<C3DHeightFieldSnapshot>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var sourceQualityLoad = sourceQuality.EnsureSourceAsync(
+            sourcePath,
+            source.EntityId,
+            source.Unit,
+            source.FrameId,
+            cancellationToken =>
+            {
+                sourceQualityEntered.TrySetResult(cancellationToken);
+                return sourceQualityRelease.Task;
+            });
+        var sourceQualityToken = await sourceQualityEntered.Task;
+        sourceQuality.Clear();
+        var sourceQualityTokenAliveAfterCancel = IsCancellationWaitHandleAvailable(
+            sourceQualityToken);
+        sourceQualityRelease.TrySetResult(source);
+        await sourceQualityLoad;
+        var sourceQualityTokenDisposedAfterCompletion =
+            !IsCancellationWaitHandleAvailable(sourceQualityToken);
+        check(
+            "source-quality cancellation keeps the token source alive until async completion",
+            sourceQualityToken.IsCancellationRequested
+            && sourceQualityTokenAliveAfterCancel
+            && sourceQualityTokenDisposedAfterCompletion,
+            $"cancelled={sourceQualityToken.IsCancellationRequested};aliveAfterCancel={sourceQualityTokenAliveAfterCancel};disposedAfterCompletion={sourceQualityTokenDisposedAfterCompletion}");
+
+        using var heightImage = new HeightImageViewerViewModel(
+            ThreeDLocalization.Shared,
+            new SharedHeightCursorSession());
+        var heightImageEntered = new TaskCompletionSource<CancellationToken>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var heightImageRelease = new TaskCompletionSource<C3DHeightFieldSnapshot>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var heightImageLoad = heightImage.EnsureSourceAsync(
+            sourcePath,
+            source.EntityId,
+            source.Unit,
+            source.FrameId,
+            cancellationToken =>
+            {
+                heightImageEntered.TrySetResult(cancellationToken);
+                return heightImageRelease.Task;
+            });
+        var heightImageToken = await heightImageEntered.Task;
+        heightImage.ClearSource();
+        var heightImageTokenAliveAfterCancel = IsCancellationWaitHandleAvailable(
+            heightImageToken);
+        heightImageRelease.TrySetResult(source);
+        await heightImageLoad;
+        var heightImageTokenDisposedAfterCompletion =
+            !IsCancellationWaitHandleAvailable(heightImageToken);
+        check(
+            "height-image cancellation keeps the token source alive until async completion",
+            heightImageToken.IsCancellationRequested
+            && heightImageTokenAliveAfterCancel
+            && heightImageTokenDisposedAfterCompletion,
+            $"cancelled={heightImageToken.IsCancellationRequested};aliveAfterCancel={heightImageTokenAliveAfterCancel};disposedAfterCompletion={heightImageTokenDisposedAfterCompletion}");
+    }
+
+    private static bool IsCancellationWaitHandleAvailable(CancellationToken token)
+    {
+        try
+        {
+            return !token.WaitHandle.SafeWaitHandle.IsClosed;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
     }
 
     private static SourceQualityGridDiagnostics CreateExplicitErrorDiagnostics()

@@ -1,9 +1,10 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
+internal sealed class ToolWorkbenchLineIntersectionExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepLineIntersection;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -27,6 +28,7 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Teach the explicit gap, acute-angle, and support-extension limits, then publish both named line-geometry inputs before Preview.";
+    private int disposalState;
 
     public ToolWorkbenchLineIntersectionExecutionOwner(
         Func<bool> isSelectedStepLineIntersection,
@@ -56,15 +58,17 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepLineIntersection => isSelectedStepLineIntersection();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
-    public C3DLineIntersectionFeature? CurrentOutput => previewOutput;
-    public string ExecutionSummary => executionSummary;
+    public bool IsSelectedStepLineIntersection => !IsDisposed && isSelectedStepLineIntersection();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
+    public C3DLineIntersectionFeature? CurrentOutput => IsDisposed ? null : previewOutput;
+    public string ExecutionSummary => IsDisposed
+        ? "Line Intersection execution owner has been disposed."
+        : executionSummary;
 
-    public string OutputHashSummary => previewOutput is null
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {previewOutput.ContentSha256}";
 
@@ -72,6 +76,11 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
     {
         get
         {
+            if (IsDisposed)
+            {
+                return "Line Intersection execution owner has been disposed.";
+            }
+
             var step = getSelectedPipelineStep();
             if (step is null || step.InputEntityIds.Count != 2)
             {
@@ -84,23 +93,41 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
         }
     }
 
-    public string EvidenceSummary => previewOutput is null
+    public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No corner evidence until Preview completes."
         : $"{previewOutput.OutputRole} | gap {previewOutput.ClosestApproachDistance:G6} source-coordinate | acute angle {previewOutput.AcuteAngleDegrees:G6} degrees | support extension {previewOutput.FirstSupportExtension:G6} / {previewOutput.SecondSupportExtension:G6}";
 
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DLineIntersectionFeature? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DLineIntersectionFeature? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
 
     public void RegisterSyntheticPublishedOutput(C3DLineIntersectionFeature output)
     {
         ArgumentNullException.ThrowIfNull(output);
+        if (IsDisposed)
+        {
+            return;
+        }
+
         publishedOutputs[output.OutputEntityId] = output;
         appendLog(
             "Smoke",
             $"Registered deterministic synthetic Published CornerAnchor prerequisite {output.OutputEntityId} ({output.ContentSha256}); normal Line Intersection Preview/Publish remains explicit.");
-        refreshLandmarkCorrespondence();
+        if (!IsDisposed)
+        {
+            refreshLandmarkCorrespondence();
+        }
     }
 
     public bool TryGetCurrentInputs(
@@ -109,7 +136,7 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
     {
         first = null;
         second = null;
-        if (getSelectedPipelineStep() is not { InputEntityIds.Count: 2 } step)
+        if (IsDisposed || getSelectedPipelineStep() is not { InputEntityIds.Count: 2 } step)
         {
             return false;
         }
@@ -121,7 +148,7 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step)
         {
             return false;
         }
@@ -135,13 +162,37 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Line Intersection Preview is evaluating only the exact two Published line inputs.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Line Intersection Preview started: {step.Id}.");
         try
         {
@@ -151,13 +202,23 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
                     step.Id,
                     first,
                     second,
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
+                if (!IsCurrentPreview(currentCancellation))
+                {
+                    return false;
+                }
+
                 appendLog("Error", $"Line Intersection Preview failed: {evaluation.Result.Message}");
                 return false;
             }
@@ -165,30 +226,61 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
             previewOutput = evaluation.Output;
             step.State = "Preview ready";
             SetSummary($"Preview ready | {EvidenceSummary} | no OK/NG");
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             appendLog("Preview", $"Line Intersection Preview ready: {evaluation.Output.ContentSha256}.");
-            requestDisplay(new ToolWorkbenchLineIntersectionDisplayRequestEventArgs(
-                first,
-                second,
-                evaluation.Output,
-                false));
+            if (IsCurrentPreview(currentCancellation))
+            {
+                requestDisplay(new ToolWorkbenchLineIntersectionDisplayRequestEventArgs(
+                    first,
+                    second,
+                    evaluation.Output,
+                    false));
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. Published LineFeature inputs and authored recipe were not changed.");
-            appendLog("Preview", "Line Intersection Preview canceled.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", "Line Intersection Preview canceled.");
+            }
+
             return false;
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+                if (!IsDisposed)
+                {
+                    SetRunning(false);
+                }
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelectedStepLineIntersection || !isSourceReadyForRecipe()
+        if (IsDisposed || !IsSelectedStepLineIntersection || !isSourceReadyForRecipe()
             || hasPendingStepParameterChanges() || isPreviewRunning
             || getSelectedPipelineStep() is not { InputEntityIds.Count: 2 } step)
         {
@@ -210,7 +302,7 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
         {
             return;
         }
@@ -219,10 +311,15 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
         publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | feature extraction only, no OK/NG");
+        if (IsDisposed)
+        {
+            return;
+        }
+
         appendLog("Publish", $"Line Intersection output published without re-running: {step.OutputEntityId}.");
         var first = getPublishedLineGeometry(step.InputEntityIds[0]);
         var second = getPublishedLineGeometry(step.InputEntityIds[1]);
-        if (first is not null && second is not null)
+        if (!IsDisposed && first is not null && second is not null)
         {
             requestDisplay(new ToolWorkbenchLineIntersectionDisplayRequestEventArgs(
                 first,
@@ -231,14 +328,32 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
                 true));
         }
 
-        refreshLandmarkCorrespondence();
+        if (!IsDisposed)
+        {
+            refreshLandmarkCorrespondence();
+        }
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+    }
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (previewOutput is null || isPreviewRunning)
+        if (IsDisposed || previewOutput is null || isPreviewRunning)
         {
             return;
         }
@@ -275,24 +390,59 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
         }
 
         clearDisplay();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetSummary("Input, Line Intersection parameter, route, or output changed. Preview again before Publish.");
-        refreshLandmarkCorrespondence();
+        if (!IsDisposed)
+        {
+            refreshLandmarkCorrespondence();
+        }
     }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
+        SetRunning(false);
         isPreviewStale = false;
         isPreviewPublished = false;
         clearDisplay();
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetSummary(summary);
-        refreshLandmarkCorrespondence();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (!IsDisposed)
+        {
+            refreshLandmarkCorrespondence();
+        }
     }
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepLineIntersection
             && (previewOutput is null
                 || !string.Equals(
@@ -335,13 +485,65 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal or replacement already released the token source.
+        }
+
+        cancellation.Dispose();
     }
 }

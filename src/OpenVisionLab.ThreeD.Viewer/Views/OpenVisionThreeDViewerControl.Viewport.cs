@@ -33,6 +33,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void Viewport_OpenGLInitialized(object sender, OpenGLRoutedEventArgs args)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         c3dGpuBuffers = null;
         c3dGpuBufferKey = null;
         c3dGpuFailedKey = null;
@@ -60,6 +65,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void Viewport_Resized(object sender, OpenGLRoutedEventArgs args)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         ConfigureProjection(args.OpenGL);
         BeginInteractionWireframeLod();
         ScheduleInteractionWireframeLodRestore();
@@ -67,6 +77,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void Viewport_OpenGLDraw(object sender, OpenGLRoutedEventArgs args)
     {
+        var gl = args.OpenGL;
+        if (IsDisposed)
+        {
+            ReleaseOpenGLResourcesForDispose(gl);
+            return;
+        }
+
         var drawStart = Stopwatch.GetTimestamp();
         if (pointerInputRegressionActive && pointerInputLastMouseMoveTimestamp != 0)
         {
@@ -78,7 +95,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
         UpdateFrameInterval(drawStart);
 
-        var gl = args.OpenGL;
         if (openGLVersion == "(unavailable)")
         {
             openGLVendor = ReadOpenGLString(gl, 0x1F00);
@@ -173,6 +189,52 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         gl.Flush();
         UpdateDrawPerformance(drawStart);
+    }
+
+    private void ReleaseOpenGLResourcesForDispose(OpenGL gl)
+    {
+        openGLResourceRetirementCallbackCount++;
+        try
+        {
+            ReleaseC3DGpuBuffers(gl);
+        }
+        catch (Exception)
+        {
+            // A closing context may reject deletion; managed handles are still
+            // cleared below and the context owns any unavailable GL objects.
+            openGLResourceRetirementFailureCount++;
+        }
+
+        try
+        {
+            ReleaseImportedMeshTexture(gl);
+        }
+        catch (Exception)
+        {
+            // See the context-bound disposal note above.
+            openGLResourceRetirementFailureCount++;
+        }
+
+        try
+        {
+            ReleaseC3DDisplayLists(gl);
+        }
+        catch (Exception)
+        {
+            // See the context-bound disposal note above.
+            openGLResourceRetirementFailureCount++;
+        }
+
+        try
+        {
+            gl.Flush();
+        }
+        catch (Exception)
+        {
+            // The context may already be unavailable during Window shutdown.
+        }
+
+        DropOpenGLResourceReferencesAfterDispose();
     }
 
     private static string ReadOpenGLString(OpenGL gl, uint name)

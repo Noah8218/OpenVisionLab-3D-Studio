@@ -42,7 +42,7 @@ public sealed class ThicknessStepProperties
         MinimumThickness = ParseDouble(step, "MinimumThickness"),
         MaximumThickness = ParseDouble(step, "MaximumThickness"),
         MinimumValidSampleCount = ParseInt(step, "MinimumValidSampleCount"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -62,10 +62,10 @@ public sealed class ThicknessStepProperties
     }
 
     private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
     private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
-        int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+        int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value : 0;
 }
 
@@ -176,7 +176,7 @@ public sealed class CompletenessGridStepProperties
             MaximumReferenceRelativeMeanRawHeight =
                 policy.MaximumReferenceRelativeMeanRawHeight,
             UnmappedParameters =
-                ToolWorkbenchStepPropertySession.GetUnmappedParameters(
+                ToolWorkbenchStepParameterAccess.GetUnmappedParameters(
                     step,
                     MappedNames)
         };
@@ -257,7 +257,7 @@ public sealed class WarpageStepProperties
         MaximumPeakToValley = ParseDouble(step, "MaximumPeakToValley"),
         MaximumRms = ParseDouble(step, "MaximumRms"),
         MinimumValidSampleCount = ParseInt(step, "MinimumValidSampleCount"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -278,10 +278,10 @@ public sealed class WarpageStepProperties
     }
 
     private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
     private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
-        int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+        int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value : 0;
 }
 
@@ -321,7 +321,7 @@ public sealed class PlaneFlatnessStepProperties
         MaximumFlatness = ParseDouble(step, "MaximumFlatness"),
         MinimumReferenceSampleCount = ParseInt(step, "MinimumReferenceSampleCount"),
         MinimumMeasurementSampleCount = ParseInt(step, "MinimumMeasurementSampleCount"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -341,10 +341,10 @@ public sealed class PlaneFlatnessStepProperties
     }
 
     private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
     private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
-        int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+        int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value : 0;
 }
 
@@ -401,7 +401,7 @@ public sealed class PointPairDimensionsStepProperties
         PlanarWidthTolerance = Parse(step, "PlanarWidthTolerance"),
         ExpectedElevationAngleDegrees = Parse(step, "ExpectedElevationAngleDegrees"),
         ElevationAngleToleranceDegrees = Parse(step, "ElevationAngleToleranceDegrees"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -420,7 +420,7 @@ public sealed class PointPairDimensionsStepProperties
 
     private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
     private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
 }
 
@@ -464,7 +464,7 @@ public sealed class GapFlushStepProperties
         GapTolerance = Parse(step, "GapTolerance"),
         ExpectedFlush = Parse(step, "ExpectedFlush"),
         FlushTolerance = Parse(step, "FlushTolerance"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -481,7 +481,7 @@ public sealed class GapFlushStepProperties
 
     private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
     private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
 }
 
@@ -513,7 +513,7 @@ public sealed class VolumeStepProperties
     {
         ExpectedNetVolume = Parse(step, "ExpectedNetVolume"),
         VolumeTolerance = Parse(step, "VolumeTolerance"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -528,7 +528,7 @@ public sealed class VolumeStepProperties
     }
 
     private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
 }
 
@@ -572,7 +572,7 @@ public sealed class CrossSectionDimensionsStepProperties
         WidthTolerance = Parse(step, "WidthTolerance"),
         ExpectedHeightRange = Parse(step, "ExpectedHeightRange"),
         HeightTolerance = Parse(step, "HeightTolerance"),
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -589,7 +589,7 @@ public sealed class CrossSectionDimensionsStepProperties
 
     private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
     private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;
 }
 
@@ -649,11 +649,11 @@ public sealed class FilterStepProperties
 
     internal static FilterStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        Method = Enum.TryParse<FilterMethod>(ToolWorkbenchStepPropertySession.GetParameter(step, "Method"), out var method) ? method : FilterMethod.Median,
-        KernelSize = int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "KernelSize"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var kernel) ? kernel : 0,
-        MissingValuePolicy = Enum.TryParse<FilterMissingValuePolicy>(ToolWorkbenchStepPropertySession.GetParameter(step, "MissingValuePolicy"), out var missing) ? missing : FilterMissingValuePolicy.PreserveMask,
-        BoundaryPolicy = Enum.TryParse<FilterBoundaryPolicy>(ToolWorkbenchStepPropertySession.GetParameter(step, "BoundaryPolicy"), out var boundary) ? boundary : FilterBoundaryPolicy.AvailableNeighbors,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        Method = Enum.TryParse<FilterMethod>(ToolWorkbenchStepParameterAccess.GetParameter(step, "Method"), out var method) ? method : FilterMethod.Median,
+        KernelSize = int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "KernelSize"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var kernel) ? kernel : 0,
+        MissingValuePolicy = Enum.TryParse<FilterMissingValuePolicy>(ToolWorkbenchStepParameterAccess.GetParameter(step, "MissingValuePolicy"), out var missing) ? missing : FilterMissingValuePolicy.PreserveMask,
+        BoundaryPolicy = Enum.TryParse<FilterBoundaryPolicy>(ToolWorkbenchStepParameterAccess.GetParameter(step, "BoundaryPolicy"), out var boundary) ? boundary : FilterBoundaryPolicy.AvailableNeighbors,
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -761,19 +761,19 @@ public sealed class RemoveOutlierPixelsStepProperties
         ToolWorkbenchPipelineStepItem step) => new()
     {
         Rule = Enum.TryParse<RemoveOutlierPixelsRule>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "Rule"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "Rule"),
             out var rule)
             ? rule
             : RemoveOutlierPixelsRule.LocalMedianAbsoluteDeviation,
         WindowSize = int.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "WindowSize"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "WindowSize"),
             NumberStyles.Integer,
             CultureInfo.InvariantCulture,
             out var windowSize)
             ? windowSize
             : 0,
         MaximumAbsoluteDeviation = double.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(
+            ToolWorkbenchStepParameterAccess.GetParameter(
                 step,
                 "MaximumAbsoluteDeviation"),
             NumberStyles.Float,
@@ -782,7 +782,7 @@ public sealed class RemoveOutlierPixelsStepProperties
             ? maximumDeviation
             : double.NaN,
         MinimumValidNeighbors = int.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(
+            ToolWorkbenchStepParameterAccess.GetParameter(
                 step,
                 "MinimumValidNeighbors"),
             NumberStyles.Integer,
@@ -791,22 +791,22 @@ public sealed class RemoveOutlierPixelsStepProperties
             ? minimumNeighbors
             : 0,
         MissingValuePolicy = Enum.TryParse<RemoveOutlierPixelsMissingValuePolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "MissingValuePolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "MissingValuePolicy"),
             out var missing)
             ? missing
             : RemoveOutlierPixelsMissingValuePolicy.PreserveMask,
         BoundaryPolicy = Enum.TryParse<RemoveOutlierPixelsBoundaryPolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "BoundaryPolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "BoundaryPolicy"),
             out var boundary)
             ? boundary
             : RemoveOutlierPixelsBoundaryPolicy.AvailableNeighbors,
         OutlierPolicy = Enum.TryParse<RemoveOutlierPixelsOutlierPolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "OutlierPolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "OutlierPolicy"),
             out var outlier)
             ? outlier
             : RemoveOutlierPixelsOutlierPolicy.SetMissing,
         UnmappedParameters =
-            ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+            ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -908,7 +908,7 @@ public sealed class ConnectedRegionStepProperties
         ToolWorkbenchPipelineStepItem step) => new()
     {
         Connectivity = Enum.TryParse<ConnectedRegionConnectivity>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "Connectivity"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "Connectivity"),
             out var connectivity)
             ? connectivity
             : ConnectedRegionConnectivity.Four,
@@ -916,9 +916,9 @@ public sealed class ConnectedRegionStepProperties
         OriginY = ParseDouble(step, "OriginY"),
         ColumnPitch = ParseDouble(step, "ColumnPitch"),
         RowPitch = ParseDouble(step, "RowPitch"),
-        AreaUnit = ToolWorkbenchStepPropertySession.GetParameter(step, "AreaUnit"),
+        AreaUnit = ToolWorkbenchStepParameterAccess.GetParameter(step, "AreaUnit"),
         UnmappedParameters =
-            ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+            ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -950,7 +950,7 @@ public sealed class ConnectedRegionStepProperties
         ToolWorkbenchPipelineStepItem step,
         string name) =>
         double.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, name),
             NumberStyles.Float,
             CultureInfo.InvariantCulture,
             out var value)
@@ -981,13 +981,13 @@ public sealed class EditableRegionStepProperties
     internal static EditableRegionStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
         SelectedRegionIndex = int.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "SelectedRegionIndex"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "SelectedRegionIndex"),
             NumberStyles.Integer,
             CultureInfo.InvariantCulture,
             out var index)
             ? index
             : -1,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1087,41 +1087,41 @@ public sealed class LevelSurfaceStepProperties
         ToolWorkbenchPipelineStepItem step) => new()
     {
         ReferenceFitPolicy = Enum.TryParse<LevelSurfaceReferenceFitPolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "ReferenceFitPolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "ReferenceFitPolicy"),
             out var fit)
             ? fit
             : LevelSurfaceReferenceFitPolicy.LeastSquaresHeightPlane,
         LevelingPolicy = Enum.TryParse<LevelSurfaceLevelingPolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "LevelingPolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "LevelingPolicy"),
             out var leveling)
             ? leveling
             : LevelSurfaceLevelingPolicy.HeightDetrendToReferenceMean,
         MissingValuePolicy = Enum.TryParse<LevelSurfaceMissingValuePolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "MissingValuePolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "MissingValuePolicy"),
             out var missing)
             ? missing
             : LevelSurfaceMissingValuePolicy.PreserveMask,
         GridPolicy = Enum.TryParse<LevelSurfaceGridPolicy>(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "GridPolicy"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "GridPolicy"),
             out var grid)
             ? grid
             : LevelSurfaceGridPolicy.PreserveSourceGrid,
         MinimumValidSampleCount = int.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumValidSampleCount"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumValidSampleCount"),
             NumberStyles.Integer,
             CultureInfo.InvariantCulture,
             out var minimum)
             ? minimum
             : 0,
         MaximumReferenceRmsResidual = double.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumReferenceRmsResidual"),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "MaximumReferenceRmsResidual"),
             NumberStyles.Float,
             CultureInfo.InvariantCulture,
             out var maximum)
             ? maximum
             : double.NaN,
         UnmappedParameters =
-            ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+            ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1240,28 +1240,28 @@ public sealed class HeightDifferenceEdgeStepProperties
 
     internal static HeightDifferenceEdgeStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        ComparisonAxis = Enum.TryParse<HeightDifferenceEdgeComparisonAxis>(ToolWorkbenchStepPropertySession.GetParameter(step, "ComparisonAxis"), out var axis)
+        ComparisonAxis = Enum.TryParse<HeightDifferenceEdgeComparisonAxis>(ToolWorkbenchStepParameterAccess.GetParameter(step, "ComparisonAxis"), out var axis)
             ? axis
             : HeightDifferenceEdgeComparisonAxis.Unspecified,
-        Polarity = Enum.TryParse<HeightDifferenceEdgePolarity>(ToolWorkbenchStepPropertySession.GetParameter(step, "Polarity"), out var polarity)
+        Polarity = Enum.TryParse<HeightDifferenceEdgePolarity>(ToolWorkbenchStepParameterAccess.GetParameter(step, "Polarity"), out var polarity)
             ? polarity
             : HeightDifferenceEdgePolarity.Unspecified,
-        MinimumDelta = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumDelta"), NumberStyles.Float, CultureInfo.InvariantCulture, out var delta)
+        MinimumDelta = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumDelta"), NumberStyles.Float, CultureInfo.InvariantCulture, out var delta)
             ? delta
             : 0,
-        CandidatePolicy = Enum.TryParse<HeightDifferenceEdgeCandidatePolicy>(ToolWorkbenchStepPropertySession.GetParameter(step, "CandidatePolicy"), out var candidate)
+        CandidatePolicy = Enum.TryParse<HeightDifferenceEdgeCandidatePolicy>(ToolWorkbenchStepParameterAccess.GetParameter(step, "CandidatePolicy"), out var candidate)
             ? candidate
             : HeightDifferenceEdgeCandidatePolicy.StrongestPerScanline,
-        PointPolicy = Enum.TryParse<HeightDifferenceEdgePointPolicy>(ToolWorkbenchStepPropertySession.GetParameter(step, "PointPolicy"), out var point)
+        PointPolicy = Enum.TryParse<HeightDifferenceEdgePointPolicy>(ToolWorkbenchStepParameterAccess.GetParameter(step, "PointPolicy"), out var point)
             ? point
             : HeightDifferenceEdgePointPolicy.PairMidpoint,
-        MissingValuePolicy = Enum.TryParse<HeightDifferenceEdgeMissingValuePolicy>(ToolWorkbenchStepPropertySession.GetParameter(step, "MissingValuePolicy"), out var missing)
+        MissingValuePolicy = Enum.TryParse<HeightDifferenceEdgeMissingValuePolicy>(ToolWorkbenchStepParameterAccess.GetParameter(step, "MissingValuePolicy"), out var missing)
             ? missing
             : HeightDifferenceEdgeMissingValuePolicy.SkipPair,
-        BoundaryPolicy = Enum.TryParse<HeightDifferenceEdgeBoundaryPolicy>(ToolWorkbenchStepPropertySession.GetParameter(step, "BoundaryPolicy"), out var boundary)
+        BoundaryPolicy = Enum.TryParse<HeightDifferenceEdgeBoundaryPolicy>(ToolWorkbenchStepParameterAccess.GetParameter(step, "BoundaryPolicy"), out var boundary)
             ? boundary
             : HeightDifferenceEdgeBoundaryPolicy.WithinSelection,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1323,9 +1323,9 @@ public sealed class TwoPointLineStepProperties
 
     internal static TwoPointLineStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        OutputRole = ToolWorkbenchStepPropertySession.GetParameter(step, "OutputRole") ?? string.Empty,
+        OutputRole = ToolWorkbenchStepParameterAccess.GetParameter(step, "OutputRole") ?? string.Empty,
         ConstructionPolicy = TwoPointLineConstructionPolicy.OrderedPointsDefineSegment,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1374,9 +1374,9 @@ public sealed class ThreePointPlaneStepProperties
 
     internal static ThreePointPlaneStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        OutputRole = ToolWorkbenchStepPropertySession.GetParameter(step, "OutputRole") ?? string.Empty,
+        OutputRole = ToolWorkbenchStepParameterAccess.GetParameter(step, "OutputRole") ?? string.Empty,
         ConstructionPolicy = ThreePointPlaneConstructionPolicy.OrderedPointsDefineOrientedPlane,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1449,12 +1449,12 @@ public sealed class DatumPlaneDeviationStepProperties
 
     internal static DatumPlaneDeviationStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        MaximumPeakToValleyRawHeight = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumPeakToValleyRawHeight"), NumberStyles.Float, CultureInfo.InvariantCulture, out var p2v) ? p2v : 0d,
-        OutputRole = ToolWorkbenchStepPropertySession.GetParameter(step, "OutputRole") ?? string.Empty,
+        MaximumPeakToValleyRawHeight = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MaximumPeakToValleyRawHeight"), NumberStyles.Float, CultureInfo.InvariantCulture, out var p2v) ? p2v : 0d,
+        OutputRole = ToolWorkbenchStepParameterAccess.GetParameter(step, "OutputRole") ?? string.Empty,
         ResidualPolicy = DatumPlaneDeviationResidualPolicy.RawHeightMinusDatumPlanePredictedRawHeight,
-        MinimumValidSampleCount = int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumValidSampleCount"), NumberStyles.None, CultureInfo.InvariantCulture, out var minimum) ? minimum : 0,
-        MinimumAbsoluteNormalY = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumAbsoluteNormalY"), NumberStyles.Float, CultureInfo.InvariantCulture, out var normalY) ? normalY : 0d,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        MinimumValidSampleCount = int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumValidSampleCount"), NumberStyles.None, CultureInfo.InvariantCulture, out var minimum) ? minimum : 0,
+        MinimumAbsoluteNormalY = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumAbsoluteNormalY"), NumberStyles.Float, CultureInfo.InvariantCulture, out var normalY) ? normalY : 0d,
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1600,16 +1600,16 @@ public sealed class LineFitStepProperties
     internal static LineFitStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
         FitMethod = LineFitMethod.DeterministicConsensusOrthogonalTls,
-        MaximumOrthogonalResidual = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumOrthogonalResidual"), NumberStyles.Float, CultureInfo.InvariantCulture, out var residual) ? residual : 0,
-        MinimumInlierCount = int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumInlierCount"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) ? count : 0,
-        MinimumInlierRatio = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumInlierRatio"), NumberStyles.Float, CultureInfo.InvariantCulture, out var ratio) ? ratio : 0,
-        MinimumInlierScanlineSpan = int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumInlierScanlineSpan"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var span) ? span : 0,
+        MaximumOrthogonalResidual = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MaximumOrthogonalResidual"), NumberStyles.Float, CultureInfo.InvariantCulture, out var residual) ? residual : 0,
+        MinimumInlierCount = int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumInlierCount"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) ? count : 0,
+        MinimumInlierRatio = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumInlierRatio"), NumberStyles.Float, CultureInfo.InvariantCulture, out var ratio) ? ratio : 0,
+        MinimumInlierScanlineSpan = int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumInlierScanlineSpan"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var span) ? span : 0,
         HypothesisPolicy = LineFitHypothesisPolicy.Sha256PairSchedule,
         MaximumHypotheses = 256,
         RefinementPolicy = LineFitRefinementPolicy.OrthogonalTlsUntilStable10,
         DirectionPolicy = LineFitDirectionPolicy.PositiveScanlineAxis,
         EndpointPolicy = LineFitEndpointPolicy.InlierProjectionExtents,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1718,14 +1718,14 @@ public sealed class LineIntersectionStepProperties
 
     internal static LineIntersectionStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        MaximumClosestApproachDistance = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumClosestApproachDistance"), NumberStyles.Float, CultureInfo.InvariantCulture, out var gap) ? gap : 0,
-        MinimumAcuteAngleDegrees = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumAcuteAngleDegrees"), NumberStyles.Float, CultureInfo.InvariantCulture, out var angle) ? angle : 0,
-        MaximumSupportExtension = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumSupportExtension"), NumberStyles.Float, CultureInfo.InvariantCulture, out var extension) ? extension : 0,
-        OutputRole = ToolWorkbenchStepPropertySession.GetParameter(step, "OutputRole") ?? string.Empty,
+        MaximumClosestApproachDistance = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MaximumClosestApproachDistance"), NumberStyles.Float, CultureInfo.InvariantCulture, out var gap) ? gap : 0,
+        MinimumAcuteAngleDegrees = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MinimumAcuteAngleDegrees"), NumberStyles.Float, CultureInfo.InvariantCulture, out var angle) ? angle : 0,
+        MaximumSupportExtension = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MaximumSupportExtension"), NumberStyles.Float, CultureInfo.InvariantCulture, out var extension) ? extension : 0,
+        OutputRole = ToolWorkbenchStepParameterAccess.GetParameter(step, "OutputRole") ?? string.Empty,
         ClosestApproachPolicy = LineIntersectionClosestApproachPolicy.MidpointOfClosestPoints,
         ParallelPolicy = LineIntersectionParallelPolicy.RejectBelowMinimumAcuteAngle,
         SupportPolicy = LineIntersectionSupportPolicy.WithinInlierProjectionExtentsWithMaximumExtension,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1793,10 +1793,10 @@ public sealed class LandmarkCorrespondenceStepProperties
 
     internal static LandmarkCorrespondenceStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        PairCountPolicy = ToolWorkbenchStepPropertySession.GetParameter(step, "PairCountPolicy") ?? "ExactlyFour",
-        SourceArtifactPolicy = ToolWorkbenchStepPropertySession.GetParameter(step, "SourceArtifactPolicy") ?? "CurrentPublishedCornerAnchor",
-        AffineIndependencePolicy = ToolWorkbenchStepPropertySession.GetParameter(step, "AffineIndependencePolicy") ?? "RequireNonDegenerateTetrahedra",
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        PairCountPolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "PairCountPolicy") ?? "ExactlyFour",
+        SourceArtifactPolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "SourceArtifactPolicy") ?? "CurrentPublishedCornerAnchor",
+        AffineIndependencePolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "AffineIndependencePolicy") ?? "RequireNonDegenerateTetrahedra",
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1853,10 +1853,10 @@ public sealed class XYZAffineSolveStepProperties
 
     internal static XYZAffineSolveStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        SolvePolicy = ToolWorkbenchStepPropertySession.GetParameter(step, "SolvePolicy") ?? "ExactFourPartialPivot",
-        MaximumConditionEstimate = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumConditionEstimate"), NumberStyles.Float, CultureInfo.InvariantCulture, out var maximum) ? maximum : 1000000,
-        ArithmeticResidualWarning = double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, "ArithmeticResidualWarning"), NumberStyles.Float, CultureInfo.InvariantCulture, out var warning) ? warning : 0.001,
-        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+        SolvePolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "SolvePolicy") ?? "ExactFourPartialPivot",
+        MaximumConditionEstimate = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "MaximumConditionEstimate"), NumberStyles.Float, CultureInfo.InvariantCulture, out var maximum) ? maximum : 1000000,
+        ArithmeticResidualWarning = double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, "ArithmeticResidualWarning"), NumberStyles.Float, CultureInfo.InvariantCulture, out var warning) ? warning : 0.001,
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
     internal bool TryValidate(out string message)
@@ -1971,10 +1971,10 @@ public sealed class RegridHeightMapStepProperties
 
     internal static RegridHeightMapStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
     {
-        ReferenceFrameId = ToolWorkbenchStepPropertySession.GetParameter(step, "ReferenceFrameId") ?? "frame.reference",
-        ReferenceUnit = ToolWorkbenchStepPropertySession.GetParameter(step, "ReferenceUnit") ?? "unitless",
-        ReferenceProvenance = ToolWorkbenchStepPropertySession.GetParameter(step, "ReferenceProvenance") ?? "Authored reference grid",
-        ReferenceRevision = ToolWorkbenchStepPropertySession.GetParameter(step, "ReferenceRevision") ?? "R1",
+        ReferenceFrameId = ToolWorkbenchStepParameterAccess.GetParameter(step, "ReferenceFrameId") ?? "frame.reference",
+        ReferenceUnit = ToolWorkbenchStepParameterAccess.GetParameter(step, "ReferenceUnit") ?? "unitless",
+        ReferenceProvenance = ToolWorkbenchStepParameterAccess.GetParameter(step, "ReferenceProvenance") ?? "Authored reference grid",
+        ReferenceRevision = ToolWorkbenchStepParameterAccess.GetParameter(step, "ReferenceRevision") ?? "R1",
         OriginX = Double(step, "OriginX", 0), OriginY = Double(step, "OriginY", 0), OriginZ = Double(step, "OriginZ", 0),
         UAxisX = Double(step, "UAxisX", 1), UAxisY = Double(step, "UAxisY", 0), UAxisZ = Double(step, "UAxisZ", 0),
         VAxisX = Double(step, "VAxisX", 0), VAxisY = Double(step, "VAxisY", 1), VAxisZ = Double(step, "VAxisZ", 0),
@@ -2007,9 +2007,9 @@ public sealed class RegridHeightMapStepProperties
     }
 
     private static double Double(ToolWorkbenchPipelineStepItem step, string name, double fallback) =>
-        double.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
     private static int Integer(ToolWorkbenchPipelineStepItem step, string name, int fallback) =>
-        int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+        int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 }
 
 [CategoryOrder("Surface acceptance", 0)]
@@ -2227,7 +2227,7 @@ public sealed class SurfaceMatchStepProperties
         string name,
         double fallback) =>
         double.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, name),
             NumberStyles.Float,
             CultureInfo.InvariantCulture,
             out var value)
@@ -2239,7 +2239,7 @@ public sealed class SurfaceMatchStepProperties
         string name,
         int fallback) =>
         int.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            ToolWorkbenchStepParameterAccess.GetParameter(step, name),
             NumberStyles.Integer,
             CultureInfo.InvariantCulture,
             out var value)

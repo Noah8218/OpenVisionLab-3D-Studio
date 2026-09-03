@@ -11,6 +11,31 @@ internal static class Program
     private static void Main()
     {
         var args = Environment.GetCommandLineArgs();
+        var consumerLifecycleReportPath = GetArgumentValue(args, "--consumer-lifecycle-report");
+        if (consumerLifecycleReportPath is not null)
+        {
+            if (args.Any(argument => string.Equals(
+                    argument,
+                    "--smoke-software-rendering",
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                OpenVisionThreeDViewerControl.UseSoftwareRenderingForProcess();
+            }
+
+            try
+            {
+                Environment.ExitCode = ViewerConsumerLifecycleRunner.Run(
+                    ViewerConsumerLifecycleOptions.Parse(args, consumerLifecycleReportPath));
+            }
+            catch (ArgumentException exception)
+            {
+                Console.Error.WriteLine(exception.Message);
+                Environment.ExitCode = 2;
+            }
+
+            return;
+        }
+
         var hostApiReportPath = GetArgumentValue(args, "--host-api-report");
         var hostApiRecipePath = GetArgumentValue(args, "--host-api-save-recipe");
         if (args.Any(argument => string.Equals(
@@ -52,7 +77,18 @@ internal static class Program
             recipeSaved = hostApiRecipePath is not null && viewer.SaveRecipe(hostApiRecipePath);
         }
 
-        var exitCode = application.Run(window);
+        var exitCode = 0;
+        try
+        {
+            exitCode = application.Run(window);
+        }
+        finally
+        {
+            // The binary consumer owns the concrete control lifetime. The
+            // compatibility host interface remains unchanged for existing
+            // consumers that only need commands and state.
+            viewerControl.Dispose();
+        }
 
         if (hostApiReportPath is not null)
         {
@@ -64,6 +100,7 @@ internal static class Program
                 $"HostApi|version={viewer.HostApiVersion}",
                 $"HostState|activeEntity={state.ActiveEntity}|selectionMode={state.SelectionMode}|viewerStatus={state.ViewerStatus}",
                 $"HostEvents|count={hostEventCount}|lastProperty={lastHostProperty ?? "(none)"}",
+                "HostLifecycle|concreteDisposable=True|disposedAfterRun=True",
                 $"HostCommands|invoked=ResetView,FitAll,FitSelection|saveRecipe={recipeSaved}|recipePath={hostApiRecipePath ?? "(not requested)"}"
             ]);
         }

@@ -19,49 +19,49 @@ internal sealed class ShellToolLabSmoke
     {
         if (!ShowAndVerifySingleInstance(
                 options.FilterToolLabScreenshotPath,
-                () => windows.ShowFilter(showMissing: false),
+                () => windows.ShowForTool("filter", showMissing: false),
                 () => windows.Filter,
                 "Filter Tool Lab smoke requires a Filter recipe step.",
                 "Filter Tool Lab smoke could not reuse its single window instance.",
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.EdgeToolLabScreenshotPath,
-                () => windows.ShowHeightDifferenceEdge(showMissing: false),
+                () => windows.ShowForTool("height-difference-edge", showMissing: false),
                 () => windows.HeightDifferenceEdge,
                 "Edge Tool Lab smoke requires a Height Difference Edge recipe step.",
                 "Edge Tool Lab smoke could not reuse its single window instance.",
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.TwoPointLineToolLabScreenshotPath,
-                () => windows.ShowTwoPointLine(showMissing: false),
+                () => windows.ShowForTool("two-point-line", showMissing: false),
                 () => windows.TwoPointLine,
                 "2-Point Line Tool Lab smoke requires a 2-Point Line recipe step.",
                 "2-Point Line Tool Lab smoke could not reuse its single window instance.",
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.ThreePointPlaneToolLabScreenshotPath,
-                () => windows.ShowThreePointPlane(showMissing: false),
+                () => windows.ShowForTool("three-point-plane", showMissing: false),
                 () => windows.ThreePointPlane,
                 "3-Point Plane Tool Lab smoke requires a 3-Point Plane recipe step.",
                 "3-Point Plane Tool Lab smoke could not reuse its single window instance.",
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.DatumPlaneDeviationToolLabScreenshotPath,
-                () => windows.ShowDatumPlaneDeviation(showMissing: false),
+                () => windows.ShowForTool("datum-plane-raw-height-deviation", showMissing: false),
                 () => windows.DatumPlaneDeviation,
                 "Datum Plane Deviation Tool Lab smoke requires a Datum Plane Raw-Height Deviation recipe step.",
                 "Datum Plane Deviation Tool Lab smoke could not reuse its single window instance.",
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.LineIntersectionToolLabScreenshotPath,
-                () => windows.ShowLineIntersection(showMissing: false),
+                () => windows.ShowForTool("line-intersection", showMissing: false),
                 () => windows.LineIntersection,
                 "Line Intersection Tool Lab smoke requires a Line Intersection recipe step.",
                 "Line Intersection Tool Lab smoke could not reuse its single window instance.",
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.LandmarkCorrespondenceToolLabScreenshotPath,
-                () => windows.ShowLandmarkCorrespondence(showMissing: false),
+                () => windows.ShowForTool("landmark-correspondence", showMissing: false),
                 () => windows.LandmarkCorrespondence,
                 "Landmark Correspondence Tool Lab smoke requires a Landmark Correspondence recipe step.",
                 "Landmark Correspondence Tool Lab smoke could not reuse its single window instance.",
@@ -78,7 +78,7 @@ internal sealed class ShellToolLabSmoke
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.XYZAffineSolveToolLabScreenshotPath,
-                () => windows.ShowXYZAffineSolve(showMissing: false),
+                () => windows.ShowForTool("xyz-affine-solve", showMissing: false),
                 () => windows.XYZAffineSolve,
                 "XYZ Affine Solve Tool Lab smoke requires an XYZ Affine Solve recipe step.",
                 "XYZ Affine Solve Tool Lab smoke could not reuse its single window instance.",
@@ -91,7 +91,7 @@ internal sealed class ShellToolLabSmoke
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.XYZAffineApplyToolLabScreenshotPath,
-                () => windows.ShowXYZAffineApply(showMissing: false),
+                () => windows.ShowForTool("xyz-affine-apply", showMissing: false),
                 () => windows.XYZAffineApply,
                 "XYZ Affine Apply Tool Lab smoke requires an Apply XYZ Affine recipe step.",
                 "XYZ Affine Apply Tool Lab smoke could not reuse its single window instance.",
@@ -104,7 +104,7 @@ internal sealed class ShellToolLabSmoke
                 out failure)
             || !ShowAndVerifySingleInstance(
                 options.RegridHeightMapToolLabScreenshotPath,
-                () => windows.ShowRegridHeightMap(showMissing: false),
+                () => windows.ShowForTool("re-grid-height-map", showMissing: false),
                 () => windows.RegridHeightMap,
                 "Re-grid Height Map Tool Lab smoke requires a Re-grid Height Map recipe step.",
                 "Re-grid Height Map Tool Lab smoke could not reuse its single window instance.",

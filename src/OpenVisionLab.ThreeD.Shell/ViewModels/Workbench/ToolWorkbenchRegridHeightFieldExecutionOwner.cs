@@ -1,9 +1,15 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
-internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
+/// <summary>
+/// Owns Re-grid Height Field Preview state and cancellation. Each asynchronous
+/// operation must still own the registered token before it can publish the A3
+/// output or change Workbench state.
+/// </summary>
+internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner : IDisposable
 {
     private readonly Func<bool> isSelectedStepRegridHeightField;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
@@ -23,6 +29,7 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
     private bool isPreviewPublished;
     private string executionSummary =
         "Route one current Published TransformedPointCloud, author its ReferenceGridProfile, then Preview explicitly.";
+    private int disposalState;
 
     public ToolWorkbenchRegridHeightFieldExecutionOwner(
         Func<bool> isSelectedStepRegridHeightField,
@@ -44,47 +51,105 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    public bool IsSelectedStepRegridHeightField => isSelectedStepRegridHeightField();
-    public bool IsPreviewRunning => isPreviewRunning;
-    public bool HasCurrentPreview => previewOutput is not null && !isPreviewStale;
-    public bool IsPreviewStale => isPreviewStale;
-    public bool IsPreviewPublished => isPreviewPublished;
+    public bool IsSelectedStepRegridHeightField => !IsDisposed && isSelectedStepRegridHeightField();
+    public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
+    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool IsPreviewStale => !IsDisposed && isPreviewStale;
+    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
     public bool CanPublish => HasCurrentPreview && !isPreviewPublished && previewOutput!.MeetsMinimumCoverage;
-    public C3DTransformedHeightField? CurrentOutput => previewOutput;
-    public string ExecutionSummary => executionSummary;
+    public C3DTransformedHeightField? CurrentOutput => IsDisposed ? null : previewOutput;
+    public string ExecutionSummary => IsDisposed
+        ? "Re-grid execution owner has been disposed."
+        : executionSummary;
 
-    public string OutputHashSummary => previewOutput is null
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public string OutputHashSummary => IsDisposed || previewOutput is null
         ? "No TransformedHeightField hash until Preview completes."
         : $"TransformedHeightField SHA-256 {previewOutput.ContentSha256}";
 
-    public string UpstreamSummary => TryGetCurrentInput(out var cloud)
+    public string UpstreamSummary => IsDisposed
+        ? "No Re-grid input after the execution owner has been disposed."
+        : TryGetCurrentInput(out var cloud)
         ? $"Published TransformedPointCloud | SHA-256 {cloud.ContentSha256[..12]}"
         : "Publish A2 TransformedPointCloud first; upstream tools do not run implicitly.";
 
-    public string EvidenceSummary => previewOutput is null
+    public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No reference-grid evidence until Preview completes."
         : $"populated {previewOutput.PopulatedCellCount:N0}/{previewOutput.Cells.Count:N0} | coverage {previewOutput.CoverageRatio:P2} | missing {previewOutput.MissingCellCount:N0} | collisions {previewOutput.CollisionCount:N0}";
 
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
+        previewOutput = null;
+        publishedOutputs.Clear();
+        isPreviewRunning = false;
+        isPreviewStale = false;
+        isPreviewPublished = false;
+    }
+
     public bool TryGetPublishedOutput(
         string outputEntityId,
-        out C3DTransformedHeightField? output) =>
-        publishedOutputs.TryGetValue(outputEntityId, out output);
+        out C3DTransformedHeightField? output)
+    {
+        if (IsDisposed)
+        {
+            output = null;
+            return false;
+        }
+
+        return publishedOutputs.TryGetValue(outputEntityId, out output);
+    }
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || getSelectedPipelineStep() is not { } step
+        if (IsDisposed
+            || !CanPreview()
+            || getSelectedPipelineStep() is not { } step
             || !TryGetCurrentInput(out var cloud))
         {
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
+        var currentCancellation = new CancellationTokenSource();
+        var cancellationToken = currentCancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            currentCancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            return false;
+        }
+
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Re-grid Height Map Preview projects the Published A2 cloud into the authored U/V/H grid. It rejects out-of-bounds input, preserves holes, and does not interpolate, write C3D, or measure.");
+        if (!IsCurrentPreview(currentCancellation))
+        {
+            return false;
+        }
+
         appendLog("Preview", $"Re-grid Height Map Preview started: {step.Id}.");
         try
         {
@@ -93,18 +158,32 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
                     createDocument(),
                     step.Id,
                     cloud,
-                    previewCancellation.Token),
-                previewCancellation.Token);
+                    cancellationToken),
+                cancellationToken);
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             if (evaluation.Result.Status == ResultStatus.Error || evaluation.Output is null)
             {
                 previewOutput = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
-                appendLog("Error", $"Re-grid Height Map Preview failed: {evaluation.Result.Message}");
+                if (IsCurrentPreview(currentCancellation))
+                {
+                    appendLog("Error", $"Re-grid Height Map Preview failed: {evaluation.Result.Message}");
+                }
+
                 return false;
             }
 
             previewOutput = evaluation.Output;
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = evaluation.Output.MeetsMinimumCoverage
                 ? "Preview ready"
                 : "Preview coverage below publish minimum";
@@ -112,11 +191,20 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
                 + (evaluation.Output.MeetsMinimumCoverage
                     ? string.Empty
                     : " | Publish blocked by the authored minimum coverage ratio."));
-            appendLog("Preview", $"Re-grid Height Map Preview ready: {evaluation.Output.ContentSha256}.");
+            if (IsCurrentPreview(currentCancellation))
+            {
+                appendLog("Preview", $"Re-grid Height Map Preview ready: {evaluation.Output.ContentSha256}.");
+            }
+
             return true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsCurrentPreview(currentCancellation))
+            {
+                return false;
+            }
+
             step.State = "Ready";
             SetSummary("Preview canceled. The Published A2 cloud and authored recipe were not changed.");
             appendLog("Preview", "Re-grid Height Map Preview canceled.");
@@ -124,13 +212,30 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
         }
         finally
         {
-            SetRunning(false);
+            var ownsCancellation = ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    currentCancellation),
+                currentCancellation);
+            if (ownsCancellation)
+            {
+                currentCancellation.Dispose();
+            }
+
+            if (ownsCancellation && !IsDisposed)
+            {
+                SetRunning(false);
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!IsSelectedStepRegridHeightField || hasPendingStepParameterChanges() || isPreviewRunning
+        if (IsDisposed
+            || !IsSelectedStepRegridHeightField
+            || hasPendingStepParameterChanges()
+            || isPreviewRunning
             || !TryGetCurrentInput(out var cloud) || getSelectedPipelineStep() is not { } step)
         {
             return false;
@@ -147,7 +252,9 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
 
     public void Publish()
     {
-        if (getSelectedPipelineStep() is not { } step || !CanPublish)
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { } step
+            || !CanPublish)
         {
             return;
         }
@@ -160,11 +267,34 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
         appendLog("Publish", $"Re-grid Height Map output published without re-running: {step.OutputEntityId}.");
     }
 
-    public void Cancel() => previewCancellation?.Cancel();
+    public void Cancel()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Volatile.Read(ref previewCancellation)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+    }
 
     public void Clear(string summary)
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var currentCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            null);
+        CancelAndDispose(currentCancellation);
         previewOutput = null;
         publishedOutputs.Clear();
         isPreviewStale = false;
@@ -174,6 +304,11 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
 
     public void RefreshState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedPipelineStep() is { } step && IsSelectedStepRegridHeightField)
         {
             var message = "Re-grid Height Map v1 route is incomplete.";
@@ -224,7 +359,8 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
     private bool TryGetCurrentInput(out C3DTransformedPointCloud cloud)
     {
         cloud = null!;
-        if (getSelectedPipelineStep() is not { InputEntityIds.Count: 1 } step
+        if (IsDisposed
+            || getSelectedPipelineStep() is not { InputEntityIds.Count: 1 } step
             || getPublishedAffineApplyOutput(step.InputEntityIds[0]) is not { } published)
         {
             return false;
@@ -236,13 +372,47 @@ internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isPreviewRunning = value;
         onExecutionStateChanged();
     }
 
     private void SetSummary(string value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         executionSummary = value;
         onExecutionStateChanged();
+    }
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(
+            Volatile.Read(ref previewCancellation),
+            cancellation);
+
+    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    {
+        if (currentCancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            currentCancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A concurrent owner disposal already released the token source.
+        }
+
+        currentCancellation.Dispose();
     }
 }

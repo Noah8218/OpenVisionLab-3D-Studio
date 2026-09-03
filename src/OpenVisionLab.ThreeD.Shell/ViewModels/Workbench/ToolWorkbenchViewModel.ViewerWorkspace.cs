@@ -15,15 +15,7 @@ public sealed partial class ToolWorkbenchViewModel
 {
     public const string HeightImageViewerContentId = "viewer.height-image";
 
-    private SurfaceMatchExecutionArtifact? surfaceMatchEvidence;
-    private SurfaceMatchAssessmentArtifact? surfaceMatchAssessment;
-    private SurfaceMatchRuntimeReport? surfaceMatchRuntime;
-    private SurfaceAndEdgeMatchScoreArtifact? surfaceEdgeScore;
-    private SurfaceEdgeDiagnosticOverlayArtifact? surfaceEdgeDiagnosticOverlay;
-    private SurfaceEdgeAcquisitionDirectionArtifact? surfaceEdgeAcquisitionDirection;
     private bool isSurfaceEdgeAcquisitionDirectionStale;
-    private SurfaceAndEdgeMatchAssessmentArtifact? surfaceEdgeAssessment;
-    private SurfaceMatchFalsePositiveReviewArtifact? surfaceMatchFalsePositiveReview;
     private RelayCommand setSingleViewerLayoutCommand = null!;
     private RelayCommand splitViewerVerticallyCommand = null!;
     private RelayCommand splitViewerHorizontallyCommand = null!;
@@ -45,25 +37,25 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand ClearAuxiliaryViewerPinCommand => clearAuxiliaryViewerPinCommand;
     public ICommand ToggleViewerCameraLinkCommand => toggleViewerCameraLinkCommand;
     public SurfaceMatchExecutionArtifact? SurfaceMatchEvidence =>
-        surfaceMatchEvidence;
+        surfaceMatchExperiment.Published?.Execution;
     public bool HasSurfaceMatchEvidence =>
-        surfaceMatchEvidence is not null;
+        surfaceMatchExperiment.Published is not null;
     public SurfaceMatchAssessmentArtifact? SurfaceMatchAssessment =>
-        surfaceMatchAssessment;
+        surfaceMatchExperiment.Published?.Assessment;
     public SurfaceMatchRuntimeReport? SurfaceMatchRuntime =>
-        surfaceMatchRuntime;
+        surfaceMatchExperiment.Published?.Runtime;
     public SurfaceAndEdgeMatchScoreArtifact? SurfaceEdgeScore =>
-        surfaceEdgeScore;
+        surfaceMatchExperiment.Published?.EdgeScore;
     public SurfaceEdgeDiagnosticOverlayArtifact? SurfaceEdgeDiagnosticOverlay =>
-        surfaceEdgeDiagnosticOverlay;
+        surfaceMatchExperiment.Published?.EdgeDiagnosticOverlay;
     public SurfaceEdgeAcquisitionDirectionArtifact? SurfaceEdgeAcquisitionDirection =>
-        surfaceEdgeAcquisitionDirection;
+        surfaceMatchExperiment.Published?.AcquisitionDirectionOrientation;
     public bool IsSurfaceEdgeAcquisitionDirectionStale =>
         isSurfaceEdgeAcquisitionDirectionStale;
     public SurfaceAndEdgeMatchAssessmentArtifact? SurfaceEdgeAssessment =>
-        surfaceEdgeAssessment;
+        surfaceMatchExperiment.Published?.EdgeAssessment;
     public SurfaceMatchFalsePositiveReviewArtifact? SurfaceMatchFalsePositiveReview =>
-        surfaceMatchFalsePositiveReview;
+        surfaceMatchExperiment.Published?.FalsePositiveReview;
     public event EventHandler<ToolWorkbenchSurfaceMatchDisplayRequestEventArgs>?
         SurfaceMatchDisplayRequested;
     public event EventHandler?
@@ -86,18 +78,16 @@ public sealed partial class ToolWorkbenchViewModel
             }
 
             candidates.AddRange(
-                CompareCandidates
-                    .Where(candidate =>
-                        !string.IsNullOrWhiteSpace(candidate.Id)
-                        && File.Exists(candidate.C3DPath))
-                    .Select(candidate => new ViewerWorkspaceCandidateItem(
-                        candidate.Id,
-                        candidate.DisplayName,
+                RenderableC3DCatalog
+                    .Where(target => target.IsDisplayable)
+                    .Select(target => new ViewerWorkspaceCandidateItem(
+                        target.Id,
+                        target.DisplayName,
                         ViewerWorkspaceCandidateKind.ThreeDArtifact,
-                        candidate.C3DPath,
-                        candidate.Contract,
-                        candidate.State,
-                        candidate.IsSource)));
+                        target.C3DPath,
+                        target.Contract,
+                        target.State,
+                        target.IsSource)));
             return candidates;
         }
     }
@@ -351,23 +341,14 @@ public sealed partial class ToolWorkbenchViewModel
 
     public void ClearSurfaceMatchEvidence()
     {
-        if (surfaceMatchEvidence is null)
+        if (surfaceMatchExperiment.Published is null)
         {
             return;
         }
 
+        isSurfaceEdgeAcquisitionDirectionStale = false;
         ClearSurfaceMatchExperiment();
         ClearSurfaceMatchCollection();
-        surfaceMatchEvidence = null;
-        surfaceMatchAssessment = null;
-        surfaceMatchRuntime = null;
-        surfaceEdgeScore = null;
-        surfaceEdgeDiagnosticOverlay = null;
-        surfaceEdgeAcquisitionDirection = null;
-        isSurfaceEdgeAcquisitionDirectionStale = false;
-        surfaceEdgeAssessment = null;
-        surfaceMatchFalsePositiveReview = null;
-        RaisePublishedSurfaceMatchProperties();
         SurfaceMatchDisplayCleared?.Invoke(this, EventArgs.Empty);
     }
 
@@ -428,7 +409,6 @@ public sealed partial class ToolWorkbenchViewModel
                                  ViewerWorkspaceSession.AuxiliarySlotId,
                                  StringComparison.OrdinalIgnoreCase)));
         ViewerWorkspace.PropertyChanged += OnViewerWorkspacePropertyChanged;
-        Localization.PropertyChanged += OnViewerWorkspaceLocalizationChanged;
     }
 
     private void SetViewerWorkspaceLayout(ViewerWorkspaceLayout layout)

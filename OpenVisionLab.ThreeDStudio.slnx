@@ -11,6 +11,7 @@
   <Project Path="src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj" />
   <Project Path="src/OpenVisionLab.ThreeD.Shell/OpenVisionLab.ThreeD.Shell.csproj" />
   <Project Path="src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Verification/OpenVisionLab.ThreeD.Verification.csproj" />
   <Project Path="src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj" />
   <Project Path="src/OpenVisionLab.ThreeDStudio/OpenVisionLab.ThreeDStudio.csproj" />
   <Project Path="tests/OpenVisionLab.ThreeD.Data.Tests/OpenVisionLab.ThreeD.Data.Tests.csproj" />

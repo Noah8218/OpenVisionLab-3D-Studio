@@ -8,7 +8,7 @@ namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 /// <summary>
 /// Owns Height Deviation recipe construction and persistence without depending on WPF.
 /// </summary>
-internal static class HeightDeviationRecipeSaveCoordinator
+public static class HeightDeviationRecipeSaveCoordinator
 {
     public static bool Save(
         string path,

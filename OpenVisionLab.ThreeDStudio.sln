@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -34,6 +34,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.Logging.Controls", "src\OpenVisionLab.Logging.Controls\OpenVisionLab.Logging.Controls.csproj", "{D754E73A-A66C-4B16-A2D7-C53AD53A444D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.Wpf.MessageDialogs", "src\OpenVisionLab.Wpf.MessageDialogs\OpenVisionLab.Wpf.MessageDialogs.csproj", "{A3B97E4D-688B-4E20-B3EA-6E94F4A25C91}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.ThreeD.Verification", "src\OpenVisionLab.ThreeD.Verification\OpenVisionLab.ThreeD.Verification.csproj", "{396AED0B-8F0A-4E89-A48B-851EF4129400}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -225,11 +227,24 @@ Global
 		{A3B97E4D-688B-4E20-B3EA-6E94F4A25C91}.Release|x64.Build.0 = Release|Any CPU
 		{A3B97E4D-688B-4E20-B3EA-6E94F4A25C91}.Release|x86.ActiveCfg = Release|Any CPU
 		{A3B97E4D-688B-4E20-B3EA-6E94F4A25C91}.Release|x86.Build.0 = Release|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Debug|x64.Build.0 = Debug|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Debug|x86.Build.0 = Debug|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Release|Any CPU.Build.0 = Release|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Release|x64.ActiveCfg = Release|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Release|x64.Build.0 = Release|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Release|x86.ActiveCfg = Release|Any CPU
+		{396AED0B-8F0A-4E89-A48B-851EF4129400}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{396AED0B-8F0A-4E89-A48B-851EF4129400} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{47218542-B989-429B-8411-EAF4F002CCDC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{7BB3BB9D-DD3D-4D07-8C99-3545DD4E29C8} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{D754E73A-A66C-4B16-A2D7-C53AD53A444D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
