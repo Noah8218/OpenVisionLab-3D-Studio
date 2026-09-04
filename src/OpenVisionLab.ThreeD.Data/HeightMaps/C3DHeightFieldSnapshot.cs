@@ -26,7 +26,8 @@ public sealed class C3DHeightFieldSnapshot
         int gridOriginRow,
         double[] values,
         string provenance,
-        bool isDerived)
+        bool isDerived,
+        CancellationToken cancellationToken)
     {
         EntityId = entityId;
         SourcePath = sourcePath;
@@ -43,6 +44,7 @@ public sealed class C3DHeightFieldSnapshot
         Provenance = provenance;
         IsDerived = isDerived;
 
+        cancellationToken.ThrowIfCancellationRequested();
         var summary = new HeightDistributionStatisticsTool().Execute(
             values,
             new HeightDistributionStatisticsOptions
@@ -50,6 +52,7 @@ public sealed class C3DHeightFieldSnapshot
                 BinCount = 1,
                 ZeroIsMissing = false
             });
+        cancellationToken.ThrowIfCancellationRequested();
         if (!summary.Success)
         {
             throw new InvalidDataException(summary.Message);
@@ -88,13 +91,27 @@ public sealed class C3DHeightFieldSnapshot
         string entityId,
         string unit,
         string frameId)
+        => LoadIdentified(
+            path,
+            entityId,
+            unit,
+            frameId,
+            CancellationToken.None);
+
+    public static C3DHeightFieldSnapshot LoadIdentified(
+        string path,
+        string entityId,
+        string unit,
+        string frameId,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
         ArgumentException.ThrowIfNullOrWhiteSpace(unit);
         ArgumentException.ThrowIfNullOrWhiteSpace(frameId);
+        cancellationToken.ThrowIfCancellationRequested();
         var fullPath = Path.GetFullPath(path);
-        var (byteLength, hash, width, height, values) = ParseAndHash(fullPath);
+        var (byteLength, hash, width, height, values) = ParseAndHash(fullPath, cancellationToken);
         return new C3DHeightFieldSnapshot(
             entityId,
             fullPath,
@@ -109,7 +126,8 @@ public sealed class C3DHeightFieldSnapshot
             0,
             values,
             $"source:{hash}",
-            false);
+            false,
+            cancellationToken);
     }
 
     public static C3DHeightFieldSnapshot LoadVerified(
@@ -121,11 +139,33 @@ public sealed class C3DHeightFieldSnapshot
         string expectedContentSha256,
         int expectedWidth,
         int expectedHeight)
+        => LoadVerified(
+            path,
+            entityId,
+            unit,
+            frameId,
+            expectedByteLength,
+            expectedContentSha256,
+            expectedWidth,
+            expectedHeight,
+            CancellationToken.None);
+
+    public static C3DHeightFieldSnapshot LoadVerified(
+        string path,
+        string entityId,
+        string unit,
+        string frameId,
+        long expectedByteLength,
+        string expectedContentSha256,
+        int expectedWidth,
+        int expectedHeight,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
+        cancellationToken.ThrowIfCancellationRequested();
         var fullPath = Path.GetFullPath(path);
-        var (byteLength, hash, width, height, values) = ParseAndHash(fullPath);
+        var (byteLength, hash, width, height, values) = ParseAndHash(fullPath, cancellationToken);
         if (byteLength != expectedByteLength
             || !string.Equals(hash, expectedContentSha256, StringComparison.OrdinalIgnoreCase))
         {
@@ -151,7 +191,8 @@ public sealed class C3DHeightFieldSnapshot
             0,
             values,
             $"source:{hash}",
-            false);
+            false,
+            cancellationToken);
     }
 
     public static C3DHeightFieldSnapshot CreateForVerification(
@@ -186,7 +227,8 @@ public sealed class C3DHeightFieldSnapshot
             0,
             values,
             $"verification:{hash}",
-            false);
+            false,
+            CancellationToken.None);
     }
 
     public C3DHeightFieldSnapshot CreateDerived(string outputEntityId, IReadOnlyList<double> outputValues, string provenance)
@@ -219,7 +261,8 @@ public sealed class C3DHeightFieldSnapshot
             GridOriginRow,
             copy,
             provenance,
-            true);
+            true,
+            CancellationToken.None);
     }
 
     public C3DHeightFieldSnapshot CreateCrop(
@@ -275,7 +318,8 @@ public sealed class C3DHeightFieldSnapshot
             expectedOriginRow,
             copy,
             provenance,
-            true);
+            true,
+            CancellationToken.None);
     }
 
     public void SaveC3D(string path)
@@ -287,8 +331,9 @@ public sealed class C3DHeightFieldSnapshot
     }
 
     private static (long ByteLength, string ContentSha256, int Width, int Height, double[] Values)
-        ParseAndHash(string fullPath)
+        ParseAndHash(string fullPath, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using var stream = new FileStream(
             fullPath,
             FileMode.Open,
@@ -298,6 +343,7 @@ public sealed class C3DHeightFieldSnapshot
             FileOptions.SequentialScan);
         var byteLength = stream.Length;
         var layout = C3DSourceTopology.ReadAndValidate(stream);
+        cancellationToken.ThrowIfCancellationRequested();
         Span<byte> header = stackalloc byte[8];
         stream.Position = 0;
         stream.ReadExactly(header);
@@ -308,6 +354,7 @@ public sealed class C3DHeightFieldSnapshot
         var index = 0;
         while (index < layout.SampleCount)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var remainingBytes = checked((layout.SampleCount - index) * sizeof(float));
             var bytesToRead = remainingBytes < buffer.Length
                 ? remainingBytes
@@ -316,6 +363,11 @@ public sealed class C3DHeightFieldSnapshot
             hash.AppendData(buffer.AsSpan(0, bytesToRead));
             for (var offset = 0; offset < bytesToRead; offset += sizeof(float))
             {
+                if ((index & 0x3fff) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 var bits = BinaryPrimitives.ReadInt32LittleEndian(buffer.AsSpan(offset));
                 var value = BitConverter.Int32BitsToSingle(bits);
                 values[index++] = float.IsFinite(value) && value != 0.0f
@@ -323,6 +375,8 @@ public sealed class C3DHeightFieldSnapshot
                     : double.NaN;
             }
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         return (
             byteLength,

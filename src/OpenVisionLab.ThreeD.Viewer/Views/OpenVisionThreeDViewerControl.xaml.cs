@@ -58,20 +58,65 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private const uint GlUnsignedByte = 0x1401;
     private const uint GlUnpackAlignment = 0x0CF5;
 
-    private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
+    private readonly HeightGridPoint[] generatedPointCloud = ViewerGeneratedPointCloudFactory.Create();
     private readonly ViewerSourceLoadOperationCoordinator sourceLoadOperations = new();
+    private readonly C3DHeightGridRenderProxyCache c3dRenderProxyCache = new();
+    private readonly C3DRenderResourceState c3dRenderResources = new();
     private C3DHeightGrid? c3dSample;
-    private C3DHeightGrid? c3dRenderProxySource;
-    private C3DHeightGridRenderProxy? c3dRenderProxy;
-    private ModelTransform c3dRenderPositionsTransform;
-    private Vector3[]? c3dRenderPositions;
-    private uint c3dDisplayListId;
-    private C3DDisplayListKey? c3dDisplayListKey;
-    private C3DGpuBufferSet? c3dGpuBuffers;
-    private C3DGpuBufferKey? c3dGpuBufferKey;
-    private C3DGpuBufferKey? c3dGpuFailedKey;
-    private bool c3dGpuReleasePending;
-    private bool c3dGpuBuffersAvailable;
+    private readonly C3DRenderPositionCache c3dRenderPositionCache = new();
+    private uint c3dDisplayListId
+    {
+        get => c3dRenderResources.DisplayListId;
+        set => c3dRenderResources.DisplayListId = value;
+    }
+
+    private C3DDisplayListKey? c3dDisplayListKey
+    {
+        get => c3dRenderResources.DisplayListKey;
+        set => c3dRenderResources.DisplayListKey = value;
+    }
+
+    private C3DGpuBufferSet? c3dGpuBuffers
+    {
+        get => c3dRenderResources.GpuBuffers;
+        set => c3dRenderResources.GpuBuffers = value;
+    }
+
+    private C3DGpuBufferKey? c3dGpuBufferKey
+    {
+        get => c3dRenderResources.GpuBufferKey;
+        set => c3dRenderResources.GpuBufferKey = value;
+    }
+
+    private C3DGpuBufferKey? c3dGpuFailedKey
+    {
+        get => c3dRenderResources.GpuFailedKey;
+        set => c3dRenderResources.GpuFailedKey = value;
+    }
+
+    private bool c3dGpuReleasePending
+    {
+        get => c3dRenderResources.GpuReleasePending;
+        set => c3dRenderResources.GpuReleasePending = value;
+    }
+
+    private bool c3dGpuBuffersAvailable
+    {
+        get => c3dRenderResources.GpuBuffersAvailable;
+        set => c3dRenderResources.GpuBuffersAvailable = value;
+    }
+
+    private uint c3dInteractionDisplayListId
+    {
+        get => c3dRenderResources.InteractionDisplayListId;
+        set => c3dRenderResources.InteractionDisplayListId = value;
+    }
+
+    private C3DDisplayListKey? c3dInteractionDisplayListKey
+    {
+        get => c3dRenderResources.InteractionDisplayListKey;
+        set => c3dRenderResources.InteractionDisplayListKey = value;
+    }
     private int c3dGpuUploadCount;
     private int c3dGpuReleaseCount;
     private int c3dGpuReleaseFailureCount;
@@ -84,14 +129,23 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private string openGLRenderer = "(pending)";
     private string openGLVersion = "(pending)";
     private ImportedMesh? importedMesh;
-    private LazPointCloudMetadata? lazSample;
-    private LazPointCloud? lazPointCloud;
-    private string? lazPointCloudCacheSourcePath;
-    private readonly Dictionary<int, LazPointCloud> lazPointCloudSampleCache = [];
-    private CancellationTokenSource? lazPointCloudLoadCancellation;
+    private readonly ViewerLazPointCloudState lazSourceState = new();
+    private LazPointCloudMetadata? lazSample
+    {
+        get => lazSourceState.Metadata;
+        set => lazSourceState.Metadata = value;
+    }
+
+    private LazPointCloud? lazPointCloud
+    {
+        get => lazSourceState.PointCloud;
+        set => lazSourceState.PointCloud = value;
+    }
+
+    private readonly LazPointCloudSampleCache lazPointCloudCache = new();
+    private readonly LazPointCloudLoadCoordinator lazPointCloudLoadCoordinator;
     private Task lazPointCloudReloadTask = Task.CompletedTask;
     private bool suppressLazPointCloudDensityReload;
-    private int lazPointCloudLoadGeneration;
     private int lazPointCloudLoadRequestCount;
     private int lazPointCloudDensityEventReloadCount;
     private int lazPointCloudSmokeReloadCount;
@@ -100,7 +154,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private int lazPointCloudCancellationCount;
     private int lazPointCloudProgressUpdateCount;
     private double lazPointCloudLastProgress;
-    private (double X, double Y, double Z) lazViewerOrigin;
+    private LazSceneTransform lazSceneTransform
+    {
+        get => lazSourceState.SceneTransform;
+        set => lazSourceState.SceneTransform = value;
+    }
     private Vector3? selectedImportedMeshPoint;
     private string selectedImportedMeshPickKind = "mesh point";
     private int? selectedImportedMeshTriangleIndex;
@@ -156,6 +214,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private readonly PropertyChangedEventHandler nominalActualPropertyChangedHandler;
     private readonly EventHandler languageChangedHandler;
     private readonly NominalActualComparisonExecutor nominalActualComparisonExecutor = new();
+    private readonly CancellationTokenSource viewerLifetimeCancellation = new();
+    private readonly CancellationToken viewerLifetimeToken;
     private int disposalState;
     private bool viewModelEventsSubscribed;
     private bool isOrbiting;
@@ -238,24 +298,6 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         double TargetY,
         double TargetZ);
 
-    private readonly record struct C3DDisplayListKey(
-        C3DHeightGrid Source,
-        ModelTransform Transform,
-        ViewerGeometryStyle GeometryStyle,
-        ViewerColorMap ColorMap,
-        double HeightColorMinimumRaw,
-        double HeightColorMaximumRaw,
-        double PointSize,
-        C3DWireframeLodLevel WireframeLodLevel);
-
-    private readonly record struct C3DGpuBufferKey(
-        C3DHeightGrid Source,
-        ModelTransform Transform,
-        ViewerColorMap ColorMap,
-        double HeightColorMinimumRaw,
-        double HeightColorMaximumRaw,
-        PlaneFlatnessEvaluation? DynamicColorEvaluation);
-
     private sealed record PointerInputRegressionResult(
         bool Passed,
         bool WindowActivated,
@@ -319,6 +361,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     public OpenVisionThreeDViewerControl(bool loadDefaultSamples)
     {
+        viewerLifetimeToken = viewerLifetimeCancellation.Token;
+        lazPointCloudLoadCoordinator = new(lazPointCloudCache);
         InitializeComponent();
         if (useSoftwareRenderingForProcess)
         {

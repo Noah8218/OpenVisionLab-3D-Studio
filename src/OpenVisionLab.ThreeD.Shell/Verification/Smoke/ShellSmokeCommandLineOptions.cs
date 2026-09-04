@@ -1,17 +1,21 @@
-using System.Globalization;
+using OpenVisionLab.ThreeD.Shell.Coordination;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
 internal sealed class ShellSmokeCommandLineOptions
 {
-    private readonly string[] arguments;
+    private readonly ShellCommandLineArguments arguments;
 
-    private ShellSmokeCommandLineOptions(string[] arguments)
+    private ShellSmokeCommandLineOptions(ShellCommandLineArguments arguments)
     {
         this.arguments = arguments;
     }
 
     public static ShellSmokeCommandLineOptions Parse(string[] arguments) =>
+        new(new ShellCommandLineArguments(arguments));
+
+    internal static ShellSmokeCommandLineOptions Parse(
+        ShellCommandLineArguments arguments) =>
         new(arguments);
 
     public string? ShellScreenshotPath => GetValue("--shell-smoke-screenshot");
@@ -109,19 +113,19 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? LineFitSmokeReportPath => GetValue("--smoke-tool-line-fit-report");
 
     public double? AsyncC3DLoadCancelAt =>
-        GetInvariantDouble("--smoke-async-c3d-load-cancel-at");
+        arguments.GetInvariantDouble("--smoke-async-c3d-load-cancel-at");
 
     public double? HeightImageRangeMinimumSmoke =>
-        GetInvariantDouble("--smoke-height-image-range-min");
+        arguments.GetInvariantDouble("--smoke-height-image-range-min");
 
     public double? HeightImageRangeMaximumSmoke =>
-        GetInvariantDouble("--smoke-height-image-range-max");
+        arguments.GetInvariantDouble("--smoke-height-image-range-max");
 
     public int? SharedHeightHoverRow =>
-        GetInvariantInt("--smoke-shared-height-hover-row");
+        arguments.GetInvariantInt("--smoke-shared-height-hover-row");
 
     public int? SharedHeightHoverColumn =>
-        GetInvariantInt("--smoke-shared-height-hover-column");
+        arguments.GetInvariantInt("--smoke-shared-height-hover-column");
 
     public bool AsyncC3DLoadExpectFailure => HasFlag("--smoke-async-c3d-load-expect-failure");
     public bool SourceQualitySmoke => HasFlag("--smoke-source-quality");
@@ -281,30 +285,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || WorkbenchInteractionReportPath is not null
         || SurfaceMatchCollectionPath is not null;
 
-    private bool HasFlag(string name) =>
-        arguments.Contains(name, StringComparer.OrdinalIgnoreCase);
+    private bool HasFlag(string name) => arguments.HasFlag(name);
 
-    private string? GetValue(string name)
-    {
-        var index = Array.IndexOf(arguments, name);
-        return index >= 0 && index + 1 < arguments.Length ? arguments[index + 1] : null;
-    }
-
-    private double? GetInvariantDouble(string name) =>
-        double.TryParse(
-            GetValue(name),
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var value)
-            ? value
-            : null;
-
-    private int? GetInvariantInt(string name) =>
-        int.TryParse(
-            GetValue(name),
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out var value)
-            ? value
-            : null;
+    private string? GetValue(string name) => arguments.GetValue(name);
 }

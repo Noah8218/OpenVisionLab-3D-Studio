@@ -33,6 +33,8 @@ public sealed partial class OpenVisionThreeDViewerControl
     private int visibleFrameRetryGeneration;
     private int visibleFrameRetryAttempt;
     private int visibleFrameRequestGeneration;
+    private readonly object visibleFrameRequestOperationGate = new();
+    private DispatcherOperation? visibleFrameRequestOperation;
     private int sourceLoadUnloadGeneration;
     private int sourceUnloadCancellationGeneration;
     private DispatcherOperation? sourceUnloadCancellationOperation;
@@ -67,6 +69,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         QueueSourceUnloadCancellation(unloadGeneration);
 
         visibleFrameRequestGeneration++;
+        CancelVisibleFrameRequest();
         StopVisibleFrameRetryTimer();
         StopInteractionWireframeLod();
         UnsubscribeViewModelEvents();
@@ -197,11 +200,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
+        viewerLifetimeCancellation.Cancel();
         CancelLanguageRefresh();
         CancelSourceUnloadCancellation();
         visibleFrameRequestGeneration++;
+        CancelVisibleFrameRequest();
         sourceLoadUnloadGeneration++;
-        lazPointCloudLoadGeneration++;
         StopVisibleFrameRetryTimer();
         DisposeInteractionWireframeLod();
 
@@ -216,7 +220,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         sourceLoadOperations.Dispose();
-        lazPointCloudLoadCancellation?.Cancel();
+        lazPointCloudLoadCoordinator.Dispose();
         UnsubscribeViewModelEvents();
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
@@ -225,6 +229,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         TryRetireOpenGLResourcesForDispose();
         renderContextLifetime.Dispose(Viewport);
         ClearManagedDataReferencesAfterDispose();
+        viewerLifetimeCancellation.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -304,7 +309,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             && !IsLoaded)
         {
             sourceLoadOperations.CancelCurrent();
-            lazPointCloudLoadCancellation?.Cancel();
+            lazPointCloudLoadCoordinator.CancelCurrent();
         }
     }
 
@@ -357,15 +362,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void DropOpenGLResourceReferencesAfterDispose()
     {
-        c3dGpuBuffers = null;
-        c3dGpuBufferKey = null;
-        c3dGpuFailedKey = null;
-        c3dGpuReleasePending = false;
-        c3dGpuBuffersAvailable = false;
-        c3dDisplayListId = 0;
-        c3dDisplayListKey = null;
-        c3dInteractionDisplayListId = 0;
-        c3dInteractionDisplayListKey = null;
+        c3dRenderResources.ClearManagedReferences();
         importedMeshTextureId = 0;
         importedMeshTextureSource = null;
         importedMeshTextureReleasePending = false;
@@ -380,16 +377,11 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void ClearManagedDataReferencesAfterDispose()
     {
         c3dSample = null;
-        c3dRenderProxySource = null;
-        c3dRenderProxy = null;
-        c3dRenderPositions = null;
-        c3dRenderPositionsTransform = default;
+        c3dRenderProxyCache.Clear();
+        c3dRenderPositionCache.Clear();
         importedMesh = null;
-        lazSample = null;
-        lazPointCloud = null;
-        lazPointCloudCacheSourcePath = null;
-        lazPointCloudSampleCache.Clear();
-        lazPointCloudLoadCancellation = null;
+        lazSourceState.Clear();
+        lazPointCloudCache.Clear();
         lazPointCloudReloadTask = Task.CompletedTask;
         CurrentViewerOnlySourcePath = null;
         CurrentViewerOnlySourceFormat = null;
@@ -422,14 +414,12 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     internal bool HasManagedDataReferences =>
         c3dSample is not null
-        || c3dRenderProxySource is not null
-        || c3dRenderProxy is not null
-        || c3dRenderPositions is not null
+        || c3dRenderProxyCache.HasValue
+        || c3dRenderPositionCache.HasValue
         || importedMesh is not null
         || lazSample is not null
         || lazPointCloud is not null
-        || lazPointCloudCacheSourcePath is not null
-        || lazPointCloudSampleCache.Count > 0
+        || lazPointCloudCache.HasEntries
         || affineApplyRenderOutput is not null
         || affineApplyLocatorToPointIndex is not null
         || affineApplyRenderedPointIndexes is not null
@@ -519,7 +509,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
             {
-                Dispatcher.BeginInvoke(RequestVisibleFrame, DispatcherPriority.Loaded);
+                QueueVisibleFrameRequest();
             }
 
             return;
@@ -537,44 +527,125 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void RequestVisibleFrameCore(int generation, int attempt)
     {
-        Dispatcher.BeginInvoke(
-            () =>
+        CancelVisibleFrameRequest();
+        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        try
+        {
+            var operation = Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(() => ApplyVisibleFrameRequest(generation, attempt)));
+            lock (visibleFrameRequestOperationGate)
             {
-                if (IsDisposed || generation != visibleFrameRequestGeneration)
-                {
-                    return;
-                }
+                visibleFrameRequestOperation = operation;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            lock (visibleFrameRequestOperationGate)
+            {
+                visibleFrameRequestOperation = null;
+            }
+        }
+    }
 
-                if (IsLoaded
-                    && IsVisible
-                    && Viewport.IsVisible
-                    && Viewport.ActualWidth >= 2
-                    && Viewport.ActualHeight >= 2)
-                {
-                    Viewport.UpdateLayout();
-                    Viewport.RenderTrigger = RenderTrigger.Manual;
-                    Viewport.DoRender();
-                    Viewport.RenderTrigger = RenderTrigger.TimerBased;
-                    Viewport.InvalidateVisual();
-                    VisibleFrameRequestCount++;
-                }
+    private void QueueVisibleFrameRequest()
+    {
+        if (IsDisposed
+            || Dispatcher.HasShutdownStarted
+            || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
 
-                if (attempt >= 2)
-                {
-                    return;
-                }
+        lock (visibleFrameRequestOperationGate)
+        {
+            if (visibleFrameRequestOperation?.Status
+                is DispatcherOperationStatus.Pending
+                or DispatcherOperationStatus.Executing)
+            {
+                return;
+            }
 
-                StopVisibleFrameRetryTimer();
-                visibleFrameRetryGeneration = generation;
-                visibleFrameRetryAttempt = attempt;
-                visibleFrameRetryTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
-                {
-                    Interval = TimeSpan.FromMilliseconds(attempt == 0 ? 160 : 360)
-                };
-                visibleFrameRetryTimer.Tick += OnVisibleFrameRetryTimerTick;
-                visibleFrameRetryTimer.Start();
-            },
-            DispatcherPriority.ContextIdle);
+            try
+            {
+                visibleFrameRequestOperation = Dispatcher.BeginInvoke(
+                    DispatcherPriority.Loaded,
+                    new Action(ApplyQueuedVisibleFrameRequest));
+            }
+            catch (InvalidOperationException)
+            {
+                visibleFrameRequestOperation = null;
+            }
+        }
+    }
+
+    private void ApplyQueuedVisibleFrameRequest()
+    {
+        lock (visibleFrameRequestOperationGate)
+        {
+            visibleFrameRequestOperation = null;
+        }
+        RequestVisibleFrame();
+    }
+
+    private void ApplyVisibleFrameRequest(int generation, int attempt)
+    {
+        lock (visibleFrameRequestOperationGate)
+        {
+            visibleFrameRequestOperation = null;
+        }
+        if (IsDisposed || generation != visibleFrameRequestGeneration)
+        {
+            return;
+        }
+
+        if (IsLoaded
+            && IsVisible
+            && Viewport.IsVisible
+            && Viewport.ActualWidth >= 2
+            && Viewport.ActualHeight >= 2)
+        {
+            Viewport.UpdateLayout();
+            Viewport.RenderTrigger = RenderTrigger.Manual;
+            Viewport.DoRender();
+            Viewport.RenderTrigger = RenderTrigger.TimerBased;
+            Viewport.InvalidateVisual();
+            VisibleFrameRequestCount++;
+        }
+
+        if (attempt >= 2)
+        {
+            return;
+        }
+
+        StopVisibleFrameRetryTimer();
+        visibleFrameRetryGeneration = generation;
+        visibleFrameRetryAttempt = attempt;
+        visibleFrameRetryTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(attempt == 0 ? 160 : 360)
+        };
+        visibleFrameRetryTimer.Tick += OnVisibleFrameRetryTimerTick;
+        visibleFrameRetryTimer.Start();
+    }
+
+    private void CancelVisibleFrameRequest()
+    {
+        DispatcherOperation? operation;
+        lock (visibleFrameRequestOperationGate)
+        {
+            operation = visibleFrameRequestOperation;
+            visibleFrameRequestOperation = null;
+        }
+
+        if (operation?.Status == DispatcherOperationStatus.Pending)
+        {
+            operation.Abort();
+        }
     }
 
     private void OnVisibleFrameRetryTimerTick(object? sender, EventArgs args)
@@ -789,6 +860,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         object? sender,
         NominalActualPreviewRequestedEventArgs args)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var comparison = viewModel.NominalActual;
         if (!viewModel.RecipeOutputEnabled)
         {
@@ -815,20 +891,41 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var progress = new Progress<NominalActualComparisonProgress>(value =>
+        {
+            if (IsDisposed
+                || viewerLifetimeToken.IsCancellationRequested
+                || args.CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             comparison.ReportPreviewProgress(
                 args.RequestId,
                 value.ProcessedPointCount,
                 value.TotalPointCount,
                 value.Elapsed,
-                value.Stage));
+                value.Stage);
+        });
+        CancellationTokenSource? viewerLifetimeLinkedCancellation = null;
+        var operationToken = args.CancellationToken;
 
         try
         {
+            viewerLifetimeLinkedCancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    args.CancellationToken,
+                    viewerLifetimeToken);
+            operationToken = viewerLifetimeLinkedCancellation.Token;
             var result = await nominalActualComparisonExecutor.ExecuteAsync(
                 executionInput,
                 args.MaximumDisplaySamples,
                 progress,
-                args.CancellationToken);
+                operationToken);
+            if (IsDisposed || operationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             if (!comparison.CompletePreview(args.RequestId, result))
             {
                 return;
@@ -840,12 +937,17 @@ public sealed partial class OpenVisionThreeDViewerControl
                 $"Nominal/actual Preview complete: {result.Status}, {result.ComparedPointCount:N0} full-query points";
             RenderNow();
         }
-        catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (operationToken.IsCancellationRequested)
         {
             // The ViewModel already owns the cancelled/stale state transition.
         }
         catch (Exception exception)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             if (comparison.FailPreview(args.RequestId, exception.Message))
             {
                 viewModel.ViewerStatus = $"Nominal/actual Preview failed: {exception.Message}";
@@ -857,6 +959,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             RenderNow();
+        }
+        finally
+        {
+            viewerLifetimeLinkedCancellation?.Dispose();
         }
     }
 

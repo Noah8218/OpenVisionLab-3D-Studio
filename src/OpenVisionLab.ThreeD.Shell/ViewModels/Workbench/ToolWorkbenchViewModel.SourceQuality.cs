@@ -10,6 +10,9 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 public sealed partial class ToolWorkbenchViewModel
 {
     private readonly System.Windows.Threading.Dispatcher? sourceQualityUiDispatcher;
+    private readonly object sourceQualityUiNotificationGate = new();
+    private System.Windows.Threading.DispatcherOperation? sourceQualityUiNotificationOperation;
+    private int sourceQualityUiArtifactRefreshPending;
     private RelayCommand selectSourceQualityCommand = null!;
 
     public SourceQualityWorkspaceViewModel SourceQuality { get; private set; } = null!;
@@ -193,6 +196,11 @@ public sealed partial class ToolWorkbenchViewModel
         object? sender,
         PropertyChangedEventArgs args)
     {
+        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
         if (args.PropertyName is nameof(SourceQualityWorkspaceViewModel.IsLoading)
             or nameof(SourceQualityWorkspaceViewModel.Report)
             or nameof(SourceQualityWorkspaceViewModel.HasReport)
@@ -203,17 +211,119 @@ public sealed partial class ToolWorkbenchViewModel
             if (sourceQualityUiDispatcher is { } dispatcher
                 && !dispatcher.CheckAccess())
             {
-                dispatcher.BeginInvoke(
-                    new Action(() => OnSourceQualityPropertyChanged(sender, args)));
+                QueueSourceQualityUiNotification(args.PropertyName);
                 return;
             }
 
-            if (args.PropertyName is nameof(SourceQualityWorkspaceViewModel.Report)
+            ApplySourceQualityPropertyChanged(
+                args.PropertyName is nameof(SourceQualityWorkspaceViewModel.Report)
+                    or nameof(SourceQualityWorkspaceViewModel.HasError));
+        }
+    }
+
+    private void QueueSourceQualityUiNotification(string? propertyName)
+    {
+        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        lock (sourceQualityUiNotificationGate)
+        {
+            if (System.Threading.Volatile.Read(ref disposalState) != 0)
+            {
+                return;
+            }
+
+            if (propertyName is nameof(SourceQualityWorkspaceViewModel.Report)
                 or nameof(SourceQualityWorkspaceViewModel.HasError))
             {
-                RebuildArtifactRegistryAndNavigator();
+                System.Threading.Interlocked.Exchange(
+                    ref sourceQualityUiArtifactRefreshPending,
+                    1);
             }
-            NotifySourceQualityWorkspaceState();
+
+            if (sourceQualityUiNotificationOperation?.Status
+                is System.Windows.Threading.DispatcherOperationStatus.Pending
+                or System.Windows.Threading.DispatcherOperationStatus.Executing)
+            {
+                return;
+            }
+
+            if (sourceQualityUiDispatcher is null
+                || sourceQualityUiDispatcher.HasShutdownStarted
+                || sourceQualityUiDispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            try
+            {
+                sourceQualityUiNotificationOperation =
+                    sourceQualityUiDispatcher.BeginInvoke(
+                        System.Windows.Threading.DispatcherPriority.Normal,
+                        new Action(ApplyQueuedSourceQualityUiNotification));
+            }
+            catch (InvalidOperationException)
+            {
+                sourceQualityUiNotificationOperation = null;
+                System.Threading.Interlocked.Exchange(
+                    ref sourceQualityUiArtifactRefreshPending,
+                    0);
+            }
+        }
+    }
+
+    private void ApplyQueuedSourceQualityUiNotification()
+    {
+        bool refreshArtifacts;
+        lock (sourceQualityUiNotificationGate)
+        {
+            sourceQualityUiNotificationOperation = null;
+            refreshArtifacts = System.Threading.Interlocked.Exchange(
+                ref sourceQualityUiArtifactRefreshPending,
+                0) != 0;
+        }
+
+        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        ApplySourceQualityPropertyChanged(refreshArtifacts);
+    }
+
+    private void ApplySourceQualityPropertyChanged(bool refreshArtifacts)
+    {
+        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        if (refreshArtifacts)
+        {
+            RebuildArtifactRegistryAndNavigator();
+        }
+
+        NotifySourceQualityWorkspaceState();
+    }
+
+    private void CancelSourceQualityUiNotification()
+    {
+        System.Windows.Threading.DispatcherOperation? operation;
+        lock (sourceQualityUiNotificationGate)
+        {
+            operation = sourceQualityUiNotificationOperation;
+            sourceQualityUiNotificationOperation = null;
+            System.Threading.Interlocked.Exchange(
+                ref sourceQualityUiArtifactRefreshPending,
+                0);
+        }
+
+        if (operation?.Status
+            == System.Windows.Threading.DispatcherOperationStatus.Pending)
+        {
+            operation.Abort();
         }
     }
 

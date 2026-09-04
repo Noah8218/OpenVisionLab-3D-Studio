@@ -6,6 +6,7 @@ using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Localization;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab;
@@ -437,6 +438,21 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 && ColorNear(ViewerColorMapPalette.Thermal(-1.0), (0.0, 0.0, 0.0))
                 && ColorNear(ViewerColorMapPalette.Thermal(2.0), (1.0, 1.0, 1.0)),
                 "invalid and out-of-range values clamped");
+            Check(
+                "deviation palette",
+                ColorNear(ViewerColorMapPalette.Deviation(0.0), (0.12, 0.84, 0.64))
+                && ColorNear(ViewerColorMapPalette.Deviation(1.0), (1.0, 0.16, 0.12)),
+                ViewerColorMapPalette.Deviation(0.5).ToString());
+            var generatedPointCloud = ViewerGeneratedPointCloudFactory.Create();
+            Check(
+                "generated point-cloud fixture",
+                generatedPointCloud.Length == 55 * 41
+                && generatedPointCloud.All(point =>
+                    float.IsFinite(point.Position.X)
+                    && float.IsFinite(point.Position.Y)
+                    && float.IsFinite(point.Position.Z)
+                    && double.IsFinite(point.RawValue)),
+                $"points={generatedPointCloud.Length}");
 
             var renderProxy = C3DHeightGridRenderProxy.Create(
                 [GridPoint(0, 0), GridPoint(0, 1), GridPoint(1, 0), GridPoint(1, 1)],
@@ -522,6 +538,194 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "render proxy rejects invalid stride",
                 Throws<ArgumentOutOfRangeException>(() => C3DHeightGridRenderProxy.Create([GridPoint(0, 0)], 0)),
                 "zero stride rejected");
+
+            var c3dCachePath = Path.Combine(
+                "3D",
+                "Samples",
+                "ThicknessCouponV1",
+                "thickness-coupon-v1.C3D");
+            Check(
+                "render proxy cache fixture exists",
+                File.Exists(c3dCachePath),
+                Path.GetFullPath(c3dCachePath));
+            var c3dCacheGrid = C3DHeightGrid.Load(c3dCachePath, maxRenderedPoints: 256);
+            var renderProxyCache = new C3DHeightGridRenderProxyCache();
+            var cachedProxy = renderProxyCache.GetOrCreate(c3dCacheGrid);
+            var reusedProxy = renderProxyCache.GetOrCreate(c3dCacheGrid);
+            Check(
+                "render proxy cache reuses an immutable source snapshot",
+                ReferenceEquals(cachedProxy, reusedProxy)
+                && ReferenceEquals(renderProxyCache.Source, c3dCacheGrid)
+                && ReferenceEquals(renderProxyCache.Current, cachedProxy)
+                && renderProxyCache.HasValue,
+                $"sameObject={ReferenceEquals(cachedProxy, reusedProxy)}|hasValue={renderProxyCache.HasValue}");
+            var preparedProxy = C3DHeightGridRenderProxy.Create(c3dCacheGrid.Points, c3dCacheGrid.PointStride);
+            renderProxyCache.Set(c3dCacheGrid, preparedProxy);
+            Check(
+                "render proxy cache accepts a prepared proxy",
+                ReferenceEquals(renderProxyCache.Current, preparedProxy)
+                && ReferenceEquals(renderProxyCache.Source, c3dCacheGrid),
+                $"prepared={ReferenceEquals(renderProxyCache.Current, preparedProxy)}");
+            renderProxyCache.Clear();
+            Check(
+                "render proxy cache clear drops managed references",
+                !renderProxyCache.HasValue
+                && renderProxyCache.Source is null
+                && renderProxyCache.Current is null,
+                $"hasValue={renderProxyCache.HasValue}|source={renderProxyCache.Source is not null}|proxy={renderProxyCache.Current is not null}");
+
+            var renderPositionCache = new C3DRenderPositionCache();
+            var identityPositions = renderPositionCache.GetOrCreate(renderProxy, ModelTransform.Identity);
+            var reusedIdentityPositions = renderPositionCache.GetOrCreate(renderProxy, ModelTransform.Identity);
+            Check(
+                "render position cache reuses a proxy and transform",
+                ReferenceEquals(identityPositions, reusedIdentityPositions)
+                && identityPositions.Length == renderProxy.Points.Length
+                && identityPositions[0] == renderProxy.Points[0].Position
+                && renderPositionCache.CurrentTransform == ModelTransform.Identity,
+                $"sameObject={ReferenceEquals(identityPositions, reusedIdentityPositions)}|count={identityPositions.Length}");
+            var gpuVertices = C3DGpuVertexBuilder.Build(
+                renderProxy.Points,
+                identityPositions,
+                (_, position) => (0.1, 0.2, 0.3));
+            Check(
+                "GPU vertex builder preserves XYZRGB interleaving",
+                gpuVertices.Length == renderProxy.Points.Length * 6
+                && gpuVertices[0] == identityPositions[0].X
+                && gpuVertices[1] == identityPositions[0].Y
+                && gpuVertices[2] == identityPositions[0].Z
+                && Math.Abs(gpuVertices[3] - 0.1f) < 0.0001f
+                && Math.Abs(gpuVertices[4] - 0.2f) < 0.0001f
+                && Math.Abs(gpuVertices[5] - 0.3f) < 0.0001f,
+                $"floats={gpuVertices.Length}");
+            var translatedTransform = new ModelTransform(1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0);
+            var translatedPositions = renderPositionCache.GetOrCreate(renderProxy, translatedTransform);
+            Check(
+                "render position cache rebuilds for a changed transform",
+                !ReferenceEquals(identityPositions, translatedPositions)
+                && translatedPositions[0] == identityPositions[0] + new Vector3(1.0f, 2.0f, 3.0f)
+                && renderPositionCache.CurrentTransform == translatedTransform,
+                $"sameObject={ReferenceEquals(identityPositions, translatedPositions)}|first={translatedPositions[0]}");
+            var preparedPositions = translatedPositions.ToArray();
+            renderPositionCache.Set(renderProxy, translatedTransform, preparedPositions);
+            Check(
+                "render position cache accepts prepared positions",
+                ReferenceEquals(renderPositionCache.Current, preparedPositions)
+                && renderPositionCache.HasValue,
+                $"prepared={ReferenceEquals(renderPositionCache.Current, preparedPositions)}|hasValue={renderPositionCache.HasValue}");
+            renderPositionCache.Clear();
+            Check(
+                "render position cache clear drops managed references",
+                !renderPositionCache.HasValue
+                && renderPositionCache.Current is null
+                && renderPositionCache.CurrentTransform == default,
+                $"hasValue={renderPositionCache.HasValue}|transform={renderPositionCache.CurrentTransform}");
+
+            var sceneTransform = new LazSceneTransform(10.0, 20.0, 30.0);
+            var mappedPosition = sceneTransform.Map(new Vector3(11.0f, 22.0f, 33.0f));
+            Check(
+                "LAZ scene transform preserves source frame mapping",
+                mappedPosition == new Vector3(1.0f, 3.0f, 2.0f),
+                mappedPosition.ToString());
+            var lazMetadataPath = Path.Combine(
+                "3D",
+                "PublicSamples",
+                "PointCloud",
+                "interesting.las");
+            Check(
+                "LAZ scene transform fixture exists",
+                File.Exists(lazMetadataPath),
+                Path.GetFullPath(lazMetadataPath));
+            var lazMetadata = LazPointCloudMetadata.Load(lazMetadataPath);
+            var metadataTransform = LazSceneTransform.FromMetadata(lazMetadata);
+            var metadataCenter = metadataTransform.Map(
+                (lazMetadata.MinX + lazMetadata.MaxX) * 0.5,
+                (lazMetadata.MinY + lazMetadata.MaxY) * 0.5,
+                (lazMetadata.MinZ + lazMetadata.MaxZ) * 0.5);
+            Check(
+                "LAZ metadata transform centers the scene origin",
+                metadataCenter.Length() < 0.0001f,
+                metadataCenter.ToString());
+            var metadataCorners = metadataTransform.CreateBoundsCorners(lazMetadata);
+            Check(
+                "LAZ metadata transform owns mapped bounds corners",
+                metadataCorners.Length == 8
+                && metadataCorners[0].X <= metadataCorners[6].X
+                && metadataCorners[0].Y <= metadataCorners[6].Y
+                && metadataCorners[0].Z <= metadataCorners[6].Z,
+                $"count={metadataCorners.Length}|min={metadataCorners[0]}|max={metadataCorners[6]}");
+            var lazSourceState = new ViewerLazPointCloudState
+            {
+                Metadata = lazMetadata,
+                SceneTransform = metadataTransform
+            };
+            lazSourceState.Clear();
+            Check(
+                "LAZ source state clear drops source references",
+                lazSourceState.Metadata is null
+                && lazSourceState.PointCloud is null
+                && lazSourceState.SceneTransform == default,
+                $"metadata={lazSourceState.Metadata is not null}|pointCloud={lazSourceState.PointCloud is not null}|transform={lazSourceState.SceneTransform}");
+            var colorPoint = new LazPointCloudPoint(
+                new Vector3(0.0f, 0.0f, (float)lazMetadata.MinZ),
+                128,
+                255,
+                32768,
+                65535);
+            Check(
+                "LAZ display color resolver keeps explicit modes",
+                ViewerLazPointCloudColor.Resolve(colorPoint, "Solid", lazMetadata) == (0.72, 0.84, 1.0)
+                && ViewerLazPointCloudColor.Resolve(colorPoint, "Height", lazMetadata) == C3DPointMapPalette.Height(0.0),
+                ViewerLazPointCloudColor.Resolve(colorPoint, "Solid", lazMetadata).ToString());
+            Check(
+                "LAZ display color resolver handles degenerate height range",
+                ViewerLazPointCloudColor.NormalizeHeight(4.0f, lazMetadata with { MinZ = 4.0, MaxZ = 4.0 }) == 0.5,
+                ViewerLazPointCloudColor.NormalizeHeight(4.0f, lazMetadata with { MinZ = 4.0, MaxZ = 4.0 }).ToString(CultureInfo.InvariantCulture));
+
+            var c3dSamplePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
+            var locatedC3DSample = ViewerSamplePathLocator.Find(
+                c3dSamplePath,
+                [Environment.CurrentDirectory]);
+            Check(
+                "sample path locator finds a repository fixture",
+                locatedC3DSample is not null && File.Exists(locatedC3DSample),
+                locatedC3DSample ?? Path.GetFullPath(c3dSamplePath));
+            var missingSample = ViewerSamplePathLocator.Find(
+                "__missing_viewer_sample__.dat",
+                [Environment.CurrentDirectory]);
+            Check(
+                "sample path locator fails closed for a missing fixture",
+                missingSample is null,
+                missingSample ?? "(none)");
+            var locatedRecipe = ViewerSamplePathLocator.Find(
+                Path.Combine("recipes", "c3d-warpage.recipe.json"),
+                [Environment.CurrentDirectory]);
+            Check(
+                "sample path locator finds a recipe fixture",
+                locatedRecipe is not null && File.Exists(locatedRecipe),
+                locatedRecipe ?? "(none)");
+            var sectionProfilePath = C3DSectionProfilePathBuilder.Build(
+                [
+                    new HeightGridPoint(Vector3.Zero, 0.0, 0.0, 1.0f),
+                    new HeightGridPoint(new Vector3(1.0f, 0.0f, 0.0f), 0.0, 0.0, 3.0f)
+                ],
+                1.0,
+                3.0);
+            Check(
+                "section profile path builder preserves endpoint scaling",
+                sectionProfilePath == "M 0.0,51.0 L 240.0,3.0",
+                sectionProfilePath);
+            var heightMapPixels = C3DHeightMapRasterizer.CreatePixels(c3dCacheGrid, 16, 8);
+            Check(
+                "height map rasterizer preserves BGRA raster dimensions",
+                heightMapPixels.Length == 16 * 8 * 4
+                && heightMapPixels.Where((_, index) => index % 4 == 3).All(alpha => alpha == 255),
+                $"bytes={heightMapPixels.Length}");
+            Check(
+                "height map rasterizer paints loaded C3D points",
+                heightMapPixels.Chunk(4).Any(pixel =>
+                    pixel[0] != 31 || pixel[1] != 24 || pixel[2] != 17),
+                "non-background pixel present");
 
             var rootViewModel = new MainWindowViewModel();
             Check(

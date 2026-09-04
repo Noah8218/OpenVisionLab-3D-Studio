@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell;
+using OpenVisionLab.ThreeD.Shell.Services;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Support;
 
@@ -58,6 +59,43 @@ internal static class RunRecordHistoryVerification
                 htmlReportPath: first.Html,
                 csvReportPath: first.Csv,
                 recentRunRecordsPath: recentPath);
+            var persistence = new ShellRunRecordPersistence(recentPath);
+            var directlyRead = persistence.Read(first.Json);
+            Check(
+                "persistence owner reads Run Record JSON and recent paths without a ViewModel",
+                directlyRead?.SchemaVersion == "1.5"
+                && persistence.LoadRecentPaths().Count == 1
+                && PathsEqual(persistence.LoadRecentPaths()[0], first.Json),
+                $"schema={directlyRead?.SchemaVersion};recent={persistence.LoadRecentPaths().Count}");
+
+            var parserUi = ShellEvidenceTextParser.ExtractUiEvidence(
+            [
+                InspectionContractText.PreviewToolResultMarker,
+                "Nominal / Actual Surface Deviation|Pass|elapsedMs=1.000|metrics=2|overlays=0|message=ok",
+                InspectionContractText.PreviewMetricsMarker,
+                "Signed mean deviation|Deviation|value=1.250|unit=mm|status=Pass",
+                "Out-of-tolerance point count|Count|value=0.000|unit=count|status=Pass"
+            ]);
+            var parserRunner = ShellEvidenceTextParser.ExtractRunnerEvidence(
+            [
+                "ToolResult|Nominal / Actual Surface Deviation|Pass|elapsedMs=1.000|metrics=2|overlays=0|message=ok",
+                InspectionContractText.MetricsMarker,
+                "Signed mean deviation|Deviation|value=1.250|unit=mm|status=Pass",
+                "Out-of-tolerance point count|Count|value=0.000|unit=count|status=Pass"
+            ]);
+            var parserPath = Path.Combine(fixtureRoot, "evidence.txt");
+            File.WriteAllText(parserPath, "line");
+            Check(
+                "evidence parser owns marker, metric, status, and path-free text projection",
+                parserUi.Matches(parserRunner)
+                && ShellEvidenceTextParser.SelectEvidenceStatus(parserUi, parserRunner) == "Pass"
+                && ShellEvidenceTextParser.SelectEvidenceMetric(parserUi, parserRunner)
+                    == "Signed mean deviation 1.250 mm | Out-of-tolerance point count 0.000 count"
+                && ShellEvidenceTextParser.ExtractSourceLoadStatus(["Source|name=sample"]) == "Loaded"
+                && ShellEvidenceTextParser.FormatShortEvidencePath(fixtureRoot, parserPath) == "evidence.txt"
+                && ShellEvidenceTextParser.PreviewLines(fixtureRoot, "Evidence", parserPath, ["line"])
+                    .Contains("line", StringComparison.Ordinal),
+                $"ui={parserUi.ToolName}/{parserUi.Status};runner={parserRunner.ToolName}/{parserRunner.Status};metric={parserUi.KeyMetricSummary}");
 
             Check(
                 "schema 1.5 record loads into ordered Run Record view",

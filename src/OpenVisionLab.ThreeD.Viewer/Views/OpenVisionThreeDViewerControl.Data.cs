@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -180,8 +179,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ApplyViewerOnlyPointCloud(LazPointCloud pointCloud, string format)
     {
-        lazPointCloud = pointCloud;
-        lazSample = pointCloud.Metadata;
+        lazSourceState.SetPointCloud(pointCloud);
         selectedLazPoint = null;
         lazTwoPointFirst = null;
         lazTwoPointSecond = null;
@@ -368,10 +366,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             CurrentViewerOnlySourceFormat = null;
             if (preparedRenderProxy is not null && preparedPositions is not null)
             {
-                c3dRenderProxySource = loaded;
-                c3dRenderProxy = preparedRenderProxy;
-                c3dRenderPositions = preparedPositions;
-                c3dRenderPositionsTransform = ModelTransform.Identity;
+                c3dRenderProxyCache.Set(loaded, preparedRenderProxy);
+                c3dRenderPositionCache.Set(
+                    preparedRenderProxy,
+                    ModelTransform.Identity,
+                    preparedPositions);
                 c3dGpuReleasePending = c3dGpuBuffers is not null;
                 c3dGpuBufferKey = null;
                 c3dGpuFailedKey = null;
@@ -513,7 +512,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private C3DHeightGrid? LoadDefaultC3DSample()
     {
-        var path = FindDefaultC3DSamplePath();
+        var path = ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
         if (path is null)
         {
             return null;
@@ -535,13 +534,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private ImportedMesh? LoadDefaultGlbSample()
     {
-        var path = FindDefaultGlbSamplePath();
+        var path = ViewerSamplePathLocator.Find(DefaultGlbSamplePath);
         return path is null ? null : LoadGlbSample(path);
     }
 
     private LazPointCloudMetadata? LoadDefaultLazSample()
     {
-        var path = FindDefaultLazSamplePath();
+        var path = ViewerSamplePathLocator.Find(DefaultLazSamplePath);
         return path is null ? null : LoadLazSample(path);
     }
 
@@ -629,7 +628,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     private LazPointCloudMetadata? LoadLazSample(string path)
     {
         lazPointCloud = null;
-        lazViewerOrigin = default;
+        lazSceneTransform = default;
         var candidate = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
         viewModel.SetLazSampleSource(path, Path.GetFileNameWithoutExtension(path));
         if (!File.Exists(candidate))
@@ -642,7 +641,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         try
         {
             var metadata = LazPointCloudMetadata.Load(candidate);
-            SetLazViewerOrigin(metadata);
+            SetLazSceneTransform(metadata);
             viewModel.SetLazSampleSource(path, Path.GetFileNameWithoutExtension(path));
             return metadata;
         }
@@ -650,7 +649,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             viewModel.LazSamplePointCount = "(unsupported)";
             viewModel.LazSampleSummary = $"Unsupported or corrupt LAZ/LAS: {ex.Message}";
-            lazViewerOrigin = default;
+            lazSceneTransform = default;
             return null;
         }
     }
@@ -665,26 +664,28 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             viewModel.LazSamplePointCount = "(missing)";
             viewModel.LazSampleSummary = $"Missing LAZ/LAS sample: {path}";
-            lazViewerOrigin = default;
+            lazSceneTransform = default;
             return null;
         }
 
         try
         {
-            var sampleLimit = Math.Max(2, maxSampledPoints);
-            if (TryGetCachedLazPointCloud(candidate, sampleLimit, out var cached))
+            var loadResult = lazPointCloudLoadCoordinator.Load(candidate, maxSampledPoints);
+            if (loadResult.PointCloud is not { } pointCloud)
             {
-                lazPointCloudCacheHitCount++;
-                SetLoadedLazPointCloudTelemetry(cached, loadMilliseconds: 0.0, reused: true);
-                return cached;
+                return null;
             }
 
-            var loadStart = Stopwatch.GetTimestamp();
-            var pointCloud = LazPointCloud.Load(candidate, sampleLimit);
-            var loadMilliseconds = Stopwatch.GetElapsedTime(loadStart).TotalMilliseconds;
-            lazPointCloudDecodeCount++;
-            CacheLazPointCloud(candidate, sampleLimit, pointCloud);
-            SetLoadedLazPointCloudTelemetry(pointCloud, loadMilliseconds, reused: false);
+            if (loadResult.Reused)
+            {
+                lazPointCloudCacheHitCount++;
+            }
+            else
+            {
+                lazPointCloudDecodeCount++;
+            }
+
+            SetLoadedLazPointCloudTelemetry(pointCloud, loadResult.LoadMilliseconds, loadResult.Reused);
             return pointCloud;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -692,7 +693,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.LazSamplePointCount = "(unsupported)";
             viewModel.LazSampleSummary = $"Unsupported or corrupt LAZ/LAS point decode: {ex.Message}";
             viewModel.ClearLazSamplingTelemetry("LAZ/LAS sampling: load failed");
-            lazViewerOrigin = default;
+            lazSceneTransform = default;
             return null;
         }
     }
@@ -704,14 +705,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         IProgress<double>? externalProgress = null,
         Func<bool>? isCurrent = null)
     {
-        bool IsOperationCurrent() => isCurrent?.Invoke() ?? true;
-
         var candidate = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
         var sourceName = Path.GetFileName(candidate);
         var sampleLimit = Math.Max(2, maxSampledPoints);
         if (!File.Exists(candidate))
         {
-            if (IsOperationCurrent())
+            if (isCurrent?.Invoke() ?? true)
             {
                 viewModel.FailLazPointCloudLoad(sourceName, "file not found");
             }
@@ -719,87 +718,75 @@ public sealed partial class OpenVisionThreeDViewerControl
             return null;
         }
 
-        lazPointCloudLoadCancellation?.Cancel();
         lazPointCloudLoadRequestCount++;
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken);
-        lazPointCloudLoadCancellation = cancellation;
-        var generation = unchecked(++lazPointCloudLoadGeneration);
-        if (IsOperationCurrent())
+        if (isCurrent?.Invoke() ?? true)
         {
             viewModel.BeginLazPointCloudLoad(sourceName);
         }
 
-        externalProgress?.Report(0.0);
-
         try
         {
-            if (TryGetCachedLazPointCloud(candidate, sampleLimit, out var cached))
-            {
-                if (generation != lazPointCloudLoadGeneration || !IsOperationCurrent())
+            externalProgress?.Report(0.0);
+            var result = await lazPointCloudLoadCoordinator.LoadAsync(
+                candidate,
+                sampleLimit,
+                externalCancellationToken,
+                new Progress<double>(value =>
                 {
-                    return null;
-                }
+                    if (!(isCurrent?.Invoke() ?? true))
+                    {
+                        return;
+                    }
 
-                lazPointCloudCacheHitCount++;
-                SetLoadedLazPointCloudTelemetry(cached, loadMilliseconds: 0.0, reused: true);
-                externalProgress?.Report(100.0);
-                return cached;
-            }
-
-            var loadStart = Stopwatch.GetTimestamp();
-            var progress = new Progress<double>(value =>
-            {
-                if (generation != lazPointCloudLoadGeneration || !IsOperationCurrent())
-                {
-                    return;
-                }
-
-                lazPointCloudProgressUpdateCount++;
-                lazPointCloudLastProgress = Math.Clamp(value, 0.0, 100.0);
-                viewModel.ReportLazPointCloudLoadProgress(sourceName, lazPointCloudLastProgress);
-                externalProgress?.Report(lazPointCloudLastProgress);
-                CaptureLazProgressSmokeScreenshotIfRequested();
-            });
-            var pointCloud = await Task.Run(
-                () => LazPointCloud.Load(candidate, sampleLimit, cancellation.Token, progress),
-                cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            if (generation != lazPointCloudLoadGeneration || !IsOperationCurrent())
+                    lazPointCloudProgressUpdateCount++;
+                    lazPointCloudLastProgress = Math.Clamp(value, 0.0, 100.0);
+                    viewModel.ReportLazPointCloudLoadProgress(sourceName, lazPointCloudLastProgress);
+                    externalProgress?.Report(lazPointCloudLastProgress);
+                    CaptureLazProgressSmokeScreenshotIfRequested();
+                }),
+                isCurrent);
+            if (result is not { } loadResult)
             {
                 return null;
             }
 
-            var loadMilliseconds = Stopwatch.GetElapsedTime(loadStart).TotalMilliseconds;
-            lazPointCloudDecodeCount++;
-            CacheLazPointCloud(candidate, sampleLimit, pointCloud);
-            SetLoadedLazPointCloudTelemetry(pointCloud, loadMilliseconds, reused: false);
-            return pointCloud;
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-            lazPointCloudCancellationCount++;
-            if (generation == lazPointCloudLoadGeneration && IsOperationCurrent())
+            if (loadResult.WasCanceled)
             {
-                viewModel.CancelLazPointCloudLoad(sourceName);
+                lazPointCloudCancellationCount++;
+                if (isCurrent?.Invoke() ?? true)
+                {
+                    viewModel.CancelLazPointCloudLoad(sourceName);
+                }
+
+                return null;
             }
 
-            return null;
+            if (loadResult.PointCloud is not { } pointCloud)
+            {
+                return null;
+            }
+
+            if (loadResult.Reused)
+            {
+                lazPointCloudCacheHitCount++;
+                externalProgress?.Report(100.0);
+            }
+            else
+            {
+                lazPointCloudDecodeCount++;
+            }
+
+            SetLoadedLazPointCloudTelemetry(pointCloud, loadResult.LoadMilliseconds, loadResult.Reused);
+            return pointCloud;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            if (generation == lazPointCloudLoadGeneration && IsOperationCurrent())
+            if (isCurrent?.Invoke() ?? true)
             {
                 viewModel.FailLazPointCloudLoad(sourceName, ex.Message);
             }
 
             return null;
-        }
-        finally
-        {
-            if (ReferenceEquals(lazPointCloudLoadCancellation, cancellation))
-            {
-                lazPointCloudLoadCancellation = null;
-            }
         }
     }
 
@@ -827,8 +814,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             operation,
             () =>
             {
-                lazPointCloud = reloaded;
-                lazSample = reloaded.Metadata;
+                lazSourceState.SetPointCloud(reloaded);
                 selectedLazPoint = null;
                 lazTwoPointFirst = null;
                 lazTwoPointSecond = null;
@@ -842,41 +828,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             });
     }
 
-    private bool TryGetCachedLazPointCloud(
-        string path,
-        int maxSampledPoints,
-        out LazPointCloud pointCloud)
-    {
-        var fullPath = Path.GetFullPath(path);
-        if (string.Equals(lazPointCloudCacheSourcePath, fullPath, StringComparison.OrdinalIgnoreCase)
-            && lazPointCloudSampleCache.TryGetValue(maxSampledPoints, out var cached))
-        {
-            pointCloud = cached;
-            return true;
-        }
-
-        pointCloud = null!;
-        return false;
-    }
-
-    private void CacheLazPointCloud(string path, int maxSampledPoints, LazPointCloud pointCloud)
-    {
-        var fullPath = Path.GetFullPath(path);
-        if (!string.Equals(lazPointCloudCacheSourcePath, fullPath, StringComparison.OrdinalIgnoreCase))
-        {
-            lazPointCloudSampleCache.Clear();
-            lazPointCloudCacheSourcePath = fullPath;
-        }
-
-        lazPointCloudSampleCache[maxSampledPoints] = pointCloud;
-    }
-
     private void SetLoadedLazPointCloudTelemetry(
         LazPointCloud pointCloud,
         double loadMilliseconds,
         bool reused)
     {
-        SetLazViewerOrigin(pointCloud.Metadata);
+        SetLazSceneTransform(pointCloud.Metadata);
         viewModel.SetLazSampleSource(pointCloud.SourcePath, Path.GetFileNameWithoutExtension(pointCloud.SourcePath));
         viewModel.SetLazSamplingTelemetry(
             pointCloud.DecodedPointCount,
@@ -901,13 +858,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         CaptureWindow(smokeLazProgressScreenshotPath);
     }
 
-    private void SetLazViewerOrigin(LazPointCloudMetadata metadata)
+    private void SetLazSceneTransform(LazPointCloudMetadata metadata)
     {
-        lazViewerOrigin = (
-            (metadata.MinX + metadata.MaxX) * 0.5,
-            (metadata.MinY + metadata.MaxY) * 0.5,
-            (metadata.MinZ + metadata.MaxZ) * 0.5);
-        var corners = GetLazBoundsCorners(metadata);
+        lazSceneTransform = LazSceneTransform.FromMetadata(metadata);
+        var corners = lazSceneTransform.CreateBoundsCorners(metadata);
         var min = corners[0];
         var max = corners[0];
         foreach (var corner in corners)
@@ -917,66 +871,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         viewModel.SetLazSampleBounds(min, max);
-    }
-
-    private static string? FindDefaultC3DSamplePath()
-    {
-        foreach (var root in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
-        {
-            var directory = new DirectoryInfo(root);
-            while (directory is not null)
-            {
-                var candidate = Path.Combine(directory.FullName, DefaultC3DSamplePath);
-                if (File.Exists(candidate))
-                {
-                    return candidate;
-                }
-
-                directory = directory.Parent;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? FindDefaultGlbSamplePath()
-    {
-        foreach (var root in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
-        {
-            var directory = new DirectoryInfo(root);
-            while (directory is not null)
-            {
-                var candidate = Path.Combine(directory.FullName, DefaultGlbSamplePath);
-                if (File.Exists(candidate))
-                {
-                    return candidate;
-                }
-
-                directory = directory.Parent;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? FindDefaultLazSamplePath()
-    {
-        foreach (var root in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
-        {
-            var directory = new DirectoryInfo(root);
-            while (directory is not null)
-            {
-                var candidate = Path.Combine(directory.FullName, DefaultLazSamplePath);
-                if (File.Exists(candidate))
-                {
-                    return candidate;
-                }
-
-                directory = directory.Parent;
-            }
-        }
-
-        return null;
     }
 
     private void SetC3DSampleStatus()
@@ -1170,23 +1064,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         const int pixelWidth = 240;
         const int pixelHeight = 72;
-        var pixels = new byte[pixelWidth * pixelHeight * 4];
-        for (var index = 0; index < pixels.Length; index += 4)
-        {
-            pixels[index] = 31;
-            pixels[index + 1] = 24;
-            pixels[index + 2] = 17;
-            pixels[index + 3] = 255;
-        }
-
-        foreach (var point in c3dSample.Points)
-        {
-            var x = (point.Position.X + c3dSample.XHalfExtent) / Math.Max(0.0001f, c3dSample.XHalfExtent * 2.0f);
-            var z = (point.Position.Z + c3dSample.ZHalfExtent) / Math.Max(0.0001f, c3dSample.ZHalfExtent * 2.0f);
-            var column = (int)Math.Round(Math.Clamp(x, 0.0f, 1.0f) * (pixelWidth - 1));
-            var row = (int)Math.Round(Math.Clamp(z, 0.0f, 1.0f) * (pixelHeight - 1));
-            PaintHeightMapPixel(pixels, pixelWidth, pixelHeight, column, row, point.HeightScalar);
-        }
+        var pixels = C3DHeightMapRasterizer.CreatePixels(c3dSample, pixelWidth, pixelHeight);
 
         var bitmap = BitmapSource.Create(
             pixelWidth,
@@ -1209,28 +1087,6 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dSample.Mean,
             pixelWidth,
             pixelHeight);
-    }
-
-    private static void PaintHeightMapPixel(byte[] pixels, int pixelWidth, int pixelHeight, int column, int row, double heightScalar)
-    {
-        var (r, g, b) = HeightMapColor(heightScalar);
-        for (var y = Math.Max(0, row - 1); y <= Math.Min(pixelHeight - 1, row + 1); y++)
-        {
-            for (var x = Math.Max(0, column - 1); x <= Math.Min(pixelWidth - 1, column + 1); x++)
-            {
-                var index = (y * pixelWidth + x) * 4;
-                pixels[index] = b;
-                pixels[index + 1] = g;
-                pixels[index + 2] = r;
-                pixels[index + 3] = 255;
-            }
-        }
-    }
-
-    private static (byte R, byte G, byte B) HeightMapColor(double value)
-    {
-        var (r, g, b) = C3DPointMapPalette.Height(value);
-        return ((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
     }
 
     private void UpdateSectionProfileFromC3D()
@@ -1264,7 +1120,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             min,
             max,
             mean,
-            BuildSectionProfilePath(samples, min, max));
+            C3DSectionProfilePathBuilder.Build(samples, min, max));
     }
 
     private int EstimateProfileRowIndex(float z)
@@ -1278,37 +1134,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         return (int)Math.Round(Math.Clamp(normalized, 0.0f, 1.0f) * (c3dSample.Height - 1));
     }
 
-    private static string BuildSectionProfilePath(IReadOnlyList<HeightGridPoint> samples, double min, double max)
-    {
-        const double chartWidth = 240.0;
-        const double chartHeight = 54.0;
-        const double padding = 3.0;
-        var span = Math.Max(0.001, max - min);
-        var stride = Math.Max(1, (int)Math.Ceiling(samples.Count / 80.0));
-        var reduced = samples.Where((_, index) => index % stride == 0).ToList();
-        if (reduced[^1] != samples[^1])
-        {
-            reduced.Add(samples[^1]);
-        }
-
-        var builder = new StringBuilder();
-        for (var index = 0; index < reduced.Count; index++)
-        {
-            var sample = reduced[index];
-            var x = reduced.Count == 1 ? 0.0 : chartWidth * index / (reduced.Count - 1);
-            var y = padding + (1.0 - ((sample.RawValue - min) / span)) * (chartHeight - padding * 2.0);
-            builder.Append(index == 0 ? "M " : " L ");
-            builder.Append(x.ToString("F1", CultureInfo.InvariantCulture));
-            builder.Append(',');
-            builder.Append(y.ToString("F1", CultureInfo.InvariantCulture));
-        }
-
-        return builder.ToString();
-    }
-
     private void ReloadDefaultC3DSample()
     {
-        var sourcePath = c3dSample?.SourcePath ?? FindDefaultC3DSamplePath();
+        var sourcePath = c3dSample?.SourcePath ?? ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
         var pointPairStep = viewModel.CreatePointPairDimensionsRecipeStep();
         var restoreThicknessPreview = viewModel.ThicknessVisible;
         var restoreWarpagePreview = viewModel.WarpageVisible;

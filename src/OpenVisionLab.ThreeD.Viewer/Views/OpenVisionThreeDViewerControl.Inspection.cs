@@ -667,7 +667,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             minimum,
             maximum,
             mean,
-            BuildSectionProfilePath(sourcePoints, minimum, maximum));
+            C3DSectionProfilePathBuilder.Build(sourcePoints, minimum, maximum));
     }
 
     private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>

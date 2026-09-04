@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
@@ -23,8 +24,25 @@ internal static class ShellValidationSetSmoke
         Action expandThresholds,
         Func<ValidationWorkspaceSection, Task> applySectionAsync,
         Func<ValidationWorkspaceSection, bool> isSectionActive)
+        => Configure(
+            new ShellCommandLineArguments(arguments),
+            workbench,
+            activateValidationSet,
+            expandEvidence,
+            expandThresholds,
+            applySectionAsync,
+            isSectionActive);
+
+    internal static ShellValidationSetSmokeState Configure(
+        ShellCommandLineArguments commandLine,
+        ToolWorkbenchViewModel workbench,
+        Action activateValidationSet,
+        Action expandEvidence,
+        Action expandThresholds,
+        Func<ValidationWorkspaceSection, Task> applySectionAsync,
+        Func<ValidationWorkspaceSection, bool> isSectionActive)
     {
-        ArgumentNullException.ThrowIfNull(arguments);
+        ArgumentNullException.ThrowIfNull(commandLine);
         ArgumentNullException.ThrowIfNull(workbench);
         ArgumentNullException.ThrowIfNull(activateValidationSet);
         ArgumentNullException.ThrowIfNull(expandEvidence);
@@ -32,12 +50,8 @@ internal static class ShellValidationSetSmoke
         ArgumentNullException.ThrowIfNull(applySectionAsync);
         ArgumentNullException.ThrowIfNull(isSectionActive);
 
-        var recipePath = GetCommandLineValue(
-            arguments,
-            "--smoke-validation-set-recipe");
-        var sourceList = GetCommandLineValue(
-            arguments,
-            "--smoke-validation-set-sources");
+        var recipePath = commandLine.GetValue("--smoke-validation-set-recipe");
+        var sourceList = commandLine.GetValue("--smoke-validation-set-sources");
         if (string.IsNullOrWhiteSpace(recipePath)
             || string.IsNullOrWhiteSpace(sourceList))
         {
@@ -59,9 +73,7 @@ internal static class ShellValidationSetSmoke
             .ToArray();
         workbench.SetValidationSetSources(sources);
 
-        var requestedRoles = GetCommandLineValue(
-            arguments,
-            "--smoke-validation-set-roles");
+        var requestedRoles = commandLine.GetValue("--smoke-validation-set-roles");
         if (!string.IsNullOrWhiteSpace(requestedRoles))
         {
             var roles = requestedRoles.Split(
@@ -80,50 +92,40 @@ internal static class ShellValidationSetSmoke
         }
 
         activateValidationSet();
-        if (HasFlag(arguments, "--smoke-validation-set-expand-evidence"))
+        if (commandLine.HasFlag("--smoke-validation-set-expand-evidence"))
         {
             expandEvidence();
         }
-        if (HasFlag(arguments, "--smoke-validation-set-expand-thresholds"))
+        if (commandLine.HasFlag("--smoke-validation-set-expand-thresholds"))
         {
             expandThresholds();
         }
 
-        var runRequested = HasFlag(
-            arguments,
-            "--smoke-validation-set-run");
+        var runRequested = commandLine.HasFlag("--smoke-validation-set-run");
         Task? thresholdSelectionTask = null;
         if (runRequested)
         {
             workbench.RunValidationSetCommand.Execute(null);
-            var thresholdMetric = GetCommandLineValue(
-                arguments,
-                "--smoke-validation-threshold-metric");
-            var thresholdKind = GetCommandLineValue(
-                arguments,
-                "--smoke-validation-threshold-kind");
+            var thresholdMetric = commandLine.GetValue("--smoke-validation-threshold-metric");
+            var thresholdKind = commandLine.GetValue("--smoke-validation-threshold-kind");
             if (!string.IsNullOrWhiteSpace(thresholdMetric)
                 || !string.IsNullOrWhiteSpace(thresholdKind))
             {
                 thresholdSelectionTask =
                     SelectValidationThresholdCandidateAsync(
-                        arguments,
+                        commandLine,
                         workbench,
                         thresholdMetric,
                         thresholdKind);
             }
-            if (HasFlag(
-                    arguments,
-                    "--smoke-validation-set-open-compare"))
+            if (commandLine.HasFlag("--smoke-validation-set-open-compare"))
             {
                 _ = OpenValidationSetComparisonAsync(workbench);
             }
         }
 
         Task? sectionSelectionTask = null;
-        var requestedSection = GetCommandLineValue(
-            arguments,
-            "--smoke-validation-section");
+        var requestedSection = commandLine.GetValue("--smoke-validation-section");
         if (Enum.TryParse<ValidationWorkspaceSection>(
                 requestedSection,
                 ignoreCase: true,
@@ -173,7 +175,7 @@ internal static class ShellValidationSetSmoke
     }
 
     private static async Task SelectValidationThresholdCandidateAsync(
-        string[] arguments,
+        ShellCommandLineArguments commandLine,
         ToolWorkbenchViewModel workbench,
         string? metric,
         string? kind)
@@ -184,9 +186,7 @@ internal static class ShellValidationSetSmoke
             await Task.Delay(25);
         }
 
-        if (HasFlag(
-                arguments,
-                "--smoke-validation-threshold-assistant-disabled"))
+        if (commandLine.HasFlag("--smoke-validation-threshold-assistant-disabled"))
         {
             workbench.SelectedValidationThresholdCandidate = null;
             return;
@@ -210,24 +210,12 @@ internal static class ShellValidationSetSmoke
         }
 
         workbench.SelectedValidationThresholdCandidate = candidate;
-        var shouldPropose = HasFlag(
-            arguments,
-            "--smoke-validation-threshold-propose");
-        var shouldReview = HasFlag(
-            arguments,
-            "--smoke-validation-threshold-review");
-        var shouldApply = HasFlag(
-            arguments,
-            "--smoke-validation-threshold-apply");
-        var shouldReplay = HasFlag(
-            arguments,
-            "--smoke-validation-threshold-replay-heldout");
-        var shouldRevalidate = HasFlag(
-            arguments,
-            "--smoke-validation-threshold-revalidate-development");
-        var manualValues = GetCommandLineValue(
-            arguments,
-            "--smoke-validation-threshold-manual-values");
+        var shouldPropose = commandLine.HasFlag("--smoke-validation-threshold-propose");
+        var shouldReview = commandLine.HasFlag("--smoke-validation-threshold-review");
+        var shouldApply = commandLine.HasFlag("--smoke-validation-threshold-apply");
+        var shouldReplay = commandLine.HasFlag("--smoke-validation-threshold-replay-heldout");
+        var shouldRevalidate = commandLine.HasFlag("--smoke-validation-threshold-revalidate-development");
+        var manualValues = commandLine.GetValue("--smoke-validation-threshold-manual-values");
         if (shouldPropose
             && workbench.ProposeValidationThresholdCandidateCommand
                 .CanExecute(null))
@@ -314,31 +302,4 @@ internal static class ShellValidationSetSmoke
         }
     }
 
-    private static bool HasFlag(
-        IReadOnlyList<string> arguments,
-        string name) => arguments.Contains(
-            name,
-            StringComparer.OrdinalIgnoreCase);
-
-    private static string? GetCommandLineValue(
-        IReadOnlyList<string> arguments,
-        string name)
-    {
-        var index = -1;
-        for (var candidate = 0; candidate < arguments.Count; candidate++)
-        {
-            if (string.Equals(
-                    arguments[candidate],
-                    name,
-                    StringComparison.Ordinal))
-            {
-                index = candidate;
-                break;
-            }
-        }
-
-        return index >= 0 && index + 1 < arguments.Count
-            ? arguments[index + 1]
-            : null;
-    }
 }

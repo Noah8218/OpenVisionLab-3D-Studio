@@ -507,6 +507,15 @@ internal static class VerificationCommandRouter
             return handled && shellSmokeOptionsPassed ? 0 : 1;
         }
 
+        if (ShellSmokeLifetimeVerification.TryRun(
+                args,
+                out var shellSmokeLifetimePassed,
+                out var shellSmokeLifetimeSummary))
+        {
+            Console.WriteLine(shellSmokeLifetimeSummary);
+            return shellSmokeLifetimePassed ? 0 : 1;
+        }
+
         var inspectionWorkspaceSelectionExitCode = TryRunReportOnly(
             args,
             inspectionWorkspaceSelectionOption,

@@ -16,7 +16,7 @@ internal sealed record ViewerRecipeLoadRoutes(
     Func<ViewerRecipeFile, C3DGapFlushRecipe, bool, bool> ApplyC3DGapFlush,
     Func<ViewerRecipeFile, C3DPointPairDimensionsRecipe, bool, bool> ApplyC3DPointPairDimensions,
     Func<ViewerRecipeFile, HeightDeviationRecipe, bool, bool> ApplyHeightDeviation,
-    Func<ViewerRecipeFile, LazTwoPointMeasurementRecipe, bool, Task<bool>> ApplyLazTwoPointAsync);
+    Func<ViewerRecipeFile, LazTwoPointMeasurementRecipe, bool, CancellationToken, Task<bool>> ApplyLazTwoPointAsync);
 
 internal static class ViewerRecipeLoadCoordinator
 {
@@ -54,11 +54,13 @@ internal static class ViewerRecipeLoadCoordinator
         string path,
         bool isSmoke,
         ViewerRecipeLoadRoutes routes,
-        Func<string, Exception, bool> handleFailure)
+        Func<string, Exception, bool> handleFailure,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(routes);
         ArgumentNullException.ThrowIfNull(handleFailure);
+        cancellationToken.ThrowIfCancellationRequested();
 
         ViewerRecipeFile recipeFile;
         try
@@ -73,8 +75,9 @@ internal static class ViewerRecipeLoadCoordinator
         try
         {
             var document = recipeFile.LoadDocument();
+            cancellationToken.ThrowIfCancellationRequested();
             return document is LazTwoPointMeasurementRecipe lazRecipe
-                ? await routes.ApplyLazTwoPointAsync(recipeFile, lazRecipe, isSmoke)
+                ? await routes.ApplyLazTwoPointAsync(recipeFile, lazRecipe, isSmoke, cancellationToken)
                 : ApplyDocument(recipeFile, document, isSmoke, routes);
         }
         catch (Exception exception) when (IsRecipeLoadFailure(exception))

@@ -21,6 +21,7 @@ public partial class HeightImageViewerView : UserControl
     private Point panStart;
     private double panHorizontalOffset;
     private double panVerticalOffset;
+    private DispatcherOperation? fitImageOperation;
 
     public HeightImageViewerView()
     {
@@ -38,6 +39,7 @@ public partial class HeightImageViewerView : UserControl
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs args)
     {
+        CancelPendingFitImage();
         DetachViewModel();
         viewModel = args.NewValue as HeightImageViewerViewModel;
         AttachViewModel();
@@ -51,7 +53,13 @@ public partial class HeightImageViewerView : UserControl
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args) =>
+        OnUnloadedCore();
+
+    private void OnUnloadedCore()
+    {
+        CancelPendingFitImage();
         DetachViewModel();
+    }
 
     private void AttachViewModel()
     {
@@ -131,7 +139,7 @@ public partial class HeightImageViewerView : UserControl
         HeightImage.Source = bitmap;
         UpdateRoiOverlay();
         UpdateLinkedCursorOverlay();
-        Dispatcher.BeginInvoke(FitImage, DispatcherPriority.Loaded);
+        QueueFitImage(DispatcherPriority.Loaded);
     }
 
     private void OnDisplayRequest(object? sender, HeightImageDisplayRequest request)
@@ -139,7 +147,7 @@ public partial class HeightImageViewerView : UserControl
         switch (request)
         {
             case HeightImageDisplayRequest.Fit:
-                Dispatcher.BeginInvoke(FitImage, DispatcherPriority.Loaded);
+                QueueFitImage(DispatcherPriority.Loaded);
                 break;
             case HeightImageDisplayRequest.ActualPixels:
                 SetImageScale(1.0);
@@ -167,6 +175,45 @@ public partial class HeightImageViewerView : UserControl
         SetImageScale(Math.Min(horizontalScale, verticalScale));
         ImageScrollViewer.ScrollToHorizontalOffset(0);
         ImageScrollViewer.ScrollToVerticalOffset(0);
+    }
+
+    private void QueueFitImage(DispatcherPriority priority)
+    {
+        CancelPendingFitImage();
+        if (!IsLoaded || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        try
+        {
+            fitImageOperation = Dispatcher.BeginInvoke(
+                priority,
+                new Action(ApplyQueuedFitImage));
+        }
+        catch (InvalidOperationException)
+        {
+            fitImageOperation = null;
+        }
+    }
+
+    private void ApplyQueuedFitImage()
+    {
+        fitImageOperation = null;
+        if (IsLoaded)
+        {
+            FitImage();
+        }
+    }
+
+    private void CancelPendingFitImage()
+    {
+        var operation = fitImageOperation;
+        fitImageOperation = null;
+        if (operation?.Status == DispatcherOperationStatus.Pending)
+        {
+            operation.Abort();
+        }
     }
 
     private void SetImageScale(double scale)
@@ -791,7 +838,7 @@ public partial class HeightImageViewerView : UserControl
     {
         if (IsLoaded && viewModel?.Frame is not null && imageScale < 1.0)
         {
-            Dispatcher.BeginInvoke(FitImage, DispatcherPriority.Background);
+            QueueFitImage(DispatcherPriority.Background);
         }
     }
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Coordination;
@@ -62,49 +61,38 @@ internal static class ShellStartupConfigurationPlanner
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        var automated = IsAutomatedShellRun(args);
+        return Parse(new ShellCommandLineArguments(args));
+    }
+
+    public static ShellStartupConfigurationPlan Parse(
+        ShellCommandLineArguments commandLine)
+    {
+        ArgumentNullException.ThrowIfNull(commandLine);
+
+        var automated = IsAutomatedShellRun(commandLine.Values);
         return new ShellStartupConfigurationPlan
         {
-            RequestedLanguage = ParseLanguage(GetValue(args, "--ui-language")),
-            EvidenceTabIndex = ParseEvidenceTabIndex(GetValue(args, "--shell-evidence-tab")),
-            Workspace = ParseEnum<ShellWorkspaceMode>(GetValue(args, "--shell-workspace")),
+            RequestedLanguage = ParseLanguage(commandLine.GetValue("--ui-language")),
+            EvidenceTabIndex = ParseEvidenceTabIndex(commandLine.GetValue("--shell-evidence-tab")),
+            Workspace = ParseEnum<ShellWorkspaceMode>(commandLine.GetValue("--shell-workspace")),
             ResultsSection = ParseEnum<ResultsWorkspaceSection>(
-                GetValue(args, "--shell-results-section")),
-            InspectionTask = ParseEnum<ShellInspectionTask>(GetValue(args, "--shell-task")),
-            StageWorkspace = ParseStageWorkspace(GetValue(args, "--smoke-stage")),
-            ViewerView = ParseViewerView(GetValue(args, "--smoke-view")),
-            FitRoi = HasFlag(args, "--smoke-fit-roi"),
-            HeightColorMinimumRaw = ParseInvariantDouble(
-                GetValue(args, "--smoke-height-color-min")),
-            HeightColorMaximumRaw = ParseInvariantDouble(
-                GetValue(args, "--smoke-height-color-max")),
-            BottomPane = ParseBottomPane(GetValue(args, "--workbench-bottom-pane")),
-            CompareSlotAArtifactId = GetValue(args, "--workbench-compare-slot-a") ?? string.Empty,
-            CompareSlotBArtifactId = GetValue(args, "--workbench-compare-slot-b") ?? string.Empty,
-            CompareSlotCArtifactId = GetValue(args, "--workbench-compare-slot-c") ?? string.Empty,
-            C3DSourceLoadProgress = ParseInvariantDouble(
-                GetValue(args, "--smoke-c3d-load-progress")),
+                commandLine.GetValue("--shell-results-section")),
+            InspectionTask = ParseEnum<ShellInspectionTask>(commandLine.GetValue("--shell-task")),
+            StageWorkspace = ParseStageWorkspace(commandLine.GetValue("--smoke-stage")),
+            ViewerView = ParseViewerView(commandLine.GetValue("--smoke-view")),
+            FitRoi = commandLine.HasFlag("--smoke-fit-roi"),
+            HeightColorMinimumRaw = commandLine.GetInvariantDouble("--smoke-height-color-min"),
+            HeightColorMaximumRaw = commandLine.GetInvariantDouble("--smoke-height-color-max"),
+            BottomPane = ParseBottomPane(commandLine.GetValue("--workbench-bottom-pane")),
+            CompareSlotAArtifactId = commandLine.GetValue("--workbench-compare-slot-a") ?? string.Empty,
+            CompareSlotBArtifactId = commandLine.GetValue("--workbench-compare-slot-b") ?? string.Empty,
+            CompareSlotCArtifactId = commandLine.GetValue("--workbench-compare-slot-c") ?? string.Empty,
+            C3DSourceLoadProgress = commandLine.GetInvariantDouble("--smoke-c3d-load-progress"),
             IsAutomatedShellRun = automated,
             ShouldStartWithEmptyRecipeInput = !automated
-                || HasFlag(args, "--smoke-input-first-start")
+                || commandLine.HasFlag("--smoke-input-first-start")
         };
     }
-
-    private static string? GetValue(IReadOnlyList<string> args, string name)
-    {
-        for (var index = 0; index < args.Count; index++)
-        {
-            if (string.Equals(args[index], name, StringComparison.Ordinal))
-            {
-                return index + 1 < args.Count ? args[index + 1] : null;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool HasFlag(IReadOnlyList<string> args, string name) =>
-        args.Any(argument => string.Equals(argument, name, StringComparison.OrdinalIgnoreCase));
 
     private static OpenVisionLanguage? ParseLanguage(string? value)
     {
@@ -155,15 +143,6 @@ internal static class ShellStartupConfigurationPlanner
             "perspective" => ShellStartupViewerView.Perspective,
             _ => ShellStartupViewerView.None
         };
-
-    private static double? ParseInvariantDouble(string? value) =>
-        double.TryParse(
-            value,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var parsed)
-            ? parsed
-            : null;
 
     private static ShellStartupBottomPane ParseBottomPane(string? value) =>
         value?.Trim().ToLowerInvariant() switch

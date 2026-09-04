@@ -16,6 +16,7 @@ using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -174,6 +175,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private async void HandleOpenRecipeCommand()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var dialog = new OpenFileDialog
         {
             Title = "Open 3D Recipe",
@@ -183,8 +189,20 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (dialog.ShowDialog(Window.GetWindow(this)) == true)
         {
-            await ApplyRecipeFileAsync(dialog.FileName, isSmoke: false);
-            RenderNow();
+            try
+            {
+                await ApplyRecipeFileAsync(dialog.FileName, isSmoke: false);
+                if (!IsDisposed && !viewerLifetimeToken.IsCancellationRequested)
+                {
+                    RenderNow();
+                }
+            }
+            catch (OperationCanceledException) when (
+                IsDisposed
+                || viewerLifetimeToken.IsCancellationRequested)
+            {
+                // The control lifetime owns the open request after the dialog closes.
+            }
         }
     }
 
@@ -340,80 +358,164 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private async void SmokeCaptureOnLoaded(object sender, RoutedEventArgs e)
     {
-        await Dispatcher.InvokeAsync(RenderNow);
-        if (smokeReloadImportedMeshTexture)
+        Loaded -= SmokeCaptureOnLoaded;
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
         {
-            var sourcePath = viewModel.GlbSampleSourcePath;
-            ApplySmokeGlb(sourcePath);
-            await Dispatcher.InvokeAsync(RenderNow);
-            if (importedMeshTextureUploadCount < 2 || importedMeshTextureReleaseCount < 1)
-            {
-                SetSmokeFailure(
-                    $"Imported mesh texture reload failed: uploads={importedMeshTextureUploadCount}, releases={importedMeshTextureReleaseCount}");
-            }
+            return;
         }
 
-        if (smokeNominalActualPreview
-            && !await WaitForNominalActualPreviewAsync(TimeSpan.FromMinutes(10)))
+        try
         {
-            smokeExitCode = 1;
-            if (viewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning)
+            await Dispatcher.InvokeAsync(RenderNow);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
             {
-                viewModel.ViewerStatus = "Nominal/actual Preview timed out before screenshot capture.";
+                return;
             }
 
-            await Dispatcher.InvokeAsync(RenderNow);
-        }
-
-        if (smokeRaceLazPointCloudDensityLoads)
-        {
-            await ApplyConfiguredSmokeLazDensityRaceAsync();
-        }
-        else
-        {
-            await ApplyConfiguredSmokeNextDensityAsync();
-        }
-        if (smokeReloadLazPointCloudCache && lazPointCloud is not null)
-        {
-            await ReloadCurrentLazPointCloudAsync();
-        }
-        await Dispatcher.InvokeAsync(RenderNow);
-
-        if (smokePickTarget is not null)
-        {
-            ApplyConfiguredSmokePick();
-            await Dispatcher.InvokeAsync(RenderNow);
-        }
-
-        if (smokePublishResult)
-        {
-            if (!PublishCurrentPreviewResult())
+            if (smokeReloadImportedMeshTexture)
             {
+                var sourcePath = viewModel.GlbSampleSourcePath;
+                ApplySmokeGlb(sourcePath);
+                await Dispatcher.InvokeAsync(RenderNow);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                if (importedMeshTextureUploadCount < 2 || importedMeshTextureReleaseCount < 1)
+                {
+                    SetSmokeFailure(
+                        $"Imported mesh texture reload failed: uploads={importedMeshTextureUploadCount}, releases={importedMeshTextureReleaseCount}");
+                }
+            }
+
+            if (smokeNominalActualPreview
+                && !await WaitForNominalActualPreviewAsync(TimeSpan.FromMinutes(10)))
+            {
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 smokeExitCode = 1;
-                viewModel.ViewerStatus = "Smoke Publish failed: current Preview evidence is unavailable";
+                if (viewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning)
+                {
+                    viewModel.ViewerStatus = "Nominal/actual Preview timed out before screenshot capture.";
+                }
+
+                await Dispatcher.InvokeAsync(RenderNow);
             }
 
-            await Dispatcher.InvokeAsync(RenderNow);
-        }
-
-        if (smokeSaveRecipePath is not null)
-        {
-            if (!SaveCurrentRecipe(smokeSaveRecipePath, isSmoke: true))
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
             {
-                smokeExitCode = 1;
+                return;
             }
 
+            if (smokeRaceLazPointCloudDensityLoads)
+            {
+                await ApplyConfiguredSmokeLazDensityRaceAsync();
+            }
+            else
+            {
+                await ApplyConfiguredSmokeNextDensityAsync();
+            }
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (smokeReloadLazPointCloudCache && lazPointCloud is not null)
+            {
+                await ReloadCurrentLazPointCloudAsync();
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
             await Dispatcher.InvokeAsync(RenderNow);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (smokePickTarget is not null)
+            {
+                ApplyConfiguredSmokePick();
+                await Dispatcher.InvokeAsync(RenderNow);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
+
+            if (smokePublishResult)
+            {
+                if (!PublishCurrentPreviewResult())
+                {
+                    smokeExitCode = 1;
+                    viewModel.ViewerStatus = "Smoke Publish failed: current Preview evidence is unavailable";
+                }
+
+                await Dispatcher.InvokeAsync(RenderNow);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
+
+            if (smokeSaveRecipePath is not null)
+            {
+                if (!SaveCurrentRecipe(smokeSaveRecipePath, isSmoke: true))
+                {
+                    smokeExitCode = 1;
+                }
+
+                await Dispatcher.InvokeAsync(RenderNow);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
+
+            await RunConfiguredPointerInputRegressionAsync();
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+            await Dispatcher.InvokeAsync(RenderNow);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await Task.Delay(900, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+            await CaptureConfiguredSmokeViewAsync();
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await Task.Delay(100, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            Application.Current.Shutdown(smokeExitCode);
         }
-
-        await RunConfiguredPointerInputRegressionAsync();
-        await Dispatcher.InvokeAsync(RenderNow);
-
-        await Task.Delay(900);
-        await CaptureConfiguredSmokeViewAsync();
-
-        await Task.Delay(100);
-        Application.Current.Shutdown(smokeExitCode);
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            // Control disposal owns cancellation; do not continue smoke work or
+            // shut down the host after the View has closed.
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            // Dispatcher shutdown can race the final View callback during host close.
+        }
     }
 
     private async Task<bool> WaitForNominalActualPreviewAsync(TimeSpan timeout)
@@ -422,7 +524,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         while (viewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning
             && DateTimeOffset.UtcNow < deadline)
         {
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
         }
 
         return viewModel.NominalActual.State is NominalActualComparisonState.PreviewReady
@@ -431,6 +533,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private async Task<bool> CaptureSmokeViewWithRetryAsync(string path, string? qualityReportPath)
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         const int maximumAttempts = 3;
         var fullPath = Path.GetFullPath(path);
         var qualityLines = new List<string>();
@@ -450,9 +557,18 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         for (var attempt = 1; attempt <= maximumAttempts; attempt++)
         {
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             RenderNow();
             UpdateLayout();
             await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             var result = WpfScreenshotCapture.Capture(this);
             var qualityLine = $"ViewerScreenshot|attempt={attempt}|{result.Quality.Summary}";
@@ -460,6 +576,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             Console.WriteLine(qualityLine);
             if (result.Quality.IsAcceptable)
             {
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 WpfScreenshotCapture.Save(result.Bitmap, fullPath);
                 qualityLines.Add($"ViewerScreenshotResult|accepted=True|attempts={attempt}|screenshot={fullPath}");
                 WriteScreenshotQualityReport(qualityReportPath, qualityLines);
@@ -468,8 +589,13 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return true;
             }
 
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             WpfScreenshotCapture.Save(result.Bitmap, GetRejectedScreenshotPath(fullPath, attempt));
-            await Task.Delay(250);
+            await Task.Delay(250, viewerLifetimeToken);
         }
 
         qualityLines.Add($"ViewerScreenshotResult|accepted=False|attempts={maximumAttempts}|screenshot={fullPath}");
@@ -495,6 +621,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         for (var frame = 0; frame < smokeRenderFrameCount; frame++)
         {
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             smokeRenderFramesCompleted++;
         }
 
@@ -502,6 +633,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             ApplySmokeMeasure(smokeMeasureMode);
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return;
+            }
         }
 
         if (!double.IsFinite(viewModel.ViewportFps)
@@ -860,7 +995,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             path,
             isSmoke,
             CreateRecipeLoadRoutes(),
-            SetRecipeLoadFailure);
+            SetRecipeLoadFailure,
+            viewerLifetimeToken);
 
     private ViewerRecipeLoadRoutes CreateRecipeLoadRoutes() =>
         new(
@@ -1031,15 +1167,19 @@ public sealed partial class OpenVisionThreeDViewerControl
     private async Task<bool> ApplyLazTwoPointRecipeAsync(
         ViewerRecipeFile recipeFile,
         LazTwoPointMeasurementRecipe recipe,
-        bool isSmoke)
+        bool isSmoke,
+        CancellationToken cancellationToken)
     {
         try
         {
             var plan = LazTwoPointRecipeLoadPlan.Create(recipeFile, recipe);
             var loaded = await LoadLazPointCloudAsync(
                 plan.SourcePath,
-                recipe.Measurement.MaxSampledPoints);
-            if (loaded is null)
+                recipe.Measurement.MaxSampledPoints,
+                cancellationToken,
+                isCurrent: () => !IsDisposed && !cancellationToken.IsCancellationRequested);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (loaded is null || IsDisposed)
             {
                 return false;
             }
@@ -1068,6 +1208,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private bool SetRecipeLoadFailure(string label, Exception exception)
     {
+        if (IsDisposed)
+        {
+            return false;
+        }
+
         var message = $"{label} failed: {exception.Message}";
         SetRecipeValidationWarning(message);
         viewModel.ViewerStatus = message;
@@ -1418,7 +1563,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return candidate;
         }
 
-        var defaultSample = FindDefaultC3DSamplePath();
+        var defaultSample = ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
         return defaultSample is not null ? Path.GetFullPath(defaultSample) : candidate;
     }
 

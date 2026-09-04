@@ -36,9 +36,32 @@ public sealed partial class OpenVisionThreeDViewerControl
         string? reportPath,
         bool exerciseNavigationGestures = true)
     {
-        var result = await RunTeachingCapturePointerSmokeCoreAsync(
-            cancelWhenReady,
-            exerciseNavigationGestures);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        TeachingCapturePointerSmokeResult result;
+        try
+        {
+            result = await RunTeachingCapturePointerSmokeCoreAsync(
+                cancelWhenReady,
+                exerciseNavigationGestures);
+        }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return false;
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
             WriteTeachingCapturePointerSmokeReport(reportPath, result);
@@ -46,7 +69,17 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (!result.Passed)
         {
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             SetSmokeFailure($"Teaching-capture pointer smoke failed: {result.Failure}");
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         RenderNow();
@@ -55,6 +88,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public async Task<bool> RunTeachingRectangleDragPointerSmokeAsync(string? reportPath)
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         var lines = new List<string>
         {
             "OpenVisionLab 3D teaching GridRectangle drag pointer smoke",
@@ -138,7 +176,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             hostWindow.Activate();
             hostWindow.Focus();
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(220);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
+
+            await Task.Delay(220, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
             initialCamera = CaptureCameraSnapshot();
             finalCamera = initialCamera;
 
@@ -193,7 +240,16 @@ public sealed partial class OpenVisionThreeDViewerControl
                     }
                 }
                 await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(hoverCenter));
-                await Task.Delay(120);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
+                await Task.Delay(120, viewerLifetimeToken);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
                 moveHoverMode = GetTeachingGridRectangleEditMode(
                         hoverCenter,
                         capture.SelectionId,
@@ -264,6 +320,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                 firstLocalPoint,
                 secondLocalPoint,
                 MouseButton.Left);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
 
             var state = TeachingCaptureSnapshot;
             if (state.Points is [var capturedFirst, var capturedSecond])
@@ -302,7 +362,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             {
                 var resizeTarget = resizeTopLeft + (resizeBottomRight - resizeTopLeft) * 0.12;
                 await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(resizeTopLeft));
-                await Task.Delay(120);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
+                await Task.Delay(120, viewerLifetimeToken);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
                 resizeHoverPassed = Viewport.Cursor is not null
                     && (Viewport.Cursor == Cursors.SizeNWSE || Viewport.Cursor == Cursors.SizeNESW)
                     && viewModel.ViewerStatus.Contains("corner handle", StringComparison.Ordinal);
@@ -311,6 +380,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                     resizeTopLeft,
                     resizeTarget,
                     MouseButton.Left);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
                 resizePassed = TeachingCaptureSnapshot is
                     {
                         IsActive: true,
@@ -342,7 +415,16 @@ public sealed partial class OpenVisionThreeDViewerControl
                 var heightTarget = heightHandle + heightAxis * 0.35;
                 var offsetBeforeHeight = viewModel.SelectedTeachingRoiDisplayHeightOffset;
                 await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(heightHandle));
-                await Task.Delay(120);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
+                await Task.Delay(120, viewerLifetimeToken);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
                 heightHoverStatus = viewModel.ViewerStatus;
                 heightHoverPassed = Viewport.Cursor == Cursors.SizeNS
                     && viewModel.ViewerStatus.Contains("overlay Y-position handle", StringComparison.Ordinal);
@@ -351,6 +433,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                     heightHandle,
                     heightTarget,
                     MouseButton.Left);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
                 heightDragPassed =
                     Math.Abs(viewModel.SelectedTeachingRoiDisplayHeightOffset - offsetBeforeHeight) > 0.001
                     && TryGetC3DTeachingCandidate(out var candidateAfterHeight, out _)
@@ -393,6 +479,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add(
                 $"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}");
         }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return false;
+        }
         catch (Exception exception)
         {
             failure = exception.Message;
@@ -414,8 +508,20 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (hostWindow is not null)
             {
-                hostWindow.Topmost = originalTopmost;
+                try
+                {
+                    hostWindow.Topmost = originalTopmost;
+                }
+                catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                {
+                    // The host may already be closing when control lifetime cancellation wins.
+                }
             }
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         if (!passed && string.IsNullOrWhiteSpace(failure))
@@ -426,6 +532,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add($"Points|first={firstLocator}|second={secondLocator}");
         lines.Add($"Camera|before={FormatCameraSnapshot(initialCamera)}|after={FormatCameraSnapshot(finalCamera)}");
         lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{failure}");
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
             var fullPath = Path.GetFullPath(reportPath);
@@ -435,7 +546,17 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (!passed)
         {
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             SetSmokeFailure($"Teaching GridRectangle drag smoke failed: {failure}");
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         RenderNow();
@@ -447,6 +568,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             ToolRecipeGridRectangle target,
             string? reportPath)
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return (false, null, string.Empty);
+        }
+
         var lines = new List<string>
         {
             "OpenVisionLab 3D target GridRectangle pointer smoke"
@@ -492,7 +618,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             hostWindow.Activate();
             hostWindow.Focus();
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(220);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
+
+            await Task.Delay(220, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
             initialCamera = CaptureCameraSnapshot();
 
             if (!TryGetTeachingGridRectangleScreenCorners(
@@ -509,6 +644,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             hasOriginalPointer = WindowsPointerInput.TryGetPosition(out originalPointer);
             pointerInputRegressionActive = true;
             await SendTeachingDragAsync(hostWindow, topLeft, bottomRight, MouseButton.Left);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
             if (TeachingCaptureSnapshot is not
                 {
                     IsActive: true,
@@ -557,22 +696,66 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add($"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}");
             lines.Add($"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}");
             lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{failure}");
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return (false, candidateRectangle, string.Empty);
+            }
+
             WriteTargetRectanglePointerReport(reportPath, lines);
             if (!passed)
             {
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return (false, candidateRectangle, string.Empty);
+                }
+
                 SetSmokeFailure(failure);
             }
+
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return (false, candidateRectangle, string.Empty);
+            }
+
             RenderNow();
             return (passed, candidateRectangle, failure);
+        }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return (false, candidateRectangle, string.Empty);
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return (false, candidateRectangle, string.Empty);
         }
         catch (Exception exception)
         {
             failure = exception.Message;
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return (false, candidateRectangle, string.Empty);
+            }
+
             lines.Add($"Target|{target}");
             lines.Add($"Candidate|{candidateRectangle?.ToString() ?? "(none)"}");
             lines.Add($"Result=FAIL|{failure}");
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return (false, candidateRectangle, string.Empty);
+            }
+
             WriteTargetRectanglePointerReport(reportPath, lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return (false, candidateRectangle, string.Empty);
+            }
+
             SetSmokeFailure(failure);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return (false, candidateRectangle, string.Empty);
+            }
+
             RenderNow();
             return (false, candidateRectangle, failure);
         }
@@ -592,7 +775,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
             if (hostWindow is not null)
             {
-                hostWindow.Topmost = originalTopmost;
+                try
+                {
+                    hostWindow.Topmost = originalTopmost;
+                }
+                catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                {
+                    // The host may already be closing when control lifetime cancellation wins.
+                }
             }
         }
     }
@@ -690,7 +880,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             hostWindow.Activate();
             hostWindow.Focus();
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(220);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
+
+            await Task.Delay(220, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
 
             windowActivated = hostWindow.IsActive;
             var viewportWidth = Viewport.ActualWidth;
@@ -714,6 +913,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             firstLocator = FormatLocator(firstPoint);
             await SendTeachingLeftClickAsync(hostWindow, firstLocalPoint);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
+
             firstClickPassed = TeachingCaptureSnapshot is
             {
                 IsActive: true,
@@ -741,6 +945,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                     var orbitStart = new Point(viewportWidth * 0.72, viewportHeight * 0.60);
                     var orbitEnd = new Point(viewportWidth * 0.86, viewportHeight * 0.47);
                     await SendTeachingDragAsync(hostWindow, orbitStart, orbitEnd, MouseButton.Left);
+                    if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException(viewerLifetimeToken);
+                    }
+
                     orbitCamera = CaptureCameraSnapshot();
                     orbitPassed = IsFinite(orbitCamera)
                         && Math.Abs(orbitCamera.Yaw - initialCamera.Yaw) > 1.0
@@ -751,6 +960,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 var panStart = new Point(viewportWidth * 0.80, viewportHeight * 0.70);
                 var panEnd = new Point(viewportWidth * 0.68, viewportHeight * 0.61);
                 await SendTeachingDragAsync(hostWindow, panStart, panEnd, MouseButton.Middle);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
                 panCamera = CaptureCameraSnapshot();
                 panPassed = IsFinite(panCamera)
                     && TargetChanged(orbitCamera, panCamera)
@@ -760,8 +974,18 @@ public sealed partial class OpenVisionThreeDViewerControl
                 var orthographicHeightBeforeZoom = viewModel.OrthographicHeight;
                 var distanceBeforeZoom = viewModel.CameraDistance;
                 await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(zoomPoint));
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
                 WindowsPointerInput.Wheel(120);
-                await Task.Delay(180);
+                await Task.Delay(180, viewerLifetimeToken);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
                 zoomPassed = (viewModel.IsTopOrthographicView
                         ? viewModel.OrthographicHeight < orthographicHeightBeforeZoom
                         : viewModel.CameraDistance < distanceBeforeZoom)
@@ -769,12 +993,27 @@ public sealed partial class OpenVisionThreeDViewerControl
 
                 var menuPoint = new Point(viewportWidth * 0.56, viewportHeight * 0.42);
                 await SendTeachingRightClickAsync(hostWindow, menuPoint);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
                 contextMenuPassed = await Dispatcher.InvokeAsync(
                     () => Viewport.ContextMenu?.IsOpen == true,
                     DispatcherPriority.Input);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
                 var bindings = await Dispatcher.InvokeAsync(
                     InspectViewerContextMenuBindings,
                     DispatcherPriority.Input);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
+
                 contextMenuBindingsPassed = bindings.Passed
                     && TeachingCaptureSnapshot.CapturedPointCount == pointsBeforeGestures;
                 await Dispatcher.InvokeAsync(() =>
@@ -784,6 +1023,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                         menu.IsOpen = false;
                     }
                 }, DispatcherPriority.Input);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(viewerLifetimeToken);
+                }
             }
 
             var excluded = new HashSet<(int Row, int Column)> { (firstPoint.Row, firstPoint.Column) };
@@ -794,6 +1037,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             secondLocator = FormatLocator(secondPoint);
             await SendTeachingLeftClickAsync(hostWindow, secondLocalPoint);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
+
             secondClickPassed = TeachingCaptureSnapshot is
             {
                 IsActive: true,
@@ -810,6 +1058,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 };
 
             await SendTeachingLeftClickAsync(hostWindow, secondLocalPoint);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(viewerLifetimeToken);
+            }
+
             repickPassed = TeachingCaptureSnapshot is
             {
                 IsActive: true,
@@ -859,6 +1112,14 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && pointerInputMouseUpCount >= requiredButtonEvents
                 && (!exerciseNavigationGestures || pointerInputMouseWheelCount >= 1);
         }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            throw;
+        }
         catch (Exception exception)
         {
             failure = exception.Message;
@@ -885,7 +1146,14 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (hostWindow is not null)
             {
-                hostWindow.Topmost = originalTopmost;
+                try
+                {
+                    hostWindow.Topmost = originalTopmost;
+                }
+                catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                {
+                    // The host may already be closing when control lifetime cancellation wins.
+                }
             }
         }
 
@@ -1053,34 +1321,44 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var screenPoint = Viewport.PointToScreen(localPoint);
         await EnsurePointerInputTargetAsync(hostWindow, screenPoint);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         WindowsPointerInput.LeftDown();
         try
         {
-            await Task.Delay(90);
+            await Task.Delay(90, viewerLifetimeToken);
         }
         finally
         {
             WindowsPointerInput.LeftUp();
         }
 
-        await Task.Delay(160);
+        await Task.Delay(160, viewerLifetimeToken);
     }
 
     private async Task SendTeachingRightClickAsync(Window hostWindow, Point localPoint)
     {
         var screenPoint = Viewport.PointToScreen(localPoint);
         await EnsurePointerInputTargetAsync(hostWindow, screenPoint);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         WindowsPointerInput.RightDown();
         try
         {
-            await Task.Delay(90);
+            await Task.Delay(90, viewerLifetimeToken);
         }
         finally
         {
             WindowsPointerInput.RightUp();
         }
 
-        await Task.Delay(180);
+        await Task.Delay(180, viewerLifetimeToken);
     }
 
     private async Task SendTeachingDragAsync(
@@ -1092,6 +1370,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         var start = Viewport.PointToScreen(localStart);
         var end = Viewport.PointToScreen(localEnd);
         await EnsurePointerInputTargetAsync(hostWindow, start);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         if (button == MouseButton.Left)
         {
             WindowsPointerInput.LeftDown();
@@ -1103,15 +1386,20 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         try
         {
-            await Task.Delay(90);
+            await Task.Delay(90, viewerLifetimeToken);
             const int movementSteps = 6;
             for (var step = 1; step <= movementSteps; step++)
             {
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 var progress = step / (double)movementSteps;
                 WindowsPointerInput.MoveTo(new Point(
                     start.X + (end.X - start.X) * progress,
                     start.Y + (end.Y - start.Y) * progress));
-                await Task.Delay(45);
+                await Task.Delay(45, viewerLifetimeToken);
             }
 
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
@@ -1120,7 +1408,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 || Math.Abs(actualEnd.Y - end.Y) > 2)
             {
                 WindowsPointerInput.MoveTo(end);
-                await Task.Delay(120);
+                await Task.Delay(120, viewerLifetimeToken);
             }
         }
         finally
@@ -1135,7 +1423,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
         }
 
-        await Task.Delay(160);
+        await Task.Delay(160, viewerLifetimeToken);
     }
 
     private void ApplyTeachingCapturePointerSmokeArguments(string[] args)

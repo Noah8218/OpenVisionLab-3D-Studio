@@ -11,6 +11,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Reporting.Integration;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Shell;
+using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
@@ -55,10 +56,48 @@ internal static class ShellIntegrationExchangeExeSmoke
         Func<Task> yieldUi,
         string? reportPath)
     {
+        return await RunAsync(
+            role,
+            viewModel,
+            isShellVisible,
+            yieldUi,
+            reportPath,
+            ShellCommandLineArguments.Capture(),
+            CancellationToken.None);
+    }
+
+    internal static async Task<ShellIntegrationExchangeExeSmokeResult> RunAsync(
+        string role,
+        ShellMainWindowViewModel viewModel,
+        Func<bool> isShellVisible,
+        Func<Task> yieldUi,
+        string? reportPath,
+        ShellCommandLineArguments commandLine)
+    {
+        return await RunAsync(
+            role,
+            viewModel,
+            isShellVisible,
+            yieldUi,
+            reportPath,
+            commandLine,
+            CancellationToken.None);
+    }
+
+    internal static async Task<ShellIntegrationExchangeExeSmokeResult> RunAsync(
+        string role,
+        ShellMainWindowViewModel viewModel,
+        Func<bool> isShellVisible,
+        Func<Task> yieldUi,
+        string? reportPath,
+        ShellCommandLineArguments commandLine,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(role);
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(isShellVisible);
         ArgumentNullException.ThrowIfNull(yieldUi);
+        ArgumentNullException.ThrowIfNull(commandLine);
 
         var checks = new Dictionary<string, bool>(StringComparer.Ordinal);
         var failures = new List<string>();
@@ -88,13 +127,13 @@ internal static class ShellIntegrationExchangeExeSmoke
         var integration = viewModel.IntegrationExchange;
         try
         {
-            var args = Environment.GetCommandLineArgs();
-            var root = RequireArgument(args, "--smoke-integration-exchange-root");
+            cancellationToken.ThrowIfCancellationRequested();
+            var root = RequireArgument(commandLine, "--smoke-integration-exchange-root");
             var listenPort = ParsePort(
-                GetArgumentValue(args, "--smoke-integration-listen-port"),
+                commandLine.GetValueIgnoreCase("--smoke-integration-listen-port"),
                 45103);
             var peerPort = ParsePort(
-                GetArgumentValue(args, "--smoke-integration-peer-port"),
+                commandLine.GetValueIgnoreCase("--smoke-integration-peer-port"),
                 45101);
             Directory.CreateDirectory(root);
 
@@ -109,22 +148,25 @@ internal static class ShellIntegrationExchangeExeSmoke
             Check("consumerSettingsCanBeSaved", integration.SaveSetupCommand.CanExecute(null));
             integration.SaveSetupCommand.Execute(null);
             await yieldUi();
+            cancellationToken.ThrowIfCancellationRequested();
             Check("consumerSettingsSaved", integration.ExchangeRoot == root);
             Check("consumerWindowLoaded", isShellVisible());
 
             await integration.StartTcpListenerAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             Check("consumerListening", integration.IsTcpListening);
 
             var machinePingAccepted = false;
             for (var attempt = 0; attempt < 40 && !machinePingAccepted; attempt++)
             {
                 await integration.PingTcpPeerAsync();
+                cancellationToken.ThrowIfCancellationRequested();
                 machinePingAccepted = integration.LastTcpTransferText.Contains(
                     IntegrationApplicationIds.MachineStudio,
                     StringComparison.Ordinal);
                 if (!machinePingAccepted)
                 {
-                    await Task.Delay(250);
+                    await Task.Delay(250, cancellationToken);
                 }
             }
             Check("machinePingAccepted", machinePingAccepted);
@@ -136,7 +178,8 @@ internal static class ShellIntegrationExchangeExeSmoke
                     return integration.Transactions.Count > 0;
                 },
                 TimeSpan.FromSeconds(60),
-                "The 3D consumer did not discover the pushed Machine transaction.");
+                "The 3D consumer did not discover the pushed Machine transaction.",
+                cancellationToken);
             Check("handoffDiscovered", integration.Transactions.Count > 0);
 
             var selected = integration.SelectedTransaction
@@ -149,6 +192,7 @@ internal static class ShellIntegrationExchangeExeSmoke
 
             integration.AcceptCommand.Execute(null);
             await yieldUi();
+            cancellationToken.ThrowIfCancellationRequested();
             integration.RefreshHandoffsCommand.Execute(null);
             selected = integration.SelectedTransaction
                 ?? throw new InvalidOperationException("The 3D transaction disappeared after Accept.");
@@ -213,6 +257,7 @@ internal static class ShellIntegrationExchangeExeSmoke
 
             integration.PublishResultCommand.Execute(null);
             await yieldUi();
+            cancellationToken.ThrowIfCancellationRequested();
             integration.RefreshHandoffsCommand.Execute(null);
             selected = integration.SelectedTransaction
                 ?? throw new InvalidOperationException("The 3D transaction disappeared after Publish.");
@@ -226,6 +271,7 @@ internal static class ShellIntegrationExchangeExeSmoke
                 selected.ResultSummary.Contains("run-cross-repo-3d-smoke", StringComparison.Ordinal));
 
             await integration.PushSelectedTransactionAsync();
+            cancellationToken.ThrowIfCancellationRequested();
             Check(
                 "resultPushedToMachine",
                 integration.LastTcpTransferText.Contains(
@@ -235,6 +281,10 @@ internal static class ShellIntegrationExchangeExeSmoke
                     IntegrationApplicationIds.MachineStudio,
                     StringComparison.Ordinal));
             status = integration.StatusText;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            status = "Integration EXE Smoke canceled by Shell lifetime.";
         }
         catch (Exception exception)
         {
@@ -283,19 +333,22 @@ internal static class ShellIntegrationExchangeExeSmoke
     private static async Task WaitForAsync(
         Func<bool> condition,
         TimeSpan timeout,
-        string failureMessage)
+        string failureMessage,
+        CancellationToken cancellationToken)
     {
         var deadline = DateTimeOffset.UtcNow + timeout;
         while (DateTimeOffset.UtcNow < deadline)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (condition())
             {
                 return;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, cancellationToken);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         throw new TimeoutException(failureMessage);
     }
 
@@ -314,21 +367,8 @@ internal static class ShellIntegrationExchangeExeSmoke
         return port;
     }
 
-    private static string RequireArgument(IReadOnlyList<string> args, string name) =>
-        GetArgumentValue(args, name) is { Length: > 0 } value
+    private static string RequireArgument(ShellCommandLineArguments commandLine, string name) =>
+        commandLine.GetValueIgnoreCase(name) is { Length: > 0 } value
             ? Path.GetFullPath(value)
             : throw new ArgumentException($"Missing required argument '{name}'.");
-
-    private static string? GetArgumentValue(IReadOnlyList<string> args, string name)
-    {
-        for (var index = 0; index < args.Count - 1; index++)
-        {
-            if (string.Equals(args[index], name, StringComparison.OrdinalIgnoreCase))
-            {
-                return args[index + 1];
-            }
-        }
-
-        return null;
-    }
 }

@@ -53,6 +53,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         ApplySmokeArguments(args);
         if (ownsApplicationLifecycle && smokeScreenshotPath is not null)
         {
+            Loaded -= SmokeCaptureOnLoaded;
             Loaded += SmokeCaptureOnLoaded;
         }
     }
@@ -61,28 +62,54 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public async Task<bool> CaptureConfiguredSmokeViewAsync()
     {
-        await RunConfiguredSmokeRenderFramesAsync();
-
-        if (smokeContractsPath is not null)
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
         {
-            WriteSceneContracts(smokeContractsPath);
+            return false;
         }
 
-        if (smokeScreenshotPath is null)
+        try
         {
-            return smokeExitCode == 0;
-        }
+            await RunConfiguredSmokeRenderFramesAsync();
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
-        if (!await CaptureSmokeViewWithRetryAsync(smokeScreenshotPath, smokeScreenshotQualityReportPath))
+            if (smokeContractsPath is not null)
+            {
+                WriteSceneContracts(smokeContractsPath);
+            }
+
+            if (smokeScreenshotPath is null)
+            {
+                return smokeExitCode == 0;
+            }
+
+            if (!await CaptureSmokeViewWithRetryAsync(smokeScreenshotPath, smokeScreenshotQualityReportPath))
+            {
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                SetSmokeFailure("Viewer screenshot remained blank or invalid after 3 attempts.");
+            }
+
+            return !IsDisposed && !viewerLifetimeToken.IsCancellationRequested && smokeExitCode == 0;
+        }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
         {
-            SetSmokeFailure("Viewer screenshot remained blank or invalid after 3 attempts.");
+            return false;
         }
-
-        return smokeExitCode == 0;
     }
 
     public bool ApplyConfiguredSmokePick()
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         switch (smokePickTarget)
         {
             case null:
@@ -119,6 +146,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public async Task<bool> ApplyConfiguredSmokeNextDensityAsync()
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         if (smokeNextRenderDensity is null)
         {
             return true;
@@ -200,12 +232,22 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public async Task<bool> RunConfiguredPointerInputRegressionAsync()
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         if (smokePointerInputReportPath is null)
         {
             return true;
         }
 
         pointerInputRegressionResult = await RunPointerInputRegressionAsync();
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         WritePointerInputRegressionReport(smokePointerInputReportPath, pointerInputRegressionResult);
         if (!pointerInputRegressionResult.Passed)
         {
@@ -303,7 +345,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 viewModel.ViewerStatus = "Pointer input regression ready";
                 RenderNow();
             }, DispatcherPriority.Render);
-            await Task.Delay(250);
+            await Task.Delay(250, viewerLifetimeToken);
 
             windowActivated = hostWindow.IsActive;
             viewportWidth = Viewport.ActualWidth;
@@ -325,13 +367,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             await EnsurePointerInputTargetAsync(hostWindow, center);
             pointerInputRegressionActive = true;
             WindowsPointerInput.MoveTo(center);
-            await Task.Delay(120);
+            await Task.Delay(120, viewerLifetimeToken);
             WindowsPointerInput.LeftDown();
             leftPressed = true;
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
             WindowsPointerInput.LeftUp();
             leftPressed = false;
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
 
             pickedEntity = viewModel.SelectedEntity;
             pickCoordinate = viewModel.PickCoordinate;
@@ -346,12 +388,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             // Orbit remains a left-drag gesture.
             WindowsPointerInput.LeftDown();
             leftPressed = true;
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
             WindowsPointerInput.MoveTo(orbitEnd);
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
             WindowsPointerInput.LeftUp();
             leftPressed = false;
-            await Task.Delay(160);
+            await Task.Delay(160, viewerLifetimeToken);
             orbitCamera = CaptureCameraSnapshot();
             orbitPassed = IsFinite(orbitCamera)
                 && Math.Abs(orbitCamera.Yaw - initialCamera.Yaw) > 1.0
@@ -362,12 +404,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             await EnsurePointerInputTargetAsync(hostWindow, panStart);
             WindowsPointerInput.MiddleDown();
             middlePressed = true;
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
             WindowsPointerInput.MoveTo(panEnd);
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
             WindowsPointerInput.MiddleUp();
             middlePressed = false;
-            await Task.Delay(160);
+            await Task.Delay(160, viewerLifetimeToken);
             panCamera = CaptureCameraSnapshot();
             panPassed = IsFinite(panCamera) && TargetChanged(orbitCamera, panCamera);
 
@@ -376,12 +418,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             await EnsurePointerInputTargetAsync(hostWindow, rightPanStart);
             WindowsPointerInput.RightDown();
             rightPressed = true;
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
             WindowsPointerInput.MoveTo(rightPanEnd);
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
             WindowsPointerInput.RightUp();
             rightPressed = false;
-            await Task.Delay(160);
+            await Task.Delay(160, viewerLifetimeToken);
             rightPanCamera = CaptureCameraSnapshot();
             rightPanPassed = IsFinite(rightPanCamera) && TargetChanged(panCamera, rightPanCamera);
             rightPanMenuSuppressed = await Dispatcher.InvokeAsync(
@@ -390,7 +432,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             await EnsurePointerInputTargetAsync(hostWindow, center);
             WindowsPointerInput.Wheel(120);
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
             zoomCamera = CaptureCameraSnapshot();
             zoomPassed = IsFinite(zoomCamera)
                 && zoomCamera.Distance < rightPanCamera.Distance - 0.000001;
@@ -398,16 +440,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             await EnsurePointerInputTargetAsync(hostWindow, center);
             WindowsPointerInput.LeftDown();
             leftPressed = true;
-            await Task.Delay(60);
+            await Task.Delay(60, viewerLifetimeToken);
             WindowsPointerInput.LeftUp();
             leftPressed = false;
-            await Task.Delay(80);
+            await Task.Delay(80, viewerLifetimeToken);
             WindowsPointerInput.LeftDown();
             leftPressed = true;
-            await Task.Delay(60);
+            await Task.Delay(60, viewerLifetimeToken);
             WindowsPointerInput.LeftUp();
             leftPressed = false;
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
             doubleClickFitCamera = CaptureCameraSnapshot();
             var expectedDoubleClickStatus = viewModel.C3DSampleVisible && c3dSample is not null
                 ? "Double-click fit"
@@ -421,10 +463,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             await EnsurePointerInputTargetAsync(hostWindow, contextMenuPoint);
             WindowsPointerInput.RightDown();
             rightPressed = true;
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
             WindowsPointerInput.RightUp();
             rightPressed = false;
-            await Task.Delay(180);
+            await Task.Delay(180, viewerLifetimeToken);
             contextMenuPassed = await Dispatcher.InvokeAsync(
                 () => Viewport.ContextMenu?.IsOpen == true,
                 DispatcherPriority.Input);
@@ -445,7 +487,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                     menu.IsOpen = false;
                 }
             }, DispatcherPriority.Input);
-            await Task.Delay(InteractionLodRestoreDelay + TimeSpan.FromMilliseconds(80));
+            await Task.Delay(InteractionLodRestoreDelay + TimeSpan.FromMilliseconds(80), viewerLifetimeToken);
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
         }
         catch (Exception exception)
@@ -500,7 +542,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             && pointerInputNextFrameMaximumMilliseconds <= 100.0;
         var interactionLodExpected = initialC3DSource is not null
             && string.Equals(initialC3DGeometryStyle, "Wireframe", StringComparison.Ordinal)
-            && c3dRenderProxy is { CoarseInteractionGridEdgeCount: > 0 } renderProxy
+            && c3dRenderProxyCache.Current is { CoarseInteractionGridEdgeCount: > 0 } renderProxy
             && renderProxy.CoarseInteractionGridEdgeCount < renderProxy.InteractionGridEdgeCount
             && renderProxy.InteractionGridEdgeCount < renderProxy.GridEdgeCount;
         var c3dSourceReloadedDuringInteraction = !ReferenceEquals(initialC3DSource, c3dSample)
@@ -578,13 +620,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             interactionLodActivationCount - initialInteractionLodActivationCount,
             interactionLodMediumTransitionCount - initialInteractionLodMediumTransitionCount,
             interactionLodRestoreCount - initialInteractionLodRestoreCount,
-            c3dRenderProxy?.InteractionGridEdgeCount ?? 0,
-            c3dRenderProxy?.CoarseInteractionGridEdgeCount ?? 0,
+            c3dRenderProxyCache.Current?.InteractionGridEdgeCount ?? 0,
+            c3dRenderProxyCache.Current?.CoarseInteractionGridEdgeCount ?? 0,
             c3dGpuUploadCount - initialC3DGpuUploadCount,
             c3dGpuBuffersAvailable,
             c3dSourceReloadedDuringInteraction,
             viewModel.C3DSampleVisible,
-            c3dRenderProxy?.Points.Length ?? 0,
+            c3dRenderProxyCache.Current?.Points.Length ?? 0,
             c3dDisplayListBuildCount,
             lastC3DDisplayListBuildMilliseconds,
             viewportWidth,
@@ -616,14 +658,14 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             WindowsPointerInput.BringWindowToInputFront(hostWindow);
             WindowsPointerInput.MoveTo(screenPoint);
-            await Task.Delay(120);
+            await Task.Delay(120, viewerLifetimeToken);
             if (WindowsPointerInput.IsScreenPointOverWindow(hostWindow, screenPoint, out var diagnostic))
             {
                 return;
             }
 
             diagnostics.Add($"attempt={attempt}|active={hostWindow.IsActive}|{diagnostic}");
-            await Task.Delay(120);
+            await Task.Delay(120, viewerLifetimeToken);
         }
 
         throw new InvalidOperationException(
@@ -783,7 +825,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             $"RoutedEvents|pass={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}",
             $"PointerLatency|mouseMoveSamples={result.MouseMoveTimingCount}|handlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|handlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameSamples={result.NextFrameTimingCount}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}",
             $"InteractiveRender|pass={result.InteractiveRenderPerformancePassed}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|handlerLimitMs=33.340|nextFrameLimitMs=100.000",
-            $"InteractionLod|expected={result.InteractionLodExpected}|pass={result.InteractionLodPassed}|activations={result.InteractionLodActivationCount}|mediumTransitions={result.InteractionLodMediumTransitionCount}|restores={result.InteractionLodRestoreCount}|coarseGridEdges={result.CoarseGridEdgeCount}|mediumGridEdges={result.MediumGridEdgeCount}|preciseGridEdges={c3dRenderProxy?.GridEdgeCount ?? 0}|gpuUploadDelta={result.InteractionGpuUploadDelta}|gpuBufferReady={result.GpuBufferReady}|sourceReloaded={result.C3DSourceReloadedDuringInteraction}|stepDelayMs={InteractionLodStepDelay.TotalMilliseconds:F0}|restoreDelayMs={InteractionLodRestoreDelay.TotalMilliseconds:F0}",
+            $"InteractionLod|expected={result.InteractionLodExpected}|pass={result.InteractionLodPassed}|activations={result.InteractionLodActivationCount}|mediumTransitions={result.InteractionLodMediumTransitionCount}|restores={result.InteractionLodRestoreCount}|coarseGridEdges={result.CoarseGridEdgeCount}|mediumGridEdges={result.MediumGridEdgeCount}|preciseGridEdges={c3dRenderProxyCache.Current?.GridEdgeCount ?? 0}|gpuUploadDelta={result.InteractionGpuUploadDelta}|gpuBufferReady={result.GpuBufferReady}|sourceReloaded={result.C3DSourceReloadedDuringInteraction}|stepDelayMs={InteractionLodStepDelay.TotalMilliseconds:F0}|restoreDelayMs={InteractionLodRestoreDelay.TotalMilliseconds:F0}",
             $"C3DRender|active={result.C3DSceneActive}|points={result.C3DRenderedPointCount}|gpuBufferReady={result.GpuBufferReady}|gpuUploads={c3dGpuUploadCount}|gpuDraws={c3dGpuDrawCount}|gpuBytes={c3dGpuUploadedBytes}|fallbacks={c3dGpuFallbackCount}|renderCacheBuilds={result.C3DDisplayListBuildCount}|lastRenderCacheBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|scheduledFps=60",
             $"Pick|pass={result.PickPassed}|entity={result.PickedEntity}|coordinate={result.PickCoordinate}|summary={result.SelectionSummary}",
             $"Orbit|pass={result.OrbitPassed}|before={FormatCameraSnapshot(result.InitialCamera)}|after={FormatCameraSnapshot(result.OrbitCamera)}",

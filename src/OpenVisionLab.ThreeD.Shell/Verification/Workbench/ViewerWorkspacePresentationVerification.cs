@@ -1,5 +1,6 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -62,10 +63,17 @@ internal static class ViewerWorkspacePresentationVerification
                 && session.IsAuxiliaryContentExplicitlyCleared,
                 $"aux={session.AuxiliaryContentId};cleared={session.IsAuxiliaryContentExplicitlyCleared};linked={session.IsCameraLinked}");
 
-            var mainViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
-            var auxiliaryViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
+            using var mainViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
+            using var auxiliaryViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
             mainViewer.ViewModel.UseC3DSmokeScene();
             auxiliaryViewer.ViewModel.UseC3DSmokeScene();
+            using var disposedWorkspaceView = new ViewerWorkspaceView();
+            disposedWorkspaceView.Dispose();
+            disposedWorkspaceView.MainViewerContent = mainViewer;
+            Check(
+                "disposed workspace ignores late main Viewer content callback",
+                !disposedWorkspaceView.HasAttachedMainViewer,
+                $"attached={disposedWorkspaceView.HasAttachedMainViewer}|content={disposedWorkspaceView.MainViewerContent is not null}");
             var mainPublishedBeforePresentation = mainViewer.ViewModel.ResultEntities.Count;
             var auxiliaryPublishedBeforePresentation = auxiliaryViewer.ViewModel.ResultEntities.Count;
             var mainPreviewRequests = 0;

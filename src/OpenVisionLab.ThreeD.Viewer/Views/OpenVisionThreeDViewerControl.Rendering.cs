@@ -448,7 +448,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var displayListKey = new C3DDisplayListKey(
             c3dSample!,
-            c3dRenderPositionsTransform,
+            c3dRenderPositionCache.CurrentTransform,
             geometryStyle,
             viewModel.Display.EffectiveSettings.ColorMap,
             viewModel.C3DHeightColorMinimumRaw,
@@ -464,8 +464,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 geometryStyle,
                 wireframeLodLevel,
                 displayListKey,
-                ref c3dInteractionDisplayListId,
-                ref c3dInteractionDisplayListKey);
+                ref c3dRenderResources.InteractionDisplayListId,
+                ref c3dRenderResources.InteractionDisplayListKey);
         }
         else
         {
@@ -476,8 +476,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 geometryStyle,
                 C3DWireframeLodLevel.Precise,
                 displayListKey,
-                ref c3dDisplayListId,
-                ref c3dDisplayListKey);
+                ref c3dRenderResources.DisplayListId,
+                ref c3dRenderResources.DisplayListKey);
         }
 
         DrawC3DFrame(gl);
@@ -586,7 +586,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var bufferKey = new C3DGpuBufferKey(
             c3dSample!,
-            c3dRenderPositionsTransform,
+            c3dRenderPositionCache.CurrentTransform,
             viewModel.Display.EffectiveSettings.ColorMap,
             viewModel.C3DHeightColorMinimumRaw,
             viewModel.C3DHeightColorMaximumRaw,
@@ -599,7 +599,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             ReleaseC3DGpuBuffers(gl);
-            var interleavedVertices = CreateC3DGpuVertices(renderProxy, positions);
+            var interleavedVertices = C3DGpuVertexBuilder.Build(
+                renderProxy.Points,
+                positions,
+                GetC3DGpuPointColor);
             var uploadStart = Stopwatch.GetTimestamp();
             if (!C3DGpuBufferSet.TryCreate(
                     gl,
@@ -652,27 +655,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         return true;
     }
 
-    private float[] CreateC3DGpuVertices(
-        C3DHeightGridRenderProxy renderProxy,
-        IReadOnlyList<Vector3> positions)
-    {
-        var vertices = new float[renderProxy.Points.Length * 6];
-        for (var index = 0; index < renderProxy.Points.Length; index++)
-        {
-            var position = positions[index];
-            var color = GetC3DGpuPointColor(renderProxy.Points[index], position);
-            var offset = index * 6;
-            vertices[offset] = position.X;
-            vertices[offset + 1] = position.Y;
-            vertices[offset + 2] = position.Z;
-            vertices[offset + 3] = (float)color.R;
-            vertices[offset + 4] = (float)color.G;
-            vertices[offset + 5] = (float)color.B;
-        }
-
-        return vertices;
-    }
-
     private (double R, double G, double B) GetC3DGpuPointColor(
         HeightGridPoint point,
         Vector3 position)
@@ -689,7 +671,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             ViewerColorMap.Solid => (0.62, 0.82, 1.0),
             ViewerColorMap.Grayscale => ViewerColorMapPalette.Grayscale(heightColorScalar),
             ViewerColorMap.Thermal => ViewerColorMapPalette.Thermal(heightColorScalar),
-            ViewerColorMap.Deviation => DeviationColor(point.DeviationScalar),
+            ViewerColorMap.Deviation => ViewerColorMapPalette.Deviation(point.DeviationScalar),
             _ => C3DPointMapPalette.Height(heightColorScalar)
         };
     }
@@ -736,11 +718,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             + (c3dInteractionDisplayListId != 0 ? 1 : 0);
         try
         {
-            ReleaseC3DDisplayList(gl, ref c3dDisplayListId, ref c3dDisplayListKey);
             ReleaseC3DDisplayList(
                 gl,
-                ref c3dInteractionDisplayListId,
-                ref c3dInteractionDisplayListKey);
+                ref c3dRenderResources.DisplayListId,
+                ref c3dRenderResources.DisplayListKey);
+            ReleaseC3DDisplayList(
+                gl,
+                ref c3dRenderResources.InteractionDisplayListId,
+                ref c3dRenderResources.InteractionDisplayListKey);
             c3dDisplayListReleaseCount += releaseCount;
         }
         catch
@@ -864,38 +849,16 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var sample = c3dSample
             ?? throw new InvalidOperationException("C3D display proxy requires a loaded sample.");
-        if (!ReferenceEquals(c3dRenderProxySource, sample) || c3dRenderProxy is null)
-        {
-            c3dRenderProxySource = sample;
-            c3dRenderProxy = C3DHeightGridRenderProxy.Create(sample);
-            c3dRenderPositions = null;
-        }
-
-        return c3dRenderProxy;
+        return c3dRenderProxyCache.GetOrCreate(sample);
     }
 
     private Vector3[] GetC3DRenderPositions(C3DHeightGridRenderProxy renderProxy)
-    {
-        var transform = viewModel.C3DModelTransform;
-        if (c3dRenderPositions is null || c3dRenderPositionsTransform != transform)
-        {
-            c3dRenderPositions = new Vector3[renderProxy.Points.Length];
-            for (var index = 0; index < renderProxy.Points.Length; index++)
-            {
-                c3dRenderPositions[index] = transform.Apply(renderProxy.Points[index].Position);
-            }
-
-            c3dRenderPositionsTransform = transform;
-        }
-
-        return c3dRenderPositions;
-    }
+        => c3dRenderPositionCache.GetOrCreate(renderProxy, viewModel.C3DModelTransform);
 
     private void InvalidateC3DRenderProxy()
     {
-        c3dRenderProxySource = null;
-        c3dRenderProxy = null;
-        c3dRenderPositions = null;
+        c3dRenderProxyCache.Clear();
+        c3dRenderPositionCache.Clear();
         c3dGpuReleasePending = c3dGpuBuffers is not null;
         c3dGpuBufferKey = null;
         c3dGpuFailedKey = null;
@@ -1308,7 +1271,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void DrawLazMetadata(OpenGL gl)
     {
-        var points = GetLazBoundsCorners(lazSample!);
+        var points = lazSceneTransform.CreateBoundsCorners(lazSample!);
 
         gl.LineWidth(1.8f);
         gl.Color(0.94, 0.82, 0.24);
@@ -1347,50 +1310,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         DrawSelectedLazPoint(gl);
     }
 
-    private Vector3[] GetLazBoundsCorners(LazPointCloudMetadata metadata)
-    {
-        return
-        [
-            MapLazPosition(metadata.MinX, metadata.MinY, metadata.MinZ),
-            MapLazPosition(metadata.MaxX, metadata.MinY, metadata.MinZ),
-            MapLazPosition(metadata.MaxX, metadata.MaxY, metadata.MinZ),
-            MapLazPosition(metadata.MinX, metadata.MaxY, metadata.MinZ),
-            MapLazPosition(metadata.MinX, metadata.MinY, metadata.MaxZ),
-            MapLazPosition(metadata.MaxX, metadata.MinY, metadata.MaxZ),
-            MapLazPosition(metadata.MaxX, metadata.MaxY, metadata.MaxZ),
-            MapLazPosition(metadata.MinX, metadata.MaxY, metadata.MaxZ)
-        ];
-    }
-
     private Vector3 MapLazPosition(Vector3 source) =>
-        MapLazPosition(source.X, source.Y, source.Z);
+        lazSceneTransform.Map(source);
 
     private Vector3 MapLazPosition(double x, double y, double z) =>
-        new((float)(x - lazViewerOrigin.X), (float)(z - lazViewerOrigin.Z), (float)(y - lazViewerOrigin.Y));
+        lazSceneTransform.Map(x, y, z);
 
     private void ApplyLazPointColor(OpenGL gl, LazPointCloudPoint point)
     {
-        static double Normalize(ushort value) => value > 255 ? value / 65535.0 : value / 255.0;
-
-        var (r, g, b) = viewModel.SelectedColorMode switch
-        {
-            "Solid" => (0.72, 0.84, 1.0),
-            "Height" => C3DPointMapPalette.Height(NormalizeLazHeight(point.Position.Z)),
-            "Intensity" => ViewerColorMapPalette.Grayscale(Normalize(point.Intensity)),
-            _ => (Normalize(point.Red), Normalize(point.Green), Normalize(point.Blue))
-        };
+        var (r, g, b) = ViewerLazPointCloudColor.Resolve(point, viewModel.SelectedColorMode, lazSample);
 
         gl.Color(r, g, b);
-    }
-
-    private double NormalizeLazHeight(float sourceZ)
-    {
-        if (lazSample is null || Math.Abs(lazSample.MaxZ - lazSample.MinZ) < 0.000001)
-        {
-            return 0.5;
-        }
-
-        return (sourceZ - lazSample.MinZ) / (lazSample.MaxZ - lazSample.MinZ);
     }
 
     private void DrawSelectedLazPoint(OpenGL gl)
@@ -1449,7 +1379,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             "Solid" => (0.62, 0.82, 1.0),
             "Grayscale" => ViewerColorMapPalette.Grayscale(heightColorScalar),
             "Thermal" => ViewerColorMapPalette.Thermal(heightColorScalar),
-            "Deviation" => DeviationColor(point.DeviationScalar),
+            "Deviation" => ViewerColorMapPalette.Deviation(point.DeviationScalar),
             _ => C3DPointMapPalette.Height(heightColorScalar)
         };
 

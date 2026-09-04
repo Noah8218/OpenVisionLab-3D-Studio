@@ -17,6 +17,7 @@ using OpenVisionLab.ThreeD.Shell.Layout;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Shell;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
+using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -77,6 +78,29 @@ internal static class ToolWorkbenchDockingVerification
                 "verification runs on STA",
                 Thread.CurrentThread.GetApartmentState() == ApartmentState.STA,
                 Thread.CurrentThread.GetApartmentState().ToString());
+
+            using var firstCallbackViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
+            using var replacementCallbackViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
+            using var disposedCallbackWorkbench = new ToolRecipeWorkbenchView
+            {
+                ViewerContent = firstCallbackViewer,
+            };
+            var profileViewerDataContextBeforeDispose =
+                disposedCallbackWorkbench.ProfileViewerDataContext;
+            disposedCallbackWorkbench.Dispose();
+            disposedCallbackWorkbench.ViewerContent = replacementCallbackViewer;
+            Check(
+                "disposed Workbench ignores late ViewerContent callback",
+                ReferenceEquals(
+                    profileViewerDataContextBeforeDispose,
+                    firstCallbackViewer.ViewModel)
+                && ReferenceEquals(
+                    disposedCallbackWorkbench.ProfileViewerDataContext,
+                    profileViewerDataContextBeforeDispose)
+                && !ReferenceEquals(
+                    disposedCallbackWorkbench.ProfileViewerDataContext,
+                    replacementCallbackViewer.ViewModel),
+                $"before={profileViewerDataContextBeforeDispose is not null};after={disposedCallbackWorkbench.ProfileViewerDataContext is not null};replacement={ReferenceEquals(disposedCallbackWorkbench.ProfileViewerDataContext, replacementCallbackViewer.ViewModel)}");
 
             var dataContextOwner = new object();
             var viewerOwner = new object();

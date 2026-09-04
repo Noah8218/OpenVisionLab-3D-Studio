@@ -26,27 +26,55 @@ internal sealed class ShellCurrentRecipeRunSmoke
         this.findRunButton = findRunButton ?? throw new ArgumentNullException(nameof(findRunButton));
     }
 
-    public async Task<ShellCurrentRecipeRunSmokeResult> PrepareAsync(bool runSmoke)
+    public Task<ShellCurrentRecipeRunSmokeResult> PrepareAsync(bool runSmoke) =>
+        PrepareAsync(runSmoke, CancellationToken.None);
+
+    internal async Task<ShellCurrentRecipeRunSmokeResult> PrepareAsync(
+        bool runSmoke,
+        CancellationToken cancellationToken)
     {
         if (!runSmoke)
         {
             return Success();
         }
 
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Canceled();
+        }
+
         shell.IsValidateWorkspaceSelected = true;
-        await dispatcher.InvokeAsync(
-            () => { },
-            DispatcherPriority.Render);
+        if (!await YieldDispatcherAsync(
+                dispatcher,
+                DispatcherPriority.Render,
+                cancellationToken))
+        {
+            return Canceled();
+        }
         return Success();
     }
 
-    public async Task<ShellCurrentRecipeRunSmokeResult> ExecuteAfterCaptureAsync(
+    public Task<ShellCurrentRecipeRunSmokeResult> ExecuteAfterCaptureAsync(
         bool pressedSmoke,
-        string? screenshotQualityReportPath)
+        string? screenshotQualityReportPath) =>
+        ExecuteAfterCaptureAsync(
+            pressedSmoke,
+            screenshotQualityReportPath,
+            CancellationToken.None);
+
+    internal async Task<ShellCurrentRecipeRunSmokeResult> ExecuteAfterCaptureAsync(
+        bool pressedSmoke,
+        string? screenshotQualityReportPath,
+        CancellationToken cancellationToken)
     {
         if (!pressedSmoke)
         {
             return Success();
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Canceled();
         }
 
         var workbench = shell.Workbench;
@@ -66,6 +94,11 @@ internal sealed class ShellCurrentRecipeRunSmoke
                     "Pressed current-recipe Run button command rejected activation after capture.");
             }
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Canceled();
+            }
+
             runButton.Command.Execute(runButton.CommandParameter);
             if (!string.IsNullOrWhiteSpace(screenshotQualityReportPath))
             {
@@ -81,7 +114,10 @@ internal sealed class ShellCurrentRecipeRunSmoke
         while (!workbench.HasOrderedRunResult
             && DateTimeOffset.UtcNow < runDeadline)
         {
-            await Task.Delay(50);
+            if (!await DelayAsync(TimeSpan.FromMilliseconds(50), cancellationToken))
+            {
+                return Canceled();
+            }
         }
 
         return workbench.HasOrderedRunResult
@@ -93,11 +129,55 @@ internal sealed class ShellCurrentRecipeRunSmoke
     private static ShellCurrentRecipeRunSmokeResult Success() =>
         new(null);
 
+    private static ShellCurrentRecipeRunSmokeResult Canceled() =>
+        new(null)
+        {
+            IsCanceled = true
+        };
+
     private static ShellCurrentRecipeRunSmokeResult Failure(string message) =>
         new(message);
+
+    private static async Task<bool> YieldDispatcherAsync(
+        Dispatcher dispatcher,
+        DispatcherPriority priority,
+        CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        try
+        {
+            await dispatcher.InvokeAsync(() => { }, priority);
+            return !cancellationToken.IsCancellationRequested;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> DelayAsync(
+        TimeSpan delay,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(delay, cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
 }
 
 internal sealed record ShellCurrentRecipeRunSmokeResult(string? Failure)
 {
-    public bool Succeeded => Failure is null;
+    public bool IsCanceled { get; init; }
+
+    public bool Succeeded => Failure is null && !IsCanceled;
 }

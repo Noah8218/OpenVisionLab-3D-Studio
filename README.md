@@ -18,11 +18,21 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.0-dev`
+Current version: `v0.5.1-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.1-dev` (2026-09-05)
+
+- Consolidates Shell workflow, dialog, persistence, and smoke lifetimes into
+  explicit owners while preserving Preview, Publish, Run, Save, and Reopen.
+- Extracts Viewer point-cloud loading, render-resource, cache, transform, and
+  display-color ownership without changing the public Viewer contract.
+- Keeps recipe, Run Record, integration, and raw-height unit semantics
+  compatible; this refactor does not establish calibration or production
+  metrology.
 
 #### `v0.5.0-dev` (2026-09-04)
 

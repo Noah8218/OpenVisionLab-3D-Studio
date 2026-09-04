@@ -37,7 +37,8 @@ internal static class ShellStartupConfigurationPlannerVerification
             ("Aliases", VerifyAliases()),
             ("InvalidValuesKeepDefaults", VerifyInvalidValuesKeepDefaults()),
             ("PlainStartUsesEmptyInput", VerifyPlainStartUsesEmptyInput()),
-            ("RepeatedParseIsDeterministic", VerifyRepeatedParseIsDeterministic())
+            ("RepeatedParseIsDeterministic", VerifyRepeatedParseIsDeterministic()),
+            ("ViewerProjectionOrder", VerifyViewerProjectionOrder())
         };
         passed = checks.All(check => check.Passed);
 
@@ -169,5 +170,43 @@ internal static class ShellStartupConfigurationPlannerVerification
             && first.FitRoi
             && first.BottomPane == ShellStartupBottomPane.Problems
             && first.C3DSourceLoadProgress == 0.75;
+    }
+
+    private static bool VerifyViewerProjectionOrder()
+    {
+        var events = new List<string>();
+        var coordinator = new ShellStartupViewerProjectionCoordinator(
+            new ShellStartupViewerProjectionCallbacks
+            {
+                SelectWorkbenchWorkspace = () => events.Add("workspace:setup"),
+                SelectTeachWorkspace = () => events.Add("workspace:teach"),
+                SelectInspectWorkspace = () => events.Add("workspace:inspect"),
+                SelectReviewWorkspace = () => events.Add("workspace:review"),
+                UseTopView = () => events.Add("view:top"),
+                UsePerspectiveView = () => events.Add("view:perspective"),
+                FitRoi = () => events.Add("fit-roi"),
+                SetHeightColorMinimumRaw = value => events.Add($"height-min:{value}"),
+                SetHeightColorMaximumRaw = value => events.Add($"height-max:{value}")
+            });
+
+        coordinator.Apply(
+            new ShellStartupConfigurationPlan
+            {
+                StageWorkspace = ShellWorkspaceMode.Review,
+                ViewerView = ShellStartupViewerView.Top,
+                FitRoi = true,
+                HeightColorMinimumRaw = -2.5,
+                HeightColorMaximumRaw = 4.25
+            });
+        coordinator.Apply(new ShellStartupConfigurationPlan());
+
+        return events.SequenceEqual(
+        [
+            "workspace:review",
+            "view:top",
+            "fit-roi",
+            "height-min:-2.5",
+            "height-max:4.25"
+        ]);
     }
 }

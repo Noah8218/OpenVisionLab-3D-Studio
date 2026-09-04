@@ -1,4 +1,5 @@
 using System.IO;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Loading;
 
 namespace OpenVisionLab.ThreeD.Verification.Viewer;
@@ -10,7 +11,7 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var lines = new List<string>
         {
-            "OpenVisionLab 3D Viewer source-load operation coordinator verification",
+            "OpenVisionLab 3D Viewer LAZ/LAS load coordinator verification",
             $"Generated: {DateTimeOffset.Now:O}"
         };
         var passed = 0;
@@ -143,12 +144,133 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 $"completedCurrent={completed.IsCurrent};completedCancelled={completed.IsCancellationRequested};replacementCurrent={replacement.IsCurrent};replacementGeneration={replacement.Generation}");
         }
 
+        var samplePath = Path.Combine(
+            "3D",
+            "PublicSamples",
+            "PointCloud",
+            "interesting.las");
+        if (!File.Exists(samplePath))
+        {
+            Check(
+                "sample cache fixture exists",
+                false,
+                $"missing={Path.GetFullPath(samplePath)}");
+        }
+        else
+        {
+            var pointCloud = LazPointCloud.Load(samplePath, 64);
+            var cache = new LazPointCloudSampleCache();
+            cache.Store(samplePath, 64, pointCloud);
+            var sameSourceHit = cache.TryGet(
+                Path.GetFullPath(samplePath),
+                64,
+                out var cachedPointCloud);
+            Check(
+                "sample cache reuses the same source and budget",
+                sameSourceHit
+                && ReferenceEquals(pointCloud, cachedPointCloud)
+                && cache.Count == 1,
+                $"hit={sameSourceHit};sameObject={ReferenceEquals(pointCloud, cachedPointCloud)};count={cache.Count}");
+
+            cache.Store(samplePath, 128, pointCloud);
+            var budget64Hit = cache.TryGet(samplePath, 64, out _);
+            var budget128Hit = cache.TryGet(samplePath, 128, out _);
+            Check(
+                "sample cache keeps multiple budgets for one source",
+                budget64Hit && budget128Hit && cache.Count == 2,
+                $"budget64={budget64Hit};budget128={budget128Hit};count={cache.Count}");
+
+            Parallel.For(0, 32, index => cache.Store(samplePath, 256 + index, pointCloud));
+            Check(
+                "sample cache serializes concurrent budget writes",
+                cache.Count == 34
+                && cache.TryGet(samplePath, 256, out _)
+                && cache.TryGet(samplePath, 287, out _),
+                $"count={cache.Count};firstConcurrentBudget={cache.TryGet(samplePath, 256, out _)};lastConcurrentBudget={cache.TryGet(samplePath, 287, out _)}");
+
+            cache.Store(samplePath + ".replacement", 64, pointCloud);
+            var staleSourceHit = cache.TryGet(samplePath, 64, out _);
+            Check(
+                "sample cache invalidates entries when source changes",
+                !staleSourceHit && cache.Count == 1,
+                $"staleSourceHit={staleSourceHit};source={cache.SourcePath};count={cache.Count}");
+
+            cache.Clear();
+            Check(
+                "sample cache clear drops managed references",
+                !cache.HasEntries && cache.SourcePath is null && cache.Count == 0,
+                $"hasEntries={cache.HasEntries};source={cache.SourcePath};count={cache.Count}");
+
+            var loadCache = new LazPointCloudSampleCache();
+            using var loadCoordinator = new LazPointCloudLoadCoordinator(loadCache);
+            var syncFirst = loadCoordinator.Load(samplePath, 72);
+            Check(
+                "sync load coordinator decodes a fixture without WPF",
+                syncFirst.PointCloud is not null && !syncFirst.Reused && !syncFirst.WasCanceled,
+                $"loaded={syncFirst.PointCloud is not null};reused={syncFirst.Reused};cancelled={syncFirst.WasCanceled}");
+
+            var syncSecond = loadCoordinator.Load(samplePath, 72);
+            Check(
+                "sync load coordinator reuses its injected cache",
+                syncSecond.PointCloud is not null
+                && syncSecond.Reused
+                && !syncSecond.WasCanceled
+                && ReferenceEquals(syncFirst.PointCloud, syncSecond.PointCloud),
+                $"loaded={syncSecond.PointCloud is not null};reused={syncSecond.Reused};sameObject={ReferenceEquals(syncFirst.PointCloud, syncSecond.PointCloud)}");
+
+            var asyncFirst = loadCoordinator
+                .LoadAsync(samplePath, 96)
+                .GetAwaiter()
+                .GetResult();
+            Check(
+                "async load coordinator decodes a fixture without WPF",
+                asyncFirst is { PointCloud: not null, Reused: false, WasCanceled: false },
+                $"loaded={asyncFirst?.PointCloud is not null};reused={asyncFirst?.Reused};cancelled={asyncFirst?.WasCanceled}");
+
+            var asyncSecond = loadCoordinator
+                .LoadAsync(samplePath, 96)
+                .GetAwaiter()
+                .GetResult();
+            Check(
+                "async load coordinator reuses its injected cache",
+                asyncSecond is { PointCloud: not null, Reused: true, WasCanceled: false }
+                && ReferenceEquals(asyncFirst?.PointCloud, asyncSecond?.PointCloud),
+                $"loaded={asyncSecond?.PointCloud is not null};reused={asyncSecond?.Reused};sameObject={ReferenceEquals(asyncFirst?.PointCloud, asyncSecond?.PointCloud)}");
+
+            using var cancelledLoad = new CancellationTokenSource();
+            cancelledLoad.Cancel();
+            var cancelled = loadCoordinator
+                .LoadAsync(samplePath, 97, cancelledLoad.Token)
+                .GetAwaiter()
+                .GetResult();
+            Check(
+                "async load coordinator returns a cancellation outcome",
+                cancelled is { PointCloud: null, WasCanceled: true },
+                $"loaded={cancelled?.PointCloud is not null};cancelled={cancelled?.WasCanceled}");
+
+            loadCoordinator.Dispose();
+            var rejectedAfterLoadCoordinatorDispose = false;
+            try
+            {
+                _ = loadCoordinator.LoadAsync(samplePath, 96).GetAwaiter().GetResult();
+            }
+            catch (ObjectDisposedException)
+            {
+                rejectedAfterLoadCoordinatorDispose = true;
+            }
+
+            Check(
+                "disposed async load coordinator rejects a new request",
+                rejectedAfterLoadCoordinatorDispose,
+                $"rejected={rejectedAfterLoadCoordinatorDispose}");
+        }
+
         var succeeded = passed == total;
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         var fullReportPath = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
         File.WriteAllLines(fullReportPath, lines);
-        summary = $"ViewerSourceLoadOperationCoordinator|pass={succeeded}|checks={passed}/{total}|report={fullReportPath}";
+        summary = $"ViewerLazPointCloudLoadCoordinator|pass={succeeded}|checks={passed}/{total}|report={fullReportPath}";
         return succeeded;
     }
 }

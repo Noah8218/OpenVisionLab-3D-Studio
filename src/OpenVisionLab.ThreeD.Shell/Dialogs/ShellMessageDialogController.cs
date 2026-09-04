@@ -6,15 +6,32 @@ using WpfMessageDialogKind = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs
 using WpfMessageDialogOptions = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogOptions;
 using WpfMessageDialogResult = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogResult;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using System.Windows;
 
-namespace OpenVisionLab.ThreeD.Shell;
+namespace OpenVisionLab.ThreeD.Shell.Dialogs;
 
-public partial class MainWindow
+/// <summary>
+/// Owns Shell message-dialog policy and converts dialog results for the
+/// lifecycle and Workbench coordinators. The Window owner is resolved only
+/// when a dialog is shown so Recipe Manager ownership remains unchanged.
+/// </summary>
+internal sealed class ShellMessageDialogController
 {
-    private static string DialogText(string key, string korean, string english) =>
-        ThreeDLocalization.Shared.Resolve(key, korean, english);
+    private readonly Func<Window> getOwner;
+    private readonly ShellMainWindowViewModel viewModel;
+    private readonly Func<string, string, string, string> dialogText;
 
-    private void ShowLoadSourceFailure(string details) =>
+    public ShellMessageDialogController(
+        Func<Window> getOwner,
+        ShellMainWindowViewModel viewModel,
+        Func<string, string, string, string> dialogText)
+    {
+        this.getOwner = getOwner;
+        this.viewModel = viewModel;
+        this.dialogText = dialogText;
+    }
+
+    public void ShowLoadSourceFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.LoadSource.Title",
@@ -25,7 +42,7 @@ public partial class MainWindow
             "The 3D input could not be loaded. Check the file format and data, then try again.",
             details);
 
-    private void ShowMissingToolLabStep(string toolName) =>
+    public void ShowMissingToolLabStep(string toolName) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Info,
             "ThreeD.Dialog.ToolLab.StepRequired.Title",
@@ -35,7 +52,7 @@ public partial class MainWindow
             $"도구 랩을 열기 전에 레시피에 {toolName} 단계를 추가하거나 기존 단계를 여세요.",
             $"Add or open a {toolName} step in the recipe before opening its Tool Lab.");
 
-    private void ShowRecipeSaveFailure(string details) =>
+    public void ShowRecipeSaveFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.RecipeSave.Title",
@@ -46,7 +63,7 @@ public partial class MainWindow
             "The recipe file could not be saved. Check the listed file or structural error.",
             details);
 
-    private void ShowFirstRecipeCreateFailure(string details) =>
+    public void ShowFirstRecipeCreateFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.FirstRecipeCreate.Title",
@@ -57,7 +74,7 @@ public partial class MainWindow
             "The recipe could not be created from the selected C3D input and task starter.",
             details);
 
-    private void ShowFirstRecipeSetupPersistenceFailure(string details) =>
+    public void ShowFirstRecipeSetupPersistenceFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.FirstRecipeSetupPersistence.Title",
@@ -68,7 +85,7 @@ public partial class MainWindow
             "The recipe was created, but its setup could not be saved for next time.",
             details);
 
-    private void ShowRecipeFileUnavailable(string path) =>
+    public void ShowRecipeFileUnavailable(string path) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Info,
             "ThreeD.Dialog.RecipeOpen.Unavailable.Title",
@@ -78,7 +95,7 @@ public partial class MainWindow
             $"레시피 파일을 찾을 수 없습니다.{Environment.NewLine}{path}",
             $"The recipe file is unavailable.{Environment.NewLine}{path}");
 
-    private void ShowRecipeOpenFailure(string details) =>
+    public void ShowRecipeOpenFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.RecipeOpen.Failed.Title",
@@ -89,17 +106,17 @@ public partial class MainWindow
             "The recipe could not be opened. Check its contents and version.",
             details);
 
-    private void ShowRecipeSourceNotReady() =>
+    public void ShowRecipeSourceNotReady() =>
         ShowStudioDialog(
             WpfMessageDialogKind.Info,
             "ThreeD.Dialog.RecipeSource.NotReady.Title",
             "레시피 입력 확인",
             "Recipe Input Check",
             "ThreeD.Dialog.RecipeSource.NotReady.Message",
-            $"레시피는 열렸지만 3D 입력이 준비되지 않았습니다. 레시피는 계속 편집할 수 있으며 검사는 실행되지 않았습니다.{Environment.NewLine}{Environment.NewLine}{_viewModel.Workbench.LocalizedSourceReadinessSummary}",
-            $"The recipe was opened, but its 3D input is not ready. The recipe remains editable and no inspection was run.{Environment.NewLine}{Environment.NewLine}{_viewModel.Workbench.LocalizedSourceReadinessSummary}");
+            $"레시피는 열렸지만 3D 입력이 준비되지 않았습니다. 레시피는 계속 편집할 수 있으며 검사는 실행되지 않았습니다.{Environment.NewLine}{Environment.NewLine}{viewModel.Workbench.LocalizedSourceReadinessSummary}",
+            $"The recipe was opened, but its 3D input is not ready. The recipe remains editable and no inspection was run.{Environment.NewLine}{Environment.NewLine}{viewModel.Workbench.LocalizedSourceReadinessSummary}");
 
-    private void ShowRecipeSourceLoadFailure(string details) =>
+    public void ShowRecipeSourceLoadFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.RecipeSource.LoadFailed.Title",
@@ -110,25 +127,25 @@ public partial class MainWindow
             "The recipe's 3D input could not be loaded. Relink a valid C3D input.",
             details);
 
-    private WpfMessageDialogResult ConfirmUnsavedRecipeChanges() =>
+    public WpfMessageDialogResult ConfirmUnsavedRecipeChanges() =>
         WpfMessageDialog.Show(
-            GetRecipeLifecycleDialogOwner(),
+            getOwner(),
             new WpfMessageDialogOptions
             {
-                Title = DialogText("ThreeD.Dialog.UnsavedRecipe.Title", "저장하지 않은 레시피", "Unsaved Recipe"),
-                Message = DialogText(
+                Title = dialogText("ThreeD.Dialog.UnsavedRecipe.Title", "저장하지 않은 레시피", "Unsaved Recipe"),
+                Message = dialogText(
                     "ThreeD.Dialog.UnsavedRecipe.Message",
                     "현재 레시피의 변경 내용을 저장하시겠습니까?",
                     "Save changes to the current recipe?"),
                 Kind = WpfMessageDialogKind.Question,
                 Buttons = WpfMessageDialogButtons.YesNoCancel,
                 DefaultResult = WpfMessageDialogResult.Yes,
-                PrimaryButtonText = DialogText("ThreeD.Dialog.UnsavedRecipe.Save", "저장", "Save"),
-                SecondaryButtonText = DialogText("ThreeD.Dialog.UnsavedRecipe.DoNotSave", "저장 안 함", "Don't Save"),
-                TertiaryButtonText = DialogText("ThreeD.Dialog.UnsavedRecipe.Cancel", "취소", "Cancel")
+                PrimaryButtonText = dialogText("ThreeD.Dialog.UnsavedRecipe.Save", "저장", "Save"),
+                SecondaryButtonText = dialogText("ThreeD.Dialog.UnsavedRecipe.DoNotSave", "저장 안 함", "Don't Save"),
+                TertiaryButtonText = dialogText("ThreeD.Dialog.UnsavedRecipe.Cancel", "취소", "Cancel")
             });
 
-    private WpfMessageDialogResult ConfirmPendingParameterChanges() =>
+    public WpfMessageDialogResult ConfirmPendingParameterChanges() =>
         ShowStudioDialog(
             WpfMessageDialogKind.Question,
             WpfMessageDialogButtons.YesNoCancel,
@@ -139,55 +156,55 @@ public partial class MainWindow
             "선택한 단계의 파라미터 변경을 적용하시겠습니까? ‘아니오’를 선택하면 아직 적용하지 않은 PropertyGrid 변경만 취소됩니다.",
             "Apply the selected step's parameter changes? Choosing No discards only the unapplied PropertyGrid draft.");
 
-    private void OnWorkbenchRemoveSelectedStepRequested(
+    public void OnWorkbenchRemoveSelectedStepRequested(
         object? sender,
         ToolWorkbenchStepRemovalRequestEventArgs args)
     {
         if (WpfMessageDialog.Show(
-                GetRecipeLifecycleDialogOwner(),
+                getOwner(),
                 CreateRecipeStepRemovalDialogOptions(args)) == WpfMessageDialogResult.Yes)
         {
-            _viewModel.Workbench.ConfirmSelectedStepRemoval(args.StepId);
+            viewModel.Workbench.ConfirmSelectedStepRemoval(args.StepId);
         }
     }
 
-    private static WpfMessageDialogOptions CreateRecipeStepRemovalDialogOptions(
+    public WpfMessageDialogOptions CreateRecipeStepRemovalDialogOptions(
         ToolWorkbenchStepRemovalRequestEventArgs args)
     {
         var selectionImpact = args.OrphanedSelectionNames.Count == 0
-            ? DialogText(
+            ? dialogText(
                 "ThreeD.Dialog.RemoveStep.NoSelections",
                 "연결된 선택 영역은 삭제되지 않습니다.",
                 "No teaching selections will be removed.")
-            : DialogText(
+            : dialogText(
                 "ThreeD.Dialog.RemoveStep.OrphanSelections",
                 $"다른 단계가 사용하지 않는 선택 영역 {args.OrphanedSelectionNames.Count}개도 함께 삭제됩니다: {string.Join(", ", args.OrphanedSelectionNames)}",
                 $"{args.OrphanedSelectionNames.Count} teaching selection(s) not used by another step will also be removed: {string.Join(", ", args.OrphanedSelectionNames)}");
         return new WpfMessageDialogOptions
         {
-            Title = DialogText(
+            Title = dialogText(
                 "ThreeD.Dialog.RemoveStep.Title",
                 "레시피 단계 삭제",
                 "Remove Recipe Step"),
-            Message = DialogText(
+            Message = dialogText(
                 "ThreeD.Dialog.RemoveStep.Message",
                 $"'{args.StepName}' 단계를 삭제하시겠습니까?{Environment.NewLine}{Environment.NewLine}{selectionImpact}",
                 $"Remove the '{args.StepName}' step?{Environment.NewLine}{Environment.NewLine}{selectionImpact}"),
             Kind = WpfMessageDialogKind.Warning,
             Buttons = WpfMessageDialogButtons.YesNo,
             DefaultResult = WpfMessageDialogResult.No,
-            PrimaryButtonText = DialogText(
+            PrimaryButtonText = dialogText(
                 "ThreeD.Dialog.RemoveStep.Remove",
                 "삭제",
                 "Remove"),
-            SecondaryButtonText = DialogText(
+            SecondaryButtonText = dialogText(
                 "ThreeD.Dialog.RemoveStep.Cancel",
                 "취소",
                 "Cancel")
         };
     }
 
-    private void ShowParameterApplyFailure(string details) =>
+    public void ShowParameterApplyFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.Parameters.Failed.Title",
@@ -198,7 +215,7 @@ public partial class MainWindow
             "The step parameters could not be applied. Check the entered values.",
             details);
 
-    private void ShowEvidenceArtifactMissing(string label, string path) =>
+    public void ShowEvidenceArtifactMissing(string label, string path) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.Evidence.Missing.Title",
@@ -208,7 +225,7 @@ public partial class MainWindow
             $"{label} 파일을 찾을 수 없습니다.{Environment.NewLine}{Environment.NewLine}{path}",
             $"The {label} file was not found.{Environment.NewLine}{Environment.NewLine}{path}");
 
-    private void ShowEvidenceArtifactOpenFailure(string label, string path, string details) =>
+    public void ShowEvidenceArtifactOpenFailure(string label, string path, string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.Evidence.OpenFailed.Title",
@@ -219,25 +236,25 @@ public partial class MainWindow
             $"The {label} file could not be opened.{Environment.NewLine}{Environment.NewLine}{path}",
             details);
 
-    private void ShowRunRecordOpenFailure(string details) =>
+    public void ShowRunRecordOpenFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.RunRecord.OpenFailed.Title",
-            "\uC2E4\uD589 \uAE30\uB85D \uC5F4\uAE30 \uC2E4\uD328",
+            "실행 기록 열기 실패",
             "Open Run Record Failed",
             "ThreeD.Dialog.RunRecord.OpenFailed.Message",
-            "\uC2E4\uD589 \uAE30\uB85D\uC744 \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. JSON \uD30C\uC77C\uACFC \uC2A4\uD0A4\uB9C8\uB97C \uD655\uC778\uD558\uC138\uC694.",
+            "실행 기록을 읽을 수 없습니다. JSON 파일과 스키마를 확인하세요.",
             "The Run Record could not be read. Check the JSON file and schema.",
             details);
 
-    private void ShowRunRecordExportFailure(string details) =>
+    public void ShowRunRecordExportFailure(string details) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.RunRecord.ExportFailed.Title",
-            "\uC2E4\uD589 \uAE30\uB85D \uB0B4\uBCF4\uB0B4\uAE30 \uC2E4\uD328",
+            "실행 기록 내보내기 실패",
             "Export Run Record Failed",
             "ThreeD.Dialog.RunRecord.ExportFailed.Message",
-            "\uC2E4\uD589 \uAE30\uB85D JSON\uACFC \uBCF4\uACE0\uC11C\uB97C \uB0B4\uBCF4\uB0BC \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uB300\uC0C1 \uD3F4\uB354 \uAD8C\uD55C\uACFC \uD30C\uC77C\uC744 \uD655\uC778\uD558\uC138\uC694.",
+            "실행 기록 JSON과 보고서를 내보낼 수 없습니다. 대상 폴더 권한과 파일을 확인하세요.",
             "The Run Record JSON and reports could not be exported. Check the target folder permissions and files.",
             details);
 
@@ -272,11 +289,11 @@ public partial class MainWindow
         string englishMessage,
         string details = "") =>
         WpfMessageDialog.Show(
-            GetRecipeLifecycleDialogOwner(),
+            getOwner(),
             new WpfMessageDialogOptions
             {
-                Title = DialogText(titleKey, koreanTitle, englishTitle),
-                Message = DialogText(messageKey, koreanMessage, englishMessage),
+                Title = dialogText(titleKey, koreanTitle, englishTitle),
+                Message = dialogText(messageKey, koreanMessage, englishMessage),
                 Details = details,
                 Kind = kind,
                 Buttons = buttons

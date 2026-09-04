@@ -29,6 +29,38 @@ public static class ViewerRecipeLoadPlanVerification
             var recipe = (OpenVisionLab.ThreeD.Tools.HeightDeviationRecipe)recipeFile.LoadDocument();
             var plan = HeightDeviationRecipeLoadPlan.Create(recipeFile, recipe, maxRenderedPoints: 55000);
 
+            var recipeLoadRoutes = new ViewerRecipeLoadRoutes(
+                (_, _, _) => true,
+                (_, _, _) => true,
+                (_, _, _) => true,
+                (_, _, _) => true,
+                (_, _, _) => true,
+                (_, _, _) => true,
+                (_, _, _) => true,
+                (_, _, _, _) => Task.FromResult(true));
+            using var recipeLoadCancellation = new CancellationTokenSource();
+            recipeLoadCancellation.Cancel();
+            var recipeLoadCancelledBeforeOpen = false;
+            try
+            {
+                ViewerRecipeLoadCoordinator.ApplyAsync(
+                        recipePath,
+                        isSmoke: false,
+                        routes: recipeLoadRoutes,
+                        handleFailure: (_, _) => false,
+                        cancellationToken: recipeLoadCancellation.Token)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                recipeLoadCancelledBeforeOpen = true;
+            }
+            Check(
+                "recipe coordinator honors pre-cancelled lifetime",
+                recipeLoadCancelledBeforeOpen,
+                $"cancelled={recipeLoadCancelledBeforeOpen}");
+
             Check("recipe path is normalized", plan.FullRecipePath == recipePath, plan.FullRecipePath);
             Check("source path resolves beside recipe", File.Exists(plan.SourcePath), plan.SourcePath);
             Check("grid remains source-backed", plan.Grid.Width == 1280 && plan.Grid.Height == 840, $"grid={plan.Grid.Width}x{plan.Grid.Height}");

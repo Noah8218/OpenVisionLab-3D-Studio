@@ -251,6 +251,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         set => SetValue(ViewerContentProperty, value);
     }
 
+    internal object? ProfileViewerDataContext =>
+        (DockWorkspace.ProfileContent as HeightProfileView)?.DataContext;
+
     public bool ReleaseMainViewer(object? requestedContent) =>
         ViewerWorkspaceSurface?.ReleaseMainViewer(requestedContent) == true;
 
@@ -929,12 +932,15 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     private static void OnViewerContentChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
-        if (owner is ToolRecipeWorkbenchView view)
+        if (owner is not ToolRecipeWorkbenchView view
+            || Volatile.Read(ref view.disposalState) != 0)
         {
-            if (view.DockWorkspace.ProfileContent is HeightProfileView profileView)
-            {
-                profileView.DataContext = (args.NewValue as OpenVisionThreeDViewerControl)?.ViewModel;
-            }
+            return;
+        }
+
+        if (view.DockWorkspace.ProfileContent is HeightProfileView profileView)
+        {
+            profileView.DataContext = (args.NewValue as OpenVisionThreeDViewerControl)?.ViewModel;
         }
     }
 

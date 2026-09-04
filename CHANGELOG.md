@@ -1,10 +1,31 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.5.0-dev` development line onward. It does not claim that a version was
+`0.5.1-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.5.0-dev
+## [Unreleased] - 0.5.1-dev
+
+### Changed
+
+- Consolidated Shell workflow, dialog, persistence, startup, and smoke
+  lifetimes into explicit owners with deterministic shutdown and cancellation
+  boundaries.
+- Extracted Viewer point-cloud loading, render-resource, cache, transform, and
+  display-color ownership from the control while retaining the public Viewer,
+  recipe, and Preview/Publish/Run contracts.
+- Preserved existing recipe, Run Record, integration, and raw-height unit
+  semantics; calibration, uncertainty, Gauge R&R, and production metrology
+  remain outside this software-only refactor.
+
+### Compatibility
+
+- Product version is `0.5.1-dev`; Viewer Host API, Run Record, recipe, and
+  persisted storage contract versions are unchanged.
+- No tag, release candidate, package publication, or deployment is created by
+  this development batch.
+
+## [0.5.0-dev] - 2026-09-04
 
 ### Added
 
@@ -173,5 +194,5 @@ released; publication state is owned by the release and version policy.
   fixture identity.
 - Schema `1.8` and older optional-field records remain readable under their
   documented compatibility boundaries.
-- Product version is `0.4.3-dev`; no tag, release candidate, or public
+- Product version was `0.5.0-dev`; no tag, release candidate, or public
   release is created by these changes.

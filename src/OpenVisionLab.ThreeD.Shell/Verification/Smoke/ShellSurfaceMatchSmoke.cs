@@ -1,5 +1,6 @@
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Shell.Coordination;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
@@ -14,41 +15,30 @@ internal static class ShellSurfaceMatchSmoke
         string[] arguments,
         ToolWorkbenchViewModel workbench,
         out string failure)
+        => TryConfigureEvidenceFromCommandLine(
+            new ShellCommandLineArguments(arguments),
+            workbench,
+            out failure);
+
+    internal static bool TryConfigureEvidenceFromCommandLine(
+        ShellCommandLineArguments commandLine,
+        ToolWorkbenchViewModel workbench,
+        out string failure)
     {
-        ArgumentNullException.ThrowIfNull(arguments);
+        ArgumentNullException.ThrowIfNull(commandLine);
         ArgumentNullException.ThrowIfNull(workbench);
 
         failure = string.Empty;
-        var modelPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-model");
-        var scenePath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-scene");
-        var executionPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-execution");
-        var assessmentPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-assessment");
-        var runtimePath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-runtime");
-        var collectionPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-collection");
-        var edgeScorePath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-edge-score");
-        var edgeOverlayPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-edge-overlay");
-        var edgeAssessmentPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-edge-assessment");
-        var falsePositiveReviewPath = GetCommandLineValue(
-            arguments,
-            "--smoke-surface-match-review");
+        var modelPath = commandLine.GetValue("--smoke-surface-match-model");
+        var scenePath = commandLine.GetValue("--smoke-surface-match-scene");
+        var executionPath = commandLine.GetValue("--smoke-surface-match-execution");
+        var assessmentPath = commandLine.GetValue("--smoke-surface-match-assessment");
+        var runtimePath = commandLine.GetValue("--smoke-surface-match-runtime");
+        var collectionPath = commandLine.GetValue("--smoke-surface-match-collection");
+        var edgeScorePath = commandLine.GetValue("--smoke-surface-edge-score");
+        var edgeOverlayPath = commandLine.GetValue("--smoke-surface-edge-overlay");
+        var edgeAssessmentPath = commandLine.GetValue("--smoke-surface-edge-assessment");
+        var falsePositiveReviewPath = commandLine.GetValue("--smoke-surface-match-review");
         if (modelPath is null
             && scenePath is null
             && executionPath is null
@@ -91,9 +81,7 @@ internal static class ShellSurfaceMatchSmoke
                     model,
                     scene,
                     collection);
-                var selectionText = GetCommandLineValue(
-                    arguments,
-                    "--smoke-surface-match-select-index");
+                var selectionText = commandLine.GetValue("--smoke-surface-match-select-index");
                 if (selectionText is not null
                     && (!int.TryParse(selectionText, out var selectionIndex)
                         || selectionIndex < 0
@@ -186,13 +174,4 @@ internal static class ShellSurfaceMatchSmoke
         }
     }
 
-    private static string? GetCommandLineValue(
-        string[] arguments,
-        string name)
-    {
-        var index = Array.IndexOf(arguments, name);
-        return index >= 0 && index + 1 < arguments.Length
-            ? arguments[index + 1]
-            : null;
-    }
 }

@@ -38,15 +38,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        c3dGpuBuffers = null;
-        c3dGpuBufferKey = null;
-        c3dGpuFailedKey = null;
-        c3dGpuReleasePending = false;
-        c3dGpuBuffersAvailable = false;
-        c3dDisplayListId = 0;
-        c3dDisplayListKey = null;
-        c3dInteractionDisplayListId = 0;
-        c3dInteractionDisplayListKey = null;
+        c3dRenderResources.ResetForOpenGLInitialization();
         importedMeshTextureId = 0;
         importedMeshTextureSource = null;
         importedMeshTextureReleasePending = false;

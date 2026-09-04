@@ -659,8 +659,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         domainMaskExecutionOwner.Dispose();
         connectedRegionExecutionOwner.Dispose();
         removeOutlierExecutionOwner.Dispose();
+        CancelSourceQualityUiNotification();
         HeightImageViewer.Dispose();
         SourceQuality.Dispose();
+        SourceSession.Dispose();
     }
 
     internal ToolWorkbenchTeachingCaptureSession TeachingCaptureSession { get; } = new();

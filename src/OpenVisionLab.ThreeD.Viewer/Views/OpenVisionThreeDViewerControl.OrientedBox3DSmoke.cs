@@ -13,6 +13,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 {
     public async Task<bool> RunTeachingOrientedBoxPointerSmokeAsync(string reportPath)
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         var lines = new List<string>
         {
             "OpenVisionLab 3D OrientedBox3D actual-pointer smoke",
@@ -51,17 +56,41 @@ public sealed partial class OpenVisionThreeDViewerControl
             hostWindow.Activate();
             hostWindow.Focus();
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(240);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            await Task.Delay(240, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             hasOriginalPointer = WindowsPointerInput.TryGetPosition(out originalPointer);
             pointerInputRegressionActive = true;
 
             ConfigureTeachingOrientedBoxSmokeView("Perspective");
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(180);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            await Task.Delay(180, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var perspectiveHandles = AreTeachingOrientedBoxHandlesAccessible();
             hoverRecovery = await RunTeachingOrientedBoxHoverRecoveryAsync(
                 hostWindow);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var moveResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.Move,
@@ -69,6 +98,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 (before, after) => before.Center != after.Center,
                 "perspective-move",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var resizeXResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeXPositive,
@@ -77,6 +111,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                     after.HalfExtents.X > before.HalfExtents.X,
                 "perspective-resize-x",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var heightResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeYPositive,
@@ -85,6 +124,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                     after.HalfExtents.Y > before.HalfExtents.Y,
                 "perspective-resize-y",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var resizeZResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeZPositive,
@@ -93,6 +137,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                     after.HalfExtents.Z > before.HalfExtents.Z,
                 "perspective-resize-z",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var rotateResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.RotateY,
@@ -103,10 +152,24 @@ public sealed partial class OpenVisionThreeDViewerControl
                     && ToolRecipeOrientedBox3DGeometry.Validate(after).Count == 0,
                 "perspective-rotate-y",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             ConfigureTeachingOrientedBoxSmokeView("Top");
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(180);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            await Task.Delay(180, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var topHandles = AreTeachingOrientedBoxHandlesAccessible();
             var topHeightResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
@@ -116,10 +179,24 @@ public sealed partial class OpenVisionThreeDViewerControl
                     after.HalfExtents.Y > before.HalfExtents.Y,
                 "top-resize-y",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             ConfigureTeachingOrientedBoxSmokeView("Side");
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(180);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            await Task.Delay(180, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var sideHandles = AreTeachingOrientedBoxHandlesAccessible();
             var sideCollapsedAxisResizeResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
@@ -129,6 +206,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                     after.HalfExtents.X > before.HalfExtents.X,
                 "side-collapsed-resize-x",
                 lines);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             if (!TryGetTeachingOrientedBoxDraft(out var finalSelection)
                 || finalSelection.OrientedBox3D is null)
@@ -207,6 +288,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add(
                 "Projection|worldOutline=true|screenSpaceFallback=true|topSidePerspectiveActualPointer=true|fixedHandleRadiusPixels=18");
         }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return false;
+        }
         catch (Exception exception)
         {
             failure = exception.Message;
@@ -228,8 +317,20 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (hostWindow is not null)
             {
-                hostWindow.Topmost = originalTopmost;
+                try
+                {
+                    hostWindow.Topmost = originalTopmost;
+                }
+                catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                {
+                    // The host may already be closing when control lifetime cancellation wins.
+                }
             }
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         if (!string.IsNullOrWhiteSpace(failure))
@@ -244,7 +345,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         File.WriteAllLines(fullPath, lines);
         if (!passed)
         {
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             SetSmokeFailure($"OrientedBox3D pointer smoke failed: {failure}");
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         RenderNow();
@@ -254,6 +365,11 @@ public sealed partial class OpenVisionThreeDViewerControl
     private async Task<OrientedBoxHoverRecoverySmokeResult> RunTeachingOrientedBoxHoverRecoveryAsync(
         Window hostWindow)
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return default;
+        }
+
         if (!TryGetTeachingOrientedBoxDraft(out var selection)
             || selection.OrientedBox3D is not { } box)
         {
@@ -265,8 +381,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewportTopLeft.X - OrientedBoxHandleRadius * 2,
             viewportTopLeft.Y - OrientedBoxHandleRadius * 2);
         WindowsPointerInput.MoveTo(outsideViewport);
-        await Task.Delay(160);
+        await Task.Delay(160, viewerLifetimeToken);
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return default;
+        }
+
         var statusBeforeHover = viewModel.ViewerStatus;
         var normalPassed =
             !Viewport.IsMouseOver
@@ -286,6 +407,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 hostWindow,
                 Viewport.PointToScreen(hoverPoint));
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return default;
+            }
+
             hoverPassed =
                 teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.Move
                 && Viewport.Cursor == Cursors.SizeAll
@@ -297,8 +423,13 @@ public sealed partial class OpenVisionThreeDViewerControl
                     StringComparison.Ordinal);
         }
         WindowsPointerInput.MoveTo(outsideViewport);
-        await Task.Delay(160);
+        await Task.Delay(160, viewerLifetimeToken);
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return default;
+        }
+
         var mouseLeaveRecoveryPassed =
             !Viewport.IsMouseOver
             && teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.None;
@@ -323,6 +454,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         string evidenceName,
         ICollection<string> evidence)
     {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return new OrientedBoxDragSmokeResult(false, true);
+        }
+
         if (!TryGetTeachingOrientedBoxDraft(out var beforeSelection)
             || beforeSelection.OrientedBox3D is not { } before)
         {
@@ -352,13 +488,18 @@ public sealed partial class OpenVisionThreeDViewerControl
                 WindowsPointerInput.MoveTo(new Point(
                     viewportTopLeft.X - OrientedBoxHandleRadius * 2,
                     viewportTopLeft.Y - OrientedBoxHandleRadius * 2));
-                await Task.Delay(100);
+                await Task.Delay(100, viewerLifetimeToken);
             }
 
             await EnsurePointerInputTargetAsync(
                 hostWindow,
                 Viewport.PointToScreen(start));
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return new OrientedBoxDragSmokeResult(false, true);
+            }
+
             modeMatched =
                 GetTeachingOrientedBoxEditMode(start, before) == mode
                 && teachingOrientedBoxHoverMode == mode
@@ -369,7 +510,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(100);
+            await Task.Delay(100, viewerLifetimeToken);
         }
 
         if (!modeMatched)
@@ -385,6 +526,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             start,
             createTarget(center, start),
             MouseButton.Left);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return new OrientedBoxDragSmokeResult(false, true);
+        }
+
         var hasAfter = TryGetTeachingOrientedBoxDraft(out var afterSelection)
             && afterSelection.OrientedBox3D is not null;
         var identityPreserved = hasAfter

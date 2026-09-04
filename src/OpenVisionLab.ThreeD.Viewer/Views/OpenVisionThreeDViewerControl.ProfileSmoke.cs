@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 
@@ -13,6 +14,11 @@ public sealed partial class OpenVisionThreeDViewerControl
     public async Task<bool> RunProfilePointerSmokeAsync(string reportPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
         var lines = new List<string>
         {
             "OpenVisionLab 3D interactive height-profile pointer smoke",
@@ -49,7 +55,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (!viewModel.C3DSampleVisible || c3dSample is null)
             {
-                var defaultSourcePath = FindDefaultC3DSamplePath();
+                var defaultSourcePath = ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
                 if (defaultSourcePath is null || !LoadC3DSource(defaultSourcePath))
                 {
                     throw new InvalidOperationException(
@@ -58,6 +64,10 @@ public sealed partial class OpenVisionThreeDViewerControl
 
                 profileSourceBootstrap = defaultSourcePath;
                 await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
             }
 
             if (!viewModel.C3DSampleVisible || c3dSample is null)
@@ -74,7 +84,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             hostWindow.Focus();
             viewModel.ProfileCommand.Execute(null);
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-            await Task.Delay(240);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            await Task.Delay(240, viewerLifetimeToken);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
 
             // The supported Compact Shell baseline reserves a 178 px-high 3D
             // viewport. Keep a small readiness margin below that while still
@@ -102,6 +121,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             await SendTeachingLeftClickAsync(hostWindow, firstLocal);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             firstClickPassed = profileFirst is not null
                 && profileSecond is null
                 && viewModel.ProfileVisible
@@ -114,6 +138,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             await SendTeachingLeftClickAsync(hostWindow, secondLocal);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             secondClickPassed = profileFirst is { } selectedP1
                 && profileSecond is { } selectedP2
                 && !SameGridCell(selectedP1, selectedP2)
@@ -129,6 +158,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             var profileBeforeDrag = viewModel.ProfileEndpointSummary;
             await SendTeachingDragAsync(hostWindow, firstLocal, thirdLocal, MouseButton.Left);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             endpointDragPassed = profileFirst is { } movedFirst
                 && SameGridCell(movedFirst, thirdPoint)
                 && profileSecond is { } retainedSecond
@@ -209,6 +243,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             var orbitStart = new Point(Viewport.ActualWidth * 0.82, Viewport.ActualHeight * 0.24);
             var orbitEnd = new Point(Viewport.ActualWidth * 0.91, Viewport.ActualHeight * 0.36);
             await SendTeachingDragAsync(hostWindow, orbitStart, orbitEnd, MouseButton.Left);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             afterOrbit = CaptureCameraSnapshot();
             outsideDragOrbitPassed = Math.Abs(afterOrbit.Yaw - beforeOrbit.Yaw) > 1.0
                 && Math.Abs(afterOrbit.Pitch - beforeOrbit.Pitch) > 1.0
@@ -219,6 +258,14 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && Equals(initialPointPairStep, viewModel.CreatePointPairDimensionsRecipeStep());
             sourceBindingPassed = profileSourceSha256 is not null
                 && profileSourceSha256.Equals(c3dSample.ContentSha256, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return false;
         }
         catch (Exception exception)
         {
@@ -243,8 +290,20 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (hostWindow is not null)
             {
-                hostWindow.Topmost = originalTopmost;
+                try
+                {
+                    hostWindow.Topmost = originalTopmost;
+                }
+                catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                {
+                    // The host may already be closing when control lifetime cancellation wins.
+                }
             }
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         if (string.IsNullOrWhiteSpace(failure) && finalMarkerCursor is { } cursor)
@@ -254,19 +313,52 @@ public sealed partial class OpenVisionThreeDViewerControl
                 // Restore after the smoke's own pointer cleanup. This verifies the
                 // same display-only shared-cursor presentation the screenshot will
                 // capture, rather than an earlier transient state before orbit input.
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 SetLinkedHeightCursor(cursor);
                 await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
-                await Task.Delay(1_100);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                await Task.Delay(1_100, viewerLifetimeToken);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 finalMarkerRestoredPassed = viewModel.ProfileLinkedCursorVisible
                     && viewModel.ProfileLinkedCursorSummary.Contains(
                         $"({cursor.Row},{cursor.Column})",
                         StringComparison.Ordinal);
             }
+            catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+            catch (InvalidOperationException) when (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            {
+                return false;
+            }
             catch (Exception exception)
             {
                 failure = exception.Message;
             }
+        }
+
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
         }
 
         finalMarkerSummary = viewModel.ProfileLinkedCursorSummary;

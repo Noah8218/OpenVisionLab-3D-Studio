@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Verification.Viewer;
@@ -141,6 +142,136 @@ internal static class ViewerControlLifetimeVerification
                         "post-dispose recipe save is rejected",
                         !control.SaveRecipe(Path.Combine(Path.GetTempPath(), "post-dispose.recipe.json")),
                         "saved=False");
+
+                    var smokeCaptureRejected = false;
+                    try
+                    {
+                        smokeCaptureRejected = !control.CaptureConfiguredSmokeViewAsync()
+                            .GetAwaiter()
+                            .GetResult();
+                    }
+                    catch (Exception exception)
+                    {
+                        lines.Add($"INFO | post-dispose Smoke capture exception | {exception.GetType().Name}: {exception.Message}");
+                    }
+
+                    Check(
+                        "post-dispose configured Smoke capture is rejected",
+                        smokeCaptureRejected,
+                        $"rejected={smokeCaptureRejected}");
+
+                    Check(
+                        "post-dispose Smoke pick is rejected",
+                        !control.ApplyConfiguredSmokePick(),
+                        "applied=False");
+
+                    Check(
+                        "post-dispose Smoke density change is rejected",
+                        !control.ApplyConfiguredSmokeNextDensityAsync()
+                            .GetAwaiter()
+                            .GetResult(),
+                        "applied=False");
+
+                    Check(
+                        "post-dispose pointer regression is rejected",
+                        !control.RunConfiguredPointerInputRegressionAsync()
+                            .GetAwaiter()
+                            .GetResult(),
+                        "executed=False");
+
+                    var profileSmokeRejected = false;
+                    try
+                    {
+                        profileSmokeRejected = !control.RunProfilePointerSmokeAsync(
+                                Path.Combine(Path.GetTempPath(), "post-dispose.profile-smoke.txt"))
+                            .GetAwaiter()
+                            .GetResult();
+                    }
+                    catch (Exception exception)
+                    {
+                        lines.Add($"INFO | post-dispose profile Smoke exception | {exception.GetType().Name}: {exception.Message}");
+                    }
+
+                    Check(
+                        "post-dispose profile pointer Smoke is rejected",
+                        profileSmokeRejected,
+                        $"rejected={profileSmokeRejected}");
+
+                    var orientedBoxSmokeRejected = false;
+                    try
+                    {
+                        orientedBoxSmokeRejected = !control.RunTeachingOrientedBoxPointerSmokeAsync(
+                                Path.Combine(Path.GetTempPath(), "post-dispose.oriented-box-smoke.txt"))
+                            .GetAwaiter()
+                            .GetResult();
+                    }
+                    catch (Exception exception)
+                    {
+                        lines.Add($"INFO | post-dispose OrientedBox3D Smoke exception | {exception.GetType().Name}: {exception.Message}");
+                    }
+
+                    Check(
+                        "post-dispose OrientedBox3D pointer Smoke is rejected",
+                        orientedBoxSmokeRejected,
+                        $"rejected={orientedBoxSmokeRejected}");
+
+                    var teachingCaptureSmokeRejected = false;
+                    try
+                    {
+                        teachingCaptureSmokeRejected = !control.RunTeachingCapturePointerSmokeAsync(
+                                cancelWhenReady: false,
+                                reportPath: Path.Combine(Path.GetTempPath(), "post-dispose.teaching-capture-smoke.txt"),
+                                exerciseNavigationGestures: false)
+                            .GetAwaiter()
+                            .GetResult();
+                    }
+                    catch (Exception exception)
+                    {
+                        lines.Add($"INFO | post-dispose teaching-capture Smoke exception | {exception.GetType().Name}: {exception.Message}");
+                    }
+
+                    Check(
+                        "post-dispose teaching-capture pointer Smoke is rejected",
+                        teachingCaptureSmokeRejected,
+                        $"rejected={teachingCaptureSmokeRejected}");
+
+                    var teachingRectangleSmokeRejected = false;
+                    try
+                    {
+                        teachingRectangleSmokeRejected = !control.RunTeachingRectangleDragPointerSmokeAsync(
+                                reportPath: null)
+                            .GetAwaiter()
+                            .GetResult();
+                    }
+                    catch (Exception exception)
+                    {
+                        lines.Add($"INFO | post-dispose teaching rectangle Smoke exception | {exception.GetType().Name}: {exception.Message}");
+                    }
+
+                    Check(
+                        "post-dispose teaching rectangle pointer Smoke is rejected",
+                        teachingRectangleSmokeRejected,
+                        $"rejected={teachingRectangleSmokeRejected}");
+
+                    var teachingTargetRectangleSmokeRejected = false;
+                    try
+                    {
+                        var targetSmoke = control.RunTeachingTargetRectanglePointerSmokeAsync(
+                                new ToolRecipeGridRectangle(0, 0, 1, 1),
+                                reportPath: null)
+                            .GetAwaiter()
+                            .GetResult();
+                        teachingTargetRectangleSmokeRejected = !targetSmoke.Passed;
+                    }
+                    catch (Exception exception)
+                    {
+                        lines.Add($"INFO | post-dispose target teaching rectangle Smoke exception | {exception.GetType().Name}: {exception.Message}");
+                    }
+
+                    Check(
+                        "post-dispose target teaching rectangle pointer Smoke is rejected",
+                        teachingTargetRectangleSmokeRejected,
+                        $"rejected={teachingTargetRectangleSmokeRejected}");
 
                     Check(
                         "post-dispose Preview/Publish is rejected",

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using SharpGL;
@@ -12,7 +13,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 {
     public bool LoadInspectionTaskRecipe(string recipeFileName)
     {
-        var path = FindInspectionTaskRecipePath(recipeFileName);
+        var path = ViewerSamplePathLocator.Find(Path.Combine("recipes", recipeFileName));
         if (path is null)
         {
             viewModel.ViewerStatus = $"Inspection task recipe was not found: {recipeFileName}";
@@ -133,23 +134,4 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.ClearRoiStepMeasurement();
     }
 
-    private static string? FindInspectionTaskRecipePath(string recipeFileName)
-    {
-        foreach (var root in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
-        {
-            var directory = new DirectoryInfo(root);
-            while (directory is not null)
-            {
-                var candidate = Path.Combine(directory.FullName, "recipes", recipeFileName);
-                if (File.Exists(candidate))
-                {
-                    return candidate;
-                }
-
-                directory = directory.Parent;
-            }
-        }
-
-        return null;
-    }
 }

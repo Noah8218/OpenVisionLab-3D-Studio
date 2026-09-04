@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Windows;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using SharpGL;
 
@@ -212,7 +213,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 minimum,
                 maximum,
                 mean,
-                BuildSectionProfilePath(samples, minimum, maximum));
+                C3DSectionProfilePathBuilder.Build(samples, minimum, maximum));
             UpdateLinkedProfileCursor(linkedHeightCursor);
             viewModel.SelectedEntity = "C3D Height Profile";
             viewModel.SelectionSummary = viewModel.ProfileSummary;

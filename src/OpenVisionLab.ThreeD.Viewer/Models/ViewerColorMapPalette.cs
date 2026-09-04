@@ -26,6 +26,12 @@ internal static class ViewerColorMapPalette
         return (1.0, 1.0, (normalized - 2.0 / 3.0) * 3.0);
     }
 
+    public static (double R, double G, double B) Deviation(double value)
+    {
+        var normalized = Normalize(value);
+        return (0.12 + 0.88 * normalized, 0.84 - 0.68 * normalized, 0.64 - 0.52 * normalized);
+    }
+
     public static (double R, double G, double B) NormalMap(Vector3 normal)
     {
         return (

@@ -21,7 +21,9 @@ internal sealed record ShellIntegrationExchangeSmokeResult(
     string? EvidenceLine,
     string? Failure)
 {
-    public bool Succeeded => Failure is null;
+    public bool IsCanceled { get; init; }
+
+    public bool Succeeded => Failure is null && !IsCanceled;
 
     public bool HasPressedCapture =>
         PressedCaptureAutomationId is not null
@@ -40,10 +42,32 @@ internal static class ShellIntegrationExchangeSmoke
         Window shellWindow,
         Dispatcher dispatcher)
     {
+        return await RunAsync(
+            requestedState,
+            isExchangeSelected,
+            integrationExchange,
+            shellWindow,
+            dispatcher,
+            CancellationToken.None);
+    }
+
+    internal static async Task<ShellIntegrationExchangeSmokeResult> RunAsync(
+        string requestedState,
+        bool isExchangeSelected,
+        ThreeDIntegrationViewModel integrationExchange,
+        Window shellWindow,
+        Dispatcher dispatcher,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(requestedState);
         ArgumentNullException.ThrowIfNull(integrationExchange);
         ArgumentNullException.ThrowIfNull(shellWindow);
         ArgumentNullException.ThrowIfNull(dispatcher);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return CanceledResult();
+        }
 
         if (!isExchangeSelected)
         {
@@ -52,7 +76,13 @@ internal static class ShellIntegrationExchangeSmoke
         }
 
         integrationExchange.ExchangeRoot = RepresentativeExchangeRoot;
-        await dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+        if (!await YieldDispatcherAsync(
+                dispatcher,
+                DispatcherPriority.ApplicationIdle,
+                cancellationToken))
+        {
+            return CanceledResult();
+        }
         shellWindow.UpdateLayout();
 
         if (requestedState.Equals("input-focus", StringComparison.OrdinalIgnoreCase))
@@ -67,7 +97,13 @@ internal static class ShellIntegrationExchangeSmoke
             input.Text = RepresentativeExchangeRoot;
             input.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
             integrationExchange.ExchangeRoot = RepresentativeExchangeRoot + @"\Restored-From-ViewModel";
-            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.DataBind,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
             if (!input.Focus()
                 || !input.IsKeyboardFocusWithin
                 || input.Text != RepresentativeExchangeRoot + @"\Restored-From-ViewModel")
@@ -86,7 +122,13 @@ internal static class ShellIntegrationExchangeSmoke
             shellWindow.Activate();
             var interactionWindowHandle = new WindowInteropHelper(shellWindow).Handle;
             var interactionForegrounded = SetForegroundWindow(interactionWindowHandle);
-            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.Input,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
             var workspace = FindVisualDescendants<UserControl>(shellWindow)
                 .FirstOrDefault(control =>
                     AutomationProperties.GetAutomationId(control)
@@ -132,12 +174,24 @@ internal static class ShellIntegrationExchangeSmoke
                 }
 
                 PostClientMouseMove(interactionWindowHandle, deviceCenter);
-                await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                await Task.Delay(75);
+                if (!await YieldDispatcherAsync(
+                        dispatcher,
+                        DispatcherPriority.Input,
+                        cancellationToken)
+                    || !await DelayAsync(TimeSpan.FromMilliseconds(75), cancellationToken))
+                {
+                    return CanceledResult();
+                }
                 for (var attempt = 0; attempt < 5 && !button.IsMouseOver; attempt++)
                 {
-                    await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                    await Task.Delay(50);
+                    if (!await YieldDispatcherAsync(
+                            dispatcher,
+                            DispatcherPriority.Input,
+                            cancellationToken)
+                        || !await DelayAsync(TimeSpan.FromMilliseconds(50), cancellationToken))
+                    {
+                        return CanceledResult();
+                    }
                 }
 
                 var buttonHoverFallback = false;
@@ -151,16 +205,28 @@ internal static class ShellIntegrationExchangeSmoke
                     System.Windows.Input.Mouse.Capture(
                         button,
                         System.Windows.Input.CaptureMode.Element);
-                    button.RaiseEvent(new System.Windows.Input.MouseEventArgs(
-                        System.Windows.Input.Mouse.PrimaryDevice,
-                        Environment.TickCount)
+                    try
                     {
-                        RoutedEvent = System.Windows.Input.Mouse.MouseMoveEvent,
-                        Source = button
-                    });
-                    await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                    buttonHoverFallback = button.IsMouseOver;
-                    System.Windows.Input.Mouse.Capture(null);
+                        button.RaiseEvent(new System.Windows.Input.MouseEventArgs(
+                            System.Windows.Input.Mouse.PrimaryDevice,
+                            Environment.TickCount)
+                        {
+                            RoutedEvent = System.Windows.Input.Mouse.MouseMoveEvent,
+                            Source = button
+                        });
+                        if (!await YieldDispatcherAsync(
+                                dispatcher,
+                                DispatcherPriority.Input,
+                                cancellationToken))
+                        {
+                            return CanceledResult();
+                        }
+                        buttonHoverFallback = button.IsMouseOver;
+                    }
+                    finally
+                    {
+                        System.Windows.Input.Mouse.Capture(null);
+                    }
                 }
 
                 if (!button.IsMouseOver && !buttonHoverFallback)
@@ -176,8 +242,14 @@ internal static class ShellIntegrationExchangeSmoke
                     interactionWindowRect.Top + awayDevice.Y);
                 SetCursorPos((int)Math.Round(away.X), (int)Math.Round(away.Y));
                 PostClientMouseMove(interactionWindowHandle, awayDevice);
-                await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-                await Task.Delay(75);
+                if (!await YieldDispatcherAsync(
+                        dispatcher,
+                        DispatcherPriority.Input,
+                        cancellationToken)
+                    || !await DelayAsync(TimeSpan.FromMilliseconds(75), cancellationToken))
+                {
+                    return CanceledResult();
+                }
                 if (button.IsMouseOver)
                 {
                     return Failure(
@@ -203,8 +275,19 @@ internal static class ShellIntegrationExchangeSmoke
 
         if (requestedState.Equals("validation-error", StringComparison.OrdinalIgnoreCase))
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return CanceledResult();
+            }
+
             integrationExchange.RefreshHandoffsCommand.Execute(null);
-            await dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.DataBind,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
             return string.IsNullOrWhiteSpace(integrationExchange.StatusText)
                 ? Failure("Integration exchange validation error did not render a status message.")
                 : Success(
@@ -255,6 +338,52 @@ internal static class ShellIntegrationExchangeSmoke
             PressedCaptureScope: null,
             EvidenceLine: null,
             Failure: message);
+
+    private static ShellIntegrationExchangeSmokeResult CanceledResult() =>
+        new(
+            PressedCaptureAutomationId: null,
+            PressedCaptureScope: null,
+            EvidenceLine: null,
+            Failure: null)
+        {
+            IsCanceled = true
+        };
+
+    private static async Task<bool> YieldDispatcherAsync(
+        Dispatcher dispatcher,
+        DispatcherPriority priority,
+        CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        try
+        {
+            await dispatcher.InvokeAsync(() => { }, priority);
+            return !cancellationToken.IsCancellationRequested;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> DelayAsync(
+        TimeSpan delay,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(delay, cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)
         where T : DependencyObject

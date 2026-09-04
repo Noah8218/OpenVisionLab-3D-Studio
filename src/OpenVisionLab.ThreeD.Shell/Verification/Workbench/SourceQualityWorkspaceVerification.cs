@@ -107,7 +107,28 @@ internal static class SourceQualityWorkspaceVerification
                 streamedSnapshot.Values.Span.SequenceEqual(source.Values.Span),
                 $"values={streamedSnapshot.Values.Length},valid={streamedSnapshot.ValidCount},missing={streamedSnapshot.MissingCount}");
 
-            var sourceSession = new ToolWorkbenchSourceSession();
+            using var parserCancellation = new CancellationTokenSource();
+            parserCancellation.Cancel();
+            var parserCancelled = false;
+            try
+            {
+                C3DHeightFieldSnapshot.LoadIdentified(
+                    sourcePath,
+                    source.EntityId,
+                    source.Unit,
+                    source.FrameId,
+                    parserCancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                parserCancelled = true;
+            }
+            Check(
+                "c3d-snapshot-parser-honors-pre-cancel",
+                parserCancelled,
+                $"cancelled={parserCancelled}");
+
+            using var sourceSession = new ToolWorkbenchSourceSession();
             var firstSnapshotTask = sourceSession.GetOrLoadDecodedSourceAsync(
                 sourcePath,
                 source.EntityId,
@@ -161,6 +182,8 @@ internal static class SourceQualityWorkspaceVerification
                 "source-session-rejects-stale-binding-before-sharing",
                 staleBindingRejected,
                 $"rejected={staleBindingRejected}");
+            await VerifySourceSessionCancellationRecoveryAsync(source, sourcePath, Check);
+            await VerifySourceSessionDisposalAsync(source, sourcePath, Check);
 
             using var viewModel = new SourceQualityWorkspaceViewModel(
                 ThreeDLocalization.Shared);
@@ -281,7 +304,7 @@ internal static class SourceQualityWorkspaceVerification
                 $"aggregate={viewModel.GridDiagnosticsState},englishTitle={englishTitle},koreanTitle={koreanError.Title},state={koreanError.State},detail={koreanError.Detail},evidenceLength={koreanError.Evidence.Length}");
             OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
 
-            var workbench = new ToolWorkbenchViewModel();
+            using var workbench = new ToolWorkbenchViewModel();
             workbench.SetC3DSource(sourcePath, markDirty: false);
             await workbench.SourceQuality.EnsureSourceAsync(
                 sourcePath,
@@ -481,6 +504,119 @@ internal static class SourceQualityWorkspaceVerification
             && heightImageTokenAliveAfterCancel
             && heightImageTokenDisposedAfterCompletion,
             $"cancelled={heightImageToken.IsCancellationRequested};aliveAfterCancel={heightImageTokenAliveAfterCancel};disposedAfterCompletion={heightImageTokenDisposedAfterCompletion}");
+    }
+
+    private static async Task VerifySourceSessionDisposalAsync(
+        C3DHeightFieldSnapshot source,
+        string sourcePath,
+        Action<string, bool, string> check)
+    {
+        using var sourceSession = new ToolWorkbenchSourceSession();
+        var entered = new TaskCompletionSource<CancellationToken>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingLoad = sourceSession.GetOrLoadDecodedSourceAsync(
+            sourcePath,
+            source.EntityId,
+            source.Unit,
+            source.FrameId,
+            CancellationToken.None,
+            cancellationToken =>
+            {
+                entered.TrySetResult(cancellationToken);
+                return Task.Delay(Timeout.Infinite, cancellationToken)
+                    .ContinueWith(
+                        _ => source,
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnRanToCompletion,
+                        TaskScheduler.Default);
+            });
+        var sessionToken = await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        sourceSession.Dispose();
+
+        var cancelled = false;
+        try
+        {
+            await pendingLoad;
+        }
+        catch (OperationCanceledException)
+        {
+            cancelled = true;
+        }
+
+        check(
+            "source-session-dispose-cancels-pending-decode-and-releases-token",
+            cancelled
+            && sessionToken.IsCancellationRequested
+            && !IsCancellationWaitHandleAvailable(sessionToken),
+            $"cancelled={cancelled};requested={sessionToken.IsCancellationRequested};disposed={!IsCancellationWaitHandleAvailable(sessionToken)}");
+
+        var rejectedAfterDispose = false;
+        try
+        {
+            await sourceSession.GetOrLoadDecodedSourceAsync(
+                sourcePath,
+                source.EntityId,
+                source.Unit,
+                source.FrameId,
+                CancellationToken.None);
+        }
+        catch (ObjectDisposedException)
+        {
+            rejectedAfterDispose = true;
+        }
+
+        check(
+            "source-session-rejects-new-decode-after-dispose",
+            rejectedAfterDispose,
+            $"rejected={rejectedAfterDispose}");
+    }
+
+    private static async Task VerifySourceSessionCancellationRecoveryAsync(
+        C3DHeightFieldSnapshot source,
+        string sourcePath,
+        Action<string, bool, string> check)
+    {
+        using var sourceSession = new ToolWorkbenchSourceSession();
+        var loadCount = 0;
+        Task<C3DHeightFieldSnapshot> LoadWithOneCancelledAttempt(CancellationToken _)
+        {
+            if (Interlocked.Increment(ref loadCount) == 1)
+            {
+                return Task.FromCanceled<C3DHeightFieldSnapshot>(new CancellationToken(true));
+            }
+
+            return Task.FromResult(source);
+        }
+
+        var firstAttemptCancelled = false;
+        try
+        {
+            await sourceSession.GetOrLoadDecodedSourceAsync(
+                sourcePath,
+                source.EntityId,
+                source.Unit,
+                source.FrameId,
+                CancellationToken.None,
+                LoadWithOneCancelledAttempt);
+        }
+        catch (OperationCanceledException)
+        {
+            firstAttemptCancelled = true;
+        }
+
+        var recovered = await sourceSession.GetOrLoadDecodedSourceAsync(
+            sourcePath,
+            source.EntityId,
+            source.Unit,
+            source.FrameId,
+            CancellationToken.None,
+            LoadWithOneCancelledAttempt);
+        check(
+            "source-session-recovers-after-cancelled-decode",
+            firstAttemptCancelled
+            && loadCount == 2
+            && ReferenceEquals(recovered, source),
+            $"firstCancelled={firstAttemptCancelled};loadCount={loadCount};sameReference={ReferenceEquals(recovered, source)}");
     }
 
     private static bool IsCancellationWaitHandleAvailable(CancellationToken token)

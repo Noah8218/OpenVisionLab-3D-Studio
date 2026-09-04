@@ -109,6 +109,8 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
     public Window? PopoutWindow => popout;
 
+    internal bool HasAttachedMainViewer => mainViewer is not null;
+
     public bool HasLayoutToolbarAndTwoSlots =>
         ViewerLayoutToolbar is not null
         && MainSlot is not null
@@ -292,9 +294,16 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
     private static void OnMainViewerContentChanged(
         DependencyObject dependencyObject,
-        DependencyPropertyChangedEventArgs args) =>
-        ((ViewerWorkspaceView)dependencyObject).AttachMainViewer(
-            args.NewValue as OpenVisionThreeDViewerControl);
+        DependencyPropertyChangedEventArgs args)
+    {
+        var view = (ViewerWorkspaceView)dependencyObject;
+        if (Volatile.Read(ref view.disposalState) != 0)
+        {
+            return;
+        }
+
+        view.AttachMainViewer(args.NewValue as OpenVisionThreeDViewerControl);
+    }
 
     private void AttachMainViewer(OpenVisionThreeDViewerControl? viewer)
     {

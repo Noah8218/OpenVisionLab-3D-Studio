@@ -11,8 +11,6 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private DispatcherTimer? interactionLodRestoreTimer;
     private C3DWireframeLodLevel interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
-    private uint c3dInteractionDisplayListId;
-    private C3DDisplayListKey? c3dInteractionDisplayListKey;
     private int interactionLodActivationCount;
     private int interactionLodMediumTransitionCount;
     private int interactionLodRestoreCount;
@@ -27,7 +25,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         c3dSample is not null
         && viewModel.C3DSampleVisible
         && viewModel.Display.EffectiveSettings.GeometryStyle == ViewerGeometryStyle.Wireframe
-        && c3dRenderProxy is { CoarseInteractionGridEdgeCount: > 0 } renderProxy
+        && c3dRenderProxyCache.Current is { CoarseInteractionGridEdgeCount: > 0 } renderProxy
         && renderProxy.CoarseInteractionGridEdgeCount < renderProxy.InteractionGridEdgeCount
         && renderProxy.InteractionGridEdgeCount < renderProxy.GridEdgeCount;
 

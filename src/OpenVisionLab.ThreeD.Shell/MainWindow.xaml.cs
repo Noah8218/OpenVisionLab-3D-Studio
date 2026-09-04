@@ -9,7 +9,6 @@ using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
-using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.Dialogs;
@@ -41,6 +40,7 @@ public partial class MainWindow : Window
     private readonly EventHandler<ViewerHostStateChangedEventArgs> _viewerHostStateChangedHandler;
     private readonly WorkbenchViewerTeachingCoordinator _workbenchViewerTeaching;
     private readonly WorkbenchViewerDisplayCoordinator _workbenchViewerDisplay;
+    private readonly ShellMessageDialogController _messageDialogs;
     private readonly ShellEvidenceDialogController _evidenceDialogs;
     private readonly RecipeFileDialogService _recipeFileDialogs;
     private readonly ShellWorkbenchLifecycleController _workbenchLifecycle;
@@ -55,7 +55,15 @@ public partial class MainWindow : Window
     private readonly ShellViewerWorkspaceSmoke _viewerWorkspaceSmoke;
     private readonly ShellCurrentRecipeRunSmoke _currentRecipeRunSmoke;
     private readonly ShellPreparationPreviewSmokeCoordinator _preparationPreviewSmoke;
+    private readonly ShellRecipeMeasurementSmokeCoordinator _recipeMeasurementSmoke;
+    private readonly ShellWorkbenchInteractionSmokeCoordinator _workbenchInteractionSmoke;
+    private readonly ShellToolTeachingStartupCoordinator _toolTeachingStartup;
+    private readonly ShellCommandLineArguments _commandLineArguments;
+    private readonly ShellSmokeOperation _shellSmokeOperation = new();
+    private readonly ShellSmokeScreenshotEvidenceCoordinator _shellSmokeScreenshotEvidence;
+    private readonly ShellNominalActualPreviewWaiter _nominalActualPreviewWaiter;
     private readonly ShellStartupConfigurationPlan _startupConfiguration;
+    private readonly ShellStartupViewerProjectionCoordinator _startupViewerProjection;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
     private DispatcherTimer? _importDialogSmokeTimer;
     private DispatcherOperation? _expertViewerActivationOperation;
@@ -65,34 +73,52 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _commandLineArguments = ShellCommandLineArguments.Capture();
         _startupConfiguration = ShellStartupConfigurationPlanner.Parse(
-            Environment.GetCommandLineArgs());
+            _commandLineArguments);
         OpenVisionLanguageService.Load();
         ApplyCommandLineLanguage(_startupConfiguration);
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio starting.");
         _viewer = new OpenVisionThreeDViewerControl(
             loadDefaultSamples: !_startupConfiguration.ShouldStartWithEmptyRecipeInput);
+        _nominalActualPreviewWaiter = new ShellNominalActualPreviewWaiter(
+            () => _viewer.ViewModel.NominalActual.State);
         InitializeComponent();
         _viewModel = new ShellMainWindowViewModel(
-            GetCommandLineValue("--recipe-comparison-contract"),
-            GetCommandLineValue("--recipe-comparison-report"),
-            GetCommandLineValue("--shell-smoke-screenshot"),
-            GetCommandLineValue("--run-record"),
-            GetCommandLineValue("--html-report"),
-            GetCommandLineValue("--csv-report"),
+            _commandLineArguments.GetValue("--recipe-comparison-contract"),
+            _commandLineArguments.GetValue("--recipe-comparison-report"),
+            _commandLineArguments.GetValue("--shell-smoke-screenshot"),
+            _commandLineArguments.GetValue("--run-record"),
+            _commandLineArguments.GetValue("--html-report"),
+            _commandLineArguments.GetValue("--csv-report"),
             recentRecipesPath: _startupConfiguration.IsAutomatedShellRun
                 ? null
                 : GetPersistentRecentRecipesPath(),
-            integrationSettingsPath: GetCommandLineValue("--smoke-integration-settings"));
+            integrationSettingsPath: _commandLineArguments.GetValue("--smoke-integration-settings"));
         _viewModel.SelectedEvidenceTabIndex = _startupConfiguration.EvidenceTabIndex;
         DataContext = _viewModel;
-        _toolLabWindows = new ToolLabWindowManager(this, _viewModel.Workbench, ShowMissingToolLabStep);
+        _messageDialogs = new ShellMessageDialogController(
+            GetRecipeLifecycleDialogOwner,
+            _viewModel,
+            DialogText);
+        _toolLabWindows = new ToolLabWindowManager(this, _viewModel.Workbench, _messageDialogs.ShowMissingToolLabStep);
         _preparationPresetSmoke = new ShellPreparationPresetAssistantSmoke(
             _viewModel.Workbench,
             ToolWorkbench);
         _validationThresholdSmoke = new ShellValidationThresholdAssistantSmoke(
             _viewModel.Workbench,
             ToolWorkbench);
+        _shellSmokeScreenshotEvidence = new ShellSmokeScreenshotEvidenceCoordinator(
+            new ShellSmokeScreenshotEvidenceCallbacks
+            {
+                AppendWindowMonitorEvidence = reportPath =>
+                    AppendWindowMonitorEvidence(this, reportPath),
+                AppendValidationThresholdEvidence = reportPath =>
+                    _validationThresholdSmoke.AppendEvidence(this, reportPath),
+                AppendPreparationPresetEvidence = (state, reportPath) =>
+                    _preparationPresetSmoke.AppendEvidence(state, reportPath)
+            },
+            (path, lines) => File.AppendAllLines(path, lines));
         _surfaceMatchInteractionSmoke = new ShellSurfaceMatchInteractionSmoke(
             _viewModel.Workbench,
             ToolWorkbench,
@@ -110,6 +136,10 @@ public partial class MainWindow : Window
                     == "RunCurrentRecipeButton"));
         _preparationPreviewSmoke = new ShellPreparationPreviewSmokeCoordinator(
             _viewModel.Workbench);
+        _recipeMeasurementSmoke = new ShellRecipeMeasurementSmokeCoordinator(
+            _viewModel.Workbench);
+        _workbenchInteractionSmoke = new ShellWorkbenchInteractionSmokeCoordinator(
+            _viewModel.Workbench);
         _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
             _viewModel.Workbench,
             _viewer,
@@ -123,17 +153,17 @@ public partial class MainWindow : Window
             _workbenchViewerTeaching,
             new ShellWorkbenchLifecycleCallbacks
             {
-                ShowLoadSourceFailure = ShowLoadSourceFailure,
-                ShowRecipeSaveFailure = ShowRecipeSaveFailure,
-                ShowFirstRecipeCreateFailure = ShowFirstRecipeCreateFailure,
-                ShowFirstRecipeSetupPersistenceFailure = ShowFirstRecipeSetupPersistenceFailure,
-                ShowRecipeFileUnavailable = ShowRecipeFileUnavailable,
-                ShowRecipeOpenFailure = ShowRecipeOpenFailure,
-                ShowRecipeSourceNotReady = ShowRecipeSourceNotReady,
-                ShowRecipeSourceLoadFailure = ShowRecipeSourceLoadFailure,
-                ShowParameterApplyFailure = ShowParameterApplyFailure,
-                ConfirmUnsavedRecipeChanges = () => ToLifecycleDialogChoice(ConfirmUnsavedRecipeChanges()),
-                ConfirmPendingParameterChanges = () => ToLifecycleDialogChoice(ConfirmPendingParameterChanges()),
+                ShowLoadSourceFailure = _messageDialogs.ShowLoadSourceFailure,
+                ShowRecipeSaveFailure = _messageDialogs.ShowRecipeSaveFailure,
+                ShowFirstRecipeCreateFailure = _messageDialogs.ShowFirstRecipeCreateFailure,
+                ShowFirstRecipeSetupPersistenceFailure = _messageDialogs.ShowFirstRecipeSetupPersistenceFailure,
+                ShowRecipeFileUnavailable = _messageDialogs.ShowRecipeFileUnavailable,
+                ShowRecipeOpenFailure = _messageDialogs.ShowRecipeOpenFailure,
+                ShowRecipeSourceNotReady = _messageDialogs.ShowRecipeSourceNotReady,
+                ShowRecipeSourceLoadFailure = _messageDialogs.ShowRecipeSourceLoadFailure,
+                ShowParameterApplyFailure = _messageDialogs.ShowParameterApplyFailure,
+                ConfirmUnsavedRecipeChanges = () => ToLifecycleDialogChoice(_messageDialogs.ConfirmUnsavedRecipeChanges()),
+                ConfirmPendingParameterChanges = () => ToLifecycleDialogChoice(_messageDialogs.ConfirmPendingParameterChanges()),
                 CommitPendingParameterEdit = () =>
                 {
                     var success = ToolWorkbench.CommitPendingParameterEdit(out var message);
@@ -142,6 +172,21 @@ public partial class MainWindow : Window
                 DiscardPendingParameterChanges = () => _viewModel.Workbench.DiscardSelectedStepParameterDraft(),
                 ActivateWorkbench = ActivateWorkbenchAfterRecipeLifecycle,
                 DialogText = DialogText
+            });
+        _toolTeachingStartup = new ShellToolTeachingStartupCoordinator(
+            _viewModel.Workbench,
+            new ShellToolTeachingStartupCallbacks
+            {
+                ClearViewerSource = _viewer.ClearC3DTeachingSource,
+                UpdateSampleVisible = _viewModel.UpdateC3DSampleVisible,
+                ViewerSampleVisible = () => _viewer.HostState.C3DSampleVisible,
+                IsViewerSourceAlreadyLoaded = _workbenchLifecycle.IsViewerSourceAlreadyLoaded,
+                LoadViewerSource = _viewer.LoadC3DSource,
+                CurrentViewerSourcePath = () => _viewer.CurrentC3DSourcePath,
+                ViewerStatus = () => _viewer.HostState.ViewerStatus,
+                SetWorkbenchSourceFromViewer = path => _workbenchLifecycle.SetWorkbenchC3DSourceFromViewer(path),
+                IsWorkbenchWorkspaceSelected = () => _viewModel.IsWorkbenchWorkspaceSelected,
+                HideWorkbenchHudDetails = () => _viewer.ViewModel.HudDetailsVisible = false
             });
         if (Workspace.ProfileContent is Views.Workbench.HeightProfileView advancedHeightProfileView)
         {
@@ -176,10 +221,10 @@ public partial class MainWindow : Window
             _viewModel,
             new ShellEvidenceDialogErrors
             {
-                ArtifactMissing = ShowEvidenceArtifactMissing,
-                ArtifactOpenFailure = ShowEvidenceArtifactOpenFailure,
-                RunRecordOpenFailure = ShowRunRecordOpenFailure,
-                RunRecordExportFailure = ShowRunRecordExportFailure
+                ArtifactMissing = _messageDialogs.ShowEvidenceArtifactMissing,
+                ArtifactOpenFailure = _messageDialogs.ShowEvidenceArtifactOpenFailure,
+                RunRecordOpenFailure = _messageDialogs.ShowRunRecordOpenFailure,
+                RunRecordExportFailure = _messageDialogs.ShowRunRecordExportFailure
             });
         _requestCoordinator = new ShellRequestCoordinator(
             _viewer,
@@ -206,7 +251,7 @@ public partial class MainWindow : Window
                 SelectedStepSetup = OnWorkbenchSelectedStepSetupRequested,
                 SourceQualityWorkspace = OnWorkbenchSourceQualityWorkspaceRequested,
                 OpenTeachingRecipe = _workbenchLifecycle.OpenTeachingRecipeRequested,
-                RemoveSelectedStep = OnWorkbenchRemoveSelectedStepRequested,
+                RemoveSelectedStep = _messageDialogs.OnWorkbenchRemoveSelectedStepRequested,
                 OpenRecentTeachingRecipe = _workbenchLifecycle.OpenRecentTeachingRecipeRequested,
                 LoadC3DSource = _workbenchLifecycle.LoadC3DSourceRequested,
                 Import3DData = _workbenchLifecycle.Import3DDataRequested,
@@ -241,8 +286,21 @@ public partial class MainWindow : Window
             Workspace,
             _viewModel,
             _startupConfiguration.IsAutomatedShellRun,
-            GetCommandLineValue("--smoke-layout-profile"),
-            GetCommandLineValue("--smoke-layout-state-report"));
+            _commandLineArguments.GetValue("--smoke-layout-profile"),
+            _commandLineArguments.GetValue("--smoke-layout-state-report"));
+        _startupViewerProjection = new ShellStartupViewerProjectionCoordinator(
+            new ShellStartupViewerProjectionCallbacks
+            {
+                SelectWorkbenchWorkspace = () => _viewModel.IsSetupWorkspaceSelected = true,
+                SelectTeachWorkspace = () => _viewModel.IsTeachWorkspaceSelected = true,
+                SelectInspectWorkspace = () => _viewModel.IsValidateWorkspaceSelected = true,
+                SelectReviewWorkspace = () => _viewModel.IsResultsWorkspaceSelected = true,
+                UseTopView = _viewer.UseTopView,
+                UsePerspectiveView = _viewer.UsePerspectiveView,
+                FitRoi = _viewer.FitRoi,
+                SetHeightColorMinimumRaw = value => _viewer.ViewModel.C3DHeightColorMinimumRaw = value,
+                SetHeightColorMaximumRaw = value => _viewer.ViewModel.C3DHeightColorMaximumRaw = value
+            });
         Loaded += ConfigureViewerViewFromCommandLine;
         Loaded += EnsureWorkbenchViewerSourceConsistency;
         EnableShellSmokeFromCommandLine();
@@ -273,6 +331,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _isClosed = true;
+        _shellSmokeOperation.Dispose();
         CancelExpertViewerActivation();
         StopImportDialogSmokeTimer();
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio shutdown.");
@@ -364,7 +423,7 @@ public partial class MainWindow : Window
 
     private void EnableShellSmokeFromCommandLine()
     {
-        var smoke = ShellSmokeCommandLineOptions.Parse(Environment.GetCommandLineArgs());
+        var smoke = ShellSmokeCommandLineOptions.Parse(_commandLineArguments);
         var shellScreenshotPath = smoke.ShellScreenshotPath;
         var screenshotQualityReportPath = smoke.ScreenshotQualityReportPath;
         var viewerLayoutSmoke = smoke.ViewerLayoutSmoke;
@@ -501,8 +560,13 @@ public partial class MainWindow : Window
         {
             _shellSmokeLoadedHandler = async (_, _) =>
             {
+                if (!_shellSmokeOperation.TryEnter())
+                {
+                    return;
+                }
+
                 await Dispatcher.InvokeAsync(() => { });
-                if (_isClosed)
+                if (_isClosed || !_shellSmokeOperation.IsActive)
                 {
                     return;
                 }
@@ -521,16 +585,12 @@ public partial class MainWindow : Window
                     Application.Current.Shutdown(1);
                     return;
                 }
-                if (Environment.GetCommandLineArgs().Contains(
-                        "--smoke-focus-selected-tool",
-                        StringComparer.OrdinalIgnoreCase))
+                if (_commandLineArguments.HasFlag("--smoke-focus-selected-tool"))
                 {
                     ToolWorkbench.ActivateSelectedToolPane();
                 }
 
-                if (Environment.GetCommandLineArgs().Contains(
-                        "--smoke-collapse-selected-tool",
-                        StringComparer.OrdinalIgnoreCase))
+                if (_commandLineArguments.HasFlag("--smoke-collapse-selected-tool"))
                 {
                     ToolWorkbench.ToggleSelectedToolSideCollapse();
                 }
@@ -542,7 +602,13 @@ public partial class MainWindow : Window
                 if (currentRecipeRunReadySmoke || currentRecipeRunPressedSmoke)
                 {
                     var currentRecipeRun = await _currentRecipeRunSmoke.PrepareAsync(
-                        runSmoke: true);
+                        runSmoke: true,
+                        cancellationToken: _shellSmokeOperation.Token);
+                    if (currentRecipeRun.IsCanceled
+                        || !_shellSmokeOperation.IsActive)
+                    {
+                        return;
+                    }
                     if (!currentRecipeRun.Succeeded)
                     {
                         _viewModel.SetViewerSmokeFailed(
@@ -680,7 +746,7 @@ public partial class MainWindow : Window
                 {
                     var dialogOptions = smoke.StepRemovalDialogSmoke
                         ? _viewModel.Workbench.CreateSelectedStepRemovalRequest() is { } request
-                            ? CreateRecipeStepRemovalDialogOptions(request)
+                            ? _messageDialogs.CreateRecipeStepRemovalDialogOptions(request)
                             : null
                         : new WpfMessageDialogOptions
                         {
@@ -744,41 +810,34 @@ public partial class MainWindow : Window
                     await Dispatcher.InvokeAsync(() => { });
                 }
 
-                if (thicknessRepeatGridSmoke is not null)
-                {
-                    if (!_viewModel.Workbench.BeginThicknessRepeatGridCommand.CanExecute(null))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Thickness repeat-grid smoke requires one complete selected Thickness step.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    _viewModel.Workbench.BeginThicknessRepeatGridCommand.Execute(null);
-                    if (string.Equals(thicknessRepeatGridSmoke, "apply", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (!_viewModel.Workbench.ApplyThicknessRepeatGridCommand.CanExecute(null))
+                var recipeMeasurementSmokeFailure =
+                    await _recipeMeasurementSmoke.RunAsync(
+                        new ShellRecipeMeasurementSmokeRequest
                         {
-                            _viewModel.SetViewerSmokeFailed(
-                                _viewModel.Workbench.ThicknessRepeatGridValidationSummary);
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                        _viewModel.Workbench.ApplyThicknessRepeatGridCommand.Execute(null);
-                    }
-                    else if (!string.Equals(
-                                 thicknessRepeatGridSmoke,
-                                 "review",
-                                 StringComparison.OrdinalIgnoreCase))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            $"Unknown Thickness repeat-grid smoke mode: {thicknessRepeatGridSmoke}.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    ToolWorkbench.BringThicknessRepeatGridIntoView();
-                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                            ThicknessRepeatGridMode = thicknessRepeatGridSmoke,
+                            FilterPublish = filterPublishSmoke,
+                            TwoPointLinePreview = twoPointLinePreviewSmoke,
+                            TwoPointLinePublish = twoPointLinePublishSmoke,
+                            ThreePointPlanePreview = threePointPlanePreviewSmoke,
+                            ThreePointPlanePublish = threePointPlanePublishSmoke,
+                            DatumPlaneDeviationPreview = datumPlaneDeviationPreviewSmoke,
+                            DatumPlaneDeviationPublish = datumPlaneDeviationPublishSmoke,
+                            EdgePreview = edgePreviewSmoke,
+                            EdgePublish = edgePublishSmoke,
+                            LineFitPreview = lineFitPreviewSmoke,
+                            EdgeStepId = edgeStepId,
+                            EdgeSmokeReportPath = edgeSmokeReportPath,
+                            LineFitSmokeReportPath = lineFitSmokeReportPath
+                        },
+                        () => ToolWorkbench.BringThicknessRepeatGridIntoView(),
+                        async () => await Dispatcher.InvokeAsync(
+                            () => { },
+                            DispatcherPriority.Render));
+                if (recipeMeasurementSmokeFailure is not null)
+                {
+                    _viewModel.SetViewerSmokeFailed(recipeMeasurementSmokeFailure);
+                    Application.Current.Shutdown(1);
+                    return;
                 }
 
                 if (viewerPresentationSmoke || viewerLayoutSmoke is not null)
@@ -848,197 +907,6 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                if (filterPublishSmoke)
-                {
-                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    if (!_viewModel.Workbench.IsFilterPreviewPublished)
-                    {
-                        _viewModel.SetViewerSmokeFailed("Filter Publish did not accept the current Preview output.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-
-                if (twoPointLinePreviewSmoke
-                    && (string.IsNullOrWhiteSpace(edgeStepId)
-                        || !_viewModel.Workbench.SelectPipelineStep(edgeStepId)
-                        || !await _viewModel.Workbench.PreviewSelectedTwoPointLineAsync()))
-                {
-                    _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.TwoPointLineExecutionSummary);
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-
-                if (twoPointLinePublishSmoke)
-                {
-                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    if (!_viewModel.Workbench.IsTwoPointLinePreviewPublished)
-                    {
-                        _viewModel.SetViewerSmokeFailed("2-Point Line Publish did not accept the current Preview output.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-
-                if (threePointPlanePreviewSmoke
-                    && (string.IsNullOrWhiteSpace(edgeStepId)
-                        || !_viewModel.Workbench.SelectPipelineStep(edgeStepId)
-                        || !await _viewModel.Workbench.PreviewSelectedThreePointPlaneAsync()))
-                {
-                    _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.ThreePointPlaneExecutionSummary);
-                    Application.Current.Shutdown(1);
-                    return;
-                }
-
-                if (threePointPlanePublishSmoke)
-                {
-                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    if (!_viewModel.Workbench.IsThreePointPlanePreviewPublished)
-                    {
-                        _viewModel.SetViewerSmokeFailed("3-Point Plane Publish did not accept the current Preview output.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-
-                if (datumPlaneDeviationPreviewSmoke)
-                {
-                    var datumStep = _viewModel.Workbench.PipelineSteps.SingleOrDefault(step =>
-                        string.Equals(step.ToolId, "datum-plane-raw-height-deviation", StringComparison.Ordinal));
-                    var planeStep = datumStep is null ? null : _viewModel.Workbench.PipelineSteps.SingleOrDefault(step =>
-                        string.Equals(step.ToolId, "three-point-plane", StringComparison.Ordinal)
-                        && string.Equals(step.OutputEntityId, datumStep.InputEntityIds.ElementAtOrDefault(1), StringComparison.OrdinalIgnoreCase));
-                    if (datumStep is null || planeStep is null
-                        || !_viewModel.Workbench.SelectPipelineStep(planeStep.Id)
-                        || !await _viewModel.Workbench.PreviewSelectedThreePointPlaneAsync())
-                    {
-                        _viewModel.SetViewerSmokeFailed("Datum Plane Deviation smoke could not create its explicit Published 3-Point Plane prerequisite.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    if (!_viewModel.Workbench.IsThreePointPlanePreviewPublished
-                        || !_viewModel.Workbench.SelectPipelineStep(datumStep.Id)
-                        || !await _viewModel.Workbench.PreviewSelectedDatumPlaneDeviationAsync())
-                    {
-                        _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.DatumPlaneDeviationExecutionSummary);
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-
-                if (datumPlaneDeviationPublishSmoke)
-                {
-                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    if (!_viewModel.Workbench.IsDatumPlaneDeviationPreviewPublished)
-                    {
-                        _viewModel.SetViewerSmokeFailed("Datum Plane Deviation Publish did not accept the current Preview output.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-
-                if (edgePreviewSmoke)
-                {
-                    var filterStep = _viewModel.Workbench.PipelineSteps.FirstOrDefault(step =>
-                        string.Equals(step.ToolId, "filter", StringComparison.Ordinal));
-                    if (filterStep is null
-                        || !_viewModel.Workbench.SelectPipelineStep(filterStep.Id)
-                        || !await _viewModel.Workbench.PreviewSelectedFilterAsync())
-                    {
-                        _viewModel.SetViewerSmokeFailed("Edge smoke could not create the explicit Filter Preview prerequisite.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    if (!_viewModel.Workbench.IsFilterPreviewPublished
-                        || string.IsNullOrWhiteSpace(edgeStepId)
-                        || !_viewModel.Workbench.TryConfigureHeightDifferenceEdgeSmoke(
-                            edgeStepId,
-                            new ToolRecipeGridRectangle(156, 180, 135, 16),
-                            "AcrossColumns",
-                            "Rising",
-                            "4",
-                            out var edgeConfiguration))
-                    {
-                        _viewModel.SetViewerSmokeFailed("Edge smoke prerequisite failed: Published Filter or smoke-only search band is unavailable.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                    OVLog.Write(LogCategory.UI, LogLevel.Info, $"Edge smoke-only configuration: {edgeConfiguration}; no recipe file was saved.");
-                    if (!await _viewModel.Workbench.PreviewSelectedHeightDifferenceEdgeAsync())
-                    {
-                        _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.HeightDifferenceEdgeExecutionSummary);
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                    if (edgeSmokeReportPath is not null
-                        && _viewModel.Workbench.CurrentHeightDifferenceEdgeOutput is { } edgeOutput)
-                    {
-                        var diagnostics = edgeOutput.Diagnostics;
-                        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(edgeSmokeReportPath))!);
-                        File.WriteAllLines(edgeSmokeReportPath,
-                        [
-                            "OpenVisionLab 3D Height Difference Edge smoke-only report",
-                            "Boundary|Smoke-only band and threshold are not saved teaching values or production evidence.",
-                            $"Input|entity={edgeOutput.InputEntityId}|sha256={edgeOutput.InputContentSha256}|rootSha256={edgeOutput.RootSourceSha256}",
-                            $"Selection|row={edgeOutput.Selection.Row}|column={edgeOutput.Selection.Column}|rowCount={edgeOutput.Selection.RowCount}|columnCount={edgeOutput.Selection.ColumnCount}",
-                            $"Rule|axis={edgeOutput.ComparisonAxis}|polarity={edgeOutput.Polarity}|minimumDelta={edgeOutput.MinimumDelta:R}",
-                            $"Output|entity={edgeOutput.OutputEntityId}|points={edgeOutput.Points.Count}|sha256={edgeOutput.ContentSha256}",
-                            $"Diagnostics|scanlines={diagnostics.ScanlineCount}|eligiblePairs={diagnostics.EligiblePairCount}|missingPairSkips={diagnostics.SkippedMissingPairCount}|accepted={diagnostics.AcceptedScanlineCount}|noCandidate={diagnostics.NoCandidateScanlineCount}|magnitudeMin={diagnostics.AcceptedMagnitudeMinimum:R}|magnitudeMax={diagnostics.AcceptedMagnitudeMaximum:R}|magnitudeMean={diagnostics.AcceptedMagnitudeMean:R}"
-                        ]);
-                    }
-                    if (edgePublishSmoke)
-                    {
-                        _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                        if (!_viewModel.Workbench.IsEdgePreviewPublished)
-                        {
-                            _viewModel.SetViewerSmokeFailed("Height Difference Edge Publish did not reuse the current Preview output.");
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                    }
-                }
-
-                if (lineFitPreviewSmoke)
-                {
-                    if (!_viewModel.Workbench.IsEdgePreviewPublished)
-                    {
-                        _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
-                    }
-                    if (_viewModel.Workbench.CurrentHeightDifferenceEdgeOutput is not { } edgeOutput
-                        || !_viewModel.Workbench.IsEdgePreviewPublished
-                        || !_viewModel.Workbench.TryConfigureLineFitSmoke(
-                            edgeOutput.OutputEntityId,
-                            "100",
-                            "3",
-                            "0.10",
-                            "2",
-                            out var lineFitConfiguration)
-                        || !await _viewModel.Workbench.PreviewSelectedLineFitAsync())
-                    {
-                        _viewModel.SetViewerSmokeFailed($"Line Fit smoke prerequisite failed: {_viewModel.Workbench.LineFitExecutionSummary}");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                    OVLog.Write(LogCategory.UI, LogLevel.Info, lineFitConfiguration);
-                    if (lineFitSmokeReportPath is not null && _viewModel.Workbench.CurrentLineFitOutput is { } lineFitOutput)
-                    {
-                        var diagnostics = lineFitOutput.Diagnostics;
-                        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(lineFitSmokeReportPath))!);
-                        File.WriteAllLines(lineFitSmokeReportPath,
-                        [
-                            "OpenVisionLab 3D Line Fit smoke-only report",
-                            "Boundary|Smoke-only limits are not saved teaching values, production evidence, inspection OK/NG, or metrology evidence.",
-                            $"Input|entity={lineFitOutput.InputEdgePointSetEntityId}|sha256={lineFitOutput.InputContentSha256}|rootSha256={lineFitOutput.RootSourceSha256}",
-                            $"Output|entity={lineFitOutput.OutputEntityId}|sha256={lineFitOutput.ContentSha256}|points={diagnostics.InputPointCount}|inliers={diagnostics.InlierCount}|outliers={diagnostics.OutlierCount}",
-                            $"Diagnostics|residualRms={diagnostics.ResidualRms:R}|residualMax={diagnostics.ResidualMaximum:R}|scanlineSpan={diagnostics.InlierScanlineSpan}|plotPoints={_viewModel.Workbench.LineFitResidualPlotPoints.Count}",
-                            $"Line|anchor={lineFitOutput.AnchorX:R},{lineFitOutput.AnchorY:R},{lineFitOutput.AnchorZ:R}|direction={lineFitOutput.DirectionX:R},{lineFitOutput.DirectionY:R},{lineFitOutput.DirectionZ:R}"
-                        ]);
-                    }
-                }
-
                 if (teachingSelectionSmokeMode is not null
                     && !await ShellTeachingSelectionSmoke.RunAsync(
                         _viewModel,
@@ -1071,7 +939,13 @@ public partial class MainWindow : Window
                 }
 
                 var nominalActualReady = !waitForNominalActualPreview
-                    || await WaitForNominalActualPreviewAsync(TimeSpan.FromMinutes(10));
+                    || await _nominalActualPreviewWaiter.WaitAsync(
+                        TimeSpan.FromMinutes(10),
+                        _shellSmokeOperation.Token);
+                if (!_shellSmokeOperation.IsActive || _isClosed)
+                {
+                    return;
+                }
                 if (!nominalActualReady)
                 {
                     _viewModel.SetViewerSmokeFailed(
@@ -1111,7 +985,10 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                await Task.Delay(900);
+                if (!await _shellSmokeOperation.DelayAsync(TimeSpan.FromMilliseconds(900)))
+                {
+                    return;
+                }
                 if (smokePublishResult && !_viewer.PublishCurrentPreviewResult())
                 {
                     _viewModel.SetViewerSmokeFailed(
@@ -1210,56 +1087,35 @@ public partial class MainWindow : Window
                     }
                 }
 
-                if (surfaceMatchExperimentPreviewSmoke
-                    && !await _viewModel.Workbench
-                        .PreviewSelectedSurfaceMatchExperimentAsync())
+                var workbenchInteractionSmokeFailure =
+                    await _workbenchInteractionSmoke.RunAsync(
+                        new ShellWorkbenchInteractionSmokeRequest
+                        {
+                            SurfaceMatchExperimentPreview = surfaceMatchExperimentPreviewSmoke,
+                            CollectionNavigationFocusHover = surfaceMatchCollectionNavigationFocusHoverSmoke,
+                            CollectionDisabled = surfaceMatchCollectionDisabledSmoke,
+                            ExperimentFocusHover = surfaceMatchExperimentFocusHoverSmoke,
+                            CollectionPopup = surfaceMatchCollectionPopupSmoke,
+                            CollectionPopupScreenshotPath = surfaceMatchCollectionPopupScreenshotPath,
+                            WorkbenchInteractionReportPath = workbenchInteractionReportPath,
+                            SelectedToolId = smokeSelectToolId
+                        },
+                        UpdateLayout,
+                        () => Dispatcher.InvokeAsync(
+                            () => { },
+                            DispatcherPriority.Render).Task,
+                        () => _surfaceMatchInteractionSmoke.RunAsync(
+                            surfaceMatchCollectionNavigationFocusHoverSmoke,
+                            surfaceMatchCollectionDisabledSmoke,
+                            surfaceMatchExperimentFocusHoverSmoke,
+                            surfaceMatchCollectionPopupSmoke,
+                            surfaceMatchCollectionPopupScreenshotPath),
+                        () => ToolWorkbench.GetSelectedToolVisibleTextLayout());
+                if (workbenchInteractionSmokeFailure is not null)
                 {
-                    _viewModel.SetViewerSmokeFailed(
-                        "Surface Match experiment Preview did not produce a temporary candidate.");
+                    _viewModel.SetViewerSmokeFailed(workbenchInteractionSmokeFailure);
                     Application.Current.Shutdown(1);
                     return;
-                }
-
-                var workbenchUiApplyStarted = Stopwatch.GetTimestamp();
-                UpdateLayout();
-                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                if (surfaceMatchCollectionNavigationFocusHoverSmoke
-                    || surfaceMatchCollectionDisabledSmoke
-                    || surfaceMatchExperimentFocusHoverSmoke
-                    || surfaceMatchCollectionPopupSmoke)
-                {
-                    var interaction = await _surfaceMatchInteractionSmoke.RunAsync(
-                        surfaceMatchCollectionNavigationFocusHoverSmoke,
-                        surfaceMatchCollectionDisabledSmoke,
-                        surfaceMatchExperimentFocusHoverSmoke,
-                        surfaceMatchCollectionPopupSmoke,
-                        surfaceMatchCollectionPopupScreenshotPath);
-                    if (!interaction.Succeeded)
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            interaction.Failure!);
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-                var workbenchUiApplyMilliseconds = Stopwatch.GetElapsedTime(workbenchUiApplyStarted).TotalMilliseconds;
-                if (workbenchInteractionReportPath is not null)
-                {
-                    var fullReportPath = Path.GetFullPath(workbenchInteractionReportPath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-                    var reportLines = new List<string>
-                    {
-                        "OpenVisionLab 3D Workbench interaction timing",
-                        "Boundary|Local Release EXE smoke timing; this is not a broad hardware benchmark.",
-                        $"Tool|id={smokeSelectToolId ?? "(none)"}|selected={_viewModel.Workbench.SelectedTool?.Id ?? "(none)"}|step={_viewModel.Workbench.SelectedPipelineStep?.Id ?? "(none)"}",
-                        $"Timing|toolSelectionMs={_viewModel.Workbench.LastToolSelectionMilliseconds:F3}|toolAddMs={_viewModel.Workbench.LastToolAddMilliseconds:F3}|stepSelectionMs={_viewModel.Workbench.LastStepSelectionMilliseconds:F3}|uiApplyMs={workbenchUiApplyMilliseconds:F3}",
-                        $"RecipeRefresh|totalMs={_viewModel.Workbench.LastRecipeRefreshMilliseconds:F3}|validationMs={_viewModel.Workbench.LastRecipeValidationMilliseconds:F3}|entityRebuildMs={_viewModel.Workbench.LastRecipeEntityRebuildMilliseconds:F3}|executionStateMs={_viewModel.Workbench.LastRecipeExecutionStateMilliseconds:F3}|notificationMs={_viewModel.Workbench.LastRecipeNotificationMilliseconds:F3}",
-                        $"Budget|toolSelection50ms={_viewModel.Workbench.LastToolSelectionMilliseconds <= 50.0}|toolAdd150ms={_viewModel.Workbench.LastToolAddMilliseconds <= 150.0}|stepSelection150ms={_viewModel.Workbench.LastStepSelectionMilliseconds <= 150.0}|uiApply150ms={workbenchUiApplyMilliseconds <= 150.0}",
-                        $"Recipe|steps={_viewModel.Workbench.PipelineSteps.Count}|state={_viewModel.Workbench.SelectedPipelineStep?.State ?? "(none)"}|publishAvailable={_viewModel.Workbench.PublishSelectedStepCommand.CanExecute(null)}"
-                    };
-                    reportLines.AddRange(
-                        ToolWorkbench.GetSelectedToolVisibleTextLayout());
-                    File.WriteAllLines(fullReportPath, reportLines);
                 }
 
                 if (!string.IsNullOrWhiteSpace(integrationExchangeSmokeState))
@@ -1270,8 +1126,14 @@ public partial class MainWindow : Window
                             _viewModel.IsIntegrationExchangeSelected,
                             _viewModel.IntegrationExchange,
                             this,
-                            Dispatcher);
+                            Dispatcher,
+                            _shellSmokeOperation.Token);
                     integrationExchangeSmoke = integrationExchangeOutcome;
+                    if (integrationExchangeOutcome.IsCanceled
+                        || !_shellSmokeOperation.IsActive)
+                    {
+                        return;
+                    }
                     if (!integrationExchangeOutcome.Succeeded)
                     {
                         _viewModel.SetViewerSmokeFailed(integrationExchangeOutcome.Failure!);
@@ -1290,7 +1152,9 @@ public partial class MainWindow : Window
                             () => Dispatcher.InvokeAsync(
                                 () => { },
                                 DispatcherPriority.ApplicationIdle).Task,
-                            smoke.IntegrationExchangeExeReportPath);
+                            smoke.IntegrationExchangeExeReportPath,
+                            _commandLineArguments,
+                            _shellSmokeOperation.Token);
                     if (!integrationExchangeExeOutcome.Succeeded)
                     {
                         _viewModel.SetViewerSmokeFailed(
@@ -1322,7 +1186,10 @@ public partial class MainWindow : Window
                     await _validationThresholdSmoke.ReassertForCaptureAsync();
                 }
 
-                await Task.Delay(100);
+                if (!await _shellSmokeOperation.DelayAsync(TimeSpan.FromMilliseconds(100)))
+                {
+                    return;
+                }
                 if (shellScreenshotPath is not null
                     && preparationPresetAssistantSmoke?.Equals(
                         "dropdown",
@@ -1337,75 +1204,47 @@ public partial class MainWindow : Window
                     Application.Current.Shutdown(1);
                     return;
                 }
+                var screenshotTarget = ShellSmokeScreenshotTargetSelector.Select(
+                    new ShellSmokeScreenshotTargetRequest
+                    {
+                        Import3DDataPressed = import3DDataPressedSmoke,
+                        ValidationThresholdAssistantPressed = validationThresholdAssistantPressedSmoke,
+                        ViewerToolbarPressed = viewerToolbarPressedSmoke,
+                        ViewerPresentationPressed = viewerPresentationPressedSmoke,
+                        RecipeHealthNavigationPressed = recipeHealthNavigationPressedSmoke,
+                        SupportBundlePressed = supportBundlePressedSmoke,
+                        CurrentRecipeRunPressed = currentRecipeRunPressedSmoke,
+                        IntegrationExchangePressed = integrationExchangeSmoke?.HasPressedCapture == true,
+                        IntegrationExchangeAutomationId = integrationExchangeSmoke?.PressedCaptureAutomationId,
+                        IntegrationExchangeScope = integrationExchangeSmoke?.PressedCaptureScope,
+                        PreparationPresetAssistantMode = preparationPresetAssistantSmoke
+                    });
+                var screenshotCaptureSucceeded = true;
+                if (shellScreenshotPath is not null)
+                {
+                    screenshotCaptureSucceeded = screenshotTarget switch
+                    {
+                        { Kind: ShellSmokeScreenshotTargetKind.Button } target =>
+                            await CaptureButtonPressedForSmokeAsync(
+                                this,
+                                target.AutomationId!,
+                                shellScreenshotPath,
+                                screenshotQualityReportPath,
+                                target.Scope!),
+                        { Kind: ShellSmokeScreenshotTargetKind.RecipeHealthNavigation } =>
+                            await CaptureRecipeHealthNavigationPressedForSmokeAsync(
+                                this,
+                                shellScreenshotPath,
+                                screenshotQualityReportPath),
+                        _ => await CaptureWindowWithRetryAsync(
+                            this,
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "Shell")
+                    };
+                }
                 if (shellScreenshotPath is not null
-                    && !(import3DDataPressedSmoke
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "Import3DData",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "Import3DDataPressed")
-                        : validationThresholdAssistantPressedSmoke
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "ProposeValidationThresholdButton",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "ValidationThresholdAssistantProposePressed")
-                        : viewerToolbarPressedSmoke
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "ViewerFitAll",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "ViewerToolbarPressed")
-                        : viewerPresentationPressedSmoke
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "ViewerCameraLink",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "ViewerPresentationCameraLinkPressed")
-                        : recipeHealthNavigationPressedSmoke
-                        ? await CaptureRecipeHealthNavigationPressedForSmokeAsync(
-                            this,
-                            shellScreenshotPath,
-                            screenshotQualityReportPath)
-                        : supportBundlePressedSmoke
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "PrivacySafeSupportBundleButton",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "PrivacySafeSupportBundlePressed")
-                        : currentRecipeRunPressedSmoke
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "RunCurrentRecipeButton",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "CurrentRecipeRunPressed")
-                        : integrationExchangeSmoke?.HasPressedCapture == true
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            integrationExchangeSmoke.PressedCaptureAutomationId!,
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            integrationExchangeSmoke.PressedCaptureScope!)
-                        : preparationPresetAssistantSmoke?.Equals(
-                            "apply-pressed",
-                            StringComparison.OrdinalIgnoreCase) == true
-                        ? await CaptureButtonPressedForSmokeAsync(
-                            this,
-                            "ApplyPreparationPresetDraft",
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "PreparationPresetAssistantApplyDraftPressed")
-                        : await CaptureWindowWithRetryAsync(
-                            this,
-                            shellScreenshotPath,
-                            screenshotQualityReportPath,
-                            "Shell")))
+                    && !screenshotCaptureSucceeded)
                 {
                     _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
@@ -1413,44 +1252,28 @@ public partial class MainWindow : Window
                 }
                 if (shellScreenshotPath is not null)
                 {
-                    if (!string.IsNullOrWhiteSpace(screenshotQualityReportPath)
-                        && viewerPresentationCameraLinkSmokeSummary is not null)
-                    {
-                        File.AppendAllLines(
-                            Path.GetFullPath(screenshotQualityReportPath),
-                            [viewerPresentationCameraLinkSmokeSummary]);
-                    }
-
-                    AppendWindowMonitorEvidence(
-                        this,
-                        screenshotQualityReportPath);
-                    if (validationSetSmoke.ThresholdSelectionTask is not null
-                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
-                    {
-                        _validationThresholdSmoke.AppendEvidence(
-                            this,
-                            screenshotQualityReportPath);
-                    }
-                    if (integrationExchangeSmoke?.EvidenceLine is { } integrationExchangeEvidence
-                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
-                    {
-                        File.AppendAllLines(
-                            Path.GetFullPath(screenshotQualityReportPath),
-                            [integrationExchangeEvidence]);
-                    }
-                    if (preparationPresetAssistantSmoke is not null)
-                    {
-                        _preparationPresetSmoke.AppendEvidence(
-                            preparationPresetAssistantSmoke,
-                            screenshotQualityReportPath);
-                    }
+                    _shellSmokeScreenshotEvidence.Append(
+                        new ShellSmokeScreenshotEvidenceRequest
+                        {
+                            QualityReportPath = screenshotQualityReportPath,
+                            ViewerPresentationCameraLinkSummary = viewerPresentationCameraLinkSmokeSummary,
+                            AppendValidationThresholdEvidence = validationSetSmoke.ThresholdSelectionTask is not null,
+                            IntegrationExchangeEvidenceLine = integrationExchangeSmoke?.EvidenceLine,
+                            PreparationPresetAssistantMode = preparationPresetAssistantSmoke
+                        });
                 }
                 if (currentRecipeRunPressedSmoke)
                 {
                     var currentRecipeRun =
                         await _currentRecipeRunSmoke.ExecuteAfterCaptureAsync(
                             pressedSmoke: true,
-                            screenshotQualityReportPath);
+                            screenshotQualityReportPath: screenshotQualityReportPath,
+                            cancellationToken: _shellSmokeOperation.Token);
+                    if (currentRecipeRun.IsCanceled
+                        || !_shellSmokeOperation.IsActive)
+                    {
+                        return;
+                    }
                     if (!currentRecipeRun.Succeeded)
                     {
                         _viewModel.SetViewerSmokeFailed(
@@ -1520,7 +1343,10 @@ public partial class MainWindow : Window
                     Application.Current.Shutdown(1);
                     return;
                 }
-                await Task.Delay(100);
+                if (!await _shellSmokeOperation.DelayAsync(TimeSpan.FromMilliseconds(100)))
+                {
+                    return;
+                }
                 toolLabSmoke.CloseTemporaryWindows(smoke);
                 if (messageDialogSmokeWindow is { IsVisible: true })
                 {
@@ -1547,30 +1373,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<bool> WaitForNominalActualPreviewAsync(TimeSpan timeout)
-    {
-        var deadline = DateTimeOffset.UtcNow + timeout;
-        while (_viewer.ViewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning
-            && DateTimeOffset.UtcNow < deadline)
-        {
-            await Task.Delay(100);
-        }
-
-        return _viewer.ViewModel.NominalActual.State is NominalActualComparisonState.PreviewReady
-            or NominalActualComparisonState.Published;
-    }
-
-    private static string? GetCommandLineValue(string name)
-    {
-        var args = Environment.GetCommandLineArgs();
-        var index = Array.IndexOf(args, name);
-        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
-    }
-
     private bool TryConfigureSurfaceMatchEvidenceFromCommandLine(
         out string failure) =>
         ShellSurfaceMatchSmoke.TryConfigureEvidenceFromCommandLine(
-            Environment.GetCommandLineArgs(),
+            _commandLineArguments,
             _viewModel.Workbench,
             out failure);
 
@@ -1586,7 +1392,7 @@ public partial class MainWindow : Window
 
     private void ConfigureCalibrationStudyFromCommandLine()
     {
-        var studyPath = GetCommandLineValue("--calibration-study");
+        var studyPath = _commandLineArguments.GetValue("--calibration-study");
         if (studyPath is null)
         {
             return;
@@ -1595,8 +1401,7 @@ public partial class MainWindow : Window
         _viewModel.IsCalibrationWorkspaceSelected = true;
         _viewModel.Calibration.SelectedSection = CalibrationSection.Repeatability;
         if (_viewModel.Calibration.LoadStudy(studyPath)
-            && Environment.GetCommandLineArgs()
-                .Contains("--smoke-calibration-calculate", StringComparer.OrdinalIgnoreCase))
+            && _commandLineArguments.HasFlag("--smoke-calibration-calculate"))
         {
             _viewModel.Calibration.CalculateCommand.Execute(null);
         }
@@ -1604,82 +1409,20 @@ public partial class MainWindow : Window
 
     private void ConfigureToolTeachingRecipeFromCommandLine()
     {
-        var fixtureDirectory = GetCommandLineValue("--plane-flatness-live-a3-fixture");
-        var recipePath = GetCommandLineValue("--tool-teaching-recipe");
-        if (!string.IsNullOrWhiteSpace(fixtureDirectory))
+        var result = _toolTeachingStartup.Configure(
+            new ShellToolTeachingStartupRequest(
+                _commandLineArguments.GetValue("--plane-flatness-live-a3-fixture"),
+                _commandLineArguments.GetValue("--tool-teaching-recipe"),
+                _commandLineArguments.GetValue("--tool-teaching-step")));
+        if (result.SmokeFailure is { } failure)
         {
-            try
-            {
-                var fixture = PlaneFlatnessLiveA3PointerSmokeFixture.Prepare(fixtureDirectory);
-                recipePath = fixture.RecipePath;
-                OVLog.Write(LogCategory.UI, LogLevel.Info, fixture.Summary);
-            }
-            catch (Exception exception) when (exception is IOException
-                or UnauthorizedAccessException
-                or InvalidDataException
-                or ArgumentException
-                or InvalidOperationException
-                or OverflowException)
-            {
-                OVLog.Write(LogCategory.UI, LogLevel.Error, $"Plane Flatness live A3 fixture preparation failed: {exception}");
-                _viewModel.SetViewerSmokeFailed($"Plane Flatness live A3 fixture preparation failed: {exception.Message}");
-                return;
-            }
+            _viewModel.SetViewerSmokeFailed(failure);
         }
-        if (string.IsNullOrWhiteSpace(recipePath))
-        {
-            return;
-        }
-
-        if (!_viewModel.Workbench.TryOpenTeachingRecipe(recipePath, out var message))
-        {
-            OVLog.Write(LogCategory.UI, LogLevel.Error, $"Tool teaching recipe command-line load failed: {message}");
-            return;
-        }
-
-        var requestedStepId = GetCommandLineValue("--tool-teaching-step");
-        if (!string.IsNullOrWhiteSpace(requestedStepId)
-            && !_viewModel.Workbench.SelectPipelineStep(requestedStepId))
-        {
-            _viewModel.SetViewerSmokeFailed($"Tool teaching step was not found: {requestedStepId}");
-        }
-
-        var source = _viewModel.Workbench.Source;
-        if (!_viewModel.Workbench.IsSourceReadyForRecipe)
-        {
-            _viewer.ClearC3DTeachingSource(_viewModel.Workbench.SourceReadinessSummary);
-            _viewModel.UpdateC3DSampleVisible(false);
-            OVLog.Write(LogCategory.UI, LogLevel.Warning, $"Tool teaching recipe source is not ready: {_viewModel.Workbench.SourceReadinessSummary}");
-            return;
-        }
-
-        if (IsViewerSourceAlreadyLoaded(source.Path))
-        {
-            _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
-            if (_viewModel.IsWorkbenchWorkspaceSelected)
-            {
-                _viewer.ViewModel.HudDetailsVisible = false;
-            }
-            return;
-        }
-
-        if (_viewer.LoadC3DSource(source.Path) && _viewer.CurrentC3DSourcePath is { } loadedSourcePath)
-        {
-            SetWorkbenchC3DSourceFromViewer(loadedSourcePath);
-            _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
-            if (_viewModel.IsWorkbenchWorkspaceSelected)
-            {
-                _viewer.ViewModel.HudDetailsVisible = false;
-            }
-            return;
-        }
-
-        OVLog.Write(LogCategory.UI, LogLevel.Error, $"Tool teaching recipe source load failed: {_viewer.HostState.ViewerStatus}");
     }
 
     private void RestoreStartupRunRecordAfterRecipeLoad()
     {
-        var requestedRunRecord = GetCommandLineValue("--run-record");
+        var requestedRunRecord = _commandLineArguments.GetValue("--run-record");
         if (string.IsNullOrWhiteSpace(requestedRunRecord)
             || _viewModel.LoadRunRecord(requestedRunRecord, out var message))
         {
@@ -1750,49 +1493,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ConfigureViewerViewFromCommandLine(object sender, RoutedEventArgs e)
-    {
-        switch (_startupConfiguration.StageWorkspace)
-        {
-            case ShellWorkspaceMode.Workbench:
-                _viewModel.IsSetupWorkspaceSelected = true;
-                break;
-            case ShellWorkspaceMode.Teach:
-                _viewModel.IsTeachWorkspaceSelected = true;
-                break;
-            case ShellWorkspaceMode.Inspect:
-                _viewModel.IsValidateWorkspaceSelected = true;
-                break;
-            case ShellWorkspaceMode.Review:
-                _viewModel.IsResultsWorkspaceSelected = true;
-                break;
-        }
-
-        switch (_startupConfiguration.ViewerView)
-        {
-            case ShellStartupViewerView.Top:
-                _viewer.UseTopView();
-                break;
-            case ShellStartupViewerView.Perspective:
-                _viewer.UsePerspectiveView();
-                break;
-        }
-
-        if (_startupConfiguration.FitRoi)
-        {
-            _viewer.FitRoi();
-        }
-
-        if (_startupConfiguration.HeightColorMinimumRaw is { } requestedHeightColorMinimum)
-        {
-            _viewer.ViewModel.C3DHeightColorMinimumRaw = requestedHeightColorMinimum;
-        }
-
-        if (_startupConfiguration.HeightColorMaximumRaw is { } requestedHeightColorMaximum)
-        {
-            _viewer.ViewModel.C3DHeightColorMaximumRaw = requestedHeightColorMaximum;
-        }
-    }
+    private void ConfigureViewerViewFromCommandLine(object sender, RoutedEventArgs e) =>
+        _startupViewerProjection.Apply(_startupConfiguration);
 
     private void ConfigureInspectionTaskFromCommandLine(
         ShellStartupConfigurationPlan configuration)
@@ -1806,7 +1508,7 @@ public partial class MainWindow : Window
     private void ConfigureValidationSetFromCommandLine()
     {
         validationSetSmoke = ShellValidationSetSmoke.Configure(
-            Environment.GetCommandLineArgs(),
+            _commandLineArguments,
             _viewModel.Workbench,
             () =>
             {
@@ -2065,6 +1767,9 @@ public partial class MainWindow : Window
 
     private Window GetRecipeLifecycleDialogOwner() => _workbenchLifecycle.GetRecipeLifecycleDialogOwner();
 
+    private static string DialogText(string key, string korean, string english) =>
+        ThreeDLocalization.Shared.Resolve(key, korean, english);
+
     private static ShellLifecycleDialogChoice ToLifecycleDialogChoice(WpfMessageDialogResult result) =>
         result switch
         {
@@ -2086,11 +1791,6 @@ public partial class MainWindow : Window
         }
         Activate();
     }
-
-    private bool IsViewerSourceAlreadyLoaded(string path) => _workbenchLifecycle.IsViewerSourceAlreadyLoaded(path);
-
-    private void SetWorkbenchC3DSourceFromViewer(string path, bool markDirty = true) =>
-        _workbenchLifecycle.SetWorkbenchC3DSourceFromViewer(path, markDirty);
 
     private Task<bool> ClickUnsavedRecipeDoNotSaveForSmokeAsync() =>
         _workbenchLifecycle.ClickUnsavedRecipeDoNotSaveForSmokeAsync();
