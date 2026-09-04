@@ -18,11 +18,20 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.1-dev`
+Current version: `v0.5.2-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.2-dev` (2026-09-05)
+
+- Restores six Verification artifact-contract sources to the public repository
+  so clean GitHub checkouts compile the dedicated Verification project.
+- Keeps the existing recipe, Run Record, Viewer Host API, and explicit
+  Preview/Publish/Run compatibility boundary.
+- Records this as a focused CI/build-integrity patch after the aggregated
+  `v0.5.1-dev` refactor batch.
 
 #### `v0.5.1-dev` (2026-09-05)
 
