@@ -36,6 +36,7 @@ current product direction is owned by the master backlog and current handoff.
 - [HeightMap buffer runtime](INTEGRATION_3D_HEIGHTMAP_BUFFER_RUNTIME_20260826.md)
 - [Cross-process HeightMap smoke](INTEGRATION_3D_CROSS_PROCESS_HEIGHTMAP_SMOKE_20260826.md)
 - [Cross-modal coordinate projection](INTEGRATION_3D_CROSS_MODAL_PROJECTION_20260827.md)
+- [Refactor batch 0.5.3-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260905_LAZ.md)
 - [Refactor batch 0.5.1-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260905.md)
 - [Public CI repair batch 0.5.2-dev](OPENVISIONLAB_3D_PUBLIC_CI_REPAIR_BATCH_20260905.md)
 - [Refactor batch 0.5.0-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260904.md)

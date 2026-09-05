@@ -99,23 +99,26 @@ public sealed partial class OpenVisionThreeDViewerControl
                 case ".las":
                 case ".laz":
                 {
-                    var pointCloud = await LoadLazPointCloudAsync(
+                    var loadResult = await LoadLazPointCloudAsync(
                         fullPath,
                         viewModel.LazMaxSampledPoints,
                         operation.Token,
                         operationProgress,
                         () => operation.IsCurrent && !operation.IsCancellationRequested);
                     operation.Token.ThrowIfCancellationRequested();
-                    if (pointCloud is null)
+                    if (loadResult is not { PointCloud: { } pointCloud })
                     {
                         return false;
                     }
 
+                    var completedLoad = loadResult.Value;
                     if (!sourceLoadOperations.TryApply(
                             operation,
                             () => ApplyViewerOnlyPointCloud(
                                 pointCloud,
-                                extension == ".las" ? "LAS" : "LAZ")))
+                                extension == ".las" ? "LAS" : "LAZ",
+                                completedLoad.LoadMilliseconds,
+                                completedLoad.Reused)))
                     {
                         operation.Token.ThrowIfCancellationRequested();
                         return false;
@@ -177,9 +180,14 @@ public sealed partial class OpenVisionThreeDViewerControl
         RenderNow();
     }
 
-    private void ApplyViewerOnlyPointCloud(LazPointCloud pointCloud, string format)
+    private void ApplyViewerOnlyPointCloud(
+        LazPointCloud pointCloud,
+        string format,
+        double loadMilliseconds,
+        bool reused)
     {
         lazSourceState.SetPointCloud(pointCloud);
+        SetLoadedLazPointCloudTelemetry(pointCloud, loadMilliseconds, reused);
         selectedLazPoint = null;
         lazTwoPointFirst = null;
         lazTwoPointSecond = null;
@@ -698,7 +706,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
-    private async Task<LazPointCloud?> LoadLazPointCloudAsync(
+    private async Task<LazPointCloudLoadResult?> LoadLazPointCloudAsync(
         string path,
         int maxSampledPoints,
         CancellationToken externalCancellationToken = default,
@@ -766,6 +774,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return null;
             }
 
+            if (!(isCurrent?.Invoke() ?? true))
+            {
+                return null;
+            }
+
             if (loadResult.Reused)
             {
                 lazPointCloudCacheHitCount++;
@@ -776,8 +789,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 lazPointCloudDecodeCount++;
             }
 
-            SetLoadedLazPointCloudTelemetry(pointCloud, loadResult.LoadMilliseconds, loadResult.Reused);
-            return pointCloud;
+            return loadResult;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -792,6 +804,20 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private async Task ReloadCurrentLazPointCloudAsync()
     {
+        try
+        {
+            await ReloadCurrentLazPointCloudCoreAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer density request or Viewer disposal intentionally retires
+            // this load. Callers observe a completed reload task, not an
+            // unobserved cancellation fault from the ViewModel event path.
+        }
+    }
+
+    private async Task ReloadCurrentLazPointCloudCoreAsync()
+    {
         if (lazPointCloud is null)
         {
             return;
@@ -805,16 +831,19 @@ public sealed partial class OpenVisionThreeDViewerControl
             operation.Token,
             isCurrent: () => operation.IsCurrent && !operation.IsCancellationRequested);
         operation.Token.ThrowIfCancellationRequested();
-        if (reloaded is null)
+        if (reloaded is not { PointCloud: { } pointCloud })
         {
             return;
         }
+
+        var loadResult = reloaded.Value;
 
         sourceLoadOperations.TryApply(
             operation,
             () =>
             {
-                lazSourceState.SetPointCloud(reloaded);
+                lazSourceState.SetPointCloud(pointCloud);
+                SetLoadedLazPointCloudTelemetry(pointCloud, loadResult.LoadMilliseconds, loadResult.Reused);
                 selectedLazPoint = null;
                 lazTwoPointFirst = null;
                 lazTwoPointSecond = null;

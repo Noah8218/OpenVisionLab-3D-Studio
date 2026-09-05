@@ -172,34 +172,67 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 && cache.Count == 1,
                 $"hit={sameSourceHit};sameObject={ReferenceEquals(pointCloud, cachedPointCloud)};count={cache.Count}");
 
-            cache.Store(samplePath, 128, pointCloud);
-            var budget64Hit = cache.TryGet(samplePath, 64, out _);
-            var budget128Hit = cache.TryGet(samplePath, 128, out _);
+            var boundedCache = new LazPointCloudSampleCache();
+            boundedCache.Store(samplePath, 64, pointCloud);
+            boundedCache.Store(samplePath, 128, pointCloud);
+            boundedCache.Store(samplePath, 256, pointCloud);
+            var bounded64Hit = boundedCache.TryGet(samplePath, 64, out _);
+            var bounded128Hit = boundedCache.TryGet(samplePath, 128, out _);
+            var bounded256Hit = boundedCache.TryGet(samplePath, 256, out _);
+            Check(
+                "default sample cache bounds recent density entries",
+                boundedCache.Capacity == 3
+                && boundedCache.Count == 3
+                && bounded64Hit
+                && bounded128Hit
+                && bounded256Hit,
+                $"capacity={boundedCache.Capacity};count={boundedCache.Count};budget64={bounded64Hit};budget128={bounded128Hit};budget256={bounded256Hit}");
+
+            _ = boundedCache.TryGet(samplePath, 64, out _);
+            boundedCache.Store(samplePath, 512, pointCloud);
+            var retainedAfterLruTouch = boundedCache.TryGet(samplePath, 64, out _);
+            var evictedLeastRecent = !boundedCache.TryGet(samplePath, 128, out _);
+            var retained256 = boundedCache.TryGet(samplePath, 256, out _);
+            var retained512 = boundedCache.TryGet(samplePath, 512, out _);
+            Check(
+                "default sample cache evicts the least-recent density entry",
+                boundedCache.Count == 3
+                && retainedAfterLruTouch
+                && evictedLeastRecent
+                && retained256
+                && retained512,
+                $"count={boundedCache.Count};retained64={retainedAfterLruTouch};evicted128={evictedLeastRecent};retained256={retained256};retained512={retained512}");
+
+            var unboundedTestCache = new LazPointCloudSampleCache(capacity: 64);
+            unboundedTestCache.Store(samplePath, 64, pointCloud);
+            unboundedTestCache.Store(samplePath, 128, pointCloud);
+            var budget64Hit = unboundedTestCache.TryGet(samplePath, 64, out _);
+            var budget128Hit = unboundedTestCache.TryGet(samplePath, 128, out _);
             Check(
                 "sample cache keeps multiple budgets for one source",
-                budget64Hit && budget128Hit && cache.Count == 2,
-                $"budget64={budget64Hit};budget128={budget128Hit};count={cache.Count}");
+                budget64Hit && budget128Hit && unboundedTestCache.Count == 2,
+                $"budget64={budget64Hit};budget128={budget128Hit};count={unboundedTestCache.Count}");
 
-            Parallel.For(0, 32, index => cache.Store(samplePath, 256 + index, pointCloud));
+            Parallel.For(0, 32, index => unboundedTestCache.Store(samplePath, 256 + index, pointCloud));
             Check(
                 "sample cache serializes concurrent budget writes",
-                cache.Count == 34
-                && cache.TryGet(samplePath, 256, out _)
-                && cache.TryGet(samplePath, 287, out _),
-                $"count={cache.Count};firstConcurrentBudget={cache.TryGet(samplePath, 256, out _)};lastConcurrentBudget={cache.TryGet(samplePath, 287, out _)}");
+                unboundedTestCache.Count == 34
+                && unboundedTestCache.TryGet(samplePath, 256, out _)
+                && unboundedTestCache.TryGet(samplePath, 287, out _),
+                $"count={unboundedTestCache.Count};firstConcurrentBudget={unboundedTestCache.TryGet(samplePath, 256, out _)};lastConcurrentBudget={unboundedTestCache.TryGet(samplePath, 287, out _)}");
 
-            cache.Store(samplePath + ".replacement", 64, pointCloud);
-            var staleSourceHit = cache.TryGet(samplePath, 64, out _);
+            unboundedTestCache.Store(samplePath + ".replacement", 64, pointCloud);
+            var staleSourceHit = unboundedTestCache.TryGet(samplePath, 64, out _);
             Check(
                 "sample cache invalidates entries when source changes",
-                !staleSourceHit && cache.Count == 1,
-                $"staleSourceHit={staleSourceHit};source={cache.SourcePath};count={cache.Count}");
+                !staleSourceHit && unboundedTestCache.Count == 1,
+                $"staleSourceHit={staleSourceHit};source={unboundedTestCache.SourcePath};count={unboundedTestCache.Count}");
 
-            cache.Clear();
+            unboundedTestCache.Clear();
             Check(
                 "sample cache clear drops managed references",
-                !cache.HasEntries && cache.SourcePath is null && cache.Count == 0,
-                $"hasEntries={cache.HasEntries};source={cache.SourcePath};count={cache.Count}");
+                !unboundedTestCache.HasEntries && unboundedTestCache.SourcePath is null && unboundedTestCache.Count == 0,
+                $"hasEntries={unboundedTestCache.HasEntries};source={unboundedTestCache.SourcePath};count={unboundedTestCache.Count}");
 
             var loadCache = new LazPointCloudSampleCache();
             using var loadCoordinator = new LazPointCloudLoadCoordinator(loadCache);

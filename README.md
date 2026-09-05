@@ -18,11 +18,22 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.2-dev`
+Current version: `v0.5.3-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.3-dev` (2026-09-05)
+
+- Bounds the Viewer LAZ/LAS sample cache to a three-entry least-recently-used
+  window, matching the supported density choices and releasing evicted managed
+  snapshot references.
+- Defers asynchronous LAZ scene state and telemetry until the caller's current
+  apply boundary, preventing superseded loads from being presented as current.
+- Preserves Viewer, recipe, Run Record, integration, and raw-height semantics;
+  this development refactor does not establish calibration or production
+  metrology.
 
 #### `v0.5.2-dev` (2026-09-05)
 
@@ -91,33 +102,6 @@ This project is maintained using explicit version numbers.
 
 - Extracted Viewer workspace presentation/layout Smoke orchestration into a dedicated Shell verification owner.
 - Preserved Viewer workspace state, layout precedence, camera-link evidence, and explicit workflow semantics.
-
-#### `v0.3.1-dev` (2026-09-01)
-
-- Expands the public documentation map with deterministic 3D integration,
-  verification, and workflow evidence.
-- Adds repository operating guidance and traceability records for the current
-  development baseline.
-- Keeps the development line software-only and does not claim physical
-  calibration or production metrology.
-
-#### `v0.3.0-dev` (2026-08-29)
-
-- Adds deterministic propagation of a selected connected region through a
-  published affine transform into a separate immutable result artifact.
-- Preserves exact region membership and missing-cell semantics with JSON
-  round-trip identity and fail-closed source/frame/unit guards.
-- Keeps re-grid, calibration, and physical-metrology claims outside this
-  software-only development scope.
-
-#### `v0.2.0-dev` (2026-08-28)
-
-- Adds deterministic 3D integration, connected-region analysis, height-image
-  alignment, and rigid-pose preparation workflows.
-- Adds bounded background preparation for height fields and identified point
-  clouds, with explicit derived-output identity and replay evidence.
-- Keeps the current development line software-only and does not claim physical
-  calibration or production metrology.
 
 ## Start here
 

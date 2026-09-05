@@ -1,10 +1,26 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.5.2-dev` development line onward. It does not claim that a version was
+`0.5.3-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.5.2-dev
+## [Unreleased] - 0.5.3-dev
+
+### Changed
+
+- Bounded the Viewer LAZ/LAS sample cache to three recent density entries and
+  added explicit least-recently-used eviction behavior.
+- Deferred asynchronous LAZ scene state and telemetry until the current apply
+  boundary so superseded loads cannot overwrite the displayed source state.
+
+### Compatibility
+
+- Product version is `0.5.3-dev`; Viewer Host API, Run Record, recipe, and
+  persisted storage contract versions are unchanged.
+- No tag, release candidate, package publication, or deployment is created by
+  this development batch.
+
+## [0.5.2-dev] - 2026-09-05
 
 ### Changed
 

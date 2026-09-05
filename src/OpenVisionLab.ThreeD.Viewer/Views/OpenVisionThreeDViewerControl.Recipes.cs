@@ -1173,19 +1173,21 @@ public sealed partial class OpenVisionThreeDViewerControl
         try
         {
             var plan = LazTwoPointRecipeLoadPlan.Create(recipeFile, recipe);
-            var loaded = await LoadLazPointCloudAsync(
+            var loadResult = await LoadLazPointCloudAsync(
                 plan.SourcePath,
                 recipe.Measurement.MaxSampledPoints,
                 cancellationToken,
                 isCurrent: () => !IsDisposed && !cancellationToken.IsCancellationRequested);
             cancellationToken.ThrowIfCancellationRequested();
-            if (loaded is null || IsDisposed)
+            if (loadResult is not { PointCloud: { } loaded } || IsDisposed)
             {
                 return false;
             }
 
             lazPointCloud = loaded;
             lazSample = loaded.Metadata;
+            var completedLoad = loadResult.Value;
+            SetLoadedLazPointCloudTelemetry(loaded, completedLoad.LoadMilliseconds, completedLoad.Reused);
             return LazTwoPointRecipeApplyCoordinator.Apply(
                 plan,
                 loaded,
