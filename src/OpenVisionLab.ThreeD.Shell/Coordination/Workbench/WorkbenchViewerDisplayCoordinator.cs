@@ -4,9 +4,10 @@ using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Tooling;
+using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
-namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
+namespace OpenVisionLab.ThreeD.Shell.Coordination;
 
 internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
 {

@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.5.4-dev` development line onward. It does not claim that a version was
+`0.5.5-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.5.4-dev
+## [Unreleased] - 0.5.5-dev
 
 ### Added
 
@@ -13,6 +13,10 @@ released; publication state is owned by the release and version policy.
   sampling state.
 
 ### Changed
+
+- Reorganized the Shell Workbench Viewer display and teaching coordinators
+  under `Coordination/Workbench` while retaining the existing WPF View module
+  and call paths.
 
 - Routed the Shell Tool Inspector, Result Summary, and Linked View read-only
   comparison surfaces through the Host snapshot while retaining Preview,
@@ -25,7 +29,7 @@ released; publication state is owned by the release and version policy.
 
 ### Compatibility
 
-- Product version is `0.5.4-dev`; the additive Viewer Host API is `1.1`.
+- Product version is `0.5.5-dev`; the additive Viewer Host API is `1.1`.
   Positional `ViewerHostState` construction, Run Record, recipe, and persisted
   storage contracts remain compatible.
 - No tag, release candidate, package publication, or deployment is created by

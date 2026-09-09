@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-09-09
+Date: 2026-09-10
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -21,9 +21,12 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
 
 ## Current development line
 
-- The current public development version is `0.5.4-dev` with Viewer Host API
+- The current public development version is `0.5.5-dev` with Viewer Host API
   `1.1`. The additive Host snapshot preserves existing Viewer, recipe, Run
   Record, and persisted-storage contracts.
+- The 0.5.5-dev structure batch moves the Shell Workbench Viewer display and
+  teaching coordinators into `Coordination/Workbench`; WPF Views remain under
+  `Views/Workbench`, and no Viewer Host or persisted-storage contract changes.
 - Nominal/Actual readiness, progress, evidence, distribution, and display
   sampling are exposed through `ViewerHostState.NominalActualDisplay`. The
   Shell reads this snapshot for display while Preview, Cancel, and Publish

@@ -6,7 +6,6 @@ using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Recipe;
-using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using System.IO;

@@ -18,11 +18,20 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.4-dev`
+Current version: `v0.5.5-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.5-dev` (2026-09-10)
+
+- Moves Shell Workbench Viewer display and teaching coordinators into the
+  responsibility-oriented `Coordination/Workbench` module.
+- Keeps existing Viewer, inspection, measurement, recipe, and WPF View behavior
+  and contracts unchanged.
+- Records this as a compatible internal refactor; no Host API or persisted
+  storage contract version changed.
 
 #### `v0.5.4-dev` (2026-09-09)
 

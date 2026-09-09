@@ -5,7 +5,7 @@ using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
-namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
+namespace OpenVisionLab.ThreeD.Shell.Coordination;
 
 internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
 {
