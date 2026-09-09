@@ -18,11 +18,22 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.3-dev`
+Current version: `v0.5.4-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.4-dev` (2026-09-09)
+
+- Exposes Nominal/Actual comparison display state through the WPF-neutral
+  Viewer Host snapshot, including readiness, progress, evidence, and display
+  sampling summaries.
+- Moves the Shell Tool Inspector, Result Summary, and Linked View read-only
+  display bindings to that snapshot while keeping Preview, Cancel, and Publish
+  commands owned by the Viewer comparison model.
+- Raises the additive Viewer Host API contract to `1.1`; existing positional
+  `ViewerHostState` construction remains source-compatible.
 
 #### `v0.5.3-dev` (2026-09-05)
 
@@ -97,11 +108,6 @@ This project is maintained using explicit version numbers.
 
 - Extracted Current Recipe Run Smoke preparation and post-capture ordered-run activation into a dedicated Shell verification owner.
 - Preserved RunCurrentRecipeButton command validation, activation evidence, 30-second/50-ms wait behavior, and explicit recipe workflow semantics.
-
-#### `v0.4.4-dev` (2026-09-01)
-
-- Extracted Viewer workspace presentation/layout Smoke orchestration into a dedicated Shell verification owner.
-- Preserved Viewer workspace state, layout precedence, camera-link evidence, and explicit workflow semantics.
 
 ## Start here
 

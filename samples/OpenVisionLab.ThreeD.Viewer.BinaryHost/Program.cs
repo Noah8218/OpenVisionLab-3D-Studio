@@ -99,6 +99,7 @@ internal static class Program
             [
                 $"HostApi|version={viewer.HostApiVersion}",
                 $"HostState|activeEntity={state.ActiveEntity}|selectionMode={state.SelectionMode}|viewerStatus={state.ViewerStatus}",
+                $"HostNominalActualDisplay|inputsReady={state.NominalActualDisplay.InputsReady}|distributionVisible={state.NominalActualDisplay.DistributionVisible}|progressPercent={state.NominalActualDisplay.ProgressPercent:F1}",
                 $"HostEvents|count={hostEventCount}|lastProperty={lastHostProperty ?? "(none)"}",
                 "HostLifecycle|concreteDisposable=True|disposedAfterRun=True",
                 $"HostCommands|invoked=ResetView,FitAll,FitSelection|saveRecipe={recipeSaved}|recipePath={hostApiRecipePath ?? "(not requested)"}"

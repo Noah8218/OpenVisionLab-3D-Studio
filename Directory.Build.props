@@ -1,8 +1,8 @@
 <Project>
   <PropertyGroup>
-    <Version>0.5.3-dev</Version>
-    <OpenVisionLabProductVersion>0.5.3-dev</OpenVisionLabProductVersion>
-    <OpenVisionLabViewerHostApiVersion>1.0</OpenVisionLabViewerHostApiVersion>
+    <Version>0.5.4-dev</Version>
+    <OpenVisionLabProductVersion>0.5.4-dev</OpenVisionLabProductVersion>
+    <OpenVisionLabViewerHostApiVersion>1.1</OpenVisionLabViewerHostApiVersion>
   </PropertyGroup>
 
   <ItemGroup>

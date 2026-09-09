@@ -1,12 +1,22 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.5.3-dev` development line onward. It does not claim that a version was
+`0.5.4-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.5.3-dev
+## [Unreleased] - 0.5.4-dev
+
+### Added
+
+- Added a WPF-neutral Nominal/Actual display snapshot to the Viewer Host
+  contract for readiness, progress, evidence, distribution, and display
+  sampling state.
 
 ### Changed
+
+- Routed the Shell Tool Inspector, Result Summary, and Linked View read-only
+  comparison surfaces through the Host snapshot while retaining Preview,
+  Cancel, and Publish command ownership in the Viewer comparison model.
 
 - Bounded the Viewer LAZ/LAS sample cache to three recent density entries and
   added explicit least-recently-used eviction behavior.
@@ -15,8 +25,9 @@ released; publication state is owned by the release and version policy.
 
 ### Compatibility
 
-- Product version is `0.5.3-dev`; Viewer Host API, Run Record, recipe, and
-  persisted storage contract versions are unchanged.
+- Product version is `0.5.4-dev`; the additive Viewer Host API is `1.1`.
+  Positional `ViewerHostState` construction, Run Record, recipe, and persisted
+  storage contracts remain compatible.
 - No tag, release candidate, package publication, or deployment is created by
   this development batch.
 

@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-27
+Date: 2026-09-09
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -18,6 +18,20 @@ validation samples, records, and recipe replay.
 
 Camera, PLC, robot, cloud, account, and production-line platform scope remains
 excluded. Raw-height and synthetic evidence are not calibrated metrology.
+
+## Current development line
+
+- The current public development version is `0.5.4-dev` with Viewer Host API
+  `1.1`. The additive Host snapshot preserves existing Viewer, recipe, Run
+  Record, and persisted-storage contracts.
+- Nominal/Actual readiness, progress, evidence, distribution, and display
+  sampling are exposed through `ViewerHostState.NominalActualDisplay`. The
+  Shell reads this snapshot for display while Preview, Cancel, and Publish
+  remain explicit commands owned by the Viewer comparison model. See the
+  [Viewer Host display boundary](OPENVISIONLAB_3D_VIEWER_HOST_DISPLAY_BOUNDARY_20260909.md).
+- Runtime GPU, driver, DPI, theme, large-input, and owner R0 qualification
+  remain separate gates; this boundary does not claim calibrated physical
+  measurement.
 
 ## Current Product State
 

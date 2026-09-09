@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -32,8 +33,11 @@ internal sealed record ShellIntegrationExchangeSmokeResult(
 
 internal static class ShellIntegrationExchangeSmoke
 {
-    private const string RepresentativeExchangeRoot =
-        @"D:\OpenVisionLab-Exchange\Projects\Automated-Optical-Inspection-Line-With-A-Deliberately-Long-Commissioning-Name\Shared-Exchange";
+    private static string RepresentativeExchangeRoot => Path.Combine(
+        Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT")
+            ?? Path.GetTempPath(),
+        "integration-exchange",
+        "shared-exchange");
 
     public static async Task<ShellIntegrationExchangeSmokeResult> RunAsync(
         string requestedState,

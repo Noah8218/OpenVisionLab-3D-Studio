@@ -39,6 +39,7 @@ current product direction is owned by the master backlog and current handoff.
 - [Refactor batch 0.5.3-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260905_LAZ.md)
 - [Refactor batch 0.5.1-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260905.md)
 - [Public CI repair batch 0.5.2-dev](OPENVISIONLAB_3D_PUBLIC_CI_REPAIR_BATCH_20260905.md)
+- [Viewer Host display boundary 0.5.4-dev](OPENVISIONLAB_3D_VIEWER_HOST_DISPLAY_BOUNDARY_20260909.md)
 - [Refactor batch 0.5.0-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260904.md)
 - [Connected Region G-11 closure](OPENVISIONLAB_3D_CONNECTED_REGION_G11_CLOSURE_20260826.md)
 - [Connected Region G-12 closure](OPENVISIONLAB_3D_CONNECTED_REGION_G12_CLOSURE_20260826.md)

@@ -360,55 +360,58 @@
                                        Text="{views:ThreeDText Key=ThreeD.Expert.ToolInspector, Korean='도구 / 속성', English='Tool / Inspector'}" />
 
                             <StackPanel Margin="0,12,0,0"
-                                        DataContext="{Binding ViewerContent.ViewModel.NominalActual, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
-                                        Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+                                        Visibility="{Binding ViewerContent.HostState.NominalActualDisplay.InputsReady, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                                 <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.SurfaceDeviation, Korean='표면 편차', English='Surface Deviation'}" />
-                                <TextBlock Margin="0,4,0,0"
-                                           FontWeight="SemiBold"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding StateSummary, FallbackValue='Status: No inputs'}" />
-                                <TextBlock Margin="0,3,0,0"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding DirectionSummary, FallbackValue='Direction: Actual to Nominal'}" />
-                                <TextBlock Margin="0,5,0,0"
-                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
-                                <TextBlock Margin="0,3,0,0"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
-                                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
-                                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <ProgressBar Height="6"
-                                             Margin="0,7,0,0"
-                                             Minimum="0"
-                                             Maximum="100"
-                                             Value="{Binding ProgressPercent, Mode=OneWay, FallbackValue=0}" />
-                                <WrapPanel Margin="0,7,0,0">
-                                    <Button Margin="0,0,6,4"
-                                            Content="{views:ThreeDText Key=ThreeD.Command.PreviewComparison, Korean='비교 미리보기', English='Preview Comparison'}"
-                                            Command="{Binding PreviewCommand}"
-                                            IsEnabled="{Binding CanPreview, FallbackValue=False}" />
-                                    <Button Margin="0,0,6,4"
-                                            Content="{views:ThreeDText Key=ThreeD.Command.Cancel, Korean='취소', English='Cancel'}"
-                                            Command="{Binding CancelCommand}"
-                                            IsEnabled="{Binding CanCancel, FallbackValue=False}" />
-                                    <Button Margin="0,0,0,4"
-                                            Content="{views:ThreeDText Key=ThreeD.Command.Publish, Korean='게시', English='Publish'}"
-                                            Command="{Binding PublishCommand}"
-                                            IsEnabled="{Binding CanPublish, FallbackValue=False}" />
-                                </WrapPanel>
+                                <StackPanel DataContext="{Binding ViewerContent.HostState.NominalActualDisplay, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding StateSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding DirectionSummary}" />
+                                    <TextBlock Margin="0,5,0,0"
+                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ProgressBar Height="6"
+                                                 Margin="0,7,0,0"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Value="{Binding ProgressPercent, Mode=OneWay, FallbackValue=0}" />
+                                </StackPanel>
+                                <StackPanel DataContext="{Binding ViewerContent.ViewModel.NominalActual, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                    <WrapPanel Margin="0,7,0,0">
+                                        <Button Margin="0,0,6,4"
+                                                Content="{views:ThreeDText Key=ThreeD.Command.PreviewComparison, Korean='비교 미리보기', English='Preview Comparison'}"
+                                                Command="{Binding PreviewCommand}"
+                                                IsEnabled="{Binding CanPreview, FallbackValue=False}" />
+                                        <Button Margin="0,0,6,4"
+                                                Content="{views:ThreeDText Key=ThreeD.Command.Cancel, Korean='취소', English='Cancel'}"
+                                                Command="{Binding CancelCommand}"
+                                                IsEnabled="{Binding CanCancel, FallbackValue=False}" />
+                                        <Button Margin="0,0,0,4"
+                                                Content="{views:ThreeDText Key=ThreeD.Command.Publish, Korean='게시', English='Publish'}"
+                                                Command="{Binding PublishCommand}"
+                                                IsEnabled="{Binding CanPublish, FallbackValue=False}" />
+                                    </WrapPanel>
+                                </StackPanel>
                             </StackPanel>
 
                             <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveTool, Korean='현재 도구', English='Active Tool'}" />
@@ -887,10 +890,11 @@
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel>
                                             <StackPanel Margin="0,0,0,12"
-                                                        Visibility="{Binding ViewerContent.ViewModel.NominalActual.InputsReady, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+                                                        DataContext="{Binding ViewerContent.HostState.NominalActualDisplay, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
+                                                        Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                                                 <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                            TextWrapping="Wrap"
-                                                           Text="{Binding ViewerContent.ViewModel.NominalActual.EvidenceSummary, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, FallbackValue='No comparison evidence.', TargetNullValue='No comparison evidence.'}" />
+                                                           Text="{Binding EvidenceSummary, FallbackValue='No comparison evidence.', TargetNullValue='No comparison evidence.'}" />
                                             </StackPanel>
                                             <StackPanel Margin="0,0,0,12"
                                                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
@@ -1132,7 +1136,7 @@
 
                             <StackPanel Margin="0,0,12,0">
                                 <StackPanel Margin="0,0,0,8"
-                                            DataContext="{Binding NominalActual}"
+                                            DataContext="{Binding ViewerContent.HostState.NominalActualDisplay, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
                                             Visibility="{Binding DistributionVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed, TargetNullValue=Collapsed}">
                                     <TextBlock FontWeight="SemiBold"
                                                Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"

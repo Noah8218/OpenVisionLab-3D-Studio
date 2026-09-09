@@ -469,7 +469,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public string HostApiVersion => ViewerHostContract.ApiVersion;
 
-    public ViewerHostState HostState => new(
+    public ViewerHostState HostState
+    {
+        get => (ViewerHostState)GetValue(HostStateProperty);
+        private set => SetValue(HostStateProperty, value);
+    }
+
+    private ViewerHostState CreateHostState() => new(
         viewModel.C3DSampleVisible,
         viewModel.SelectedEntity,
         viewModel.SelectedSelectionMode,
@@ -478,7 +484,22 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.ResultSummary,
         viewModel.RecipeSummary,
         viewModel.ViewerStatus,
-        viewModel.CoordinateFrameSummary);
+        viewModel.CoordinateFrameSummary)
+    {
+        NominalActualDisplay = new ViewerHostNominalActualDisplayState(
+            viewModel.NominalActual.InputsReady,
+            viewModel.NominalActual.EvidenceSummary)
+        {
+            StateSummary = viewModel.NominalActual.StateSummary,
+            DirectionSummary = viewModel.NominalActual.DirectionSummary,
+            CurrentDisplaySamplingSummary = viewModel.NominalActual.CurrentDisplaySamplingSummary,
+            NextPreviewSamplingSummary = viewModel.NominalActual.NextPreviewSamplingSummary,
+            DisplaySamplingChangePending = viewModel.NominalActual.DisplaySamplingChangePending,
+            ProgressPercent = viewModel.NominalActual.ProgressPercent,
+            DistributionVisible = viewModel.NominalActual.DistributionVisible,
+            DistributionSummary = viewModel.NominalActual.DistributionSummary
+        }
+    };
 
     public event EventHandler<ViewerHostStateChangedEventArgs>? HostStateChanged;
     public event EventHandler? ProfileViewRequested;
@@ -854,6 +875,20 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             RenderNow();
         }
+
+        if (args.PropertyName is nameof(NominalActualComparisonViewModel.InputsReady)
+            or nameof(NominalActualComparisonViewModel.EvidenceSummary)
+            or nameof(NominalActualComparisonViewModel.StateSummary)
+            or nameof(NominalActualComparisonViewModel.DirectionSummary)
+            or nameof(NominalActualComparisonViewModel.CurrentDisplaySamplingSummary)
+            or nameof(NominalActualComparisonViewModel.NextPreviewSamplingSummary)
+            or nameof(NominalActualComparisonViewModel.DisplaySamplingChangePending)
+            or nameof(NominalActualComparisonViewModel.ProgressPercent)
+            or nameof(NominalActualComparisonViewModel.DistributionVisible)
+            or nameof(NominalActualComparisonViewModel.DistributionSummary))
+        {
+            RaiseHostStateChanged(nameof(ViewerHostState.NominalActualDisplay));
+        }
     }
 
     private async void OnNominalActualPreviewRequested(
@@ -1003,11 +1038,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             nameof(MainWindowViewModel.ResultSummary) => nameof(ViewerHostState.ResultSummary),
             nameof(MainWindowViewModel.RecipeSummary) => nameof(ViewerHostState.RecipeSummary),
             nameof(MainWindowViewModel.ViewerStatus) => nameof(ViewerHostState.ViewerStatus),
+            nameof(ViewerHostState.NominalActualDisplay) => nameof(ViewerHostState.NominalActualDisplay),
             _ => null
         };
 
         if (hostPropertyName is not null)
         {
+            HostState = CreateHostState();
             HostStateChanged?.Invoke(this, new ViewerHostStateChangedEventArgs(HostState, hostPropertyName));
         }
     }

@@ -140,6 +140,9 @@ if ($null -eq $hostEventMatch -or [int]$hostEventMatch.Matches[0].Groups[1].Valu
 if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostState\|activeEntity=C3D Height Grid\|selectionMode=Point\|viewerStatus=.+' -Quiet)) {
     throw 'Binary Host report did not prove the expected HostState snapshot.'
 }
+if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostNominalActualDisplay\|inputsReady=(True|False)\|distributionVisible=(True|False)\|progressPercent=' -Quiet)) {
+    throw 'Binary Host report did not prove the Nominal/Actual display snapshot.'
+}
 if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostCommands\|invoked=ResetView,FitAll,FitSelection\|saveRecipe=True' -Quiet)) {
     throw 'Binary Host report did not prove Host API command invocation and recipe save.'
 }
@@ -155,7 +158,7 @@ $reportPath = Join-Path $artifactPath 'viewer-binary-host-report.txt'
 @(
     'BinaryHost|projectReferenceCount=0|targetFramework=net10.0-windows'
     "ViewerBundle|applicationVersion=$($manifest.applicationVersion)|hostApiVersion=$($manifest.viewerHostApiVersion)|viewerAssemblyVersion=$($manifest.viewerAssemblyVersion)|manifestFiles=$($manifestFiles.Count)/$($manifestFiles.Count)|requiredOutputs=$($requiredOutputs.Count)/$($requiredOutputs.Count)"
-    "HostApi|version=$($manifest.viewerHostApiVersion)|stateSnapshot=True|events=$($hostEventMatch.Matches[0].Groups[1].Value)|commands=3/3|saveRecipe=True"
+    "HostApi|version=$($manifest.viewerHostApiVersion)|stateSnapshot=True|nominalActualDisplay=True|events=$($hostEventMatch.Matches[0].Groups[1].Value)|commands=3/3|saveRecipe=True"
     'Runtime|exitCode=0|scenario=C3D thickness pick'
     "Evidence|screenshot=$screenshotPath|quality=$screenshotQualityPath|contract=$contractPath|hostApi=$hostApiReportPath|hostRecipe=$hostApiRecipePath"
 ) | Set-Content -LiteralPath $reportPath -Encoding utf8

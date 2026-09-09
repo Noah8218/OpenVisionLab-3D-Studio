@@ -39,6 +39,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             typeof(OpenVisionThreeDViewerControl),
             new PropertyMetadata(true, OnSidePanelsVisibleChanged));
 
+    public static readonly DependencyProperty HostStateProperty =
+        DependencyProperty.Register(
+            nameof(HostState),
+            typeof(ViewerHostState),
+            typeof(OpenVisionThreeDViewerControl),
+            new PropertyMetadata(ViewerHostState.Empty));
+
     private const float FieldOfViewDegrees = 45.0f;
     private const string DefaultC3DSamplePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
     private const string DefaultGlbSamplePath = @"3D\PublicSamples\glTF\Box.glb";
@@ -415,6 +422,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         SetC3DSampleStatus();
         SetGlbSampleStatus();
         SetLazSampleStatus();
+        HostState = CreateHostState();
     }
 
     public static void UseSoftwareRenderingForProcess() =>
