@@ -15,8 +15,11 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
     private DispatcherOperation? refreshViewsOperation;
     private string displayedSourcePath = string.Empty;
 
-    public XYZAffineApplyToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "xyz-affine-apply", "Apply XYZ Affine Tool Lab requires an Apply XYZ Affine step.")
+    public XYZAffineApplyToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "xyz-affine-apply", "Apply XYZ Affine Tool Lab requires an Apply XYZ Affine step.")
     {
         InitializeComponent();
         DataContext = Workbench;

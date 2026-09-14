@@ -3,7 +3,6 @@ using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
-using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -65,8 +64,6 @@ internal static class ViewerWorkspacePresentationVerification
 
             using var mainViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
             using var auxiliaryViewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
-            mainViewer.ViewModel.UseC3DSmokeScene();
-            auxiliaryViewer.ViewModel.UseC3DSmokeScene();
             using var disposedWorkspaceView = new ViewerWorkspaceView();
             disposedWorkspaceView.Dispose();
             disposedWorkspaceView.MainViewerContent = mainViewer;
@@ -74,47 +71,31 @@ internal static class ViewerWorkspacePresentationVerification
                 "disposed workspace ignores late main Viewer content callback",
                 !disposedWorkspaceView.HasAttachedMainViewer,
                 $"attached={disposedWorkspaceView.HasAttachedMainViewer}|content={disposedWorkspaceView.MainViewerContent is not null}");
-            var mainPublishedBeforePresentation = mainViewer.ViewModel.ResultEntities.Count;
-            var auxiliaryPublishedBeforePresentation = auxiliaryViewer.ViewModel.ResultEntities.Count;
-            var mainPreviewRequests = 0;
-            var auxiliaryPreviewRequests = 0;
-            var mainPublishRequests = 0;
-            var auxiliaryPublishRequests = 0;
-            mainViewer.ViewModel.PreviewThicknessRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PreviewPlaneFlatnessRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PreviewPointPairDimensionsRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PreviewGapFlushRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PreviewVolumeRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PreviewCrossSectionRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PreviewWarpageRequested += (_, _) => mainPreviewRequests++;
-            mainViewer.ViewModel.PublishPreviewResultRequested += (_, _) => mainPublishRequests++;
-            auxiliaryViewer.ViewModel.PreviewThicknessRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PreviewPlaneFlatnessRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PreviewPointPairDimensionsRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PreviewGapFlushRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PreviewVolumeRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PreviewCrossSectionRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PreviewWarpageRequested += (_, _) => auxiliaryPreviewRequests++;
-            auxiliaryViewer.ViewModel.PublishPreviewResultRequested += (_, _) => auxiliaryPublishRequests++;
-            mainViewer.ViewModel.Display.SelectedColorMap = "Thermal";
-            auxiliaryViewer.ViewModel.Display.SelectedColorMap = "Grayscale";
-            mainViewer.ViewModel.SelectionOverlayVisible = false;
-            auxiliaryViewer.ViewModel.SelectionOverlayVisible = true;
-            mainViewer.ViewModel.ResultOverlayVisible = true;
-            auxiliaryViewer.ViewModel.ResultOverlayVisible = false;
-            mainViewer.ViewModel.MeasurementVisible = false;
-            auxiliaryViewer.ViewModel.MeasurementVisible = true;
+            var mainInspectionBeforePresentation = mainViewer.HostState.Inspection;
+            var auxiliaryInspectionBeforePresentation = auxiliaryViewer.HostState.Inspection;
+            var presentationApplied =
+                mainViewer.TrySetSelectedColorMap("Solid")
+                && auxiliaryViewer.TrySetSelectedColorMap("Height")
+                && mainViewer.TrySetSelectionOverlayVisible(false)
+                && auxiliaryViewer.TrySetSelectionOverlayVisible(true)
+                && mainViewer.TrySetResultOverlayVisible(true)
+                && auxiliaryViewer.TrySetResultOverlayVisible(false)
+                && mainViewer.TrySetMeasurementVisible(false)
+                && auxiliaryViewer.TrySetMeasurementVisible(true);
+            var mainPresentation = mainViewer.HostState.Presentation;
+            var auxiliaryPresentation = auxiliaryViewer.HostState.Presentation;
             Check(
                 "two real Viewer instances keep independent palette and overlay state",
-                mainViewer.ViewModel.Display.SelectedColorMap == "Thermal"
-                && auxiliaryViewer.ViewModel.Display.SelectedColorMap == "Grayscale"
-                && !mainViewer.ViewModel.SelectionOverlayVisible
-                && auxiliaryViewer.ViewModel.SelectionOverlayVisible
-                && mainViewer.ViewModel.ResultOverlayVisible
-                && !auxiliaryViewer.ViewModel.ResultOverlayVisible
-                && !mainViewer.ViewModel.MeasurementVisible
-                && auxiliaryViewer.ViewModel.MeasurementVisible,
-                $"main={mainViewer.ViewModel.Display.SelectedColorMap};aux={auxiliaryViewer.ViewModel.Display.SelectedColorMap}");
+                presentationApplied
+                && mainPresentation.SelectedColorMap == "Solid"
+                && auxiliaryPresentation.SelectedColorMap == "Height"
+                && !mainViewer.HostState.SelectionOverlayVisible
+                && auxiliaryViewer.HostState.SelectionOverlayVisible
+                && mainPresentation.ResultOverlayVisible
+                && !auxiliaryPresentation.ResultOverlayVisible
+                && !mainPresentation.MeasurementVisible
+                && auxiliaryPresentation.MeasurementVisible,
+                $"main={mainPresentation.SelectedColorMap};aux={auxiliaryPresentation.SelectedColorMap}");
 
             var mainCamera = new ViewerCameraState(
                 18.0,
@@ -147,13 +128,11 @@ internal static class ViewerWorkspacePresentationVerification
 
             Check(
                 "display and camera actions do not execute inspection",
-                mainPreviewRequests == 0
-                && auxiliaryPreviewRequests == 0
-                && mainPublishRequests == 0
-                && auxiliaryPublishRequests == 0
-                && mainViewer.ViewModel.ResultEntities.Count == mainPublishedBeforePresentation
-                && auxiliaryViewer.ViewModel.ResultEntities.Count == auxiliaryPublishedBeforePresentation,
-                $"mainPreviewRequests={mainPreviewRequests};auxPreviewRequests={auxiliaryPreviewRequests};mainPublishRequests={mainPublishRequests};auxPublishRequests={auxiliaryPublishRequests};mainPublished={mainViewer.ViewModel.ResultEntities.Count};auxPublished={auxiliaryViewer.ViewModel.ResultEntities.Count}");
+                mainViewer.HostState.Inspection.PublishedResultCount == mainInspectionBeforePresentation.PublishedResultCount
+                && auxiliaryViewer.HostState.Inspection.PublishedResultCount == auxiliaryInspectionBeforePresentation.PublishedResultCount
+                && mainViewer.HostState.Inspection.PublishedResultCount == 0
+                && auxiliaryViewer.HostState.Inspection.PublishedResultCount == 0,
+                $"mainPreview={mainViewer.HostState.Inspection.PreviewStatus};auxPreview={auxiliaryViewer.HostState.Inspection.PreviewStatus};mainPublished={mainViewer.HostState.Inspection.PublishedResultCount};auxPublished={auxiliaryViewer.HostState.Inspection.PublishedResultCount}");
 
             summary = $"Viewer workspace presentation verification: Pass ({passed} checks)";
             lines.Add(summary);

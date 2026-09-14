@@ -16,7 +16,7 @@ public sealed class ThreeDIntegrationExchangeTests
         var acknowledgement = fixture.Accept();
         fixture.WriteRunRecord(ResultStatus.Fail);
 
-        var result = ThreeDIntegrationExchange.PublishCompletedResult(
+        var result = ThreeDIntegrationV2Exchange.PublishCompletedResult(
             fixture.Root,
             fixture.Handoff.TransactionId,
             ExchangeFixture.Consumer,
@@ -36,17 +36,14 @@ public sealed class ThreeDIntegrationExchangeTests
     }
 
     [Fact]
-    public void PublishCompletedResult_RejectsRunRecordWithoutIntegrationContext()
+    public void PublishCompletedResult_RejectsMismatchedSourceHash()
     {
         using var fixture = new ExchangeFixture();
         fixture.Accept();
-        fixture.WriteRunRecord(
-            ResultStatus.Pass,
-            integrationContext: null,
-            includeIntegrationContext: false);
+        fixture.WriteRunRecord(ResultStatus.Pass, sourceSha256: new string('A', 64));
 
         var exception = Assert.Throws<IntegrationContractException>(() =>
-            ThreeDIntegrationExchange.PublishCompletedResult(
+            ThreeDIntegrationV2Exchange.PublishCompletedResult(
                 fixture.Root,
                 fixture.Handoff.TransactionId,
                 ExchangeFixture.Consumer,
@@ -60,24 +57,102 @@ public sealed class ThreeDIntegrationExchangeTests
     }
 
     [Fact]
-    public void PublishCompletedResult_RejectsWrongStepEvenWhenRunIdIsPresent()
+    public void PublishCompletedResult_RejectsMismatchedRecipeHash()
     {
         using var fixture = new ExchangeFixture();
         fixture.Accept();
-        var wrongContext = fixture.CreateIntegrationContext() with
-        {
-            StepId = "different-step"
-        };
-        fixture.WriteRunRecord(ResultStatus.Pass, wrongContext);
+        fixture.WriteRunRecord(ResultStatus.Pass, recipeSha256: new string('B', 64));
 
         var exception = Assert.Throws<IntegrationContractException>(() =>
-            ThreeDIntegrationExchange.PublishCompletedResult(
+            ThreeDIntegrationV2Exchange.PublishCompletedResult(
                 fixture.Root,
                 fixture.Handoff.TransactionId,
                 ExchangeFixture.Consumer,
                 fixture.RunRecordPath));
 
         Assert.Equal(IntegrationErrorCode.CorrelationMismatch, exception.ErrorCode);
+    }
+
+    [Fact]
+    public void PublishCompletedResult_RejectsMismatchedStepIdentity()
+    {
+        using var fixture = new ExchangeFixture();
+        fixture.Accept();
+        fixture.WriteRunRecord(ResultStatus.Pass, stepId: "different-step");
+
+        var exception = Assert.Throws<IntegrationContractException>(() =>
+            ThreeDIntegrationV2Exchange.PublishCompletedResult(
+                fixture.Root,
+                fixture.Handoff.TransactionId,
+                ExchangeFixture.Consumer,
+                fixture.RunRecordPath));
+
+        Assert.Equal(IntegrationErrorCode.CorrelationMismatch, exception.ErrorCode);
+    }
+
+    [Fact]
+    public void PublishCompletedResult_CopiesAndValidatesAdditionalEvidence()
+    {
+        using var fixture = new ExchangeFixture();
+        fixture.Accept();
+        fixture.WriteRunRecord(ResultStatus.Pass);
+        var evidenceSourcePath = Path.Combine(fixture.Root, "coordinate-projection-result.json");
+        File.WriteAllText(evidenceSourcePath, "{\"projectionId\":\"projection-1\"}");
+
+        var result = ThreeDIntegrationV2Exchange.PublishCompletedResult(
+            fixture.Root,
+            fixture.Handoff.TransactionId,
+            ExchangeFixture.Consumer,
+            fixture.RunRecordPath,
+            [new ThreeDIntegrationEvidenceArtifact(
+                ThreeDCoordinateProjectionContract.ResultEvidenceRole,
+                ThreeDCoordinateProjectionContract.ResultEvidenceArtifactId,
+                evidenceSourcePath,
+                "artifacts/coordinate-projection-result.json")]);
+
+        var evidence = Assert.Single(result.Evidence);
+        Assert.Equal(ThreeDCoordinateProjectionContract.ResultEvidenceRole, evidence.Role);
+        Assert.Equal(
+            ThreeDCoordinateProjectionContract.ResultEvidenceArtifactId,
+            evidence.ArtifactId);
+        var persisted = ThreeDIntegrationV2Exchange.ReadResult(
+            fixture.Root,
+            fixture.Handoff.TransactionId);
+        Assert.Equal(evidence, Assert.Single(persisted.Evidence));
+        Assert.Equal(
+            "{\"projectionId\":\"projection-1\"}",
+            File.ReadAllText(Path.Combine(fixture.TransactionDirectory, evidence.RelativePath)));
+    }
+
+    [Fact]
+    public void PublishCompletedResult_RejectsEvidenceOutsideArtifactsAndCleansPublication()
+    {
+        using var fixture = new ExchangeFixture();
+        fixture.Accept();
+        fixture.WriteRunRecord(ResultStatus.Pass);
+        var evidenceSourcePath = Path.Combine(fixture.Root, "coordinate-projection-result.json");
+        File.WriteAllText(evidenceSourcePath, "{}");
+
+        var exception = Assert.Throws<IntegrationContractException>(() =>
+            ThreeDIntegrationV2Exchange.PublishCompletedResult(
+                fixture.Root,
+                fixture.Handoff.TransactionId,
+                ExchangeFixture.Consumer,
+                fixture.RunRecordPath,
+                [new ThreeDIntegrationEvidenceArtifact(
+                    ThreeDCoordinateProjectionContract.ResultEvidenceRole,
+                    ThreeDCoordinateProjectionContract.ResultEvidenceArtifactId,
+                    evidenceSourcePath,
+                    "../outside.json")]));
+
+        Assert.Equal(IntegrationErrorCode.UnsafeArtifactPath, exception.ErrorCode);
+        Assert.False(File.Exists(Path.Combine(
+            fixture.TransactionDirectory,
+            IntegrationTransactionLayout.ResultFileName)));
+        Assert.False(File.Exists(Path.Combine(
+            fixture.TransactionDirectory,
+            IntegrationTransactionLayout.ArtifactsDirectoryName,
+            "3d-run-record.json")));
     }
 
     [Fact]
@@ -92,7 +167,7 @@ public sealed class ThreeDIntegrationExchangeTests
             [0xFF]);
 
         var exception = Assert.Throws<IntegrationContractException>(() =>
-            ThreeDIntegrationExchange.ReadHandoff(
+            ThreeDIntegrationV2Exchange.ReadHandoff(
                 fixture.Root,
                 fixture.Handoff.TransactionId));
 
@@ -141,7 +216,7 @@ public sealed class ThreeDIntegrationExchangeTests
                     "frame-1",
                     "mm",
                     IntegrationInspectionModality.ThreeD,
-                    IntegrationInspectionInputKind.PointCloud,
+                    IntegrationInspectionInputKind.HeightMap,
                     HashFile(sourcePath),
                     HashFile(recipePath),
                     Consumer,
@@ -168,17 +243,17 @@ public sealed class ThreeDIntegrationExchangeTests
             IntegrationSourceState.Clean);
 
         public IntegrationAcknowledgementV2 Accept() =>
-            ThreeDIntegrationExchange.PublishAcknowledgement(
+            ThreeDIntegrationV2Exchange.PublishAcknowledgement(
                 Root,
                 Handoff,
                 Consumer);
 
         public void WriteRunRecord(
             ResultStatus status,
-            InspectionRunIntegrationContext? integrationContext = null,
-            bool includeIntegrationContext = true)
+            string? sourceSha256 = null,
+            string? recipeSha256 = null,
+            string? stepId = null)
         {
-            var context = integrationContext ?? CreateIntegrationContext();
             var record = new InspectionRunRecord(
                 "1.9",
                 "run-1",
@@ -187,11 +262,11 @@ public sealed class ThreeDIntegrationExchangeTests
                     "tool-recipe",
                     "1.0",
                     "inspection-recipe.json",
-                    Handoff.Context.RecipeSha256),
+                    recipeSha256 ?? Handoff.Context.RecipeSha256),
                 new InspectionRunSource(
                     "source-1",
                     "inspection-source.c3d",
-                    Handoff.Context.InputSha256,
+                    sourceSha256 ?? Handoff.Context.InputSha256,
                     4,
                     "mm"),
                 "Integration Test",
@@ -209,29 +284,15 @@ public sealed class ThreeDIntegrationExchangeTests
                     null,
                     null))
             {
-                Step = new InspectionRunStep(context.StepId, "source-1", [], []),
-                IntegrationContext = includeIntegrationContext ? context : null
+                Step = new InspectionRunStep(
+                    stepId ?? Handoff.Context.StepId,
+                    "source-1",
+                    [],
+                    [])
             };
 
             InspectionRunRecordJson.Write(RunRecordPath, record);
         }
-
-        public InspectionRunIntegrationContext CreateIntegrationContext() =>
-            new(
-                Handoff.Context.ProjectId,
-                Handoff.Context.ProjectSchema,
-                Handoff.Context.SequenceId,
-                Handoff.Context.StepId,
-                Handoff.Context.CameraId,
-                Handoff.Context.AcquisitionId,
-                Handoff.Context.FrameId,
-                Handoff.Context.Unit,
-                Handoff.Context.Modality.ToString(),
-                Handoff.Context.InputKind.ToString(),
-                Handoff.Context.ConsumerBuild.ApplicationId,
-                Handoff.Context.ConsumerBuild.ApplicationVersion,
-                Handoff.Context.ConsumerBuild.SourceCommit,
-                Handoff.Context.ConsumerBuild.SourceState.ToString());
 
         public void Dispose()
         {

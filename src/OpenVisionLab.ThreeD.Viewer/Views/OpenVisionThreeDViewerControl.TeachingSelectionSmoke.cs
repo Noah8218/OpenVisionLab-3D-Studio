@@ -116,9 +116,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         Window? hostWindow = null;
         var originalTopmost = false;
 
-        pointerInputMouseDownCount = 0;
-        pointerInputMouseMoveCount = 0;
-        pointerInputMouseUpCount = 0;
+        interactionTelemetry.ResetPointerInput();
 
         try
         {
@@ -457,9 +455,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             finalCamera = CaptureCameraSnapshot();
             var cameraUnchanged = finalCamera == initialCamera;
             var routedEventsPassed =
-                pointerInputMouseDownCount >= 1
-                && pointerInputMouseMoveCount >= 1
-                && pointerInputMouseUpCount >= 1;
+                interactionTelemetry.MouseDownCount >= 1
+                && interactionTelemetry.MouseMoveCount >= 1
+                && interactionTelemetry.MouseUpCount >= 1;
 
             passed = candidatePassed
                 && authoredUnchanged
@@ -477,7 +475,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add(
                 $"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}|cameraUnchanged={cameraUnchanged}");
             lines.Add(
-                $"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}");
+                $"RoutedEvents|pass={routedEventsPassed}|mouseDown={interactionTelemetry.MouseDownCount}|mouseMove={interactionTelemetry.MouseMoveCount}|mouseUp={interactionTelemetry.MouseUpCount}");
         }
         catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
         {
@@ -587,9 +585,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var hasOriginalPointer = false;
         Window? hostWindow = null;
         var originalTopmost = false;
-        pointerInputMouseDownCount = 0;
-        pointerInputMouseMoveCount = 0;
-        pointerInputMouseUpCount = 0;
+        interactionTelemetry.ResetPointerInput();
 
         try
         {
@@ -677,9 +673,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             var executionUnchanged = ReferenceEquals(initialPreview, viewModel.PreviewToolResult)
                 && ReferenceEquals(initialResults, viewModel.ResultEntities);
             var cameraUnchanged = CaptureCameraSnapshot() == initialCamera;
-            var routedEventsPassed = pointerInputMouseDownCount == 1
-                && pointerInputMouseMoveCount >= 1
-                && pointerInputMouseUpCount == 1;
+            var routedEventsPassed = interactionTelemetry.MouseDownCount == 1
+                && interactionTelemetry.MouseMoveCount >= 1
+                && interactionTelemetry.MouseUpCount == 1;
             var passed = targetCoverage >= 0.80
                 && authoredUnchanged
                 && executionUnchanged
@@ -694,7 +690,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add($"Candidate|{rectangle}|targetCoverage={targetCoverage:F4}");
             lines.Add($"View|topOrthographic={viewModel.IsTopOrthographicView}|cameraUnchanged={cameraUnchanged}");
             lines.Add($"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}");
-            lines.Add($"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}");
+            lines.Add($"RoutedEvents|pass={routedEventsPassed}|mouseDown={interactionTelemetry.MouseDownCount}|mouseMove={interactionTelemetry.MouseMoveCount}|mouseUp={interactionTelemetry.MouseUpCount}");
             lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{failure}");
             if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
             {
@@ -834,10 +830,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var initialPreviewStatus = initialPreview.Status;
         var initialResultCount = initialResults.Count;
 
-        pointerInputMouseDownCount = 0;
-        pointerInputMouseMoveCount = 0;
-        pointerInputMouseUpCount = 0;
-        pointerInputMouseWheelCount = 0;
+        interactionTelemetry.ResetPointerInput();
 
         try
         {
@@ -858,10 +851,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                 StringComparison.Ordinal);
             if (capturesTransformedHeightField)
             {
-                if (regridHeightFieldRenderOutput is null
+                if (workbenchOverlayRenderer.RegridHeightFieldRenderOutput is null
                     || captureSourceBinding is null
                     || !ToolRecipeSelectionSourceBindingVerifier.Verify(
-                        regridHeightFieldRenderOutput,
+                        workbenchOverlayRenderer.RegridHeightFieldRenderOutput,
                         captureSourceBinding).IsCurrent)
                 {
                     throw new InvalidOperationException(
@@ -1107,10 +1100,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             var requiredButtonEvents = exerciseNavigationGestures
                 ? capture.Kind == ToolRecipeSelectionKinds.GridRectangle ? 5 : 6
                 : 3;
-            routedEventsPassed = pointerInputMouseDownCount >= requiredButtonEvents
-                && (!exerciseNavigationGestures || pointerInputMouseMoveCount >= 2)
-                && pointerInputMouseUpCount >= requiredButtonEvents
-                && (!exerciseNavigationGestures || pointerInputMouseWheelCount >= 1);
+            routedEventsPassed = interactionTelemetry.MouseDownCount >= requiredButtonEvents
+                && (!exerciseNavigationGestures || interactionTelemetry.MouseMoveCount >= 2)
+                && interactionTelemetry.MouseUpCount >= requiredButtonEvents
+                && (!exerciseNavigationGestures || interactionTelemetry.MouseWheelCount >= 1);
         }
         catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
         {
@@ -1195,10 +1188,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             authoredOnlyPassed,
             previewResultUnchanged,
             routedEventsPassed,
-            pointerInputMouseDownCount,
-            pointerInputMouseMoveCount,
-            pointerInputMouseUpCount,
-            pointerInputMouseWheelCount,
+            interactionTelemetry.MouseDownCount,
+            interactionTelemetry.MouseMoveCount,
+            interactionTelemetry.MouseUpCount,
+            interactionTelemetry.MouseWheelCount,
             initialAppliedCount,
             initialResultCount,
             initialPreviewStatus.ToString(),
@@ -1301,7 +1294,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private bool TryPickTransformedHeightFieldForSmoke(Point screenPoint, out HeightGridPoint point)
     {
-        if (!TryPickRegridHeightFieldPoint(screenPoint, out var regridPoint))
+        if (!workbenchOverlayRenderer.TryPickRegridHeightFieldPoint(screenPoint, out var regridPoint))
         {
             point = default;
             return false;

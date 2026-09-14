@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Shell;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -8,10 +9,19 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
 {
     public const string AdapterStatusPropertyName = "AdapterStatus";
 
+    private readonly ThreeDLocalization? localization;
     private object? draft;
     private string? draftStepId;
     private bool hasPendingChanges;
-    private string status = "Select a typed tool to teach parameters. Apply XYZ Affine has a fixed no-parameter A2 contract.";
+    private bool usesLocalizedLifecycleStatus = true;
+    private string status;
+
+    public ToolWorkbenchStepPropertySession(ThreeDLocalization? localization = null)
+    {
+        this.localization = localization;
+        status = localization?.StepParameterSelectTypedTool
+            ?? "Select a typed tool to teach parameters. Apply XYZ Affine has a fixed no-parameter A2 contract.";
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -40,14 +50,14 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     {
         if (step is null)
         {
-            return "No step selected";
+            return localization?.StepAdapterNoStepSelected ?? "No step selected";
         }
 
         return ToolWorkbenchStepPropertyAdapterCatalog.TryGetMappedNames(
             step.ToolId,
             out var mappedNames)
             ? FormatAdapterStatus(step, mappedNames)
-            : "Partially supported - parameters are preserved read-only";
+            : localization?.StepAdapterPartiallySupported ?? "Partially supported - parameters are preserved read-only";
     }
 
     public void Refresh(ToolWorkbenchPipelineStepItem? step, string? newStatus = null)
@@ -64,17 +74,29 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
 
         Draft = nextDraft;
 
-        SetState(
-            false,
-            newStatus ?? (Draft is null
-                ? "This step is preserved, but no typed parameter editor is available yet."
-                : "Parameters match the committed recipe. Editing does not run Preview or Publish."));
+        if (newStatus is null)
+        {
+            SetLocalizedLifecycleStatus();
+        }
+        else
+        {
+            SetState(false, newStatus);
+        }
         OnPropertyChanged(nameof(IsSupported));
         OnPropertyChanged(AdapterStatusPropertyName);
     }
 
-    public void MarkDirty() =>
-        SetState(true, "Unapplied parameter changes. Apply or discard before changing recipe sessions.");
+    public void MarkDirty() => SetLocalizedLifecycleStatus(pending: true);
+
+    public void RefreshLocalizedStatus()
+    {
+        if (!usesLocalizedLifecycleStatus)
+        {
+            return;
+        }
+
+        SetStateCore(hasPendingChanges, GetLocalizedLifecycleStatus(hasPendingChanges));
+    }
 
     /// <summary>
     /// Applies a bounded Filter preparation preset to the detached typed draft.
@@ -303,6 +325,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
 
     public void SetStatus(string message)
     {
+        usesLocalizedLifecycleStatus = false;
         status = message;
         OnPropertyChanged(nameof(Status));
     }
@@ -342,14 +365,16 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     public static bool IsSupportedTool(ToolWorkbenchPipelineStepItem step) =>
         ToolWorkbenchStepPropertyAdapterCatalog.IsSupported(step.ToolId);
 
-    private static string FormatAdapterStatus(
+    private string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
         IReadOnlySet<string> mappedNames)
     {
         var unmappedCount = step.Parameters.Count(parameter => !mappedNames.Contains(parameter.Name));
         return unmappedCount == 0
-            ? "Typed adapter ready"
-            : $"Typed adapter ready | {unmappedCount} unmapped preserved";
+            ? localization?.StepAdapterReady ?? "Typed adapter ready"
+            : string.Format(
+                localization?.StepAdapterReadyUnmappedFormat ?? "Typed adapter ready | {0} unmapped preserved",
+                unmappedCount);
     }
 
     private static bool TryReadOptionalDouble(
@@ -382,6 +407,27 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     }
 
     private void SetState(bool pending, string message)
+    {
+        usesLocalizedLifecycleStatus = false;
+        SetStateCore(pending, message);
+    }
+
+    private void SetLocalizedLifecycleStatus(bool pending = false)
+    {
+        usesLocalizedLifecycleStatus = true;
+        SetStateCore(pending, GetLocalizedLifecycleStatus(pending));
+    }
+
+    private string GetLocalizedLifecycleStatus(bool pending) => pending
+        ? localization?.StepParameterPendingChanges
+            ?? "Unapplied parameter changes. Apply or discard before changing recipe sessions."
+        : Draft is null
+            ? localization?.StepParameterUnsupportedEditor
+                ?? "This step is preserved, but no typed parameter editor is available yet."
+            : localization?.StepParameterMatchesRecipe
+                ?? "Parameters match the committed recipe. Editing does not run Preview or Publish.";
+
+    private void SetStateCore(bool pending, string message)
     {
         hasPendingChanges = pending;
         status = message;

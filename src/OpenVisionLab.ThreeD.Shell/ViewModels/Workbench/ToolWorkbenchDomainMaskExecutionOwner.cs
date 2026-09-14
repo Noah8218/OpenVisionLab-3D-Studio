@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -210,7 +211,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             previewInputEntityId = source.EntityId;
             previewDomainArtifactId = domain.ArtifactId;
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
-            evaluation.Output.SaveC3D(previewPath);
+            SaveC3DAtomically(evaluation.Output, previewPath);
             if (!IsCurrentPreview(cancellation))
             {
                 return false;
@@ -439,9 +440,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 
         try
         {
-            var c3dPath = GetArtifactC3DPath(getRecipePath()!, preview.EntityId);
-            preview.SaveC3D(c3dPath);
-            var sidecarPath = GetArtifactSidecarPath(getRecipePath()!, preview.EntityId);
+            var recipePath = getRecipePath()!;
+            var recipeDirectory = GetRecipeDirectory(recipePath);
+            var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, preview.EntityId);
+            SaveC3DAtomically(preview, c3dPath);
+            var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, preview.EntityId);
             var sidecar = new DomainMaskArtifactRecord(
                 step.Id,
                 step.OutputEntityId,
@@ -454,7 +457,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 preview.FrameId,
                 preview.Provenance,
                 new FileInfo(c3dPath).Length);
-            File.WriteAllText(
+            WriteTextAtomically(
                 sidecarPath,
                 JsonSerializer.Serialize(sidecar, new JsonSerializerOptions { WriteIndented = true }));
             previewPath = c3dPath;
@@ -495,8 +498,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             return;
         }
 
-        var sidecarPath = GetArtifactSidecarPath(recipePath, step.OutputEntityId);
-        var c3dPath = GetArtifactC3DPath(recipePath, step.OutputEntityId);
+        var recipeDirectory = GetRecipeDirectory(recipePath);
+        var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
+        var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
         if (!File.Exists(sidecarPath) || !File.Exists(c3dPath))
         {
             return;
@@ -694,27 +698,35 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             Volatile.Read(ref previewCancellation),
             cancellation);
 
-    private static void CancelAndDispose(CancellationTokenSource? cancellation)
-    {
-        if (cancellation is null)
-        {
-            return;
-        }
-
-        try
-        {
-            cancellation.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // A concurrent owner disposal already released the token source.
-        }
-
-        cancellation.Dispose();
-    }
-
     private static string reasonOrDefault(string reason) =>
         string.IsNullOrWhiteSpace(reason) ? "artifact identity or current input did not match." : reason;
+
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+        => WriteAtomically(path, output.SaveC3D);
+
+    private static void WriteTextAtomically(string path, string contents)
+        => WriteAtomically(path, temporaryPath => File.WriteAllText(temporaryPath, contents));
+
+    private static string GetRecipeDirectory(string recipePath) =>
+        Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory;
+
+    private static void WriteAtomically(string path, Action<string> write)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            write(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
 
     private static string CreatePreviewPath(string hash)
     {
@@ -730,14 +742,14 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         return Path.Combine(directory, $"domain-mask-{hash}.c3d");
     }
 
-    private static string GetArtifactC3DPath(string recipePath, string outputEntityId) =>
+    private static string GetArtifactC3DPath(string recipeDirectory, string recipePath, string outputEntityId) =>
         Path.Combine(
-            Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory,
+            recipeDirectory,
             $"{Path.GetFileNameWithoutExtension(recipePath)}.domain-mask.{Sanitize(outputEntityId)}.c3d");
 
-    private static string GetArtifactSidecarPath(string recipePath, string outputEntityId) =>
+    private static string GetArtifactSidecarPath(string recipeDirectory, string recipePath, string outputEntityId) =>
         Path.Combine(
-            Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory,
+            recipeDirectory,
             $"{Path.GetFileNameWithoutExtension(recipePath)}.domain-mask.{Sanitize(outputEntityId)}.json");
 
     private static string Sanitize(string value) =>

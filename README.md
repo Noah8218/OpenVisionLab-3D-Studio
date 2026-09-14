@@ -18,11 +18,23 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.5-dev`
+Current version: `v0.5.6-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.6-dev` (2026-09-14)
+
+- Consolidates the accumulated Shell, Workbench, and Viewer MVVM refactoring
+  into one public source update, including command behaviors and explicit
+  state, event, and lifetime owners.
+- Publishes the current independent Viewer bundle-consumer and verification
+  boundaries while retaining the explicit Preview, Publish, Run, Save, and
+  Reopen workflow.
+- Routes the public HeightMap/projection consumer through the current V2
+  exchange and Run Record publication owners, adds solution-level integration
+  tests, and keeps Viewer Host API `1.1` plus persisted contracts compatible.
 
 #### `v0.5.5-dev` (2026-09-10)
 
@@ -105,18 +117,6 @@ This project is maintained using explicit version numbers.
   preparation from the WPF Viewer control into a WPF-neutral owner.
 - Preserved the public Viewer capture API, recipe/Selection contracts,
   OpenGL interaction, and explicit Preview/Publish/Run workflow.
-
-#### `v0.4.6-dev` (2026-09-01)
-
-- Extracted Surface Match evidence validation, coordinate mapping, and edge
-  render-snapshot preparation from the Viewer control into a WPF-neutral owner.
-- Preserved the public Viewer display contract, OpenGL drawing, ViewModel
-  scene/camera state, and explicit recipe workflow semantics.
-
-#### `v0.4.5-dev` (2026-09-01)
-
-- Extracted Current Recipe Run Smoke preparation and post-capture ordered-run activation into a dedicated Shell verification owner.
-- Preserved RunCurrentRecipeButton command validation, activation evidence, 30-second/50-ms wait behavior, and explicit recipe workflow semantics.
 
 ## Start here
 
@@ -303,7 +303,12 @@ OpenVisionLab 3D Studio is licensed under the
 [Apache License 2.0](LICENSE). Commercial use, modification, and redistribution
 are permitted under its terms. Distributions must retain the `LICENSE`,
 `NOTICE`, copyright, and required attribution notices. Third-party components
-remain subject to their respective licenses.
+remain subject to their respective licenses. Viewer bundle dependencies and
+the unresolved cvBlob redistribution boundary are recorded in the
+[Viewer third-party notice](third_party/Viewer/THIRD-PARTY-NOTICES.txt) and
+[dependency map](third_party/Viewer/VIEWER_DEPENDENCY_ATTRIBUTION.json); confirm
+the exact LGPL version and source/relink obligations before distributing that
+binary bundle.
 
 ```text
 This project includes software developed by Noah Choi.

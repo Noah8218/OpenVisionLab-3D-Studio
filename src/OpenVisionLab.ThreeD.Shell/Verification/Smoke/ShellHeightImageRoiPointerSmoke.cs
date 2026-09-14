@@ -12,7 +12,8 @@ namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 /// Owns the Height Image actual-pointer ROI Smoke scenario. The low-level
 /// Windows pointer movement and WPF hit-testing remain in HeightImageViewerView;
 /// this owner keeps lifecycle policy, state boundaries, save/reopen checks, and
-/// report composition out of MainWindow.
+/// report composition out of MainWindow. Camera invariance is observed through
+/// the public Viewer Host snapshot operation.
 /// </summary>
 internal static class ShellHeightImageRoiPointerSmoke
 {
@@ -60,13 +61,7 @@ internal static class ShellHeightImageRoiPointerSmoke
         // Entering ROI capture may legitimately resize the linked Viewer to
         // focus the Height Image. Establish the camera baseline after that
         // presentation-only preparation, before the actual pointer gesture.
-        var beforeCamera = (
-            viewer.ViewModel.YawDegrees,
-            viewer.ViewModel.PitchDegrees,
-            viewer.ViewModel.CameraDistance,
-            viewer.ViewModel.CameraTargetX,
-            viewer.ViewModel.CameraTargetY,
-            viewer.ViewModel.CameraTargetZ);
+        var beforeCamera = viewer.CaptureCameraState();
         var pointer = await workbenchView.RunHeightImageRoiPointerSmokeAsync();
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         ToolRecipeSelection? viewerCandidate = null;
@@ -138,13 +133,7 @@ internal static class ShellHeightImageRoiPointerSmoke
             }
         }
 
-        var afterCamera = (
-            viewer.ViewModel.YawDegrees,
-            viewer.ViewModel.PitchDegrees,
-            viewer.ViewModel.CameraDistance,
-            viewer.ViewModel.CameraTargetX,
-            viewer.ViewModel.CameraTargetY,
-            viewer.ViewModel.CameraTargetZ);
+        var afterCamera = viewer.CaptureCameraState();
         var cameraPassed = beforeCamera == afterCamera;
         var passed = actionPassed && cameraPassed;
         if (!string.IsNullOrWhiteSpace(reportPath))

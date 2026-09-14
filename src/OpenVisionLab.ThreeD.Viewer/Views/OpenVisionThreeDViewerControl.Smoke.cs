@@ -16,6 +16,7 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Automation;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -28,6 +29,225 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
+    // The adapter owns only access to this control's native operations. CLI
+    // interpretation, ordering and completion state belong to the scenario runner.
+    private sealed class SmokeViewAdapter(OpenVisionThreeDViewerControl viewer) : IViewerSmokeHost
+    {
+        public bool IsDisposed => viewer.IsDisposed;
+        public bool IsDispatcherStopping => viewer.Dispatcher.HasShutdownStarted || viewer.Dispatcher.HasShutdownFinished;
+        public bool C3DSampleVisible => viewer.viewModel.C3DSampleVisible;
+        public bool GlbSampleVisible => viewer.viewModel.GlbSampleVisible;
+        public string GlbSampleSourcePath => viewer.viewModel.GlbSampleSourcePath;
+        public bool LazSampleVisible => viewer.viewModel.LazSampleVisible;
+        public bool RoiStepMeasurementVisible => viewer.viewModel.RoiStepMeasurementVisible;
+        public NominalActualComparisonState NominalActualState => viewer.viewModel.NominalActual.State;
+        public double NominalActualLowerTolerance => viewer.viewModel.NominalActual.LowerTolerance;
+        public double NominalActualUpperTolerance => viewer.viewModel.NominalActual.UpperTolerance;
+        public double TwoPointDistance => viewer.viewModel.TwoPointDistance;
+        public double TwoPointRawHeightDelta => viewer.viewModel.TwoPointRawHeightDelta;
+        public double ViewportFps => viewer.viewModel.ViewportFps;
+        public double ViewportDrawMilliseconds => viewer.viewModel.ViewportDrawMilliseconds;
+        public double RecipeTransformTranslateX { get => viewer.viewModel.RecipeTransformTranslateX; set => viewer.viewModel.RecipeTransformTranslateX = value; }
+        public double RecipeTransformTranslateY { get => viewer.viewModel.RecipeTransformTranslateY; set => viewer.viewModel.RecipeTransformTranslateY = value; }
+        public double RecipeRoiLeftCenterX { get => viewer.viewModel.RecipeRoiLeftCenterX; set => viewer.viewModel.RecipeRoiLeftCenterX = value; }
+        public double RecipeRoiLeftCenterZ { get => viewer.viewModel.RecipeRoiLeftCenterZ; set => viewer.viewModel.RecipeRoiLeftCenterZ = value; }
+        public double RecipeRoiLeftHalfWidth { get => viewer.viewModel.RecipeRoiLeftHalfWidth; set => viewer.viewModel.RecipeRoiLeftHalfWidth = value; }
+        public double RecipeRoiRightCenterX { get => viewer.viewModel.RecipeRoiRightCenterX; set => viewer.viewModel.RecipeRoiRightCenterX = value; }
+        public double RecipeRoiRightCenterZ { get => viewer.viewModel.RecipeRoiRightCenterZ; set => viewer.viewModel.RecipeRoiRightCenterZ = value; }
+        public double RecipeRoiRightHalfDepth { get => viewer.viewModel.RecipeRoiRightHalfDepth; set => viewer.viewModel.RecipeRoiRightHalfDepth = value; }
+        public double RecipePeakTolerance { get => viewer.viewModel.RecipePeakTolerance; set => viewer.viewModel.RecipePeakTolerance = value; }
+        public double PlaneFlatnessTolerance { get => viewer.viewModel.PlaneFlatnessTolerance; set => viewer.viewModel.PlaneFlatnessTolerance = value; }
+        public double LazTwoPointExpectedDistance { get => viewer.viewModel.LazTwoPointExpectedDistance; set => viewer.viewModel.LazTwoPointExpectedDistance = value; }
+        public double LazTwoPointExpectedHeightDelta { get => viewer.viewModel.LazTwoPointExpectedHeightDelta; set => viewer.viewModel.LazTwoPointExpectedHeightDelta = value; }
+        public double LazTwoPointDistanceTolerance { get => viewer.viewModel.LazTwoPointDistanceTolerance; set => viewer.viewModel.LazTwoPointDistanceTolerance = value; }
+        public double LazTwoPointHeightDeltaTolerance { get => viewer.viewModel.LazTwoPointHeightDeltaTolerance; set => viewer.viewModel.LazTwoPointHeightDeltaTolerance = value; }
+        public string SelectedColorMode { get => viewer.viewModel.SelectedColorMode; set => viewer.viewModel.SelectedColorMode = value; }
+        public string SelectedGeometryStyle { get => viewer.viewModel.Display.SelectedGeometryStyle; set => viewer.viewModel.Display.SelectedGeometryStyle = value; }
+        public string SelectedRenderDensity { get => viewer.viewModel.SelectedRenderDensity; set => viewer.viewModel.SelectedRenderDensity = value; }
+        public double PointSize { get => viewer.viewModel.PointSize; set => viewer.viewModel.PointSize = value; }
+        public bool HudDetailsVisible { get => viewer.viewModel.HudDetailsVisible; set => viewer.viewModel.HudDetailsVisible = value; }
+        public string SelectedEntity { get => viewer.viewModel.SelectedEntity; set => viewer.viewModel.SelectedEntity = value; }
+        public string ViewerStatus { get => viewer.viewModel.ViewerStatus; set => viewer.viewModel.ViewerStatus = value; }
+        public bool HasLazPointCloud => viewer.lazPointCloud is not null;
+        public bool HasImportedMesh => viewer.importedMesh is not null;
+        public bool HasLazTwoPointMeasurement => viewer.lazTwoPointFirst is not null && viewer.lazTwoPointSecond is not null;
+        public int ImportedMeshTextureUploads => viewer.importedMeshTextureState.UploadCount;
+        public int ImportedMeshTextureReleases => viewer.importedMeshTextureState.ReleaseCount;
+
+        public void LoadSource(ViewerSmokeSource source, string? path)
+        {
+            switch (source)
+            {
+                case ViewerSmokeSource.C3D: viewer.ApplySmokeC3D(); break;
+                case ViewerSmokeSource.Glb: viewer.ApplySmokeGlb(path); break;
+                case ViewerSmokeSource.Stl: viewer.ApplySmokeStl(path); break;
+                case ViewerSmokeSource.LazMetadata: viewer.ApplySmokeLaz(path); break;
+                case ViewerSmokeSource.LazPoints: viewer.ApplySmokeLazPoints(path); break;
+            }
+        }
+
+        public void Measure(ViewerSmokeMeasurement measurement)
+        {
+            switch (measurement)
+            {
+                case ViewerSmokeMeasurement.PointPairDimensions: viewer.ApplySmokePointPairDimensions(); break;
+                case ViewerSmokeMeasurement.LazTwoPoint: viewer.ApplySmokeLazTwoPointMeasurement(); break;
+                case ViewerSmokeMeasurement.MeshTwoPoint: viewer.ApplySmokeImportedMeshTwoPointMeasurement(); break;
+                case ViewerSmokeMeasurement.C3DTwoPoint: viewer.ApplySmokeTwoPointMeasurement(); break;
+                case ViewerSmokeMeasurement.RoiStep: viewer.roiEditingSession.ApplySmokeRoiStepMeasurement(); break;
+                case ViewerSmokeMeasurement.InteractiveRoiStep: viewer.roiEditingSession.ApplySmokeInteractiveRoiStepMeasurement(); break;
+                case ViewerSmokeMeasurement.PlaneReference: viewer.ApplySmokePlaneReferenceMeasurement(); break;
+                case ViewerSmokeMeasurement.PlaneFlatness: viewer.ApplySmokePlaneFlatness(); break;
+                case ViewerSmokeMeasurement.GapFlush: viewer.ApplySmokeGapFlush(); break;
+                case ViewerSmokeMeasurement.Volume: viewer.ApplySmokeVolume(); break;
+                case ViewerSmokeMeasurement.CrossSection: viewer.ApplySmokeCrossSection(); break;
+            }
+        }
+
+        public bool LoadRecipe(string path) => viewer.ApplyRecipeFile(path, isSmoke: true);
+        public bool SaveRecipe(string path) => viewer.SaveCurrentRecipe(path, isSmoke: true);
+        public bool PublishPreview() => viewer.PublishCurrentPreviewResult();
+        public void ApplyEditedRoiParameters() => viewer.roiEditingSession.ApplyEditedRoiStepParameters();
+        public bool ValidateRoi(out string warning) => viewer.roiEditingSession.ValidateRecipeState(requireRoi: true, out warning);
+        public bool AlignRoiReference() => viewer.ApplyRoiReferenceAlignment();
+        public void ConfigureTeachingPointer(string[] args) => viewer.ApplyTeachingCapturePointerSmokeArguments(args);
+        public void FitSelection() => viewer.viewModel.FitSelection();
+        public void Pan(double deltaX, double deltaY, double deltaZ) => viewer.viewModel.Pan(deltaX, deltaY, deltaZ);
+        public void UseSelectionSmokeScene(string mode) => viewer.viewModel.UseSelectionSmokeScene(mode);
+        public void UsePointCloudSmokeScene() => viewer.viewModel.UsePointCloudSmokeScene();
+        public void UseC3DHeightDeviationRuleSmokeScene() => viewer.viewModel.UseC3DHeightDeviationRuleSmokeScene();
+        public void UseResultSmokeScene() => viewer.viewModel.UseResultSmokeScene();
+        public void ConfigureNominalActualComparison(NominalActualComparisonInput input) => viewer.viewModel.ConfigureNominalActualComparison(input);
+        public void PreviewNominalActual() => viewer.viewModel.NominalActual.PreviewCommand.Execute(null);
+        public void ClearNominalActualComparison(string validationIssue) => viewer.viewModel.ClearNominalActualComparison(validationIssue);
+        public void SetRecipeValidationSummary(string summary) => viewer.viewModel.SetRecipeValidationSummary(summary);
+        public void SetC3DAlignment(ModelTransform transform, string alignmentName, string referenceName) => viewer.viewModel.SetC3DAlignment(transform, alignmentName, referenceName);
+        public void Render() => viewer.RenderNow();
+        public Task RenderAsync(bool atRenderPriority) => atRenderPriority
+            ? viewer.Dispatcher.InvokeAsync(viewer.RenderNow, DispatcherPriority.Render).Task
+            : viewer.Dispatcher.InvokeAsync(viewer.RenderNow).Task;
+        public void ResetRenderPerformance() => viewer.ResetDrawPerformanceTelemetry();
+        public void BeginInteractionLod()
+        {
+            viewer.BeginInteractionWireframeLod();
+            viewer.interactionLodRestoreTimer?.Stop();
+        }
+        public Task ApplyDensityRaceAsync() => viewer.ApplyConfiguredSmokeLazDensityRaceAsync();
+        public Task ApplyNextDensityAsync() => viewer.ApplyConfiguredSmokeNextDensityAsync();
+        public Task ReloadLazPointCloudAsync() => viewer.ReloadCurrentLazPointCloudAsync();
+        public bool ApplyPick() => viewer.ApplyConfiguredSmokePick();
+        public Task<bool> RunPointerRegressionAsync() => viewer.RunConfiguredPointerInputRegressionAsync();
+        public void WriteSceneContracts(string path) => viewer.WriteSceneContracts(path);
+        public Task<bool> CaptureScreenshotAsync(string path, string? qualityReportPath) => viewer.CaptureSmokeViewWithRetryAsync(path, qualityReportPath);
+        public void Shutdown(int exitCode, bool requireApplication)
+        {
+            Environment.ExitCode = exitCode;
+            var ownerWindow = Window.GetWindow(viewer);
+            if (ownerWindow is null)
+            {
+                if (requireApplication)
+                {
+                    throw new InvalidOperationException(
+                        "Viewer smoke requires an owner Window to complete application shutdown.");
+                }
+
+                return;
+            }
+
+            ownerWindow.Close();
+        }
+    }
+
+    private async Task<bool> CaptureSmokeViewWithRetryAsync(string path, string? qualityReportPath)
+    {
+        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        const int maximumAttempts = 3;
+        var fullPath = Path.GetFullPath(path);
+        var qualityLines = new List<string>();
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            var previousRejectedPath = GetRejectedScreenshotPath(fullPath, attempt);
+            if (File.Exists(previousRejectedPath))
+            {
+                File.Delete(previousRejectedPath);
+            }
+        }
+
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            RenderNow();
+            UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            var result = WpfScreenshotCapture.Capture(this);
+            var qualityLine = $"ViewerScreenshot|attempt={attempt}|{result.Quality.Summary}";
+            qualityLines.Add(qualityLine);
+            Console.WriteLine(qualityLine);
+            if (result.Quality.IsAcceptable)
+            {
+                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                WpfScreenshotCapture.Save(result.Bitmap, fullPath);
+                qualityLines.Add($"ViewerScreenshotResult|accepted=True|attempts={attempt}|screenshot={fullPath}");
+                WriteScreenshotQualityReport(qualityReportPath, qualityLines);
+                viewModel.LastScreenshotPath = fullPath;
+                viewModel.ViewerStatus = "Screenshot captured";
+                return true;
+            }
+
+            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            WpfScreenshotCapture.Save(result.Bitmap, GetRejectedScreenshotPath(fullPath, attempt));
+            await Task.Delay(250, viewerLifetimeToken);
+        }
+
+        qualityLines.Add($"ViewerScreenshotResult|accepted=False|attempts={maximumAttempts}|screenshot={fullPath}");
+        WriteScreenshotQualityReport(qualityReportPath, qualityLines);
+        return false;
+    }
+
+    private void ResetDrawPerformanceTelemetry()
+    {
+        interactionTelemetry.ResetRenderPerformance();
+        viewModel.ResetRenderPerformance();
+    }
+
+    private static void WriteScreenshotQualityReport(string? path, IReadOnlyList<string> lines)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        File.WriteAllLines(path, lines);
+    }
+
+    private static string GetRejectedScreenshotPath(string fullPath, int attempt) =>
+        Path.Combine(
+            Path.GetDirectoryName(fullPath)!,
+            $"{Path.GetFileNameWithoutExtension(fullPath)}.rejected-attempt-{attempt}{Path.GetExtension(fullPath)}");
+
     public void EnableSmokeFromCommandLine() => EnableSmokeFromCommandLine(ownsApplicationLifecycle: true);
 
     public void EnableSmokeFromCommandLine(bool ownsApplicationLifecycle)
@@ -37,71 +257,23 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        var args = Environment.GetCommandLineArgs();
-        var smokeIndex = Array.IndexOf(args, "--smoke-screenshot");
-        if (smokeIndex >= 0 && smokeIndex + 1 < args.Length)
-        {
-            smokeScreenshotPath = args[smokeIndex + 1];
-        }
-
-        var screenshotQualityIndex = Array.IndexOf(args, "--smoke-screenshot-quality-report");
-        if (screenshotQualityIndex >= 0 && screenshotQualityIndex + 1 < args.Length)
-        {
-            smokeScreenshotQualityReportPath = args[screenshotQualityIndex + 1];
-        }
-
-        ApplySmokeArguments(args);
-        if (ownsApplicationLifecycle && smokeScreenshotPath is not null)
+        smokeScenario.Configure(Environment.GetCommandLineArgs());
+        if (ownsApplicationLifecycle && smokeScenario.ScreenshotPath is not null)
         {
             Loaded -= SmokeCaptureOnLoaded;
             Loaded += SmokeCaptureOnLoaded;
         }
     }
 
-    public bool HasConfiguredSmokeScreenshot => smokeScreenshotPath is not null;
-
-    public async Task<bool> CaptureConfiguredSmokeViewAsync()
+    private void SmokeCaptureOnLoaded(object sender, RoutedEventArgs e)
     {
-        if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
-        {
-            return false;
-        }
-
-        try
-        {
-            await RunConfiguredSmokeRenderFramesAsync();
-            if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
-            {
-                return false;
-            }
-
-            if (smokeContractsPath is not null)
-            {
-                WriteSceneContracts(smokeContractsPath);
-            }
-
-            if (smokeScreenshotPath is null)
-            {
-                return smokeExitCode == 0;
-            }
-
-            if (!await CaptureSmokeViewWithRetryAsync(smokeScreenshotPath, smokeScreenshotQualityReportPath))
-            {
-                if (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
-                {
-                    return false;
-                }
-
-                SetSmokeFailure("Viewer screenshot remained blank or invalid after 3 attempts.");
-            }
-
-            return !IsDisposed && !viewerLifetimeToken.IsCancellationRequested && smokeExitCode == 0;
-        }
-        catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
-        {
-            return false;
-        }
+        Loaded -= SmokeCaptureOnLoaded;
+        smokeScenario.Start();
     }
+
+    public bool HasConfiguredSmokeScreenshot => smokeScenario.ScreenshotPath is not null;
+
+    public Task<bool> CaptureConfiguredSmokeViewAsync() => smokeScenario.CaptureConfiguredSmokeViewAsync();
 
     public bool ApplyConfiguredSmokePick()
     {
@@ -110,7 +282,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        switch (smokePickTarget)
+        switch (smokeScenario.PickTarget)
         {
             case null:
                 return true;
@@ -136,12 +308,12 @@ public sealed partial class OpenVisionThreeDViewerControl
                 ApplySmokePickNominalActual();
                 break;
             default:
-                SetSmokeFailure($"Unsupported smoke pick target: {smokePickTarget}");
+                SetSmokeFailure($"Unsupported smoke pick target: {smokeScenario.PickTarget}");
                 break;
         }
 
         RenderNow();
-        return smokeExitCode == 0;
+        return smokeScenario.ExitCode == 0;
     }
 
     public async Task<bool> ApplyConfiguredSmokeNextDensityAsync()
@@ -151,40 +323,38 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        if (smokeNextRenderDensity is null)
+        if (smokeScenario.NextRenderDensity is null)
         {
             return true;
         }
 
-        if (!viewModel.RenderDensityModes.Contains(smokeNextRenderDensity, StringComparer.Ordinal))
+        if (!viewModel.RenderDensityModes.Contains(smokeScenario.NextRenderDensity, StringComparer.Ordinal))
         {
-            SetSmokeFailure($"Unsupported next Preview density: {smokeNextRenderDensity}");
+            SetSmokeFailure($"Unsupported next Preview density: {smokeScenario.NextRenderDensity}");
             return false;
         }
 
         if (lazPointCloud is not null)
         {
-            if (viewModel.SelectedRenderDensity == smokeNextRenderDensity)
+            if (viewModel.SelectedRenderDensity == smokeScenario.NextRenderDensity)
             {
-                await lazPointCloudReloadTask;
-                return smokeExitCode == 0;
+                await lazPointCloudLoadTelemetry.ReloadTask;
+                return smokeScenario.ExitCode == 0;
             }
 
-            suppressLazPointCloudDensityReload = true;
+            lazPointCloudLoadTelemetry.SetDensityReloadSuppressed(true);
             try
             {
-                viewModel.SelectedRenderDensity = smokeNextRenderDensity;
+                viewModel.SelectedRenderDensity = smokeScenario.NextRenderDensity;
             }
             finally
             {
-                suppressLazPointCloudDensityReload = false;
+                lazPointCloudLoadTelemetry.SetDensityReloadSuppressed(false);
             }
 
-            lazPointCloudSmokeReloadCount++;
-            var reload = ReloadCurrentLazPointCloudAsync();
-            lazPointCloudReloadTask = reload;
+            var reload = lazPointCloudLoadTelemetry.RecordSmokeReload(ReloadCurrentLazPointCloudAsync);
             await reload;
-            return smokeExitCode == 0;
+            return smokeScenario.ExitCode == 0;
         }
 
         if (viewModel.NominalActual.PreviewResult is null)
@@ -193,14 +363,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        viewModel.SelectedRenderDensity = smokeNextRenderDensity;
+        viewModel.SelectedRenderDensity = smokeScenario.NextRenderDensity;
         RenderNow();
-        return smokeExitCode == 0;
+        return smokeScenario.ExitCode == 0;
     }
 
     private async Task<bool> ApplyConfiguredSmokeLazDensityRaceAsync()
     {
-        if (!smokeRaceLazPointCloudDensityLoads)
+        if (!smokeScenario.RaceLazDensityLoads)
         {
             return true;
         }
@@ -214,20 +384,20 @@ public sealed partial class OpenVisionThreeDViewerControl
         const string cancelledDensity = "Detailed";
         const string finalDensity = "Balanced";
         viewModel.SelectedRenderDensity = cancelledDensity;
-        var cancelledLoad = lazPointCloudReloadTask;
+        var cancelledLoad = lazPointCloudLoadTelemetry.ReloadTask;
         viewModel.SelectedRenderDensity = finalDensity;
-        var finalLoad = lazPointCloudReloadTask;
+        var finalLoad = lazPointCloudLoadTelemetry.ReloadTask;
         await Task.WhenAll(cancelledLoad, finalLoad);
 
-        if (lazPointCloudCancellationCount < 1
+        if (lazPointCloudLoadTelemetry.CancellationCount < 1
             || viewModel.SelectedRenderDensity != finalDensity
-            || lazPointCloud.SampledPoints.Length > viewModel.LazMaxSampledPoints)
+            || lazPointCloud.SampledPointView.Count > viewModel.LazMaxSampledPoints)
         {
             SetSmokeFailure("LAZ/LAS density race did not cancel the superseded load or retain the latest budget.");
             return false;
         }
 
-        return smokeExitCode == 0;
+        return smokeScenario.ExitCode == 0;
     }
 
     public async Task<bool> RunConfiguredPointerInputRegressionAsync()
@@ -237,7 +407,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        if (smokePointerInputReportPath is null)
+        if (smokeScenario.PointerInputReportPath is null)
         {
             return true;
         }
@@ -248,7 +418,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        WritePointerInputRegressionReport(smokePointerInputReportPath, pointerInputRegressionResult);
+        WritePointerInputRegressionReport(smokeScenario.PointerInputReportPath, pointerInputRegressionResult);
         if (!pointerInputRegressionResult.Passed)
         {
             SetSmokeFailure($"Pointer input regression failed: {pointerInputRegressionResult.Failure}");
@@ -306,21 +476,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         var initialInteractionLodActivationCount = interactionLodActivationCount;
         var initialInteractionLodMediumTransitionCount = interactionLodMediumTransitionCount;
         var initialInteractionLodRestoreCount = interactionLodRestoreCount;
-        var initialC3DGpuUploadCount = c3dGpuUploadCount;
+        var initialC3DGpuUploadCount = c3dGpuTelemetry.UploadCount;
 
-        pointerInputMouseDownCount = 0;
-        pointerInputMouseMoveCount = 0;
-        pointerInputMouseUpCount = 0;
-        pointerInputMouseWheelCount = 0;
-        pointerInputMouseMoveTimingCount = 0;
-        pointerInputMouseMoveTotalMilliseconds = 0.0;
-        pointerInputMouseMoveMaximumMilliseconds = 0.0;
-        pointerInputLastMouseMoveTimestamp = 0;
-        pointerInputNextFrameTimingCount = 0;
-        pointerInputNextFrameTotalMilliseconds = 0.0;
-        pointerInputNextFrameMaximumMilliseconds = 0.0;
-        pointerInputScheduledMouseMoveRenderCount = 0;
-        pointerInputImmediateMouseMoveRenderCount = 0;
+        interactionTelemetry.ResetPointerInput();
 
         try
         {
@@ -530,16 +688,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
         }
 
-        var routedEventsPassed = pointerInputMouseDownCount >= 7
-            && pointerInputMouseMoveCount >= 3
-            && pointerInputMouseUpCount >= 7
-            && pointerInputMouseWheelCount >= 1;
-        var interactiveRenderPerformancePassed = pointerInputMouseMoveTimingCount >= 3
-            && pointerInputNextFrameTimingCount >= 1
-            && pointerInputScheduledMouseMoveRenderCount >= 3
-            && pointerInputImmediateMouseMoveRenderCount == 0
-            && pointerInputMouseMoveMaximumMilliseconds <= 33.34
-            && pointerInputNextFrameMaximumMilliseconds <= 100.0;
+        var routedEventsPassed = interactionTelemetry.MouseDownCount >= 7
+            && interactionTelemetry.MouseMoveCount >= 3
+            && interactionTelemetry.MouseUpCount >= 7
+            && interactionTelemetry.MouseWheelCount >= 1;
+        var interactiveRenderPerformancePassed = interactionTelemetry.MouseMoveTimingCount >= 3
+            && interactionTelemetry.NextFrameTimingCount >= 1
+            && interactionTelemetry.ScheduledMouseMoveRenderCount >= 3
+            && interactionTelemetry.ImmediateMouseMoveRenderCount == 0
+            && interactionTelemetry.MouseMoveMaximumMilliseconds <= 33.34
+            && interactionTelemetry.NextFrameMaximumMilliseconds <= 100.0;
         var interactionLodExpected = initialC3DSource is not null
             && string.Equals(initialC3DGeometryStyle, "Wireframe", StringComparison.Ordinal)
             && c3dRenderProxyCache.Current is { CoarseInteractionGridEdgeCount: > 0 } renderProxy
@@ -552,7 +710,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && interactionLodMediumTransitionCount > initialInteractionLodMediumTransitionCount
                 && interactionLodRestoreCount > initialInteractionLodRestoreCount
                 && c3dGpuBuffersAvailable
-                && c3dGpuUploadCount == initialC3DGpuUploadCount
+                && c3dGpuTelemetry.UploadCount == initialC3DGpuUploadCount
                 && !interactionWireframeLodActive
                 && !c3dSourceReloadedDuringInteraction);
         var passed = pickPassed
@@ -602,18 +760,18 @@ public sealed partial class OpenVisionThreeDViewerControl
             topViewMenuBindingsPassed,
             topViewMenuCommandCount,
             routedEventsPassed,
-            pointerInputMouseDownCount,
-            pointerInputMouseMoveCount,
-            pointerInputMouseUpCount,
-            pointerInputMouseWheelCount,
-            pointerInputMouseMoveTimingCount,
-            pointerInputMouseMoveTimingCount == 0 ? 0.0 : pointerInputMouseMoveTotalMilliseconds / pointerInputMouseMoveTimingCount,
-            pointerInputMouseMoveMaximumMilliseconds,
-            pointerInputNextFrameTimingCount,
-            pointerInputNextFrameTimingCount == 0 ? 0.0 : pointerInputNextFrameTotalMilliseconds / pointerInputNextFrameTimingCount,
-            pointerInputNextFrameMaximumMilliseconds,
-            pointerInputScheduledMouseMoveRenderCount,
-            pointerInputImmediateMouseMoveRenderCount,
+            interactionTelemetry.MouseDownCount,
+            interactionTelemetry.MouseMoveCount,
+            interactionTelemetry.MouseUpCount,
+            interactionTelemetry.MouseWheelCount,
+            interactionTelemetry.MouseMoveTimingCount,
+            interactionTelemetry.MouseMoveTimingCount == 0 ? 0.0 : interactionTelemetry.MouseMoveTotalMilliseconds / interactionTelemetry.MouseMoveTimingCount,
+            interactionTelemetry.MouseMoveMaximumMilliseconds,
+            interactionTelemetry.NextFrameTimingCount,
+            interactionTelemetry.NextFrameTimingCount == 0 ? 0.0 : interactionTelemetry.NextFrameTotalMilliseconds / interactionTelemetry.NextFrameTimingCount,
+            interactionTelemetry.NextFrameMaximumMilliseconds,
+            interactionTelemetry.ScheduledMouseMoveRenderCount,
+            interactionTelemetry.ImmediateMouseMoveRenderCount,
             interactiveRenderPerformancePassed,
             interactionLodExpected,
             interactionLodPassed,
@@ -622,7 +780,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             interactionLodRestoreCount - initialInteractionLodRestoreCount,
             c3dRenderProxyCache.Current?.InteractionGridEdgeCount ?? 0,
             c3dRenderProxyCache.Current?.CoarseInteractionGridEdgeCount ?? 0,
-            c3dGpuUploadCount - initialC3DGpuUploadCount,
+            c3dGpuTelemetry.UploadCount - initialC3DGpuUploadCount,
             c3dGpuBuffersAvailable,
             c3dSourceReloadedDuringInteraction,
             viewModel.C3DSampleVisible,
@@ -826,7 +984,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             $"PointerLatency|mouseMoveSamples={result.MouseMoveTimingCount}|handlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|handlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameSamples={result.NextFrameTimingCount}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}",
             $"InteractiveRender|pass={result.InteractiveRenderPerformancePassed}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|handlerLimitMs=33.340|nextFrameLimitMs=100.000",
             $"InteractionLod|expected={result.InteractionLodExpected}|pass={result.InteractionLodPassed}|activations={result.InteractionLodActivationCount}|mediumTransitions={result.InteractionLodMediumTransitionCount}|restores={result.InteractionLodRestoreCount}|coarseGridEdges={result.CoarseGridEdgeCount}|mediumGridEdges={result.MediumGridEdgeCount}|preciseGridEdges={c3dRenderProxyCache.Current?.GridEdgeCount ?? 0}|gpuUploadDelta={result.InteractionGpuUploadDelta}|gpuBufferReady={result.GpuBufferReady}|sourceReloaded={result.C3DSourceReloadedDuringInteraction}|stepDelayMs={InteractionLodStepDelay.TotalMilliseconds:F0}|restoreDelayMs={InteractionLodRestoreDelay.TotalMilliseconds:F0}",
-            $"C3DRender|active={result.C3DSceneActive}|points={result.C3DRenderedPointCount}|gpuBufferReady={result.GpuBufferReady}|gpuUploads={c3dGpuUploadCount}|gpuDraws={c3dGpuDrawCount}|gpuBytes={c3dGpuUploadedBytes}|fallbacks={c3dGpuFallbackCount}|renderCacheBuilds={result.C3DDisplayListBuildCount}|lastRenderCacheBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|scheduledFps=60",
+            $"C3DRender|active={result.C3DSceneActive}|points={result.C3DRenderedPointCount}|gpuBufferReady={result.GpuBufferReady}|gpuUploads={c3dGpuTelemetry.UploadCount}|gpuDraws={c3dGpuTelemetry.DrawCount}|gpuBytes={c3dGpuTelemetry.UploadedBytes}|fallbacks={c3dGpuTelemetry.FallbackCount}|renderCacheBuilds={result.C3DDisplayListBuildCount}|lastRenderCacheBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|scheduledFps=60",
             $"Pick|pass={result.PickPassed}|entity={result.PickedEntity}|coordinate={result.PickCoordinate}|summary={result.SelectionSummary}",
             $"Orbit|pass={result.OrbitPassed}|before={FormatCameraSnapshot(result.InitialCamera)}|after={FormatCameraSnapshot(result.OrbitCamera)}",
             $"Pan|pass={result.PanPassed}|before={FormatCameraSnapshot(result.OrbitCamera)}|after={FormatCameraSnapshot(result.PanCamera)}",
@@ -849,7 +1007,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private string CreatePointerInputRegressionContractLine()
     {
-        if (smokePointerInputReportPath is null)
+        if (smokeScenario.PointerInputReportPath is null)
         {
             return "PointerInputRegression|configured=False";
         }
@@ -861,364 +1019,6 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var result = pointerInputRegressionResult;
         return $"PointerInputRegression|configured=True|pass={result.Passed}|pick={result.PickPassed}|orbit={result.OrbitPassed}|pan={result.PanPassed}|middlePan={result.PanPassed}|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|rightPanMenuSuppressed={result.RightPanMenuSuppressed}|zoom={result.ZoomPassed}|doubleClickFit={result.DoubleClickFitPassed}|shortRightClick={result.ContextMenuPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}|contextMenuCommands={result.ContextMenuCommandCount}/8|topViewMenuBindings={result.TopViewMenuBindingsPassed}|topViewMenuCommands={result.TopViewMenuCommandCount}/8|routedEvents={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}|mouseMoveHandlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|mouseMoveHandlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|interactiveRenderPass={result.InteractiveRenderPerformancePassed}|interactionLodExpected={result.InteractionLodExpected}|interactionLodPass={result.InteractionLodPassed}|interactionLodActivations={result.InteractionLodActivationCount}|interactionLodMediumTransitions={result.InteractionLodMediumTransitionCount}|interactionLodRestores={result.InteractionLodRestoreCount}|coarseGridEdges={result.CoarseGridEdgeCount}|mediumGridEdges={result.MediumGridEdgeCount}|gpuUploadDelta={result.InteractionGpuUploadDelta}|gpuBufferReady={result.GpuBufferReady}|sourceReloadedDuringInteraction={result.C3DSourceReloadedDuringInteraction}|c3dActive={result.C3DSceneActive}|c3dPoints={result.C3DRenderedPointCount}|renderCacheBuilds={result.C3DDisplayListBuildCount}|lastRenderCacheBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}|failure={CleanContractText(result.Failure)}";
-    }
-
-    private void ApplySmokeArguments(string[] args)
-    {
-        var renderFramesIndex = Array.IndexOf(args, "--smoke-render-frames");
-        if (renderFramesIndex >= 0)
-        {
-            if (renderFramesIndex + 1 >= args.Length
-                || !int.TryParse(
-                    args[renderFramesIndex + 1],
-                    NumberStyles.Integer,
-                    CultureInfo.InvariantCulture,
-                    out smokeRenderFrameCount)
-                || smokeRenderFrameCount is < 16 or > 200)
-            {
-                smokeRenderFrameCount = 0;
-                SetSmokeFailure("Smoke render frames must be an integer from 16 through 200.");
-            }
-        }
-
-        smokeInteractionLodRequested = args.Contains(
-            "--smoke-interaction-lod",
-            StringComparer.OrdinalIgnoreCase);
-        smokeReloadImportedMeshTexture = args.Contains(
-            "--smoke-reload-imported-mesh-texture",
-            StringComparer.OrdinalIgnoreCase);
-        smokeReloadLazPointCloudCache = args.Contains(
-            "--smoke-reload-laz-cache",
-            StringComparer.OrdinalIgnoreCase);
-        smokeRaceLazPointCloudDensityLoads = args.Contains(
-            "--smoke-race-laz-density-loads",
-            StringComparer.OrdinalIgnoreCase);
-
-        var lazProgressScreenshotIndex = Array.IndexOf(args, "--smoke-laz-progress-screenshot");
-        if (lazProgressScreenshotIndex >= 0 && lazProgressScreenshotIndex + 1 < args.Length)
-        {
-            smokeLazProgressScreenshotPath = args[lazProgressScreenshotIndex + 1];
-        }
-
-        var densityIndex = Array.IndexOf(args, "--smoke-density");
-        if (densityIndex >= 0 && densityIndex + 1 < args.Length)
-        {
-            viewModel.SelectedRenderDensity = args[densityIndex + 1];
-        }
-
-        var nextDensityIndex = Array.IndexOf(args, "--smoke-next-density");
-        if (nextDensityIndex >= 0 && nextDensityIndex + 1 < args.Length)
-        {
-            smokeNextRenderDensity = args[nextDensityIndex + 1];
-        }
-
-        var pointSizeIndex = Array.IndexOf(args, "--smoke-point-size");
-        if (pointSizeIndex >= 0
-            && pointSizeIndex + 1 < args.Length
-            && double.TryParse(args[pointSizeIndex + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var pointSize))
-        {
-            viewModel.PointSize = pointSize;
-        }
-
-        ApplySmokeTolerance(args);
-
-        var sceneIndex = Array.IndexOf(args, "--smoke-scene");
-        if (sceneIndex >= 0 && sceneIndex + 1 < args.Length && args[sceneIndex + 1].Equals("pointcloud", StringComparison.OrdinalIgnoreCase))
-        {
-            viewModel.UsePointCloudSmokeScene();
-        }
-
-        var c3dIndex = Array.IndexOf(args, "--smoke-c3d");
-        if (c3dIndex >= 0)
-        {
-            ApplySmokeC3D();
-        }
-
-        var glbIndex = Array.IndexOf(args, "--smoke-glb");
-        if (glbIndex >= 0)
-        {
-            var glbPath = glbIndex + 1 < args.Length && !args[glbIndex + 1].StartsWith("--", StringComparison.Ordinal)
-                ? args[glbIndex + 1]
-                : null;
-            ApplySmokeGlb(glbPath);
-        }
-
-        var stlIndex = Array.IndexOf(args, "--smoke-stl");
-        if (stlIndex >= 0)
-        {
-            var stlPath = stlIndex + 1 < args.Length && !args[stlIndex + 1].StartsWith("--", StringComparison.Ordinal)
-                ? args[stlIndex + 1]
-                : null;
-            ApplySmokeStl(stlPath);
-        }
-
-        var lazIndex = Array.IndexOf(args, "--smoke-laz");
-        if (lazIndex >= 0)
-        {
-            var lazPath = lazIndex + 1 < args.Length && !args[lazIndex + 1].StartsWith("--", StringComparison.Ordinal)
-                ? args[lazIndex + 1]
-                : null;
-            ApplySmokeLaz(lazPath);
-        }
-
-        var lazPointsIndex = Array.IndexOf(args, "--smoke-laz-points");
-        if (lazPointsIndex >= 0)
-        {
-            var lazPath = lazPointsIndex + 1 < args.Length && !args[lazPointsIndex + 1].StartsWith("--", StringComparison.Ordinal)
-                ? args[lazPointsIndex + 1]
-                : null;
-            ApplySmokeLazPoints(lazPath);
-        }
-
-        ApplySmokeNominalActual(args);
-
-        var actionIndex = Array.IndexOf(args, "--smoke-action");
-        if (actionIndex >= 0 && actionIndex + 1 < args.Length)
-        {
-            ApplySmokeAction(args[actionIndex + 1]);
-        }
-
-        var selectionIndex = Array.IndexOf(args, "--smoke-selection");
-        if (selectionIndex >= 0 && selectionIndex + 1 < args.Length)
-        {
-            ApplySmokeSelection(args[selectionIndex + 1]);
-        }
-
-        var overlayIndex = Array.IndexOf(args, "--smoke-overlay");
-        if (overlayIndex >= 0 && overlayIndex + 1 < args.Length)
-        {
-            ApplySmokeOverlay(args[overlayIndex + 1]);
-        }
-
-        var ruleIndex = Array.IndexOf(args, "--smoke-rule");
-        if (ruleIndex >= 0 && ruleIndex + 1 < args.Length)
-        {
-            ApplySmokeRule(args[ruleIndex + 1]);
-        }
-
-        var recipeIndex = Array.IndexOf(args, "--smoke-recipe");
-        if (recipeIndex >= 0 && recipeIndex + 1 < args.Length)
-        {
-            ApplySmokeRecipe(args[recipeIndex + 1]);
-        }
-
-        ApplySmokeTolerance(args);
-
-        if (recipeIndex >= 0 && selectionIndex >= 0 && selectionIndex + 1 < args.Length)
-        {
-            ApplySmokeSelection(args[selectionIndex + 1]);
-        }
-
-        var pickIndex = Array.IndexOf(args, "--smoke-pick");
-        if (pickIndex >= 0 && pickIndex + 1 < args.Length)
-        {
-            smokePickTarget = args[pickIndex + 1].ToLowerInvariant();
-        }
-
-        var alignmentIndex = Array.IndexOf(args, "--smoke-alignment");
-        if (alignmentIndex >= 0 && alignmentIndex + 1 < args.Length)
-        {
-            ApplySmokeAlignment(args[alignmentIndex + 1]);
-        }
-
-        var measureIndex = Array.IndexOf(args, "--smoke-measure");
-        if (measureIndex >= 0 && measureIndex + 1 < args.Length)
-        {
-            smokeMeasureMode = args[measureIndex + 1];
-            ApplySmokeMeasure(smokeMeasureMode);
-        }
-
-        var hudIndex = Array.IndexOf(args, "--smoke-hud");
-        if (hudIndex >= 0 && hudIndex + 1 < args.Length)
-        {
-            viewModel.HudDetailsVisible = args[hudIndex + 1].Equals("details", StringComparison.OrdinalIgnoreCase);
-        }
-
-        var editParametersIndex = Array.IndexOf(args, "--smoke-edit-parameters");
-        if (editParametersIndex >= 0 && editParametersIndex + 1 < args.Length)
-        {
-            ApplySmokeRecipeParameterEdit(args[editParametersIndex + 1]);
-        }
-
-        var invalidRoiIndex = Array.IndexOf(args, "--smoke-invalid-roi");
-        if (invalidRoiIndex >= 0 && invalidRoiIndex + 1 < args.Length)
-        {
-            ApplySmokeInvalidRoi(args[invalidRoiIndex + 1]);
-        }
-
-        if (Array.IndexOf(args, "--smoke-align-from-roi") >= 0)
-        {
-            ApplyRoiReferenceAlignment();
-        }
-
-        var contractsIndex = Array.IndexOf(args, "--smoke-contracts");
-        if (contractsIndex >= 0 && contractsIndex + 1 < args.Length)
-        {
-            smokeContractsPath = args[contractsIndex + 1];
-        }
-
-        var pointerInputReportIndex = Array.IndexOf(args, "--smoke-pointer-input-report");
-        if (pointerInputReportIndex >= 0 && pointerInputReportIndex + 1 < args.Length)
-        {
-            smokePointerInputReportPath = args[pointerInputReportIndex + 1];
-        }
-
-        var saveRecipeIndex = Array.IndexOf(args, "--smoke-save-recipe");
-        if (saveRecipeIndex >= 0 && saveRecipeIndex + 1 < args.Length)
-        {
-            smokeSaveRecipePath = args[saveRecipeIndex + 1];
-        }
-
-        ApplyTeachingCapturePointerSmokeArguments(args);
-
-        smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
-        if (smokePublishResult && smokeScreenshotPath is null && !smokeNominalActualPreview)
-        {
-            PublishCurrentPreviewResult();
-        }
-    }
-
-    private void ApplySmokeNominalActual(string[] args)
-    {
-        var comparisonIndex = Array.IndexOf(args, "--smoke-nominal-actual");
-        if (comparisonIndex < 0)
-        {
-            return;
-        }
-
-        smokeNominalActualPreview = true;
-        if (comparisonIndex + 3 >= args.Length
-            || args[comparisonIndex + 1].StartsWith("--", StringComparison.Ordinal)
-            || args[comparisonIndex + 2].StartsWith("--", StringComparison.Ordinal)
-            || args[comparisonIndex + 3].StartsWith("--", StringComparison.Ordinal))
-        {
-            SetSmokeFailure(
-                "Nominal/actual smoke requires <actual.stl> <validation-query.ply> <nominal.stl>.");
-            return;
-        }
-
-        try
-        {
-            var sourceIdentity = ResolveSmokeNominalActualSourceIdentity(args);
-            var actual = CaptureComparisonFileIdentity(
-                sourceIdentity.ActualId,
-                sourceIdentity.ActualName,
-                args[comparisonIndex + 1]);
-            var query = CaptureComparisonFileIdentity(
-                sourceIdentity.QueryId,
-                sourceIdentity.QueryName,
-                args[comparisonIndex + 2]);
-            var nominal = CaptureComparisonFileIdentity(
-                "source.nist-overhang-x4-nominal-9x5x5",
-                "NIST Overhang X4 nominal 9x5x5 mm",
-                args[comparisonIndex + 3]);
-            var comparison = viewModel.NominalActual;
-            var input = new NominalActualComparisonInput(
-                "step.nist-overhang-x4-surface-deviation",
-                actual,
-                nominal,
-                query,
-                "mm",
-                "frame.nist-overhang-x4-321-part",
-                "alignment.identity-source-provided",
-                comparison.LowerTolerance,
-                comparison.UpperTolerance);
-
-            ApplySmokeStl(nominal.Path);
-            if (importedMesh is null)
-            {
-                throw new InvalidDataException("The nominal comparison mesh could not be loaded for display.");
-            }
-
-            viewModel.ConfigureNominalActualComparison(input);
-            comparison.PreviewCommand.Execute(null);
-        }
-        catch (Exception exception)
-        {
-            viewModel.ClearNominalActualComparison(exception.Message);
-            SetSmokeFailure($"Nominal/actual smoke failed: {exception.Message}");
-        }
-    }
-
-    private static (string ActualId, string ActualName, string QueryId, string QueryName)
-        ResolveSmokeNominalActualSourceIdentity(string[] args)
-    {
-        var datasetIndex = Array.IndexOf(args, "--smoke-nominal-actual-dataset");
-        var dataset = datasetIndex < 0
-            ? "nist-overhang-x4-part1"
-            : datasetIndex + 1 < args.Length
-                && !args[datasetIndex + 1].StartsWith("--", StringComparison.Ordinal)
-                    ? args[datasetIndex + 1]
-                    : throw new ArgumentException(
-                        "Nominal/actual smoke dataset requires nist-overhang-x4-part1 or nist-overhang-x4-part2.");
-
-        return dataset.ToLowerInvariant() switch
-        {
-            "nist-overhang-x4-part1" => (
-                "source.nist-overhang-x4-actual-part1",
-                "NIST Overhang X4 Part 1 XCT surface",
-                "query.nist-overhang-x4-cloudcompare-vertices",
-                "NIST Overhang X4 validation vertices"),
-            "nist-overhang-x4-part2" => (
-                "source.nist-overhang-x4-actual-part2",
-                "NIST Overhang X4 Part 2 XCT surface",
-                "query.nist-overhang-x4-part2-cloudcompare-vertices",
-                "NIST Overhang X4 Part 2 validation vertices"),
-            _ => throw new ArgumentException($"Unsupported nominal/actual smoke dataset: {dataset}"),
-        };
-    }
-
-    private static NominalActualFileIdentity CaptureComparisonFileIdentity(
-        string id,
-        string name,
-        string path)
-    {
-        var fullPath = Path.GetFullPath(path);
-        using var stream = File.OpenRead(fullPath);
-        return new NominalActualFileIdentity(
-            id,
-            name,
-            fullPath,
-            stream.Length,
-            Convert.ToHexString(SHA256.HashData(stream)));
-    }
-
-    private void ApplySmokeTolerance(string[] args)
-    {
-        var toleranceIndex = Array.IndexOf(args, "--smoke-tolerance");
-        if (toleranceIndex >= 0
-            && toleranceIndex + 1 < args.Length
-            && double.TryParse(args[toleranceIndex + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var tolerance))
-        {
-            viewModel.RecipePeakTolerance = tolerance;
-        }
-
-        var flatnessToleranceIndex = Array.IndexOf(args, "--smoke-flatness-tolerance");
-        if (flatnessToleranceIndex >= 0
-            && flatnessToleranceIndex + 1 < args.Length
-            && double.TryParse(args[flatnessToleranceIndex + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var flatnessTolerance))
-        {
-            viewModel.PlaneFlatnessTolerance = flatnessTolerance;
-        }
-    }
-
-    private void ApplySmokeAlignment(string mode)
-    {
-        if (!viewModel.C3DSampleVisible)
-        {
-            ApplySmokeC3D();
-        }
-
-        var transform = mode.ToLowerInvariant() switch
-        {
-            "offset" or "translated" => new ModelTransform(0.350, 0.180, -0.250, 0.0, 0.0, 0.0, 1.0),
-            "tilt" or "rotated" => new ModelTransform(0.250, 0.120, -0.180, 0.0, 0.0, 2.5, 1.0),
-            _ => ModelTransform.Identity
-        };
-        var alignmentName = ModelTransformIsIdentity(transform) ? "Identity / not aligned" : $"Smoke {mode} alignment";
-        viewModel.SetC3DAlignment(transform, alignmentName, "C3D source frame");
-        viewModel.SelectedEntity = "C3D Alignment";
-        viewModel.ViewerStatus = $"Smoke alignment: {mode}";
     }
 
 }

@@ -49,9 +49,7 @@ internal static class C3DHeightImageVerification
                          && frame.TryGetCell(0, 0, out _)
                          && frame.TryGetCell(frame.Width - 1, frame.Height - 1, out _);
             var status = passed ? "Pass" : "Fail";
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(
-                Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
+            var fullReportPath = PrepareReportPath(reportPath);
             File.WriteAllLines(
                 fullReportPath,
                 [
@@ -344,8 +342,7 @@ internal static class C3DHeightImageVerification
 
         var passedCount = cases.Count(item => item.Passed);
         var status = passedCount == cases.Length ? "Pass" : "Fail";
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
+        var fullReportPath = PrepareReportPath(reportPath);
         File.WriteAllLines(
             fullReportPath,
             [
@@ -363,6 +360,13 @@ internal static class C3DHeightImageVerification
         frame.TryGetCell(pixelX, pixelY, out var cell)
             ? $"pixel={pixelX},{pixelY};row={cell.Row};column={cell.Column};valid={cell.IsValid};raw={cell.RawHeight}"
             : $"pixel={pixelX},{pixelY};missing";
+
+    private static string PrepareReportPath(string reportPath)
+    {
+        var fullReportPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
+        return fullReportPath;
+    }
 
     private static VerificationCase Check(string name, Func<bool> verify, string evidence)
     {

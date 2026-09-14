@@ -118,7 +118,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         else
         {
             viewer.ClearWorkbenchRegridHeightField();
-            viewer.ViewModel.C3DSampleVisible = true;
+            viewer.TrySetC3DSampleVisible(true);
         }
 
         var request = new TeachingCaptureRequest(

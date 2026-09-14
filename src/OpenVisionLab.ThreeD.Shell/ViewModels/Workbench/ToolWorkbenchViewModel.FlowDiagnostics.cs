@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 
@@ -82,7 +81,10 @@ public sealed partial class ToolWorkbenchViewModel
             RefreshTeachingSelectionContext,
             RefreshStepCommands,
             RefreshNavigatorSelection);
-        flowDiagnosticsOwner.PropertyChanged += OnFlowDiagnosticsOwnerPropertyChanged;
+        flowDiagnosticsEventCoordinator =
+            new ToolWorkbenchFlowDiagnosticsEventCoordinator(
+                flowDiagnosticsOwner,
+                args => OnPropertyChanged(args.PropertyName));
     }
 
     private void SelectPipelineStepFromFlowDiagnostics(
@@ -99,9 +101,6 @@ public sealed partial class ToolWorkbenchViewModel
             deferSelectedStepStateRefresh = false;
         }
     }
-
-    private void OnFlowDiagnosticsOwnerPropertyChanged(object? sender, PropertyChangedEventArgs args) =>
-        OnPropertyChanged(args.PropertyName);
 
     private void RebuildFlowPortDiagnostics() => flowDiagnosticsOwner.RebuildFlowPortDiagnostics();
 

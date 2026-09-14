@@ -156,7 +156,14 @@ internal static class CompletenessReviewOwnerVerification
                     callbackSelectedCellId = cellId ?? string.Empty;
                     callbackCount++;
                 },
-                (_, english) => english);
+                (_, english) => english,
+                status => status switch
+                {
+                    ResultStatus.Pass => "PASS-L10N",
+                    ResultStatus.Fail => "FAIL-L10N",
+                    ResultStatus.Warning => "WARNING-L10N",
+                    _ => status.ToString()
+                });
 
             owner.Rebuild(snapshot);
             Check(
@@ -185,6 +192,28 @@ internal static class CompletenessReviewOwnerVerification
                 && owner.CompletenessCellResults[2].EvidenceSummary
                     == "coverage 50.0 % | relative mean -0.2",
                 owner.CompletenessCellResults[2].EvidenceSummary);
+            Check(
+                "owner localizes completeness status text while preserving canonical status values",
+                owner.CompletenessCellResults[0] is { Status: ResultStatus.Pass, StatusText: "PASS-L10N" }
+                && owner.CompletenessCellResults[2] is { Status: ResultStatus.Fail, StatusText: "FAIL-L10N" },
+                $"pass={owner.CompletenessCellResults[0].Status}/{owner.CompletenessCellResults[0].StatusText}; fail={owner.CompletenessCellResults[2].Status}/{owner.CompletenessCellResults[2].StatusText}");
+            var koreanOwner = new ToolWorkbenchCompletenessReviewOwner(
+                _ => { },
+                (korean, _) => korean,
+                status => status.ToString());
+            koreanOwner.Rebuild(snapshot);
+            Check(
+                "owner localizes completeness evidence labels without changing invariant values or identity",
+                koreanOwner.CompletenessCellResults[2] is
+                {
+                    EvidenceSummary: "커버리지 50.0 % | 상대 평균 -0.2",
+                    IdentitySummary: "step.tab-3 → output.tab-3",
+                    FiniteCoverageRatio: 0.5d,
+                    ReferenceRelativeMeanRawHeight: -0.2d
+                }
+                && koreanOwner.CompletenessCellResults[1].EvidenceSummary
+                    == "커버리지 75.0 % | 상대 평균 +0.05",
+                $"evidence={koreanOwner.CompletenessCellResults[2].EvidenceSummary}; identity={koreanOwner.CompletenessCellResults[2].IdentitySummary}");
             Check(
                 "Tab 1..8 mapping ignores other tools and duplicate numbers without mutating input",
                 ToolWorkbenchCompletenessReviewOwner.CreateTabThicknessIdentityMap(tabs)

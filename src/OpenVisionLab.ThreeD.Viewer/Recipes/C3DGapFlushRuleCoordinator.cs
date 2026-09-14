@@ -1,5 +1,4 @@
 using System.IO;
-using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -91,7 +90,7 @@ public static class C3DGapFlushRuleCoordinator
         foreach (var point in points)
         {
             var position = transform.Apply(point.Position);
-            if (!Contains(region, position))
+            if (!HeightDeviationRoiGeometry.Contains(region, position))
             {
                 continue;
             }
@@ -105,10 +104,4 @@ public static class C3DGapFlushRuleCoordinator
             ? new GapFlushRegionStats(0, double.NaN, double.NaN)
             : new GapFlushRegionStats(count, rawSum / count, modelYSum / count);
     }
-
-    private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>
-        point.X >= region.CenterX - region.HalfWidth
-        && point.X <= region.CenterX + region.HalfWidth
-        && point.Z >= region.CenterZ - region.HalfDepth
-        && point.Z <= region.CenterZ + region.HalfDepth;
 }

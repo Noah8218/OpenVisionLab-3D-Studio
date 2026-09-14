@@ -21,7 +21,7 @@ try
     var manifestPath = Path.GetFullPath(args[2]);
     var evidencePath = Path.GetFullPath(args[3]);
     var manifest = ReadManifest(manifestPath);
-    var handoff = ThreeDIntegrationExchange.ReadHandoff(
+    var handoff = ThreeDIntegrationV2Exchange.ReadHandoff(
         exchangeRoot,
         manifest.TransactionId);
 
@@ -67,7 +67,7 @@ try
     var recipePath = ResolveTransactionArtifactPath(transactionDirectory, recipeArtifact);
     var recipe = C3DWarpageRecipe.Load(recipePath);
 
-    var acknowledgement = ThreeDIntegrationExchange.PublishAcknowledgement(
+    var acknowledgement = ThreeDIntegrationV2Exchange.PublishAcknowledgement(
         exchangeRoot,
         handoff,
         manifest.Consumer);
@@ -79,7 +79,7 @@ try
         exchangeRoot,
         manifest.TransactionId,
         manifest.Consumer);
-    var persistedResult = ThreeDIntegrationExchange.ReadResult(
+    var persistedResult = ThreeDIntegrationV2Exchange.ReadResult(
         exchangeRoot,
         manifest.TransactionId);
 

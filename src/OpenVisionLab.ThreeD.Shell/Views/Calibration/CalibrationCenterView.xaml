@@ -541,7 +541,7 @@
                                             <Grid Margin="8">
                                                 <!-- LiveCharts consumes SkiaSharp colors rather than WPF brushes; keep these literal paints aligned with the graphite semantic palette above. -->
                                                 <lvc:CartesianChart Margin="12,4,4,8"
-                                                                    AutomationProperties.Name="Repeatability run chart"
+                                                                    AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Calibration.RepeatabilityChartAccessible, Korean='반복성 실행 차트', English='Repeatability run chart'}"
                                                                     AnimationsSpeed="0:0:0"
                                                                     AutoUpdateEnabled="True"
                                                                     Background="{DynamicResource ThreeD.PanelBrush}"

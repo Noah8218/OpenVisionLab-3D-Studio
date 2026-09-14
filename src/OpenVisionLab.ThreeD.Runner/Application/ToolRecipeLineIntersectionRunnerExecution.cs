@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -6,18 +7,20 @@ internal static class ToolRecipeLineIntersectionRunnerExecution
 {
     public static int Run(string recipePath, string intersectionStepId, string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
             var document = ToolRecipeDocumentStore.Load(fullRecipePath);
+            var recipeDirectory = Path.GetDirectoryName(fullRecipePath);
             var intersectionStep = document.Steps.Single(step => string.Equals(step.Id, intersectionStepId, StringComparison.OrdinalIgnoreCase));
             if (!string.Equals(intersectionStep.ToolId, "line-intersection", StringComparison.Ordinal) || intersectionStep.InputEntityIds.Count != 2)
             {
                 throw new InvalidDataException("Runner Line Intersection step must be one typed adapter with two published line inputs.");
             }
 
-            var first = ExecuteLine(document, fullRecipePath, intersectionStep.InputEntityIds[0]);
-            var second = ExecuteLine(document, fullRecipePath, intersectionStep.InputEntityIds[1]);
+            var first = ExecuteLine(document, recipeDirectory, intersectionStep.InputEntityIds[0]);
+            var second = ExecuteLine(document, recipeDirectory, intersectionStep.InputEntityIds[1]);
             var intersection = ToolRecipeLineIntersectionExecution.Execute(document, intersectionStep.Id, first.Output, second.Output);
             if (intersection.Result.Status != ResultStatus.Pass || intersection.Output is null)
             {
@@ -25,8 +28,8 @@ internal static class ToolRecipeLineIntersectionRunnerExecution
             }
 
             var output = intersection.Output;
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath,
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            WriteLinesAtomically(fullReportPath,
             [
                 "OpenVisionLab 3D Line Intersection Runner report",
                 $"Recipe|path={fullRecipePath}|schema={document.SchemaVersion}|name={document.Name}",
@@ -43,21 +46,62 @@ internal static class ToolRecipeLineIntersectionRunnerExecution
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or InvalidOperationException or OverflowException)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath, ["OpenVisionLab 3D Line Intersection Runner report", $"Error|{exception.Message}"]);
+            TryWriteErrorReport(fullReportPath, exception);
             Console.Error.WriteLine(exception.Message);
             return 5;
         }
     }
 
-    private static LineExecution ExecuteLine(ToolRecipeDocument document, string recipePath, string outputEntityId)
+    private static void TryWriteErrorReport(string reportPath, Exception exception)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+            WriteLinesAtomically(reportPath, ["OpenVisionLab 3D Line Intersection Runner report", $"Error|{exception.Message}"]);
+        }
+        catch (Exception reportException) when (reportException is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or OverflowException)
+        {
+            Console.Error.WriteLine($"Line Intersection report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 4096, leaveOpen: true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static LineExecution ExecuteLine(ToolRecipeDocument document, string? recipeDirectory, string outputEntityId)
     {
         var lineStep = document.Steps.Single(step => (string.Equals(step.ToolId, "three-d-line-fit", StringComparison.Ordinal)
                 || string.Equals(step.ToolId, "two-point-line", StringComparison.Ordinal))
             && string.Equals(step.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase));
         if (string.Equals(lineStep.ToolId, "two-point-line", StringComparison.Ordinal))
         {
-            var twoPointLine = ToolRecipeTwoPointLineExecution.Execute(document, lineStep.Id, Path.GetDirectoryName(recipePath));
+            var twoPointLine = ToolRecipeTwoPointLineExecution.Execute(document, lineStep.Id, recipeDirectory);
             if (twoPointLine.Result.Status != ResultStatus.Pass || twoPointLine.Output is null)
             {
                 throw new InvalidDataException($"Runner upstream 2-Point Line failed: {twoPointLine.Result.Message}");
@@ -72,7 +116,7 @@ internal static class ToolRecipeLineIntersectionRunnerExecution
             && string.Equals(step.OutputEntityId, inputId, StringComparison.OrdinalIgnoreCase)));
         var filterStep = document.Steps.Single(step => string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
             && string.Equals(step.OutputEntityId, filteredHeightFieldId, StringComparison.OrdinalIgnoreCase));
-        var filter = ToolRecipeFilterExecution.Execute(document, filterStep.Id, Path.GetDirectoryName(recipePath));
+        var filter = ToolRecipeFilterExecution.Execute(document, filterStep.Id, recipeDirectory);
         if (filter.Result.Status != ResultStatus.Pass || filter.Output is null) throw new InvalidDataException($"Runner upstream Filter failed: {filter.Result.Message}");
         var edge = ToolRecipeHeightDifferenceEdgeExecution.Execute(document, edgeStep.Id, filter.Output);
         if (edge.Result.Status != ResultStatus.Pass || edge.Output is null) throw new InvalidDataException($"Runner upstream Edge failed: {edge.Result.Message}");

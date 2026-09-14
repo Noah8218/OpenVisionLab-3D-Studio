@@ -24,7 +24,7 @@
         </Grid.RowDefinitions>
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
                                   SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Subtitle, Korean='XYZ 어파인 적용 툴 랩', English='Apply XYZ Affine Tool Lab'}"
-                                  StatusText="A1 Published | A2 Cloud" />
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Status, Korean='A1 게시됨 | A2 클라우드', English='A1 Published | A2 Cloud'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
@@ -39,11 +39,11 @@
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewPointCloud, Korean='포인트 클라우드 미리보기', English='Preview point cloud'}" Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="Verify the raw C3D once and apply the current Published AffineTransform3D without re-gridding" AutomationProperties.Name="Preview Apply XYZ Affine" />
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewTip, Korean='raw C3D를 한 번 검증하고 현재 게시된 AffineTransform3D를 재그리드 없이 적용합니다.', English='Verify the raw C3D once and apply the current Published AffineTransform3D without re-gridding'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewAction, Korean='XYZ 어파인 적용 미리보기', English='Preview Apply XYZ Affine'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshViews, Korean='보기 새로고침', English='Refresh views'}" Icon="{ui:SymbolIcon ArrowSync24}"
-                               Click="RefreshViewsButton_Click" ToolTip="Reload the two viewers without calculation" AutomationProperties.Name="Refresh Apply XYZ Affine views" />
+                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ShowInputTip, Korean='계산 없이 두 Viewer를 새로 고칩니다.', English='Reload the two viewers without calculation'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ShowInputAction, Korean='XYZ 어파인 적용 보기 새로 고침', English='Refresh Apply XYZ Affine views'}" />
                     <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishPointCloud, Korean='포인트 클라우드 게시', English='Publish point cloud'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
-                               Command="{Binding PublishSelectedStepCommand}" ToolTip="Publish the exact current transformed point-cloud Preview without rerunning" AutomationProperties.Name="Publish Apply XYZ Affine output" />
+                               Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PublishTip, Korean='다시 실행하지 않고 현재 변환 포인트 클라우드 미리보기를 그대로 게시합니다.', English='Publish the exact current transformed point-cloud Preview without rerunning'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PublishAction, Korean='XYZ 어파인 적용 출력 게시', English='Publish Apply XYZ Affine output'}" />
                 </WrapPanel>
             </Grid>
         </Border>

@@ -6,8 +6,9 @@ using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 namespace OpenVisionLab.ThreeD.Shell.Dialogs;
 
 /// <summary>
-/// Owns only recipe file selection dialogs. Recipe state, validation, source
-/// loading, Preview, Publish, and Run remain with their existing owners.
+/// Owns recipe file and first-recipe folder selection dialogs. Recipe state,
+/// validation, source loading, Preview, Publish, and Run remain with their
+/// existing owners.
 /// </summary>
 internal sealed class RecipeFileDialogService
 {
@@ -16,6 +17,27 @@ internal sealed class RecipeFileDialogService
     public RecipeFileDialogService(Func<Window> getOwner)
     {
         this.getOwner = getOwner;
+    }
+
+    public bool TrySelectFirstRecipeFolderPath(string currentPath, out string path)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = DialogText(
+                "ThreeD.FileDialog.FirstRecipeFolder.Title",
+                "새 레시피를 저장할 폴더 선택",
+                "Select Folder for New Recipe"),
+            Multiselect = false,
+            InitialDirectory = Directory.Exists(currentPath) ? currentPath : null
+        };
+        if (dialog.ShowDialog(getOwner()) != true)
+        {
+            path = string.Empty;
+            return false;
+        }
+
+        path = dialog.FolderName;
+        return true;
     }
 
     public bool TrySelectSavePath(string? currentPath, bool forceDialog, out string path)

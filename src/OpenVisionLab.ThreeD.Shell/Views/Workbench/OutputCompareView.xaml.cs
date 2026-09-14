@@ -163,7 +163,7 @@ public partial class OutputCompareView : UserControl, IDisposable
             viewer.ShowC3DWorkbenchResult(candidate.C3DPath, $"{candidate.DisplayName} | {candidate.State}");
         }
 
-        viewer.ViewModel.HudDetailsVisible = false;
+        viewer.TrySetHudDetailsVisible(false);
         loadedPath = candidate.C3DPath;
     }
 

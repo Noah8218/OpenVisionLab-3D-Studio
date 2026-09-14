@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
@@ -71,7 +72,7 @@ internal static class ToolRecipeLabeledValidationRunnerExecution
             Directory.CreateDirectory(
                 Path.GetDirectoryName(fullReportPath)
                 ?? Environment.CurrentDirectory);
-            File.WriteAllText(
+            WriteTextAtomically(
                 fullReportPath,
                 JsonSerializer.Serialize(
                     report,
@@ -99,6 +100,41 @@ internal static class ToolRecipeLabeledValidationRunnerExecution
             Console.Error.WriteLine(
                 $"Labeled Validation Runner failed: {exception.Message}");
             return 1;
+        }
+    }
+
+    private static void WriteTextAtomically(string path, string text)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       4096,
+                       leaveOpen: true))
+            {
+                writer.Write(text);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

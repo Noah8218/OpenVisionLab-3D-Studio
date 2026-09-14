@@ -46,7 +46,7 @@ internal static class ShellEvidenceTextParser
         var path = recipeLine is null ? null : ExtractTaggedValue(recipeLine.Split('|'), "path=");
         return string.IsNullOrWhiteSpace(path)
             ? Path.Combine(root, "recipes", "c3d-height-deviation.recipe.json")
-            : ResolvePath(root, path, path);
+            : ShellEvidencePathResolver.ResolvePath(root, path, path);
     }
 
     public static string ExtractSourceLoadStatus(string[] reportLines) =>
@@ -122,15 +122,8 @@ internal static class ShellEvidenceTextParser
 
     public static string FormatScreenshotTarget(string root, string? screenshotPath)
     {
-        if (string.IsNullOrWhiteSpace(screenshotPath))
-        {
-            return "(not requested)";
-        }
-
-        var path = Path.IsPathRooted(screenshotPath)
-            ? screenshotPath
-            : Path.Combine(root, screenshotPath);
-        return Path.GetRelativePath(root, path);
+        var path = ShellEvidencePathResolver.ResolveOptionalPath(root, screenshotPath);
+        return path is null ? "(not requested)" : Path.GetRelativePath(root, path);
     }
 
     public static string FormatRunTime(string reportPath, string contractPath)
@@ -306,17 +299,6 @@ internal static class ShellEvidenceTextParser
             ? metric.Value
             : $"{metric.Value} {metric.Unit}";
 
-    private static string ResolvePath(string root, string requestedPath, string fallbackPath)
-    {
-        if (string.IsNullOrWhiteSpace(requestedPath))
-        {
-            return fallbackPath;
-        }
-
-        return Path.IsPathRooted(requestedPath)
-            ? requestedPath
-            : Path.Combine(root, requestedPath);
-    }
 }
 
 internal sealed record ToolComparisonEvidence(string ToolName, string Status, string KeyMetricSummary)

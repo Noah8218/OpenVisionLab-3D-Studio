@@ -60,18 +60,18 @@
                     <ui:Button Margin="0,0,6,0" Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
-                               ToolTip="Explicitly validate the four current Published CornerAnchors and reference tetrahedron"
-                               AutomationProperties.Name="Preview Landmark Correspondence" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.PreviewTip, Korean='현재 게시된 CornerAnchor 4개와 기준 사면체를 명시적으로 검증합니다.', English='Explicitly validate the four current Published CornerAnchors and reference tetrahedron'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.PreviewAction, Korean='랜드마크 대응 미리보기', English='Preview Landmark Correspondence'}" />
                     <ui:Button Margin="0,0,6,0" Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon ArrowSync24}"
                                Click="RefreshViewsButton_Click"
-                               ToolTip="Refresh source-anchor and reference-coordinate evidence without running a tool"
-                               AutomationProperties.Name="Refresh Landmark Correspondence views" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ShowInputTip, Korean='도구를 실행하지 않고 원본 앵커와 기준 좌표 증거를 새로 고칩니다.', English='Refresh source-anchor and reference-coordinate evidence without running a tool'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ShowInputAction, Korean='랜드마크 대응 보기 새로 고침', English='Refresh Landmark Correspondence views'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="Publish the current correspondence Preview without calculating an affine transform"
-                               AutomationProperties.Name="Publish Landmark Correspondence output" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.PublishTip, Korean='어파인 변환을 계산하지 않고 현재 대응 미리보기를 게시합니다.', English='Publish the current correspondence Preview without calculating an affine transform'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.PublishAction, Korean='랜드마크 대응 출력 게시', English='Publish Landmark Correspondence output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -111,16 +111,16 @@
                     <Grid Grid.Row="1" Margin="14">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <UniformGrid Columns="2" Margin="0,0,0,8">
-                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.ReferenceFrame, Korean='기준 프레임', English='Reference frame'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceFrameId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Named reference coordinate frame" /></StackPanel>
-                            <StackPanel><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Unit, Korean='단위', English='Unit'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceUnit, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate unit" /></StackPanel>
+                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.ReferenceFrame, Korean='기준 프레임', English='Reference frame'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceFrameId, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ReferenceFrameTip, Korean='기준 좌표계의 이름을 입력합니다.', English='Named reference coordinate frame'}" /></StackPanel>
+                            <StackPanel><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Unit, Korean='단위', English='Unit'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceUnit, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.UnitTip, Korean='기준 좌표의 측정 단위를 입력합니다.', English='Reference-coordinate unit'}" /></StackPanel>
                         </UniformGrid>
                         <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,8">
-                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Provenance, Korean='출처', English='Provenance'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceProvenance, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference coordinate provenance" /></StackPanel>
-                            <StackPanel><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Revision, Korean='리비전', English='Revision'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate revision" /></StackPanel>
+                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Provenance, Korean='출처', English='Provenance'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceProvenance, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ProvenanceTip, Korean='기준 좌표의 생성 출처를 입력합니다.', English='Reference coordinate provenance'}" /></StackPanel>
+                            <StackPanel><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Revision, Korean='리비전', English='Revision'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.RevisionTip, Korean='기준 좌표의 리비전 식별자를 입력합니다.', English='Reference-coordinate revision'}" /></StackPanel>
                         </UniformGrid>
                         <StackPanel Grid.Row="2" Margin="0,0,0,10">
                             <TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.MinimumTetrahedronVolume, Korean='최소 정규화 사면체 체적', English='Minimum normalized tetrahedron volume'}" />
-                            <TextBox Margin="0,4,0,0" Width="180" HorizontalAlignment="Left" Text="{Binding CorrespondenceMinimumNormalizedTetrahedronVolume, UpdateSourceTrigger=PropertyChanged}" ToolTip="Strictly between 0 and 1; source and reference must both exceed it" />
+                            <TextBox Margin="0,4,0,0" Width="180" HorizontalAlignment="Left" Text="{Binding CorrespondenceMinimumNormalizedTetrahedronVolume, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.MinimumVolumeTip, Korean='0과 1 사이의 값이며 소스와 기준 모두 이 값을 초과해야 합니다.', English='Strictly between 0 and 1; source and reference must both exceed it'}" />
                         </StackPanel>
                         <Border Grid.Row="3" Padding="10" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
                             <Grid>

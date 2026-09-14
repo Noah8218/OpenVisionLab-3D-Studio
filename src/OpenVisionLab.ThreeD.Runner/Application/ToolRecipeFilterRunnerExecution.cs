@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -22,7 +23,7 @@ internal static class ToolRecipeFilterRunnerExecution
             }
 
             var fullOutputPath = Path.GetFullPath(outputC3DPath);
-            evaluation.Output.SaveC3D(fullOutputPath);
+            SaveC3DAtomically(evaluation.Output, fullOutputPath);
             var report = new
             {
                 schemaVersion = "1.0",
@@ -66,7 +67,9 @@ internal static class ToolRecipeFilterRunnerExecution
             };
             var fullReportPath = Path.GetFullPath(reportPath);
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-            File.WriteAllText(fullReportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+            WriteTextAtomically(
+                fullReportPath,
+                JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"Filter output: {fullOutputPath}");
             Console.WriteLine($"Filter SHA-256: {evaluation.Output.ContentSha256}");
             return 0;
@@ -75,6 +78,59 @@ internal static class ToolRecipeFilterRunnerExecution
         {
             Console.Error.WriteLine(exception.Message);
             return 5;
+        }
+    }
+
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            output.SaveC3D(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static void WriteTextAtomically(string path, string content)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       4096,
+                       leaveOpen: true))
+            {
+                writer.Write(content);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -23,6 +24,7 @@ internal static class C3DHeightMapNormalPreparationGoldenVerification
                 Check("missing-neighbor-is-unavailable-with-warning", VerifyMissingNeighbor),
                 Check("reversed-expected-normal-fails-validation", VerifyReversedValidation),
                 Check("runner-replay-and-direct-parity", () => VerifyRunnerParity(fixtureDirectory)),
+                Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(fixtureDirectory)),
                 Check("invalid-input-and-cancellation-fail-closed", VerifyGuardsAndCancellation)
             };
             var passed = cases.Count(item => item.Passed);
@@ -34,7 +36,7 @@ internal static class C3DHeightMapNormalPreparationGoldenVerification
             };
             lines.AddRange(cases.Select(item =>
                 $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            Directory.CreateDirectory(reportDirectory);
             File.WriteAllLines(fullReportPath, lines);
             Console.WriteLine($"C3D Height-Map Normal Preparation golden verification: {status} ({passed}/{cases.Length})");
             return passed == cases.Length ? 0 : 5;
@@ -209,6 +211,137 @@ internal static class C3DHeightMapNormalPreparationGoldenVerification
             && File.ReadAllText(invalidReportPath).Contains("byte identity", StringComparison.OrdinalIgnoreCase);
         return (parity && invalidRejected, $"runnerExit={runnerExitCode};invalidExit={invalidExitCode};directEvidence={directHash};runnerEvidence={runnerHash};directOutput={directOutputHash};runnerOutput={runnerOutputHash};invalidRejected={invalidRejected}");
     }
+
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string fixtureDirectory)
+    {
+        var directory = Path.Combine(fixtureDirectory, $"atomic-report-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var source = CreatePlaneFixture("source.normal.atomic");
+            var validation = new C3DHeightMapNormalValidationOptions(
+                PlaneNormalX,
+                PlaneNormalY,
+                PlaneNormalZ);
+            var direct = C3DHeightMapNormalPreparationRule.Evaluate(
+                new C3DHeightMapNormalPreparationInput(
+                    "step.normal.atomic",
+                    source,
+                    "derived.normal.atomic",
+                    validation));
+            if (direct.Evidence is null || direct.Result.Status != ResultStatus.Pass)
+            {
+                return (false, $"direct={direct.Result.Status}:{direct.Result.Message}");
+            }
+
+            var specificationPath = Path.Combine(directory, "normal-preparation-spec.json");
+            var reportOutputPath = Path.Combine(directory, "normal-preparation-report.json");
+            var specification = new
+            {
+                stepId = "step.normal.atomic",
+                outputEntityId = "derived.normal.atomic",
+                source = new
+                {
+                    entityId = source.EntityId,
+                    width = source.Width,
+                    height = source.Height,
+                    unit = source.Unit,
+                    frameId = source.FrameId,
+                    byteLength = source.ByteLength,
+                    contentSha256 = source.ContentSha256,
+                    rootSourceSha256 = source.RootSourceSha256,
+                    values = source.Values.ToArray()
+                },
+                validation = new
+                {
+                    expectedNormalX = PlaneNormalX,
+                    expectedNormalY = PlaneNormalY,
+                    expectedNormalZ = PlaneNormalZ,
+                    minimumAlignmentCosine = 0.999
+                }
+            };
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            var firstExit = C3DHeightMapNormalPreparationRunnerExecution.Run(
+                specificationPath,
+                reportOutputPath);
+            var firstBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            using var firstDocument = File.Exists(reportOutputPath)
+                ? JsonDocument.Parse(firstBytes)
+                : null;
+            var firstEvidenceHash = firstDocument?.RootElement.GetProperty("evidence").GetProperty("contentSha256").GetString();
+            var firstOutputHash = firstDocument?.RootElement.GetProperty("evidence").GetProperty("outputContentSha256").GetString();
+
+            File.WriteAllText(reportOutputPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = C3DHeightMapNormalPreparationRunnerExecution.Run(
+                specificationPath,
+                reportOutputPath);
+            var overwriteBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            using var overwriteDocument = File.Exists(reportOutputPath)
+                ? JsonDocument.Parse(overwriteBytes)
+                : null;
+            var overwriteEvidenceHash = overwriteDocument?.RootElement.GetProperty("evidence").GetProperty("contentSha256").GetString();
+            var overwriteOutputHash = overwriteDocument?.RootElement.GetProperty("evidence").GetProperty("outputContentSha256").GetString();
+
+            var lockedPath = Path.Combine(directory, "locked.json");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = C3DHeightMapNormalPreparationRunnerExecution.Run(specificationPath, lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = C3DHeightMapNormalPreparationRunnerExecution.Run(
+                specificationPath,
+                Path.Combine(invalidParentMarker, "report.json"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.json.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var sentinelAbsent = !Encoding.UTF8.GetString(overwriteBytes).Contains("pre-existing-output", StringComparison.Ordinal);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && overwriteBytes.Length > 0
+                && firstEvidenceHash == direct.Evidence.ContentSha256
+                && firstOutputHash == direct.Evidence.OutputContentSha256
+                && overwriteEvidenceHash == firstEvidenceHash
+                && overwriteOutputHash == firstOutputHash
+                && noBom
+                && sentinelAbsent
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};evidence={firstEvidenceHash}/{overwriteEvidenceHash};output={firstOutputHash}/{overwriteOutputHash};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static (bool Passed, string Evidence) VerifyGuardsAndCancellation()
     {

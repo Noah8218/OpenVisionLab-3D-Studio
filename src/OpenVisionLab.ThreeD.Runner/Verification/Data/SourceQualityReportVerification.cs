@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -55,6 +56,100 @@ internal static class SourceQualityReportVerification
 
         var cases = new[]
         {
+            Check("atomic-json-output", () =>
+            {
+                var sourcePath = Path.Combine(artifactDirectory, "atomic-source.c3d");
+                var outputPath = Path.Combine(artifactDirectory, "atomic-source-quality.json");
+                var lockedPath = Path.Combine(artifactDirectory, "atomic-locked.json");
+                var invalidParentMarker = Path.Combine(artifactDirectory, "atomic-parent-file");
+                var sourceValues = new float[]
+                {
+                    1f, 2f, 0f, 4f, float.NaN, 6f,
+                    7f, 8f, 9f, 10f, 11f, 12f
+                };
+                try
+                {
+                    File.WriteAllBytes(
+                        sourcePath,
+                        CreateC3DBytes(4, 3, sourceValues));
+                    var firstExit = SourceQualityReportExecution.Run(
+                        sourcePath,
+                        "source.atomic",
+                        "raw-height",
+                        "frame.c3d-grid-index",
+                        outputPath);
+                    var firstBytes = File.ReadAllBytes(outputPath);
+
+                    File.WriteAllText(outputPath, "pre-existing-output", new UTF8Encoding(false));
+                    var overwriteExit = SourceQualityReportExecution.Run(
+                        sourcePath,
+                        "source.atomic",
+                        "raw-height",
+                        "frame.c3d-grid-index",
+                        outputPath);
+                    var overwriteBytes = File.ReadAllBytes(outputPath);
+
+                    var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+                    File.WriteAllBytes(lockedPath, lockedSentinel);
+                    int lockedExit;
+                    using (var lockStream = new FileStream(
+                               lockedPath,
+                               FileMode.Open,
+                               FileAccess.ReadWrite,
+                               FileShare.None))
+                    {
+                        lockedExit = SourceQualityReportExecution.Run(
+                            sourcePath,
+                            "source.atomic",
+                            "raw-height",
+                            "frame.c3d-grid-index",
+                            lockedPath);
+                    }
+                    var lockedPreserved = File.ReadAllBytes(lockedPath)
+                        .SequenceEqual(lockedSentinel);
+
+                    File.WriteAllText(
+                        invalidParentMarker,
+                        "parent-file",
+                        new UTF8Encoding(false));
+                    var invalidParentExit = SourceQualityReportExecution.Run(
+                        sourcePath,
+                        "source.atomic",
+                        "raw-height",
+                        "frame.c3d-grid-index",
+                        Path.Combine(invalidParentMarker, "report.json"));
+                    var invalidParentPreserved = File.ReadAllText(invalidParentMarker)
+                        == "parent-file";
+                    var temporaryFilesRemain = Directory.GetFiles(
+                            artifactDirectory,
+                            "*.json.tmp.*")
+                        .Length != 0;
+
+                    using var document = JsonDocument.Parse(overwriteBytes);
+                    return firstExit == 0
+                        && overwriteExit == 0
+                        && firstBytes.SequenceEqual(overwriteBytes)
+                        && document.RootElement.TryGetProperty("schemaVersion", out _)
+                        && lockedExit != 0
+                        && lockedPreserved
+                        && invalidParentExit != 0
+                        && invalidParentPreserved
+                        && !temporaryFilesRemain;
+                }
+                finally
+                {
+                    foreach (var path in new[]
+                    {
+                        sourcePath,
+                        outputPath,
+                        lockedPath,
+                        invalidParentMarker
+                    })
+                    {
+                        File.Delete(path);
+                    }
+                }
+            }, "successful overwrite is byte-stable; locked and invalid-parent failures preserve output and clean sibling temporary files"),
             Check("schema-and-source-identity", () =>
                 quality.SchemaVersion == SourceQualityReport.CurrentSchemaVersion
                 && quality.Source.EntityId == source.EntityId

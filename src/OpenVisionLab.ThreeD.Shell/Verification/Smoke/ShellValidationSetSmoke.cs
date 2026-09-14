@@ -8,10 +8,11 @@ namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 internal sealed record ShellValidationSetSmokeState(
     bool RunRequested,
     Task? ThresholdSelectionTask,
-    Task? SectionSelectionTask)
+    Task? SectionSelectionTask,
+    Task? ComparisonTask)
 {
     public static ShellValidationSetSmokeState Empty { get; } =
-        new(false, null, null);
+        new(false, null, null, null);
 }
 
 internal static class ShellValidationSetSmoke
@@ -103,6 +104,7 @@ internal static class ShellValidationSetSmoke
 
         var runRequested = commandLine.HasFlag("--smoke-validation-set-run");
         Task? thresholdSelectionTask = null;
+        Task? comparisonTask = null;
         if (runRequested)
         {
             workbench.RunValidationSetCommand.Execute(null);
@@ -120,7 +122,7 @@ internal static class ShellValidationSetSmoke
             }
             if (commandLine.HasFlag("--smoke-validation-set-open-compare"))
             {
-                _ = OpenValidationSetComparisonAsync(workbench);
+                comparisonTask = OpenValidationSetComparisonAsync(workbench);
             }
         }
 
@@ -145,7 +147,8 @@ internal static class ShellValidationSetSmoke
         return new(
             runRequested,
             thresholdSelectionTask,
-            sectionSelectionTask);
+            sectionSelectionTask,
+            comparisonTask);
     }
 
     private static async Task SelectValidationSectionAsync(

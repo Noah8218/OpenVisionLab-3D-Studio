@@ -51,6 +51,10 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
     private readonly RelayCommand applyValidationThresholdCandidateCommand;
     private readonly RelayCommand revalidateValidationThresholdCorrectionCommand;
     private readonly RelayCommand replayValidationThresholdHeldOutCommand;
+    private Task? commandRevalidateTask;
+    private Task? commandRevalidateObservationTask;
+    private Task? commandReplayHeldOutTask;
+    private Task? commandReplayHeldOutObservationTask;
     private string validationSetProgressText = string.Empty;
     private double validationSetProgress;
     private ToolRecipeLabeledEvidenceReport? validationEvidenceReport;
@@ -151,7 +155,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                  && IsValidationThresholdReviewActive
                  && !IsValidationThresholdCandidateApplied);
         revalidateValidationThresholdCorrectionCommand = new RelayCommand(
-            _ => _ = RevalidateAsync(),
+            _ => StartCommandRevalidate(),
             _ => CanInteract
                  && (IsValidationThresholdManualCorrectionCommitted
                      || RequiresValidationThresholdDevelopmentReplay)
@@ -161,7 +165,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                      || !hasPendingStepParameterChanges())
                  && validationThresholdBeforeDevelopmentResult is not null);
         replayValidationThresholdHeldOutCommand = new RelayCommand(
-            _ => _ = ReplayHeldOutAsync(),
+            _ => StartCommandReplayHeldOut(),
             _ => CanInteract
                  && IsValidationThresholdCandidateApplied
                  && ((!IsValidationThresholdManualCorrectionCommitted
@@ -418,7 +422,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
 
     /// <summary>
     /// Releases threshold evidence and workflow state owned by this owner.
-    /// The Workbench disposes the shared execution owner separately after this
+    /// The Validation Set workspace disposes the shared execution owner after this
     /// state boundary has stopped accepting continuations.
     /// </summary>
     public void Dispose()
@@ -449,6 +453,10 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
         validationThresholdParameterChanges.Clear();
         validationThresholdHeldOutSamples.Clear();
         validationThresholdDevelopmentSamples.Clear();
+        Volatile.Write(ref commandRevalidateTask, null);
+        Volatile.Write(ref commandRevalidateObservationTask, null);
+        Volatile.Write(ref commandReplayHeldOutTask, null);
+        Volatile.Write(ref commandReplayHeldOutObservationTask, null);
         PropertyChanged = null;
     }
 
@@ -1308,6 +1316,114 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
         OnPropertyChanged(nameof(HasValidationThresholdHeldOutEvidence));
         OnPropertyChanged(nameof(HasValidationThresholdDevelopmentEvidence));
         RefreshCommandStates();
+    }
+
+    private void StartCommandRevalidate()
+    {
+        if (IsDisposed
+            || Volatile.Read(ref commandRevalidateTask) is { IsCompleted: false })
+        {
+            return;
+        }
+
+        Task task;
+        try
+        {
+            task = RevalidateAsync();
+        }
+        catch (Exception exception)
+        {
+            ReportCommandFailure("development revalidation", exception);
+            return;
+        }
+
+        Volatile.Write(ref commandRevalidateTask, task);
+        Volatile.Write(
+            ref commandRevalidateObservationTask,
+            ObserveCommandRevalidateAsync(task));
+    }
+
+    private async Task ObserveCommandRevalidateAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException)
+        {
+            // RevalidateAsync consumes expected cancellation; keep this
+            // observer defensive for direct future execution changes.
+        }
+        catch (Exception exception)
+        {
+            ReportCommandFailure("development revalidation", exception);
+        }
+        finally
+        {
+            if (ReferenceEquals(Volatile.Read(ref commandRevalidateTask), task))
+            {
+                Volatile.Write(ref commandRevalidateTask, null);
+                Volatile.Write(ref commandRevalidateObservationTask, null);
+            }
+        }
+    }
+
+    private void StartCommandReplayHeldOut()
+    {
+        if (IsDisposed
+            || Volatile.Read(ref commandReplayHeldOutTask) is { IsCompleted: false })
+        {
+            return;
+        }
+
+        Task task;
+        try
+        {
+            task = ReplayHeldOutAsync();
+        }
+        catch (Exception exception)
+        {
+            ReportCommandFailure("Held-out replay", exception);
+            return;
+        }
+
+        Volatile.Write(ref commandReplayHeldOutTask, task);
+        Volatile.Write(
+            ref commandReplayHeldOutObservationTask,
+            ObserveCommandReplayHeldOutAsync(task));
+    }
+
+    private async Task ObserveCommandReplayHeldOutAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException)
+        {
+            // ReplayHeldOutAsync consumes expected cancellation; keep this
+            // observer defensive for direct future execution changes.
+        }
+        catch (Exception exception)
+        {
+            ReportCommandFailure("Held-out replay", exception);
+        }
+        finally
+        {
+            if (ReferenceEquals(Volatile.Read(ref commandReplayHeldOutTask), task))
+            {
+                Volatile.Write(ref commandReplayHeldOutTask, null);
+                Volatile.Write(ref commandReplayHeldOutObservationTask, null);
+            }
+        }
+    }
+
+    private void ReportCommandFailure(string operation, Exception exception)
+    {
+        if (!IsDisposed)
+        {
+            appendLog("Error", $"Validation Threshold {operation} failed: {exception.Message}");
+        }
     }
 
     private void AddDevelopmentRows(

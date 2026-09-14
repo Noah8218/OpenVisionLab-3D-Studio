@@ -64,7 +64,9 @@ public static class ToolRecipeSelectionContract
         One("completeness-grid", ToolRecipeSelectionRoles.InspectionRegion, ToolRecipeSelectionKinds.GridRectangle, 2)
     ];
 
-    public static IReadOnlyList<ToolRecipeSelectionRouteRequirement> Declarations => Requirements;
+    private static readonly IReadOnlyList<ToolRecipeSelectionRouteRequirement> ReadOnlyRequirements = Array.AsReadOnly(Requirements);
+
+    public static IReadOnlyList<ToolRecipeSelectionRouteRequirement> Declarations => ReadOnlyRequirements;
 
     public static bool TryGetRequirement(
         string? toolId,

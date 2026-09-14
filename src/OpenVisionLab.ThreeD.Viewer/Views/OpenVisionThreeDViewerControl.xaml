@@ -520,15 +520,15 @@
                                       AutomationProperties.AutomationId="RoiOverlayYPositionMenu"
                                       AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 Y 위치 · 보기 전용', English='ROI overlay Y position · view only'}">
                                 <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='아래로', English='Lower'}"
-                                          Click="DecreaseTeachingRoiDisplayHeight_Click"
+                                          Command="{Binding DecreaseTeachingRoiDisplayHeightCommand}"
                                           AutomationProperties.AutomationId="TeachingRoiDisplayHeightDecrease"
                                           AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='ROI 오버레이 Y 위치 낮추기', English='Lower ROI overlay Y position'}" />
                                 <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightIncrease, Korean='위로', English='Raise'}"
-                                          Click="IncreaseTeachingRoiDisplayHeight_Click"
+                                          Command="{Binding IncreaseTeachingRoiDisplayHeightCommand}"
                                           AutomationProperties.AutomationId="TeachingRoiDisplayHeightIncrease"
                                           AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightIncrease, Korean='ROI 오버레이 Y 위치 올리기', English='Raise ROI overlay Y position'}" />
                                 <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightReset, Korean='표면 위치로 초기화', English='Reset to surface'}"
-                                          Click="ResetTeachingRoiDisplayHeight_Click"
+                                          Command="{Binding ResetTeachingRoiDisplayHeightCommand}"
                                           AutomationProperties.AutomationId="TeachingRoiDisplayHeightReset"
                                           AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightReset, Korean='ROI 오버레이를 표면 위치로', English='Return ROI overlay to surface position'}" />
                             </MenuItem>
@@ -582,59 +582,59 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="12">
-                <TextBlock FontSize="15" FontWeight="SemiBold" Text="Entities" />
+                <TextBlock FontSize="15" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.Entities, Korean='엔티티', English='Entities'}" />
                 <CheckBox Margin="0,12,0,0"
-                          Content="Generated Unit Cube"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.GeneratedUnitCube, Korean='생성된 단위 큐브', English='Generated Unit Cube'}"
                           IsChecked="{Binding CubeVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
-                          Content="Generated Point Cloud"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.GeneratedPointCloud, Korean='생성된 포인트 클라우드', English='Generated Point Cloud'}"
                           IsChecked="{Binding PointCloudVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
-                          Content="Thickness Coupon v1"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.ThicknessCouponV1, Korean='두께 쿠폰 v1', English='Thickness Coupon v1'}"
                           IsChecked="{Binding C3DSampleVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
-                          Content="{Binding ImportedMeshLayerLabel}"
+                          Content="{Binding ImportedMeshLayerLabel, Converter={StaticResource ViewerRuntimeTextConverter}}"
                           IsChecked="{Binding GlbSampleVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
-                          Content="Public LAZ/LAS Point Cloud"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.PublicLazLasPointCloud, Korean='공개 LAZ/LAS 포인트 클라우드', English='Public LAZ/LAS Point Cloud'}"
                           IsChecked="{Binding LazSampleVisible, Mode=TwoWay}" />
                 <Separator Margin="0,14,0,10" />
                 <StackPanel DataContext="{Binding NominalActual}">
                     <TextBlock FontSize="14"
                                FontWeight="SemiBold"
-                               Text="Nominal / Actual" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.NominalActual, Korean='명목 / 실제', English='Nominal / Actual'}" />
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding ActualSourceSummary, FallbackValue='Actual: not loaded'}" />
+                               Text="{Binding ActualSourceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.ActualNotLoaded, Korean='실제 데이터가 로드되지 않음', English='Actual: not loaded'}}" />
                     <TextBlock Margin="0,3,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding NominalSourceSummary, FallbackValue='Nominal: not loaded'}" />
-                    <TextBlock Margin="0,3,0,0"
-                               Foreground="#6b7280"
-                               TextWrapping="Wrap"
-                               Text="{Binding QuerySourceSummary, FallbackValue='Validation query: not loaded'}" />
+                               Text="{Binding NominalSourceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.NominalNotLoaded, Korean='기준 데이터가 로드되지 않음', English='Nominal: not loaded'}}" />
                     <TextBlock Margin="0,3,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding FrameSummary, FallbackValue='Frame: not set | Units: not set'}" />
+                               Text="{Binding QuerySourceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.ValidationQueryNotLoaded, Korean='검증 쿼리가 로드되지 않음', English='Validation query: not loaded'}}" />
+                    <TextBlock Margin="0,3,0,0"
+                               Foreground="#6b7280"
+                               TextWrapping="Wrap"
+                               Text="{Binding FrameSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.FrameNotSet, Korean='프레임: 미설정 | 단위: 미설정', English='Frame: not set | Units: not set'}}" />
                     <WrapPanel Margin="0,7,0,0">
                         <CheckBox Margin="0,0,12,0"
-                                  Content="Actual"
+                                  Content="{localization:ViewerText Key=ThreeD.Viewer.Actual, Korean='실제', English='Actual'}"
                                   IsChecked="{Binding ActualVisible, Mode=TwoWay, FallbackValue=False}"
                                   IsEnabled="{Binding InputsReady, FallbackValue=False}" />
-                        <CheckBox Content="Nominal"
+                        <CheckBox Content="{localization:ViewerText Key=ThreeD.Viewer.Nominal, Korean='명목', English='Nominal'}"
                                   IsChecked="{Binding NominalVisible, Mode=TwoWay, FallbackValue=False}"
                                   IsEnabled="{Binding InputsReady, FallbackValue=False}" />
                     </WrapPanel>
                 </StackPanel>
                 <Separator Margin="0,14,0,10" />
-                <TextBlock FontSize="15" FontWeight="SemiBold" Text="Display" />
-                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Geometry Style" />
+                <TextBlock FontSize="15" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.Display, Korean='표시', English='Display'}" />
+                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.GeometryStyle, Korean='형상 스타일', English='Geometry Style'}" />
                 <ComboBox ItemsSource="{Binding Display.AvailableGeometryStyles}"
                           SelectedItem="{Binding Display.SelectedGeometryStyle, Mode=TwoWay}"
                           IsEnabled="{Binding Display.CanSelectGeometryStyle, FallbackValue=False}">
                 </ComboBox>
-                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Color Map" />
+                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ColorMap, Korean='색상 맵', English='Color Map'}" />
                 <ComboBox ItemsSource="{Binding Display.AvailableColorMaps}"
                           SelectedItem="{Binding Display.SelectedColorMap, Mode=TwoWay}"
                           IsEnabled="{Binding Display.CanSelectColorMap}" />
@@ -661,30 +661,30 @@
                            Foreground="#6b7280"
                            TextWrapping="Wrap"
                            Text="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
-                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
+                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PointSize, Korean='포인트 크기', English='Point Size'}" />
                 <Slider Minimum="1"
                         Maximum="6"
                         TickFrequency="0.5"
                         IsSnapToTickEnabled="True"
                         Value="{Binding PointSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Margin="0,2,0,0"
-                           Text="{Binding PointSize, StringFormat=Point size: {0:F1}px}" />
-                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Render Density" />
+                           Text="{Binding PointSize, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=PointSizeLabel}" />
+                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RenderDensity, Korean='렌더 밀도', English='Render Density'}" />
                 <ComboBox ItemsSource="{Binding RenderDensityModes}"
                           SelectedItem="{Binding SelectedRenderDensity, Mode=TwoWay}" />
                 <TextBlock Margin="0,4,0,0"
                            Foreground="#6b7280"
                            TextWrapping="Wrap"
-                           Text="{Binding RenderDensitySummary}" />
+                           Text="{Binding RenderDensitySummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <StackPanel Margin="0,5,0,0"
                             DataContext="{Binding NominalActual}"
                             Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                     <TextBlock Foreground="#374151"
                                TextWrapping="Wrap"
-                               Text="{Binding CurrentDisplaySamplingSummary}" />
+                               Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding NextPreviewSamplingSummary}">
+                               Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="#6b7280" />
@@ -699,21 +699,21 @@
                     </TextBlock>
                 </StackPanel>
                 <CheckBox Margin="0,12,0,0"
-                          Content="Measurement Overlay"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.MeasurementOverlay, Korean='측정 오버레이', English='Measurement Overlay'}"
                           IsChecked="{Binding MeasurementVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
-                          Content="Result Overlay"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.ResultOverlay, Korean='결과 오버레이', English='Result Overlay'}"
                           IsChecked="{Binding ResultOverlayVisible, Mode=TwoWay}" />
                 <Button Margin="0,8,0,0"
-                        Content="Publish Result"
+                        Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}"
                         Command="{Binding PublishResultCommand}" />
                 <Separator Margin="0,16,0,12" />
-                <TextBlock FontSize="15" FontWeight="SemiBold" Text="Selection" />
-                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Mode" />
+                <TextBlock FontSize="15" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.Selection, Korean='선택', English='Selection'}" />
+                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.SelectionMode, Korean='모드', English='Mode'}" />
                 <ComboBox ItemsSource="{Binding SelectionModes}"
                           SelectedItem="{Binding SelectedSelectionMode, Mode=TwoWay}" />
                 <CheckBox Margin="0,12,0,0"
-                          Content="Selection Overlay"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.SelectionOverlay, Korean='선택 오버레이', English='Selection Overlay'}"
                           IsChecked="{Binding SelectionOverlayVisible, Mode=TwoWay}" />
                 <Separator Margin="0,16,0,12" />
                 <TextBlock Foreground="#6b7280"
@@ -731,43 +731,43 @@
                 BorderThickness="1,0,0,0">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="12">
-                <TextBlock FontSize="15" FontWeight="SemiBold" Text="Inspection" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Selected Entity" />
+                <TextBlock FontSize="15" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.Inspection, Korean='검사', English='Inspection'}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.SelectedEntity, Korean='선택한 엔티티', English='Selected Entity'}" />
                 <TextBlock FontWeight="SemiBold"
-                           Text="{Binding SelectedEntity}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Pick Coordinate" />
+                           Text="{Binding SelectedEntity, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PickCoordinate, Korean='픽 좌표', English='Pick Coordinate'}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding PickCoordinate}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Measurement" />
+                           Text="{Binding PickCoordinate, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.Measurement, Korean='측정', English='Measurement'}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding MeasurementSummary}" />
+                           Text="{Binding MeasurementSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <Button Margin="0,8,0,0"
-                        Content="Fit C3D Plane"
+                        Content="{localization:ViewerText Key=ThreeD.Viewer.FitC3DPlane, Korean='C3D 평면 맞춤', English='Fit C3D Plane'}"
                         Command="{Binding FitPlaneCommand}" />
                 <Separator Margin="0,14,0,10" />
                 <StackPanel DataContext="{Binding NominalActual}">
                     <TextBlock FontSize="14"
                                FontWeight="SemiBold"
-                               Text="Surface Deviation" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviation, Korean='표면 편차', English='Surface Deviation'}" />
                     <TextBlock Margin="0,5,0,0"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap"
-                               Text="{Binding StateSummary, FallbackValue='Status: No inputs'}" />
+                               Text="{Binding StateSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviationNoInputs, Korean='상태: 입력 없음', English='Status: No inputs'}}" />
                     <TextBlock Margin="0,3,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding DirectionSummary, FallbackValue='Direction: Actual to Nominal'}" />
+                               Text="{Binding DirectionSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviationDirection, Korean='방향: 실제 → 기준', English='Direction: Actual to Nominal'}}" />
                     <TextBlock Margin="0,3,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding AlignmentSummary, FallbackValue='Alignment: not set'}" />
+                               Text="{Binding AlignmentSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviationAlignmentNotSet, Korean='정렬: 미설정', English='Alignment: not set'}}" />
                     <TextBlock Margin="0,6,0,0"
                                Foreground="#374151"
                                TextWrapping="Wrap"
-                               Text="{Binding CurrentDisplaySamplingSummary}" />
+                               Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding NextPreviewSamplingSummary}">
+                               Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="#6b7280" />
@@ -787,12 +787,12 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Lower tolerance" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LowerTolerance, Korean='하한 허용오차', English='Lower tolerance'}" />
                             <TextBox Text="{Binding LowerTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, FallbackValue='-'}"
                                      IsEnabled="{Binding CanEdit, FallbackValue=False}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Upper tolerance" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.UpperTolerance, Korean='상한 허용오차', English='Upper tolerance'}" />
                             <TextBox Text="{Binding UpperTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, FallbackValue='-'}"
                                      IsEnabled="{Binding CanEdit, FallbackValue=False}" />
                         </StackPanel>
@@ -806,413 +806,413 @@
                                FontSize="11"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding ProgressSummary, FallbackValue='Progress: not started'}" />
+                               Text="{Binding ProgressSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviationProgressNotStarted, Korean='진행: 시작되지 않음', English='Progress: not started'}}" />
                     <WrapPanel Margin="0,8,0,0">
                         <Button Margin="0,0,6,0"
-                                Content="Preview Comparison"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewComparison, Korean='비교 미리보기', English='Preview Comparison'}"
                                 Command="{Binding PreviewCommand}"
                                 IsEnabled="{Binding CanPreview, FallbackValue=False}" />
                         <Button Margin="0,0,6,0"
-                                Content="Cancel"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.Cancel, Korean='취소', English='Cancel'}"
                                 Command="{Binding CancelCommand}"
                                 IsEnabled="{Binding CanCancel, FallbackValue=False}" />
-                        <Button Content="Publish"
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.Publish, Korean='발행', English='Publish'}"
                                 Command="{Binding PublishCommand}"
                                 IsEnabled="{Binding CanPublish, FallbackValue=False}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding ResultSummary, FallbackValue='No comparison preview.'}" />
+                               Text="{Binding ResultSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviationNoPreview, Korean='비교 미리보기 없음.', English='No comparison preview.'}}" />
                     <TextBlock Margin="0,10,0,0"
                                Foreground="#6b7280"
-                               Text="Selected Deviation Point" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.SelectedDeviationPoint, Korean='선택한 편차 지점', English='Selected Deviation Point'}" />
                     <TextBlock Margin="0,3,0,0"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap"
-                               Text="{Binding SelectedDeviationSummary, FallbackValue='Selected point: none'}" />
+                               Text="{Binding SelectedDeviationSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.SurfaceDeviationSelectedPointNone, Korean='선택 지점: 없음', English='Selected point: none'}}" />
                     <TextBlock Margin="0,3,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
                                Visibility="{Binding HasSelectedDeviation, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}"
-                               Text="{Binding SelectedDeviationDetails}" />
+                               Text="{Binding SelectedDeviationDetails, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
                 <StackPanel Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                     <TextBlock Margin="0,12,0,4"
                                FontWeight="SemiBold"
-                               Text="Thickness ROI Teaching" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.ThicknessRoiTeaching, Korean='두께 ROI 티칭', English='Thickness ROI Teaching'}" />
                     <WrapPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ThicknessRoiRow, Korean='행', English='Row'}" />
                             <TextBox Text="{Binding ThicknessRoiRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Column" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ThicknessRoiColumn, Korean='열', English='Column'}" />
                             <TextBox Text="{Binding ThicknessRoiColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Rows" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ThicknessRoiRows, Korean='행 수', English='Rows'}" />
                             <TextBox Text="{Binding ThicknessRoiRowCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Columns" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ThicknessRoiColumns, Korean='열 수', English='Columns'}" />
                             <TextBox Text="{Binding ThicknessRoiColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <StackPanel Width="82" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Lower" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.Lower, Korean='하한', English='Lower'}" />
                             <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="82" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Upper" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.Upper, Korean='상한', English='Upper'}" />
                             <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="82" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Min Samples" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.MinSamples, Korean='최소 샘플 수', English='Min Samples'}" />
                             <TextBox Text="{Binding ThicknessMinimumValidSamples, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <Button Margin="0,0,6,0"
-                                Content="Teach Thickness ROI"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.TeachThicknessRoi, Korean='두께 ROI 티칭', English='Teach Thickness ROI'}"
                                 Command="{Binding TeachThicknessRoiCommand}" />
                         <Button Margin="0,0,6,0"
-                                Content="Preview Thickness"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewThickness, Korean='두께 미리보기', English='Preview Thickness'}"
                                 Command="{Binding PreviewThicknessCommand}" />
-                        <Button Content="Publish Result"
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}"
                                 Command="{Binding PublishResultCommand}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding ThicknessSummary}" />
+                               Text="{Binding ThicknessSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding ThicknessDetails}" />
+                               Text="{Binding ThicknessDetails, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,12,0,4"
                                FontWeight="SemiBold"
-                               Text="Point Pair Dimensions" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairDimensions, Korean='점 쌍 치수', English='Point Pair Dimensions'}" />
                     <WrapPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp D" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairExpectedDistance, Korean='예상 거리', English='Exp D'}" />
                             <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol D" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairDistanceTolerance, Korean='거리 허용오차', English='Tol D'}" />
                             <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp W" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedWidth, Korean='예상 폭', English='Exp W'}" />
                             <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol W" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceWidth, Korean='폭 허용오차', English='Tol W'}" />
                             <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp A" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedAngle, Korean='예상 각도', English='Exp A'}" />
                             <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol A" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceAngle, Korean='각도 허용오차', English='Tol A'}" />
                             <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <Button Margin="0,0,6,0"
-                                Content="Preview Dimensions"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewDimensions, Korean='치수 미리보기', English='Preview Dimensions'}"
                                 Command="{Binding PreviewPointPairDimensionsCommand}" />
-                        <Button Content="Publish Result"
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}"
                                 Command="{Binding PublishResultCommand}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
                                Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding PointPairDimensionsSummary}" />
+                               Text="{Binding PointPairDimensionsSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,12,0,4"
                                FontWeight="SemiBold"
-                               Text="Gap / Flush" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.GapFlush, Korean='갭 / 플러시', English='Gap / Flush'}" />
                     <WrapPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Gap" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedGap, Korean='예상 갭', English='Exp Gap'}" />
                             <TextBox Text="{Binding GapFlushExpectedGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Gap" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceGap, Korean='갭 허용오차', English='Tol Gap'}" />
                             <TextBox Text="{Binding GapFlushGapTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Flush" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedFlush, Korean='예상 플러시', English='Exp Flush'}" />
                             <TextBox Text="{Binding GapFlushExpectedFlush, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Flush" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceFlush, Korean='플러시 허용오차', English='Tol Flush'}" />
                             <TextBox Text="{Binding GapFlushFlushTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <Button Margin="0,0,6,0"
-                                Content="Preview Gap / Flush"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewGapFlush, Korean='갭 / 플러시 미리보기', English='Preview Gap / Flush'}"
                                 Command="{Binding PreviewGapFlushCommand}" />
-                        <Button Content="Publish Result"
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}"
                                 Command="{Binding PublishResultCommand}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
                                Visibility="{Binding GapFlushVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding GapFlushSummary}" />
-                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Volume" />
+                               Text="{Binding GapFlushSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.Volume, Korean='체적', English='Volume'}" />
                     <WrapPanel>
                         <StackPanel Width="94" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Expected Net" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedNet, Korean='예상 순 체적', English='Expected Net'}" />
                             <TextBox Text="{Binding VolumeExpectedNet, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="94" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tolerance" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.VolumeTolerance, Korean='허용오차', English='Tolerance'}" />
                             <TextBox Text="{Binding VolumeTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
-                        <Button Margin="0,0,6,0" Content="Preview Volume" Command="{Binding PreviewVolumeCommand}" />
-                        <Button Content="Publish Result" Command="{Binding PublishResultCommand}" />
+                        <Button Margin="0,0,6,0" Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewVolume, Korean='체적 미리보기', English='Preview Volume'}" Command="{Binding PreviewVolumeCommand}" />
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}" Command="{Binding PublishResultCommand}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
                                Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding VolumeSummary}" />
-                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Cross-section Dimensions" />
+                               Text="{Binding VolumeSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionDimensions, Korean='단면 치수', English='Cross-section Dimensions'}" />
                     <WrapPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionRow, Korean='행', English='Row'}" />
                             <TextBox Text="{Binding CrossSectionRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Start Col" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionStartColumn, Korean='시작 열', English='Start Col'}" />
                             <TextBox Text="{Binding CrossSectionStartColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="End Col" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionEndColumn, Korean='끝 열', English='End Col'}" />
                             <TextBox Text="{Binding CrossSectionEndColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Width" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionExpectedWidth, Korean='예상 폭', English='Exp Width'}" />
                             <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Width" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionWidthTolerance, Korean='폭 허용오차', English='Tol Width'}" />
                             <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Height" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionExpectedHeight, Korean='예상 높이', English='Exp Height'}" />
                             <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Height" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionHeightTolerance, Korean='높이 허용오차', English='Tol Height'}" />
                             <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
-                        <Button Margin="0,0,6,0" Content="Preview Cross-section" Command="{Binding PreviewCrossSectionCommand}" />
-                        <Button Content="Publish Result" Command="{Binding PublishResultCommand}" />
+                        <Button Margin="0,0,6,0" Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewCrossSection, Korean='단면 미리보기', English='Preview Cross-section'}" Command="{Binding PreviewCrossSectionCommand}" />
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}" Command="{Binding PublishResultCommand}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding CrossSectionSummary}" />
+                               Text="{Binding CrossSectionSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,12,0,4"
                                FontWeight="SemiBold"
-                               Text="Reference Plane + Flatness" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.ReferencePlaneFlatness, Korean='기준 평면 + 평탄도', English='Reference Plane + Flatness'}" />
                     <WrapPanel>
                         <StackPanel Width="50" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Center X" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CenterX, Korean='중심 X', English='Center X'}" />
                             <TextBox Text="{Binding PlaneFlatnessReferenceCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="50" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Center Z" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.CenterZ, Korean='중심 Z', English='Center Z'}" />
                             <TextBox Text="{Binding PlaneFlatnessReferenceCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="50" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.HalfWidth, Korean='반 폭', English='Half W'}" />
                             <TextBox Text="{Binding PlaneFlatnessReferenceHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="50" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.HalfDepth, Korean='반 깊이', English='Half D'}" />
                             <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,0,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tolerance" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PlaneFlatnessTolerance, Korean='허용오차', English='Tolerance'}" />
                             <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <Button Margin="0,0,6,0"
-                                Content="Preview Flatness"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewFlatness, Korean='평탄도 미리보기', English='Preview Flatness'}"
                                 Command="{Binding PreviewPlaneFlatnessCommand}" />
-                        <Button Content="Publish Result"
+                        <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}"
                                 Command="{Binding PublishResultCommand}" />
                     </WrapPanel>
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
                                Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding PlaneFlatnessSummary}" />
+                               Text="{Binding PlaneFlatnessSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
                 <StackPanel Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                     <TextBlock Margin="0,4,0,0"
                                TextWrapping="Wrap"
-                               Text="{Binding LazTwoPointAcceptanceSummary}" />
-                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="LAZ/LAS Acceptance" />
+                               Text="{Binding LazTwoPointAcceptanceSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LazLasAcceptance, Korean='LAZ/LAS 허용 기준', English='LAZ/LAS Acceptance'}" />
                     <WrapPanel>
                         <StackPanel Width="78" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp D" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceExpectedDistance, Korean='예상 거리', English='Exp D'}" />
                             <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="64" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol D" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceDistanceTolerance, Korean='거리 허용오차', English='Tol D'}" />
                             <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="78" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp H" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceExpectedHeight, Korean='예상 높이 변화', English='Exp H'}" />
                             <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                         <StackPanel Width="64" Margin="0,0,6,6">
-                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol H" />
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceHeightTolerance, Korean='높이 변화 허용오차', English='Tol H'}" />
                             <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                         </StackPanel>
                     </WrapPanel>
                 </StackPanel>
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Recipe" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.Recipe, Korean='레시피', English='Recipe'}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding RecipeSummary}" />
+                           Text="{Binding RecipeSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <TextBlock Margin="0,4,0,0"
                            Foreground="#b91c1c"
                            TextWrapping="Wrap"
-                           Text="{Binding RecipeValidationSummary}" />
+                           Text="{Binding RecipeValidationSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <StackPanel Visibility="{Binding C3DRecipeEditorVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Peak Tolerance" />
+                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PeakTolerance, Korean='피크 허용오차', English='Peak Tolerance'}" />
                     <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
-                    <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Alignment" />
+                    <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.Alignment, Korean='정렬', English='Alignment'}" />
                     <Button Margin="0,0,0,8"
-                            Content="Align From ROI"
+                            Content="{localization:ViewerText Key=ThreeD.Viewer.AlignFromRoi, Korean='ROI에서 정렬', English='Align From ROI'}"
                             Command="{Binding ApplyRoiAlignmentCommand}" />
                     <WrapPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T X" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeTranslateX, Korean='이동 X', English='T X'}" />
                         <TextBox Text="{Binding RecipeTransformTranslateX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Y" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeTranslateY, Korean='이동 Y', English='T Y'}" />
                         <TextBox Text="{Binding RecipeTransformTranslateY, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Z" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeTranslateZ, Korean='이동 Z', English='T Z'}" />
                         <TextBox Text="{Binding RecipeTransformTranslateZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R X" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRotateX, Korean='회전 X', English='R X'}" />
                         <TextBox Text="{Binding RecipeTransformRotateXDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Y" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRotateY, Korean='회전 Y', English='R Y'}" />
                         <TextBox Text="{Binding RecipeTransformRotateYDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Z" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRotateZ, Korean='회전 Z', English='R Z'}" />
                         <TextBox Text="{Binding RecipeTransformRotateZDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Scale" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeScale, Korean='배율', English='Scale'}" />
                         <TextBox Text="{Binding RecipeTransformScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     </WrapPanel>
-                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="ROI Left" />
+                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiLeft, Korean='ROI 왼쪽', English='ROI Left'}" />
                     <WrapPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiLeftCenterX, Korean='중심 X', English='C X'}" />
                         <TextBox Text="{Binding RecipeRoiLeftCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiLeftCenterZ, Korean='중심 Z', English='C Z'}" />
                         <TextBox Text="{Binding RecipeRoiLeftCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiLeftHalfWidth, Korean='반 폭', English='Half W'}" />
                         <TextBox Text="{Binding RecipeRoiLeftHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiLeftHalfDepth, Korean='반 깊이', English='Half D'}" />
                         <TextBox Text="{Binding RecipeRoiLeftHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     </WrapPanel>
-                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="ROI Right" />
+                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiRight, Korean='ROI 오른쪽', English='ROI Right'}" />
                     <WrapPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiRightCenterX, Korean='중심 X', English='C X'}" />
                         <TextBox Text="{Binding RecipeRoiRightCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiRightCenterZ, Korean='중심 Z', English='C Z'}" />
                         <TextBox Text="{Binding RecipeRoiRightCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiRightHalfWidth, Korean='반 폭', English='Half W'}" />
                         <TextBox Text="{Binding RecipeRoiRightHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     <StackPanel Width="64" Margin="0,0,6,6">
-                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.RecipeRoiRightHalfDepth, Korean='반 깊이', English='Half D'}" />
                         <TextBox Text="{Binding RecipeRoiRightHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                     </StackPanel>
                     </WrapPanel>
                     <TextBlock Margin="0,2,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding RecipeParameterSummary}" />
+                               Text="{Binding RecipeParameterSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,4,0,0"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding AlignmentWorkflowSummary}" />
+                               Text="{Binding AlignmentWorkflowSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
                 <CheckBox Margin="0,8,0,0"
-                          Content="Output enabled"
+                          Content="{localization:ViewerText Key=ThreeD.Viewer.OutputEnabled, Korean='출력 사용', English='Output enabled'}"
                           IsChecked="{Binding RecipeOutputEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          ToolTip="When off, the recipe remains declared but Preview, Publish, and Runner Run create no output artifact."
+                          ToolTip="{localization:ViewerText Key=ThreeD.Viewer.OutputEnabledTip, Korean='끄면 레시피는 선언된 상태로 남지만 Preview, Publish, Runner 실행은 출력 산출물을 만들지 않습니다.', English='When off, the recipe remains declared but Preview, Publish, and Runner Run create no output artifact.'}"
                           AutomationProperties.AutomationId="ViewerRecipeOutputEnabledToggle" />
                 <TextBlock Margin="0,4,0,0"
                            Foreground="#6b7280"
                            TextWrapping="Wrap"
-                           Text="{Binding RecipeOutputPolicySummary}" />
+                           Text="{Binding RecipeOutputPolicySummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <Button Margin="0,8,0,0"
-                        Content="Save Recipe"
+                        Content="{localization:ViewerText Key=ThreeD.Viewer.SaveRecipe, Korean='레시피 저장', English='Save Recipe'}"
                         Command="{Binding SaveRecipeCommand}" />
                 <TextBlock Margin="0,4,0,0"
                            TextWrapping="Wrap"
-                           Text="{Binding RecipeSaveSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Result Overlay" />
+                           Text="{Binding RecipeSaveSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ResultOverlay, Korean='결과 오버레이', English='Result Overlay'}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding ResultSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Published Result" />
+                           Text="{Binding ResultSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PublishedResult, Korean='발행된 결과', English='Published Result'}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding PublishedResultSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Point Cloud" />
-                <TextBlock Text="{Binding PointCloudPointCount, StringFormat=Points: {0}}" />
-                <TextBlock Text="{Binding Display.EffectiveColorMap, StringFormat=Color mode: {0}}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="C3D Sample" />
-                <TextBlock Text="{Binding C3DSamplePointCount, StringFormat=Rendered points: {0}}" />
+                           Text="{Binding PublishedResultSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PointCloud, Korean='포인트 클라우드', English='Point Cloud'}" />
+                <TextBlock Text="{Binding PointCloudPointCount, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=PointsLabel}" />
+                <TextBlock Text="{Binding Display.EffectiveColorMap, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=ColorModeLabel}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.C3DSample, Korean='C3D 샘플', English='C3D Sample'}" />
+                <TextBlock Text="{Binding C3DSamplePointCount, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=RenderedPointsLabel}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding C3DSampleSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Imported Mesh" />
-                <TextBlock Text="{Binding GlbSampleTriangleCount, StringFormat=Triangles: {0}}" />
+                           Text="{Binding C3DSampleSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.ImportedMesh, Korean='가져온 메시', English='Imported Mesh'}" />
+                <TextBlock Text="{Binding GlbSampleTriangleCount, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=TrianglesLabel}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding GlbSampleSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="LAZ/LAS Point Cloud" />
-                <TextBlock Text="{Binding LazSamplePointCount, StringFormat=Points: {0}}" />
+                           Text="{Binding GlbSampleSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LazLasPointCloud, Korean='LAZ/LAS 포인트 클라우드', English='LAZ/LAS Point Cloud'}" />
+                <TextBlock Text="{Binding LazSamplePointCount, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=PointsLabel}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding LazSampleSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Selection" />
-                <TextBlock Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
+                           Text="{Binding LazSampleSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.SelectionSummary, Korean='선택', English='Selection'}" />
+                <TextBlock Text="{Binding SelectedSelectionMode, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Mode}" />
                 <TextBlock TextWrapping="Wrap"
-                           Text="{Binding SelectionSummary}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Last Screenshot" />
+                           Text="{Binding SelectionSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.LastScreenshot, Korean='마지막 스크린샷', English='Last Screenshot'}" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding LastScreenshotPath}" />
             </StackPanel>
@@ -1386,7 +1386,7 @@
                                Foreground="#e5e7eb"
                                TextAlignment="Center"
                                TextWrapping="Wrap"
-                               Text="{Binding SelectedTeachingGridRectangleSummary}" />
+                               Text="{Binding SelectedTeachingGridRectangleSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
             </Border>
             <Border x:Name="OrientationTriadPanel"
@@ -1465,21 +1465,21 @@
                                    FontWeight="SemiBold"
                                    Foreground="#f9fafb"
                                    TextWrapping="Wrap"
-                                   Text="{Binding HudSummary}" />
+                                   Text="{Binding HudSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         <TextBlock Margin="0,3,0,0"
                                    FontSize="11"
                                    Foreground="#d1d5db"
                                    TextWrapping="Wrap"
-                                   Text="{Binding HudDetails}" />
+                                   Text="{Binding HudDetails, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         <TextBlock Margin="0,5,0,0"
                                    FontSize="10"
                                    Foreground="#d1d5db"
                                    TextWrapping="Wrap"
-                                   Text="{Binding CurrentDisplaySamplingSummary}" />
+                                   Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         <TextBlock Margin="0,2,0,0"
                                    FontSize="10"
                                    TextWrapping="Wrap"
-                                   Text="{Binding NextPreviewSamplingSummary}">
+                                   Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="#d1d5db" />
@@ -1531,7 +1531,7 @@
                                        FontSize="10"
                                        Foreground="#d1d5db"
                                        TextWrapping="Wrap"
-                                       Text="{Binding LegendSummary}" />
+                                       Text="{Binding LegendSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         </StackPanel>
                         <StackPanel Margin="0,8,0,0"
                                     Visibility="{Binding HasSelectedDeviation, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed, TargetNullValue=Collapsed}">
@@ -1539,12 +1539,12 @@
                                        FontWeight="SemiBold"
                                        Foreground="#fbbf24"
                                        TextWrapping="Wrap"
-                                       Text="{Binding SelectedDeviationSummary}" />
+                                       Text="{Binding SelectedDeviationSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             <TextBlock Margin="0,3,0,0"
                                        FontSize="10"
                                        Foreground="#d1d5db"
                                        TextWrapping="Wrap"
-                                       Text="{Binding SelectedDeviationDetails}" />
+                                       Text="{Binding SelectedDeviationDetails, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         </StackPanel>
                     </StackPanel>
                     <TextBlock Margin="0,6,0,0"
@@ -1706,7 +1706,7 @@
                                Foreground="#bfdbfe"
                                TextWrapping="Wrap"
                                Visibility="{Binding RoiStepMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding RoiStepEditSummary}" />
+                               Text="{Binding RoiStepEditSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#d1d5db"
@@ -1718,13 +1718,13 @@
                                Foreground="#fed7aa"
                                TextWrapping="Wrap"
                                Visibility="{Binding ImportedMeshHudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding GlbSampleSummary}" />
+                               Text="{Binding GlbSampleSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#fde68a"
                                TextWrapping="Wrap"
                                Visibility="{Binding LazHudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                               Text="{Binding LazSampleSummary}" />
+                               Text="{Binding LazSampleSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
             </Border>
             <Border Width="252"
@@ -1737,7 +1737,7 @@
                     BorderThickness="1"
                     CornerRadius="4"
                     IsHitTestVisible="True"
-                    ToolTip="{Binding SurfaceMatchEvidenceToolTip}"
+                    ToolTip="{Binding SurfaceMatchEvidenceToolTip, Converter={StaticResource ViewerRuntimeTextConverter}}"
                     AutomationProperties.AutomationId="SurfaceMatchEvidencePanel"
                     AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchEvidence, Korean='변환 모델 정합 증거', English='Transformed model match evidence'}"
                     Visibility="{Binding SurfaceMatchEvidenceVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1757,12 +1757,12 @@
                             <TextBlock FontSize="13"
                                        FontWeight="Bold"
                                        Foreground="#5eead4"
-                                       Text="{Binding SurfaceMatchDecisionLabel}" />
+                                       Text="{Binding SurfaceMatchDecisionLabel, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=SurfaceMatchDecision}" />
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="9"
                                        Foreground="#e2e8f0"
                                        TextWrapping="Wrap"
-                                       Text="{Binding SurfaceMatchDecisionReasonLabel}" />
+                                       Text="{Binding SurfaceMatchDecisionReasonLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         </StackPanel>
                     </Border>
                     <StackPanel Margin="0,7,0,0"
@@ -1774,7 +1774,7 @@
                                    Fill="#2dd4bf" />
                         <TextBlock FontSize="10"
                                    Foreground="#ccfbf1"
-                                   Text="{Binding SurfaceMatchStateLabel}" />
+                                   Text="{Binding SurfaceMatchStateLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </StackPanel>
                     <Grid Margin="0,7,0,0">
                         <Grid.ColumnDefinitions>
@@ -1789,7 +1789,7 @@
                                    FontFamily="Consolas"
                                    FontSize="10"
                                    Foreground="#f8fafc"
-                                   Text="{Binding SurfaceMatchCoverageLabel}" />
+                                   Text="{Binding SurfaceMatchCoverageLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </Grid>
                     <Grid Margin="0,4,0,0">
                         <Grid.ColumnDefinitions>
@@ -1804,7 +1804,7 @@
                                    FontFamily="Consolas"
                                    FontSize="10"
                                    Foreground="#f8fafc"
-                                   Text="{Binding SurfaceMatchRmseLabel}" />
+                                   Text="{Binding SurfaceMatchRmseLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </Grid>
                     <Grid Margin="0,4,0,0"
                           Visibility="{Binding SurfaceMatchEdgeScoreVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1820,7 +1820,7 @@
                                    FontFamily="Consolas"
                                    FontSize="10"
                                    Foreground="#f8fafc"
-                                   Text="{Binding SurfaceMatchEdgeCoverageLabel}" />
+                                   Text="{Binding SurfaceMatchEdgeCoverageLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </Grid>
                     <Grid Margin="0,4,0,0"
                           Visibility="{Binding SurfaceMatchEdgeScoreVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1836,7 +1836,7 @@
                                    FontFamily="Consolas"
                                    FontSize="10"
                                    Foreground="#f8fafc"
-                                   Text="{Binding SurfaceMatchEdgeRmseLabel}" />
+                                   Text="{Binding SurfaceMatchEdgeRmseLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </Grid>
                     <StackPanel Margin="0,7,0,0"
                                 Visibility="{Binding SurfaceMatchEdgeDiagnosticVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1846,28 +1846,28 @@
                                    Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionOverlay, Korean='에지 방향 진단', English='EDGE DIRECTION DIAGNOSTIC'}" />
                         <WrapPanel Margin="0,3,0,0">
                             <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#34f59e" />
-                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Model" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionModel, Korean='모델', English='Model'}" />
                             <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#fab838" />
-                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Scene" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionScene, Korean='장면', English='Scene'}" />
                             <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#c77aff" />
-                            <TextBlock FontSize="9" Foreground="#cbd5e1" Text="Normal" />
+                            <TextBlock FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionNormal, Korean='법선', English='Normal'}" />
                         </WrapPanel>
                         <WrapPanel Margin="0,3,0,0"
                                    Visibility="{Binding SurfaceMatchAcquisitionDirectionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#3debea" />
-                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Facing" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionFacing, Korean='정면', English='Facing'}" />
                             <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#ff4da3" />
-                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Away" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionAway, Korean='반대 방향', English='Away'}" />
                             <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#ffb82e" />
-                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Grazing" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionGrazing, Korean='스침', English='Grazing'}" />
                             <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#47c7ff" />
-                            <TextBlock FontSize="9" Foreground="#cbd5e1" Text="Sensor → scene" />
+                            <TextBlock FontSize="9" Foreground="#cbd5e1" Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionSensorToScene, Korean='센서 → 장면', English='Sensor → scene'}" />
                         </WrapPanel>
                         <TextBlock Margin="0,3,0,0"
                                    FontSize="9"
                                    Foreground="#94a3b8"
                                    TextWrapping="Wrap"
-                                   Text="{Binding SurfaceMatchEdgeDiagnosticLabel}" />
+                                   Text="{Binding SurfaceMatchEdgeDiagnosticLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </StackPanel>
                     <Border Margin="0,7,0,0"
                             Padding="7,5"
@@ -1885,18 +1885,18 @@
                                        FontFamily="Consolas"
                                        FontSize="9"
                                        Foreground="#34f59e"
-                                       Text="{Binding SurfaceMatchAcceptedReviewLabel}" />
+                                       Text="{Binding SurfaceMatchAcceptedReviewLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             <TextBlock Margin="0,2,0,0"
                                        FontFamily="Consolas"
                                        FontSize="9"
                                        FontWeight="SemiBold"
                                        Foreground="#ff5752"
-                                       Text="{Binding SurfaceMatchRejectedReviewLabel}" />
+                                       Text="{Binding SurfaceMatchRejectedReviewLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             <TextBlock Margin="0,3,0,0"
                                        FontSize="8.5"
                                        Foreground="#94a3b8"
                                        TextWrapping="Wrap"
-                                       Text="{Binding SurfaceMatchReviewEvidenceLabel}" />
+                                       Text="{Binding SurfaceMatchReviewEvidenceLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         </StackPanel>
                     </Border>
                     <TextBlock Margin="0,5,0,0"
@@ -1904,17 +1904,17 @@
                                FontSize="10"
                                Foreground="#cbd5e1"
                                TextWrapping="Wrap"
-                               Text="{Binding SurfaceMatchPoseLabel}" />
+                               Text="{Binding SurfaceMatchPoseLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,7,0,0"
                                FontSize="9"
                                Foreground="#cbd5e1"
                                TextWrapping="Wrap"
-                               Text="{Binding SurfaceMatchPolicyLabel}" />
+                               Text="{Binding SurfaceMatchPolicyLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                FontFamily="Consolas"
                                FontSize="9"
                                Foreground="#94a3b8"
-                               Text="{Binding SurfaceMatchRuntimeLabel}" />
+                               Text="{Binding SurfaceMatchRuntimeLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <Grid Margin="0,7,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -1922,7 +1922,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock FontSize="9"
                                    Foreground="#64748b"
-                                   Text="MODEL" />
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchModel, Korean='모델', English='Model'}" />
                         <TextBlock Grid.Column="1"
                                    HorizontalAlignment="Right"
                                    FontFamily="Consolas"
@@ -1937,7 +1937,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock FontSize="9"
                                    Foreground="#64748b"
-                                   Text="OVERLAY" />
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchOverlay, Korean='오버레이', English='Overlay'}" />
                         <TextBlock Grid.Column="1"
                                    HorizontalAlignment="Right"
                                    FontFamily="Consolas"
@@ -1949,7 +1949,7 @@
                                FontSize="9"
                                Foreground="#fbbf24"
                                TextWrapping="Wrap"
-                               Text="{Binding SurfaceMatchDecisionBoundaryLabel}" />
+                               Text="{Binding SurfaceMatchDecisionBoundaryLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
             </Border>
             <Border x:Name="C3DHeightDistributionPanel"
@@ -1963,7 +1963,7 @@
                     BorderThickness="1"
                     CornerRadius="4"
                     IsHitTestVisible="True"
-                    ToolTip="{Binding C3DHeightColorRangeSummary}"
+                    ToolTip="{Binding C3DHeightColorRangeSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                     AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRange, Korean='높이 색상 범위', English='Height color range'}"
                     AutomationProperties.HelpText="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeHelp, Korean='표시 색상에만 적용됩니다. 원본 높이, ROI, 측정값과 레시피는 바뀌지 않습니다.', English='Applies to display colors only. Source heights, ROI, measurements, and recipe are unchanged.'}"
                     Visibility="{Binding C3DHeightDistributionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1971,7 +1971,7 @@
                     <TextBlock FontSize="9"
                                FontWeight="SemiBold"
                                Foreground="#f8fafc"
-                               Text="HEIGHT COLOR" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeHeading, Korean='높이 색상', English='Height color'}" />
                     <Grid Margin="0,5,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="18" />
@@ -1987,7 +1987,7 @@
                         <Button Grid.Column="1"
                                 Height="22"
                                 Padding="0"
-                                Click="DecreaseC3DHeightColorMaximum_Click"
+                                Command="{Binding DecreaseC3DHeightColorMaximumCommand}"
                                 Content="−"
                                 ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximumDecrease, Korean='높이 색상 상한 낮추기', English='Lower the height-color maximum'}"
                                 AutomationProperties.AutomationId="HeightColorMaximumDecrease"
@@ -2010,7 +2010,7 @@
                         <Button Grid.Column="3"
                                 Height="22"
                                 Padding="0"
-                                Click="IncreaseC3DHeightColorMaximum_Click"
+                                Command="{Binding IncreaseC3DHeightColorMaximumCommand}"
                                 Content="+"
                                 ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximumIncrease, Korean='높이 색상 상한 높이기', English='Raise the height-color maximum'}"
                                 AutomationProperties.AutomationId="HeightColorMaximumIncrease"
@@ -2053,7 +2053,7 @@
                         <Button Grid.Column="1"
                                 Height="22"
                                 Padding="0"
-                                Click="DecreaseC3DHeightColorMinimum_Click"
+                                Command="{Binding DecreaseC3DHeightColorMinimumCommand}"
                                 Content="−"
                                 ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimumDecrease, Korean='높이 색상 하한 낮추기', English='Lower the height-color minimum'}"
                                 AutomationProperties.AutomationId="HeightColorMinimumDecrease"
@@ -2076,7 +2076,7 @@
                         <Button Grid.Column="3"
                                 Height="22"
                                 Padding="0"
-                                Click="IncreaseC3DHeightColorMinimum_Click"
+                                Command="{Binding IncreaseC3DHeightColorMinimumCommand}"
                                 Content="+"
                                 ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimumIncrease, Korean='높이 색상 하한 높이기', English='Raise the height-color minimum'}"
                                 AutomationProperties.AutomationId="HeightColorMinimumIncrease"
@@ -2085,8 +2085,8 @@
                     <Button Height="22"
                             Margin="18,5,0,0"
                             Padding="4,0"
-                            Click="ResetC3DHeightColorRange_Click"
-                            Content="AUTO"
+                            Command="{Binding ResetC3DHeightColorRangeCommand}"
+                            Content="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeReset, Korean='자동', English='AUTO'}"
                             FontSize="8"
                             ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeReset, Korean='원본 전체 높이 범위로 초기화', English='Reset to the full source-height range'}"
                             AutomationProperties.AutomationId="HeightColorRangeReset"
@@ -2109,7 +2109,7 @@
                     <TextBlock FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="#111827"
-                               Text="{Binding PointCloudColorLegendTitle}" />
+                               Text="{Binding PointCloudColorLegendTitle, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <Border Height="10" Margin="0,8,0,8" CornerRadius="2">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
@@ -2126,28 +2126,28 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock FontSize="10"
                                    Foreground="#374151"
-                                   Text="{Binding PointCloudColorLegendLow}" />
+                                   Text="{Binding PointCloudColorLegendLow, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         <TextBlock Grid.Column="1"
                                    HorizontalAlignment="Right"
                                    FontSize="10"
                                    Foreground="#374151"
-                                   Text="{Binding PointCloudColorLegendHigh}" />
+                                   Text="{Binding PointCloudColorLegendHigh, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </Grid>
                     <StackPanel Margin="0,8,0,0">
                         <StackPanel Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#0d59f2" />
-                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Lower source Z" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.PointCloudLowerSourceZ, Korean='낮은 소스 Z', English='Lower source Z'}" />
                         </StackPanel>
                         <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#ffb31a" />
-                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Higher source Z" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.PointCloudHigherSourceZ, Korean='높은 소스 Z', English='Higher source Z'}" />
                         </StackPanel>
                     </StackPanel>
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding PointCloudColorLegendScale}" />
+                               Text="{Binding PointCloudColorLegendScale, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
             </Border>
             <Border x:Name="DeviationLegendPanel"
@@ -2166,7 +2166,7 @@
                     <TextBlock FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="#111827"
-                               Text="Deviation Color Scale" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationColorScale, Korean='편차 색상 범위', English='Deviation color scale'}" />
                     <Border Height="10" Margin="0,8,0,8" CornerRadius="2">
                         <Border.Style>
                             <Style TargetType="Border">
@@ -2201,17 +2201,17 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock FontSize="10" Foreground="#374151" Text="{Binding DeviationLegendLowLabel}" />
+                        <TextBlock FontSize="10" Foreground="#374151" Text="{Binding DeviationLegendLowLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         <TextBlock Grid.Column="1"
                                    HorizontalAlignment="Center"
                                    FontSize="10"
                                    Foreground="#374151"
-                                   Text="{Binding DeviationLegendMiddleLabel}" />
+                                   Text="{Binding DeviationLegendMiddleLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                         <TextBlock Grid.Column="2"
                                    HorizontalAlignment="Right"
                                    FontSize="10"
                                    Foreground="#374151"
-                                   Text="{Binding DeviationLegendHighLabel}" />
+                                   Text="{Binding DeviationLegendHighLabel, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     </Grid>
                     <StackPanel Margin="0,8,0,0">
                         <StackPanel.Style>
@@ -2226,39 +2226,39 @@
                         </StackPanel.Style>
                         <StackPanel Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#14b8a6" />
-                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Within tolerance" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationWithinTolerance, Korean='허용오차 이내', English='Within tolerance'}" />
                         </StackPanel>
                         <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#ef4444" />
-                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Fail marker" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationFailMarker, Korean='실패 마커', English='Fail marker'}" />
                         </StackPanel>
                     </StackPanel>
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#374151"
-                               Text="Blue: below plane | Red: above plane"
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.PlaneFlatnessColorDirection, Korean='파랑: 평면 아래 | 빨강: 평면 위', English='Blue: below plane | Red: above plane'}"
                                Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                FontWeight="SemiBold"
                                Foreground="#111827"
                                TextWrapping="Wrap"
-                               Text="{Binding DeviationLegendStatus}" />
+                               Text="{Binding DeviationLegendStatus, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#111827"
                                TextWrapping="Wrap"
-                               Text="{Binding DeviationLegendPeak}" />
+                               Text="{Binding DeviationLegendPeak, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#111827"
                                TextWrapping="Wrap"
-                               Text="{Binding DeviationLegendTolerance}" />
+                               Text="{Binding DeviationLegendTolerance, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#6b7280"
                                TextWrapping="Wrap"
-                               Text="{Binding DeviationLegendScale}" />
+                               Text="{Binding DeviationLegendScale, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
             </Border>
         </Grid>

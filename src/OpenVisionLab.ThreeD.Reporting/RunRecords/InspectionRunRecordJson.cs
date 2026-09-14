@@ -20,10 +20,32 @@ public static class InspectionRunRecordJson
 
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        File.WriteAllText(
-            fullPath,
-            JsonSerializer.Serialize(record, Options),
-            new UTF8Encoding(false));
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+                .GetBytes(JsonSerializer.Serialize(record, Options));
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 4096,
+                       FileOptions.WriteThrough))
+            {
+                stream.Write(bytes);
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 
     public static InspectionRunRecord Read(string path)

@@ -16,20 +16,79 @@ internal sealed class C3DRenderResourceState
 
     internal C3DDisplayListKey? InteractionDisplayListKey;
 
-    internal C3DGpuBufferSet? GpuBuffers;
+    internal C3DGpuBufferSet? GpuBuffers { get; private set; }
 
-    internal C3DGpuBufferKey? GpuBufferKey;
+    internal C3DGpuBufferKey? GpuBufferKey { get; private set; }
 
-    internal C3DGpuBufferKey? GpuFailedKey;
+    internal C3DGpuBufferKey? GpuFailedKey { get; private set; }
 
-    internal bool GpuReleasePending;
+    internal bool GpuReleasePending { get; private set; }
 
-    internal bool GpuBuffersAvailable;
+    internal bool GpuBuffersAvailable { get; private set; }
 
     internal bool HasManagedHandles =>
         GpuBuffers is not null
         || DisplayListId != 0
         || InteractionDisplayListId != 0;
+
+    /// <summary>
+    /// Returns whether the active GPU snapshot does not match the requested
+    /// render identity. The View uses this decision before any context-bound
+    /// upload and keeps the release-before-upload order explicit.
+    /// </summary>
+    internal bool RequiresGpuReplacement(C3DGpuBufferKey key) =>
+        GpuBuffers is null || GpuBufferKey != key;
+
+    internal bool IsGpuReplacementFailed(C3DGpuBufferKey key) => GpuFailedKey == key;
+
+    /// <summary>
+    /// Records a failed replacement attempt without hiding the OpenGL cleanup
+    /// policy in this managed state holder. The caller has already retired the
+    /// previous context-bound buffers before invoking this method.
+    /// </summary>
+    internal void MarkGpuReplacementFailed(C3DGpuBufferKey key)
+    {
+        GpuFailedKey = key;
+        GpuBuffersAvailable = false;
+    }
+
+    /// <summary>
+    /// Commits a successfully uploaded snapshot as the active GPU resource.
+    /// All related identity flags change together so a partial View update
+    /// cannot advertise a buffer that has no matching key.
+    /// </summary>
+    internal void SetGpuReplacement(C3DGpuBufferKey key, C3DGpuBufferSet buffers)
+    {
+        ArgumentNullException.ThrowIfNull(buffers);
+        GpuBuffers = buffers;
+        GpuBufferKey = key;
+        GpuFailedKey = null;
+        GpuReleasePending = false;
+        GpuBuffersAvailable = true;
+    }
+
+    /// <summary>
+    /// Clears managed GPU references after the View has executed the
+    /// context-bound delete call (or after deletion was rejected during close).
+    /// </summary>
+    internal void MarkGpuBuffersReleased()
+    {
+        GpuBuffers = null;
+        GpuBufferKey = null;
+        GpuReleasePending = false;
+        GpuBuffersAvailable = false;
+    }
+
+    /// <summary>
+    /// Invalidates the current render identity while preserving the existing
+    /// buffer reference until the next render callback can delete it.
+    /// </summary>
+    internal void InvalidateGpuForRenderProxy()
+    {
+        GpuReleasePending = GpuBuffers is not null;
+        GpuBufferKey = null;
+        GpuFailedKey = null;
+    }
 
     /// <summary>
     /// Clears references when a new OpenGL context is initialized. The caller

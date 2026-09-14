@@ -187,13 +187,47 @@ internal static class ShellValidationSetSmokeVerification
                 !state.RunRequested
                 && state.ThresholdSelectionTask is null
                 && state.SectionSelectionTask is not null
+                && state.ComparisonTask is null
                 && activationCount == 1
                 && evidenceExpansionCount == 1
                 && thresholdExpansionCount == 1
                 && activeSection == ValidationWorkspaceSection.Thresholds
                 && workbench.IsValidationEvidenceExpanded
                 && workbench.IsValidationThresholdExpanded,
-                $"run={state.RunRequested};thresholdTask={state.ThresholdSelectionTask is not null};sectionTask={state.SectionSelectionTask is not null};activations={activationCount};evidence={evidenceExpansionCount};thresholds={thresholdExpansionCount};section={activeSection};evidenceExpanded={workbench.IsValidationEvidenceExpanded};thresholdExpanded={workbench.IsValidationThresholdExpanded};evidenceAtCallback={evidenceExpandedAtCallback};thresholdAtCallback={thresholdExpandedAtCallback}");
+                $"run={state.RunRequested};thresholdTask={state.ThresholdSelectionTask is not null};sectionTask={state.SectionSelectionTask is not null};comparisonTask={state.ComparisonTask is not null};activations={activationCount};evidence={evidenceExpansionCount};thresholds={thresholdExpansionCount};section={activeSection};evidenceExpanded={workbench.IsValidationEvidenceExpanded};thresholdExpanded={workbench.IsValidationThresholdExpanded};evidenceAtCallback={evidenceExpandedAtCallback};thresholdAtCallback={thresholdExpandedAtCallback}");
+
+            var comparisonWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(root, "comparison-recent.json"));
+            var comparisonRequested = false;
+            comparisonWorkbench.ValidationSetComparisonRequested +=
+                (_, _) => comparisonRequested = true;
+            var comparisonState = ShellValidationSetSmoke.Configure(
+                [
+                    "verification",
+                    "--smoke-validation-set-recipe",
+                    recipePath,
+                    "--smoke-validation-set-sources",
+                    sourcePath,
+                    "--smoke-validation-set-roles",
+                    "Good",
+                    "--smoke-validation-set-run",
+                    "--smoke-validation-set-open-compare"
+                ],
+                comparisonWorkbench,
+                () => { },
+                () => { },
+                () => { },
+                _ => Task.CompletedTask,
+                _ => false);
+            comparisonState.ComparisonTask?.GetAwaiter().GetResult();
+            Check(
+                "run/open-compare retains and completes the comparison Task",
+                comparisonState.RunRequested
+                && comparisonState.ComparisonTask is not null
+                && !comparisonWorkbench.IsValidationSetRunning
+                && comparisonRequested,
+                $"run={comparisonState.RunRequested};comparisonTask={comparisonState.ComparisonTask is not null};running={comparisonWorkbench.IsValidationSetRunning};requested={comparisonRequested}");
+            comparisonWorkbench.Dispose();
             Check(
                 "setup keeps authored recipe identity and records only the intended validation definition draft",
                 workbench.PipelineSteps.Count == beforeStepCount

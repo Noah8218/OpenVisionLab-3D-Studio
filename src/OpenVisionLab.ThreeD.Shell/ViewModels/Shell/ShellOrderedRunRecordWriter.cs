@@ -47,9 +47,12 @@ internal static class ShellOrderedRunRecordWriter
             runDirectory = Path.Combine(root, runId);
         }
 
-        Directory.CreateDirectory(runDirectory);
+        var stagingDirectory = $"{runDirectory}.staging.{Guid.NewGuid():N}";
+        Directory.CreateDirectory(stagingDirectory);
         var jsonPath = Path.Combine(runDirectory, "run-record.json");
         var reportPath = Path.Combine(runDirectory, "ordered-run.txt");
+        var stagedJsonPath = Path.Combine(stagingDirectory, "run-record.json");
+        var stagedReportPath = Path.Combine(stagingDirectory, "ordered-run.txt");
         identity = identity with { RunId = runId };
         var record = OrderedRunRecordFactory.Create(
             identity,
@@ -64,12 +67,31 @@ internal static class ShellOrderedRunRecordWriter
                 null,
                 null));
 
-        File.WriteAllText(
-            reportPath,
-            CreateReport(record, execution),
-            new UTF8Encoding(false));
-        InspectionRunRecordJson.Write(jsonPath, record);
-        return new ShellOrderedRunRecordArtifact(record, jsonPath, reportPath);
+        try
+        {
+            File.WriteAllText(
+                stagedReportPath,
+                CreateReport(record, execution),
+                new UTF8Encoding(false));
+            InspectionRunRecordJson.Write(stagedJsonPath, record);
+
+            var persistedRecord = InspectionRunRecordJson.Read(stagedJsonPath);
+            if (!string.Equals(persistedRecord.RunId, record.RunId, StringComparison.Ordinal)
+                || !File.Exists(stagedReportPath))
+            {
+                throw new InvalidDataException("Ordered Run Record staging validation failed.");
+            }
+
+            Directory.Move(stagingDirectory, runDirectory);
+            return new ShellOrderedRunRecordArtifact(record, jsonPath, reportPath);
+        }
+        finally
+        {
+            if (Directory.Exists(stagingDirectory))
+            {
+                Directory.Delete(stagingDirectory, recursive: true);
+            }
+        }
     }
 
     private static string CreateReport(

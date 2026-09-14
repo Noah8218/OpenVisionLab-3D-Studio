@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
@@ -10,6 +11,7 @@ internal static class C3DRigidPointPairAlignmentGoldenVerification
         {
             Check("known-rigid-pose", VerifyKnownPose),
             Check("deterministic-hash-and-runner-parity", () => VerifyDeterminismAndRunnerParity(reportPath)),
+            Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath)),
             Check("invalid-identities-and-policies-fail-closed", VerifyInvalidIdentityAndPolicy),
             Check("degenerate-and-distance-mismatch-fail-closed", VerifyDegenerateAndDistanceMismatch),
             Check("cancellation-propagates", VerifyCancellation)
@@ -17,7 +19,7 @@ internal static class C3DRigidPointPairAlignmentGoldenVerification
         var passed = cases.Count(item => item.Passed);
         var status = passed == cases.Length ? "Pass" : "Fail";
         var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(fullReportPath,
         [
             $"C3DRigidPointPairAlignmentGoldenVerification|{status}|cases={cases.Length}|passed={passed}|failed={cases.Length - passed}",
@@ -59,7 +61,7 @@ internal static class C3DRigidPointPairAlignmentGoldenVerification
         var input = KnownInput();
         var first = C3DRigidPointPairAlignmentAdapter.Evaluate(input);
         var second = C3DRigidPointPairAlignmentAdapter.Evaluate(input);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        var directory = GetReportDirectory(reportPath)!;
         var specificationPath = Path.Combine(directory, "rigid-point-pair-alignment-spec.json");
         var runnerReportPath = Path.Combine(directory, "rigid-point-pair-alignment-runner.txt");
         var specification = new C3DRigidPointPairAlignmentRunnerSpecification
@@ -106,6 +108,105 @@ internal static class C3DRigidPointPairAlignmentGoldenVerification
             && runnerText.Contains("policy=ExactlyThreeOrdered", StringComparison.Ordinal);
         return (pass, $"direct1={first.Output?.ContentSha256};direct2={second.Output?.ContentSha256};runner={runnerHash};exit={exitCode}");
     }
+
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var input = KnownInput();
+        var directory = Path.Combine(
+            GetReportDirectory(reportPath) ?? Environment.CurrentDirectory,
+            $"rigid-point-pair-atomic-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var specification = new C3DRigidPointPairAlignmentRunnerSpecification
+            {
+                StepId = input.StepId,
+                OutputEntityId = input.OutputEntityId,
+                SourceEntityId = input.SourceEntityId,
+                SourceContentSha256 = input.SourceContentSha256,
+                ReferenceEntityId = input.ReferenceEntityId,
+                ReferenceContentSha256 = input.ReferenceContentSha256,
+                SourceUnit = input.SourceUnit,
+                SourceFrameId = input.SourceFrameId,
+                ReferenceUnit = input.ReferenceUnit,
+                ReferenceFrameId = input.ReferenceFrameId,
+                MaximumPairLengthError = input.MaximumPairLengthError,
+                MinimumNormalizedCrossMagnitude = input.MinimumNormalizedCrossMagnitude,
+                Pairs = input.Pairs.Select(pair => new C3DRigidPointPairAlignmentRunnerPair
+                {
+                    SourcePointId = pair.SourcePointId,
+                    ReferencePointId = pair.ReferencePointId,
+                    SourceX = pair.SourceX,
+                    SourceY = pair.SourceY,
+                    SourceZ = pair.SourceZ,
+                    ReferenceX = pair.ReferenceX,
+                    ReferenceY = pair.ReferenceY,
+                    ReferenceZ = pair.ReferenceZ
+                }).ToList()
+            };
+            var specificationPath = Path.Combine(directory, "alignment.json");
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            var reportOutputPath = Path.Combine(directory, "runner.txt");
+            var firstExit = C3DRigidPointPairAlignmentRunnerExecution.Run(specificationPath, reportOutputPath);
+            var firstBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            File.WriteAllText(reportOutputPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = C3DRigidPointPairAlignmentRunnerExecution.Run(specificationPath, reportOutputPath);
+            var overwriteBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+
+            var lockedPath = Path.Combine(directory, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = C3DRigidPointPairAlignmentRunnerExecution.Run(specificationPath, lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = C3DRigidPointPairAlignmentRunnerExecution.Run(
+                specificationPath,
+                Path.Combine(invalidParentMarker, "report.txt"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.txt.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && firstBytes.SequenceEqual(overwriteBytes)
+                && noBom
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};noBom={noBom};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static (bool Passed, string Evidence) VerifyInvalidIdentityAndPolicy()
     {
@@ -176,6 +277,8 @@ internal static class C3DRigidPointPairAlignmentGoldenVerification
         }
         return (canceled, $"canceled={canceled}");
     }
+
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
 
     private static C3DRigidPointPairAlignmentInput KnownInput() => new(
         "step.rigid-point-pair.01",

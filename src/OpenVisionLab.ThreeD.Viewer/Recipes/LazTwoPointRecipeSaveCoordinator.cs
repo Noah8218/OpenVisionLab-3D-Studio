@@ -1,6 +1,7 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
@@ -54,13 +55,13 @@ public static class LazTwoPointRecipeSaveCoordinator
                 LazTwoPointMeasurementRecipe.SupportedRecipeType,
                 "1.0",
                 new HeightDeviationRecipeSource(
-                    MainWindowViewModel.LazEntityId,
+                    ViewerEntityIds.LazEntityId,
                     viewModel.LazSampleName,
                     sourceRecipePath,
                     "source-units"),
                 new LazTwoPointMeasurementRecipeMeasurement(
                     "sample-extreme-x",
-                    Math.Max(2, pointCloud.SampledPoints.Length),
+                    Math.Max(2, pointCloud.SampledPointView.Count),
                     "source-z-units"),
                 new LazTwoPointMeasurementRecipeAcceptance(
                     viewModel.LazTwoPointExpectedDistance,

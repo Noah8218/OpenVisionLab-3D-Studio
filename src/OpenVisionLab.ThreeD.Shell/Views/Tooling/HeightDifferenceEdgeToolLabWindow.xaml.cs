@@ -10,8 +10,11 @@ public partial class HeightDifferenceEdgeToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
 
-    public HeightDifferenceEdgeToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "height-difference-edge", "Edge Tool Lab requires a Height Difference Edge step.")
+    public HeightDifferenceEdgeToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "height-difference-edge", "Edge Tool Lab requires a Height Difference Edge step.")
     {
         ArgumentNullException.ThrowIfNull(workbench);
         InitializeComponent();

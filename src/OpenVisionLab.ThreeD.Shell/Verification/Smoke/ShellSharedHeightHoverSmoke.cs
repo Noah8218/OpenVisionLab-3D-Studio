@@ -10,7 +10,8 @@ namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 /// <summary>
 /// Owns the view-only shared Height Image/3D Viewer cursor Smoke scenario.
 /// MainWindow supplies explicit Workbench, Viewer, and Dispatcher inputs and
-/// retains only command-line sequencing plus failure/shutdown policy.
+/// retains only command-line sequencing plus failure/shutdown policy. Camera
+/// invariance is observed through the public Viewer Host snapshot operation.
 /// </summary>
 internal static class ShellSharedHeightHoverSmoke
 {
@@ -38,13 +39,7 @@ internal static class ShellSharedHeightHoverSmoke
         var beforeLogCount = workbench.RunLog.Count;
         var beforePreviewRunning = workbench.IsSelectedStepPreviewRunning;
         var beforeOutput = workbench.CurrentMeasurementOutput;
-        var beforeCamera = (
-            viewer.ViewModel.YawDegrees,
-            viewer.ViewModel.PitchDegrees,
-            viewer.ViewModel.CameraDistance,
-            viewer.ViewModel.CameraTargetX,
-            viewer.ViewModel.CameraTargetY,
-            viewer.ViewModel.CameraTargetZ);
+        var beforeCamera = viewer.CaptureCameraState();
 
         await heightImage.EnsureSourceAsync(
             source.Path,
@@ -132,13 +127,7 @@ internal static class ShellSharedHeightHoverSmoke
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         await Task.Delay(120);
 
-        var afterCamera = (
-            viewer.ViewModel.YawDegrees,
-            viewer.ViewModel.PitchDegrees,
-            viewer.ViewModel.CameraDistance,
-            viewer.ViewModel.CameraTargetX,
-            viewer.ViewModel.CameraTargetY,
-            viewer.ViewModel.CameraTargetZ);
+        var afterCamera = viewer.CaptureCameraState();
         var boundaryPassed =
             workbench.IsDirty == beforeDirty
             && workbench.PipelineSteps.Count == beforeStepCount

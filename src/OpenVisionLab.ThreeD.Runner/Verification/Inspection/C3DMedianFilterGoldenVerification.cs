@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -26,7 +27,8 @@ internal static class C3DMedianFilterGoldenVerification
                 Check("deterministic-output-hash", VerifyDeterminism),
                 Check("unknown-parameter-preserved", () => VerifyStrictParameters(tempDirectory)),
                 Check("same-byte-source-identity", () => VerifySourceIdentity(tempDirectory)),
-                Check("recipe-adapter-output-roundtrip-and-source-immutability", () => VerifyRecipeAdapter(tempDirectory))
+                Check("recipe-adapter-output-roundtrip-and-source-immutability", () => VerifyRecipeAdapter(tempDirectory)),
+                Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath))
             };
 
             var passed = cases.Count(item => item.Passed);
@@ -37,7 +39,7 @@ internal static class C3DMedianFilterGoldenVerification
                 "Definition|raw-height-only|method=Median|kernels=3,5,7|missing=PreserveMask|boundary=AvailableNeighbors|roi=separate"
             };
             lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            Directory.CreateDirectory(GetReportDirectory(reportPath)!);
             File.WriteAllLines(reportPath, lines);
             Console.WriteLine($"C3D Median Filter golden verification: {status} ({passed}/{cases.Length})");
             return passed == cases.Length ? 0 : 5;
@@ -198,6 +200,140 @@ internal static class C3DMedianFilterGoldenVerification
             passed,
             $"sourcePath={sourcePath};sourceBefore={sourceSha256Before};sourceAfter={sourceSha256After};bytesBefore={sourceBytesBefore.LongLength};bytesAfter={sourceBytesAfter.LongLength};output={evaluation.Output.ContentSha256};outputEntity={evaluation.Output.EntityId};outputPath={outputPath};isDerived={evaluation.Output.IsDerived};root={evaluation.Output.RootSourceSha256};outputPathSeparate={outputPathSeparate}");
     }
+
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var reportDirectory = GetReportDirectory(reportPath) ?? Environment.CurrentDirectory;
+        var directory = Path.Combine(reportDirectory, $"atomic-report-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var document = CreateRecipe(directory);
+            var recipePath = Path.Combine(directory, "filter.recipe.json");
+            ToolRecipeDocumentStore.Save(recipePath, document);
+            var direct = ToolRecipeFilterExecution.Execute(document, document.Steps[0].Id, directory);
+            if (direct.Result.Status != ResultStatus.Pass || direct.Output is null)
+            {
+                return (false, $"direct={direct.Result.Status}:{direct.Result.Message}");
+            }
+
+            var runnerReportPath = Path.Combine(directory, "runner-report.json");
+            var firstOutputPath = Path.Combine(directory, "first-output.c3d");
+            var secondOutputPath = Path.Combine(directory, "second-output.c3d");
+            var firstExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                firstOutputPath,
+                runnerReportPath);
+            var firstBytes = File.Exists(runnerReportPath) ? File.ReadAllBytes(runnerReportPath) : [];
+            var firstText = Encoding.UTF8.GetString(firstBytes);
+            var firstOutputBytes = File.Exists(firstOutputPath) ? File.ReadAllBytes(firstOutputPath) : [];
+
+            File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                secondOutputPath,
+                runnerReportPath);
+            var overwriteBytes = File.Exists(runnerReportPath) ? File.ReadAllBytes(runnerReportPath) : [];
+            var overwriteText = Encoding.UTF8.GetString(overwriteBytes);
+            var overwriteOutputBytes = File.Exists(secondOutputPath) ? File.ReadAllBytes(secondOutputPath) : [];
+
+            var lockedPath = Path.Combine(directory, "locked.json");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = ToolRecipeFilterRunnerExecution.Run(
+                    recipePath,
+                    document.Steps[0].Id,
+                    Path.Combine(directory, "locked-output.c3d"),
+                    lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                Path.Combine(directory, "invalid-parent-output.c3d"),
+                Path.Combine(invalidParentMarker, "report.json"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var lockedArtifactPath = Path.Combine(directory, "locked-artifact.c3d");
+            var lockedArtifactSentinel = Encoding.UTF8.GetBytes("locked-artifact");
+            File.WriteAllBytes(lockedArtifactPath, lockedArtifactSentinel);
+            int lockedArtifactExit;
+            using (var lockStream = new FileStream(
+                       lockedArtifactPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedArtifactExit = ToolRecipeFilterRunnerExecution.Run(
+                    recipePath,
+                    document.Steps[0].Id,
+                    lockedArtifactPath,
+                    Path.Combine(directory, "locked-artifact-report.json"));
+            }
+            var lockedArtifactPreserved = File.ReadAllBytes(lockedArtifactPath).SequenceEqual(lockedArtifactSentinel);
+
+            var invalidArtifactParentMarker = Path.Combine(directory, "artifact-parent-file");
+            File.WriteAllText(invalidArtifactParentMarker, "artifact-parent-file", new UTF8Encoding(false));
+            var invalidArtifactExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                Path.Combine(invalidArtifactParentMarker, "output.c3d"),
+                Path.Combine(directory, "invalid-artifact-report.txt"));
+            var invalidArtifactParentPreserved = File.ReadAllText(invalidArtifactParentMarker) == "artifact-parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var sentinelAbsent = !overwriteText.Contains("pre-existing-output", StringComparison.Ordinal);
+            var artifactStable = firstOutputBytes.Length > 0
+                && overwriteOutputBytes.Length > 0
+                && firstOutputBytes.SequenceEqual(overwriteOutputBytes);
+            var reportShape = firstText.Contains(direct.Output.ContentSha256, StringComparison.Ordinal)
+                && firstText.Contains("\"status\": \"Pass\"", StringComparison.Ordinal)
+                && overwriteText.Contains(direct.Output.ContentSha256, StringComparison.Ordinal)
+                && overwriteText.Contains("\"status\": \"Pass\"", StringComparison.Ordinal);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && overwriteBytes.Length > 0
+                && artifactStable
+                && reportShape
+                && noBom
+                && sentinelAbsent
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && lockedArtifactExit == 5
+                && lockedArtifactPreserved
+                && invalidArtifactExit == 5
+                && invalidArtifactParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};artifactBytes={firstOutputBytes.Length}/{overwriteOutputBytes.Length};artifactStable={artifactStable};reportShape={reportShape};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};lockedArtifactExit={lockedArtifactExit};lockedArtifactPreserved={lockedArtifactPreserved};invalidArtifactExit={invalidArtifactExit};invalidArtifactParentPreserved={invalidArtifactParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static ToolRecipeDocument CreateRecipe(string tempDirectory)
     {

@@ -167,7 +167,7 @@
             Background="{DynamicResource ThreeD.PanelBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="0,1,0,0"
-            ToolTip="{Binding ViewerViewModel.Display.DiagnosticChannelSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}">
+            ToolTip="{Binding Presentation.DiagnosticChannelSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}">
         <WrapPanel VerticalAlignment="Center">
             <TextBlock Margin="0,0,6,0"
                        VerticalAlignment="Center"
@@ -183,9 +183,9 @@
                            Text="{Binding Localization.ViewerPalette}" />
                 <ComboBox Width="112"
                           Style="{StaticResource ViewerPresentationComboBoxStyle}"
-                          ItemsSource="{Binding ViewerViewModel.Display.AvailableColorMaps, ElementName=Root}"
-                          SelectedItem="{Binding ViewerViewModel.Display.SelectedColorMap, ElementName=Root, Mode=TwoWay}"
-                          IsEnabled="{Binding ViewerViewModel.Display.CanSelectColorMap, ElementName=Root}"
+                          ItemsSource="{Binding Presentation.AvailableColorMaps, ElementName=Root}"
+                          SelectedItem="{Binding Presentation.SelectedColorMap, ElementName=Root, Mode=TwoWay}"
+                          IsEnabled="{Binding Presentation.CanSelectColorMap, ElementName=Root}"
                           AutomationProperties.Name="{Binding Localization.ViewerPalette}"
                           AutomationProperties.AutomationId="ViewerPalette">
                     <ComboBox.ItemTemplate>
@@ -203,9 +203,9 @@
                            Text="{Binding Localization.ViewerDiagnosticChannel}" />
                 <ComboBox Width="142"
                           Style="{StaticResource ViewerPresentationComboBoxStyle}"
-                          ItemsSource="{Binding ViewerViewModel.Display.DiagnosticChannelOptions, ElementName=Root}"
-                          SelectedItem="{Binding ViewerViewModel.Display.SelectedDiagnosticChannel, ElementName=Root, Mode=TwoWay}"
-                          IsEnabled="{Binding ViewerViewModel.Display.CanSelectDiagnosticChannel, ElementName=Root}"
+                           ItemsSource="{Binding Presentation.DiagnosticChannelOptions, ElementName=Root}"
+                           SelectedItem="{Binding Presentation.SelectedDiagnosticChannel, ElementName=Root, Mode=TwoWay}"
+                           IsEnabled="{Binding Presentation.CanSelectDiagnosticChannel, ElementName=Root}"
                           ItemContainerStyle="{StaticResource ViewerPresentationDiagnosticItemStyle}"
                           AutomationProperties.Name="{Binding Localization.ViewerDiagnosticChannel}"
                           AutomationProperties.AutomationId="ViewerDiagnosticChannel">
@@ -224,23 +224,23 @@
                        Text="{Binding Localization.ViewerOverlays}" />
             <ToggleButton Style="{StaticResource ViewerPresentationToggleStyle}"
                           Content="{Binding Localization.ViewerSelectionOverlay}"
-                          IsChecked="{Binding ViewerViewModel.SelectionOverlayVisible, ElementName=Root, Mode=TwoWay}"
+                           IsChecked="{Binding Presentation.SelectionOverlayVisible, ElementName=Root, Mode=TwoWay}"
                           AutomationProperties.Name="{Binding Localization.ViewerSelectionOverlay}"
                           AutomationProperties.AutomationId="ViewerSelectionOverlay" />
             <ToggleButton Style="{StaticResource ViewerPresentationToggleStyle}"
                           Content="{Binding Localization.ViewerResultOverlay}"
-                          IsChecked="{Binding ViewerViewModel.ResultOverlayVisible, ElementName=Root, Mode=TwoWay}"
+                           IsChecked="{Binding Presentation.ResultOverlayVisible, ElementName=Root, Mode=TwoWay}"
                           AutomationProperties.Name="{Binding Localization.ViewerResultOverlay}"
                           AutomationProperties.AutomationId="ViewerResultOverlay" />
             <ToggleButton Style="{StaticResource ViewerPresentationToggleStyle}"
                           Content="{Binding Localization.ViewerMeasurementOverlay}"
-                          IsChecked="{Binding ViewerViewModel.MeasurementVisible, ElementName=Root, Mode=TwoWay}"
+                           IsChecked="{Binding Presentation.MeasurementVisible, ElementName=Root, Mode=TwoWay}"
                           AutomationProperties.Name="{Binding Localization.ViewerMeasurementOverlay}"
                           AutomationProperties.AutomationId="ViewerMeasurementOverlay" />
             <StackPanel Margin="7,0,0,0"
                         VerticalAlignment="Center"
                         Orientation="Horizontal"
-                        Visibility="{Binding ViewerViewModel.C3DHeightDistributionVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{Binding Presentation.C3DHeightDistributionVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
                 <TextBlock Margin="0,0,3,0"
                            VerticalAlignment="Center"
                            FontSize="9"
@@ -248,13 +248,13 @@
                            Text="{Binding Localization.ViewerHeightRangeMinimum}" />
                 <Button Style="{StaticResource ViewerPresentationButtonStyle}"
                         Content="−"
-                        Click="DecreaseHeightMinimum_Click"
-                        ToolTip="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}"
+                        Command="{Binding Presentation.DecreaseHeightMinimumCommand, ElementName=Root}"
+                         ToolTip="{Binding Presentation.C3DHeightColorRangeSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}"
                         AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMinimum}"
                         AutomationProperties.AutomationId="ViewerHeightRangeMinimumDecrease" />
                 <Button Style="{StaticResource ViewerPresentationButtonStyle}"
                         Content="+"
-                        Click="IncreaseHeightMinimum_Click"
+                        Command="{Binding Presentation.IncreaseHeightMinimumCommand, ElementName=Root}"
                         AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMinimum}"
                         AutomationProperties.AutomationId="ViewerHeightRangeMinimumIncrease" />
                 <TextBlock Margin="7,0,3,0"
@@ -264,19 +264,19 @@
                            Text="{Binding Localization.ViewerHeightRangeMaximum}" />
                 <Button Style="{StaticResource ViewerPresentationButtonStyle}"
                         Content="−"
-                        Click="DecreaseHeightMaximum_Click"
+                        Command="{Binding Presentation.DecreaseHeightMaximumCommand, ElementName=Root}"
                         AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMaximum}"
                         AutomationProperties.AutomationId="ViewerHeightRangeMaximumDecrease" />
                 <Button Style="{StaticResource ViewerPresentationButtonStyle}"
                         Content="+"
-                        Click="IncreaseHeightMaximum_Click"
+                        Command="{Binding Presentation.IncreaseHeightMaximumCommand, ElementName=Root}"
                         AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMaximum}"
                         AutomationProperties.AutomationId="ViewerHeightRangeMaximumIncrease" />
                 <Button Margin="5,0,0,0"
                         Style="{StaticResource ViewerPresentationButtonStyle}"
                         Content="{Binding Localization.ViewerAutoHeightRange}"
-                        Click="ResetHeightRange_Click"
-                        ToolTip="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}"
+                        Command="{Binding Presentation.ResetHeightColorRangeCommand, ElementName=Root}"
+                         ToolTip="{Binding Presentation.C3DHeightColorRangeSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}"
                         AutomationProperties.Name="{Binding Localization.ViewerAutoHeightRange}"
                         AutomationProperties.AutomationId="ViewerHeightRangeAuto" />
                 <TextBlock MaxWidth="260"
@@ -284,9 +284,9 @@
                            VerticalAlignment="Center"
                            FontSize="9"
                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                           Text="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}"
+                           Text="{Binding Presentation.C3DHeightColorRangeSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}"
                            TextTrimming="CharacterEllipsis"
-                           ToolTip="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}" />
+                           ToolTip="{Binding Presentation.C3DHeightColorRangeSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}" />
             </StackPanel>
         </WrapPanel>
     </Border>

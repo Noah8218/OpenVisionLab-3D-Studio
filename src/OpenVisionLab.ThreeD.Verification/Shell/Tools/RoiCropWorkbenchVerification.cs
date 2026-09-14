@@ -107,8 +107,32 @@ internal static class RoiCropWorkbenchVerification
                 displayPath == workbench.CurrentRoiCropPreviewPath
                     && displayHash == output?.ContentSha256
                     && displayLabel == "ROI / Crop Preview"
-                    && File.Exists(displayPath),
+                && File.Exists(displayPath),
                 $"label={displayLabel};path={displayPath};hash={displayHash}");
+            var previewBytes = displayPath is not null
+                ? File.ReadAllBytes(displayPath)
+                : [];
+            Check(
+                "ROI / Crop Preview publishes complete C3D bytes",
+                displayPath is not null
+                && previewBytes.Length > 0,
+                displayPath ?? "missing preview path");
+            Check(
+                "ROI / Crop Preview cleans temporary siblings",
+                displayPath is not null
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(displayPath)!,
+                    "*.tmp.*").Any(),
+                displayPath ?? "missing preview path");
+            Check(
+                "repeated ROI / Crop Preview remains byte-stable",
+                workbench.PreviewSelectedRoiCropAsync().GetAwaiter().GetResult()
+                && displayPath is not null
+                && previewBytes.SequenceEqual(File.ReadAllBytes(displayPath))
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(displayPath)!,
+                    "*.tmp.*").Any(),
+                displayPath ?? "missing preview path");
 
             var direct = ToolRecipeRoiCropExecution.Execute(document, "step.roi-crop.01", root);
             Check(

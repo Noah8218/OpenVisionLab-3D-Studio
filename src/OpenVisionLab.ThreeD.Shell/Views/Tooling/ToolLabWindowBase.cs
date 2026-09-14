@@ -9,6 +9,7 @@ namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 public abstract class ToolLabWindowBase : Window, IDisposable
 {
     private readonly ToolWorkbenchViewModel workbench;
+    private readonly Func<string, bool> selectPipelineStep;
     private readonly string expectedToolId;
     private readonly string expectedStepMismatchMessage;
     private List<OpenVisionThreeDViewerControl>? ownedViewers = new();
@@ -18,11 +19,13 @@ public abstract class ToolLabWindowBase : Window, IDisposable
     protected ToolLabWindowBase(
         ToolWorkbenchViewModel workbench,
         ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep,
         string expectedToolId,
         string expectedStepMismatchMessage,
         bool activateOnActivated = true)
     {
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
+        this.selectPipelineStep = selectPipelineStep ?? throw new ArgumentNullException(nameof(selectPipelineStep));
         this.expectedToolId = string.IsNullOrWhiteSpace(expectedToolId)
             ? throw new ArgumentException("Expected tool id is required.", nameof(expectedToolId))
             : expectedToolId;
@@ -67,7 +70,7 @@ public abstract class ToolLabWindowBase : Window, IDisposable
 
         if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
         {
-            workbench.SelectPipelineStepCommand.Execute(labStepId);
+            selectPipelineStep(labStepId);
         }
     }
 

@@ -1,6 +1,7 @@
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
@@ -18,7 +19,7 @@ internal static class HeightDeviationRuleCoordinator
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceUnit);
 
         return HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
-            MainWindowViewModel.C3DEntityId,
+            ViewerEntityIds.C3DEntityId,
             sourceName,
             grid.Min,
             grid.Max,

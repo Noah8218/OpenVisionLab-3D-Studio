@@ -18,37 +18,17 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, IDisposable
 {
+    private readonly object loadGate = new();
     private readonly ThreeDLocalization localization;
-    private readonly Action<ToolRecipeAcquisitionProvenance>? applyAcquisitionProvenance;
-    private readonly RelayCommand applyAcquisitionProvenanceCommand;
-    private readonly RelayCommand resetAcquisitionProvenanceCommand;
+    private readonly SourceQualityAcquisitionProvenanceEditor acquisitionEditor;
     private AsyncLoadCancellation? loadCancellation;
+    private Task? loadTask;
+    private Task? loadObservationTask;
     private SourceQualityReport? report;
     private string loadedSourceKey = string.Empty;
     private string error = string.Empty;
     private bool isLoading;
     private int loadGeneration;
-    private ToolRecipeAcquisitionProvenance appliedAcquisitionProvenance =
-        ToolRecipeAcquisitionProvenance.CreateUnavailable();
-    private IReadOnlyList<SourceAcquisitionProvenanceStateOption> acquisitionStateOptions = [];
-    private SourceAcquisitionProvenanceStateOption? selectedAcquisitionStateOption;
-    private string acquisitionEvidenceDraft = string.Empty;
-    private string acquisitionLimitationNotesDraft = string.Empty;
-    private bool acquisitionReflectiveFlagDraft;
-    private bool acquisitionTransparentFlagDraft;
-    private bool acquisitionTexturelessFlagDraft;
-    private bool acquisitionClippedFlagDraft;
-    private bool acquisitionLowCoverageFlagDraft;
-    private bool isAcquisitionProvenancePersisted;
-    private string sourceFrameId = string.Empty;
-    private ToolRecipeAcquisitionDirection appliedAcquisitionDirection =
-        ToolRecipeAcquisitionDirection.CreateUnavailable(string.Empty);
-    private IReadOnlyList<SourceAcquisitionDirectionStateOption> acquisitionDirectionStateOptions = [];
-    private SourceAcquisitionDirectionStateOption? selectedAcquisitionDirectionStateOption;
-    private string acquisitionDirectionXDraft = string.Empty;
-    private string acquisitionDirectionYDraft = string.Empty;
-    private string acquisitionDirectionZDraft = string.Empty;
-    private bool isAcquisitionDirectionPersisted;
     private int disposalState;
 
     public SourceQualityWorkspaceViewModel(
@@ -56,16 +36,8 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         Action<ToolRecipeAcquisitionProvenance>? applyAcquisitionProvenance = null)
     {
         this.localization = localization ?? throw new ArgumentNullException(nameof(localization));
-        this.applyAcquisitionProvenance = applyAcquisitionProvenance;
-        applyAcquisitionProvenanceCommand = new RelayCommand(
-            _ => ApplyAcquisitionProvenance(),
-            _ => CanApplyAcquisitionProvenance);
-        resetAcquisitionProvenanceCommand = new RelayCommand(
-            _ => LoadAcquisitionProvenance(
-                IsAcquisitionProvenancePersisted ? appliedAcquisitionProvenance : null,
-                sourceFrameId),
-            _ => HasPendingAcquisitionProvenanceChanges);
-        LoadAcquisitionProvenance(null);
+        acquisitionEditor = new(localization, applyAcquisitionProvenance);
+        acquisitionEditor.PropertyChanged += OnAcquisitionEditorPropertyChanged;
         localization.PropertyChanged += OnLocalizationChanged;
     }
 
@@ -79,254 +51,160 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         }
 
         localization.PropertyChanged -= OnLocalizationChanged;
+        acquisitionEditor.PropertyChanged -= OnAcquisitionEditorPropertyChanged;
+        acquisitionEditor.Dispose();
+        lock (loadGate)
+        {
+            Volatile.Write(ref loadTask, null);
+            Volatile.Write(ref loadObservationTask, null);
+        }
         Clear();
+    }
+
+    internal bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    internal bool IsObservedLoadRunning =>
+        !IsDisposed && Volatile.Read(ref loadTask) is { IsCompleted: false };
+
+    internal bool StartObservedLoad(Func<Task> load, Action<Exception> reportFailure)
+    {
+        ArgumentNullException.ThrowIfNull(load);
+        ArgumentNullException.ThrowIfNull(reportFailure);
+        Task? task = null;
+        Exception? synchronousFailure = null;
+        lock (loadGate)
+        {
+            if (IsDisposed)
+            {
+                return false;
+            }
+
+            try
+            {
+                task = load();
+            }
+            catch (Exception exception)
+            {
+                synchronousFailure = exception;
+            }
+
+            if (task is not null)
+            {
+                Volatile.Write(ref loadTask, task);
+            }
+        }
+
+        if (synchronousFailure is not null)
+        {
+            if (!IsDisposed)
+            {
+                reportFailure(synchronousFailure);
+            }
+
+            return false;
+        }
+
+        if (task is null)
+        {
+            return false;
+        }
+
+        var observer = ObserveLoadAsync(task, reportFailure);
+        lock (loadGate)
+        {
+            if (ReferenceEquals(Volatile.Read(ref loadTask), task))
+            {
+                Volatile.Write(ref loadObservationTask, observer);
+            }
+        }
+
+        return true;
     }
 
     public ThreeDLocalization Localization => localization;
     public SourceQualityReport? Report => report;
     public bool HasReport => Report is not null;
     public ToolRecipeAcquisitionProvenance AppliedAcquisitionProvenance =>
-        appliedAcquisitionProvenance;
+        acquisitionEditor.AppliedAcquisitionProvenance;
     public IReadOnlyList<SourceAcquisitionProvenanceStateOption> AcquisitionStateOptions =>
-        acquisitionStateOptions;
+        acquisitionEditor.AcquisitionStateOptions;
     public IReadOnlyList<SourceAcquisitionDirectionStateOption> AcquisitionDirectionStateOptions =>
-        acquisitionDirectionStateOptions;
-
+        acquisitionEditor.AcquisitionDirectionStateOptions;
     public SourceAcquisitionProvenanceStateOption? SelectedAcquisitionStateOption
     {
-        get => selectedAcquisitionStateOption;
-        set
-        {
-            if (SetField(ref selectedAcquisitionStateOption, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.SelectedAcquisitionStateOption;
+        set => acquisitionEditor.SelectedAcquisitionStateOption = value;
     }
-
     public string AcquisitionEvidenceDraft
     {
-        get => acquisitionEvidenceDraft;
-        set
-        {
-            if (SetField(ref acquisitionEvidenceDraft, value ?? string.Empty))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.AcquisitionEvidenceDraft;
+        set => acquisitionEditor.AcquisitionEvidenceDraft = value;
     }
-
     public string AcquisitionLimitationNotesDraft
     {
-        get => acquisitionLimitationNotesDraft;
-        set
-        {
-            if (SetField(ref acquisitionLimitationNotesDraft, value ?? string.Empty))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.AcquisitionLimitationNotesDraft;
+        set => acquisitionEditor.AcquisitionLimitationNotesDraft = value;
     }
-
     public bool IsAcquisitionReflectiveFlagDraft
     {
-        get => acquisitionReflectiveFlagDraft;
-        set
-        {
-            if (SetField(ref acquisitionReflectiveFlagDraft, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.IsAcquisitionReflectiveFlagDraft;
+        set => acquisitionEditor.IsAcquisitionReflectiveFlagDraft = value;
     }
-
     public bool IsAcquisitionTransparentFlagDraft
     {
-        get => acquisitionTransparentFlagDraft;
-        set
-        {
-            if (SetField(ref acquisitionTransparentFlagDraft, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.IsAcquisitionTransparentFlagDraft;
+        set => acquisitionEditor.IsAcquisitionTransparentFlagDraft = value;
     }
-
     public bool IsAcquisitionTexturelessFlagDraft
     {
-        get => acquisitionTexturelessFlagDraft;
-        set
-        {
-            if (SetField(ref acquisitionTexturelessFlagDraft, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.IsAcquisitionTexturelessFlagDraft;
+        set => acquisitionEditor.IsAcquisitionTexturelessFlagDraft = value;
     }
-
     public bool IsAcquisitionClippedFlagDraft
     {
-        get => acquisitionClippedFlagDraft;
-        set
-        {
-            if (SetField(ref acquisitionClippedFlagDraft, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.IsAcquisitionClippedFlagDraft;
+        set => acquisitionEditor.IsAcquisitionClippedFlagDraft = value;
     }
-
     public bool IsAcquisitionLowCoverageFlagDraft
     {
-        get => acquisitionLowCoverageFlagDraft;
-        set
-        {
-            if (SetField(ref acquisitionLowCoverageFlagDraft, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.IsAcquisitionLowCoverageFlagDraft;
+        set => acquisitionEditor.IsAcquisitionLowCoverageFlagDraft = value;
     }
-
     public SourceAcquisitionDirectionStateOption? SelectedAcquisitionDirectionStateOption
     {
-        get => selectedAcquisitionDirectionStateOption;
-        set
-        {
-            if (SetField(ref selectedAcquisitionDirectionStateOption, value))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.SelectedAcquisitionDirectionStateOption;
+        set => acquisitionEditor.SelectedAcquisitionDirectionStateOption = value;
     }
-
     public string AcquisitionDirectionXDraft
     {
-        get => acquisitionDirectionXDraft;
-        set
-        {
-            if (SetField(ref acquisitionDirectionXDraft, value ?? string.Empty))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.AcquisitionDirectionXDraft;
+        set => acquisitionEditor.AcquisitionDirectionXDraft = value;
     }
-
     public string AcquisitionDirectionYDraft
     {
-        get => acquisitionDirectionYDraft;
-        set
-        {
-            if (SetField(ref acquisitionDirectionYDraft, value ?? string.Empty))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.AcquisitionDirectionYDraft;
+        set => acquisitionEditor.AcquisitionDirectionYDraft = value;
     }
-
     public string AcquisitionDirectionZDraft
     {
-        get => acquisitionDirectionZDraft;
-        set
-        {
-            if (SetField(ref acquisitionDirectionZDraft, value ?? string.Empty))
-            {
-                NotifyAcquisitionDraftProperties();
-            }
-        }
+        get => acquisitionEditor.AcquisitionDirectionZDraft;
+        set => acquisitionEditor.AcquisitionDirectionZDraft = value;
     }
-
-    public bool IsAcquisitionProvenancePersisted
-    {
-        get => isAcquisitionProvenancePersisted;
-        private set
-        {
-            if (SetField(ref isAcquisitionProvenancePersisted, value))
-            {
-                OnPropertyChanged(nameof(AcquisitionPersistenceSummary));
-            }
-        }
-    }
-
-    public bool IsAcquisitionStateAvailable =>
-        SelectedAcquisitionStateOption?.State == ToolRecipeAcquisitionProvenanceState.Available;
-
-    public bool IsAcquisitionDirectionAvailable =>
-        SelectedAcquisitionDirectionStateOption?.State
-            == ToolRecipeAcquisitionDirectionState.Available;
-
-    public string AcquisitionDirectionFrame => string.IsNullOrWhiteSpace(sourceFrameId)
-        ? "\u2014"
-        : sourceFrameId;
-
-    public string AcquisitionDirectionConvention => "Sensor \u2192 scene";
-
-    public bool IsAcquisitionDirectionPersisted
-    {
-        get => isAcquisitionDirectionPersisted;
-        private set
-        {
-            if (SetField(ref isAcquisitionDirectionPersisted, value))
-            {
-                OnPropertyChanged(nameof(AcquisitionDirectionPersistenceSummary));
-            }
-        }
-    }
-
-    public bool HasPendingAcquisitionDirectionChanges =>
-        !TryCreateDraftAcquisitionDirection(out var direction)
-        || direction != appliedAcquisitionDirection;
-
-    public bool HasPendingAcquisitionProvenanceChanges =>
-        SelectedAcquisitionStateOption?.State != appliedAcquisitionProvenance.State
-        || !string.Equals(
-            AcquisitionEvidenceDraft.Trim(),
-            appliedAcquisitionProvenance.Evidence,
-            StringComparison.Ordinal)
-        || !string.Equals(
-            AcquisitionLimitationNotesDraft.Trim(),
-            appliedAcquisitionProvenance.LimitationNotes,
-            StringComparison.Ordinal)
-        || !LimitationKindsEqual(
-            CreateDraftLimitationFlags(),
-            appliedAcquisitionProvenance.LimitationFlags)
-        || HasPendingAcquisitionDirectionChanges;
-
-    public bool CanApplyAcquisitionProvenance =>
-        applyAcquisitionProvenance is not null
-        && HasPendingAcquisitionProvenanceChanges
-        && SelectedAcquisitionStateOption is not null
-        && !string.IsNullOrWhiteSpace(AcquisitionEvidenceDraft)
-        && !string.IsNullOrWhiteSpace(AcquisitionLimitationNotesDraft)
-        && TryCreateDraftAcquisitionDirection(out _);
-
-    public bool HasAcquisitionValidationError =>
-        string.IsNullOrWhiteSpace(AcquisitionEvidenceDraft)
-        || string.IsNullOrWhiteSpace(AcquisitionLimitationNotesDraft)
-        || !TryCreateDraftAcquisitionDirection(out _);
-
-    public string AcquisitionDraftMessage =>
-        string.IsNullOrWhiteSpace(AcquisitionEvidenceDraft)
-            ? localization.SourceAcquisitionEvidenceRequired
-            : string.IsNullOrWhiteSpace(AcquisitionLimitationNotesDraft)
-                ? localization.SourceAcquisitionLimitationsRequired
-                : !TryCreateDraftAcquisitionDirection(out _)
-                    ? localization.SourceAcquisitionDirectionInvalid
-                : HasPendingAcquisitionProvenanceChanges
-                    ? localization.SourceAcquisitionReady
-                    : localization.SourceAcquisitionNoChanges;
-
-    public string AcquisitionPersistenceSummary => IsAcquisitionProvenancePersisted
-        ? localization.SourceAcquisitionPersisted
-        : localization.SourceAcquisitionFallback;
-
-    public string AcquisitionDirectionPersistenceSummary => IsAcquisitionDirectionPersisted
-        ? localization.SourceAcquisitionDirectionPersisted
-        : localization.SourceAcquisitionDirectionFallback;
-
-    public ICommand ApplyAcquisitionProvenanceCommand => applyAcquisitionProvenanceCommand;
-    public ICommand ResetAcquisitionProvenanceCommand => resetAcquisitionProvenanceCommand;
-
+    public bool IsAcquisitionProvenancePersisted => acquisitionEditor.IsAcquisitionProvenancePersisted;
+    public bool IsAcquisitionStateAvailable => acquisitionEditor.IsAcquisitionStateAvailable;
+    public bool IsAcquisitionDirectionAvailable => acquisitionEditor.IsAcquisitionDirectionAvailable;
+    public string AcquisitionDirectionFrame => acquisitionEditor.AcquisitionDirectionFrame;
+    public string AcquisitionDirectionConvention => acquisitionEditor.AcquisitionDirectionConvention;
+    public bool IsAcquisitionDirectionPersisted => acquisitionEditor.IsAcquisitionDirectionPersisted;
+    public bool HasPendingAcquisitionDirectionChanges => acquisitionEditor.HasPendingAcquisitionDirectionChanges;
+    public bool HasPendingAcquisitionProvenanceChanges => acquisitionEditor.HasPendingAcquisitionProvenanceChanges;
+    public bool CanApplyAcquisitionProvenance => acquisitionEditor.CanApplyAcquisitionProvenance;
+    public bool HasAcquisitionValidationError => acquisitionEditor.HasAcquisitionValidationError;
+    public string AcquisitionDraftMessage => acquisitionEditor.AcquisitionDraftMessage;
+    public string AcquisitionPersistenceSummary => acquisitionEditor.AcquisitionPersistenceSummary;
+    public string AcquisitionDirectionPersistenceSummary => acquisitionEditor.AcquisitionDirectionPersistenceSummary;
+    public ICommand ApplyAcquisitionProvenanceCommand => acquisitionEditor.ApplyAcquisitionProvenanceCommand;
+    public ICommand ResetAcquisitionProvenanceCommand => acquisitionEditor.ResetAcquisitionProvenanceCommand;
     public bool IsLoading
     {
         get => isLoading;
@@ -463,54 +341,8 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
 
     public void LoadAcquisitionProvenance(
         ToolRecipeAcquisitionProvenance? acquisitionProvenance,
-        string? frameId = null)
-    {
-        if (frameId is not null)
-        {
-            sourceFrameId = frameId;
-            OnPropertyChanged(nameof(AcquisitionDirectionFrame));
-        }
-        IsAcquisitionProvenancePersisted = acquisitionProvenance is not null;
-        appliedAcquisitionProvenance = acquisitionProvenance
-            ?? CreateLocalizedUnavailableProvenance();
-        IsAcquisitionDirectionPersisted = acquisitionProvenance?.AcquisitionDirection is not null;
-        appliedAcquisitionDirection = acquisitionProvenance?.AcquisitionDirection
-            ?? ToolRecipeAcquisitionDirection.CreateUnavailable(sourceFrameId);
-        RebuildAcquisitionStateOptions(appliedAcquisitionProvenance.State);
-        RebuildAcquisitionDirectionStateOptions(appliedAcquisitionDirection.State);
-        acquisitionEvidenceDraft = appliedAcquisitionProvenance.Evidence;
-        acquisitionLimitationNotesDraft = appliedAcquisitionProvenance.LimitationNotes;
-        acquisitionReflectiveFlagDraft = HasLimitationFlag(
-            appliedAcquisitionProvenance,
-            ToolRecipeAcquisitionLimitationKind.Reflective);
-        acquisitionTransparentFlagDraft = HasLimitationFlag(
-            appliedAcquisitionProvenance,
-            ToolRecipeAcquisitionLimitationKind.Transparent);
-        acquisitionTexturelessFlagDraft = HasLimitationFlag(
-            appliedAcquisitionProvenance,
-            ToolRecipeAcquisitionLimitationKind.Textureless);
-        acquisitionClippedFlagDraft = HasLimitationFlag(
-            appliedAcquisitionProvenance,
-            ToolRecipeAcquisitionLimitationKind.Clipped);
-        acquisitionLowCoverageFlagDraft = HasLimitationFlag(
-            appliedAcquisitionProvenance,
-            ToolRecipeAcquisitionLimitationKind.LowCoverage);
-        acquisitionDirectionXDraft = FormatDirectionComponent(appliedAcquisitionDirection.Vector?.X);
-        acquisitionDirectionYDraft = FormatDirectionComponent(appliedAcquisitionDirection.Vector?.Y);
-        acquisitionDirectionZDraft = FormatDirectionComponent(appliedAcquisitionDirection.Vector?.Z);
-        OnPropertyChanged(nameof(AppliedAcquisitionProvenance));
-        OnPropertyChanged(nameof(AcquisitionEvidenceDraft));
-        OnPropertyChanged(nameof(AcquisitionLimitationNotesDraft));
-        OnPropertyChanged(nameof(IsAcquisitionReflectiveFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionTransparentFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionTexturelessFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionClippedFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionLowCoverageFlagDraft));
-        OnPropertyChanged(nameof(AcquisitionDirectionXDraft));
-        OnPropertyChanged(nameof(AcquisitionDirectionYDraft));
-        OnPropertyChanged(nameof(AcquisitionDirectionZDraft));
-        NotifyAcquisitionDraftProperties();
-    }
+        string? frameId = null) =>
+        acquisitionEditor.LoadAcquisitionProvenance(acquisitionProvenance, frameId);
 
     public Task EnsureSourceAsync(
         string path,
@@ -618,6 +450,38 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
             }
 
             cancellation.Dispose();
+        }
+    }
+
+    private async Task ObserveLoadAsync(
+        Task task,
+        Action<Exception> reportFailure)
+    {
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException)
+        {
+            // Source Quality owns expected latest-source cancellation.
+        }
+        catch (Exception exception)
+        {
+            if (!IsDisposed)
+            {
+                reportFailure(exception);
+            }
+        }
+        finally
+        {
+            lock (loadGate)
+            {
+                if (ReferenceEquals(Volatile.Read(ref loadTask), task))
+                {
+                    Volatile.Write(ref loadTask, null);
+                    Volatile.Write(ref loadObservationTask, null);
+                }
+            }
         }
     }
 
@@ -827,13 +691,6 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
     {
         OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(DistributionSummary));
-        OnPropertyChanged(nameof(AcquisitionPersistenceSummary));
-        OnPropertyChanged(nameof(AcquisitionDirectionPersistenceSummary));
-        RebuildAcquisitionStateOptions(
-            SelectedAcquisitionStateOption?.State ?? appliedAcquisitionProvenance.State);
-        RebuildAcquisitionDirectionStateOptions(
-            SelectedAcquisitionDirectionStateOption?.State ?? appliedAcquisitionDirection.State);
-        NotifyAcquisitionDraftProperties();
         Channels.ReplaceAll(CreateChannelItems(Report));
         GridDiagnostics.ReplaceAll(CreateGridDiagnosticItems(Report));
         OnPropertyChanged(nameof(GridDiagnosticsStatus));
@@ -841,190 +698,8 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         OnPropertyChanged(nameof(GridDiagnosticsSummary));
     }
 
-    private void ApplyAcquisitionProvenance()
-    {
-        if (!CanApplyAcquisitionProvenance
-            || SelectedAcquisitionStateOption is null)
-        {
-            return;
-        }
-
-        if (!TryCreateDraftAcquisitionDirection(out var direction))
-        {
-            return;
-        }
-
-        var provenance = new ToolRecipeAcquisitionProvenance(
-            SelectedAcquisitionStateOption.State,
-            AcquisitionEvidenceDraft.Trim(),
-            AcquisitionLimitationNotesDraft.Trim(),
-            direction,
-            CreateDraftLimitationFlags());
-        applyAcquisitionProvenance!(provenance);
-        LoadAcquisitionProvenance(provenance, sourceFrameId);
-    }
-
-    private IReadOnlyList<ToolRecipeAcquisitionLimitationFlag> CreateDraftLimitationFlags()
-    {
-        var flags = new List<ToolRecipeAcquisitionLimitationFlag>();
-        if (IsAcquisitionReflectiveFlagDraft)
-        {
-            flags.Add(new(
-                ToolRecipeAcquisitionLimitationKind.Reflective,
-                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
-        }
-        if (IsAcquisitionTransparentFlagDraft)
-        {
-            flags.Add(new(
-                ToolRecipeAcquisitionLimitationKind.Transparent,
-                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
-        }
-        if (IsAcquisitionTexturelessFlagDraft)
-        {
-            flags.Add(new(
-                ToolRecipeAcquisitionLimitationKind.Textureless,
-                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
-        }
-        if (IsAcquisitionClippedFlagDraft)
-        {
-            flags.Add(new(
-                ToolRecipeAcquisitionLimitationKind.Clipped,
-                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
-        }
-        if (IsAcquisitionLowCoverageFlagDraft)
-        {
-            flags.Add(new(
-                ToolRecipeAcquisitionLimitationKind.LowCoverage,
-                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
-        }
-
-        return flags;
-    }
-
-    private static bool HasLimitationFlag(
-        ToolRecipeAcquisitionProvenance provenance,
-        ToolRecipeAcquisitionLimitationKind kind) =>
-        provenance.LimitationFlags?.Any(flag => flag?.Kind == kind) == true;
-
-    private static bool LimitationKindsEqual(
-        IReadOnlyList<ToolRecipeAcquisitionLimitationFlag> draft,
-        IReadOnlyList<ToolRecipeAcquisitionLimitationFlag>? applied)
-    {
-        var draftKinds = draft.Select(flag => flag.Kind).ToHashSet();
-        var appliedKinds = (applied ?? [])
-            .Where(flag => flag is not null)
-            .Select(flag => flag.Kind)
-            .ToHashSet();
-        return draftKinds.SetEquals(appliedKinds);
-    }
-
-    private void RebuildAcquisitionDirectionStateOptions(
-        ToolRecipeAcquisitionDirectionState selectedState)
-    {
-        acquisitionDirectionStateOptions =
-        [
-            new(
-                ToolRecipeAcquisitionDirectionState.Available,
-                localization.SourceAcquisitionDirectionAvailable),
-            new(
-                ToolRecipeAcquisitionDirectionState.Unavailable,
-                localization.SourceAcquisitionDirectionUnavailable)
-        ];
-        selectedAcquisitionDirectionStateOption = acquisitionDirectionStateOptions.First(option =>
-            option.State == selectedState);
-        OnPropertyChanged(nameof(AcquisitionDirectionStateOptions));
-        OnPropertyChanged(nameof(SelectedAcquisitionDirectionStateOption));
-        OnPropertyChanged(nameof(IsAcquisitionDirectionAvailable));
-    }
-
-    private bool TryCreateDraftAcquisitionDirection(
-        out ToolRecipeAcquisitionDirection direction)
-    {
-        direction = ToolRecipeAcquisitionDirection.CreateUnavailable(sourceFrameId);
-        if (SelectedAcquisitionDirectionStateOption is null
-            || string.IsNullOrWhiteSpace(sourceFrameId))
-        {
-            return false;
-        }
-        if (SelectedAcquisitionDirectionStateOption.State
-            == ToolRecipeAcquisitionDirectionState.Unavailable)
-        {
-            return true;
-        }
-        if (!IsAcquisitionStateAvailable
-            || !TryParseFinite(AcquisitionDirectionXDraft, out var x)
-            || !TryParseFinite(AcquisitionDirectionYDraft, out var y)
-            || !TryParseFinite(AcquisitionDirectionZDraft, out var z))
-        {
-            return false;
-        }
-
-        var length = Math.Sqrt(x * x + y * y + z * z);
-        if (!double.IsFinite(length) || length <= 1e-12)
-        {
-            return false;
-        }
-
-        direction = new ToolRecipeAcquisitionDirection(
-            ToolRecipeAcquisitionDirectionState.Available,
-            ToolRecipeAcquisitionDirectionConvention.SensorToScene,
-            sourceFrameId,
-            new ToolRecipeXyz(x / length, y / length, z / length));
-        return true;
-    }
-
-    private static bool TryParseFinite(string value, out double parsed) =>
-        double.TryParse(
-            value,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out parsed)
-        && double.IsFinite(parsed);
-
-    private static string FormatDirectionComponent(double? value) =>
-        value?.ToString("R", CultureInfo.InvariantCulture) ?? string.Empty;
-
-    private void RebuildAcquisitionStateOptions(
-        ToolRecipeAcquisitionProvenanceState selectedState)
-    {
-        acquisitionStateOptions =
-        [
-            new(
-                ToolRecipeAcquisitionProvenanceState.Available,
-                localization.SourceAcquisitionAvailable),
-            new(
-                ToolRecipeAcquisitionProvenanceState.Unavailable,
-                localization.SourceAcquisitionUnavailable)
-        ];
-        selectedAcquisitionStateOption = acquisitionStateOptions.First(option =>
-            option.State == selectedState);
-        OnPropertyChanged(nameof(AcquisitionStateOptions));
-        OnPropertyChanged(nameof(SelectedAcquisitionStateOption));
-        OnPropertyChanged(nameof(IsAcquisitionStateAvailable));
-    }
-
-    private ToolRecipeAcquisitionProvenance CreateLocalizedUnavailableProvenance() => new(
-        ToolRecipeAcquisitionProvenanceState.Unavailable,
-        localization.SourceAcquisitionDefaultEvidence,
-        localization.SourceAcquisitionDefaultLimitations);
-
-    private void NotifyAcquisitionDraftProperties()
-    {
-        OnPropertyChanged(nameof(IsAcquisitionReflectiveFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionTransparentFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionTexturelessFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionClippedFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionLowCoverageFlagDraft));
-        OnPropertyChanged(nameof(IsAcquisitionStateAvailable));
-        OnPropertyChanged(nameof(IsAcquisitionDirectionAvailable));
-        OnPropertyChanged(nameof(HasPendingAcquisitionDirectionChanges));
-        OnPropertyChanged(nameof(HasPendingAcquisitionProvenanceChanges));
-        OnPropertyChanged(nameof(CanApplyAcquisitionProvenance));
-        OnPropertyChanged(nameof(HasAcquisitionValidationError));
-        OnPropertyChanged(nameof(AcquisitionDraftMessage));
-        applyAcquisitionProvenanceCommand.RaiseCanExecuteChanged();
-        resetAcquisitionProvenanceCommand.RaiseCanExecuteChanged();
-    }
+    private void OnAcquisitionEditorPropertyChanged(object? sender, PropertyChangedEventArgs args) =>
+        OnPropertyChanged(args.PropertyName);
 
     private static string ShortHash(string value) =>
         value.Length <= 12 ? value : $"{value[..12]}\u2026";

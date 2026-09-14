@@ -101,9 +101,10 @@ internal static class ImportSurfaceViewModelVerification
             && Math.Abs(workbench.C3DSourceLoadProgressPercent - 100.0) < 0.001,
             $"loading={workbench.IsC3DSourceLoading};progress={workbench.C3DSourceLoadProgressPercent:F1}");
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
-        summary = $"Import surface ViewModel verification: {passed}/{total} passed. Report: {Path.GetFullPath(reportPath)}";
+        var fullReportPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
+        summary = $"Import surface ViewModel verification: {passed}/{total} passed. Report: {fullReportPath}";
         return passed == total;
     }
 }

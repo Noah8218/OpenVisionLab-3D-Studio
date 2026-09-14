@@ -9,8 +9,11 @@ public partial class ThreePointPlaneToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
 
-    public ThreePointPlaneToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "three-point-plane", "Expected a 3-Point Plane step.", activateOnActivated: false)
+    public ThreePointPlaneToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "three-point-plane", "Expected a 3-Point Plane step.", activateOnActivated: false)
     {
         InitializeComponent();
         InputViewerHost.Content = inputViewer;

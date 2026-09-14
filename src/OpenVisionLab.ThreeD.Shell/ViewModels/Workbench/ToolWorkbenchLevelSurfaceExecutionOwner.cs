@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -234,7 +235,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
 
             levelSurfacePreview = evaluation;
             levelSurfacePreviewPath = CreateLevelSurfacePreviewPath(evaluation.Output.ContentSha256);
-            evaluation.Output.SaveC3D(levelSurfacePreviewPath);
+            SaveC3DAtomically(evaluation.Output, levelSurfacePreviewPath);
             if (!IsCurrentPreview(currentCancellation))
             {
                 return false;
@@ -442,9 +443,10 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         try
         {
             var recipePath = getRecipePath()!;
-            var c3dPath = GetArtifactC3DPath(recipePath, step.OutputEntityId);
-            output.SaveC3D(c3dPath);
-            var sidecarPath = GetArtifactSidecarPath(recipePath, step.OutputEntityId);
+            var recipeDirectory = GetRecipeDirectory(recipePath);
+            var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
+            SaveC3DAtomically(output, c3dPath);
+            var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
             var sidecar = new LevelSurfaceArtifactRecord(
                 step.Id,
                 step.OutputEntityId,
@@ -462,7 +464,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 ToLevelFrameRecord(levelFrame),
                 ToQualityRecord(levelSurfacePreview.QualityEvidence),
                 ToFrameChainRecord(frameChain));
-            File.WriteAllText(
+            WriteTextAtomically(
                 sidecarPath,
                 JsonSerializer.Serialize(sidecar, new JsonSerializerOptions { WriteIndented = true }));
             levelSurfacePreviewPath = c3dPath;
@@ -503,8 +505,9 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
             return;
         }
 
-        var sidecarPath = GetArtifactSidecarPath(recipePath, step.OutputEntityId);
-        var c3dPath = GetArtifactC3DPath(recipePath, step.OutputEntityId);
+        var recipeDirectory = GetRecipeDirectory(recipePath);
+        var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
+        var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
         if (!File.Exists(sidecarPath) || !File.Exists(c3dPath))
         {
             return;
@@ -653,28 +656,9 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
             Volatile.Read(ref levelSurfacePreviewCancellation),
             cancellation);
 
-    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
+    private string GetRecipeDirectory(string? recipePath = null)
     {
-        if (currentCancellation is null)
-        {
-            return;
-        }
-
-        try
-        {
-            currentCancellation.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // A concurrent owner disposal already released the token source.
-        }
-
-        currentCancellation.Dispose();
-    }
-
-    private string GetRecipeDirectory()
-    {
-        var path = getRecipePath();
+        var path = recipePath ?? getRecipePath();
         if (string.IsNullOrWhiteSpace(path))
         {
             return Environment.CurrentDirectory;
@@ -701,14 +685,38 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         return Path.Combine(directory, $"level-surface-{hash}.c3d");
     }
 
-    private static string GetArtifactC3DPath(string recipePath, string outputEntityId) =>
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+        => WriteAtomically(path, output.SaveC3D);
+
+    private static void WriteTextAtomically(string path, string contents)
+        => WriteAtomically(path, temporaryPath => File.WriteAllText(temporaryPath, contents));
+
+    private static void WriteAtomically(string path, Action<string> write)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            write(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static string GetArtifactC3DPath(string recipeDirectory, string recipePath, string outputEntityId) =>
         Path.Combine(
-            Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory,
+            recipeDirectory,
             $"{Path.GetFileNameWithoutExtension(recipePath)}.level-surface.{Sanitize(outputEntityId)}.c3d");
 
-    private static string GetArtifactSidecarPath(string recipePath, string outputEntityId) =>
+    private static string GetArtifactSidecarPath(string recipeDirectory, string recipePath, string outputEntityId) =>
         Path.Combine(
-            Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory,
+            recipeDirectory,
             $"{Path.GetFileNameWithoutExtension(recipePath)}.level-surface.{Sanitize(outputEntityId)}.json");
 
     private static string Sanitize(string value) =>

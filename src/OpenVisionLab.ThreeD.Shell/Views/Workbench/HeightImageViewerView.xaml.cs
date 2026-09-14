@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -330,7 +329,11 @@ public partial class HeightImageViewerView : UserControl
         if (viewModel!.RoiWorkspace.IsGestureActive
             && args.LeftButton == MouseButtonState.Pressed)
         {
-            viewModel.RoiWorkspace.TryUpdatePointer(row, column);
+            viewModel.RoiWorkspace.HandlePointer(
+                new HeightImageRoiPointerInput(
+                    HeightImageRoiPointerAction.Update,
+                    row,
+                    column));
         }
 
         viewModel.UpdateHover(column, row);
@@ -353,11 +356,14 @@ public partial class HeightImageViewerView : UserControl
         var columnTolerance = Math.Max(
             1,
             (int)Math.Ceiling(8.0 / Math.Max(1.0, HeightImage.ActualWidth) * frame.Width));
-        if (!viewModel.RoiWorkspace.TryBeginPointer(
+        var pointerResult = viewModel.RoiWorkspace.HandlePointer(
+            new HeightImageRoiPointerInput(
+                HeightImageRoiPointerAction.Begin,
                 row,
                 column,
                 rowTolerance,
-                columnTolerance))
+                columnTolerance));
+        if (!pointerResult.CaptureMouse)
         {
             return;
         }
@@ -377,11 +383,20 @@ public partial class HeightImageViewerView : UserControl
 
         if (TryGetNativeCell(args.GetPosition(HeightImage), out var row, out var column))
         {
-            viewModel.RoiWorkspace.TryUpdatePointer(row, column);
+            viewModel.RoiWorkspace.HandlePointer(
+                new HeightImageRoiPointerInput(
+                    HeightImageRoiPointerAction.Update,
+                    row,
+                    column));
         }
 
-        viewModel.RoiWorkspace.EndPointer();
-        HeightImage.ReleaseMouseCapture();
+        var pointerResult = viewModel.RoiWorkspace.HandlePointer(
+            new HeightImageRoiPointerInput(HeightImageRoiPointerAction.End));
+        if (pointerResult.ReleaseMouse)
+        {
+            HeightImage.ReleaseMouseCapture();
+        }
+
         args.Handled = true;
     }
 
@@ -413,31 +428,6 @@ public partial class HeightImageViewerView : UserControl
             0,
             frame.Height - 1);
         return true;
-    }
-
-    private void HeightImageViewer_PreviewKeyDown(object sender, KeyEventArgs args)
-    {
-        if (viewModel is null
-            || args.OriginalSource is TextBoxBase
-            || args.OriginalSource is ComboBox)
-        {
-            return;
-        }
-
-        var command = args.Key switch
-        {
-            Key.Enter => viewModel.RoiWorkspace.ApplyCommand,
-            Key.Escape => viewModel.RoiWorkspace.CancelCommand,
-            Key.Delete => viewModel.RoiWorkspace.DeleteCommand,
-            _ => null
-        };
-        if (command?.CanExecute(null) != true)
-        {
-            return;
-        }
-
-        command.Execute(null);
-        args.Handled = true;
     }
 
     private void UpdateRoiOverlay()

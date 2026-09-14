@@ -1,22 +1,37 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
-using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
 public partial class ViewerWorkspacePopoutWindow : Window
 {
+    public static readonly DependencyProperty DismissedCommandProperty =
+        DependencyProperty.Register(
+            nameof(DismissedCommand),
+            typeof(ICommand),
+            typeof(ViewerWorkspacePopoutWindow),
+            new PropertyMetadata(null));
+
     private bool allowClose;
 
     public ViewerWorkspacePopoutWindow()
     {
         InitializeComponent();
+        SetBinding(
+            DismissedCommandProperty,
+            new Binding("SetSingleViewerLayoutCommand"));
         Closing += OnClosing;
     }
 
     public event EventHandler? Dismissed;
-    public event EventHandler? AuxiliarySlotFocused;
+
+    public ICommand? DismissedCommand
+    {
+        get => (ICommand?)GetValue(DismissedCommandProperty);
+        set => SetValue(DismissedCommandProperty, value);
+    }
 
     public void SetViewerContent(object? content, string emptyText)
     {
@@ -44,7 +59,4 @@ public partial class ViewerWorkspacePopoutWindow : Window
         Hide();
         Dismissed?.Invoke(this, EventArgs.Empty);
     }
-
-    private void ViewerSurface_PreviewMouseDown(object sender, MouseButtonEventArgs args) =>
-        AuxiliarySlotFocused?.Invoke(this, EventArgs.Empty);
 }

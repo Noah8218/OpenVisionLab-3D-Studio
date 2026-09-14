@@ -8,6 +8,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Reporting.Integration;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Shell;
+using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
 
 namespace OpenVisionLab.ThreeD.Verification.Integration;
@@ -33,8 +34,10 @@ internal static class ThreeDIntegrationViewModelVerification
             VerifyBuildIdentity(fixtureRoot, Check);
             var exchangeRoot = Path.Combine(fixtureRoot, "exchange");
             var legacyExchangeRoot = Path.Combine(fixtureRoot, "legacy-exchange");
+            var workflowRoot = Path.Combine(fixtureRoot, "workflow-direct");
             var settingsPath = Path.Combine(fixtureRoot, "settings.json");
             var runRecordPath = Path.Combine(fixtureRoot, "run-record.json");
+            var workflowRunRecordPath = Path.Combine(workflowRoot, "run-record.json");
             var sourceMismatchRunRecordPath = Path.Combine(
                 fixtureRoot,
                 "source-mismatch-run-record.json");
@@ -43,6 +46,7 @@ internal static class ThreeDIntegrationViewModelVerification
                 "recipe-mismatch-run-record.json");
             Directory.CreateDirectory(exchangeRoot);
             Directory.CreateDirectory(legacyExchangeRoot);
+            Directory.CreateDirectory(workflowRoot);
             var handoff = WriteV2Handoff(exchangeRoot);
             WriteRunRecord(
                 runRecordPath,
@@ -57,6 +61,148 @@ internal static class ThreeDIntegrationViewModelVerification
                 handoff.Context.InputSha256,
                 new string('D', 64));
 
+            var uncommittedPublicationDirectory = Path.Combine(
+                fixtureRoot,
+                "run-record-publication-uncommitted");
+            string uncommittedArtifactPath;
+            using (var publication = ThreeDIntegrationRunRecordPublication.Create(
+                       runRecordPath,
+                       uncommittedPublicationDirectory,
+                       handoff.Context))
+            {
+                uncommittedArtifactPath = publication.ArtifactPath;
+                Check(
+                    "run record publication projects the existing record",
+                    publication.RunId == "run-1"
+                    && publication.Outcome == IntegrationInspectionOutcome.Pass
+                    && publication.Disposition == IntegrationInspectionDisposition.Pass
+                    && publication.Metrics.Count == 2
+                    && File.Exists(publication.ArtifactPath),
+                    $"run={publication.RunId}; outcome={publication.Outcome}; metrics={publication.Metrics.Count}");
+            }
+            Check(
+                "uncommitted run record publication cleans the copied artifact",
+                !File.Exists(uncommittedArtifactPath),
+                uncommittedArtifactPath);
+            Check(
+                "uncommitted run record publication cleans temporary siblings",
+                !Directory.GetFiles(
+                    Path.GetDirectoryName(uncommittedArtifactPath)!,
+                    "*.tmp.*").Any(),
+                uncommittedArtifactPath);
+
+            var committedPublicationDirectory = Path.Combine(
+                fixtureRoot,
+                "run-record-publication-committed");
+            string committedArtifactPath;
+            using (var publication = ThreeDIntegrationRunRecordPublication.Create(
+                       runRecordPath,
+                       committedPublicationDirectory,
+                       handoff.Context))
+            {
+                committedArtifactPath = publication.ArtifactPath;
+                publication.Commit();
+            }
+            Check(
+                "committed run record publication preserves the copied artifact",
+                File.Exists(committedArtifactPath),
+                committedArtifactPath);
+            Check(
+                "committed run record publication preserves source bytes",
+                File.ReadAllBytes(committedArtifactPath).AsSpan().SequenceEqual(
+                    File.ReadAllBytes(runRecordPath)),
+                committedArtifactPath);
+            Check(
+                "committed run record publication cleans temporary siblings",
+                !Directory.GetFiles(
+                    Path.GetDirectoryName(committedArtifactPath)!,
+                    "*.tmp.*").Any(),
+                committedArtifactPath);
+
+            var existingArtifactDirectory = Path.Combine(
+                fixtureRoot,
+                "run-record-publication-existing",
+                IntegrationTransactionLayout.ArtifactsDirectoryName);
+            Directory.CreateDirectory(existingArtifactDirectory);
+            var existingArtifactPath = Path.Combine(
+                existingArtifactDirectory,
+                "3d-run-record.json");
+            var existingArtifactSentinel = "pre-existing-run-record-artifact";
+            File.WriteAllText(existingArtifactPath, existingArtifactSentinel);
+            var existingArtifactRejected = false;
+            try
+            {
+                using var unusedPublication = ThreeDIntegrationRunRecordPublication.Create(
+                    runRecordPath,
+                    Path.Combine(fixtureRoot, "run-record-publication-existing"),
+                    handoff.Context);
+            }
+            catch (IOException)
+            {
+                existingArtifactRejected = true;
+            }
+
+            Check(
+                "existing run record artifact rejects overwrite",
+                existingArtifactRejected,
+                existingArtifactPath);
+            Check(
+                "existing run record artifact remains intact after rejection",
+                File.ReadAllText(existingArtifactPath) == existingArtifactSentinel,
+                existingArtifactPath);
+            Check(
+                "existing run record artifact rejection cleans temporary siblings",
+                !Directory.GetFiles(existingArtifactDirectory, "*.tmp.*").Any(),
+                existingArtifactPath);
+
+            var workflowHandoff = WriteV2Handoff(workflowRoot);
+            WriteRunRecord(
+                workflowRunRecordPath,
+                workflowHandoff.Context.InputSha256,
+                workflowHandoff.Context.RecipeSha256);
+            var transactionWorkflow = new ThreeDIntegrationTransactionWorkflow(
+                _ => CreateConsumerIdentity(),
+                (_, _, english) => english);
+            var workflowItems = transactionWorkflow.Discover(workflowRoot);
+            Check(
+                "direct transaction workflow discovery is read-only",
+                workflowItems.Count == 1
+                && !AcknowledgementExists(workflowRoot, workflowHandoff.TransactionId)
+                && !ResultExists(workflowRoot, workflowHandoff.TransactionId),
+                $"items={workflowItems.Count}; ack={AcknowledgementExists(workflowRoot, workflowHandoff.TransactionId)}; result={ResultExists(workflowRoot, workflowHandoff.TransactionId)}");
+            var workflowStatus = transactionWorkflow.Review(workflowRoot, workflowItems[0], rejectionReason: null);
+            var workflowPublished = transactionWorkflow.PublishResult(
+                workflowRoot,
+                workflowItems[0],
+                workflowRunRecordPath);
+            Check(
+                "direct transaction workflow preserves review and publish",
+                workflowStatus == IntegrationAcknowledgementStatus.Accepted
+                && ResultExists(workflowRoot, workflowHandoff.TransactionId)
+                && workflowPublished.Outcome == IntegrationInspectionOutcome.Pass.ToString()
+                && workflowPublished.RunId == "run-1",
+                $"ack={workflowStatus}; outcome={workflowPublished.Outcome}; run={workflowPublished.RunId}");
+            var workflowLegacyRoot = Path.Combine(fixtureRoot, "workflow-legacy");
+            Directory.CreateDirectory(workflowLegacyRoot);
+            var workflowLegacyHandoff = WriteLegacyHandoff(workflowLegacyRoot);
+            var workflowLegacyItems = transactionWorkflow.Discover(workflowLegacyRoot);
+            var workflowLegacyStatus = transactionWorkflow.Review(
+                workflowLegacyRoot,
+                workflowLegacyItems[0],
+                rejectionReason: null);
+            var workflowLegacyPublished = transactionWorkflow.PublishResult(
+                workflowLegacyRoot,
+                workflowLegacyItems[0],
+                runRecordPath);
+            Check(
+                "direct transaction workflow preserves legacy review and publish",
+                workflowLegacyItems.Count == 1
+                && workflowLegacyStatus == IntegrationAcknowledgementStatus.Accepted
+                && ResultExists(workflowLegacyRoot, workflowLegacyHandoff.TransactionId)
+                && workflowLegacyPublished.Outcome == IntegrationInspectionDisposition.Pass.ToString()
+                && workflowLegacyPublished.RunId == "run-1",
+                $"items={workflowLegacyItems.Count}; ack={workflowLegacyStatus}; outcome={workflowLegacyPublished.Outcome}; run={workflowLegacyPublished.RunId}");
+
             var setup = CreateViewModel(settingsPath, runRecordPath);
             Check(
                 "3D default endpoints align with local 2D peer",
@@ -65,6 +211,17 @@ internal static class ThreeDIntegrationViewModelVerification
                 && setup.TcpPeerHost == "127.0.0.1"
                 && setup.TcpPeerPortText == "45102",
                 $"listen={setup.TcpListenAddress}:{setup.TcpListenPortText}; peer={setup.TcpPeerHost}:{setup.TcpPeerPortText}");
+            setup.ExchangeRoot = exchangeRoot;
+            var selectedExchangeRoot = Path.Combine(fixtureRoot, "selected-exchange");
+            var dialogHost = new RecordingIntegrationDialogHost(selectedExchangeRoot);
+            setup.SetDialogHost(dialogHost);
+            setup.BrowseExchangeRootCommand.Execute(null);
+            Check(
+                "folder selection applies only the dialog result",
+                setup.ExchangeRoot == selectedExchangeRoot
+                && dialogHost.InitialDirectory == exchangeRoot
+                && !string.IsNullOrWhiteSpace(dialogHost.Title),
+                $"root={setup.ExchangeRoot}; initial={dialogHost.InitialDirectory}; title={dialogHost.Title}");
             setup.ExchangeRoot = exchangeRoot;
             setup.RefreshHandoffsCommand.Execute(null);
             Check(
@@ -185,8 +342,8 @@ internal static class ThreeDIntegrationViewModelVerification
                 "legacy v1 acknowledgement and result remain writable",
                 legacyAcknowledgement.Status == IntegrationAcknowledgementStatus.Accepted
                 && legacyResult.Status == IntegrationResultStatus.Completed
-                && legacyResult.Outcome == IntegrationInspectionOutcome.Pass,
-                $"ack={legacyAcknowledgement.Status}; result={legacyResult.Status}/{legacyResult.Outcome}");
+                && legacyResult.Disposition == IntegrationInspectionDisposition.Pass,
+                $"ack={legacyAcknowledgement.Status}; result={legacyResult.Status}/{legacyResult.Disposition}");
 
             Task.Run(() => VerifyTcpExchangeAsync(fixtureRoot, Check))
                 .GetAwaiter()
@@ -341,11 +498,11 @@ internal static class ThreeDIntegrationViewModelVerification
 
         try
         {
-            await using var receiver = new ThreeDIntegrationTcpExchange(
+            await using var receiver = new ThreeDIntegrationTcpTransport(
                 receiverRoot,
                 sharedKey,
                 options);
-            await using var sender = new ThreeDIntegrationTcpExchange(
+            await using var sender = new ThreeDIntegrationTcpTransport(
                 sourceRoot,
                 sharedKey,
                 options);
@@ -361,6 +518,19 @@ internal static class ThreeDIntegrationViewModelVerification
                 "tcp ping identifies 3D peer",
                 ping.PeerApplicationId == IntegrationApplicationIds.ThreeDStudio,
                 ping.PeerApplicationId);
+
+            await using (var compatibilityFacade = new ThreeDIntegrationTcpExchange(
+                           sourceRoot,
+                           sharedKey,
+                           options))
+            {
+                var compatibilityPing = await compatibilityFacade.PingAsync(peer);
+                check(
+                    "public TCP exchange facade forwards transport operations",
+                    compatibilityPing.PeerApplicationId == IntegrationApplicationIds.ThreeDStudio
+                    && compatibilityFacade.ExchangeRoot == Path.GetFullPath(sourceRoot),
+                    compatibilityPing.PeerApplicationId);
+            }
 
             var pushed = await sender.PushTransactionAsync(peer, handoff.TransactionId);
             check(
@@ -458,6 +628,23 @@ internal static class ThreeDIntegrationViewModelVerification
                 && !File.ReadAllText(settingsPath).Contains(encodedKey, StringComparison.Ordinal),
                 setup.StatusText);
 
+            var activeStart = setup.StartTcpListenerAsync();
+            var activeDispose = setup.DisposeAsync().AsTask();
+            await Task.WhenAll(activeStart, activeDispose);
+            check(
+                "dispose awaits active listener operation",
+                setup.IsDisposed
+                && !setup.IsTcpBusy
+                && !setup.IsTcpListening,
+                $"disposed={setup.IsDisposed}; busy={setup.IsTcpBusy}; listening={setup.IsTcpListening}");
+            await setup.StartTcpListenerAsync();
+            check(
+                "disposed ViewModel rejects a new listener operation",
+                setup.IsDisposed
+                && !setup.IsTcpBusy
+                && !setup.IsTcpListening,
+                setup.StatusText);
+
             await using var restored = CreateViewModel(settingsPath, unusedRunRecordPath);
             restored.SetSessionSharedKey(encodedKey);
             check(
@@ -503,9 +690,17 @@ internal static class ThreeDIntegrationViewModelVerification
                 restored.LastTcpTransferText);
 
             await restored.PushSelectedTransactionAsync();
-            var peerSequence = ThreeDIntegrationTcpExchange.ReadValidatedV2Sequence(
+            var peerSequence = ThreeDIntegrationTransactionSequenceReader.ReadValidatedV2Sequence(
                 peerRoot,
                 handoff.TransactionId);
+            var compatibilitySequence = ThreeDIntegrationTcpExchange.ReadValidatedV2Sequence(
+                peerRoot,
+                handoff.TransactionId);
+            check(
+                "public TCP exchange facade forwards sequence validation",
+                compatibilitySequence.Handoff.TransactionId == peerSequence.Handoff.TransactionId
+                && compatibilitySequence.Result?.RunId == peerSequence.Result?.RunId,
+                compatibilitySequence.Result?.RunId ?? "no-result");
             check(
                 "ViewModel push transfers selected 2D transaction",
                 peerSequence.Handoff.TransactionId == handoff.TransactionId
@@ -828,6 +1023,21 @@ internal static class ThreeDIntegrationViewModelVerification
             [],
             "matched",
             new InspectionRunArtifacts("report.txt", null, null, path, null, null)));
+
+    private sealed class RecordingIntegrationDialogHost(string selectedPath) : IThreeDIntegrationDialogHost
+    {
+        public string? InitialDirectory { get; private set; }
+
+        public string? Title { get; private set; }
+
+        public bool TrySelectExchangeRoot(string? initialDirectory, string title, out string path)
+        {
+            InitialDirectory = initialDirectory;
+            Title = title;
+            path = selectedPath;
+            return true;
+        }
+    }
 
     private static bool RejectsCorrelationMismatch(Action operation)
     {

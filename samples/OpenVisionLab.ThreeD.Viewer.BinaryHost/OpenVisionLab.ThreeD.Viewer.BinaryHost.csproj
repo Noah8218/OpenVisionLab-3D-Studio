@@ -9,7 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="$(ViewerBundlePath)\*.dll" />
+    <ViewerBundleAssembly Include="$(ViewerBundlePath)\*.dll" />
+    <Reference Include="@(ViewerBundleAssembly)"
+               HintPath="%(ViewerBundleAssembly.Identity)"
+               Private="true" />
+    <Content Include="$(ViewerBundlePath)\runtimes\**\*"
+             Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(ViewerBundlePath)\LICENSE;$(ViewerBundlePath)\NOTICE;$(ViewerBundlePath)\VIEWER_DEPENDENCY_ATTRIBUTION.json;$(ViewerBundlePath)\THIRD-PARTY-NOTICES.txt"
+             Link="%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
     <Content Include="$(ViewerBundlePath)\viewer-dll-manifest.json"
              Link="viewer-dll-manifest.json"
              CopyToOutputDirectory="PreserveNewest" />

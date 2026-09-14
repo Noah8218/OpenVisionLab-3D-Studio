@@ -10,8 +10,11 @@ public partial class FilterToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
 
-    public FilterToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "filter", "Filter Tool Lab requires a Filter step.")
+    public FilterToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "filter", "Filter Tool Lab requires a Filter step.")
     {
         ArgumentNullException.ThrowIfNull(workbench);
         InitializeComponent();

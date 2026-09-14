@@ -54,7 +54,7 @@ internal static class RunnerApplication
             }
 
             var recipe = HeightDeviationRecipe.Load(fullRecipePath);
-            var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+            var sourcePath = ResolveRecipePath(recipe.Source.Path, GetRecipeDirectory(fullRecipePath));
             if (!recipe.OutputEnabled)
             {
                 return RunDisabledLegacyRecipe(
@@ -167,8 +167,7 @@ internal static class RunnerApplication
             TimeSpan.Zero,
             [],
             []);
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        var fullReportPath = PrepareReportPath(reportPath);
         File.WriteAllLines(
             fullReportPath,
             [
@@ -215,7 +214,7 @@ internal static class RunnerApplication
         var recipe = NominalActualComparisonRecipe.Load(fullRecipePath);
         var actualSourcePath = ResolveRecipePath(
             recipe.Step.ActualSource.Path,
-            Path.GetDirectoryName(fullRecipePath)!);
+            GetRecipeDirectory(fullRecipePath));
         if (!recipe.OutputEnabled)
         {
             return RunDisabledLegacyRecipe(
@@ -301,7 +300,7 @@ internal static class RunnerApplication
         RunArtifactOptions runArtifacts)
     {
         var recipe = C3DThicknessRecipe.Load(fullRecipePath);
-        var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        var sourcePath = ResolveRecipePath(recipe.Source.Path, GetRecipeDirectory(fullRecipePath));
         if (!recipe.OutputEnabled)
         {
             return RunDisabledLegacyRecipe(
@@ -362,7 +361,7 @@ internal static class RunnerApplication
         RunArtifactOptions runArtifacts)
     {
         var recipe = C3DWarpageRecipe.Load(fullRecipePath);
-        var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        var sourcePath = ResolveRecipePath(recipe.Source.Path, GetRecipeDirectory(fullRecipePath));
         if (!recipe.OutputEnabled)
         {
             return RunDisabledLegacyRecipe(
@@ -423,7 +422,7 @@ internal static class RunnerApplication
         RunArtifactOptions runArtifacts)
     {
         var recipe = C3DPointPairDimensionsRecipe.Load(fullRecipePath);
-        var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        var sourcePath = ResolveRecipePath(recipe.Source.Path, GetRecipeDirectory(fullRecipePath));
         if (!recipe.OutputEnabled)
         {
             return RunDisabledLegacyRecipe(
@@ -491,7 +490,7 @@ internal static class RunnerApplication
         RunArtifactOptions runArtifacts)
     {
         var recipe = C3DGapFlushRecipe.Load(fullRecipePath);
-        var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        var sourcePath = ResolveRecipePath(recipe.Source.Path, GetRecipeDirectory(fullRecipePath));
         if (!recipe.OutputEnabled)
         {
             return RunDisabledLegacyRecipe(
@@ -554,7 +553,7 @@ internal static class RunnerApplication
         RunArtifactOptions runArtifacts)
     {
         var recipe = LazTwoPointMeasurementRecipe.Load(fullRecipePath);
-        var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        var sourcePath = ResolveRecipePath(recipe.Source.Path, GetRecipeDirectory(fullRecipePath));
         if (!recipe.OutputEnabled)
         {
             return RunDisabledLegacyRecipe(
@@ -571,13 +570,13 @@ internal static class RunnerApplication
         }
 
         var pointCloud = LazPointCloud.Load(sourcePath, recipe.Measurement.MaxSampledPoints);
-        if (pointCloud.SampledPoints.Length < 2)
+        if (pointCloud.SampledPointView.Count < 2)
         {
             throw new InvalidDataException("LAZ/LAS two-point recipe requires at least two sampled points.");
         }
 
-        var first = pointCloud.SampledPoints.MinBy(point => MapLazPosition(point.Position).X);
-        var second = pointCloud.SampledPoints.MaxBy(point => MapLazPosition(point.Position).X);
+        var first = pointCloud.SampledPointView.MinBy(point => MapLazSourcePosition(point).X);
+        var second = pointCloud.SampledPointView.MaxBy(point => MapLazSourcePosition(point).X);
         var result = CreateLazTwoPointResult(first, second, recipe.Measurement.HeightUnit, recipe.Source.EntityId, recipe.Acceptance);
 
         WriteLazTwoPointReport(reportPath, fullRecipePath, sourcePath, recipe, pointCloud, first, second, result);
@@ -611,7 +610,7 @@ internal static class RunnerApplication
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
             var document = ToolRecipeDocumentStore.Load(fullRecipePath);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
+            var recipeDirectory = GetRecipeDirectory(fullRecipePath);
             var sourcePath = string.IsNullOrWhiteSpace(requestedSourcePath)
                 ? Path.IsPathFullyQualified(document.Source.Path)
                     ? Path.GetFullPath(document.Source.Path)
@@ -619,8 +618,7 @@ internal static class RunnerApplication
                 : Path.GetFullPath(requestedSourcePath);
             var execution = ToolRecipeOrderedGraphExecution.Execute(document, sourcePath);
 
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            var fullReportPath = PrepareReportPath(reportPath);
             File.WriteAllLines(
                 fullReportPath,
                 [
@@ -688,17 +686,44 @@ internal static class RunnerApplication
         try
         {
             var pointCloud = LazPointCloud.Load(lazPath, maxSampledPoints);
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            Directory.CreateDirectory(GetReportDirectory(reportPath));
             File.WriteAllLines(reportPath, [
                 "LazPointCloudProbe",
             pointCloud.FormatContractLine(),
             $"Metadata|version={pointCloud.Metadata.Version}|rawPointFormat={pointCloud.Metadata.RawPointDataFormat}|recordLength={pointCloud.Metadata.PointDataRecordLength}|laszipVlr={pointCloud.Metadata.HasLaszipVlr}|pointOffset={pointCloud.Metadata.PointDataOffset}",
-            $"Sample|first={(pointCloud.SampledPoints.Length == 0 ? "(none)" : FormatLazPoint(pointCloud.SampledPoints[0]))}"
+            $"Sample|first={(pointCloud.SampledPointView.Count == 0 ? "(none)" : FormatLazPoint(pointCloud.SampledPointView[0]))}"
             ]);
             Console.WriteLine(pointCloud.FormatContractLine());
-            return pointCloud.BoundsMatch && pointCloud.HasRgb && pointCloud.SampledPoints.Length > 0 ? 0 : 5;
+            return pointCloud.BoundsMatch && pointCloud.HasRgb && pointCloud.SampledPointView.Count > 0 ? 0 : 5;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentOutOfRangeException)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+    }
+
+    internal static int RunLazLoadPlan(string lazPath, string reportPath, int maxSampledPoints)
+    {
+        try
+        {
+            var metadata = LazPointCloudMetadata.Load(lazPath);
+            var plan = LazPointCloudLoadPlan.Create(metadata, maxSampledPoints);
+            Directory.CreateDirectory(GetReportDirectory(reportPath));
+            File.WriteAllLines(reportPath, [
+                "LazPointCloudLoadPlan",
+                plan.FormatContractLine(),
+                $"Summary|{plan.FormatSummary()}",
+                $"EstimateScope|{LazPointCloudLoadPlan.EstimateScope}"
+            ]);
+            Console.WriteLine(plan.FormatContractLine());
+            return plan.PointCount == metadata.PointCount
+                && plan.SampledPointCount <= (ulong)plan.RequestedSampleLimit
+                && plan.FullPointStreamDecodeRequired
+                ? 0
+                : 5;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
         {
             Console.Error.WriteLine(ex.Message);
             return 1;
@@ -712,7 +737,7 @@ internal static class RunnerApplication
             ValidateReportUnit(unit);
 
             var summary = BinaryStlInspectionReader.Scan(stlPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            Directory.CreateDirectory(GetReportDirectory(reportPath));
             File.WriteAllLines(reportPath, [
                 "BinaryStlInspectionProbe|Pass",
             $"Source|path={summary.SourcePath}|bytes={summary.SourceByteLength}|sha256={summary.SourceSha256}",
@@ -810,6 +835,18 @@ internal static class RunnerApplication
             : Path.Combine(recipeDirectory, path));
     }
 
+    static string GetRecipeDirectory(string fullRecipePath) => Path.GetDirectoryName(fullRecipePath)!;
+
+    static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+
+    static string PrepareReportPath(string reportPath)
+    {
+        var fullReportPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        return fullReportPath;
+    }
+
     static void WriteReport(
         string reportPath,
         string recipePath,
@@ -823,7 +860,7 @@ internal static class RunnerApplication
         CrossSectionEvaluation? crossSectionResult)
     {
         var transform = recipe.Transform ?? ModelTransform.Identity;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         var lines = new List<string>
     {
         $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
@@ -923,10 +960,13 @@ internal static class RunnerApplication
         LazPointCloudPoint second,
         ToolResult result)
     {
-        var firstPosition = MapLazPosition(first.Position);
-        var secondPosition = MapLazPosition(second.Position);
-        var delta = secondPosition - firstPosition;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        var firstPosition = MapLazSourcePosition(first);
+        var secondPosition = MapLazSourcePosition(second);
+        var deltaX = secondPosition.X - firstPosition.X;
+        var deltaY = secondPosition.Y - firstPosition.Y;
+        var deltaZ = secondPosition.Z - firstPosition.Z;
+        var distance = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY) + (deltaZ * deltaZ));
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         var lines = new List<string>
     {
         $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
@@ -935,7 +975,7 @@ internal static class RunnerApplication
         InspectionContractText.FormatToolResult(result, includePrefix: true),
         $"MeasurementSelection|selection={recipe.Measurement.Selection}|maxSampledPoints={recipe.Measurement.MaxSampledPoints}|heightUnit={recipe.Measurement.HeightUnit}",
         $"Acceptance|expectedDistance={FormatNumber(recipe.Acceptance.ExpectedDistance)}|distanceTolerance={FormatNumber(recipe.Acceptance.DistanceTolerance)}|expectedHeightDelta={FormatNumber(recipe.Acceptance.ExpectedHeightDelta)}|heightDeltaTolerance={FormatNumber(recipe.Acceptance.HeightDeltaTolerance)}",
-        $"TwoPointResult|distance={FormatNumber(delta.Length())}|dx={FormatNumber(delta.X)}|dy={FormatNumber(delta.Y)}|dz={FormatNumber(delta.Z)}|heightDeltaRaw={FormatNumber(secondPosition.Y - firstPosition.Y)}|first={FormatLazPoint(first)}|second={FormatLazPoint(second)}",
+        $"TwoPointResult|distance={FormatNumber(distance)}|dx={FormatNumber(deltaX)}|dy={FormatNumber(deltaY)}|dz={FormatNumber(deltaZ)}|heightDeltaRaw={FormatNumber(deltaY)}|first={FormatLazPoint(first)}|second={FormatLazPoint(second)}",
         InspectionContractText.MetricsMarker
     };
 
@@ -955,7 +995,7 @@ internal static class RunnerApplication
         C3DThicknessEvaluation evaluation)
     {
         var step = recipe.Step;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         var lines = new List<string>
     {
         $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
@@ -987,7 +1027,7 @@ internal static class RunnerApplication
         C3DWarpageEvaluation evaluation)
     {
         var step = recipe.Step;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         var lines = new List<string>
         {
             $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
@@ -1022,7 +1062,7 @@ internal static class RunnerApplication
     {
         var transform = recipe.Transform ?? ModelTransform.Identity;
         var step = recipe.Step;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         var lines = new List<string>
     {
         $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
@@ -1058,7 +1098,7 @@ internal static class RunnerApplication
     {
         var step = recipe.Step;
         var transform = recipe.Transform ?? ModelTransform.Identity;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         var lines = new List<string>
     {
         $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
@@ -1090,11 +1130,13 @@ internal static class RunnerApplication
         string sourceEntityId,
         LazTwoPointMeasurementRecipeAcceptance acceptance)
     {
-        var firstPosition = MapLazPosition(first.Position);
-        var secondPosition = MapLazPosition(second.Position);
-        var delta = secondPosition - firstPosition;
-        var distance = delta.Length();
-        var heightDelta = secondPosition.Y - firstPosition.Y;
+        var firstPosition = MapLazSourcePosition(first);
+        var secondPosition = MapLazSourcePosition(second);
+        var deltaX = secondPosition.X - firstPosition.X;
+        var deltaY = secondPosition.Y - firstPosition.Y;
+        var deltaZ = secondPosition.Z - firstPosition.Z;
+        var distance = Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY) + (deltaZ * deltaZ));
+        var heightDelta = deltaY;
         var distanceStatus = IsWithinTolerance(distance, acceptance.ExpectedDistance, acceptance.DistanceTolerance)
             ? ResultStatus.Pass
             : ResultStatus.Fail;
@@ -1114,9 +1156,9 @@ internal static class RunnerApplication
             TimeSpan.Zero,
             [
                 new Metric("Distance", MetricKind.Length, distance, "model", distanceStatus),
-            new Metric("Delta X", MetricKind.Length, delta.X, "model", ResultStatus.Pass),
-            new Metric("Delta Y", MetricKind.Length, delta.Y, "model", ResultStatus.Pass),
-            new Metric("Delta Z", MetricKind.Length, delta.Z, "model", ResultStatus.Pass),
+            new Metric("Delta X", MetricKind.Length, deltaX, "model", ResultStatus.Pass),
+            new Metric("Delta Y", MetricKind.Length, deltaY, "model", ResultStatus.Pass),
+            new Metric("Delta Z", MetricKind.Length, deltaZ, "model", ResultStatus.Pass),
             new Metric("Source Z height delta", MetricKind.Length, heightDelta, heightUnit, heightStatus)
             ],
             [
@@ -1263,13 +1305,18 @@ internal static class RunnerApplication
     static bool IsWithinTolerance(double actual, double expected, double tolerance) =>
         Math.Abs(actual - expected) <= tolerance;
 
-    static Vector3 MapLazPosition(Vector3 source) =>
-        new(source.X, source.Z, source.Y);
+    static (double X, double Y, double Z) MapLazSourcePosition(LazPointCloudPoint point)
+    {
+        var source = point.HasPreciseSourceCoordinate
+            ? point.SourceCoordinate
+            : new LazPointCloudSourceCoordinate(point.Position.X, point.Position.Y, point.Position.Z, 0);
+        return (source.X, source.Z, source.Y);
+    }
 
     static string FormatLazPoint(LazPointCloudPoint point) =>
         string.Create(
             CultureInfo.InvariantCulture,
-            $"x={point.Position.X:F3},y={point.Position.Y:F3},z={point.Position.Z:F3},rgb={point.Red},{point.Green},{point.Blue}");
+            $"x={MapLazSourcePosition(point).X:G17},y={MapLazSourcePosition(point).Z:G17},z={MapLazSourcePosition(point).Y:G17},rgb={point.Red},{point.Green},{point.Blue}");
 
     static string FormatStlVector(Vector3 point) =>
         string.Create(CultureInfo.InvariantCulture, $"({point.X:G9},{point.Y:G9},{point.Z:G9})");
@@ -1304,7 +1351,7 @@ internal static class RunnerApplication
         lines.Add(InspectionContractText.OverlaysMarker);
         lines.AddRange(toolResult.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         File.WriteAllLines(reportPath, lines);
     }
 

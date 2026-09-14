@@ -1,7 +1,10 @@
+using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Verification.Viewer;
 
@@ -42,19 +45,207 @@ internal static class ViewerControlLifetimeVerification
                         control is IDisposable,
                         $"type={control.GetType().FullName}|disposable={control is IDisposable}");
                     Check(
-                        "host API remains version 1.0",
-                        control.HostApiVersion == "1.0",
-                        $"api={control.HostApiVersion}");
+                        "host API matches the current contract metadata",
+                        control.HostApiVersion == ViewerHostContract.ApiVersion,
+                        $"api={control.HostApiVersion}|contract={ViewerHostContract.ApiVersion}");
                     Check(
                         "default Viewer source data is owned before disposal",
                         control.HasManagedDataReferences,
                         $"hasManagedData={control.HasManagedDataReferences}");
+
+                    var editorPropertyChangedCount = 0;
+                    PropertyChangedEventHandler editorPropertyChanged = (_, _) => editorPropertyChangedCount++;
+                    control.Editor.PropertyChanged += editorPropertyChanged;
+                    var originalThicknessRow = control.Editor.ThicknessRoiRow;
+                    control.Editor.ThicknessRoiRow = originalThicknessRow + 1;
+                    var editorRoundTripSucceeded =
+                        control.Editor.ThicknessRoiRow == originalThicknessRow + 1
+                        && control.ViewModel.ThicknessRoiRow == originalThicknessRow + 1
+                        && editorPropertyChangedCount > 0;
+                    control.Editor.ThicknessRoiRow = originalThicknessRow;
+                    control.Editor.PropertyChanged -= editorPropertyChanged;
+                    Check(
+                        "task editor surface forwards mutable state and notifications",
+                        editorRoundTripSucceeded,
+                        $"editorRow={control.Editor.ThicknessRoiRow}|viewModelRow={control.ViewModel.ThicknessRoiRow}|notifications={editorPropertyChangedCount}");
+                    Check(
+                        "task editor surface forwards existing commands",
+                        ReferenceEquals(control.Editor.PreviewThicknessCommand, control.ViewModel.PreviewThicknessCommand)
+                        && ReferenceEquals(control.Editor.PreviewWarpageCommand, control.ViewModel.PreviewWarpageCommand),
+                        $"thicknessCommand={control.Editor.PreviewThicknessCommand.GetType().Name}|warpageCommand={control.Editor.PreviewWarpageCommand.GetType().Name}");
+
+                    var recipePropertyChangedCount = 0;
+                    PropertyChangedEventHandler recipePropertyChanged = (_, args) =>
+                    {
+                        if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))
+                        {
+                            recipePropertyChangedCount++;
+                        }
+                    };
+                    control.Editor.PropertyChanged += recipePropertyChanged;
+                    var originalRecipePeakTolerance = control.Editor.RecipePeakTolerance;
+                    control.Editor.RecipePeakTolerance = originalRecipePeakTolerance + 0.125;
+                    var recipeEditorSurfaceSucceeded =
+                        control.Editor.RecipePeakTolerance == originalRecipePeakTolerance + 0.125
+                        && control.ViewModel.RecipePeakTolerance == originalRecipePeakTolerance + 0.125
+                        && recipePropertyChangedCount > 0;
+                    control.Editor.RecipePeakTolerance = originalRecipePeakTolerance;
+                    control.Editor.PropertyChanged -= recipePropertyChanged;
+                    Check(
+                        "C3D recipe editor surface forwards mutable state and notifications",
+                        recipeEditorSurfaceSucceeded,
+                        $"peakTolerance={control.Editor.RecipePeakTolerance:G6}|viewModelPeakTolerance={control.ViewModel.RecipePeakTolerance:G6}|notifications={recipePropertyChangedCount}");
+                    Check(
+                        "C3D recipe editor surface forwards the Shell save command",
+                        ReferenceEquals(control.Editor.SaveRecipeCommand, control.ViewModel.SaveRecipeCommand),
+                        $"saveCommand={control.Editor.SaveRecipeCommand.GetType().Name}");
+
+                    var displayPropertyChangedCount = 0;
+                    PropertyChangedEventHandler displayPropertyChanged = (_, args) =>
+                    {
+                        if (args.PropertyName == nameof(ViewerDisplaySettingsViewModel.PointSize))
+                        {
+                            displayPropertyChangedCount++;
+                        }
+                    };
+                    control.DisplayEditor.PropertyChanged += displayPropertyChanged;
+                    var originalPointSize = control.DisplayEditor.PointSize;
+                    control.DisplayEditor.PointSize = originalPointSize + 0.5;
+                    var displayEditorSurfaceSucceeded =
+                        control.DisplayEditor.PointSize == originalPointSize + 0.5
+                        && control.ViewModel.PointSize == originalPointSize + 0.5
+                        && displayPropertyChangedCount > 0;
+                    control.DisplayEditor.PointSize = originalPointSize;
+                    control.DisplayEditor.PropertyChanged -= displayPropertyChanged;
+                    Check(
+                        "display settings surface forwards mutable state and notifications",
+                        displayEditorSurfaceSucceeded,
+                        $"pointSize={control.DisplayEditor.PointSize:G6}|viewModelPointSize={control.ViewModel.PointSize:G6}|notifications={displayPropertyChangedCount}");
+                    Check(
+                        "display settings surface forwards existing choices",
+                        control.DisplayEditor.AvailableGeometryStyles.Count > 0
+                        && control.DisplayEditor.AvailableColorMaps.Count > 0
+                        && control.DisplayEditor.RenderDensityModes.Count == 3
+                        && control.DisplayEditor.SelectedColorMap == control.ViewModel.Display.SelectedColorMap,
+                        $"geometryStyles={control.DisplayEditor.AvailableGeometryStyles.Count}|colorMaps={control.DisplayEditor.AvailableColorMaps.Count}|densityModes={control.DisplayEditor.RenderDensityModes.Count}|selectedColorMap={control.DisplayEditor.SelectedColorMap}");
+
+                    var nominalActualPropertyChangedCount = 0;
+                    PropertyChangedEventHandler nominalActualPropertyChanged = (_, _) => nominalActualPropertyChangedCount++;
+                    control.NominalActualEditor.PropertyChanged += nominalActualPropertyChanged;
+                    var originalOutputEnabled = control.NominalActualEditor.OutputEnabled;
+                    control.NominalActualEditor.OutputEnabled = !originalOutputEnabled;
+                    var nominalActualSurfaceSucceeded =
+                        control.NominalActualEditor.OutputEnabled == !originalOutputEnabled
+                        && control.ViewModel.NominalActual.OutputEnabled == !originalOutputEnabled
+                        && nominalActualPropertyChangedCount > 0;
+                    control.NominalActualEditor.OutputEnabled = originalOutputEnabled;
+                    control.NominalActualEditor.PropertyChanged -= nominalActualPropertyChanged;
+                    Check(
+                        "Nominal/Actual editor surface forwards state and notifications",
+                        nominalActualSurfaceSucceeded,
+                        $"outputEnabled={control.NominalActualEditor.OutputEnabled}|viewModelOutputEnabled={control.ViewModel.NominalActual.OutputEnabled}|notifications={nominalActualPropertyChangedCount}");
+                    Check(
+                        "Nominal/Actual editor surface forwards existing commands",
+                        ReferenceEquals(control.NominalActualEditor.PreviewCommand, control.ViewModel.NominalActual.PreviewCommand)
+                        && ReferenceEquals(control.NominalActualEditor.CancelCommand, control.ViewModel.NominalActual.CancelCommand)
+                        && ReferenceEquals(control.NominalActualEditor.PublishCommand, control.ViewModel.NominalActual.PublishCommand),
+                        $"previewCommand={control.NominalActualEditor.PreviewCommand.GetType().Name}|cancelCommand={control.NominalActualEditor.CancelCommand.GetType().Name}|publishCommand={control.NominalActualEditor.PublishCommand.GetType().Name}");
+
+                    var toolEditorPropertyChangedCount = 0;
+                    PropertyChangedEventHandler toolEditorPropertyChanged = (_, args) =>
+                    {
+                        if (args.PropertyName == nameof(MainWindowViewModel.PlaneFlatnessTolerance)
+                            || args.PropertyName == nameof(MainWindowViewModel.CrossSectionHeightTolerance))
+                        {
+                            toolEditorPropertyChangedCount++;
+                        }
+                    };
+                    control.Editor.PropertyChanged += toolEditorPropertyChanged;
+                    var originalPlaneFlatnessTolerance = control.Editor.PlaneFlatnessTolerance;
+                    var originalCrossSectionHeightTolerance = control.Editor.CrossSectionHeightTolerance;
+                    control.Editor.PlaneFlatnessTolerance = originalPlaneFlatnessTolerance + 0.125;
+                    control.Editor.CrossSectionHeightTolerance = originalCrossSectionHeightTolerance + 0.125;
+                    var toolEditorSurfaceSucceeded =
+                        control.Editor.PlaneFlatnessTolerance == originalPlaneFlatnessTolerance + 0.125
+                        && control.ViewModel.PlaneFlatnessTolerance == originalPlaneFlatnessTolerance + 0.125
+                        && control.Editor.CrossSectionHeightTolerance == originalCrossSectionHeightTolerance + 0.125
+                        && control.ViewModel.CrossSectionHeightTolerance == originalCrossSectionHeightTolerance + 0.125
+                        && toolEditorPropertyChangedCount >= 2;
+                    control.Editor.PlaneFlatnessTolerance = originalPlaneFlatnessTolerance;
+                    control.Editor.CrossSectionHeightTolerance = originalCrossSectionHeightTolerance;
+                    control.Editor.PropertyChanged -= toolEditorPropertyChanged;
+                    Check(
+                        "Tool Inspector editor surface forwards C3D tool state and notifications",
+                        toolEditorSurfaceSucceeded,
+                        $"planeTolerance={control.Editor.PlaneFlatnessTolerance:G6}|crossSectionTolerance={control.Editor.CrossSectionHeightTolerance:G6}|notifications={toolEditorPropertyChangedCount}");
+                    Check(
+                        "Tool Inspector editor surface forwards the existing C3D command instances",
+                        ReferenceEquals(control.Editor.FitPlaneCommand, control.ViewModel.FitPlaneCommand)
+                        && ReferenceEquals(control.Editor.PreviewPlaneFlatnessCommand, control.ViewModel.PreviewPlaneFlatnessCommand)
+                        && ReferenceEquals(control.Editor.PreviewPointPairDimensionsCommand, control.ViewModel.PreviewPointPairDimensionsCommand)
+                        && ReferenceEquals(control.Editor.PreviewGapFlushCommand, control.ViewModel.PreviewGapFlushCommand)
+                        && ReferenceEquals(control.Editor.PreviewVolumeCommand, control.ViewModel.PreviewVolumeCommand)
+                        && ReferenceEquals(control.Editor.PreviewCrossSectionCommand, control.ViewModel.PreviewCrossSectionCommand),
+                        $"fitPlane={control.Editor.FitPlaneCommand.GetType().Name}|plane={control.Editor.PreviewPlaneFlatnessCommand.GetType().Name}|pointPair={control.Editor.PreviewPointPairDimensionsCommand.GetType().Name}|gapFlush={control.Editor.PreviewGapFlushCommand.GetType().Name}|volume={control.Editor.PreviewVolumeCommand.GetType().Name}|crossSection={control.Editor.PreviewCrossSectionCommand.GetType().Name}");
+
+                    var hostLayerSnapshot = control.HostState.EntityLayers;
+                    var hostLayerProjectionSucceeded =
+                        hostLayerSnapshot.Count == control.ViewModel.EntityLayers.Count
+                        && hostLayerSnapshot.Count > 0
+                        && hostLayerSnapshot.Any(layer => layer.Id == "layer.source.c3d-thickness")
+                        && !ReferenceEquals(hostLayerSnapshot, control.ViewModel.EntityLayers);
+                    Check(
+                        "HostState projects immutable entity layer descriptors",
+                        hostLayerProjectionSucceeded,
+                        $"hostLayers={hostLayerSnapshot.Count}|viewModelLayers={control.ViewModel.EntityLayers.Count}|sameReference={ReferenceEquals(hostLayerSnapshot, control.ViewModel.EntityLayers)}");
+
+                    var linkedViewPropertyChangedCount = 0;
+                    PropertyChangedEventHandler linkedViewPropertyChanged = (_, args) =>
+                    {
+                        if (args.PropertyName == nameof(MainWindowViewModel.C3DSampleVisible))
+                        {
+                            linkedViewPropertyChangedCount++;
+                        }
+                    };
+                    control.LinkedView.PropertyChanged += linkedViewPropertyChanged;
+                    var originalC3DSampleVisible = control.LinkedView.C3DSampleVisible;
+                    var linkedViewToggleSucceeded = control.TrySetC3DSampleVisible(!originalC3DSampleVisible)
+                        && control.LinkedView.C3DSampleVisible == !originalC3DSampleVisible
+                        && control.LinkedView.C3DSampleVisible == control.ViewModel.C3DSampleVisible
+                        && control.LinkedView.HeightMapSummary == control.ViewModel.HeightMapSummary
+                        && linkedViewPropertyChangedCount > 0;
+                    control.TrySetC3DSampleVisible(originalC3DSampleVisible);
+                    control.LinkedView.PropertyChanged -= linkedViewPropertyChanged;
+                    Check(
+                        "Linked View surface forwards height-map visibility and notifications",
+                        linkedViewToggleSucceeded,
+                        $"c3dVisible={control.LinkedView.C3DSampleVisible}|heightMap={control.LinkedView.HeightMapSummary}|notifications={linkedViewPropertyChangedCount}");
 
                     var cameraState = control.CaptureCameraState();
                     Check(
                         "camera state remains usable before disposal",
                         control.TryApplyCameraState(cameraState),
                         $"yaw={cameraState.YawDegrees:G6}|pitch={cameraState.PitchDegrees:G6}|distance={cameraState.Distance:G6}");
+
+                    var hostStateNotificationCount = 0;
+                    ViewerHostStateChangedEventArgs? latestHostStateNotification = null;
+                    EventHandler<ViewerHostStateChangedEventArgs> hostStateChanged = (_, args) =>
+                    {
+                        hostStateNotificationCount++;
+                        latestHostStateNotification = args;
+                    };
+                    control.HostStateChanged += hostStateChanged;
+                    var selectionHostUpdateSucceeded = control.TrySetSelectionMode("Box ROI");
+                    Check(
+                        "HostState dependency property follows selection notification",
+                        selectionHostUpdateSucceeded
+                        && control.HostState.Selection.SelectionMode == "Box ROI"
+                        && control.HostState.Selection.Summary == "Box ROI: viewer state only"
+                        && hostStateNotificationCount > 0
+                        && latestHostStateNotification is not null
+                        && latestHostStateNotification.State == control.HostState,
+                        $"selection={control.HostState.Selection.SelectionMode}|summary={control.HostState.Selection.Summary}|notifications={hostStateNotificationCount}|eventMatchesProperty={latestHostStateNotification?.State == control.HostState}");
+                    control.HostStateChanged -= hostStateChanged;
 
                     var disposable = (IDisposable)control;
                     disposable.Dispose();

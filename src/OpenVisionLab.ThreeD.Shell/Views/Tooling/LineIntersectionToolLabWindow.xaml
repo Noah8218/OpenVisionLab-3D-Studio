@@ -60,18 +60,18 @@
                     <ui:Button Margin="0,0,6,0" Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
-                               ToolTip="Explicitly evaluate the two published fitted lines"
-                               AutomationProperties.Name="Preview Line Intersection" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PreviewTip, Korean='게시된 두 피팅 라인을 명시적으로 평가합니다.', English='Explicitly evaluate the two published fitted lines'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PreviewAction, Korean='라인 교차점 미리보기', English='Preview Line Intersection'}" />
                     <ui:Button Margin="0,0,6,0" Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon Branch24}"
                                Click="ShowInputsButton_Click"
-                               ToolTip="Refresh the two exact published LineFeature overlays"
-                               AutomationProperties.Name="Show Line Intersection inputs" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.ShowInputTip, Korean='게시된 두 LineFeature 오버레이를 새로 고칩니다.', English='Refresh the two exact published LineFeature overlays'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.ShowInputAction, Korean='라인 교차점 입력 보기', English='Show Line Intersection inputs'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="Publish the current corner-anchor Preview without running again"
-                               AutomationProperties.Name="Publish Line Intersection output" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PublishTip, Korean='다시 실행하지 않고 현재 코너 앵커 미리보기를 게시합니다.', English='Publish the current corner-anchor Preview without running again'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PublishAction, Korean='라인 교차점 출력 게시', English='Publish Line Intersection output'}" />
                 </WrapPanel>
             </Grid>
         </Border>

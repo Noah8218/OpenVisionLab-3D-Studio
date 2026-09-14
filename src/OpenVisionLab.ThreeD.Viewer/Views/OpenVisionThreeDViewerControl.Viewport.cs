@@ -39,11 +39,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         c3dRenderResources.ResetForOpenGLInitialization();
-        importedMeshTextureId = 0;
-        importedMeshTextureSource = null;
-        importedMeshTextureReleasePending = false;
-        importedMeshTextureUploadFailed = false;
-        importedMeshTextureUploadSummary = "texture none";
+        importedMeshTextureState.ResetForOpenGLInitialization();
         pendingC3DDisplayListBuildReason = "opengl-initialized";
         var gl = args.OpenGL;
         openGLVendor = ReadOpenGLString(gl, 0x1F00);
@@ -77,13 +73,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var drawStart = Stopwatch.GetTimestamp();
-        if (pointerInputRegressionActive && pointerInputLastMouseMoveTimestamp != 0)
+        if (pointerInputRegressionActive
+            && interactionTelemetry.TryTakePendingMouseMoveTimestamp(out var mouseMoveTimestamp))
         {
-            var nextFrameMilliseconds = Stopwatch.GetElapsedTime(pointerInputLastMouseMoveTimestamp, drawStart).TotalMilliseconds;
-            pointerInputNextFrameTimingCount++;
-            pointerInputNextFrameTotalMilliseconds += nextFrameMilliseconds;
-            pointerInputNextFrameMaximumMilliseconds = Math.Max(pointerInputNextFrameMaximumMilliseconds, nextFrameMilliseconds);
-            pointerInputLastMouseMoveTimestamp = 0;
+            var nextFrameMilliseconds = Stopwatch.GetElapsedTime(mouseMoveTimestamp, drawStart).TotalMilliseconds;
+            interactionTelemetry.RecordNextFrame(nextFrameMilliseconds);
         }
         UpdateFrameInterval(drawStart);
 
@@ -99,7 +93,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             ReleaseC3DGpuBuffers(gl);
         }
 
-        if (importedMeshTextureReleasePending)
+        if (importedMeshTextureState.ReleasePending)
         {
             ReleaseImportedMeshTexture(gl);
         }
@@ -184,50 +178,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private void ReleaseOpenGLResourcesForDispose(OpenGL gl)
-    {
-        openGLResourceRetirementCallbackCount++;
-        try
-        {
-            ReleaseC3DGpuBuffers(gl);
-        }
-        catch (Exception)
-        {
-            // A closing context may reject deletion; managed handles are still
-            // cleared below and the context owns any unavailable GL objects.
-            openGLResourceRetirementFailureCount++;
-        }
-
-        try
-        {
-            ReleaseImportedMeshTexture(gl);
-        }
-        catch (Exception)
-        {
-            // See the context-bound disposal note above.
-            openGLResourceRetirementFailureCount++;
-        }
-
-        try
-        {
-            ReleaseC3DDisplayLists(gl);
-        }
-        catch (Exception)
-        {
-            // See the context-bound disposal note above.
-            openGLResourceRetirementFailureCount++;
-        }
-
-        try
-        {
-            gl.Flush();
-        }
-        catch (Exception)
-        {
-            // The context may already be unavailable during Window shutdown.
-        }
-
-        DropOpenGLResourceReferencesAfterDispose();
-    }
+        => openGLResourceRetirement.Retire(gl);
 
     private static string ReadOpenGLString(OpenGL gl, uint name)
     {
@@ -239,7 +190,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         if (pointerInputRegressionActive)
         {
-            pointerInputMouseDownCount++;
+            interactionTelemetry.RecordMouseDown();
         }
 
         lastMousePosition = e.GetPosition(Viewport);
@@ -452,45 +403,30 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void UpdateFrameInterval(long timestamp)
     {
-        if (lastFrameTimestamp != 0)
-        {
-            accumulatedFrameIntervalMilliseconds += Stopwatch.GetElapsedTime(lastFrameTimestamp, timestamp).TotalMilliseconds;
-            performanceFrameCount++;
-        }
-
-        lastFrameTimestamp = timestamp;
+        var elapsedMilliseconds = interactionTelemetry.LastFrameTimestamp == 0
+            ? 0.0
+            : Stopwatch.GetElapsedTime(interactionTelemetry.LastFrameTimestamp, timestamp).TotalMilliseconds;
+        interactionTelemetry.RecordFrameInterval(timestamp, elapsedMilliseconds);
     }
 
     private void UpdateDrawPerformance(long drawStart)
     {
-        accumulatedDrawMilliseconds += Stopwatch.GetElapsedTime(drawStart).TotalMilliseconds;
-        performanceDrawCount++;
-
-        if (performanceFrameCount < 15 || accumulatedFrameIntervalMilliseconds <= 0.0)
+        interactionTelemetry.RecordDraw(Stopwatch.GetElapsedTime(drawStart).TotalMilliseconds);
+        if (!interactionTelemetry.TryTakeRenderPerformance(
+                out var averageFramesPerSecond,
+                out var averageDrawMilliseconds))
         {
             return;
         }
 
-        var averageFrameInterval = accumulatedFrameIntervalMilliseconds / performanceFrameCount;
-        var averageDraw = accumulatedDrawMilliseconds / Math.Max(1, performanceDrawCount);
-        viewModel.SetRenderPerformance(1000.0 / averageFrameInterval, averageDraw);
-
-        performanceFrameCount = 0;
-        performanceDrawCount = 0;
-        accumulatedFrameIntervalMilliseconds = 0.0;
-        accumulatedDrawMilliseconds = 0.0;
+        viewModel.SetRenderPerformance(averageFramesPerSecond, averageDrawMilliseconds);
     }
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
         var mouseMoveStart = Stopwatch.GetTimestamp();
         var measurePointerMove = pointerInputRegressionActive;
-        isHandlingPointerMouseMove = measurePointerMove;
-        if (pointerInputRegressionActive)
-        {
-            pointerInputMouseMoveCount++;
-            pointerInputLastMouseMoveTimestamp = mouseMoveStart;
-        }
+        interactionTelemetry.BeginMouseMove(mouseMoveStart, measurePointerMove);
 
         try
         {
@@ -498,14 +434,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
         finally
         {
-            isHandlingPointerMouseMove = false;
-            if (measurePointerMove)
-            {
-                var elapsedMilliseconds = Stopwatch.GetElapsedTime(mouseMoveStart).TotalMilliseconds;
-                pointerInputMouseMoveTimingCount++;
-                pointerInputMouseMoveTotalMilliseconds += elapsedMilliseconds;
-                pointerInputMouseMoveMaximumMilliseconds = Math.Max(pointerInputMouseMoveMaximumMilliseconds, elapsedMilliseconds);
-            }
+            var elapsedMilliseconds = measurePointerMove
+                ? Stopwatch.GetElapsedTime(mouseMoveStart).TotalMilliseconds
+                : 0.0;
+            interactionTelemetry.CompleteMouseMove(elapsedMilliseconds, measurePointerMove);
         }
     }
 
@@ -717,7 +649,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         if (pointerInputRegressionActive)
         {
-            pointerInputScheduledMouseMoveRenderCount++;
+            interactionTelemetry.RecordScheduledMouseMoveRender();
         }
 
         BeginInteractionWireframeLod();
@@ -734,7 +666,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         if (pointerInputRegressionActive)
         {
-            pointerInputMouseUpCount++;
+            interactionTelemetry.RecordMouseUp();
         }
 
         var teachingCaptureStart = teachingCapturePointerDownPosition;
@@ -852,7 +784,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         if (pointerInputRegressionActive)
         {
-            pointerInputMouseWheelCount++;
+            interactionTelemetry.RecordMouseWheel();
         }
 
         var wheelSteps = e.Delta / 120.0;

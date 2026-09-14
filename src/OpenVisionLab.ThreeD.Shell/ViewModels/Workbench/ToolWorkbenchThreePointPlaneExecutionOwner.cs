@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -456,25 +457,6 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
         !IsDisposed && ReferenceEquals(
             Volatile.Read(ref previewCancellation),
             cancellation);
-
-    private static void CancelAndDispose(CancellationTokenSource? currentCancellation)
-    {
-        if (currentCancellation is null)
-        {
-            return;
-        }
-
-        try
-        {
-            currentCancellation.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // A concurrent owner disposal already released the token source.
-        }
-
-        currentCancellation.Dispose();
-    }
 
     private string? GetRecipeDirectory()
     {

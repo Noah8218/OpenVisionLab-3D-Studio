@@ -191,6 +191,7 @@ public sealed partial class MainWindowViewModel
         ResetC3DHeightColorRange();
         NotifyC3DHeightDistributionContractProperties();
         RefreshC3DHeightDistributionLegend();
+        RefreshCommandCanExecute();
     }
 
     internal void ClearC3DHeightDistribution()
@@ -212,6 +213,7 @@ public sealed partial class MainWindowViewModel
         C3DHeightColorRangeRevision = unchecked(C3DHeightColorRangeRevision + 1);
         NotifyHeightColorRangeProperties();
         NotifyC3DHeightDistributionContractProperties();
+        RefreshCommandCanExecute();
     }
 
     public void ResetC3DHeightColorRange()

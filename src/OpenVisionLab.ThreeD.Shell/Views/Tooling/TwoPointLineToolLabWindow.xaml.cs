@@ -9,8 +9,11 @@ public partial class TwoPointLineToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
 
-    public TwoPointLineToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "two-point-line", "Expected a 2-Point Line step.", activateOnActivated: false)
+    public TwoPointLineToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "two-point-line", "Expected a 2-Point Line step.", activateOnActivated: false)
     {
         InitializeComponent();
         InputViewerHost.Content = inputViewer;

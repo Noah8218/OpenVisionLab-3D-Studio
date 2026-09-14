@@ -1,17 +1,25 @@
 using System.Windows;
 using System.Windows.Controls;
-using OpenVisionLab.ThreeD.Viewer.ViewModels;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
 public partial class ViewerPresentationBar : UserControl
 {
-    public static readonly DependencyProperty ViewerViewModelProperty =
+    public static readonly DependencyProperty ViewerHostProperty =
         DependencyProperty.Register(
-            nameof(ViewerViewModel),
-            typeof(MainWindowViewModel),
+            nameof(ViewerHost),
+            typeof(IOpenVisionThreeDViewerHost),
             typeof(ViewerPresentationBar),
-            new PropertyMetadata(null, OnViewerViewModelChanged));
+            new PropertyMetadata(null, OnViewerHostChanged));
+
+    public static readonly DependencyProperty PresentationProperty =
+        DependencyProperty.Register(
+            nameof(Presentation),
+            typeof(ViewerPresentationBarViewModel),
+            typeof(ViewerPresentationBar),
+            new PropertyMetadata(null));
 
     public static readonly DependencyProperty SlotLabelProperty =
         DependencyProperty.Register(
@@ -26,10 +34,16 @@ public partial class ViewerPresentationBar : UserControl
         UpdatePresentationVisibility();
     }
 
-    public MainWindowViewModel? ViewerViewModel
+    public IOpenVisionThreeDViewerHost? ViewerHost
     {
-        get => (MainWindowViewModel?)GetValue(ViewerViewModelProperty);
-        set => SetValue(ViewerViewModelProperty, value);
+        get => (IOpenVisionThreeDViewerHost?)GetValue(ViewerHostProperty);
+        set => SetValue(ViewerHostProperty, value);
+    }
+
+    public ViewerPresentationBarViewModel? Presentation
+    {
+        get => (ViewerPresentationBarViewModel?)GetValue(PresentationProperty);
+        private set => SetValue(PresentationProperty, value);
     }
 
     public string SlotLabel
@@ -38,28 +52,20 @@ public partial class ViewerPresentationBar : UserControl
         set => SetValue(SlotLabelProperty, value);
     }
 
-    private static void OnViewerViewModelChanged(
+    private static void OnViewerHostChanged(
         DependencyObject dependencyObject,
-        DependencyPropertyChangedEventArgs args) =>
-        ((ViewerPresentationBar)dependencyObject).UpdatePresentationVisibility();
+        DependencyPropertyChangedEventArgs args)
+    {
+        var bar = (ViewerPresentationBar)dependencyObject;
+        bar.Presentation?.Dispose();
+        bar.Presentation = args.NewValue is IOpenVisionThreeDViewerHost viewerHost
+            ? new ViewerPresentationBarViewModel(viewerHost)
+            : null;
+        bar.UpdatePresentationVisibility();
+    }
 
     private void UpdatePresentationVisibility() =>
-        Visibility = ViewerViewModel is null
+        Visibility = Presentation is null
             ? Visibility.Collapsed
             : Visibility.Visible;
-
-    private void DecreaseHeightMinimum_Click(object sender, RoutedEventArgs args) =>
-        ViewerViewModel?.ShiftC3DHeightColorMinimum(-1);
-
-    private void IncreaseHeightMinimum_Click(object sender, RoutedEventArgs args) =>
-        ViewerViewModel?.ShiftC3DHeightColorMinimum(1);
-
-    private void DecreaseHeightMaximum_Click(object sender, RoutedEventArgs args) =>
-        ViewerViewModel?.ShiftC3DHeightColorMaximum(-1);
-
-    private void IncreaseHeightMaximum_Click(object sender, RoutedEventArgs args) =>
-        ViewerViewModel?.ShiftC3DHeightColorMaximum(1);
-
-    private void ResetHeightRange_Click(object sender, RoutedEventArgs args) =>
-        ViewerViewModel?.ResetC3DHeightColorRange();
 }

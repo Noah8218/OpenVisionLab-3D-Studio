@@ -9,8 +9,11 @@ public partial class LineIntersectionToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
 
-    public LineIntersectionToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "line-intersection", "Line Intersection Tool Lab requires a Line Intersection step.")
+    public LineIntersectionToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "line-intersection", "Line Intersection Tool Lab requires a Line Intersection step.")
     {
         InitializeComponent();
         DataContext = Workbench;

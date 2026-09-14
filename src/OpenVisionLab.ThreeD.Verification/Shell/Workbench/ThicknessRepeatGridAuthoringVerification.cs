@@ -17,6 +17,9 @@ internal static class ThicknessRepeatGridAuthoringVerification
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        var fullReportPath = Path.GetFullPath(reportPath);
+        var reportDirectory = Path.GetDirectoryName(fullReportPath)
+            ?? throw new InvalidOperationException("Verification report has no directory.");
         var lines = new List<string>
         {
             "OpenVisionLab 3D Thickness repeat-grid authoring verification",
@@ -40,8 +43,6 @@ internal static class ThicknessRepeatGridAuthoringVerification
             var repositoryRoot = FindRepositoryRoot();
             var exactRecipePath = Path.Combine(repositoryRoot, ExactRecipeRelativePath);
             var exactSourcePath = Path.Combine(repositoryRoot, ExactSourceRelativePath);
-            var reportDirectory = Path.GetDirectoryName(Path.GetFullPath(reportPath))
-                ?? throw new InvalidOperationException("Verification report has no directory.");
             Directory.CreateDirectory(reportDirectory);
 
             var exactDocument = ToolRecipeDocumentStore.Load(exactRecipePath);
@@ -303,8 +304,7 @@ internal static class ThicknessRepeatGridAuthoringVerification
             && total > 0
             && !lines.Any(line => line.StartsWith("FAIL | unexpected exception", StringComparison.Ordinal));
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        Directory.CreateDirectory(reportDirectory);
         File.WriteAllLines(fullReportPath, lines, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
         summary =
             $"Thickness repeat-grid authoring verification: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)";

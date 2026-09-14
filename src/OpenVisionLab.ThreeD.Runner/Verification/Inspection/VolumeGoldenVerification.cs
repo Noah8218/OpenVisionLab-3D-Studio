@@ -12,6 +12,7 @@ internal static class VolumeGoldenVerification
 
     public static int Run(string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         var balanced = new[] { Sample(0, 1, 0), Sample(1, 2, 0), Sample(2, -1, 0), Sample(3, -2, 0) };
         var cases = new[]
         {
@@ -34,8 +35,8 @@ internal static class VolumeGoldenVerification
             "Definition|reference=least-squares-height-field-plane|above=sum(max(verticalDelta,0)*sampleArea)|below=sum(max(-verticalDelta,0)*sampleArea)|net=above-below"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
         Console.WriteLine($"Volume golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
     }

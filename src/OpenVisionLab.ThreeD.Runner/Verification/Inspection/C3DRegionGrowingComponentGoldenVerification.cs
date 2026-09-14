@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -24,6 +25,7 @@ internal static class C3DRegionGrowingComponentGoldenVerification
                 Check("deterministic-output-and-evidence-identity", VerifyDeterminism),
                 Check("identity-metadata-index-and-artifact-guards", VerifyGuards),
                 Check("runner-replay-and-direct-parity", () => VerifyRunnerParity(fixtureDirectory)),
+                Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(fixtureDirectory)),
                 Check("empty-component-warning-and-cancellation", VerifyWarningAndCancellation)
             };
             var passed = checks.Count(item => item.Passed);
@@ -35,7 +37,7 @@ internal static class C3DRegionGrowingComponentGoldenVerification
             };
             lines.AddRange(checks.Select(item =>
                 $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            Directory.CreateDirectory(reportDirectory);
             File.WriteAllLines(fullReportPath, lines);
             Console.WriteLine($"C3D region-growing component golden verification: {status} ({passed}/{checks.Length})");
             return passed == checks.Length ? 0 : 5;
@@ -307,6 +309,173 @@ internal static class C3DRegionGrowingComponentGoldenVerification
             parity && collisionRejected && identityRejected,
             $"runnerExit={runnerExit};outputHash={outputHash};evidenceHash={evidenceHash};status={status};reopened={output?.ContentSha256 == direct.Output?.ContentSha256};mutations={sourceMutation}/{connectedMutation};collisionExit={collisionExit};collisionRejected={collisionRejected};identityExit={invalidExit};identityRejected={identityRejected}");
     }
+
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string fixtureDirectory)
+    {
+        var directory = Path.Combine(fixtureDirectory, $"atomic-report-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var sourceFixture = CreateSource("source.region-growing.atomic");
+            var sourcePath = Path.Combine(directory, "source.c3d");
+            sourceFixture.SaveC3D(sourcePath);
+            var source = C3DHeightFieldSnapshot.LoadIdentified(
+                sourcePath,
+                sourceFixture.EntityId,
+                sourceFixture.Unit,
+                sourceFixture.FrameId);
+            var artifact = CreateArtifact(source, "connected.region-growing.atomic");
+            var artifactPath = Path.Combine(directory, "connected-region.json");
+            C3DConnectedRegionArtifactStore.Save(artifactPath, artifact);
+            var direct = Evaluate(
+                source,
+                artifact,
+                0,
+                "component.region-growing.atomic",
+                stepId: "step.region-growing.atomic");
+            if (!IsSuccessful(direct))
+            {
+                return (false, $"direct={direct.Result.Status}:{direct.Result.Message}");
+            }
+
+            var specificationPath = Path.Combine(directory, "region-growing-component.json");
+            var firstOutputPath = Path.Combine(directory, "region-growing-component-first.c3d");
+            var secondOutputPath = Path.Combine(directory, "region-growing-component-second.c3d");
+            var reportOutputPath = Path.Combine(directory, "runner-report.json");
+            var specification = CreateSpecification(source, artifact, artifactPath, firstOutputPath);
+            specification.StepId = "step.region-growing.atomic";
+            specification.OutputEntityId = direct.Output!.EntityId;
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            var firstExit = RunnerCommandRouter.Run(
+                ["--region-growing-component-spec", specificationPath, "--report", reportOutputPath]);
+            var firstBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            using var firstDocument = File.Exists(reportOutputPath)
+                ? JsonDocument.Parse(firstBytes)
+                : null;
+            var firstOutputHash = firstDocument?.RootElement.GetProperty("output").GetProperty("contentSha256").GetString();
+            var firstEvidenceHash = firstDocument?.RootElement.GetProperty("evidence").GetProperty("contentSha256").GetString();
+            var firstOutputBytes = File.Exists(firstOutputPath)
+                ? File.ReadAllBytes(firstOutputPath)
+                : [];
+
+            specification.OutputPath = secondOutputPath;
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.WriteAllText(reportOutputPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = RunnerCommandRouter.Run(
+                ["--region-growing-component-spec", specificationPath, "--report", reportOutputPath]);
+            var overwriteBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            using var overwriteDocument = File.Exists(reportOutputPath)
+                ? JsonDocument.Parse(overwriteBytes)
+                : null;
+            var overwriteOutputHash = overwriteDocument?.RootElement.GetProperty("output").GetProperty("contentSha256").GetString();
+            var overwriteEvidenceHash = overwriteDocument?.RootElement.GetProperty("evidence").GetProperty("contentSha256").GetString();
+            var overwriteOutputBytes = File.Exists(secondOutputPath)
+                ? File.ReadAllBytes(secondOutputPath)
+                : [];
+
+            var lockedPath = Path.Combine(directory, "locked.json");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                specification.OutputPath = Path.Combine(directory, "region-growing-component-locked.c3d");
+                File.WriteAllText(
+                    specificationPath,
+                    JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                lockedExit = RunnerCommandRouter.Run(
+                    ["--region-growing-component-spec", specificationPath, "--report", lockedPath]);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            specification.OutputPath = Path.Combine(directory, "region-growing-component-invalid-parent.c3d");
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var invalidParentExit = RunnerCommandRouter.Run(
+                ["--region-growing-component-spec", specificationPath, "--report", Path.Combine(invalidParentMarker, "report.json")]);
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var lockedArtifactPath = Path.Combine(directory, "locked-artifact.c3d");
+            var lockedArtifactSentinel = Encoding.UTF8.GetBytes("locked-artifact");
+            File.WriteAllBytes(lockedArtifactPath, lockedArtifactSentinel);
+            specification.OutputPath = lockedArtifactPath;
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var lockedArtifactExit = RunnerCommandRouter.Run(
+                ["--region-growing-component-spec", specificationPath, "--report", Path.Combine(directory, "locked-artifact-report.json")]);
+            var lockedArtifactPreserved = File.ReadAllBytes(lockedArtifactPath).SequenceEqual(lockedArtifactSentinel);
+
+            var invalidArtifactParentMarker = Path.Combine(directory, "artifact-parent-file");
+            File.WriteAllText(invalidArtifactParentMarker, "artifact-parent-file", new UTF8Encoding(false));
+            specification.OutputPath = Path.Combine(invalidArtifactParentMarker, "output.c3d");
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var invalidArtifactExit = RunnerCommandRouter.Run(
+                ["--region-growing-component-spec", specificationPath, "--report", Path.Combine(directory, "invalid-artifact-report.txt")]);
+            var invalidArtifactParentPreserved = File.ReadAllText(invalidArtifactParentMarker) == "artifact-parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var sentinelAbsent = !Encoding.UTF8.GetString(overwriteBytes).Contains("pre-existing-output", StringComparison.Ordinal);
+            var artifactStable = firstOutputBytes.Length > 0
+                && overwriteOutputBytes.Length > 0
+                && firstOutputBytes.SequenceEqual(overwriteOutputBytes);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && overwriteBytes.Length > 0
+                && artifactStable
+                && firstOutputHash == direct.Output!.ContentSha256
+                && firstEvidenceHash == direct.Evidence!.ContentSha256
+                && overwriteOutputHash == firstOutputHash
+                && overwriteEvidenceHash == firstEvidenceHash
+                && noBom
+                && sentinelAbsent
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && lockedArtifactExit == 5
+                && lockedArtifactPreserved
+                && invalidArtifactExit == 5
+                && invalidArtifactParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};artifactBytes={firstOutputBytes.Length}/{overwriteOutputBytes.Length};artifactStable={artifactStable};bytes={firstBytes.Length}/{overwriteBytes.Length};hashes={firstOutputHash}/{overwriteOutputHash};evidence={firstEvidenceHash}/{overwriteEvidenceHash};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};lockedArtifactExit={lockedArtifactExit};lockedArtifactPreserved={lockedArtifactPreserved};invalidArtifactExit={invalidArtifactExit};invalidArtifactParentPreserved={invalidArtifactParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static (bool Passed, string Evidence) VerifyWarningAndCancellation()
     {

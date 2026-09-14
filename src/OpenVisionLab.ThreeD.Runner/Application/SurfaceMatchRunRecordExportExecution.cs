@@ -55,7 +55,7 @@ internal static class SurfaceMatchRunRecordExportExecution
             Directory.CreateDirectory(
                 Path.GetDirectoryName(fullReportPath)
                 ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
+            WriteLinesAtomically(
                 fullReportPath,
                 [
                     "SurfaceMatchRunRecordExport|Complete|matchingRecomputed=false",
@@ -67,8 +67,7 @@ internal static class SurfaceMatchRunRecordExportExecution
                     $"Assessment|path={(assessmentPath is null ? "(none)" : Path.GetFullPath(assessmentPath))}|sha256={assessment?.ContentSha256 ?? "(none)"}",
                     $"Runtime|path={(runtimePath is null ? "(none)" : Path.GetFullPath(runtimePath))}|state={(runtime is null ? "Unavailable" : "Available")}|matchingRecomputed=false",
                     $"Outputs|json={outputs.JsonPath ?? "(none)"}|html={outputs.HtmlPath ?? "(none)"}|csv={outputs.CsvPath ?? "(none)"}"
-                ],
-                new UTF8Encoding(false));
+                ]);
             Console.WriteLine(
                 $"Surface Match evidence exported without recomputation: {execution.ContentSha256}");
             return 0;
@@ -83,6 +82,47 @@ internal static class SurfaceMatchRunRecordExportExecution
         {
             Console.Error.WriteLine(exception.Message);
             return 1;
+        }
+    }
+
+    private static void WriteLinesAtomically(
+        string path,
+        IEnumerable<string> lines)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       bufferSize: 4096,
+                       leaveOpen: true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

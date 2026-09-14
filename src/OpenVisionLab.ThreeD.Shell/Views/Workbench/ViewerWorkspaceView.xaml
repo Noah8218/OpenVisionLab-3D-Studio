@@ -3,10 +3,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:workbenchViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              AutomationProperties.AutomationId="ViewerWorkspace">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
         <Style x:Key="ViewerLayoutIconButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="34" />
             <Setter Property="Height" Value="30" />
@@ -228,7 +231,7 @@
                               DisplayMemberPath="DisplayName"
                               SelectedValuePath="Id"
                               SelectedValue="{Binding MainViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              ToolTip="{Binding MainViewerSummary}"
+                              ToolTip="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                               AutomationProperties.Name="{Binding Localization.ViewerMainSlot}"
                               AutomationProperties.AutomationId="MainViewerContentPin" />
                     <ui:Button Margin="4,0,0,0"
@@ -243,9 +246,9 @@
                                VerticalAlignment="Center"
                                FontSize="9"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding MainViewerSummary}"
+                               Text="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding MainViewerSummary}" />
+                               ToolTip="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
                 <StackPanel Margin="0,0,8,0"
                             VerticalAlignment="Center"
@@ -262,7 +265,7 @@
                               DisplayMemberPath="DisplayName"
                               SelectedValuePath="Id"
                               SelectedValue="{Binding AuxiliaryViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              ToolTip="{Binding AuxiliaryViewerSummary}"
+                              ToolTip="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                               AutomationProperties.Name="{Binding Localization.ViewerAuxiliaryOutput}"
                               AutomationProperties.AutomationId="AuxiliaryViewerContentPin" />
                     <ui:Button Margin="4,0,0,0"
@@ -277,9 +280,9 @@
                                VerticalAlignment="Center"
                                FontSize="9"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding AuxiliaryViewerSummary}"
+                               Text="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding AuxiliaryViewerSummary}" />
+                               ToolTip="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 </StackPanel>
             </WrapPanel>
         </Border>
@@ -298,9 +301,9 @@
                 Visibility="{Binding HasViewerOnlyImport, Converter={StaticResource BoolToVisibilityConverter}}"
                 AutomationProperties.AutomationId="ViewerOnlyImportSummary">
             <TextBlock Foreground="{DynamicResource ThreeD.TextBrush}"
-                       Text="{Binding ViewerOnlyImportSummary}"
+                       Text="{Binding ViewerOnlyImportSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                        TextTrimming="CharacterEllipsis"
-                       ToolTip="{Binding ViewerOnlyImportSummary}" />
+                       ToolTip="{Binding ViewerOnlyImportSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
         </Border>
 
         <Grid x:Name="ViewerGrid"
@@ -321,7 +324,9 @@
                     Background="{DynamicResource ThreeD.ViewportBrush}"
                     BorderThickness="2"
                     CornerRadius="3"
-                    PreviewMouseDown="MainSlot_PreviewMouseDown"
+                    behaviors:PreviewMouseDownCommandBehavior.IsEnabled="True"
+                    behaviors:PreviewMouseDownCommandBehavior.Command="{Binding FocusViewerWorkspaceSlotCommand}"
+                    behaviors:PreviewMouseDownCommandBehavior.CommandParameter="viewer.main"
                     AutomationProperties.AutomationId="MainViewerSlot">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -366,7 +371,7 @@
                             </StackPanel>
                             <workbenchViews:ViewerPresentationBar Grid.Row="1"
                                                                    Margin="-7,4,-7,-4"
-                                                                   ViewerViewModel="{Binding MainViewerContent.ViewModel, ElementName=Root}"
+                                                                   ViewerHost="{Binding MainViewerContent, ElementName=Root}"
                                                                    SlotLabel="{Binding Localization.ViewerMainSlot}" />
                         </Grid>
                     </Border>
@@ -477,7 +482,9 @@
                     BorderThickness="2"
                     CornerRadius="3"
                     Visibility="Collapsed"
-                    PreviewMouseDown="AuxiliarySlot_PreviewMouseDown"
+                    behaviors:PreviewMouseDownCommandBehavior.IsEnabled="True"
+                    behaviors:PreviewMouseDownCommandBehavior.Command="{Binding FocusViewerWorkspaceSlotCommand}"
+                    behaviors:PreviewMouseDownCommandBehavior.CommandParameter="viewer.auxiliary"
                     AutomationProperties.AutomationId="AuxiliaryViewerSlot">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -524,7 +531,7 @@
                                 <TextBlock Margin="0,1,0,0"
                                            FontSize="9"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding AuxiliaryViewerSummary}"
+                                       Text="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                        TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                     <workbenchViews:ViewerPresentationBar x:Name="AuxiliaryViewerPresentationBar"

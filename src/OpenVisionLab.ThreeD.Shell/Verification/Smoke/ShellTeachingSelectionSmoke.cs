@@ -9,6 +9,9 @@ namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
 internal static class ShellTeachingSelectionSmoke
 {
+    private static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+
     public static async Task<bool> RunAsync(
         ShellMainWindowViewModel viewModel,
         OpenVisionThreeDViewerControl viewer,
@@ -42,8 +45,7 @@ internal static class ShellTeachingSelectionSmoke
             workbench.RemovePlaneFlatnessMeasurementRoiCommand.Execute(null);
         }
 
-        var previewBefore = viewer.ViewModel.PreviewToolResult;
-        var resultEntitiesBefore = viewer.ViewModel.ResultEntities;
+        var inspectionBefore = viewer.HostState.Inspection;
         var dirtyBefore = workbench.IsDirty;
         var schemaBefore = workbench.RecipeSchemaVersion;
         var selectionCountBefore = workbench.Selections.Count;
@@ -56,17 +58,17 @@ internal static class ShellTeachingSelectionSmoke
             $"Mode={mode}",
             $"Step={step?.Id ?? "(none)"}",
             $"AuthoredBefore|dirty={dirtyBefore}|schema={schemaBefore}|selections={selectionCountBefore}|inputs={string.Join(';', inputIdsBefore)}",
-            $"ExecutionBefore|preview={previewBefore.Status}|results={resultEntitiesBefore.Count}"
+            $"ExecutionBefore|preview={inspectionBefore.PreviewStatus}|results={inspectionBefore.PublishedResultCount}"
         };
 
         bool Complete(bool passed, string message)
         {
             var state = viewer.TeachingCaptureSnapshot;
-            var previewUnchanged = ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult);
-            var resultsUnchanged = ReferenceEquals(resultEntitiesBefore, viewer.ViewModel.ResultEntities);
+            var previewUnchanged = viewer.HostState.Inspection.PreviewReferenceToken == inspectionBefore.PreviewReferenceToken;
+            var resultsUnchanged = viewer.HostState.Inspection.PublishedResultReferenceToken == inspectionBefore.PublishedResultReferenceToken;
             lines.Add($"CaptureAfter|active={state.IsActive}|progress={state.CapturedPointCount}/{state.RequiredPointCount}|canUndo={state.CanUndo}|canApply={state.CanApply}|message={state.Message}");
             lines.Add($"AuthoredAfter|dirty={workbench.IsDirty}|schema={workbench.RecipeSchemaVersion}|selections={workbench.Selections.Count}|inputs={string.Join(';', step?.InputEntityIds ?? [])}");
-            lines.Add($"ExecutionAfter|preview={viewer.ViewModel.PreviewToolResult.Status}|results={viewer.ViewModel.ResultEntities.Count}|previewReferenceUnchanged={previewUnchanged}|resultReferenceUnchanged={resultsUnchanged}");
+            lines.Add($"ExecutionAfter|preview={viewer.HostState.Inspection.PreviewStatus}|results={viewer.HostState.Inspection.PublishedResultCount}|previewReferenceUnchanged={previewUnchanged}|resultReferenceUnchanged={resultsUnchanged}");
             lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{message}");
             ShellSmokeArtifacts.WriteTextReport(reportPath, lines, withoutBom: true);
             Console.WriteLine(lines[^1]);
@@ -85,8 +87,8 @@ internal static class ShellTeachingSelectionSmoke
             && (step?.InputEntityIds ?? []).SequenceEqual(inputIdsBefore, StringComparer.OrdinalIgnoreCase);
 
         bool ExecutionStateUnchanged() =>
-            ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
-            && ReferenceEquals(resultEntitiesBefore, viewer.ViewModel.ResultEntities);
+            viewer.HostState.Inspection.PreviewReferenceToken == inspectionBefore.PreviewReferenceToken
+            && viewer.HostState.Inspection.PublishedResultReferenceToken == inspectionBefore.PublishedResultReferenceToken;
 
         bool CoordinateConfidenceReady(TeachingCaptureState state, out string detail)
         {
@@ -103,7 +105,7 @@ internal static class ShellTeachingSelectionSmoke
                 && workbench.TeachingGridRectangleColumn == rectangle.Column
                 && workbench.TeachingGridRectangleRowCount == rectangle.RowCount
                 && workbench.TeachingGridRectangleColumnCount == rectangle.ColumnCount;
-            var topGridView = viewer.ViewModel.IsTopOrthographicView;
+            var topGridView = viewer.HostState.Inspection.IsTopOrthographicView;
             detail = $"CoordinateConfidence|topOrthographic={topGridView}|exactCandidateVisible={exactCandidateVisible}|row={workbench.TeachingGridRectangleRow}|column={workbench.TeachingGridRectangleColumn}|rowCount={workbench.TeachingGridRectangleRowCount}|columnCount={workbench.TeachingGridRectangleColumnCount}";
             return topGridView && exactCandidateVisible;
         }
@@ -171,7 +173,7 @@ internal static class ShellTeachingSelectionSmoke
             var dragPointerReportPath = string.IsNullOrWhiteSpace(reportPath)
                 ? null
                 : Path.Combine(
-                    Path.GetDirectoryName(Path.GetFullPath(reportPath))!,
+                    GetReportDirectory(reportPath),
                     $"{Path.GetFileNameWithoutExtension(reportPath)}.drag-pointer.txt");
             if (!await viewer.RunTeachingRectangleDragPointerSmokeAsync(dragPointerReportPath))
             {
@@ -242,7 +244,7 @@ internal static class ShellTeachingSelectionSmoke
         var cancelPointerReportPath = string.IsNullOrWhiteSpace(reportPath)
             ? null
             : Path.Combine(
-                Path.GetDirectoryName(Path.GetFullPath(reportPath))!,
+                GetReportDirectory(reportPath),
                 $"{Path.GetFileNameWithoutExtension(reportPath)}.cancel-pointer.txt");
         if (!await viewer.RunTeachingCapturePointerSmokeAsync(
                 cancelWhenReady: false,
@@ -335,8 +337,7 @@ internal static class ShellTeachingSelectionSmoke
     {
         var selectionBefore = workbench.SelectedStepTeachingSelection;
         var polygonBefore = selectionBefore?.GridPolygon;
-        var previewBefore = viewer.ViewModel.PreviewToolResult;
-        var resultEntitiesBefore = viewer.ViewModel.ResultEntities;
+        var inspectionBefore = viewer.HostState.Inspection;
         var dirtyBefore = workbench.IsDirty;
         var schemaBefore = workbench.RecipeSchemaVersion;
         var selectionCountBefore = workbench.Selections.Count;
@@ -347,7 +348,7 @@ internal static class ShellTeachingSelectionSmoke
             "Mode=grid-polygon",
             $"Step={step.Id}",
             $"AuthoredBefore|dirty={dirtyBefore}|schema={schemaBefore}|selections={selectionCountBefore}|inputs={string.Join(';', inputIdsBefore)}",
-            $"ExecutionBefore|preview={previewBefore.Status}|results={resultEntitiesBefore.Count}"
+            $"ExecutionBefore|preview={inspectionBefore.PreviewStatus}|results={inspectionBefore.PublishedResultCount}"
         };
 
         static bool SameVertices(
@@ -366,15 +367,15 @@ internal static class ShellTeachingSelectionSmoke
             && SameVertices(current.GridPolygon?.Vertices, polygonBefore?.Vertices ?? []);
 
         bool ExecutionUnchanged() =>
-            ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
-            && ReferenceEquals(resultEntitiesBefore, viewer.ViewModel.ResultEntities);
+            viewer.HostState.Inspection.PreviewReferenceToken == inspectionBefore.PreviewReferenceToken
+            && viewer.HostState.Inspection.PublishedResultReferenceToken == inspectionBefore.PublishedResultReferenceToken;
 
         bool Complete(bool passed, string message)
         {
             var state = viewer.TeachingCaptureSnapshot;
-            lines.Add($"CaptureAfter|active={state.IsActive}|progress={state.CapturedPointCount}/{state.RequiredPointCount}|canApply={state.CanApply}|topOrthographic={viewer.ViewModel.IsTopOrthographicView}|message={state.Message}");
+            lines.Add($"CaptureAfter|active={state.IsActive}|progress={state.CapturedPointCount}/{state.RequiredPointCount}|canApply={state.CanApply}|topOrthographic={viewer.HostState.Inspection.IsTopOrthographicView}|message={state.Message}");
             lines.Add($"WorkbenchAfter|editorVisible={workbench.IsTeachingGridPolygonEditorVisible}|editorEnabled={workbench.IsTeachingGridPolygonEditorEnabled}|vertices={workbench.TeachingGridPolygonVertices.Count}|dirty={workbench.IsDirty}|schema={workbench.RecipeSchemaVersion}");
-            lines.Add($"ExecutionAfter|preview={viewer.ViewModel.PreviewToolResult.Status}|results={viewer.ViewModel.ResultEntities.Count}|previewReferenceUnchanged={ExecutionUnchanged()}|authoredUnchanged={AuthoredUnchanged()}");
+            lines.Add($"ExecutionAfter|preview={viewer.HostState.Inspection.PreviewStatus}|results={viewer.HostState.Inspection.PublishedResultCount}|previewReferenceUnchanged={ExecutionUnchanged()}|authoredUnchanged={AuthoredUnchanged()}");
             lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{message}");
             ShellSmokeArtifacts.WriteTextReport(reportPath, lines, withoutBom: true);
             Console.WriteLine(lines[^1]);
@@ -412,12 +413,12 @@ internal static class ShellTeachingSelectionSmoke
                 GridPolygon: { Vertices: var initialVertices }
             }
             && SameVertices(initialVertices, originalVertices)
-            && viewer.ViewModel.IsTopOrthographicView
+            && viewer.HostState.Inspection.IsTopOrthographicView
             && workbench.IsTeachingGridPolygonEditorEnabled
             && workbench.TeachingGridPolygonVertices.Count == originalVertices.Length
             && AuthoredUnchanged()
             && ExecutionUnchanged();
-        lines.Add($"Begin|pass={initialPassed}|active={initialState.IsActive}|kind={initialState.Kind}|vertices={initialState.GridPolygon?.Vertices.Count ?? 0}|topOrthographic={viewer.ViewModel.IsTopOrthographicView}|editorEnabled={workbench.IsTeachingGridPolygonEditorEnabled}|authoredUnchanged={AuthoredUnchanged()}|executionUnchanged={ExecutionUnchanged()}");
+        lines.Add($"Begin|pass={initialPassed}|active={initialState.IsActive}|kind={initialState.Kind}|vertices={initialState.GridPolygon?.Vertices.Count ?? 0}|topOrthographic={viewer.HostState.Inspection.IsTopOrthographicView}|editorEnabled={workbench.IsTeachingGridPolygonEditorEnabled}|authoredUnchanged={AuthoredUnchanged()}|executionUnchanged={ExecutionUnchanged()}");
         if (!initialPassed)
         {
             return Complete(false, "GridPolygon capture did not restore the ordered persisted candidate without changing authored or execution state.");
@@ -641,9 +642,8 @@ internal static class ShellTeachingSelectionSmoke
             return Complete(false, "The dual-target smoke requires one complete selected Thickness step.");
         }
 
-        var startedPerspective = viewer.ViewModel.IsPerspectiveView;
-        var previewBefore = viewer.ViewModel.PreviewToolResult;
-        var resultsBefore = viewer.ViewModel.ResultEntities;
+        var startedPerspective = viewer.HostState.Inspection.IsPerspectiveView;
+        var inspectionBefore = viewer.HostState.Inspection;
         var referenceId = referenceBefore.Id;
         var measurementId = measurementBefore.Id;
         lines.Add($"Start|perspective={startedPerspective}|reference={referenceTarget}|measurement={measurementTarget}");
@@ -667,7 +667,7 @@ internal static class ShellTeachingSelectionSmoke
         await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         var evidenceDirectory = string.IsNullOrWhiteSpace(reportPath)
             ? null
-            : Path.GetDirectoryName(Path.GetFullPath(reportPath));
+            : GetReportDirectory(reportPath);
         var referencePointerReport = evidenceDirectory is null
             ? null
             : Path.Combine(evidenceDirectory, "coordinate-confidence-reference-pointer.txt");
@@ -677,7 +677,7 @@ internal static class ShellTeachingSelectionSmoke
         var referenceCoordinatesVisible = CandidateMatchesWorkbench(
             workbench,
             referenceResult.Candidate);
-        lines.Add($"ReferenceCandidate|top={viewer.ViewModel.IsTopOrthographicView}|coordinatesVisible={referenceCoordinatesVisible}|candidate={referenceResult.Candidate}");
+        lines.Add($"ReferenceCandidate|top={viewer.HostState.Inspection.IsTopOrthographicView}|coordinatesVisible={referenceCoordinatesVisible}|candidate={referenceResult.Candidate}");
         if (!referenceResult.Passed
             || !referenceCoordinatesVisible
             || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
@@ -702,7 +702,7 @@ internal static class ShellTeachingSelectionSmoke
         var measurementCoordinatesVisible = CandidateMatchesWorkbench(
             workbench,
             measurementResult.Candidate);
-        lines.Add($"MeasurementCandidate|top={viewer.ViewModel.IsTopOrthographicView}|coordinatesVisible={measurementCoordinatesVisible}|candidate={measurementResult.Candidate}");
+        lines.Add($"MeasurementCandidate|top={viewer.HostState.Inspection.IsTopOrthographicView}|coordinatesVisible={measurementCoordinatesVisible}|candidate={measurementResult.Candidate}");
         if (!measurementResult.Passed
             || !measurementCoordinatesVisible
             || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
@@ -715,8 +715,8 @@ internal static class ShellTeachingSelectionSmoke
         var routeRestored = step.InputEntityIds.Count == 3
             && string.Equals(step.InputEntityIds[1], referenceId, StringComparison.Ordinal)
             && string.Equals(step.InputEntityIds[2], measurementId, StringComparison.Ordinal);
-        var executionUnchanged = ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
-            && ReferenceEquals(resultsBefore, viewer.ViewModel.ResultEntities);
+        var executionUnchanged = viewer.HostState.Inspection.PreviewReferenceToken == inspectionBefore.PreviewReferenceToken
+            && viewer.HostState.Inspection.PublishedResultReferenceToken == inspectionBefore.PublishedResultReferenceToken;
         lines.Add($"Final|routeRestored={routeRestored}|executionUnchanged={executionUnchanged}|captureActive={viewer.TeachingCaptureSnapshot.IsActive}");
         return Complete(
             startedPerspective

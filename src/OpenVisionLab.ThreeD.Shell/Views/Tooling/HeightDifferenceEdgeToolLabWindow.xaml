@@ -63,19 +63,19 @@
                                Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
-                               ToolTip="Explicitly create an EdgePointSet from the published Filter output"
-                               AutomationProperties.Name="Preview Height Difference Edge" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PreviewTip, Korean='게시된 필터 출력에서 EdgePointSet을 명시적으로 생성합니다.', English='Explicitly create an EdgePointSet from the published Filter output'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PreviewAction, Korean='높이차 엣지 미리보기', English='Preview Height Difference Edge'}" />
                     <ui:Button Margin="0,0,6,0"
                                Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon DataFunnel24}"
                                Click="ShowFilterInputButton_Click"
-                               ToolTip="Refresh the exact published FilteredHeightField input view"
-                               AutomationProperties.Name="Show FilteredHeightField input" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.ShowInputTip, Korean='게시된 FilteredHeightField 입력 보기를 새로 고칩니다.', English='Refresh the exact published FilteredHeightField input view'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.ShowInputAction, Korean='FilteredHeightField 입력 보기', English='Show FilteredHeightField input'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="Publish the current EdgePointSet Preview without running again"
-                               AutomationProperties.Name="Publish Height Difference Edge output" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PublishTip, Korean='다시 실행하지 않고 현재 EdgePointSet 미리보기를 게시합니다.', English='Publish the current EdgePointSet Preview without running again'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PublishAction, Korean='높이차 엣지 출력 게시', English='Publish Height Difference Edge output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -101,7 +101,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataFunnel24" />
                                 <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" />
-                                <TextBlock FontWeight="SemiBold" Text=" | Published FilteredHeightField" />
+                                <TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Input, Korean=' | 게시된 FilteredHeightField', English=' | Published FilteredHeightField'}" />
                             </StackPanel>
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="10"

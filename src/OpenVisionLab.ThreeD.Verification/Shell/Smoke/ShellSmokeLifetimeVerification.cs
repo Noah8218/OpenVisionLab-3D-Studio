@@ -5,7 +5,7 @@ using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
-using OpenVisionLab.ThreeD.Viewer.ViewModels;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Smoke;
 
@@ -46,6 +46,11 @@ internal static class ShellSmokeLifetimeVerification
             ("ToolTeachingStartupNoOp", VerifyToolTeachingStartupNoOp()),
             ("SmokeScreenshotTargetSelection", VerifySmokeScreenshotTargetSelection()),
             ("SmokeScreenshotEvidenceAggregation", VerifySmokeScreenshotEvidenceAggregation()),
+            ("SmokeScreenshotCapturePolicy", VerifySmokeScreenshotCapturePolicy()),
+            ("AuxiliaryWindowScreenshotPolicy", VerifyAuxiliaryWindowScreenshotPolicy()),
+            ("SmokePublishOrdering", VerifySmokePublishOrdering()),
+            ("ViewerPointerSmokeOrdering", VerifyViewerPointerSmokeOrdering()),
+            ("TeachingSmokeOrdering", VerifyTeachingSmokeOrdering()),
             ("RecipeMeasurementSmokeNoOp", VerifyRecipeMeasurementSmokeNoOp()),
             ("WorkbenchInteractionSmokeNoOp", VerifyWorkbenchInteractionSmokeNoOp()),
             ("MessageDialogPolicy", VerifyMessageDialogPolicy())
@@ -92,7 +97,7 @@ internal static class ShellSmokeLifetimeVerification
     {
         using var lifetime = new ShellSmokeLifetime();
         var waiter = new ShellNominalActualPreviewWaiter(
-            () => NominalActualComparisonState.PreviewRunning);
+            () => ViewerNominalActualState.PreviewRunning);
         var wait = waiter.WaitAsync(TimeSpan.FromSeconds(30), lifetime.Token);
         lifetime.Dispose();
         return wait.Wait(TimeSpan.FromSeconds(2))
@@ -102,7 +107,7 @@ internal static class ShellSmokeLifetimeVerification
     private static bool VerifyPreviewReady()
     {
         var waiter = new ShellNominalActualPreviewWaiter(
-            () => NominalActualComparisonState.PreviewReady);
+            () => ViewerNominalActualState.PreviewReady);
         return waiter.WaitAsync(TimeSpan.Zero).GetAwaiter().GetResult();
     }
 
@@ -284,6 +289,459 @@ internal static class ShellSmokeLifetimeVerification
             "monitor:<null>",
             "preparation:dropdown:<null>"
         ]);
+    }
+
+    private static bool VerifySmokeScreenshotCapturePolicy()
+    {
+        var events = new List<string>();
+        var captureSucceeds = true;
+        var coordinator = new ShellSmokeScreenshotCaptureCoordinator(
+            new ShellSmokeScreenshotCaptureCallbacks
+            {
+                CaptureButtonPressed = (automationId, path, qualityPath, scope) =>
+                {
+                    events.Add($"button:{automationId}:{path}:{qualityPath}:{scope}");
+                    return Task.FromResult(captureSucceeds);
+                },
+                CaptureRecipeHealthNavigation = (path, qualityPath) =>
+                {
+                    events.Add($"recipe-health:{path}:{qualityPath}");
+                    return Task.FromResult(captureSucceeds);
+                },
+                CaptureWindow = (path, qualityPath, scope) =>
+                {
+                    events.Add($"window:{path}:{qualityPath}:{scope}");
+                    return Task.FromResult(captureSucceeds);
+                },
+                AppendEvidence = request => events.Add(
+                    $"evidence:{request.QualityReportPath}:{request.IntegrationExchangeEvidenceLine}")
+            });
+
+        var defaultCapture = coordinator.CaptureAsync(
+                new ShellSmokeScreenshotCaptureRequest
+                {
+                    ScreenshotPath = "shell.png",
+                    QualityReportPath = "quality.txt",
+                    ViewerPresentationCameraLinkSummary = "camera",
+                    IntegrationExchangeEvidenceLine = "integration"
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (!defaultCapture.Succeeded
+            || defaultCapture.Failure is not null
+            || !events.SequenceEqual(
+                ["window:shell.png:quality.txt:Shell", "evidence:quality.txt:integration"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        var buttonCapture = coordinator.CaptureAsync(
+                new ShellSmokeScreenshotCaptureRequest
+                {
+                    ScreenshotPath = "button.png",
+                    Target = new ShellSmokeScreenshotTargetRequest
+                    {
+                        Import3DDataPressed = true
+                    }
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (!buttonCapture.Succeeded
+            || !events.SequenceEqual(["button:Import3DData:button.png::Import3DDataPressed", "evidence::"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        var recipeHealthCapture = coordinator.CaptureAsync(
+                new ShellSmokeScreenshotCaptureRequest
+                {
+                    ScreenshotPath = "health.png",
+                    QualityReportPath = "health.txt",
+                    Target = new ShellSmokeScreenshotTargetRequest
+                    {
+                        RecipeHealthNavigationPressed = true
+                    }
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (!recipeHealthCapture.Succeeded
+            || !events.SequenceEqual(["recipe-health:health.png:health.txt", "evidence:health.txt:"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        captureSucceeds = false;
+        var failedCapture = coordinator.CaptureAsync(
+                new ShellSmokeScreenshotCaptureRequest
+                {
+                    ScreenshotPath = "failed.png"
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (failedCapture.Succeeded
+            || failedCapture.Failure != "Shell screenshot remained blank or invalid after 3 attempts."
+            || !events.SequenceEqual(["window:failed.png::Shell"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        var noOp = coordinator.CaptureAsync(
+                new ShellSmokeScreenshotCaptureRequest())
+            .GetAwaiter()
+            .GetResult();
+        return noOp.Succeeded
+            && noOp.Failure is null
+            && events.Count == 0;
+    }
+
+    private static bool VerifyAuxiliaryWindowScreenshotPolicy()
+    {
+        var events = new List<string>();
+        var captureSucceeds = true;
+        var coordinator = new ShellAuxiliaryWindowScreenshotCoordinator(
+            new ShellAuxiliaryWindowScreenshotCallbacks
+            {
+                CaptureViewerPopout = (path, qualityPath) =>
+                {
+                    events.Add($"viewer:{path}:{qualityPath}");
+                    return Task.FromResult(captureSucceeds);
+                },
+                CaptureRecipeManager = (path, qualityPath, firstRecipeCreatePressed) =>
+                {
+                    events.Add($"recipe:{path}:{qualityPath}:{firstRecipeCreatePressed}");
+                    return Task.FromResult(captureSucceeds);
+                },
+                AppendRecipeManagerMonitorEvidence = qualityPath =>
+                    events.Add($"monitor:{qualityPath}"),
+                CaptureMessageDialog = (path, qualityPath, primaryPressed) =>
+                {
+                    events.Add($"dialog:{path}:{qualityPath}:{primaryPressed}");
+                    return Task.FromResult(captureSucceeds);
+                }
+            });
+
+        var success = coordinator.CaptureAsync(
+                new ShellAuxiliaryWindowScreenshotRequest
+                {
+                    ViewerPopoutScreenshotPath = "viewer.png",
+                    ViewerPopoutQualityReportPath = "viewer.txt",
+                    RecipeManagerScreenshotPath = "recipe.png",
+                    RecipeManagerQualityReportPath = "recipe.txt",
+                    FirstRecipeCreatePressed = true,
+                    MessageDialogScreenshotPath = "dialog.png",
+                    MessageDialogQualityReportPath = "dialog.txt",
+                    MessageDialogPrimaryPressed = true
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (success is not null
+            || !events.SequenceEqual(
+                [
+                    "viewer:viewer.png:viewer.txt",
+                    "recipe:recipe.png:recipe.txt:True",
+                    "monitor:recipe.txt",
+                    "dialog:dialog.png:dialog.txt:True"
+                ]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        captureSucceeds = false;
+        var viewerFailure = coordinator.CaptureAsync(
+                new ShellAuxiliaryWindowScreenshotRequest
+                {
+                    ViewerPopoutScreenshotPath = "viewer.png"
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (viewerFailure != "Viewer pop-out screenshot remained unavailable, blank, or invalid after 3 attempts."
+            || !events.SequenceEqual(["viewer:viewer.png:"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        captureSucceeds = false;
+        var recipeFailure = coordinator.CaptureAsync(
+                new ShellAuxiliaryWindowScreenshotRequest
+                {
+                    RecipeManagerScreenshotPath = "recipe.png",
+                    MessageDialogScreenshotPath = "dialog.png"
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (recipeFailure != "Recipe Manager screenshot remained blank or invalid after 3 attempts."
+            || !events.SequenceEqual(["recipe:recipe.png::False"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        captureSucceeds = false;
+        var dialogFailure = coordinator.CaptureAsync(
+                new ShellAuxiliaryWindowScreenshotRequest
+                {
+                    MessageDialogScreenshotPath = "dialog.png"
+                })
+            .GetAwaiter()
+            .GetResult();
+        if (dialogFailure != "Message dialog screenshot remained blank or invalid after 3 attempts."
+            || !events.SequenceEqual(["dialog:dialog.png::False"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        var noOp = coordinator.CaptureAsync(
+                new ShellAuxiliaryWindowScreenshotRequest())
+            .GetAwaiter()
+            .GetResult();
+        return noOp is null && events.Count == 0;
+    }
+
+    private static bool VerifySmokePublishOrdering()
+    {
+        var events = new List<string>();
+        var publishSucceeds = true;
+        var saveSucceeds = true;
+        var coordinator = new ShellSmokePublishCoordinator(
+            new ShellSmokePublishCallbacks
+            {
+                PublishCurrentPreview = () =>
+                {
+                    events.Add("publish");
+                    return publishSucceeds;
+                },
+                ShowReviewWorkspace = () => events.Add("review"),
+                SaveCurrentRecipe = _ =>
+                {
+                    events.Add("save");
+                    return saveSucceeds;
+                }
+            });
+
+        var noPublishSave = coordinator.TryPublishAndSave(
+            publish: false,
+            saveRecipePath: "no-publish.json",
+            out var noPublishFailure);
+        if (!noPublishSave
+            || noPublishFailure is not null
+            || !events.SequenceEqual(["save"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        var publishedAndSaved = coordinator.TryPublishAndSave(
+            publish: true,
+            saveRecipePath: "published.json",
+            out var publishedFailure);
+        if (!publishedAndSaved
+            || publishedFailure is not null
+            || !events.SequenceEqual(["publish", "review", "save"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        publishSucceeds = false;
+        var publishRejected = coordinator.TryPublishAndSave(
+            publish: true,
+            saveRecipePath: "rejected.json",
+            out var publishFailure);
+        if (publishRejected
+            || publishFailure != "Viewer Publish failed because current Preview evidence was unavailable."
+            || !events.SequenceEqual(["publish"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        publishSucceeds = true;
+        saveSucceeds = false;
+        var saveRejected = coordinator.TryPublishAndSave(
+            publish: true,
+            saveRecipePath: "save-failure.json",
+            out var saveFailure);
+        return !saveRejected
+            && saveFailure is null
+            && events.SequenceEqual(["publish", "review", "save"]);
+    }
+
+    private static bool VerifyViewerPointerSmokeOrdering()
+    {
+        var events = new List<string>();
+        var densitySucceeds = true;
+        var pickSucceeds = true;
+        var pointerSucceeds = true;
+        var profileSucceeds = true;
+        var orientedSucceeds = true;
+        var coordinator = new ShellViewerPointerSmokeCoordinator(
+            new ShellViewerPointerSmokeCallbacks
+            {
+                ApplyConfiguredNextDensity = () =>
+                {
+                    events.Add("density");
+                    return Task.FromResult(densitySucceeds);
+                },
+                ApplyConfiguredPick = () =>
+                {
+                    events.Add("pick");
+                    return pickSucceeds;
+                },
+                RunConfiguredPointerInputRegression = () =>
+                {
+                    events.Add("pointer");
+                    return Task.FromResult(pointerSucceeds);
+                },
+                RunProfilePointerSmoke = _ =>
+                {
+                    events.Add("profile");
+                    return Task.FromResult(profileSucceeds);
+                },
+                RunTeachingOrientedBoxPointerSmoke = _ =>
+                {
+                    events.Add("oriented");
+                    return Task.FromResult(orientedSucceeds);
+                },
+                ViewerStatus = () => "viewer-status"
+            });
+
+        var success = coordinator.RunAsync("profile.txt", "oriented.txt")
+            .GetAwaiter()
+            .GetResult();
+        if (success is not null
+            || !events.SequenceEqual(["density", "pick", "pointer", "profile", "oriented"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        pointerSucceeds = false;
+        var continueFailure = coordinator.RunAsync(null, null)
+            .GetAwaiter()
+            .GetResult();
+        if (continueFailure?.Message != "viewer-status"
+            || continueFailure.Abort
+            || !events.SequenceEqual(["density", "pick", "pointer"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        pointerSucceeds = true;
+        profileSucceeds = false;
+        var abortFailure = coordinator.RunAsync("profile.txt", null)
+            .GetAwaiter()
+            .GetResult();
+        return abortFailure?.Message == "Interactive height-profile pointer smoke failed."
+            && abortFailure.Abort
+            && events.SequenceEqual(["density", "pick", "pointer", "profile"]);
+    }
+
+    private static bool VerifyTeachingSmokeOrdering()
+    {
+        var events = new List<string>();
+        var selectionSucceeds = true;
+        var planeSucceeds = true;
+        var saveSucceeds = true;
+        var coordinator = new ShellTeachingSmokeCoordinator(
+            new ShellTeachingSmokeCallbacks
+            {
+                RunTeachingSelection = (_, _) =>
+                {
+                    events.Add("selection");
+                    return Task.FromResult(selectionSucceeds);
+                },
+                RunPlaneFlatnessLiveA3 = (_, _) =>
+                {
+                    events.Add("plane");
+                    return Task.FromResult(planeSucceeds);
+                },
+                SaveTeachingRecipe = _ =>
+                {
+                    events.Add("save");
+                    return (saveSucceeds, saveSucceeds ? null : "save-failure");
+                }
+            });
+
+        var success = coordinator.RunAsync(
+                new ShellTeachingSmokeRequest(
+                    "capturing",
+                    "selection.txt",
+                    PlaneFlatnessLiveA3: true,
+                    "plane.txt",
+                    "plane.json",
+                    "recipe.json"))
+            .GetAwaiter()
+            .GetResult();
+        if (!success.Succeeded
+            || success.Failure is not null
+            || !events.SequenceEqual(["selection", "plane", "save"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        selectionSucceeds = false;
+        var selectionFailure = coordinator.RunAsync(
+                new ShellTeachingSmokeRequest(
+                    "capturing",
+                    "selection.txt",
+                    PlaneFlatnessLiveA3: true,
+                    "plane.txt",
+                    "plane.json",
+                    "recipe.json"))
+            .GetAwaiter()
+            .GetResult();
+        if (selectionFailure.Succeeded
+            || selectionFailure.Failure is not null
+            || !events.SequenceEqual(["selection"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        selectionSucceeds = true;
+        planeSucceeds = false;
+        var planeFailure = coordinator.RunAsync(
+                new ShellTeachingSmokeRequest(
+                    null,
+                    null,
+                    PlaneFlatnessLiveA3: true,
+                    "plane.txt",
+                    "plane.json",
+                    "recipe.json"))
+            .GetAwaiter()
+            .GetResult();
+        if (planeFailure.Succeeded
+            || planeFailure.Failure is not null
+            || !events.SequenceEqual(["plane"]))
+        {
+            return false;
+        }
+
+        events.Clear();
+        planeSucceeds = true;
+        saveSucceeds = false;
+        var saveFailure = coordinator.RunAsync(
+                new ShellTeachingSmokeRequest(
+                    null,
+                    null,
+                    PlaneFlatnessLiveA3: false,
+                    null,
+                    null,
+                    "recipe.json"))
+            .GetAwaiter()
+            .GetResult();
+        return !saveFailure.Succeeded
+            && saveFailure.Failure == "save-failure"
+            && events.SequenceEqual(["save"]);
     }
 
     private static bool VerifyRecipeMeasurementSmokeNoOp()

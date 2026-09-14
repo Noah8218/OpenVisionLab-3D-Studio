@@ -53,6 +53,34 @@ public static class ToolRecipeSelectionContractVerification
         "undeclared GridPolygon consumer fails closed"
     ];
 
+    private static readonly string[] GridPolygonRasterizationCaseNames =
+    [
+        "GridPolygon rasterizes valid coverage in row-major order",
+        "GridPolygon includes cell centers on the boundary",
+        "GridPolygon rejects invalid geometry without covered cells",
+        "GridPolygon rejects non-positive grid dimensions without covered cells",
+        "GridPolygon rasterization is repeatable and preserves vertices"
+    ];
+
+    private static readonly string[] GridCircleRasterizationCaseNames =
+    [
+        "GridCircle rasterizes valid coverage in row-major order",
+        "GridCircle includes radius-boundary cell centers",
+        "GridCircle rejects invalid geometry without covered cells",
+        "GridCircle rejects non-positive grid dimensions without covered cells",
+        "GridCircle rasterization is repeatable and preserves parameters",
+        "GridCircle avoids integer distance overflow on large source grids"
+    ];
+
+    private static readonly string[] GridRectangleRasterizationCaseNames =
+    [
+        "GridRectangle rasterizes valid coverage in row-major order",
+        "GridRectangle preserves inclusive row and column bounds",
+        "GridRectangle rejects invalid geometry without covered cells",
+        "GridRectangle rejects non-positive grid dimensions without covered cells",
+        "GridRectangle rasterization is repeatable and preserves parameters"
+    ];
+
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
@@ -66,6 +94,9 @@ public static class ToolRecipeSelectionContractVerification
         var orientedBoxSubsetComplete = false;
         var gridCircleSubsetComplete = false;
         var gridPolygonSubsetComplete = false;
+        var gridPolygonRasterizationSubsetComplete = false;
+        var gridCircleRasterizationSubsetComplete = false;
+        var gridRectangleRasterizationSubsetComplete = false;
         var fixtureRoot = Path.Combine(
             Path.GetTempPath(),
             "OpenVisionLab.ThreeD",
@@ -1005,6 +1036,252 @@ public static class ToolRecipeSelectionContractVerification
             lines.Add(
                 $"GridPolygonContractVerification|{(gridPolygonSubsetComplete ? "PASS" : "FAIL")}|cases={gridPolygonTotal}|passed={gridPolygonPassed}|failed={gridPolygonTotal - gridPolygonPassed}");
 
+            var rasterPolygon = new ToolRecipeGridPolygon(
+            [
+                new ToolRecipeGridPolygonVertex(1, 1),
+                new ToolRecipeGridPolygonVertex(1, 3),
+                new ToolRecipeGridPolygonVertex(3, 3),
+                new ToolRecipeGridPolygonVertex(3, 1)
+            ]);
+            var expectedRasterCells = new[]
+            {
+                new ToolRecipeGridPolygonCell(1, 1),
+                new ToolRecipeGridPolygonCell(1, 2),
+                new ToolRecipeGridPolygonCell(1, 3),
+                new ToolRecipeGridPolygonCell(2, 1),
+                new ToolRecipeGridPolygonCell(2, 2),
+                new ToolRecipeGridPolygonCell(2, 3),
+                new ToolRecipeGridPolygonCell(3, 1),
+                new ToolRecipeGridPolygonCell(3, 2),
+                new ToolRecipeGridPolygonCell(3, 3)
+            };
+            var rasterization = ToolRecipeGridPolygonRasterizer.Rasterize(rasterPolygon, 5, 5);
+            Check(
+                "GridPolygon rasterizes valid coverage in row-major order",
+                rasterization.IsValid
+                && rasterization.Cells.SequenceEqual(expectedRasterCells),
+                $"valid={rasterization.IsValid};cells={string.Join(",", rasterization.Cells.Select(cell => $"{cell.Row}:{cell.Column}"))}");
+
+            var boundaryRasterization = ToolRecipeGridPolygonRasterizer.Rasterize(
+                new ToolRecipeGridPolygon(
+                [
+                    new ToolRecipeGridPolygonVertex(1, 1),
+                    new ToolRecipeGridPolygonVertex(1, 3),
+                    new ToolRecipeGridPolygonVertex(3, 1)
+                ]),
+                5,
+                5);
+            Check(
+                "GridPolygon includes cell centers on the boundary",
+                boundaryRasterization.IsValid
+                && boundaryRasterization.Cells.Contains(new ToolRecipeGridPolygonCell(1, 2))
+                && boundaryRasterization.Cells.Contains(new ToolRecipeGridPolygonCell(3, 1)),
+                $"valid={boundaryRasterization.IsValid};boundaryCells={boundaryRasterization.Cells.Count(cell =>
+                    cell == new ToolRecipeGridPolygonCell(1, 2)
+                    || cell == new ToolRecipeGridPolygonCell(3, 1))}");
+
+            var invalidRasterization = ToolRecipeGridPolygonRasterizer.Rasterize(
+                new ToolRecipeGridPolygon(
+                [
+                    new ToolRecipeGridPolygonVertex(0, 0),
+                    new ToolRecipeGridPolygonVertex(3, 3),
+                    new ToolRecipeGridPolygonVertex(0, 3),
+                    new ToolRecipeGridPolygonVertex(3, 0)
+                ]),
+                5,
+                5);
+            Check(
+                "GridPolygon rejects invalid geometry without covered cells",
+                !invalidRasterization.IsValid
+                && invalidRasterization.Cells.Count == 0
+                && invalidRasterization.Errors.Any(error =>
+                    error.Contains("self-intersect", StringComparison.OrdinalIgnoreCase)),
+                $"valid={invalidRasterization.IsValid};errors={string.Join(" | ", invalidRasterization.Errors)}");
+
+            var invalidDimensionRasterization = ToolRecipeGridPolygonRasterizer.Rasterize(rasterPolygon, 0, 5);
+            Check(
+                "GridPolygon rejects non-positive grid dimensions without covered cells",
+                !invalidDimensionRasterization.IsValid
+                && invalidDimensionRasterization.Cells.Count == 0
+                && invalidDimensionRasterization.Errors.Any(error =>
+                    error.Contains("positive", StringComparison.OrdinalIgnoreCase)),
+                $"valid={invalidDimensionRasterization.IsValid};errors={string.Join(" | ", invalidDimensionRasterization.Errors)}");
+
+            var originalVertices = rasterPolygon.Vertices.ToArray();
+            var repeatedRasterization = ToolRecipeGridPolygonRasterizer.Rasterize(rasterPolygon, 5, 5);
+            Check(
+                "GridPolygon rasterization is repeatable and preserves vertices",
+                repeatedRasterization.Cells.SequenceEqual(rasterization.Cells)
+                && rasterPolygon.Vertices.SequenceEqual(originalVertices),
+                $"sameCells={repeatedRasterization.Cells.SequenceEqual(rasterization.Cells)};verticesUnchanged={rasterPolygon.Vertices.SequenceEqual(originalVertices)}");
+
+            var gridPolygonRasterizationPassed = passed - gridPolygonPassed - gridPolygonPassedBefore;
+            var gridPolygonRasterizationTotal = total - gridPolygonTotal - gridPolygonTotalBefore;
+            gridPolygonRasterizationSubsetComplete =
+                gridPolygonRasterizationTotal == GridPolygonRasterizationCaseNames.Length
+                && gridPolygonRasterizationPassed == gridPolygonRasterizationTotal
+                && GridPolygonRasterizationCaseNames.All(caseName => lines.Any(line =>
+                    line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
+            lines.Add(
+                $"GridPolygonRasterizationContractVerification|{(gridPolygonRasterizationSubsetComplete ? "PASS" : "FAIL")}|cases={gridPolygonRasterizationTotal}|passed={gridPolygonRasterizationPassed}|failed={gridPolygonRasterizationTotal - gridPolygonRasterizationPassed}");
+
+            var gridCircleRasterizationPassedBefore = passed;
+            var gridCircleRasterizationTotalBefore = total;
+            var rasterCircle = new ToolRecipeGridCircle(2, 2, 2);
+            var expectedCircleCells = new[]
+            {
+                new ToolRecipeGridCircleCell(0, 2),
+                new ToolRecipeGridCircleCell(1, 1),
+                new ToolRecipeGridCircleCell(1, 2),
+                new ToolRecipeGridCircleCell(1, 3),
+                new ToolRecipeGridCircleCell(2, 0),
+                new ToolRecipeGridCircleCell(2, 1),
+                new ToolRecipeGridCircleCell(2, 2),
+                new ToolRecipeGridCircleCell(2, 3),
+                new ToolRecipeGridCircleCell(2, 4),
+                new ToolRecipeGridCircleCell(3, 1),
+                new ToolRecipeGridCircleCell(3, 2),
+                new ToolRecipeGridCircleCell(3, 3),
+                new ToolRecipeGridCircleCell(4, 2)
+            };
+            var circleRasterization = ToolRecipeGridCircleRasterizer.Rasterize(rasterCircle, 5, 5);
+            Check(
+                "GridCircle rasterizes valid coverage in row-major order",
+                circleRasterization.IsValid
+                && circleRasterization.Cells.SequenceEqual(expectedCircleCells),
+                $"valid={circleRasterization.IsValid};cells={string.Join(",", circleRasterization.Cells.Select(cell => $"{cell.Row}:{cell.Column}"))}");
+
+            var boundaryCircleRasterization = ToolRecipeGridCircleRasterizer.Rasterize(
+                new ToolRecipeGridCircle(2, 2, 1),
+                5,
+                5);
+            Check(
+                "GridCircle includes radius-boundary cell centers",
+                boundaryCircleRasterization.IsValid
+                && boundaryCircleRasterization.Cells.Contains(new ToolRecipeGridCircleCell(2, 1))
+                && boundaryCircleRasterization.Cells.Contains(new ToolRecipeGridCircleCell(2, 3)),
+                $"valid={boundaryCircleRasterization.IsValid};boundaryCells={boundaryCircleRasterization.Cells.Count(cell =>
+                    cell == new ToolRecipeGridCircleCell(2, 1)
+                    || cell == new ToolRecipeGridCircleCell(2, 3))}");
+
+            var invalidCircleRasterization = ToolRecipeGridCircleRasterizer.Rasterize(
+                new ToolRecipeGridCircle(2, 2, 0.5),
+                5,
+                5);
+            Check(
+                "GridCircle rejects invalid geometry without covered cells",
+                !invalidCircleRasterization.IsValid
+                && invalidCircleRasterization.Cells.Count == 0
+                && invalidCircleRasterization.Errors.Any(error =>
+                    error.Contains("at least", StringComparison.OrdinalIgnoreCase)),
+                $"valid={invalidCircleRasterization.IsValid};errors={string.Join(" | ", invalidCircleRasterization.Errors)}");
+
+            var invalidCircleDimensionRasterization = ToolRecipeGridCircleRasterizer.Rasterize(rasterCircle, 0, 5);
+            Check(
+                "GridCircle rejects non-positive grid dimensions without covered cells",
+                !invalidCircleDimensionRasterization.IsValid
+                && invalidCircleDimensionRasterization.Cells.Count == 0
+                && invalidCircleDimensionRasterization.Errors.Any(error =>
+                    error.Contains("positive", StringComparison.OrdinalIgnoreCase)),
+                $"valid={invalidCircleDimensionRasterization.IsValid};errors={string.Join(" | ", invalidCircleDimensionRasterization.Errors)}");
+
+            var repeatedCircleRasterization = ToolRecipeGridCircleRasterizer.Rasterize(rasterCircle, 5, 5);
+            Check(
+                "GridCircle rasterization is repeatable and preserves parameters",
+                repeatedCircleRasterization.Cells.SequenceEqual(circleRasterization.Cells)
+                && rasterCircle == new ToolRecipeGridCircle(2, 2, 2),
+                $"sameCells={repeatedCircleRasterization.Cells.SequenceEqual(circleRasterization.Cells)};parametersUnchanged={rasterCircle == new ToolRecipeGridCircle(2, 2, 2)}");
+
+            var largeGridCircleRasterization = ToolRecipeGridCircleRasterizer.Rasterize(
+                new ToolRecipeGridCircle(1, 49_998, 1),
+                50_000,
+                3);
+            Check(
+                "GridCircle avoids integer distance overflow on large source grids",
+                largeGridCircleRasterization.IsValid
+                && largeGridCircleRasterization.Cells.SequenceEqual([
+                    new ToolRecipeGridCircleCell(0, 49_998),
+                    new ToolRecipeGridCircleCell(1, 49_997),
+                    new ToolRecipeGridCircleCell(1, 49_998),
+                    new ToolRecipeGridCircleCell(1, 49_999),
+                    new ToolRecipeGridCircleCell(2, 49_998)]),
+                $"valid={largeGridCircleRasterization.IsValid};cells={string.Join(",", largeGridCircleRasterization.Cells.Select(cell => $"{cell.Row}:{cell.Column}"))}");
+
+            var gridCircleRasterizationPassed = passed - gridCircleRasterizationPassedBefore;
+            var gridCircleRasterizationTotal = total - gridCircleRasterizationTotalBefore;
+            gridCircleRasterizationSubsetComplete =
+                gridCircleRasterizationTotal == GridCircleRasterizationCaseNames.Length
+                && gridCircleRasterizationPassed == gridCircleRasterizationTotal
+                && GridCircleRasterizationCaseNames.All(caseName => lines.Any(line =>
+                    line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
+            lines.Add(
+                $"GridCircleRasterizationContractVerification|{(gridCircleRasterizationSubsetComplete ? "PASS" : "FAIL")}|cases={gridCircleRasterizationTotal}|passed={gridCircleRasterizationPassed}|failed={gridCircleRasterizationTotal - gridCircleRasterizationPassed}");
+
+            var gridRectangleRasterizationPassedBefore = passed;
+            var gridRectangleRasterizationTotalBefore = total;
+            var rasterRectangle = new ToolRecipeGridRectangle(1, 2, 2, 3);
+            var expectedRectangleCells = new[]
+            {
+                new ToolRecipeGridRectangleCell(1, 2),
+                new ToolRecipeGridRectangleCell(1, 3),
+                new ToolRecipeGridRectangleCell(1, 4),
+                new ToolRecipeGridRectangleCell(2, 2),
+                new ToolRecipeGridRectangleCell(2, 3),
+                new ToolRecipeGridRectangleCell(2, 4)
+            };
+            var rectangleRasterization = ToolRecipeGridRectangleRasterizer.Rasterize(rasterRectangle, 6, 6);
+            Check(
+                "GridRectangle rasterizes valid coverage in row-major order",
+                rectangleRasterization.IsValid
+                && rectangleRasterization.Cells.SequenceEqual(expectedRectangleCells),
+                $"valid={rectangleRasterization.IsValid};cells={string.Join(",", rectangleRasterization.Cells.Select(cell => $"{cell.Row}:{cell.Column}"))}");
+
+            Check(
+                "GridRectangle preserves inclusive row and column bounds",
+                rectangleRasterization.Cells.Contains(new ToolRecipeGridRectangleCell(1, 4))
+                && rectangleRasterization.Cells.Contains(new ToolRecipeGridRectangleCell(2, 2))
+                && !rectangleRasterization.Cells.Contains(new ToolRecipeGridRectangleCell(0, 2))
+                && !rectangleRasterization.Cells.Contains(new ToolRecipeGridRectangleCell(2, 5)),
+                $"min=1:2;max=2:4;count={rectangleRasterization.Cells.Count}");
+
+            var invalidRectangleRasterization = ToolRecipeGridRectangleRasterizer.Rasterize(
+                new ToolRecipeGridRectangle(0, 0, 0, 2),
+                5,
+                5);
+            Check(
+                "GridRectangle rejects invalid geometry without covered cells",
+                !invalidRectangleRasterization.IsValid
+                && invalidRectangleRasterization.Cells.Count == 0
+                && invalidRectangleRasterization.Errors.Any(error =>
+                    error.Contains("positive dimensions", StringComparison.OrdinalIgnoreCase)),
+                $"valid={invalidRectangleRasterization.IsValid};errors={string.Join(" | ", invalidRectangleRasterization.Errors)}");
+
+            var invalidRectangleDimensionRasterization = ToolRecipeGridRectangleRasterizer.Rasterize(rasterRectangle, 0, 5);
+            Check(
+                "GridRectangle rejects non-positive grid dimensions without covered cells",
+                !invalidRectangleDimensionRasterization.IsValid
+                && invalidRectangleDimensionRasterization.Cells.Count == 0
+                && invalidRectangleDimensionRasterization.Errors.Any(error =>
+                    error.Contains("positive", StringComparison.OrdinalIgnoreCase)),
+                $"valid={invalidRectangleDimensionRasterization.IsValid};errors={string.Join(" | ", invalidRectangleDimensionRasterization.Errors)}");
+
+            var repeatedRectangleRasterization = ToolRecipeGridRectangleRasterizer.Rasterize(rasterRectangle, 6, 6);
+            Check(
+                "GridRectangle rasterization is repeatable and preserves parameters",
+                repeatedRectangleRasterization.Cells.SequenceEqual(rectangleRasterization.Cells)
+                && rasterRectangle == new ToolRecipeGridRectangle(1, 2, 2, 3),
+                $"sameCells={repeatedRectangleRasterization.Cells.SequenceEqual(rectangleRasterization.Cells)};parametersUnchanged={rasterRectangle == new ToolRecipeGridRectangle(1, 2, 2, 3)}");
+
+            var gridRectangleRasterizationPassed = passed - gridRectangleRasterizationPassedBefore;
+            var gridRectangleRasterizationTotal = total - gridRectangleRasterizationTotalBefore;
+            gridRectangleRasterizationSubsetComplete =
+                gridRectangleRasterizationTotal == GridRectangleRasterizationCaseNames.Length
+                && gridRectangleRasterizationPassed == gridRectangleRasterizationTotal
+                && GridRectangleRasterizationCaseNames.All(caseName => lines.Any(line =>
+                    line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
+            lines.Add(
+                $"GridRectangleRasterizationContractVerification|{(gridRectangleRasterizationSubsetComplete ? "PASS" : "FAIL")}|cases={gridRectangleRasterizationTotal}|passed={gridRectangleRasterizationPassed}|failed={gridRectangleRasterizationTotal - gridRectangleRasterizationPassed}");
+
             var outOfBounds = rectangle with
             {
                 GridRectangle = new ToolRecipeGridRectangle(3, 3, 2, 2)
@@ -1207,6 +1484,9 @@ public static class ToolRecipeSelectionContractVerification
             && orientedBoxSubsetComplete
             && gridCircleSubsetComplete
             && gridPolygonSubsetComplete
+            && gridPolygonRasterizationSubsetComplete
+            && gridCircleRasterizationSubsetComplete
+            && gridRectangleRasterizationSubsetComplete
             && !lines.Any(line => line.StartsWith("FAIL |", StringComparison.Ordinal));
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         File.WriteAllLines(reportPath, lines);

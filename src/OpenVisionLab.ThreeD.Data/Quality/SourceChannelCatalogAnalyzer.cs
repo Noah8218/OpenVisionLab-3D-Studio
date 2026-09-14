@@ -82,7 +82,7 @@ public static class SourceChannelCatalogAnalyzer
 
         var format = pointCloud.Metadata.PointDataFormat;
         var colorEvidence = pointCloud.HasRgb
-            ? $"LAS point format {format} declares RGB and the decoder preserves RGB for {pointCloud.SampledPoints.Length:N0} sampled points."
+            ? $"LAS point format {format} declares RGB and the decoder preserves RGB for {pointCloud.SampledPointView.Count:N0} sampled points."
             : $"LAS point format {format} does not declare an RGB channel.";
 
         return Array.AsReadOnly<SourceQualityChannelAvailability>(
@@ -93,7 +93,7 @@ public static class SourceChannelCatalogAnalyzer
             pointCloud.HasIntensity
                 ? Available(
                     SourceQualityChannel.Intensity,
-                    $"LAS point format {format} declares intensity and the decoder preserves intensity for {pointCloud.SampledPoints.Length:N0} sampled points.")
+                    $"LAS point format {format} declares intensity and the decoder preserves intensity for {pointCloud.SampledPointView.Count:N0} sampled points.")
                 : Unavailable(
                     SourceQualityChannel.Intensity,
                     $"LAS point format {format} does not declare a supported intensity channel."),

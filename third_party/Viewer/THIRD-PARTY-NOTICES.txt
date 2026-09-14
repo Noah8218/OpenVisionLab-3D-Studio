@@ -1,0 +1,88 @@
+OpenVisionLab 3D Studio Viewer - third-party dependency attribution
+=====================================================================
+
+Bundle scope: OpenVisionLab.ThreeD.Viewer, .NET 10 WPF, win-x64.
+This file is copied into the Viewer dependency bundle and is covered by
+viewer-dll-manifest.json. The machine-readable component map is
+VIEWER_DEPENDENCY_ATTRIBUTION.json.
+
+This is a provenance and attribution record for the current source-tree bundle. It is
+not legal advice, a warranty, or public-release approval. Keep this file, the
+JSON map, LICENSE, NOTICE, and the complete source/license records named below
+with every extracted bundle.
+
+OpenVisionLab projects
+----------------------
+OpenVisionLab.ThreeD.Viewer, OpenVisionLab.Localization,
+OpenVisionLab.ThreeD.Core, OpenVisionLab.ThreeD.Data,
+OpenVisionLab.ThreeD.Presentation, and OpenVisionLab.ThreeD.Tools are built
+from this repository. They are covered by the repository Apache-2.0 LICENSE
+and NOTICE. The bundle manifest identifies the source-tree commit for each
+build.
+
+OpenVisionLab Vision SDK packages
+--------------------------------
+OpenVisionLab.Core 3.0.1-dev.20260823.grid-diagnostics.1 and
+OpenVisionLab.Vision2D 3.0.1-dev.20260823.grid-diagnostics.1 are MIT-licensed
+packages from https://github.com/Noah8218/OpenVisionLab-Vision-SDK at commit
+8be38403d0d00698431d7ffa4de60a63289672c6. OpenVisionLab.Vision3D
+3.0.1-dev.20260829.normal-preparation.1 is MIT-licensed from the same
+repository at commit 6da3bcf521efb88681a17e4a7b23a091e7fcbacf. Their package
+LICENSE and NOTICE files were inspected; package SHA-256 and SHA-512 values
+are recorded in VIEWER_DEPENDENCY_ATTRIBUTION.json.
+
+OpenCvSharp, OpenCV, and cvBlob
+-------------------------------
+OpenVisionLab.Core embeds OpenCvSharp.dll, OpenCvSharp.Blob.dll, and the
+win-x64 OpenCvSharpExtern.dll. The managed OpenCvSharp assembly identifies
+source commit daa955c6e0263a7ba201404e5aa72f4c1bd144ae and is covered by the
+BSD-3-Clause license at:
+https://github.com/shimat/opencvsharp/blob/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/LICENSE
+
+The native binary contains the OpenCV 4.3.0 configuration string and revision
+4.3.0-1-gd40fe356e3. OpenCV 4.3.0 uses the 3-clause BSD license:
+https://github.com/opencv/opencv/blob/4.3.0/LICENSE
+
+OpenCvSharp.Blob's source ReadMe.txt says that it wraps cvblob and that the
+cvblob/OpenCvSharp path is LGPL, but it does not specify an LGPL version. The
+maintained cvBlob source mirror publishes the corresponding license records:
+https://github.com/Steelskin/cvblob/blob/main/COPYING
+https://github.com/Steelskin/cvblob/blob/main/COPYING.LESSER
+The license version and any source/relink obligations for a public release
+must be confirmed by the owner before redistribution. Do not treat the Core
+package's MIT metadata as overriding these embedded component records.
+
+SharpGL
+-------
+SharpGL, SharpGL.SceneGraph, and SharpGL.WPF 3.1.1 are from
+https://github.com/dwmkerr/sharpgl and use its MIT license:
+https://raw.githubusercontent.com/dwmkerr/sharpgl/master/LICENSE
+The NuGet nuspecs do not encode a source commit; the package SHA values and
+the repository URL are retained in the JSON map.
+
+LASzip
+------
+Unofficial.laszip.netstandard 5.6.2 is from
+https://github.com/aardvark-platform/aardvark.algodat and its package points
+to the upstream LGPL-2.1 license:
+https://raw.githubusercontent.com/aardvark-platform/aardvark.algodat/master/src/Unofficial.laszip.netstandard/LICENSE
+Keep the LGPL terms and the applicable source/replacement path when this DLL
+is redistributed.
+
+Assets considered but not delivered
+------------------------------------
+System.Data.DataSetExtensions 4.5.0 appears in project.assets.json but no
+assembly from that package is present in the Viewer bundle. Its package
+LICENSE.TXT and THIRD-PARTY-NOTICES.TXT remain an assets-only record in the
+JSON map and are not represented as delivered payloads.
+
+Extraction checklist
+--------------------
+1. Keep every file named by viewer-dll-manifest.json, including this file and
+   VIEWER_DEPENDENCY_ATTRIBUTION.json, beside the managed assemblies.
+2. Preserve runtimes/win-x64/native/OpenCvSharpExtern.dll exactly; its native
+   OpenCV dependency is not replaced by copying Viewer.dll alone.
+3. Retain the cited license and attribution sources and resolve the cvBlob
+   LGPL version/source question before any public or commercial redistribution.
+4. Verify every manifest hash and run scripts/verify-viewer-dll-host.ps1
+   against the exact extracted directory.

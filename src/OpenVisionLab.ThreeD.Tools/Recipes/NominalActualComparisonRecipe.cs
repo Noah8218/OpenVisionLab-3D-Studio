@@ -24,7 +24,7 @@ public sealed record NominalActualComparisonRecipe(
         string recipePath)
     {
         ArgumentNullException.ThrowIfNull(input);
-        var recipeDirectory = Path.GetDirectoryName(Path.GetFullPath(recipePath))!;
+        var recipeDirectory = GetRecipeDirectory(recipePath);
         return new NominalActualComparisonRecipe(
             SupportedRecipeType,
             "1.0",
@@ -54,7 +54,7 @@ public sealed record NominalActualComparisonRecipe(
     public NominalActualComparisonInput ToInput(string recipePath)
     {
         Validate(this);
-        var recipeDirectory = Path.GetDirectoryName(Path.GetFullPath(recipePath))!;
+        var recipeDirectory = GetRecipeDirectory(recipePath);
         return new NominalActualComparisonInput(
             Step.Id,
             ToIdentity(Step.ActualSource, recipeDirectory),
@@ -74,6 +74,9 @@ public sealed record NominalActualComparisonRecipe(
         using var stream = File.Create(path);
         JsonSerializer.Serialize(stream, this, JsonOptions);
     }
+
+    private static string GetRecipeDirectory(string recipePath) =>
+        Path.GetDirectoryName(Path.GetFullPath(recipePath))!;
 
     private static void Validate(NominalActualComparisonRecipe recipe)
     {

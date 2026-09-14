@@ -29,39 +29,12 @@ public sealed record InspectionRunRecord(
         get;
         init;
     }
-    public InspectionRunIntegrationContext? IntegrationContext
-    {
-        get;
-        init;
-    }
     public InspectionRunSurfaceMatchEvidence? SurfaceMatchEvidence
     {
         get;
         init;
     }
 }
-
-/// <summary>
-/// Exact identity captured when a 3D Run Record is produced for an external
-/// Machine Studio Handoff. Records without this context cannot be published as
-/// an integration Result because their project, acquisition, and consumer
-/// build cannot be proven to match the request.
-/// </summary>
-public sealed record InspectionRunIntegrationContext(
-    string ProjectId,
-    string ProjectSchema,
-    string SequenceId,
-    string StepId,
-    string CameraId,
-    string AcquisitionId,
-    string FrameId,
-    string Unit,
-    string Modality,
-    string InputKind,
-    string ConsumerApplicationId,
-    string ConsumerApplicationVersion,
-    string ConsumerSourceCommit,
-    string ConsumerSourceState);
 
 public enum InspectionRunSourceQualityEvidenceState
 {

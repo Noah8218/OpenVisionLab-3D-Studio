@@ -15,19 +15,19 @@ namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 {
     public const string CubeEntityId = "source.generated-cube";
-    public const string PointCloudEntityId = ViewerInspectionSession.PointCloudEntityId;
-    public const string C3DEntityId = ViewerInspectionSession.C3DEntityId;
+    public const string PointCloudEntityId = ViewerEntityIds.PointCloudEntityId;
+    public const string C3DEntityId = ViewerEntityIds.C3DEntityId;
     public const string GlbEntityId = "source.imported-mesh";
-    public const string LazEntityId = ViewerInspectionSession.LazEntityId;
-    public const string SyntheticResultEntityId = ViewerInspectionSession.SyntheticResultEntityId;
-    public const string C3DHeightDeviationResultEntityId = ViewerInspectionSession.C3DHeightDeviationResultEntityId;
-    public const string C3DThicknessResultEntityId = ViewerInspectionSession.C3DThicknessResultEntityId;
-    public const string C3DPlaneFlatnessResultEntityId = ViewerInspectionSession.C3DPlaneFlatnessResultEntityId;
-    public const string C3DPointPairDimensionsResultEntityId = ViewerInspectionSession.C3DPointPairDimensionsResultEntityId;
-    public const string C3DGapFlushResultEntityId = ViewerInspectionSession.C3DGapFlushResultEntityId;
-    public const string C3DVolumeResultEntityId = ViewerInspectionSession.C3DVolumeResultEntityId;
-    public const string C3DCrossSectionResultEntityId = ViewerInspectionSession.C3DCrossSectionResultEntityId;
-    public const string LazTwoPointResultEntityId = ViewerInspectionSession.LazTwoPointResultEntityId;
+    public const string LazEntityId = ViewerEntityIds.LazEntityId;
+    public const string SyntheticResultEntityId = ViewerEntityIds.SyntheticResultEntityId;
+    public const string C3DHeightDeviationResultEntityId = ViewerEntityIds.C3DHeightDeviationResultEntityId;
+    public const string C3DThicknessResultEntityId = ViewerEntityIds.C3DThicknessResultEntityId;
+    public const string C3DPlaneFlatnessResultEntityId = ViewerEntityIds.C3DPlaneFlatnessResultEntityId;
+    public const string C3DPointPairDimensionsResultEntityId = ViewerEntityIds.C3DPointPairDimensionsResultEntityId;
+    public const string C3DGapFlushResultEntityId = ViewerEntityIds.C3DGapFlushResultEntityId;
+    public const string C3DVolumeResultEntityId = ViewerEntityIds.C3DVolumeResultEntityId;
+    public const string C3DCrossSectionResultEntityId = ViewerEntityIds.C3DCrossSectionResultEntityId;
+    public const string LazTwoPointResultEntityId = ViewerEntityIds.LazTwoPointResultEntityId;
     private const string PlaneFlatnessStepId = "step.c3d-plane-flatness";
     private const string PlaneFlatnessReferenceId = "reference.roi-plane";
     private const int PlaneFlatnessMaxSampledPoints = 140000;
@@ -360,6 +360,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private readonly RelayCommand saveRecipeCommand;
     private readonly RelayCommand screenshotCommand;
     private readonly RelayCommand profileCommand;
+    private readonly RelayCommand decreaseC3DHeightColorMaximumCommand;
+    private readonly RelayCommand increaseC3DHeightColorMaximumCommand;
+    private readonly RelayCommand decreaseC3DHeightColorMinimumCommand;
+    private readonly RelayCommand increaseC3DHeightColorMinimumCommand;
+    private readonly RelayCommand resetC3DHeightColorRangeCommand;
+    private readonly RelayCommand decreaseTeachingRoiDisplayHeightCommand;
+    private readonly RelayCommand increaseTeachingRoiDisplayHeightCommand;
+    private readonly RelayCommand resetTeachingRoiDisplayHeightCommand;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? ApplyRoiAlignmentRequested;
@@ -382,6 +390,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? ProfileViewRequested;
     public event EventHandler? PublishPreviewResultRequested;
     public event EventHandler? CameraChanged;
+    public event EventHandler<TeachingRoiDisplayHeightChangedEventArgs>? TeachingRoiDisplayHeightChanged;
 
     public MainWindowViewModel()
     {
@@ -426,6 +435,20 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
                 ProfileViewRequested?.Invoke(this, EventArgs.Empty);
             },
             _ => C3DSampleVisible);
+        decreaseC3DHeightColorMaximumCommand = new RelayCommand(_ => ShiftC3DHeightColorMaximum(-1), _ => C3DHeightDistributionVisible);
+        increaseC3DHeightColorMaximumCommand = new RelayCommand(_ => ShiftC3DHeightColorMaximum(1), _ => C3DHeightDistributionVisible);
+        decreaseC3DHeightColorMinimumCommand = new RelayCommand(_ => ShiftC3DHeightColorMinimum(-1), _ => C3DHeightDistributionVisible);
+        increaseC3DHeightColorMinimumCommand = new RelayCommand(_ => ShiftC3DHeightColorMinimum(1), _ => C3DHeightDistributionVisible);
+        resetC3DHeightColorRangeCommand = new RelayCommand(_ => ResetC3DHeightColorRange(), _ => C3DHeightDistributionVisible);
+        decreaseTeachingRoiDisplayHeightCommand = new RelayCommand(
+            _ => AdjustTeachingRoiDisplayHeight(-teachingRoiDisplayHeightStep, "decrease button"),
+            _ => SelectedTeachingGridRectangleVisible);
+        increaseTeachingRoiDisplayHeightCommand = new RelayCommand(
+            _ => AdjustTeachingRoiDisplayHeight(teachingRoiDisplayHeightStep, "increase button"),
+            _ => SelectedTeachingGridRectangleVisible);
+        resetTeachingRoiDisplayHeightCommand = new RelayCommand(
+            _ => ResetTeachingRoiDisplayHeight(),
+            _ => SelectedTeachingGridRectangleVisible);
 
         RefreshRecipeParameterSummary();
         RefreshSceneContracts();
@@ -477,6 +500,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public ICommand SaveRecipeCommand => saveRecipeCommand;
     public ICommand ScreenshotCommand => screenshotCommand;
     public ICommand ProfileCommand => profileCommand;
+    public ICommand DecreaseC3DHeightColorMaximumCommand => decreaseC3DHeightColorMaximumCommand;
+    public ICommand IncreaseC3DHeightColorMaximumCommand => increaseC3DHeightColorMaximumCommand;
+    public ICommand DecreaseC3DHeightColorMinimumCommand => decreaseC3DHeightColorMinimumCommand;
+    public ICommand IncreaseC3DHeightColorMinimumCommand => increaseC3DHeightColorMinimumCommand;
+    public ICommand ResetC3DHeightColorRangeCommand => resetC3DHeightColorRangeCommand;
+    public ICommand DecreaseTeachingRoiDisplayHeightCommand => decreaseTeachingRoiDisplayHeightCommand;
+    public ICommand IncreaseTeachingRoiDisplayHeightCommand => increaseTeachingRoiDisplayHeightCommand;
+    public ICommand ResetTeachingRoiDisplayHeightCommand => resetTeachingRoiDisplayHeightCommand;
 
     public bool HudDetailsVisible
     {
@@ -1638,6 +1669,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         fitRoiCommand.RaiseCanExecuteChanged();
         topViewCommand.RaiseCanExecuteChanged();
         perspectiveViewCommand.RaiseCanExecuteChanged();
+        decreaseC3DHeightColorMaximumCommand.RaiseCanExecuteChanged();
+        increaseC3DHeightColorMaximumCommand.RaiseCanExecuteChanged();
+        decreaseC3DHeightColorMinimumCommand.RaiseCanExecuteChanged();
+        increaseC3DHeightColorMinimumCommand.RaiseCanExecuteChanged();
+        resetC3DHeightColorRangeCommand.RaiseCanExecuteChanged();
+        decreaseTeachingRoiDisplayHeightCommand.RaiseCanExecuteChanged();
+        increaseTeachingRoiDisplayHeightCommand.RaiseCanExecuteChanged();
+        resetTeachingRoiDisplayHeightCommand.RaiseCanExecuteChanged();
     }
 
     public IReadOnlyList<ResultEntity> ResultEntities

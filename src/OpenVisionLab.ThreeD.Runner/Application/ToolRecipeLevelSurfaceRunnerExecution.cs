@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -10,6 +11,7 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
+            var fullReportPath = Path.GetFullPath(reportPath);
             var document = ToolRecipeDocumentStore.Load(fullRecipePath);
             var evaluation = ToolRecipeLevelSurfaceExecution.Execute(
                 document, stepId, Path.GetDirectoryName(fullRecipePath));
@@ -21,7 +23,7 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
             {
                 throw new InvalidDataException($"Runner Level Surface failed: {evaluation.Result.Message}");
             }
-            evaluation.Output.SaveC3D(outputC3DPath);
+            SaveC3DAtomically(evaluation.Output, outputC3DPath);
             var report = new
             {
                 schemaVersion = "1.0",
@@ -117,10 +119,10 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
                 outputReferenceSlopeX = evaluation.OutputReferenceSlopeX,
                 outputReferenceSlopeZ = evaluation.OutputReferenceSlopeZ
             };
-            var fullReportPath = Path.GetFullPath(reportPath);
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllText(fullReportPath, JsonSerializer.Serialize(
-                report, new JsonSerializerOptions { WriteIndented = true }));
+            WriteTextAtomically(
+                fullReportPath,
+                JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"Leveled output: {Path.GetFullPath(outputC3DPath)}");
             Console.WriteLine($"Output SHA-256: {evaluation.Output.ContentSha256}");
             Console.WriteLine($"Leveling transform SHA-256: {evaluation.Transform.ContentSha256}");
@@ -138,6 +140,59 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
         {
             Console.Error.WriteLine($"Level Surface Runner failed: {exception.Message}");
             return 1;
+        }
+    }
+
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            output.SaveC3D(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static void WriteTextAtomically(string path, string content)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       4096,
+                       leaveOpen: true))
+            {
+                writer.Write(content);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

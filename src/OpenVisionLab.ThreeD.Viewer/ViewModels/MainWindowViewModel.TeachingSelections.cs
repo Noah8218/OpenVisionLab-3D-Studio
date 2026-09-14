@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel
     private string teachingCaptureMessage = "No active teaching capture.";
     private readonly Dictionary<string, double> teachingRoiDisplayHeightOffsets = new(StringComparer.OrdinalIgnoreCase);
     private double selectedTeachingRoiAutomaticRawHeight = double.NaN;
+    private double teachingRoiDisplayHeightStep = 1.0;
 
     public bool IsTeachingCaptureActive => teachingCaptureRequest is not null;
     internal ToolRecipeSelectionSourceBinding? TeachingCaptureSourceBinding => teachingCaptureRequest?.SourceBinding;
@@ -522,6 +523,55 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(SelectedTeachingRoiDisplayHeightSummary));
     }
 
+    internal void SetTeachingRoiDisplayHeightStep(double step) =>
+        teachingRoiDisplayHeightStep = double.IsFinite(step) && step > 0.0 ? step : 1.0;
+
+    internal bool AdjustTeachingRoiDisplayHeight(double delta, string source)
+    {
+        if (!SelectedTeachingGridRectangleVisible || !double.IsFinite(delta))
+        {
+            return false;
+        }
+
+        SelectedTeachingRoiDisplayHeightOffset += delta;
+        ViewerStatus =
+            $"Surface ROI overlay Y position changed by {source}; ROI size, measurement, and recipe stay unchanged.";
+        RaiseTeachingRoiDisplayHeightChanged(source);
+        return true;
+    }
+
+    internal bool ResetTeachingRoiDisplayHeight()
+    {
+        if (!SelectedTeachingGridRectangleVisible)
+        {
+            return false;
+        }
+
+        SelectedTeachingRoiDisplayHeightOffset = 0;
+        ViewerStatus =
+            "Surface ROI overlay returned to its local Y position; ROI size, measurement, and recipe stay unchanged.";
+        RaiseTeachingRoiDisplayHeightChanged("reset");
+        return true;
+    }
+
+    private void RaiseTeachingRoiDisplayHeightChanged(string source)
+    {
+        var selectionId = GetVisibleTeachingSelectionId();
+        if (selectionId is null)
+        {
+            return;
+        }
+
+        TeachingRoiDisplayHeightChanged?.Invoke(
+            this,
+            new TeachingRoiDisplayHeightChangedEventArgs(
+                selectionId,
+                SelectedTeachingRoiAutomaticRawHeight,
+                SelectedTeachingRoiDisplayHeightOffset,
+                SelectedTeachingRoiEffectiveRawHeight,
+                source));
+    }
+
     private static bool TryValidateTeachingCaptureRequest(TeachingCaptureRequest request, out string message)
     {
         if (string.IsNullOrWhiteSpace(request.SelectionId)
@@ -638,5 +688,8 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(SelectedTeachingRoiEffectiveRawHeight));
         OnPropertyChanged(nameof(SelectedTeachingRoiDisplayHeightSummary));
         fitRoiCommand.RaiseCanExecuteChanged();
+        decreaseTeachingRoiDisplayHeightCommand.RaiseCanExecuteChanged();
+        increaseTeachingRoiDisplayHeightCommand.RaiseCanExecuteChanged();
+        resetTeachingRoiDisplayHeightCommand.RaiseCanExecuteChanged();
     }
 }

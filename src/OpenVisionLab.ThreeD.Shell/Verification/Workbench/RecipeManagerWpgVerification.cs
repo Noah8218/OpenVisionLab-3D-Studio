@@ -630,10 +630,15 @@ internal static class RecipeManagerWpgVerification
                 && actionWorkbench.IsDirty == removalDirtyBefore
                 && actionWorkbench.RunLog.Count == removalLogCountBefore,
                 $"request={removalRequest?.StepId}; selections={removalRequest?.OrphanedSelectionNames.Count}; steps={actionWorkbench.PipelineSteps.Count}; dirty={removalDirtyBefore}->{actionWorkbench.IsDirty}; logs={removalLogCountBefore}->{actionWorkbench.RunLog.Count}");
-            var validationExecutionOwnerField = typeof(ToolWorkbenchViewModel).GetField(
+            var validationWorkspaceField = typeof(ToolWorkbenchViewModel).GetField(
+                "validationSetWorkspace",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var validationWorkspace = validationWorkspaceField?.GetValue(actionWorkbench)
+                as ValidationSetWorkspaceViewModel;
+            var validationExecutionOwnerField = typeof(ValidationSetWorkspaceViewModel).GetField(
                 "validationSetExecutionOwner",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var validationExecutionOwner = validationExecutionOwnerField?.GetValue(actionWorkbench)
+            var validationExecutionOwner = validationExecutionOwnerField?.GetValue(validationWorkspace)
                 as ToolWorkbenchValidationSetExecutionOwner;
             var validationRunningProperty = typeof(ToolWorkbenchValidationSetExecutionOwner).GetProperty(
                 nameof(ToolWorkbenchValidationSetExecutionOwner.IsRunning));
@@ -705,7 +710,7 @@ internal static class RecipeManagerWpgVerification
             Check(
                 "unsupported step stays visible and read-only",
                 workbench.SelectedStepPropertyDraft is null
-                && workbench.SelectedStepAdapterStatus.Contains("Partially supported", StringComparison.Ordinal)
+                && workbench.SelectedStepAdapterStatus == workbench.Localization.StepAdapterPartiallySupported
                 && workbench.UnsupportedStepCount == 1,
                 workbench.RecipeAdapterCoverageSummary);
 

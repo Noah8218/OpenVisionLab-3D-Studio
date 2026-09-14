@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -33,6 +34,8 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private int runGate;
     private int disposalState;
     private CancellationTokenSource? cancellation;
+    private Task<bool>? commandRunTask;
+    private Task? commandRunObservationTask;
     private ToolRecipeOrderedGraphExecutionResult? result;
     private string? recordPath;
     private string summary;
@@ -69,7 +72,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         summary = localize(
             "저장된 현재 레시피를 명시적으로 실행하면 Run Record가 생성됩니다.",
             "Run the saved current recipe explicitly to create a Run Record.");
-        runCommand = new RelayCommand(_ => _ = RunAsync(), _ => CanRun());
+        runCommand = new RelayCommand(_ => StartCommandRun(), _ => CanRun());
         cancelCommand = new RelayCommand(_ => Cancel(), _ => IsRunning);
     }
 
@@ -94,6 +97,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
 
         var currentCancellation = Interlocked.Exchange(ref cancellation, null);
         CancelAndDispose(currentCancellation);
+        Volatile.Write(ref commandRunObservationTask, null);
         result = null;
         recordPath = null;
         isRunning = false;
@@ -158,22 +162,22 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                 return false;
             }
 
-            SetRunning(true);
-            summary = localize(
-                $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
-                $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
-            foreach (var step in getPipelineSteps())
-            {
-                step.State = "Run running";
-            }
-
-            NotifyStateChanged();
-            appendLog(
-                "Run",
-                $"Ordered recipe Run started: {Path.GetFileName(fullRecipePath)} | steps={document.Steps.Count}.");
-
             try
             {
+                SetRunning(true);
+                summary = localize(
+                    $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
+                    $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
+                foreach (var step in getPipelineSteps())
+                {
+                    step.State = "Run running";
+                }
+
+                NotifyStateChanged();
+                appendLog(
+                    "Run",
+                    $"Ordered recipe Run started: {Path.GetFileName(fullRecipePath)} | steps={document.Steps.Count}.");
+
                 var sourcePath = getSourcePath();
                 var sourceQuality = getSourceQualityReport();
                 var execution = await Task.Run(
@@ -259,6 +263,53 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                 cancelCommand.RaiseCanExecuteChanged();
             }
         }
+    }
+
+    private void StartCommandRun()
+    {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        if (Volatile.Read(ref commandRunObservationTask) is { IsCompleted: true })
+        {
+            Volatile.Write(ref commandRunObservationTask, null);
+        }
+
+        var task = RunAsync();
+        Volatile.Write(ref commandRunTask, task);
+        Volatile.Write(ref commandRunObservationTask, ObserveCommandRunAsync(task));
+    }
+
+    private async Task ObserveCommandRunAsync(Task<bool> task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception exception)
+        {
+            ReportCommandRunFailure(exception);
+        }
+        finally
+        {
+            _ = Interlocked.CompareExchange(ref commandRunTask, null, task);
+        }
+    }
+
+    private void ReportCommandRunFailure(Exception exception)
+    {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        summary = localize(
+            $"현재 레시피 실행 중 오류가 발생했습니다: {exception.Message}",
+            $"The current recipe Run failed: {exception.Message}");
+        appendLog("Error", summary);
+        NotifyStateChanged();
     }
 
     public bool CanRun()
@@ -354,22 +405,4 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         cancelCommand.RaiseCanExecuteChanged();
     }
 
-    private static void CancelAndDispose(CancellationTokenSource? cancellation)
-    {
-        if (cancellation is null)
-        {
-            return;
-        }
-
-        try
-        {
-            cancellation.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // A concurrent owner disposal already released the token source.
-        }
-
-        cancellation.Dispose();
-    }
 }

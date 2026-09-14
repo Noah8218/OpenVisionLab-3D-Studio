@@ -22,6 +22,7 @@ internal sealed class ToolWorkbenchCompletenessReviewOwner : INotifyPropertyChan
 
     private readonly Action<string?> setSelectedCompletenessCellId;
     private readonly Func<string, string, string> localize;
+    private readonly Func<ResultStatus, string> localizeStatus;
     private readonly RelayCommand previousCompletenessFailureCommand;
     private readonly RelayCommand nextCompletenessFailureCommand;
     private readonly RelayCommand selectCompletenessCellCommand;
@@ -31,12 +32,15 @@ internal sealed class ToolWorkbenchCompletenessReviewOwner : INotifyPropertyChan
 
     public ToolWorkbenchCompletenessReviewOwner(
         Action<string?> setSelectedCompletenessCellId,
-        Func<string, string, string> localize)
+        Func<string, string, string> localize,
+        Func<ResultStatus, string> localizeStatus)
     {
         this.setSelectedCompletenessCellId = setSelectedCompletenessCellId
             ?? throw new ArgumentNullException(nameof(setSelectedCompletenessCellId));
         this.localize = localize
             ?? throw new ArgumentNullException(nameof(localize));
+        this.localizeStatus = localizeStatus
+            ?? throw new ArgumentNullException(nameof(localizeStatus));
 
         previousCompletenessFailureCommand = new RelayCommand(
             _ => NavigateCompletenessFailure(-1),
@@ -136,19 +140,26 @@ internal sealed class ToolWorkbenchCompletenessReviewOwner : INotifyPropertyChan
             .Select((cell, index) =>
             {
                 tabIdentities.TryGetValue(index + 1, out var tab);
+                var status = cell.Decision ?? ResultStatus.Warning;
                 return new CompletenessCellReviewItem(
                     cell.CellId,
                     tab?.DisplayName ?? localize($"셀 {index + 1}", $"Cell {index + 1}"),
                     tab?.StepId ?? string.Empty,
                     tab?.OutputEntityId ?? string.Empty,
                     cell.Region,
-                    cell.Decision ?? ResultStatus.Warning,
+                    status,
                     cell.FiniteCoverageRatio,
                     cell.ReferenceRelativeMeanRawHeight,
                     string.Equals(
                         cell.CellId,
                         requestedSelection,
-                        StringComparison.OrdinalIgnoreCase));
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    EvidenceSummary = LocalizeEvidenceSummary(
+                        cell.FiniteCoverageRatio,
+                        cell.ReferenceRelativeMeanRawHeight),
+                    StatusText = localizeStatus(status)
+                };
             })
             .ToArray();
         SetSelectedCompletenessCellId(requestedSelection, rebuildItems: false);
@@ -156,6 +167,23 @@ internal sealed class ToolWorkbenchCompletenessReviewOwner : INotifyPropertyChan
     }
 
     public void ClearSelection() => SetSelectedCompletenessCellId(null);
+
+    private string LocalizeEvidenceSummary(double finiteCoverageRatio, double? relativeMeanRawHeight) =>
+        relativeMeanRawHeight is { } relative
+            ? localize(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"커버리지 {finiteCoverageRatio:P1} | 상대 평균 {relative:+0.###;-0.###;0}"),
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"coverage {finiteCoverageRatio:P1} | relative mean {relative:+0.###;-0.###;0}"))
+            : localize(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"커버리지 {finiteCoverageRatio:P1} | 상대 평균 없음"),
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"coverage {finiteCoverageRatio:P1} | relative mean unavailable"));
 
     internal static IReadOnlyDictionary<int, CompletenessTabIdentity>
         CreateTabThicknessIdentityMap(
@@ -291,15 +319,20 @@ public sealed record CompletenessCellReviewItem(
     double? ReferenceRelativeMeanRawHeight,
     bool IsSelected)
 {
-    public string StatusText => Status.ToString();
+    public string StatusText { get; internal init; } = Status.ToString();
 
-    public string EvidenceSummary => ReferenceRelativeMeanRawHeight is { } relative
+    public string EvidenceSummary { get; internal init; } =
+        CreateDefaultEvidenceSummary(FiniteCoverageRatio, ReferenceRelativeMeanRawHeight);
+
+    private static string CreateDefaultEvidenceSummary(
+        double finiteCoverageRatio,
+        double? relativeMeanRawHeight) => relativeMeanRawHeight is { } relative
         ? string.Create(
             CultureInfo.InvariantCulture,
-            $"coverage {FiniteCoverageRatio:P1} | relative mean {relative:+0.###;-0.###;0}")
+            $"coverage {finiteCoverageRatio:P1} | relative mean {relative:+0.###;-0.###;0}")
         : string.Create(
             CultureInfo.InvariantCulture,
-            $"coverage {FiniteCoverageRatio:P1} | relative mean unavailable");
+            $"coverage {finiteCoverageRatio:P1} | relative mean unavailable");
 
     public string IdentitySummary => string.IsNullOrWhiteSpace(MappedThicknessStepId)
         ? string.Empty

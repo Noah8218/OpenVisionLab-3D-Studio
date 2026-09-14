@@ -43,7 +43,7 @@ public static class ThreeDIntegrationHeightMapRunner
         ArgumentNullException.ThrowIfNull(consumerBuild);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var handoff = ThreeDIntegrationExchange.ReadHandoff(
+        var handoff = ThreeDIntegrationV2Exchange.ReadHandoff(
             exchangeRoot,
             transactionId);
         cancellationToken.ThrowIfCancellationRequested();
@@ -119,12 +119,12 @@ public static class ThreeDIntegrationHeightMapRunner
         ValidateRequest(request);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var handoff = ThreeDIntegrationExchange.ReadHandoff(
+        var handoff = ThreeDIntegrationV2Exchange.ReadHandoff(
             exchangeRoot,
             transactionId);
         cancellationToken.ThrowIfCancellationRequested();
         EnsureThreeDHeightMapHandoff(handoff, consumerBuild);
-        var acknowledgement = ThreeDIntegrationExchange.ReadAcknowledgement(
+        var acknowledgement = ThreeDIntegrationV2Exchange.ReadAcknowledgement(
             exchangeRoot,
             transactionId);
         cancellationToken.ThrowIfCancellationRequested();
@@ -242,7 +242,7 @@ public static class ThreeDIntegrationHeightMapRunner
                     projectionResult);
             }
 
-            return ThreeDIntegrationExchange.PublishCompletedResult(
+            return ThreeDIntegrationV2Exchange.PublishCompletedResult(
                 exchangeRoot,
                 transactionId,
                 consumerBuild,
@@ -271,21 +271,6 @@ public static class ThreeDIntegrationHeightMapRunner
     {
         var context = handoff.Context;
         var toolResult = evaluation.Result;
-        var integrationContext = new InspectionRunIntegrationContext(
-            context.ProjectId,
-            context.ProjectSchema,
-            context.SequenceId,
-            context.StepId,
-            context.CameraId,
-            context.AcquisitionId,
-            context.FrameId,
-            context.Unit,
-            context.Modality.ToString(),
-            context.InputKind.ToString(),
-            context.ConsumerBuild.ApplicationId,
-            context.ConsumerBuild.ApplicationVersion,
-            context.ConsumerBuild.SourceCommit,
-            context.ConsumerBuild.SourceState.ToString());
         var source = new InspectionRunSource(
             sourceArtifact.ArtifactId,
             sourceArtifact.RelativePath,
@@ -337,8 +322,7 @@ public static class ThreeDIntegrationHeightMapRunner
                 context.StepId,
                 sourceArtifact.ArtifactId,
                 [],
-                []),
-            IntegrationContext = integrationContext
+                [])
         };
     }
 
@@ -383,9 +367,10 @@ public static class ThreeDIntegrationHeightMapRunner
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        var twoDHandoff = ThreeDIntegrationExchange.ReadHandoff(
+        var twoDSequence = ThreeDIntegrationTransactionSequenceReader.ReadValidatedV2Sequence(
             exchangeRoot,
             twoDTransactionId);
+        var twoDHandoff = twoDSequence.Handoff;
         if (twoDHandoff.Context.Modality != IntegrationInspectionModality.TwoD
             || twoDHandoff.Context.InputKind != IntegrationInspectionInputKind.Image)
         {
@@ -418,19 +403,12 @@ public static class ThreeDIntegrationHeightMapRunner
                 "The paired TwoD and ThreeD projection profiles do not match.");
         }
 
-        var twoDResult = ThreeDIntegrationExchange.ReadResult(
-            exchangeRoot,
-            twoDTransactionId);
-        if (twoDResult.Status != IntegrationResultStatus.Completed
+        var twoDResult = twoDSequence.Result;
+        if (twoDResult is null
+            || twoDResult.Status != IntegrationResultStatus.Completed
             || twoDResult.RunRecord is null
-            || !string.Equals(
-                twoDResult.Correlation.Modality.ToString(),
-                IntegrationInspectionModality.TwoD.ToString(),
-                StringComparison.Ordinal)
-            || !string.Equals(
-                twoDResult.Correlation.InputKind.ToString(),
-                IntegrationInspectionInputKind.Image.ToString(),
-                StringComparison.Ordinal))
+            || twoDResult.Correlation.Modality != IntegrationInspectionModality.TwoD
+            || twoDResult.Correlation.InputKind != IntegrationInspectionInputKind.Image)
         {
             throw new IntegrationContractException(
                 IntegrationErrorCode.InvalidState,

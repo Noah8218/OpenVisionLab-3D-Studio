@@ -129,14 +129,15 @@ public sealed partial class ToolWorkbenchViewModel
             () => Source.Id,
             TryReadSourceBinding,
             RefreshSurfaceMatchExperimentState);
-        firstRecipeSetupOwner.PropertyChanged += OnFirstRecipeSetupOwnerPropertyChanged;
-        firstRecipeSetupOwner.CreateRequested += (_, _) =>
-            NewTeachingRecipeRequested?.Invoke(this, EventArgs.Empty);
-        firstRecipeSetupOwner.BrowseFirstRecipeFolderRequested += (_, _) =>
-            BrowseFirstRecipeFolderRequested?.Invoke(this, EventArgs.Empty);
-        firstRecipeSetupOwner.BrowseFirstRecipeSourceRequested += (_, _) =>
-            BrowseFirstRecipeSourceRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    private ToolWorkbenchFirstRecipeEventCoordinator CreateFirstRecipeEventCoordinator() =>
+        new(
+            firstRecipeSetupOwner,
+            OnFirstRecipeSetupOwnerPropertyChanged,
+            () => NewTeachingRecipeRequested?.Invoke(this, EventArgs.Empty),
+            () => BrowseFirstRecipeFolderRequested?.Invoke(this, EventArgs.Empty),
+            () => BrowseFirstRecipeSourceRequested?.Invoke(this, EventArgs.Empty));
 
     public void BeginFirstRecipeSetup() => firstRecipeSetupOwner.BeginFirstRecipeSetup();
 
@@ -205,7 +206,7 @@ public sealed partial class ToolWorkbenchViewModel
         return saved;
     }
 
-    private void OnFirstRecipeSetupOwnerPropertyChanged(object? sender, PropertyChangedEventArgs args) =>
+    private void OnFirstRecipeSetupOwnerPropertyChanged(PropertyChangedEventArgs args) =>
         OnPropertyChanged(args.PropertyName);
 
     private void OnFirstRecipeLanguageChanged(object? sender, EventArgs args) =>

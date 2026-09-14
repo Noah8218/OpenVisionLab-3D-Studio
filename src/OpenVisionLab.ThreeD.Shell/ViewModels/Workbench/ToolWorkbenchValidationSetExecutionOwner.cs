@@ -1,4 +1,5 @@
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -12,6 +13,9 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
 {
     private readonly Action onStateChanged;
     private CancellationTokenSource? cancellation;
+    private Task? commandTask;
+    private Task? commandObservationTask;
+    private int commandInFlight;
     private int executionGate;
     private int disposalState;
 
@@ -24,7 +28,9 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
 
     public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 
-    public bool CanStart => !IsDisposed && !IsRunning;
+    public bool IsCommandRunning => !IsDisposed && Volatile.Read(ref commandInFlight) != 0;
+
+    public bool CanStart => !IsDisposed && !IsRunning && !IsCommandRunning;
 
     public void Dispose()
     {
@@ -36,6 +42,42 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
         var currentCancellation = Interlocked.Exchange(ref cancellation, null);
         CancelAndDispose(currentCancellation);
         IsRunning = false;
+        Volatile.Write(ref commandTask, null);
+        Volatile.Write(ref commandObservationTask, null);
+        Interlocked.Exchange(ref commandInFlight, 0);
+    }
+
+    public bool TryStartCommand(Func<Task> command, Action<Exception> reportFailure)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(reportFailure);
+
+        if (IsDisposed
+            || Interlocked.CompareExchange(ref commandInFlight, 1, 0) != 0)
+        {
+            return false;
+        }
+
+        Task task;
+        try
+        {
+            task = command();
+        }
+        catch (Exception exception)
+        {
+            Interlocked.Exchange(ref commandInFlight, 0);
+            if (!IsDisposed)
+            {
+                reportFailure(exception);
+            }
+            return false;
+        }
+
+        Volatile.Write(ref commandTask, task);
+        Volatile.Write(
+            ref commandObservationTask,
+            ObserveCommandAsync(task, reportFailure));
+        return true;
     }
 
     public async Task<ToolRecipeValidationSetResult> ExecuteAsync(
@@ -138,22 +180,35 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
         onStateChanged();
     }
 
-    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    private async Task ObserveCommandAsync(
+        Task task,
+        Action<Exception> reportFailure)
     {
-        if (cancellation is null)
-        {
-            return;
-        }
-
         try
         {
-            cancellation.Cancel();
+            await task;
         }
-        catch (ObjectDisposedException)
+        catch (OperationCanceledException)
         {
-            // A concurrent owner disposal already released the token source.
+            // Validation Set execution consumes expected cancellation; keep
+            // command observation defensive for future execution changes.
         }
-
-        cancellation.Dispose();
+        catch (Exception exception)
+        {
+            if (!IsDisposed)
+            {
+                reportFailure(exception);
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(Volatile.Read(ref commandTask), task))
+            {
+                Volatile.Write(ref commandTask, null);
+                Volatile.Write(ref commandObservationTask, null);
+                Interlocked.Exchange(ref commandInFlight, 0);
+            }
+        }
     }
+
 }

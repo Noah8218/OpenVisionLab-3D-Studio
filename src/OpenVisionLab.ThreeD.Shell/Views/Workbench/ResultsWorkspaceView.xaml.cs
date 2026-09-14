@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
 using System.Threading;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -10,9 +12,29 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
 {
     private int disposalState;
 
+    public static readonly DependencyProperty ActiveSectionProperty =
+        DependencyProperty.Register(
+            nameof(ActiveSection),
+            typeof(ResultsWorkspaceSection),
+            typeof(ResultsWorkspaceView),
+            new PropertyMetadata(ResultsWorkspaceSection.RunRecord));
+
+    public static readonly DependencyProperty SelectSectionCommandProperty =
+        DependencyProperty.Register(
+            nameof(SelectSectionCommand),
+            typeof(ICommand),
+            typeof(ResultsWorkspaceView),
+            new PropertyMetadata(null));
+
     public ResultsWorkspaceView()
     {
         InitializeComponent();
+        SetBinding(
+            ActiveSectionProperty,
+            new Binding("ResultsWorkspace.ActiveSection") { Mode = BindingMode.OneWay });
+        SetBinding(
+            SelectSectionCommandProperty,
+            new Binding("ResultsWorkspace.SelectSectionCommand"));
         RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
         Loaded += OnLoaded;
     }
@@ -40,9 +62,17 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
         }
     }
 
-    public ResultsWorkspaceSection ActiveSection =>
-        (DataContext as ShellMainWindowViewModel)?.ResultsWorkspace.ActiveSection
-        ?? ResultsWorkspaceSection.RunRecord;
+    public ResultsWorkspaceSection ActiveSection
+    {
+        get => (ResultsWorkspaceSection)GetValue(ActiveSectionProperty);
+        set => SetValue(ActiveSectionProperty, value);
+    }
+
+    public ICommand? SelectSectionCommand
+    {
+        get => (ICommand?)GetValue(SelectSectionCommandProperty);
+        set => SetValue(SelectSectionCommandProperty, value);
+    }
 
     public bool IsReadOnlyComposition =>
         RunRecordReview.PresentationMode == RecipeReviewPresentationMode.Results
@@ -74,8 +104,14 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             StringComparison.Ordinal)
         && HasAccessibleText(ResultsFixInTeachButton);
 
-    public void SetSection(ResultsWorkspaceSection section) =>
-        (DataContext as ShellMainWindowViewModel)?.ResultsWorkspace.SelectSection(section);
+    public void SetSection(ResultsWorkspaceSection section)
+    {
+        var command = SelectSectionCommand;
+        if (command?.CanExecute(section) == true)
+        {
+            command.Execute(section);
+        }
+    }
 
     private static bool HasAccessibleText(ContentControl control) =>
         !string.IsNullOrWhiteSpace(control.Content?.ToString())

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -204,6 +205,7 @@ internal static class SyntheticAffineInspectionPlateVerification
                 reopened.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
                 && reopened.Steps.Select(step => step.Id).SequenceEqual(finalDocument.Steps.Select(step => step.Id)),
                 $"schema={reopened.SchemaVersion};steps={reopened.Steps.Count};selections={reopened.Selections?.Count}"));
+            checks.Add(VerifyLandmarkRunnerReportAtomicity(package, recipePath, correspondence.Output!.ContentSha256));
 
             var coreChecks = checks.ToArray();
             if (runArtifacts is { Requested: true })
@@ -759,6 +761,48 @@ internal static class SyntheticAffineInspectionPlateVerification
                 $"lines={File.ReadLines(options.CsvPath).Count()}"));
         }
     }
+
+    private static CheckResult VerifyLandmarkRunnerReportAtomicity(string package, string recipePath, string expectedHash)
+    {
+        var runnerReportPath = Path.Combine(package, "landmark-runner-report.txt");
+        var runnerExitCode = ToolRecipeLandmarkCorrespondenceRunnerExecution.Run(recipePath, "step.landmark-correspondence", runnerReportPath);
+        var firstBytes = File.ReadAllBytes(runnerReportPath);
+        File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        var overwriteExitCode = ToolRecipeLandmarkCorrespondenceRunnerExecution.Run(recipePath, "step.landmark-correspondence", runnerReportPath);
+        var overwriteBytes = File.ReadAllBytes(runnerReportPath);
+        var report = File.ReadAllText(runnerReportPath);
+        var lockedPath = Path.Combine(package, "landmark-runner-locked.txt");
+        var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+        File.WriteAllBytes(lockedPath, lockedSentinel);
+        int lockedExitCode;
+        using (var lockedStream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            lockedExitCode = ToolRecipeLandmarkCorrespondenceRunnerExecution.Run(recipePath, "step.landmark-correspondence", lockedPath);
+        }
+        var lockedPreserved = lockedSentinel.SequenceEqual(File.ReadAllBytes(lockedPath));
+        var invalidParentMarker = Path.Combine(package, "landmark-runner-parent-file");
+        File.WriteAllText(invalidParentMarker, "parent-marker", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        var invalidParentReport = Path.Combine(invalidParentMarker, "report.txt");
+        var invalidParentExitCode = ToolRecipeLandmarkCorrespondenceRunnerExecution.Run(recipePath, "step.landmark-correspondence", invalidParentReport);
+        var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-marker";
+        var temporaryFilesRemain = Directory.GetFiles(package, "*.txt.tmp.*").Length != 0;
+        var passed = runnerExitCode == 0
+            && overwriteExitCode == 0
+            && firstBytes.SequenceEqual(overwriteBytes)
+            && report.Contains("LandmarkCorrespondence|status=Pass", StringComparison.Ordinal)
+            && report.Contains($"sha256={expectedHash}", StringComparison.Ordinal)
+            && report.Contains("pairs=4", StringComparison.Ordinal)
+            && !HasUtf8Bom(overwriteBytes)
+            && lockedExitCode == 5
+            && lockedPreserved
+            && invalidParentExitCode == 5
+            && invalidParentPreserved
+            && !temporaryFilesRemain;
+        return Check("landmark-runner-report-atomicity", passed,
+            $"runnerExit={runnerExitCode};overwriteExit={overwriteExitCode};lockedExit={lockedExitCode};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExitCode};invalidParentPreserved={invalidParentPreserved};stable={firstBytes.SequenceEqual(overwriteBytes)};bom={HasUtf8Bom(overwriteBytes)};temporaryFilesRemain={temporaryFilesRemain};report={report.Replace(Environment.NewLine, ";")}");
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
 
     private static bool Nearly(double actual, double expected, double tolerance) => Math.Abs(actual - expected) <= tolerance;
     private static string Format(Vec3 value) => $"{value.X:G17},{value.Y:G17},{value.Z:G17}";

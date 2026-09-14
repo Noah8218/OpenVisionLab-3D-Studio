@@ -120,7 +120,12 @@ internal static class SurfaceMatchRunRecordExportVerification
             File.ReadAllBytes(assessmentPath),
             File.ReadAllBytes(runtimePath)
         };
-        var exitCode = SurfaceMatchRunRecordExportExecution.Run(
+        var exportOptions = new RunArtifactOptions(
+            jsonPath,
+            htmlPath,
+            csvPath,
+            null);
+        int RunExport(string outputPath) => SurfaceMatchRunRecordExportExecution.Run(
             recipePath,
             modelPath,
             scenePath,
@@ -128,12 +133,49 @@ internal static class SurfaceMatchRunRecordExportVerification
             scorePath,
             assessmentPath,
             runtimePath,
+            outputPath,
+            exportOptions);
+        var exitCode = RunExport(exportReportPath);
+        var initialExportReportBytes = File.ReadAllBytes(exportReportPath);
+        File.WriteAllText(
             exportReportPath,
-            new RunArtifactOptions(
-                jsonPath,
-                htmlPath,
-                csvPath,
-                null));
+            "pre-existing-surface-match-summary",
+            new UTF8Encoding(false));
+        var overwriteExitCode = RunExport(exportReportPath);
+        var overwriteExportReportBytes = File.ReadAllBytes(exportReportPath);
+
+        var lockedReportPath = Path.Combine(
+            directory,
+            "surface-match.atomic-locked.txt");
+        var lockedSentinel = Encoding.UTF8.GetBytes("locked-surface-match-summary");
+        File.WriteAllBytes(lockedReportPath, lockedSentinel);
+        int lockedExitCode;
+        using (var lockedStream = new FileStream(
+                   lockedReportPath,
+                   FileMode.Open,
+                   FileAccess.ReadWrite,
+                   FileShare.None))
+        {
+            lockedExitCode = RunExport(lockedReportPath);
+        }
+        var lockedPreserved = File.ReadAllBytes(lockedReportPath)
+            .SequenceEqual(lockedSentinel);
+
+        var invalidParentMarker = Path.Combine(
+            directory,
+            "surface-match.atomic-parent-file");
+        File.WriteAllText(
+            invalidParentMarker,
+            "surface-match-parent-file",
+            new UTF8Encoding(false));
+        var invalidParentExitCode = RunExport(
+            Path.Combine(invalidParentMarker, "summary.txt"));
+        var invalidParentPreserved = File.ReadAllText(invalidParentMarker)
+            == "surface-match-parent-file";
+        var temporarySummaryFilesRemain = Directory.GetFiles(
+                directory,
+                "surface-match.atomic-*.txt.tmp.*")
+            .Length != 0;
 
         var currentDiagnostics =
             SourceQualityGridDiagnosticsAnalyzer.AnalyzeExplicit(
@@ -251,6 +293,19 @@ internal static class SurfaceMatchRunRecordExportVerification
             && File.Exists(htmlPath)
             && File.Exists(csvPath),
             $"exit={exitCode};json={File.Exists(jsonPath)};html={File.Exists(htmlPath)};csv={File.Exists(csvPath)}");
+        Check(
+            "summary-report-atomic-overwrite",
+            overwriteExitCode == 0
+            && initialExportReportBytes.SequenceEqual(overwriteExportReportBytes),
+            $"initialBytes={initialExportReportBytes.Length};overwriteBytes={overwriteExportReportBytes.Length};exit={overwriteExitCode}");
+        Check(
+            "summary-report-atomic-failure-preserves-and-cleans",
+            lockedExitCode != 0
+            && lockedPreserved
+            && invalidParentExitCode != 0
+            && invalidParentPreserved
+            && !temporarySummaryFilesRemain,
+            $"lockedExit={lockedExitCode};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExitCode};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporarySummaryFilesRemain}");
         Check(
             "run-record-schema-1.9",
             record?.SchemaVersion == "1.9"

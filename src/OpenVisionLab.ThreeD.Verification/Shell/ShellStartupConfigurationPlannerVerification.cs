@@ -3,6 +3,7 @@ using System.IO;
 using OpenVisionLab;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.Coordination;
+using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell;
@@ -38,7 +39,9 @@ internal static class ShellStartupConfigurationPlannerVerification
             ("InvalidValuesKeepDefaults", VerifyInvalidValuesKeepDefaults()),
             ("PlainStartUsesEmptyInput", VerifyPlainStartUsesEmptyInput()),
             ("RepeatedParseIsDeterministic", VerifyRepeatedParseIsDeterministic()),
-            ("ViewerProjectionOrder", VerifyViewerProjectionOrder())
+            ("StartupApplicationOrder", VerifyStartupApplicationOrder()),
+            ("ViewerProjectionOrder", VerifyViewerProjectionOrder()),
+            ("ViewerHostPolicy", VerifyViewerHostPolicy())
         };
         passed = checks.All(check => check.Passed);
 
@@ -208,5 +211,136 @@ internal static class ShellStartupConfigurationPlannerVerification
             "height-min:-2.5",
             "height-max:4.25"
         ]);
+    }
+
+    private static bool VerifyStartupApplicationOrder()
+    {
+        var events = new List<string>();
+        var coordinator = new ShellStartupCoordinator(
+            new ShellStartupCoordinatorCallbacks
+            {
+                SelectWorkspace = workspace => events.Add($"workspace:{workspace}"),
+                IsResultsWorkspaceSelected = () => true,
+                SelectResultsSection = section => events.Add($"results:{section}"),
+                SelectInspectionTask = task => events.Add($"task:{task}"),
+                ActivateBottomPane = pane => events.Add($"pane:{pane}"),
+                SetOutputCompareSlots = (slotA, slotB, slotC) =>
+                    events.Add($"compare:{slotA},{slotB},{slotC}"),
+                ApplyC3DSourceLoadProgress = progress => events.Add($"progress:{progress}"),
+                ConfigureValidationSet = _ =>
+                {
+                    events.Add("validation");
+                    return ShellValidationSetSmokeState.Empty;
+                },
+                TryLoadRunRecord = path =>
+                {
+                    events.Add($"run:{path}");
+                    return new ShellStartupRunRecordLoadResult(false, "load failed");
+                },
+                ReportRunRecordRestoreFailure = message => events.Add($"warning:{message}"),
+                ApplyCalibration = (path, calculate) =>
+                    events.Add($"calibration:{path}:{calculate}"),
+                ConfigureToolTeaching = request =>
+                {
+                    events.Add($"teaching:{request.RecipePath}:{request.RequestedStepId}");
+                    return new ShellToolTeachingStartupResult("teaching failed");
+                },
+                SetViewerSmokeFailure = failure => events.Add($"smoke-failure:{failure}"),
+                ApplyViewerProjection = _ => events.Add("viewer")
+            });
+        var configuration = new ShellStartupConfigurationPlan
+        {
+            Workspace = ShellWorkspaceMode.Review,
+            ResultsSection = ResultsWorkspaceSection.Reports,
+            InspectionTask = ShellInspectionTask.Warpage,
+            BottomPane = ShellStartupBottomPane.OutputCompare,
+            CompareSlotAArtifactId = "a",
+            CompareSlotBArtifactId = "b",
+            CompareSlotCArtifactId = "c",
+            C3DSourceLoadProgress = 0.5
+        };
+        var commandLine = new ShellCommandLineArguments(
+        [
+            "shell.exe",
+            "--calibration-study", "calibration.json",
+            "--smoke-calibration-calculate",
+            "--tool-teaching-recipe", "recipe.json",
+            "--tool-teaching-step", "step-1",
+            "--run-record", "run-record.json"
+        ]);
+
+        coordinator.ApplyWorkspaceAndResults(configuration);
+        coordinator.ApplyInspectionTask(configuration);
+        coordinator.ApplyCalibration(commandLine);
+        coordinator.ApplyToolTeaching(commandLine);
+        coordinator.RestoreRunRecord(commandLine);
+        coordinator.ApplyOutputCompare(configuration);
+        _ = coordinator.ConfigureValidationSet(commandLine);
+        coordinator.ApplyWorkbenchBottomPane(configuration);
+        coordinator.ApplyC3DSourceLoadProgress(configuration);
+        coordinator.ApplyViewerProjection(configuration);
+
+        var language = OpenVisionLanguage.Korean;
+        ShellStartupCoordinator.ApplyLanguage(
+            new ShellStartupConfigurationPlan { RequestedLanguage = language },
+            value => events.Add($"language:{value}"));
+
+        return events.SequenceEqual(
+        [
+            "workspace:Review",
+            "results:Reports",
+            "task:Warpage",
+            "calibration:calibration.json:True",
+            "teaching:recipe.json:step-1",
+            "smoke-failure:teaching failed",
+            "run:run-record.json",
+            "warning:load failed",
+            "compare:a,b,c",
+            "validation",
+            "pane:OutputCompare",
+            "progress:0.5",
+            "viewer",
+            "language:Korean"
+        ]);
+    }
+
+    private static bool VerifyViewerHostPolicy()
+    {
+        var workbench = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Workbench,
+            teachingCaptureActive: true);
+        var teach = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Teach,
+            teachingCaptureActive: true);
+        var inspect = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Inspect,
+            teachingCaptureActive: false);
+        var review = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Review,
+            teachingCaptureActive: false);
+        var expert = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Expert,
+            teachingCaptureActive: true);
+        var calibrate = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Calibrate,
+            teachingCaptureActive: true);
+        var exchange = ShellViewerHostPolicy.Resolve(
+            ShellWorkspaceMode.Exchange,
+            teachingCaptureActive: false);
+
+        return workbench.Target == ShellViewerHostTarget.Workbench
+            && !workbench.CancelTeachingCapture
+            && teach.Target == ShellViewerHostTarget.Workbench
+            && !teach.CancelTeachingCapture
+            && inspect.Target == ShellViewerHostTarget.Workbench
+            && !inspect.CancelTeachingCapture
+            && review.Target == ShellViewerHostTarget.Workbench
+            && !review.CancelTeachingCapture
+            && expert.Target == ShellViewerHostTarget.Expert
+            && expert.CancelTeachingCapture
+            && calibrate.Target == ShellViewerHostTarget.None
+            && calibrate.CancelTeachingCapture
+            && exchange.Target == ShellViewerHostTarget.None
+            && !exchange.CancelTeachingCapture;
     }
 }

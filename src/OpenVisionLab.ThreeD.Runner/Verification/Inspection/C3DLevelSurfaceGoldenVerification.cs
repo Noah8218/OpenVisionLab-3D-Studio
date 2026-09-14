@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
@@ -241,6 +242,7 @@ internal static class C3DLevelSurfaceGoldenVerification
             && File.Exists(orderedRunRecordCsvPath)
             && sourceFileUnchangedAfterRunner,
             $"exit={orderedRunnerExitCode};schema={orderedRunRecord?.SchemaVersion};status={orderedRunRecord?.Status};source={orderedRunRecord?.Source.Sha256};output={orderedRunStep?.OutputContentSha256};quality={orderedRunStep?.LevelFrameQualityContentSha256};transformOverlay={transformOverlayLabel};sourceAfter={sourceSha256AfterRunner};sourceUnchanged={sourceFileUnchangedAfterRunner}"));
+        cases.Add(VerifyRunnerReportAtomicity(directory));
 
         var passed = cases.Count(item => item.Passed);
         var lines = new List<string>
@@ -263,6 +265,158 @@ internal static class C3DLevelSurfaceGoldenVerification
         Console.WriteLine($"Level Surface golden verification: {(passed == cases.Count ? "PASS" : "FAIL")} ({passed}/{cases.Count})");
         return passed == cases.Count ? 0 : 1;
     }
+
+    private static (string Name, bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportDirectory)
+    {
+        var directory = Path.Combine(reportDirectory, $"atomic-report-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var fixturePath = Path.Combine(directory, "tilted-level-surface.c3d");
+            CreateFixture().SaveC3D(fixturePath);
+            var source = C3DHeightFieldSnapshot.LoadIdentified(
+                fixturePath,
+                "source.tilted-level-surface",
+                "raw-height",
+                "frame.c3d-grid-index");
+            var selections = CreateSelections(source);
+            var direct = Evaluate(source, selections, 0.1);
+            if (direct.Result.Status != ResultStatus.Pass
+                || direct.Output is null
+                || direct.Transform is null
+                || direct.LevelFrame is null
+                || direct.QualityEvidence is null
+                || direct.FrameChain is null)
+            {
+                return ("runner-report-atomicity", false, $"direct={direct.Result.Status}:{direct.Result.Message}");
+            }
+
+            var recipePath = Path.Combine(directory, "tilted-level-surface.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(
+                recipePath,
+                CreateRecipe(source, Path.GetFileName(fixturePath), selections));
+            var reportPath = Path.Combine(directory, "runner-report.json");
+            var firstOutputPath = Path.Combine(directory, "first-output.c3d");
+            var secondOutputPath = Path.Combine(directory, "second-output.c3d");
+            var firstExit = ToolRecipeLevelSurfaceRunnerExecution.Run(
+                recipePath,
+                "step.level-surface.01",
+                firstOutputPath,
+                reportPath);
+            var firstBytes = File.Exists(reportPath) ? File.ReadAllBytes(reportPath) : [];
+            var firstText = Encoding.UTF8.GetString(firstBytes);
+            var firstOutputBytes = File.Exists(firstOutputPath) ? File.ReadAllBytes(firstOutputPath) : [];
+
+            File.WriteAllText(reportPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = ToolRecipeLevelSurfaceRunnerExecution.Run(
+                recipePath,
+                "step.level-surface.01",
+                secondOutputPath,
+                reportPath);
+            var overwriteBytes = File.Exists(reportPath) ? File.ReadAllBytes(reportPath) : [];
+            var overwriteText = Encoding.UTF8.GetString(overwriteBytes);
+            var overwriteOutputBytes = File.Exists(secondOutputPath) ? File.ReadAllBytes(secondOutputPath) : [];
+
+            var lockedPath = Path.Combine(directory, "locked.json");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = ToolRecipeLevelSurfaceRunnerExecution.Run(
+                    recipePath,
+                    "step.level-surface.01",
+                    Path.Combine(directory, "locked-output.c3d"),
+                    lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = ToolRecipeLevelSurfaceRunnerExecution.Run(
+                recipePath,
+                "step.level-surface.01",
+                Path.Combine(directory, "invalid-parent-output.c3d"),
+                Path.Combine(invalidParentMarker, "report.json"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var lockedArtifactPath = Path.Combine(directory, "locked-artifact.c3d");
+            var lockedArtifactSentinel = Encoding.UTF8.GetBytes("locked-artifact");
+            File.WriteAllBytes(lockedArtifactPath, lockedArtifactSentinel);
+            int lockedArtifactExit;
+            using (var lockStream = new FileStream(
+                       lockedArtifactPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedArtifactExit = ToolRecipeLevelSurfaceRunnerExecution.Run(
+                    recipePath,
+                    "step.level-surface.01",
+                    lockedArtifactPath,
+                    Path.Combine(directory, "locked-artifact-report.json"));
+            }
+            var lockedArtifactPreserved = File.ReadAllBytes(lockedArtifactPath).SequenceEqual(lockedArtifactSentinel);
+
+            var invalidArtifactParentMarker = Path.Combine(directory, "artifact-parent-file");
+            File.WriteAllText(invalidArtifactParentMarker, "artifact-parent-file", new UTF8Encoding(false));
+            var invalidArtifactExit = ToolRecipeLevelSurfaceRunnerExecution.Run(
+                recipePath,
+                "step.level-surface.01",
+                Path.Combine(invalidArtifactParentMarker, "output.c3d"),
+                Path.Combine(directory, "invalid-artifact-report.txt"));
+            var invalidArtifactParentPreserved = File.ReadAllText(invalidArtifactParentMarker) == "artifact-parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var sentinelAbsent = !overwriteText.Contains("pre-existing-output", StringComparison.Ordinal);
+            var artifactStable = firstOutputBytes.Length > 0
+                && overwriteOutputBytes.Length > 0
+                && firstOutputBytes.SequenceEqual(overwriteOutputBytes);
+            var hashesPresent = firstText.Contains(direct.Output.ContentSha256, StringComparison.Ordinal)
+                && firstText.Contains(direct.Transform.ContentSha256, StringComparison.Ordinal)
+                && firstText.Contains(direct.LevelFrame.ContentSha256, StringComparison.Ordinal)
+                && firstText.Contains(direct.QualityEvidence.ContentSha256, StringComparison.Ordinal)
+                && firstText.Contains(direct.FrameChain.ContentSha256, StringComparison.Ordinal)
+                && overwriteText.Contains(direct.Output.ContentSha256, StringComparison.Ordinal)
+                && overwriteText.Contains(direct.Transform.ContentSha256, StringComparison.Ordinal)
+                && overwriteText.Contains(direct.LevelFrame.ContentSha256, StringComparison.Ordinal)
+                && overwriteText.Contains(direct.QualityEvidence.ContentSha256, StringComparison.Ordinal)
+                && overwriteText.Contains(direct.FrameChain.ContentSha256, StringComparison.Ordinal);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && overwriteBytes.Length > 0
+                && artifactStable
+                && hashesPresent
+                && noBom
+                && sentinelAbsent
+                && lockedExit == 1
+                && lockedPreserved
+                && invalidParentExit == 1
+                && invalidParentPreserved
+                && lockedArtifactExit == 1
+                && lockedArtifactPreserved
+                && invalidArtifactExit == 1
+                && invalidArtifactParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                "runner-report-atomicity",
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};artifactBytes={firstOutputBytes.Length}/{overwriteOutputBytes.Length};artifactStable={artifactStable};hashesPresent={hashesPresent};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};lockedArtifactExit={lockedArtifactExit};lockedArtifactPreserved={lockedArtifactPreserved};invalidArtifactExit={invalidArtifactExit};invalidArtifactParentPreserved={invalidArtifactParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static C3DHeightFieldSnapshot CreateFixture()
     {

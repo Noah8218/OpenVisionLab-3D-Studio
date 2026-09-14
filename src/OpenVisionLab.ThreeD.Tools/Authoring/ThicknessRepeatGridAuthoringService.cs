@@ -272,18 +272,15 @@ public static class ThicknessRepeatGridAuthoringService
         string label,
         ICollection<string> errors)
     {
-        if (rectangle.Row < 0
-            || rectangle.Column < 0
-            || rectangle.RowCount <= 0
-            || rectangle.ColumnCount <= 0
-            || rectangle.Row > gridHeight - rectangle.RowCount
-            || rectangle.Column > gridWidth - rectangle.ColumnCount)
+        if (ToolRecipeGridRectangleGeometry.Validate(rectangle, gridWidth, gridHeight).Count == 0)
         {
-            errors.Add(
-                $"{label} row={rectangle.Row}, column={rectangle.Column}, "
-                + $"rows={rectangle.RowCount}, columns={rectangle.ColumnCount} "
-                + $"is outside {gridWidth} x {gridHeight}.");
+            return;
         }
+
+        errors.Add(
+            $"{label} row={rectangle.Row}, column={rectangle.Column}, "
+            + $"rows={rectangle.RowCount}, columns={rectangle.ColumnCount} "
+            + $"is outside {gridWidth} x {gridHeight}.");
     }
 
     private static string CreateUniqueId(string requestedId, ISet<string> usedIds)

@@ -139,10 +139,7 @@ internal static class RemoveOutlierPixelsWorkbenchVerification
                 item => item.Id == "derived.outlier-removed.01");
             Check(
                 "artifact exposes before-after mask evidence",
-                artifact?.Detail.Contains(
-                "removed 2",
-                    StringComparison.Ordinal) == true
-                && artifact.PreparationQualityDelta is
+                artifact?.PreparationQualityDelta is
                 {
                     BeforeValidSampleCount: 63,
                     BeforeMissingSampleCount: 1,

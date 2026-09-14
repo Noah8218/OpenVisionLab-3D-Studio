@@ -356,12 +356,10 @@ public static class C3DLevelSurfaceRule
             {
                 throw new InvalidDataException("Level Surface reference regions must share the exact current source identity.");
             }
-            if (rectangle.Row < 0
-                || rectangle.Column < 0
-                || rectangle.RowCount <= 0
-                || rectangle.ColumnCount <= 0
-                || rectangle.Row > input.Source.Height - rectangle.RowCount
-                || rectangle.Column > input.Source.Width - rectangle.ColumnCount)
+            if (ToolRecipeGridRectangleGeometry.Validate(
+                    rectangle,
+                    input.Source.Width,
+                    input.Source.Height).Count > 0)
             {
                 throw new InvalidDataException("A Level Surface reference rectangle is outside the current source grid.");
             }

@@ -57,8 +57,7 @@ internal static class ShellRecipeLifecycleSmoke
             && !viewModel.Workbench.IsDirty;
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            var fullReportPath = PrepareReportPath(reportPath);
             File.WriteAllLines(fullReportPath,
             [
                 "OpenVisionLab 3D actual EXE new-recipe lifecycle smoke",
@@ -110,8 +109,7 @@ internal static class ShellRecipeLifecycleSmoke
             && !isRecipeManagerVisible();
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            var fullReportPath = PrepareReportPath(reportPath);
             File.WriteAllLines(fullReportPath,
             [
                 "OpenVisionLab 3D actual EXE open-recipe lifecycle smoke",
@@ -154,8 +152,7 @@ internal static class ShellRecipeLifecycleSmoke
         var passed = hiddenKeepsInstance && reopenedSameInstance && disposedClearsWindow && disposedRejectsShow;
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            var fullReportPath = PrepareReportPath(reportPath);
             File.AppendAllLines(fullReportPath,
             [
                 $"RecipeManagerWindowLifetime|hiddenKeepsInstance={hiddenKeepsInstance}|reopenedSameInstance={reopenedSameInstance}|disposedClearsWindow={disposedClearsWindow}|disposedRejectsShow={disposedRejectsShow}|pass={passed}"
@@ -163,5 +160,12 @@ internal static class ShellRecipeLifecycleSmoke
         }
 
         return passed;
+    }
+
+    private static string PrepareReportPath(string reportPath)
+    {
+        var fullReportPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        return fullReportPath;
     }
 }

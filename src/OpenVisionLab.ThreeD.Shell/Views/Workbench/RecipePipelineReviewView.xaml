@@ -129,13 +129,13 @@
                                    IsTabStop="True"
                                    KeyboardNavigation.TabIndex="9"
                                    AutomationProperties.AutomationId="RunCurrentRecipeButton"
-                                   AutomationProperties.Name="Run current saved recipe"
+                                   AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.RunCurrentSavedRecipeAccessible, Korean='현재 저장된 레시피 실행', English='Run current saved recipe'}"
                                    AutomationProperties.HelpText="{Binding OrderedRunCapabilitySummary}" />
-                        <Button x:Name="RunValidationSampleSetButton"
-                                Padding="10,4"
-                                Command="{Binding RunValidationSetCommand}"
-                                Content="{Binding Localization.ValidationSetRunAll}"
-                                ToolTip="{Binding Localization.ValidationSetRunAllHint}"
+                                <Button x:Name="RunValidationSampleSetButton"
+                                        Padding="10,4"
+                                        Command="{Binding RunValidationSetCommand}"
+                                        Content="{Binding Localization.ValidationSetRunAll}"
+                                        ToolTip="{shell:ThreeDText Key=ThreeD.Validation.RunValidationSetTip, Korean='Validation Set 전체 실행 (Ctrl+Shift+F5)', English='Run the Validation Set (Ctrl+Shift+F5)'}"
                                 IsTabStop="True"
                                 KeyboardNavigation.TabIndex="10"
                                 AutomationProperties.AutomationId="ValidationSetRunAllButton"
@@ -744,7 +744,9 @@
                                             <Run FontWeight="SemiBold" Text="{Binding Status}" />
                                             <Run Text=" | " />
                                             <Run Text="{Binding StepCount}" />
-                                            <Run Text=" steps | " />
+                                            <Run Text=" " />
+                                            <Run Text="{Binding DataContext.Localization.StepsLabel, Mode=OneWay, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <Run Text=" | " />
                                             <Run Text="{Binding Name}" />
                                         </TextBlock>
                                     </DataTemplate>
@@ -1219,9 +1221,10 @@
                                                   Command="{Binding SetValidationSampleRoleCommand}"
                                                   CommandParameter="Good"
                                                   AutomationProperties.AutomationId="ValidationSampleRoleGood"
-                                                  AutomationProperties.Name="{Binding Localization.ValidationSetSelectedExpectedRole, StringFormat={}{0}: Good}">
+                                                  AutomationProperties.Name="{Binding Localization.ValidationSetRoleGoodAccessible}">
                                         <TextBlock>
-                                            <Run Text="Good  " />
+                                            <Run Text="{Binding Localization.ValidationSetRoleGood, Mode=OneWay}" />
+                                            <Run Text="  " />
                                             <Run FontWeight="SemiBold"
                                                  Text="{Binding ValidationSetGoodCount, Mode=OneWay}" />
                                         </TextBlock>
@@ -1232,9 +1235,10 @@
                                                   Command="{Binding SetValidationSampleRoleCommand}"
                                                   CommandParameter="Bad"
                                                   AutomationProperties.AutomationId="ValidationSampleRoleBad"
-                                                  AutomationProperties.Name="{Binding Localization.ValidationSetSelectedExpectedRole, StringFormat={}{0}: Bad}">
+                                                  AutomationProperties.Name="{Binding Localization.ValidationSetRoleBadAccessible}">
                                         <TextBlock>
-                                            <Run Text="Bad  " />
+                                            <Run Text="{Binding Localization.ValidationSetRoleBad, Mode=OneWay}" />
+                                            <Run Text="  " />
                                             <Run FontWeight="SemiBold"
                                                  Text="{Binding ValidationSetBadCount, Mode=OneWay}" />
                                         </TextBlock>
@@ -1244,9 +1248,10 @@
                                                   Command="{Binding SetValidationSampleRoleCommand}"
                                                   CommandParameter="HeldOut"
                                                   AutomationProperties.AutomationId="ValidationSampleRoleHeldOut"
-                                                  AutomationProperties.Name="{Binding Localization.ValidationSetSelectedExpectedRole, StringFormat={}{0}: Held-out}">
+                                                  AutomationProperties.Name="{Binding Localization.ValidationSetRoleHeldOutAccessible}">
                                         <TextBlock>
-                                            <Run Text="Held-out  " />
+                                            <Run Text="{Binding Localization.ValidationSetRoleHeldOut, Mode=OneWay}" />
+                                            <Run Text="  " />
                                             <Run FontWeight="SemiBold"
                                                  Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" />
                                         </TextBlock>
@@ -1627,14 +1632,14 @@
                                           IsReadOnly="True"
                                           ItemsSource="{Binding ValidationEvidenceDistributions}"
                                           HeadersVisibility="Column"
-                                          AutomationProperties.Name="Per-step and per-region labeled metric distributions">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.LabeledMetricDistributionsAccessible, Korean='단계·영역별 라벨링된 측정값 분포', English='Per-step and per-region labeled metric distributions'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="78" Header="{Binding ValidationSetScope, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Scope}" />
                                         <DataGridTextColumn Width="130" Header="{Binding ValidationSetOwner, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding OwnerName}" />
                                         <DataGridTextColumn Width="150" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding MetricName}" />
-                                        <DataGridTextColumn Width="1*" Header="Good · development" Binding="{Binding Good}" />
-                                        <DataGridTextColumn Width="1*" Header="Bad · development" Binding="{Binding Bad}" />
-                                        <DataGridTextColumn Width="1*" Header="Held-out · excluded" Binding="{Binding HeldOut}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.GoodDevelopment, Korean='양품 · 개발', English='Good · development'}" Binding="{Binding Good}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.BadDevelopment, Korean='불량 · 개발', English='Bad · development'}" Binding="{Binding Bad}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.HeldOutExcluded, Korean='홀드아웃 · 제외', English='Held-out · excluded'}" Binding="{Binding HeldOut}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </StackPanel>
@@ -1847,12 +1852,12 @@
                                           ItemsSource="{Binding ValidationThresholdParameterChanges}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdParameterChanges, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="Reviewed typed parameter changes">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.ReviewedTypedParameterChangesAccessible, Korean='검토한 타입 파라미터 변경', English='Reviewed typed parameter changes'}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Width="1*" Header="Typed parameter" Binding="{Binding ParameterName}" />
-                                        <DataGridTextColumn Width="95" Header="Before" Binding="{Binding BeforeValue}" />
-                                        <DataGridTextColumn Width="82" Header="Suggested" Binding="{Binding ProposedValue}" />
-                                        <DataGridTextColumn Width="82" Header="Manual" Binding="{Binding ManualValue}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.TypedParameter, Korean='타입 파라미터', English='Typed parameter'}" Binding="{Binding ParameterName}" />
+                                        <DataGridTextColumn Width="95" Header="{shell:ThreeDText Key=ThreeD.Validation.Before, Korean='이전 값', English='Before'}" Binding="{Binding BeforeValue}" />
+                                        <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.Suggested, Korean='제안 값', English='Suggested'}" Binding="{Binding ProposedValue}" />
+                                        <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.Manual, Korean='수동 값', English='Manual'}" Binding="{Binding ManualValue}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <DataGrid x:Name="ValidationThresholdHeldOutGrid"
@@ -1868,11 +1873,11 @@
                                           ItemsSource="{Binding ValidationThresholdHeldOutSamples}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdHeldOutEvidence, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="Explicit Held-out replay evidence">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOutReplayEvidenceAccessible, Korean='명시적 홀드아웃 재실행 증거', English='Explicit Held-out replay evidence'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
                                         <DataGridTextColumn Width="115" Header="{Binding ValidationSetFile, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding FileName}" />
-                                        <DataGridTextColumn Width="62" Header="Status" Binding="{Binding Status}" />
+                                        <DataGridTextColumn Width="62" Header="{Binding ValidationSetRunState, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Status}" />
                                         <DataGridTextColumn Width="1*" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Metrics}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
@@ -1890,16 +1895,16 @@
                                           ItemsSource="{Binding ValidationThresholdDevelopmentSamples}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdDevelopmentEvidence, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="Before and after development correction evidence">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='개발 보정 전후 증거', English='Before and after development correction evidence'}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Width="58" Header="Stage" Binding="{Binding Stage}" />
+                                        <DataGridTextColumn Width="58" Header="{shell:ThreeDText Key=ThreeD.Validation.Stage, Korean='단계', English='Stage'}" Binding="{Binding Stage}" />
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
                                         <DataGridTextColumn Width="125" Header="{Binding ValidationSetFile, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding FileName}" />
-                                        <DataGridTextColumn Width="62" Header="Role" Binding="{Binding Role}" />
-                                        <DataGridTextColumn Width="62" Header="Status" Binding="{Binding Status}" />
-                                        <DataGridTextColumn Width="78" Header="Expected" Binding="{Binding ExpectedMatch}" />
+                                        <DataGridTextColumn Width="62" Header="{Binding ValidationSetRole, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Role}" />
+                                        <DataGridTextColumn Width="62" Header="{Binding ValidationSetRunState, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Status}" />
+                                        <DataGridTextColumn Width="78" Header="{Binding ValidationSetExpected, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding ExpectedMatch}" />
                                         <DataGridTextColumn Width="1*" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Metrics}" />
-                                        <DataGridTextColumn Width="170" Header="Sample SHA-256" Binding="{Binding SampleIdentity}">
+                                        <DataGridTextColumn Width="170" Header="{shell:ThreeDText Key=ThreeD.Validation.SampleSha256, Korean='샘플 SHA-256', English='Sample SHA-256'}" Binding="{Binding SampleIdentity}">
                                             <DataGridTextColumn.CellStyle>
                                                 <Style TargetType="DataGridCell">
                                                     <Setter Property="ToolTip" Value="{Binding SampleIdentity}" />
@@ -1922,12 +1927,12 @@
                                           SelectionMode="Single"
                                           SelectionUnit="FullRow"
                                           HeadersVisibility="Column"
-                                          AutomationProperties.Name="Review-only deterministic threshold candidates">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DeterministicThresholdCandidatesAccessible, Korean='검토 전용 결정론적 임계값 후보', English='Review-only deterministic threshold candidates'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="92" Header="{Binding ValidationSetScope, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Scope}" />
                                         <DataGridTextColumn Width="125" Header="{Binding ValidationSetOwner, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding OwnerName}" />
                                         <DataGridTextColumn Width="125" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding MetricName}" />
-                                        <DataGridTextColumn Width="72" Header="Rule" Binding="{Binding LimitKind}" />
+                                        <DataGridTextColumn Width="72" Header="{shell:ThreeDText Key=ThreeD.Validation.Rule, Korean='규칙', English='Rule'}" Binding="{Binding LimitKind}" />
                                         <DataGridTextColumn Width="115" Header="{Binding ValidationSetLimits, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Limits}" />
                                         <DataGridTextColumn Width="62" Header="{Binding ValidationSetCorrect, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding CorrectCount}" />
                                         <DataGridTextColumn Width="58" Header="{Binding ValidationSetErrors, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding ErrorCount}" />
@@ -1947,11 +1952,11 @@
                                           IsReadOnly="True"
                                           ItemsSource="{Binding SelectedValidationThresholdDecisions}"
                                           HeadersVisibility="Column"
-                                          AutomationProperties.Name="Exact sample decisions for selected threshold candidate">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.SelectedThresholdSampleDecisionsAccessible, Korean='선택 임계값 후보의 정확한 샘플 판정', English='Exact sample decisions for selected threshold candidate'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
                                         <DataGridTextColumn Width="115" Header="{Binding ValidationSetFile, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding FileName}" />
-                                        <DataGridTextColumn Width="150" Header="Sample ID" Binding="{Binding SampleIdentity}">
+                                        <DataGridTextColumn Width="150" Header="{shell:ThreeDText Key=ThreeD.Validation.SampleId, Korean='샘플 ID', English='Sample ID'}" Binding="{Binding SampleIdentity}">
                                             <DataGridTextColumn.CellStyle>
                                                 <Style TargetType="DataGridCell">
                                                     <Setter Property="ToolTip" Value="{Binding SampleIdentity}" />
@@ -1962,7 +1967,7 @@
                                         <DataGridTextColumn Width="68" Header="{Binding ValidationSetPredicted, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding PredictedRole}" />
                                         <DataGridTextColumn Width="92" Header="{Binding ValidationSetDecision, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Decision}" />
                                         <DataGridTextColumn Width="72" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Value}" />
-                                        <DataGridTextColumn Width="82" Header="Cell evidence" Binding="{Binding EvidenceLocator}" />
+                                        <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.CellEvidence, Korean='셀 증거', English='Cell evidence'}" Binding="{Binding EvidenceLocator}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>

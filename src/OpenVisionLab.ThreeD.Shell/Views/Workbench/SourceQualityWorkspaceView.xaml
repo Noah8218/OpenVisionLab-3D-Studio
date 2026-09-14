@@ -365,19 +365,19 @@
                                              Padding="6,3"
                                              Text="{Binding AcquisitionDirectionXDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              AutomationProperties.AutomationId="SourceAcquisitionDirectionX"
-                                             AutomationProperties.Name="X" />
+                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.SourceQuality.Direction.XAccessible, Korean='방향 X 성분', English='X direction component'}" />
                                     <TextBox Grid.Column="2"
                                              Height="27"
                                              Padding="6,3"
                                              Text="{Binding AcquisitionDirectionYDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              AutomationProperties.AutomationId="SourceAcquisitionDirectionY"
-                                             AutomationProperties.Name="Y" />
+                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.SourceQuality.Direction.YAccessible, Korean='방향 Y 성분', English='Y direction component'}" />
                                     <TextBox Grid.Column="4"
                                              Height="27"
                                              Padding="6,3"
                                              Text="{Binding AcquisitionDirectionZDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              AutomationProperties.AutomationId="SourceAcquisitionDirectionZ"
-                                             AutomationProperties.Name="Z" />
+                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.SourceQuality.Direction.ZAccessible, Korean='방향 Z 성분', English='Z direction component'}" />
                                 </Grid>
                                 <TextBlock Margin="0,5,0,0"
                                            FontSize="8.5"

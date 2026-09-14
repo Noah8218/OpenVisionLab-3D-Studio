@@ -48,15 +48,16 @@ public sealed partial class OpenVisionThreeDViewerControl
         var nearestRayDistance = float.PositiveInfinity;
         foreach (var sample in result.DisplaySamples)
         {
-            var toPoint = sample.Position - ray.origin;
-            var alongRay = Vector3.Dot(toPoint, ray.direction);
-            if (alongRay < 0.0f)
+            if (!ViewerRayGeometry.TryProjectPoint(
+                    ray.origin,
+                    ray.direction,
+                    sample.Position,
+                    out var alongRay,
+                    out var rayDistance))
             {
                 continue;
             }
 
-            var closestOnRay = ray.origin + ray.direction * alongRay;
-            var rayDistance = Vector3.Distance(sample.Position, closestOnRay);
             if (rayDistance > maximumDistance
                 || alongRay > nearestDepth
                 || (alongRay == nearestDepth && rayDistance >= nearestRayDistance))
@@ -107,15 +108,16 @@ public sealed partial class OpenVisionThreeDViewerControl
         foreach (var point in c3dSample.Points)
         {
             var position = TransformC3DPosition(point.Position);
-            var toPoint = position - ray.origin;
-            var alongRay = Vector3.Dot(toPoint, ray.direction);
-            if (alongRay < 0)
+            if (!ViewerRayGeometry.TryProjectPoint(
+                    ray.origin,
+                    ray.direction,
+                    position,
+                    out _,
+                    out var distance))
             {
                 continue;
             }
 
-            var closest = ray.origin + ray.direction * alongRay;
-            var distance = Vector3.Distance(position, closest);
             if (distance < bestDistance)
             {
                 bestDistance = distance;
@@ -189,7 +191,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             var first = mesh.Positions[firstIndex];
             var second = mesh.Positions[secondIndex];
             var third = mesh.Positions[thirdIndex];
-            if (!TryIntersectRayTriangle(rayOrigin, rayDirection, first, second, third, out var distance, out var candidate))
+            if (!ViewerRayGeometry.TryIntersectTriangle(rayOrigin, rayDirection, first, second, third, out var distance, out var candidate))
             {
                 continue;
             }
@@ -199,7 +201,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 bestDistance = distance;
                 hit = candidate;
                 bestTriangleIndex = i / 3;
-                bestNormal = CalculateTriangleNormal(first, second, third);
+                bestNormal = ViewerRayGeometry.CalculateTriangleNormal(first, second, third);
             }
         }
 
@@ -222,15 +224,16 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         foreach (var position in positions)
         {
-            var toPoint = position - rayOrigin;
-            var alongRay = Vector3.Dot(toPoint, rayDirection);
-            if (alongRay < 0)
+            if (!ViewerRayGeometry.TryProjectPoint(
+                    rayOrigin,
+                    rayDirection,
+                    position,
+                    out _,
+                    out var distance))
             {
                 continue;
             }
 
-            var closest = rayOrigin + rayDirection * alongRay;
-            var distance = Vector3.Distance(position, closest);
             if (distance < bestDistance)
             {
                 bestDistance = distance;
@@ -244,14 +247,6 @@ public sealed partial class OpenVisionThreeDViewerControl
     private static bool ImportedMeshIndexInRange(ImportedMesh mesh, int index) =>
         (uint)index < (uint)mesh.Positions.Length;
 
-    private static Vector3 CalculateTriangleNormal(Vector3 first, Vector3 second, Vector3 third)
-    {
-        var normal = Vector3.Cross(second - first, third - first);
-        return normal.LengthSquared() <= 0.000000000001f
-            ? Vector3.Zero
-            : Vector3.Normalize(normal);
-    }
-
     private float GetImportedMeshSurfaceOverlayScale()
     {
         if (importedMesh is null)
@@ -261,54 +256,6 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var diagonal = Vector3.Distance(importedMesh.Min, importedMesh.Max);
         return Math.Clamp(diagonal * 0.35f, 0.02f, 1.0f);
-    }
-
-    private static bool TryIntersectRayTriangle(
-        Vector3 rayOrigin,
-        Vector3 rayDirection,
-        Vector3 first,
-        Vector3 second,
-        Vector3 third,
-        out float distance,
-        out Vector3 hit)
-    {
-        const float Epsilon = 0.0000001f;
-
-        distance = 0.0f;
-        hit = default;
-
-        var edge1 = second - first;
-        var edge2 = third - first;
-        var p = Vector3.Cross(rayDirection, edge2);
-        var determinant = Vector3.Dot(edge1, p);
-        if (Math.Abs(determinant) < Epsilon)
-        {
-            return false;
-        }
-
-        var inverseDeterminant = 1.0f / determinant;
-        var t = rayOrigin - first;
-        var u = Vector3.Dot(t, p) * inverseDeterminant;
-        if (u < -Epsilon || u > 1.0f + Epsilon)
-        {
-            return false;
-        }
-
-        var q = Vector3.Cross(t, edge1);
-        var v = Vector3.Dot(rayDirection, q) * inverseDeterminant;
-        if (v < -Epsilon || u + v > 1.0f + Epsilon)
-        {
-            return false;
-        }
-
-        distance = Vector3.Dot(edge2, q) * inverseDeterminant;
-        if (distance < 0.0f)
-        {
-            return false;
-        }
-
-        hit = rayOrigin + rayDirection * distance;
-        return true;
     }
 
     private bool TryPickLazPoint(Point screenPoint, out LazPointCloudPoint hit)
@@ -324,18 +271,19 @@ public sealed partial class OpenVisionThreeDViewerControl
         var bestDistance = float.PositiveInfinity;
         var maxDistance = Math.Max(1.0f, (float)viewModel.CameraDistance * 0.025f);
 
-        foreach (var point in lazPointCloud.SampledPoints)
+        foreach (var point in lazPointCloud.SampledPointView)
         {
-            var position = MapLazPosition(point.Position);
-            var toPoint = position - ray.origin;
-            var alongRay = Vector3.Dot(toPoint, ray.direction);
-            if (alongRay < 0)
+            var position = MapLazPosition(point);
+            if (!ViewerRayGeometry.TryProjectPoint(
+                    ray.origin,
+                    ray.direction,
+                    position,
+                    out _,
+                    out var distance))
             {
                 continue;
             }
 
-            var closest = ray.origin + ray.direction * alongRay;
-            var distance = Vector3.Distance(position, closest);
             if (distance < bestDistance)
             {
                 bestDistance = distance;
@@ -418,7 +366,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         viewModel.SelectedEntity = "GLB Two Point Measurement";
-        viewModel.PickCoordinate = FormatImportedMeshPoint(point, pickKind);
+        viewModel.PickCoordinate = FormatImportedMeshPoint(point, pickKind, surfaceNormal);
         return true;
     }
 
@@ -439,7 +387,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             twoPointFirst = null;
             twoPointSecond = null;
             selectedLazPoint = point;
-            var position = MapLazPosition(point.Position);
+            var position = MapLazPosition(point);
             viewModel.SetTwoPointMeasurementStart(position, position.Y, "source-z-units");
         }
         else
@@ -467,22 +415,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return true;
         }
 
-        var anchor = TransformC3DPosition(point.Position);
-        roiStepInteractiveSelection = true;
-        ClearRecipeRoiStep();
-        if (!roiStepNextPickSetsRight || roiStepLeftAnchor is null || roiStepRightAnchor is not null)
-        {
-            roiStepLeftAnchor = anchor;
-            roiStepRightAnchor = null;
-            roiStepNextPickSetsRight = true;
-        }
-        else
-        {
-            roiStepRightAnchor = anchor;
-            roiStepNextPickSetsRight = false;
-        }
-
-        UpdateRoiStepMeasurement();
+        roiEditingSession.Pick(TransformC3DPosition(point.Position));
         viewModel.SelectedEntity = "ROI Step Compare";
         viewModel.PickCoordinate = FormatC3DPoint(point);
         return true;
@@ -537,8 +470,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         twoPointFirst = null;
         twoPointSecond = null;
 
-        var firstPosition = MapLazPosition(first.Position);
-        var secondPosition = MapLazPosition(second.Position);
+        var firstPosition = MapLazPosition(first);
+        var secondPosition = MapLazPosition(second);
         viewModel.SetTwoPointMeasurement(firstPosition, firstPosition.Y, secondPosition, secondPosition.Y, heightUnit);
         viewModel.SetLazTwoPointMeasurementPreview(firstPosition, secondPosition, secondPosition.Y - firstPosition.Y, heightUnit);
     }
@@ -566,167 +499,6 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         planeReferenceMeasurement = null;
         viewModel.ClearPlaneReferenceMeasurement();
-    }
-
-    private bool UpdateRoiStepMeasurement()
-    {
-        ClearPlaneReferenceMeasurement();
-        roiStepLeftBounds = null;
-        roiStepRightBounds = null;
-        roiStepLeftCenter = null;
-        roiStepRightCenter = null;
-
-        if (!viewModel.C3DSampleVisible || c3dSample is null || c3dSample.Points.Length < 2)
-        {
-            viewModel.ClearRoiStepMeasurement("ROI step requires a visible C3D height grid.");
-            viewModel.SelectedEntity = "ROI Step Compare";
-            return false;
-        }
-
-        var bounds = GetTransformedC3DBounds();
-        var width = Math.Max(0.001f, bounds.MaxX - bounds.MinX);
-        var depth = Math.Max(0.001f, bounds.MaxZ - bounds.MinZ);
-        var halfWidth = width * 0.15f;
-        var halfDepth = depth * 0.25f;
-        var zMin = bounds.MinZ + depth * 0.25f;
-        var zMax = bounds.MinZ + depth * 0.75f;
-        var leftBounds = roiStepLeftRecipeRegion is { } leftRegion
-            ? CreateRoiBounds(leftRegion, bounds)
-            : roiStepInteractiveSelection && roiStepLeftAnchor is { } leftAnchor
-                ? CreateRoiBounds(leftAnchor, halfWidth, halfDepth, bounds)
-                : (MinX: bounds.MinX + width * 0.10f, MaxX: bounds.MinX + width * 0.40f, MinZ: zMin, MaxZ: zMax, MeanY: 0.0f);
-        var rightBounds = roiStepRightRecipeRegion is { } rightRegion
-            ? CreateRoiBounds(rightRegion, bounds)
-            : roiStepInteractiveSelection && roiStepRightAnchor is { } rightAnchor
-                ? CreateRoiBounds(rightAnchor, halfWidth, halfDepth, bounds)
-                : (MinX: bounds.MinX + width * 0.60f, MaxX: bounds.MinX + width * 0.90f, MinZ: zMin, MaxZ: zMax, MeanY: 0.0f);
-
-        if (!TryCalculateRoiStats(leftBounds, out var left))
-        {
-            viewModel.ClearRoiStepMeasurement("ROI step found no C3D points in the left region.");
-            viewModel.SelectedEntity = "ROI Step Compare";
-            return false;
-        }
-
-        roiStepLeftBounds = (leftBounds.MinX, leftBounds.MaxX, leftBounds.MinZ, leftBounds.MaxZ, (float)left.ModelYMean);
-        roiStepLeftCenter = left.Center;
-
-        if (roiStepInteractiveSelection && roiStepRightAnchor is null)
-        {
-            viewModel.SetRoiStepSelectionPending(
-                string.Create(CultureInfo.InvariantCulture, $"ROI step: L {left.Count:N0} pts, pick R"),
-                string.Create(CultureInfo.InvariantCulture, $"Left mean raw {left.RawMean:F3}; click right ROI center."),
-                "Interactive");
-            viewModel.SelectedEntity = "ROI Step Compare";
-            return true;
-        }
-
-        if (!TryCalculateRoiStats(rightBounds, out var right))
-        {
-            viewModel.ClearRoiStepMeasurement("ROI step found no C3D points in the right region.");
-            viewModel.SelectedEntity = "ROI Step Compare";
-            return false;
-        }
-
-        roiStepRightBounds = (rightBounds.MinX, rightBounds.MaxX, rightBounds.MinZ, rightBounds.MaxZ, (float)right.ModelYMean);
-        roiStepRightCenter = right.Center;
-
-        viewModel.SetRoiStepMeasurement(
-            left.Count,
-            left.RawMean,
-            left.ModelYMean,
-            right.Count,
-            right.RawMean,
-            right.ModelYMean,
-            roiStepInteractiveSelection ? "Interactive" : "Auto");
-        SyncRecipeRoiEditFromBounds(roiStepInteractiveSelection ? "Interactive" : "Auto", leftBounds, rightBounds);
-        viewModel.SelectedEntity = "ROI Step Compare";
-        viewModel.PickCoordinate = string.Create(
-            CultureInfo.InvariantCulture,
-            $"ROI centers: L {CameraMath.FormatPoint(left.Center)} | R {CameraMath.FormatPoint(right.Center)}");
-        return true;
-    }
-
-    private (float MinX, float MaxX, float MinZ, float MaxZ) GetTransformedC3DBounds()
-    {
-        var minX = float.PositiveInfinity;
-        var maxX = float.NegativeInfinity;
-        var minZ = float.PositiveInfinity;
-        var maxZ = float.NegativeInfinity;
-
-        foreach (var point in c3dSample!.Points)
-        {
-            var position = TransformC3DPosition(point.Position);
-            minX = Math.Min(minX, position.X);
-            maxX = Math.Max(maxX, position.X);
-            minZ = Math.Min(minZ, position.Z);
-            maxZ = Math.Max(maxZ, position.Z);
-        }
-
-        return (minX, maxX, minZ, maxZ);
-    }
-
-    private static (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY) CreateRoiBounds(
-        Vector3 center,
-        float halfWidth,
-        float halfDepth,
-        (float MinX, float MaxX, float MinZ, float MaxZ) sceneBounds) =>
-        (
-            Math.Clamp(center.X - halfWidth, sceneBounds.MinX, sceneBounds.MaxX),
-            Math.Clamp(center.X + halfWidth, sceneBounds.MinX, sceneBounds.MaxX),
-            Math.Clamp(center.Z - halfDepth, sceneBounds.MinZ, sceneBounds.MaxZ),
-            Math.Clamp(center.Z + halfDepth, sceneBounds.MinZ, sceneBounds.MaxZ),
-            center.Y);
-
-    private static (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY) CreateRoiBounds(
-        HeightDeviationRecipeRoiRegion region,
-        (float MinX, float MaxX, float MinZ, float MaxZ) sceneBounds) =>
-        (
-            Math.Clamp((float)(region.CenterX - region.HalfWidth), sceneBounds.MinX, sceneBounds.MaxX),
-            Math.Clamp((float)(region.CenterX + region.HalfWidth), sceneBounds.MinX, sceneBounds.MaxX),
-            Math.Clamp((float)(region.CenterZ - region.HalfDepth), sceneBounds.MinZ, sceneBounds.MaxZ),
-            Math.Clamp((float)(region.CenterZ + region.HalfDepth), sceneBounds.MinZ, sceneBounds.MaxZ),
-            0.0f);
-
-    private bool TryCalculateRoiStats(
-        (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY) bounds,
-        out (int Count, double RawMean, double ModelYMean, Vector3 Center) stats)
-    {
-        var count = 0;
-        var rawSum = 0.0;
-        var xSum = 0.0;
-        var ySum = 0.0;
-        var zSum = 0.0;
-
-        foreach (var point in c3dSample!.Points)
-        {
-            var position = TransformC3DPosition(point.Position);
-            if (position.X < bounds.MinX || position.X > bounds.MaxX
-                || position.Z < bounds.MinZ || position.Z > bounds.MaxZ)
-            {
-                continue;
-            }
-
-            count++;
-            rawSum += point.RawValue;
-            xSum += position.X;
-            ySum += position.Y;
-            zSum += position.Z;
-        }
-
-        if (count == 0)
-        {
-            stats = default;
-            return false;
-        }
-
-        var inverse = 1.0 / count;
-        stats = (
-            count,
-            rawSum * inverse,
-            ySum * inverse,
-            new Vector3((float)(xSum * inverse), (float)(ySum * inverse), (float)(zSum * inverse)));
-        return true;
     }
 
     private (Vector3 origin, Vector3 direction) CreatePickRay(Point screenPoint)

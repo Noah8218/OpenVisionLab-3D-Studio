@@ -109,6 +109,45 @@ internal static class TeachingCaptureViewModelVerification
                 viewModel.SelectedTeachingRoiDisplayHeightOffset == 0
                 && viewModel.AppliedTeachingSelections.Single().GridRectangle == new ToolRecipeGridRectangle(2, 3, 7, 10),
                 viewModel.SelectedTeachingRoiDisplayHeightSummary);
+            viewModel.SelectedTeachingRoiDisplayHeightOffset = 75.25;
+            var displayHeightEventCount = 0;
+            TeachingRoiDisplayHeightChangedEventArgs? lastDisplayHeightEvent = null;
+            EventHandler<TeachingRoiDisplayHeightChangedEventArgs> displayHeightChangedHandler = (_, args) =>
+            {
+                displayHeightEventCount++;
+                lastDisplayHeightEvent = args;
+            };
+            viewModel.TeachingRoiDisplayHeightChanged += displayHeightChangedHandler;
+            viewModel.SetTeachingRoiDisplayHeightStep(25.0);
+            Check(
+                "display height menu commands are enabled for a selected rectangle",
+                viewModel.DecreaseTeachingRoiDisplayHeightCommand.CanExecute(null)
+                && viewModel.IncreaseTeachingRoiDisplayHeightCommand.CanExecute(null)
+                && viewModel.ResetTeachingRoiDisplayHeightCommand.CanExecute(null),
+                "selectedRectangle=True");
+            viewModel.DecreaseTeachingRoiDisplayHeightCommand.Execute(null);
+            Check(
+                "decrease display height command uses the configured step and source",
+                Math.Abs(viewModel.SelectedTeachingRoiDisplayHeightOffset - 50.25) < 0.000001
+                && lastDisplayHeightEvent?.Source == "decrease button"
+                && lastDisplayHeightEvent.Offset == viewModel.SelectedTeachingRoiDisplayHeightOffset,
+                $"offset={viewModel.SelectedTeachingRoiDisplayHeightOffset:F3}; source={lastDisplayHeightEvent?.Source}");
+            viewModel.IncreaseTeachingRoiDisplayHeightCommand.Execute(null);
+            Check(
+                "increase display height command restores the offset and source",
+                Math.Abs(viewModel.SelectedTeachingRoiDisplayHeightOffset - 75.25) < 0.000001
+                && lastDisplayHeightEvent?.Source == "increase button"
+                && displayHeightEventCount == 2,
+                $"offset={viewModel.SelectedTeachingRoiDisplayHeightOffset:F3}; source={lastDisplayHeightEvent?.Source}; events={displayHeightEventCount}");
+            viewModel.ResetTeachingRoiDisplayHeightCommand.Execute(null);
+            Check(
+                "reset display height command clears only the display offset",
+                viewModel.SelectedTeachingRoiDisplayHeightOffset == 0
+                && lastDisplayHeightEvent?.Source == "reset"
+                && displayHeightEventCount == 3
+                && viewModel.AppliedTeachingSelections.Single().GridRectangle == new ToolRecipeGridRectangle(2, 3, 7, 10),
+                $"offset={viewModel.SelectedTeachingRoiDisplayHeightOffset:F3}; source={lastDisplayHeightEvent?.Source}; events={displayHeightEventCount}");
+            viewModel.TeachingRoiDisplayHeightChanged -= displayHeightChangedHandler;
             viewModel.CancelTeachingCapture();
 
             var circleRequest = Request(

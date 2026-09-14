@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-09-10
+Date: 2026-09-14
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -21,9 +21,16 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
 
 ## Current development line
 
-- The current public development version is `0.5.5-dev` with Viewer Host API
-  `1.1`. The additive Host snapshot preserves existing Viewer, recipe, Run
-  Record, and persisted-storage contracts.
+- The current public development version is `0.5.6-dev` with Viewer Host API
+  `1.1`. One consolidated source commit publishes the accumulated Dev MVVM,
+  command, event, lifetime, and verification refactoring while preserving the
+  existing Viewer, recipe, Run Record, integration, and persisted-storage
+  contracts.
+- The 0.5.6-dev source batch uses Dev commit
+  `9cc21e15c02d34f56b49e2e1e32833775b0df659` and the approved public product
+  snapshot boundary. See
+  `OPENVISIONLAB_3D_REFACTOR_BATCH_20260914.md` for ownership, verification,
+  and rollback details.
 - The 0.5.5-dev structure batch moves the Shell Workbench Viewer display and
   teaching coordinators into `Coordination/Workbench`; WPF Views remain under
   `Views/Workbench`, and no Viewer Host or persisted-storage contract changes.

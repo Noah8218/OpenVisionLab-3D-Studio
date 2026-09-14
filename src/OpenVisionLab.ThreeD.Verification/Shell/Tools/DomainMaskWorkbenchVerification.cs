@@ -11,6 +11,7 @@ internal static class DomainMaskWorkbenchVerification
 {
     public static bool Verify(string reportPath, out string summary)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         var lines = new List<string>
         {
             "OpenVisionLab 3D Domain / Mask Workbench verification"
@@ -80,6 +81,32 @@ internal static class DomainMaskWorkbenchVerification
                 workbench.PreviewSelectedRemoveOutlierPixelsAsync().GetAwaiter().GetResult()
                 && !workbench.IsRemoveOutlierPreviewPublished,
                 workbench.RemoveOutlierExecutionSummary);
+            var removeOutlierPreviewPath = workbench.CurrentRemoveOutlierPreviewPath;
+            var removeOutlierPreviewBytes = removeOutlierPreviewPath is not null
+                ? File.ReadAllBytes(removeOutlierPreviewPath)
+                : [];
+            Check(
+                "Remove Outlier Preview publishes complete C3D bytes",
+                removeOutlierPreviewPath is not null
+                && removeOutlierPreviewBytes.Length > 0,
+                removeOutlierPreviewPath ?? "missing preview path");
+            Check(
+                "Remove Outlier Preview cleans temporary siblings",
+                removeOutlierPreviewPath is not null
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(removeOutlierPreviewPath)!,
+                    "*.tmp.*").Any(),
+                removeOutlierPreviewPath ?? "missing preview path");
+            Check(
+                "repeated Remove Outlier Preview remains byte-stable",
+                workbench.PreviewSelectedRemoveOutlierPixelsAsync().GetAwaiter().GetResult()
+                && removeOutlierPreviewPath is not null
+                && removeOutlierPreviewBytes.SequenceEqual(
+                    File.ReadAllBytes(removeOutlierPreviewPath))
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(removeOutlierPreviewPath)!,
+                    "*.tmp.*").Any(),
+                removeOutlierPreviewPath ?? "missing preview path");
             workbench.PublishSelectedStepCommand.Execute(null);
 
             workbench.SelectPipelineStep("step.connected-region.01");
@@ -112,6 +139,32 @@ internal static class DomainMaskWorkbenchVerification
             var previewed = workbench.PreviewSelectedDomainMaskAsync().GetAwaiter().GetResult();
             var domainOutput = workbench.CurrentDomainMaskPreviewOutput;
             var expectedInput = workbench.CurrentRemoveOutlierPreviewOutput;
+            var domainPreviewPath = workbench.CurrentDomainMaskPreviewPath;
+            var domainPreviewBytes = domainPreviewPath is not null
+                ? File.ReadAllBytes(domainPreviewPath)
+                : [];
+            Check(
+                "Domain / Mask Preview publishes complete C3D bytes",
+                domainPreviewPath is not null
+                && domainPreviewBytes.Length > 0,
+                domainPreviewPath ?? "missing preview path");
+            Check(
+                "Domain / Mask Preview cleans temporary siblings",
+                domainPreviewPath is not null
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(domainPreviewPath)!,
+                    "*.tmp.*").Any(),
+                domainPreviewPath ?? "missing preview path");
+            Check(
+                "repeated Domain / Mask Preview remains byte-stable",
+                workbench.PreviewSelectedDomainMaskAsync().GetAwaiter().GetResult()
+                && domainPreviewPath is not null
+                && domainPreviewBytes.SequenceEqual(
+                    File.ReadAllBytes(domainPreviewPath))
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(domainPreviewPath)!,
+                    "*.tmp.*").Any(),
+                domainPreviewPath ?? "missing preview path");
             var direct = expectedInput is not null && connectedArtifact is not null
                 ? ToolRecipeDomainMaskExecution.Execute(
                     document,
@@ -143,7 +196,9 @@ internal static class DomainMaskWorkbenchVerification
                 "artifact registry exposes HeightField evidence",
                 domainArtifact?.Contract == "HeightField"
                 && domainArtifact.State == "Preview"
-                && domainArtifact.Detail.Contains("domain-reduced", StringComparison.Ordinal),
+                && domainArtifact.Detail.Contains(
+                    workbench.Localization.DomainMaskReducedDetail,
+                    StringComparison.Ordinal),
                 domainArtifact?.Detail ?? "missing artifact");
             Check(
                 "output is Viewer/compare renderable",
@@ -161,6 +216,26 @@ internal static class DomainMaskWorkbenchVerification
             var c3dPath = Path.Combine(
                 rootDirectory,
                 "domain-mask.ov3d-recipe.domain-mask.derived_domain-mask_01.c3d");
+            var persistedC3dBytes = File.Exists(c3dPath)
+                ? File.ReadAllBytes(c3dPath)
+                : [];
+            var persistedSidecarText = File.Exists(sidecarPath)
+                ? File.ReadAllText(sidecarPath)
+                : string.Empty;
+            Check(
+                "Publish persists complete C3D and sidecar contents",
+                persistedC3dBytes.Length > 0
+                && persistedSidecarText.Length > 0
+                && publishedHash is not null
+                && persistedSidecarText.Contains(
+                    publishedHash,
+                    StringComparison.Ordinal)
+                && persistedSidecarText.Contains("\"ByteLength\"", StringComparison.Ordinal),
+                $"c3dBytes={persistedC3dBytes.Length};sidecarBytes={persistedSidecarText.Length}");
+            Check(
+                "Publish cleans persisted artifact temporary siblings",
+                !Directory.GetFiles(rootDirectory, "*.tmp.*").Any(),
+                rootDirectory);
             Check(
                 "Publish reuses Preview and persists output sidecar",
                 workbench.IsDomainMaskPreviewPublished
@@ -168,11 +243,17 @@ internal static class DomainMaskWorkbenchVerification
                 && File.Exists(sidecarPath)
                 && File.Exists(c3dPath),
                 workbench.DomainMaskExecutionSummary);
+            var c3dBytesBeforeRecipeSave = File.ReadAllBytes(c3dPath);
+            var sidecarBytesBeforeRecipeSave = File.ReadAllBytes(sidecarPath);
+            var recipeSaveSucceeded = workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage);
             Check(
                 "recipe save keeps D-07 sidecar",
-                workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage)
+                recipeSaveSucceeded
                 && File.Exists(sidecarPath)
-                && File.Exists(c3dPath),
+                && File.Exists(c3dPath)
+                && c3dBytesBeforeRecipeSave.SequenceEqual(File.ReadAllBytes(c3dPath))
+                && sidecarBytesBeforeRecipeSave.SequenceEqual(File.ReadAllBytes(sidecarPath))
+                && !Directory.GetFiles(rootDirectory, "*.tmp.*").Any(),
                 saveMessage);
 
             var reopened = new ToolWorkbenchViewModel();
@@ -234,8 +315,8 @@ internal static class DomainMaskWorkbenchVerification
         summary =
             $"Domain / Mask Workbench verification: {(passed == total ? "PASS" : "FAIL")} ({passed}/{total})";
         lines.Insert(1, summary);
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
         return passed == total;
     }
 

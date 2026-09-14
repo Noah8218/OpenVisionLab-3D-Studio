@@ -21,12 +21,18 @@ internal static class ShellPlaneFlatnessLiveA3Smoke
             "Boundary|Deterministic synthetic display-frame evidence only; this is not physical calibration, Gauge R&R, or metrology evidence."
         };
         var workbench = viewModel.Workbench;
-        var previewBefore = viewer.ViewModel.PreviewToolResult;
-        var resultsBefore = viewer.ViewModel.ResultEntities;
+        var inspectionBefore = viewer.HostState.Inspection;
+
+        bool InspectionUnchanged()
+        {
+            var inspection = viewer.HostState.Inspection;
+            return inspection.PreviewReferenceToken == inspectionBefore.PreviewReferenceToken
+                && inspection.PublishedResultReferenceToken == inspectionBefore.PublishedResultReferenceToken;
+        }
 
         bool Complete(bool passed, string message)
         {
-            lines.Add($"InspectionBoundary|previewReferenceUnchanged={ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)}|resultReferenceUnchanged={ReferenceEquals(resultsBefore, viewer.ViewModel.ResultEntities)}");
+            lines.Add($"InspectionBoundary|previewReferenceUnchanged={InspectionUnchanged()}|resultReferenceUnchanged={InspectionUnchanged()}");
             lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{message}");
             ShellSmokeArtifacts.WriteTextReport(reportPath, lines, withoutBom: true);
             Console.WriteLine(lines[^1]);
@@ -163,8 +169,7 @@ internal static class ShellPlaneFlatnessLiveA3Smoke
             }
             lines.Add($"MeasurementROI|id={measurementSelection.Id}|rectangle={measurementSelection.GridRectangle.Row},{measurementSelection.GridRectangle.Column},{measurementSelection.GridRectangle.RowCount},{measurementSelection.GridRectangle.ColumnCount}|owner={measurementSelection.SourceBinding.OwnerEntityId}|sha256={measurementSelection.SourceBinding.ContentSha256}");
 
-            var executionUnchanged = ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
-                && ReferenceEquals(resultsBefore, viewer.ViewModel.ResultEntities);
+            var executionUnchanged = InspectionUnchanged();
             if (!executionUnchanged)
             {
                 return Complete(false, "ROI teaching changed inspection Preview/Run evidence before an explicit measurement Preview.");
@@ -334,8 +339,7 @@ internal static class ShellPlaneFlatnessLiveA3Smoke
                 && reopenedCrossSection.GridRectangle == crossSectionSelection.GridRectangle
                 && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedCrossSection.SourceBinding)
                 && !workbench.IsDirty
-                && ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
-                && ReferenceEquals(resultsBefore, viewer.ViewModel.ResultEntities);
+                && InspectionUnchanged();
             lines.Add($"Reopen|schema={reopenedDocument.SchemaVersion}|stepInputs={string.Join(';', reopenedStep.InputEntityIds)}|reference={reopenedReference.Id}|measurement={reopenedMeasurement.Id}|pointPair={reopenedPointPair.Id}|gapFirst={reopenedGapFirst.Id}|gapSecond={reopenedGapSecond.Id}|volumeReference={reopenedVolumeReference.Id}|volumeMeasurement={reopenedVolumeMeasurement.Id}|crossSection={reopenedCrossSection.Id}|dirty={workbench.IsDirty}|message={reopenMessage}");
             workbench.SelectedPipelineStep = workbench.PipelineSteps.Single(step =>
                 string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.CrossSectionStepId, StringComparison.OrdinalIgnoreCase));

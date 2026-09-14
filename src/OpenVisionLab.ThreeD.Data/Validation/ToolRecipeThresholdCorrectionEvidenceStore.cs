@@ -20,6 +20,9 @@ public static class ToolRecipeThresholdCorrectionEvidenceStore
         return $"{Path.GetFullPath(recipePath)}.threshold-correction.json";
     }
 
+    private static string GetRecipeDirectory(string fullRecipePath) =>
+        Path.GetDirectoryName(fullRecipePath) ?? Environment.CurrentDirectory;
+
     public static void SaveForRecipe(
         string recipePath,
         ToolRecipeThresholdCorrectionEvidence evidence)
@@ -27,8 +30,7 @@ public static class ToolRecipeThresholdCorrectionEvidenceStore
         ArgumentNullException.ThrowIfNull(evidence);
         Validate(evidence);
         var fullRecipePath = Path.GetFullPath(recipePath);
-        var directory =
-            Path.GetDirectoryName(fullRecipePath) ?? Environment.CurrentDirectory;
+        var directory = GetRecipeDirectory(fullRecipePath);
         var portable = RewritePaths(
             evidence,
             path => Path.GetRelativePath(directory, Path.GetFullPath(path)));
@@ -53,8 +55,7 @@ public static class ToolRecipeThresholdCorrectionEvidenceStore
             ?? throw new InvalidDataException(
                 "Threshold correction evidence JSON is empty.");
         Validate(evidence);
-        var directory =
-            Path.GetDirectoryName(fullRecipePath) ?? Environment.CurrentDirectory;
+        var directory = GetRecipeDirectory(fullRecipePath);
         return RewritePaths(
             evidence,
             value => Path.IsPathFullyQualified(value)

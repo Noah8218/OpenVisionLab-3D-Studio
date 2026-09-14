@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -11,6 +12,7 @@ internal static class ToolRecipeRemoveOutlierPixelsRunnerExecution
         string outputC3DPath,
         string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
@@ -28,7 +30,7 @@ internal static class ToolRecipeRemoveOutlierPixelsRunnerExecution
             }
 
             var fullOutputPath = Path.GetFullPath(outputC3DPath);
-            evaluation.Output.SaveC3D(fullOutputPath);
+            SaveC3DAtomically(evaluation.Output, fullOutputPath);
             var report = new
             {
                 schemaVersion = "1.0",
@@ -99,9 +101,8 @@ internal static class ToolRecipeRemoveOutlierPixelsRunnerExecution
                 claimBoundary =
                     "Deterministic raw-height preparation evidence; no physical calibration, measurement OK/NG, or metrology claim."
             };
-            var fullReportPath = Path.GetFullPath(reportPath);
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-            File.WriteAllText(
+            WriteTextAtomically(
                 fullReportPath,
                 JsonSerializer.Serialize(
                     report,
@@ -123,6 +124,49 @@ internal static class ToolRecipeRemoveOutlierPixelsRunnerExecution
         {
             Console.Error.WriteLine(exception.Message);
             return 5;
+        }
+    }
+
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            output.SaveC3D(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static void WriteTextAtomically(string path, string text)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 4096, leaveOpen: true))
+            {
+                writer.Write(text);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

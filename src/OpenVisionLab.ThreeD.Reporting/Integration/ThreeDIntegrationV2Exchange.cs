@@ -1,8 +1,6 @@
-using System.Security.Cryptography;
 using System.Text.Json;
 using OpenVisionLab.Integration.Contracts;
 using OpenVisionLab.ThreeD.Core;
-using OpenVisionLab.ThreeD.Reporting.RunRecords;
 
 namespace OpenVisionLab.ThreeD.Reporting.Integration;
 
@@ -70,6 +68,7 @@ public static class ThreeDIntegrationV2Exchange
         var transactionDirectory = GetTransactionDirectory(exchangeRoot, transactionId);
         foreach (var artifact in handoff.Context.Artifacts)
         {
+            EnsureNoReparsePoints(transactionDirectory, artifact.RelativePath);
             ThrowIfInvalid(IntegrationContractValidator.ValidateArtifactFile(
                 artifact,
                 transactionDirectory));
@@ -171,7 +170,20 @@ public static class ThreeDIntegrationV2Exchange
         string exchangeRoot,
         Guid transactionId,
         IntegrationApplicationIdentity consumerBuild,
-        string existingRunRecordPath)
+        string existingRunRecordPath) =>
+        PublishCompletedResult(
+            exchangeRoot,
+            transactionId,
+            consumerBuild,
+            existingRunRecordPath,
+            null);
+
+    public static IntegrationResultV2 PublishCompletedResult(
+        string exchangeRoot,
+        Guid transactionId,
+        IntegrationApplicationIdentity consumerBuild,
+        string existingRunRecordPath,
+        IReadOnlyList<ThreeDIntegrationEvidenceArtifact>? additionalEvidence)
     {
         ArgumentNullException.ThrowIfNull(consumerBuild);
         ArgumentException.ThrowIfNullOrWhiteSpace(existingRunRecordPath);
@@ -196,66 +208,38 @@ public static class ThreeDIntegrationV2Exchange
                 "The Handoff already has a Result.");
         }
 
-        var runRecord = InspectionRunRecordJson.Read(existingRunRecordPath);
-        if (string.IsNullOrWhiteSpace(runRecord.RunId))
-        {
-            throw new InvalidDataException("Run Record identity is required.");
-        }
-        EnsureRunRecordCorrelation(handoff.Context, runRecord);
-        var outcome = runRecord.Status switch
-        {
-            ResultStatus.Pass => IntegrationInspectionOutcome.Pass,
-            ResultStatus.Fail => IntegrationInspectionOutcome.Ng,
-            ResultStatus.Warning => IntegrationInspectionOutcome.Indeterminate,
-            _ => throw new InvalidDataException(
-                $"Run Record status '{runRecord.Status}' is not a completed inspection state.")
-        };
-
-        var artifactsDirectory = Path.Combine(
+        using var publication = ThreeDIntegrationRunRecordPublication.Create(
+            existingRunRecordPath,
             transactionDirectory,
-            IntegrationTransactionLayout.ArtifactsDirectoryName);
-        Directory.CreateDirectory(artifactsDirectory);
-        var targetPath = Path.Combine(artifactsDirectory, "3d-run-record.json");
-        File.Copy(Path.GetFullPath(existingRunRecordPath), targetPath, overwrite: false);
-        try
-        {
-            var runRecordReference = CreateArtifactReference(
-                IntegrationArtifactRoles.RunRecord,
-                runRecord.RunId,
-                targetPath,
-                $"{IntegrationTransactionLayout.ArtifactsDirectoryName}/3d-run-record.json");
-            var result = new IntegrationResultV2(
-                IntegrationContractSchema.V2,
-                IntegrationMessageKind.Result,
-                Guid.NewGuid(),
-                handoff.TransactionId,
-                handoff.MessageId,
-                acknowledgement.MessageId,
-                NotBefore(acknowledgement.CreatedAtUtc),
-                consumerBuild,
-                IntegrationResultStatus.Completed,
-                outcome,
-                runRecord.RunId,
-                runRecordReference,
-                IntegrationRunCorrelation.FromContext(handoff.Context),
-                CreateMetrics(runRecord),
-                [],
-                null);
-            ThrowIfInvalid(IntegrationContractValidator.ValidateV2Sequence(
-                handoff,
-                acknowledgement,
-                result));
-            WriteNewMessage(
-                transactionDirectory,
-                IntegrationTransactionLayout.ResultFileName,
-                IntegrationContractJson.SerializeCanonical(result));
-            return result;
-        }
-        catch
-        {
-            TryDeleteFile(targetPath);
-            throw;
-        }
+            handoff.Context,
+            additionalEvidence);
+        var result = new IntegrationResultV2(
+            IntegrationContractSchema.V2,
+            IntegrationMessageKind.Result,
+            Guid.NewGuid(),
+            handoff.TransactionId,
+            handoff.MessageId,
+            acknowledgement.MessageId,
+            NotBefore(acknowledgement.CreatedAtUtc),
+            consumerBuild,
+            IntegrationResultStatus.Completed,
+            publication.Outcome,
+            publication.RunId,
+            publication.Artifact,
+            IntegrationRunCorrelation.FromContext(handoff.Context),
+            publication.Metrics,
+            publication.Evidence,
+            null);
+        ThrowIfInvalid(IntegrationContractValidator.ValidateV2Sequence(
+            handoff,
+            acknowledgement,
+            result));
+        WriteNewMessage(
+            transactionDirectory,
+            IntegrationTransactionLayout.ResultFileName,
+            IntegrationContractJson.SerializeCanonical(result));
+        publication.Commit();
+        return result;
     }
 
     public static IntegrationResultV2 ReadResult(
@@ -275,69 +259,19 @@ public static class ThreeDIntegrationV2Exchange
             result));
         if (result.RunRecord is not null)
         {
+            EnsureNoReparsePoints(transactionDirectory, result.RunRecord.RelativePath);
             ThrowIfInvalid(IntegrationContractValidator.ValidateArtifactFile(
                 result.RunRecord,
                 transactionDirectory));
         }
         foreach (var evidence in result.Evidence)
         {
+            EnsureNoReparsePoints(transactionDirectory, evidence.RelativePath);
             ThrowIfInvalid(IntegrationContractValidator.ValidateArtifactFile(
                 evidence,
                 transactionDirectory));
         }
         return result;
-    }
-
-    private static IReadOnlyList<IntegrationMetric> CreateMetrics(
-        InspectionRunRecord runRecord)
-    {
-        var metrics = new List<IntegrationMetric>();
-        if (double.IsFinite(runRecord.ElapsedMilliseconds))
-        {
-            metrics.Add(new(
-                "elapsedMilliseconds",
-                runRecord.ElapsedMilliseconds,
-                "ms"));
-        }
-        var runMetrics = runRecord.Metrics ?? [];
-        for (var index = 0; index < runMetrics.Count; index++)
-        {
-            var metric = runMetrics[index];
-            if (double.IsFinite(metric.Value))
-            {
-                metrics.Add(new(
-                    $"metric.{index}.{metric.Name}",
-                    metric.Value,
-                    string.IsNullOrWhiteSpace(metric.Unit) ? "unitless" : metric.Unit));
-            }
-        }
-        return metrics;
-    }
-
-    private static void EnsureRunRecordCorrelation(
-        IntegrationInspectionContextV2 context,
-        InspectionRunRecord runRecord)
-    {
-        if (runRecord.Source is null
-            || !string.Equals(
-                runRecord.Source.Sha256,
-                context.InputSha256,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            throw new IntegrationContractException(
-                IntegrationErrorCode.CorrelationMismatch,
-                "Run Record source SHA-256 does not match the Handoff input.");
-        }
-        if (runRecord.Recipe is null
-            || !string.Equals(
-                runRecord.Recipe.Sha256,
-                context.RecipeSha256,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            throw new IntegrationContractException(
-                IntegrationErrorCode.CorrelationMismatch,
-                "Run Record recipe SHA-256 does not match the Handoff recipe.");
-        }
     }
 
     private static IntegrationArtifactReference RequireContextArtifact(
@@ -348,21 +282,6 @@ public static class ThreeDIntegrationV2Exchange
         ?? throw new IntegrationContractException(
             IntegrationErrorCode.InvalidArtifact,
             $"The Handoff does not contain the required '{role}' artifact.");
-
-    private static IntegrationArtifactReference CreateArtifactReference(
-        string role,
-        string artifactId,
-        string fullPath,
-        string relativePath)
-    {
-        using var stream = File.OpenRead(fullPath);
-        return new(
-            role,
-            artifactId,
-            relativePath,
-            stream.Length,
-            Convert.ToHexString(SHA256.HashData(stream)));
-    }
 
     private static void ValidateThreeDConsumer(IntegrationHandoffV2 handoff)
     {
@@ -439,6 +358,37 @@ public static class ThreeDIntegrationV2Exchange
     private static byte[] ReadMessage(string transactionDirectory, string fileName) =>
         File.ReadAllBytes(Path.Combine(transactionDirectory, fileName));
 
+    private static void EnsureNoReparsePoints(
+        string transactionDirectory,
+        string relativePath)
+    {
+        var current = Path.GetFullPath(transactionDirectory);
+        var root = new DirectoryInfo(current);
+        if (root.Exists && root.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.UnsafeArtifactPath,
+                "The transaction directory cannot be a symbolic link or reparse point.");
+        }
+
+        var segments = relativePath
+            .Replace('\\', '/')
+            .Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (var index = 0; index < segments.Length; index++)
+        {
+            current = Path.Combine(current, segments[index]);
+            FileSystemInfo entry = index == segments.Length - 1
+                ? new FileInfo(current)
+                : new DirectoryInfo(current);
+            if (entry.Exists && entry.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new IntegrationContractException(
+                    IntegrationErrorCode.UnsafeArtifactPath,
+                    "Artifact paths cannot traverse symbolic links or reparse points.");
+            }
+        }
+    }
+
     private static void WriteNewMessage(
         string transactionDirectory,
         string fileName,
@@ -473,7 +423,7 @@ public static class ThreeDIntegrationV2Exchange
         }
         catch
         {
-            // Preserve the original contract, Run Record, or I/O failure.
+            // Preserve the original transaction or I/O failure.
         }
     }
 

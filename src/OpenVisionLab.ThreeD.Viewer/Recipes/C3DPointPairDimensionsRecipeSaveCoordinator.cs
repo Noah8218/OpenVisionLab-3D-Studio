@@ -2,6 +2,7 @@ using System.IO;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
@@ -51,7 +52,7 @@ public static class C3DPointPairDimensionsRecipeSaveCoordinator
                 C3DPointPairDimensionsRecipe.SupportedRecipeType,
                 "1.0",
                 new HeightDeviationRecipeSource(
-                    MainWindowViewModel.C3DEntityId,
+                    ViewerEntityIds.C3DEntityId,
                     viewModel.RecipeSourceName,
                     sourceRecipePath,
                     viewModel.RecipeSourceUnit),

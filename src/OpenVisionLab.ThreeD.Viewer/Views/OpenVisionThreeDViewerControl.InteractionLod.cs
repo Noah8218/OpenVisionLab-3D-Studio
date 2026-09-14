@@ -10,16 +10,15 @@ public sealed partial class OpenVisionThreeDViewerControl
     private static readonly TimeSpan InteractionLodStepDelay = TimeSpan.FromMilliseconds(90);
 
     private DispatcherTimer? interactionLodRestoreTimer;
-    private C3DWireframeLodLevel interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
-    private int interactionLodActivationCount;
-    private int interactionLodMediumTransitionCount;
-    private int interactionLodRestoreCount;
+    private C3DWireframeLodLevel interactionWireframeLodLevel => interactionLodState.Level;
+    private int interactionLodActivationCount => interactionLodState.ActivationCount;
+    private int interactionLodMediumTransitionCount => interactionLodState.MediumTransitionCount;
+    private int interactionLodRestoreCount => interactionLodState.RestoreCount;
     private int interactionC3DDisplayListBuildCount;
-    private int c3dSourceApplyCount;
-    private bool smokeInteractionLodRequested;
+    private int c3dSourceApplyCount => interactionLodState.SourceApplyCount;
 
     private bool interactionWireframeLodActive =>
-        interactionWireframeLodLevel != C3DWireframeLodLevel.Precise;
+        interactionLodState.IsActive;
 
     private bool CanUseInteractionWireframeLod =>
         c3dSample is not null
@@ -31,20 +30,12 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void BeginInteractionWireframeLod()
     {
-        if (!CanUseInteractionWireframeLod)
+        if (!interactionLodState.TryBegin(CanUseInteractionWireframeLod))
         {
             return;
         }
 
         interactionLodRestoreTimer?.Stop();
-        if (interactionWireframeLodActive)
-        {
-            interactionWireframeLodLevel = C3DWireframeLodLevel.Coarse;
-            return;
-        }
-
-        interactionWireframeLodLevel = C3DWireframeLodLevel.Coarse;
-        interactionLodActivationCount++;
     }
 
     private void ScheduleInteractionWireframeLodRestore()
@@ -88,10 +79,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        if (interactionWireframeLodLevel == C3DWireframeLodLevel.Coarse)
+        if (interactionLodState.AdvanceAfterInteraction())
         {
-            interactionWireframeLodLevel = C3DWireframeLodLevel.Medium;
-            interactionLodMediumTransitionCount++;
             timer.Start();
             return;
         }
@@ -102,30 +91,20 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void RestoreInteractionWireframeLod()
     {
         interactionLodRestoreTimer?.Stop();
-        if (!interactionWireframeLodActive)
-        {
-            return;
-        }
-
-        interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
-        interactionLodRestoreCount++;
+        interactionLodState.Restore();
     }
 
     private void ResetInteractionWireframeLodForSourceChange(bool sourceApplied)
     {
         interactionLodRestoreTimer?.Stop();
-        interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
+        interactionLodState.ResetForSourceChange(sourceApplied);
         c3dInteractionDisplayListKey = null;
-        if (sourceApplied)
-        {
-            c3dSourceApplyCount++;
-        }
     }
 
     private void StopInteractionWireframeLod()
     {
         interactionLodRestoreTimer?.Stop();
-        interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
+        interactionLodState.Stop();
     }
 
     private void DisposeInteractionWireframeLod()
@@ -137,6 +116,6 @@ public sealed partial class OpenVisionThreeDViewerControl
             interactionLodRestoreTimer = null;
         }
 
-        interactionWireframeLodLevel = C3DWireframeLodLevel.Precise;
+        interactionLodState.Stop();
     }
 }

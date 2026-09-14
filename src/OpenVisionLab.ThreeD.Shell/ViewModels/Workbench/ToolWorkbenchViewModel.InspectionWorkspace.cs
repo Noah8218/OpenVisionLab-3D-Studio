@@ -126,7 +126,6 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private void OnInspectionWorkspaceSelectionChanged(
-        object? sender,
         InspectionWorkspaceSelectionChangedEventArgs args)
     {
         SynchronizeViewerWorkspaceFocus(args.Current.FocusedViewerSlotId);
@@ -198,59 +197,59 @@ public sealed partial class ToolWorkbenchViewModel
             && CurrentRemoveOutlierMask is { } outlierMask)
         {
             return new SelectedToolOutputEvidence(
-                "Removed outliers",
+                Localization.SelectedToolRemovedOutliersLabel,
                 outlierMask.OutlierCellCount.ToString(
                     CultureInfo.InvariantCulture),
                 "count",
                 IsRemoveOutlierPreviewRunning
-                    ? "Preview running"
+                    ? Localization.SelectedToolOutputPreviewRunningStatus
                     : IsRemoveOutlierPreviewPublished
-                        ? "Published"
-                        : "Preview");
+                        ? Localization.RecipeHealthPublished
+                        : Localization.Preview);
         }
 
         if (IsSelectedStepLevelSurface
             && CurrentLevelSurfaceTransform is { } transform)
         {
             return new SelectedToolOutputEvidence(
-                "Reference RMS",
+                Localization.SelectedToolReferenceRmsLabel,
                 transform.ReferenceResidualRms.ToString(
                     "G6",
                     CultureInfo.InvariantCulture),
                 transform.SourceUnit,
                 IsLevelSurfacePreviewPublished
-                    ? "Published"
+                    ? Localization.RecipeHealthPublished
                     : IsLevelSurfacePreviewRunning
-                        ? "Preview running"
-                : "Preview");
+                        ? Localization.SelectedToolOutputPreviewRunningStatus
+                        : Localization.Preview);
         }
 
         if (IsSelectedStepDomainMask
             && CurrentDomainMaskPreviewOutput is { } domainMaskOutput)
         {
             return new SelectedToolOutputEvidence(
-                "Output missing cells",
+                Localization.SelectedToolOutputMissingCellsLabel,
                 domainMaskOutput.MissingCount.ToString(CultureInfo.InvariantCulture),
                 "count",
                 IsDomainMaskPreviewPublished
-                    ? "Published"
+                    ? Localization.RecipeHealthPublished
                     : IsDomainMaskPreviewRunning
-                        ? "Preview running"
-                        : "Preview");
+                        ? Localization.SelectedToolOutputPreviewRunningStatus
+                        : Localization.Preview);
         }
 
         if (IsSelectedStepRoiCrop
             && CurrentRoiCropPreviewOutput is { } crop)
         {
             return new SelectedToolOutputEvidence(
-                "Output cells",
+                Localization.SelectedToolOutputCellsLabel,
                 (crop.Width * crop.Height).ToString(CultureInfo.InvariantCulture),
                 "count",
                 IsRoiCropPreviewPublished
-                    ? "Published"
+                    ? Localization.RecipeHealthPublished
                     : IsRoiCropPreviewRunning
-                        ? "Preview running"
-                        : "Preview");
+                        ? Localization.SelectedToolOutputPreviewRunningStatus
+                        : Localization.Preview);
         }
 
         if (SelectedPipelineStep is not { } step
@@ -268,15 +267,15 @@ public sealed partial class ToolWorkbenchViewModel
             && !string.Equals(metric.Unit, "count", StringComparison.OrdinalIgnoreCase));
         return primaryMetric is null
             ? new SelectedToolOutputEvidence(
-                "Value",
+                Localization.SelectedToolOutputValueLabel,
                 "\u2014",
                 measurementOutput.Unit,
-                measurementOutput.Result.Status.ToString())
+                Localization.ResultStatusLabel(measurementOutput.Result.Status))
             : new SelectedToolOutputEvidence(
                 primaryMetric.Name,
                 primaryMetric.Value.ToString("G6", CultureInfo.InvariantCulture),
                 primaryMetric.Unit,
-                measurementOutput.Result.Status.ToString());
+                Localization.ResultStatusLabel(measurementOutput.Result.Status));
     }
 
     private ToolWorkbenchDisplayedOutputItem? ResolveDisplayedOutput(SelectedToolOutputItem? output) =>

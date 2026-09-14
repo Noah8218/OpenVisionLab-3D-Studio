@@ -1,6 +1,9 @@
 using System.IO;
+using System.Numerics;
+using System.Runtime.InteropServices;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Loading;
+using OpenVisionLab.ThreeD.Viewer.Rendering;
 
 namespace OpenVisionLab.ThreeD.Verification.Viewer;
 
@@ -172,6 +175,102 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 && cache.Count == 1,
                 $"hit={sameSourceHit};sameObject={ReferenceEquals(pointCloud, cachedPointCloud)};count={cache.Count}");
 
+            var asyncCachedPointCloud = cache
+                .TryGetAsync(Path.GetFullPath(samplePath), 64)
+                .GetAwaiter()
+                .GetResult();
+            Check(
+                "sample cache async identity lookup reuses the same source and budget",
+                ReferenceEquals(pointCloud, asyncCachedPointCloud),
+                $"sameObject={ReferenceEquals(pointCloud, asyncCachedPointCloud)};count={cache.Count}");
+
+            using var canceledIdentityLookup = new CancellationTokenSource();
+            canceledIdentityLookup.Cancel();
+            var identityLookupCanceled = false;
+            try
+            {
+                _ = cache
+                    .TryGetAsync(Path.GetFullPath(samplePath), 64, canceledIdentityLookup.Token)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                identityLookupCanceled = true;
+            }
+
+            Check(
+                "sample cache async identity lookup observes cancellation before hashing",
+                identityLookupCanceled && cache.Count == 1,
+                $"cancelled={identityLookupCanceled};count={cache.Count}");
+
+            var replacementPath = Path.Combine(Path.GetTempPath(), $"openvisionlab-laz-replacement-{Guid.NewGuid():N}.las");
+            try
+            {
+                File.Copy(samplePath, replacementPath, overwrite: true);
+                var replacementCache = new LazPointCloudSampleCache();
+                replacementCache.Store(replacementPath, 64, pointCloud);
+                var originalWriteTime = File.GetLastWriteTimeUtc(replacementPath);
+                var replacementBytes = File.ReadAllBytes(replacementPath);
+                replacementBytes[^1] ^= 0x01;
+                File.WriteAllBytes(replacementPath, replacementBytes);
+                File.SetLastWriteTimeUtc(replacementPath, originalWriteTime);
+                var sameFingerprintReplacementHit = replacementCache.TryGet(replacementPath, 64, out _);
+                Check(
+                    "sample cache rejects same-path same-fingerprint content replacement",
+                    !sameFingerprintReplacementHit && replacementCache.Count == 0,
+                    $"hit={sameFingerprintReplacementHit};count={replacementCache.Count}");
+            }
+            finally
+            {
+                if (File.Exists(replacementPath))
+                {
+                    File.Delete(replacementPath);
+                }
+            }
+
+            var densePointCloud = LazPointCloud.Load(samplePath, 128);
+            var byteLimitedCache = new LazPointCloudSampleCache(
+                capacity: 8,
+                byteBudget: checked(densePointCloud.SampledPointView.Count * Marshal.SizeOf<LazPointCloudPoint>()));
+            byteLimitedCache.Store(samplePath, 64, pointCloud);
+            byteLimitedCache.Store(samplePath, 128, densePointCloud);
+            var byteLimitedSnapshot = byteLimitedCache.GetSnapshot();
+            var retainedDenseEntry = byteLimitedCache.TryGet(samplePath, 128, out var retainedDensePointCloud);
+            Check(
+                "sample cache enforces the configured managed payload byte budget",
+                byteLimitedSnapshot.EstimatedSampledPointBytes <= byteLimitedSnapshot.ByteBudget
+                && byteLimitedSnapshot.EntryCount == 1
+                && retainedDenseEntry
+                && ReferenceEquals(retainedDensePointCloud, densePointCloud),
+                $"entries={byteLimitedSnapshot.EntryCount};payload={byteLimitedSnapshot.EstimatedSampledPointBytes};budget={byteLimitedSnapshot.ByteBudget};denseHit={retainedDenseEntry}");
+
+            var precisionTransform = new LazSceneTransform(1_000_000.0, 2_000_000.0, 3_000_000.0);
+            var precisePoint = new LazPointCloudPoint(Vector3.Zero, 0, 0, 0, 0)
+            {
+                HasPreciseSourceCoordinate = true,
+                SourceCoordinate = new LazPointCloudSourceCoordinate(1_000_000.001, 2_000_000.001, 3_000_000.001, 1)
+            };
+            var mappedPrecisePoint = precisionTransform.Map(precisePoint);
+            Check(
+                "LAZ scene mapping subtracts origin before float conversion",
+                Math.Abs(mappedPrecisePoint.X - 0.001f) < 1e-6f
+                && Math.Abs(mappedPrecisePoint.Y - 0.001f) < 1e-6f
+                && Math.Abs(mappedPrecisePoint.Z - 0.001f) < 1e-6f,
+                $"mapped={mappedPrecisePoint}");
+
+            var cacheSnapshot = cache.GetSnapshot();
+            Check(
+                "sample cache reports bounded managed-array residency",
+                cacheSnapshot.EntryCount == 1
+                && cacheSnapshot.Capacity == 3
+                && cacheSnapshot.SampledPointCount == pointCloud.SampledPointView.Count
+                && cacheSnapshot.EstimatedSampledPointBytes > 0
+                && cacheSnapshot.ByteBudget >= cacheSnapshot.EstimatedSampledPointBytes
+                && !string.IsNullOrWhiteSpace(cacheSnapshot.SourceContentSha256)
+                && string.Equals(cacheSnapshot.SourcePath, Path.GetFullPath(samplePath), StringComparison.OrdinalIgnoreCase),
+                $"entries={cacheSnapshot.EntryCount};capacity={cacheSnapshot.Capacity};byteBudget={cacheSnapshot.ByteBudget};sampledPoints={cacheSnapshot.SampledPointCount};estimatedBytes={cacheSnapshot.EstimatedSampledPointBytes};sourceBytes={cacheSnapshot.SourceByteLength};sourceSha256={cacheSnapshot.SourceContentSha256};source={cacheSnapshot.SourcePath}");
+
             var boundedCache = new LazPointCloudSampleCache();
             boundedCache.Store(samplePath, 64, pointCloud);
             boundedCache.Store(samplePath, 128, pointCloud);
@@ -187,6 +286,13 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 && bounded128Hit
                 && bounded256Hit,
                 $"capacity={boundedCache.Capacity};count={boundedCache.Count};budget64={bounded64Hit};budget128={bounded128Hit};budget256={bounded256Hit}");
+
+            var boundedSnapshot = boundedCache.GetSnapshot();
+            Check(
+                "sample cache snapshot counts shared point-cloud arrays once",
+                boundedSnapshot.EntryCount == 3
+                && boundedSnapshot.SampledPointCount == pointCloud.SampledPointView.Count,
+                $"entries={boundedSnapshot.EntryCount};sampledPoints={boundedSnapshot.SampledPointCount};sourceArrayLength={pointCloud.SampledPointView.Count}");
 
             _ = boundedCache.TryGet(samplePath, 64, out _);
             boundedCache.Store(samplePath, 512, pointCloud);
@@ -234,15 +340,101 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 !unboundedTestCache.HasEntries && unboundedTestCache.SourcePath is null && unboundedTestCache.Count == 0,
                 $"hasEntries={unboundedTestCache.HasEntries};source={unboundedTestCache.SourcePath};count={unboundedTestCache.Count}");
 
+            using var session = new ViewerLazPointCloudSession();
+            session.State.SetPointCloud(pointCloud);
+            session.Cache.Store(samplePath, 64, pointCloud);
+            Check(
+                "LAZ session centralizes current state and cache ownership",
+                session.HasManagedData
+                && ReferenceEquals(session.State.PointCloud, pointCloud)
+                && session.Cache.Count == 1,
+                $"hasManagedData={session.HasManagedData};sameState={ReferenceEquals(session.State.PointCloud, pointCloud)};cacheCount={session.Cache.Count}");
+
+            session.Clear();
+            Check(
+                "LAZ session Clear drops current and cached managed references",
+                !session.HasManagedData
+                && session.State.PointCloud is null
+                && session.State.Metadata is null
+                && session.Cache.Count == 0,
+                $"hasManagedData={session.HasManagedData};statePointCloud={session.State.PointCloud is not null};stateMetadata={session.State.Metadata is not null};cacheCount={session.Cache.Count}");
+
+            session.Dispose();
+            var rejectedAfterSessionDispose = false;
+            try
+            {
+                _ = session.LoadCoordinator
+                    .LoadAsync(ViewerLazPointCloudLoadPreparation.Prepare(samplePath, 64))
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            catch (ObjectDisposedException)
+            {
+                rejectedAfterSessionDispose = true;
+            }
+
+            Check(
+                "LAZ session Dispose retires its load coordinator",
+                rejectedAfterSessionDispose && !session.HasManagedData,
+                $"rejected={rejectedAfterSessionDispose};hasManagedData={session.HasManagedData}");
+
+            using var repeatedDensitySession = new ViewerLazPointCloudSession();
+            var repeatedDensityBudgets = new[] { 64, 128, 256, 512, 256, 128, 64 };
+            // GC values are observations only; the bounded acceptance uses the cache snapshot payload.
+            var managedBytesBeforeDensity = GC.GetTotalMemory(forceFullCollection: true);
+            var managedBytesPeak = managedBytesBeforeDensity;
+            var payloadBytesPeak = 0L;
+            var sampledPointPeak = 0L;
+            var densityObservations = new List<string>(repeatedDensityBudgets.Length);
+            foreach (var budget in repeatedDensityBudgets)
+            {
+                var densityResult = repeatedDensitySession.LoadCoordinator.Load(
+                    ViewerLazPointCloudLoadPreparation.Prepare(samplePath, budget));
+                if (densityResult.PointCloud is not { } densityPointCloud)
+                {
+                    break;
+                }
+
+                repeatedDensitySession.State.SetPointCloud(densityPointCloud);
+                var densitySnapshot = repeatedDensitySession.Cache.GetSnapshot();
+                payloadBytesPeak = Math.Max(payloadBytesPeak, densitySnapshot.EstimatedSampledPointBytes);
+                sampledPointPeak = Math.Max(sampledPointPeak, densitySnapshot.SampledPointCount);
+                managedBytesPeak = Math.Max(managedBytesPeak, GC.GetTotalMemory(forceFullCollection: false));
+                densityObservations.Add(
+                    $"budget={budget};entries={densitySnapshot.EntryCount};sampledPoints={densitySnapshot.SampledPointCount};payloadBytes={densitySnapshot.EstimatedSampledPointBytes}");
+            }
+
+            var densityPeakSnapshot = repeatedDensitySession.Cache.GetSnapshot();
+            var boundedPointUpperBound = repeatedDensityBudgets
+                .OrderByDescending(static budget => budget)
+                .Distinct()
+                .Take(repeatedDensitySession.Cache.Capacity)
+                .Select(static budget => (long)budget)
+                .Sum();
+            repeatedDensitySession.Clear();
+            var managedBytesAfterDensityClear = GC.GetTotalMemory(forceFullCollection: true);
+            var densityClearedSnapshot = repeatedDensitySession.Cache.GetSnapshot();
+            Check(
+                "repeated density load path keeps managed sampled payload bounded",
+                densityObservations.Count == repeatedDensityBudgets.Length
+                && densityPeakSnapshot.EntryCount == repeatedDensitySession.Cache.Capacity
+                && densityPeakSnapshot.SampledPointCount <= boundedPointUpperBound
+                && payloadBytesPeak > 0
+                && sampledPointPeak > 0
+                && !repeatedDensitySession.HasManagedData
+                && densityClearedSnapshot.EntryCount == 0,
+                $"loads={densityObservations.Count}/{repeatedDensityBudgets.Length};peakEntries={densityPeakSnapshot.EntryCount};capacity={densityPeakSnapshot.Capacity};peakSampledPoints={sampledPointPeak};peakPayloadBytes={payloadBytesPeak};upperBound={boundedPointUpperBound};managedBefore={managedBytesBeforeDensity};managedPeak={managedBytesPeak};managedAfterClear={managedBytesAfterDensityClear};observations={string.Join(',', densityObservations)}");
+
             var loadCache = new LazPointCloudSampleCache();
             using var loadCoordinator = new LazPointCloudLoadCoordinator(loadCache);
-            var syncFirst = loadCoordinator.Load(samplePath, 72);
+            var syncRequest = ViewerLazPointCloudLoadPreparation.Prepare(samplePath, 72);
+            var syncFirst = loadCoordinator.Load(syncRequest);
             Check(
                 "sync load coordinator decodes a fixture without WPF",
                 syncFirst.PointCloud is not null && !syncFirst.Reused && !syncFirst.WasCanceled,
                 $"loaded={syncFirst.PointCloud is not null};reused={syncFirst.Reused};cancelled={syncFirst.WasCanceled}");
 
-            var syncSecond = loadCoordinator.Load(samplePath, 72);
+            var syncSecond = loadCoordinator.Load(syncRequest);
             Check(
                 "sync load coordinator reuses its injected cache",
                 syncSecond.PointCloud is not null
@@ -251,8 +443,9 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 && ReferenceEquals(syncFirst.PointCloud, syncSecond.PointCloud),
                 $"loaded={syncSecond.PointCloud is not null};reused={syncSecond.Reused};sameObject={ReferenceEquals(syncFirst.PointCloud, syncSecond.PointCloud)}");
 
+            var asyncRequest = ViewerLazPointCloudLoadPreparation.Prepare(samplePath, 96);
             var asyncFirst = loadCoordinator
-                .LoadAsync(samplePath, 96)
+                .LoadAsync(asyncRequest)
                 .GetAwaiter()
                 .GetResult();
             Check(
@@ -261,7 +454,7 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 $"loaded={asyncFirst?.PointCloud is not null};reused={asyncFirst?.Reused};cancelled={asyncFirst?.WasCanceled}");
 
             var asyncSecond = loadCoordinator
-                .LoadAsync(samplePath, 96)
+                .LoadAsync(asyncRequest)
                 .GetAwaiter()
                 .GetResult();
             Check(
@@ -272,8 +465,9 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
 
             using var cancelledLoad = new CancellationTokenSource();
             cancelledLoad.Cancel();
+            var cancelledRequest = ViewerLazPointCloudLoadPreparation.Prepare(samplePath, 97);
             var cancelled = loadCoordinator
-                .LoadAsync(samplePath, 97, cancelledLoad.Token)
+                .LoadAsync(cancelledRequest, cancelledLoad.Token)
                 .GetAwaiter()
                 .GetResult();
             Check(
@@ -285,7 +479,10 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
             var rejectedAfterLoadCoordinatorDispose = false;
             try
             {
-                _ = loadCoordinator.LoadAsync(samplePath, 96).GetAwaiter().GetResult();
+                _ = loadCoordinator
+                    .LoadAsync(asyncRequest)
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (ObjectDisposedException)
             {

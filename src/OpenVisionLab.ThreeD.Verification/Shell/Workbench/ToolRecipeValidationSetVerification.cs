@@ -11,13 +11,16 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 
 internal static class ToolRecipeValidationSetVerification
 {
+    private static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+
     public static bool Verify(string reportPath, out string summary)
     {
         var lines = new List<string> { "Validation Set ordered graph verification" };
         var passed = 0;
         var total = 0;
         var artifactRoot = Path.Combine(
-            Path.GetDirectoryName(Path.GetFullPath(reportPath))!,
+            GetReportDirectory(reportPath),
             "validation-set-fixture");
 
         void Check(string name, bool condition, string detail)
@@ -1624,6 +1627,52 @@ internal static class ToolRecipeValidationSetVerification
                 && !gatedOwner.IsRunning,
                 $"progressStarted={progressStarted};duplicateRejected={duplicateRejected};idle={!gatedOwner.IsRunning}");
 
+            var commandFailureCount = 0;
+            var commandOwner = new ToolWorkbenchValidationSetExecutionOwner(() => { });
+            var commandCompletion = new TaskCompletionSource<object?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var commandStarted = commandOwner.TryStartCommand(
+                () => commandCompletion.Task,
+                _ => commandFailureCount++);
+            var commandDuplicateAccepted = commandOwner.TryStartCommand(
+                () => Task.CompletedTask,
+                _ => commandFailureCount++);
+            Check(
+                "validation command owner admits one command and rejects a duplicate",
+                commandStarted
+                && !commandDuplicateAccepted
+                && commandOwner.IsCommandRunning,
+                $"started={commandStarted};duplicateAccepted={commandDuplicateAccepted};running={commandOwner.IsCommandRunning}");
+
+            commandOwner.Dispose();
+            commandCompletion.TrySetException(new InvalidOperationException("late validation command failure"));
+            Task.Delay(25).GetAwaiter().GetResult();
+            Check(
+                "validation command owner suppresses late failure after disposal",
+                commandOwner.IsDisposed
+                && !commandOwner.IsCommandRunning
+                && commandFailureCount == 0,
+                $"disposed={commandOwner.IsDisposed};running={commandOwner.IsCommandRunning};failureCount={commandFailureCount}");
+
+            var completedCommandOwner = new ToolWorkbenchValidationSetExecutionOwner(() => { });
+            var completedCommandStarted = completedCommandOwner.TryStartCommand(
+                () => Task.CompletedTask,
+                _ => commandFailureCount++);
+            SpinWait.SpinUntil(
+                () => !completedCommandOwner.IsCommandRunning,
+                TimeSpan.FromSeconds(1));
+            var restartedCommand = completedCommandOwner.TryStartCommand(
+                () => Task.CompletedTask,
+                _ => commandFailureCount++);
+            Check(
+                "validation command owner releases and reuses a completed slot",
+                completedCommandStarted
+                && !completedCommandOwner.IsCommandRunning
+                && restartedCommand
+                && commandFailureCount == 0,
+                $"started={completedCommandStarted};running={completedCommandOwner.IsCommandRunning};restarted={restartedCommand};failureCount={commandFailureCount}");
+            completedCommandOwner.Dispose();
+
             var workbench = new ToolWorkbenchViewModel(Path.Combine(artifactRoot, "recent-validation-set.json"));
             Check(
                 "workbench reopens the full graph recipe",
@@ -1873,7 +1922,7 @@ internal static class ToolRecipeValidationSetVerification
             lines.Add($"FAIL | unhandled verification exception | {exception}");
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         File.WriteAllLines(reportPath, lines);
         summary = $"Validation Set verification: {passed}/{total} passed | {Path.GetFullPath(reportPath)}";
         return total > 0 && passed == total;

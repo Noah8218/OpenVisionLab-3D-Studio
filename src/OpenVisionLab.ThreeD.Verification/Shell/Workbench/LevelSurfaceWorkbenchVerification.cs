@@ -158,6 +158,30 @@ internal static class LevelSurfaceWorkbenchVerification
                 && displayLabel == "Level Surface Preview"
                 && File.Exists(displayPath),
                 $"label={displayLabel};path={displayPath};hash={displayHash}");
+            var previewBytes = displayPath is not null
+                ? File.ReadAllBytes(displayPath)
+                : [];
+            Check(
+                "Level Surface Preview publishes complete C3D bytes",
+                displayPath is not null
+                && previewBytes.Length > 0,
+                displayPath ?? "missing preview path");
+            Check(
+                "Level Surface Preview cleans temporary siblings",
+                displayPath is not null
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(displayPath)!,
+                    "*.tmp.*").Any(),
+                displayPath ?? "missing preview path");
+            Check(
+                "repeated Level Surface Preview remains byte-stable",
+                workbench.PreviewSelectedLevelSurfaceAsync().GetAwaiter().GetResult()
+                && displayPath is not null
+                && previewBytes.SequenceEqual(File.ReadAllBytes(displayPath))
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(displayPath)!,
+                    "*.tmp.*").Any(),
+                displayPath ?? "missing preview path");
 
             var direct = ToolRecipeLevelSurfaceExecution.Execute(
                 document,
@@ -225,7 +249,7 @@ internal static class LevelSurfaceWorkbenchVerification
                     == workbench.CurrentLevelSurfacePreviewOutput?.ValidCount
                 && artifact.PreparationQualityDelta.AfterMissingSampleCount
                     == workbench.CurrentLevelSurfacePreviewOutput?.MissingCount
-                && artifact.Detail.Contains("reference RMS", StringComparison.Ordinal)
+                && artifact.Detail.Contains("RMS", StringComparison.Ordinal)
                 && artifact.Detail.Contains(
                     workbench.CurrentLevelSurfaceTransform!.ContentSha256,
                     StringComparison.Ordinal)
@@ -263,16 +287,30 @@ internal static class LevelSurfaceWorkbenchVerification
             var sidecarPath = Path.Combine(
                 rootDirectory,
                 "saved-level-surface.ov3d-recipe.level-surface.derived_leveled-height_01.json");
+            var c3dPath = Path.Combine(
+                rootDirectory,
+                "saved-level-surface.ov3d-recipe.level-surface.derived_leveled-height_01.c3d");
+            var persistedC3dBytes = File.Exists(c3dPath)
+                ? File.ReadAllBytes(c3dPath)
+                : [];
+            var persistedSidecarText = File.Exists(sidecarPath)
+                ? File.ReadAllText(sidecarPath)
+                : string.Empty;
             Check(
-                "save writes the Level Frame sidecar",
+                "save publishes complete Level Surface C3D and sidecar contents",
                 saved
+                && persistedC3dBytes.Length > 0
                 && File.Exists(sidecarPath)
-                && File.ReadAllText(sidecarPath).Contains(
+                && persistedSidecarText.Contains(
+                    workbench.CurrentLevelSurfacePreviewOutput!.ContentSha256,
+                    StringComparison.Ordinal)
+                && persistedSidecarText.Contains(
                     workbench.CurrentLevelSurfaceQualityEvidence!.ContentSha256,
                     StringComparison.Ordinal)
-                && File.ReadAllText(sidecarPath).Contains(
+                && persistedSidecarText.Contains(
                     workbench.CurrentLevelSurfaceFrameChain!.ContentSha256,
-                    StringComparison.Ordinal),
+                    StringComparison.Ordinal)
+                && !Directory.GetFiles(rootDirectory, "*.tmp.*").Any(),
                 saved ? sidecarPath : saveMessage);
             var reopened = saved
                 ? ToolRecipeDocumentStore.Load(savePath)

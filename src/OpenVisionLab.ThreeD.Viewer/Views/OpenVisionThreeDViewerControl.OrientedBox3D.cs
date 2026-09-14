@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Rendering;
 using SharpGL;
 
 namespace OpenVisionLab.ThreeD.Viewer;
@@ -359,7 +360,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         return OrientedBoxEdgeIndices.Min(edge =>
-            DistanceToLineSegment(screenPoint, corners[edge.Start], corners[edge.End]));
+            ViewerScreenGeometry.DistanceToLineSegment(screenPoint, corners[edge.Start], corners[edge.End]));
     }
 
     private void DrawTeachingOrientedBox(

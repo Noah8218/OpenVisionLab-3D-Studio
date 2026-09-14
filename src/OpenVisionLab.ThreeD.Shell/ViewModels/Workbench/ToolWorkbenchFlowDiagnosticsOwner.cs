@@ -608,7 +608,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
                 return new FlowPortAssessment(
                     "Ready",
                     localization.FlowPortReady,
-                    $"{inputId} | Published",
+                    $"{inputId} | {localization.SelectedToolOutputStateLabel("Published")}",
                     false,
                     0);
             }
@@ -668,7 +668,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
             return new FlowPortAssessment(
                 "Ready",
                 localization.FlowPortReady,
-                $"{inputId} | {artifact.State}",
+                $"{inputId} | {localization.SelectedToolOutputStateLabel(artifact.State)}",
                 false,
                 0);
         }

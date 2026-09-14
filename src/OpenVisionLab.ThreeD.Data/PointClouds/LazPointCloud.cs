@@ -6,6 +6,9 @@ namespace OpenVisionLab.ThreeD.Data;
 
 public sealed class LazPointCloud
 {
+    private readonly LazPointCloudPoint[] sampledPoints;
+    private readonly IReadOnlyList<LazPointCloudPoint> sampledPointView;
+
     private LazPointCloud(
         string sourcePath,
         LazPointCloudMetadata metadata,
@@ -31,7 +34,8 @@ public sealed class LazPointCloud
         IsCompressed = isCompressed;
         DecodedPointCount = decodedPointCount;
         SampleStride = sampleStride;
-        SampledPoints = sampledPoints;
+        this.sampledPoints = sampledPoints;
+        sampledPointView = Array.AsReadOnly(sampledPoints);
         HasIntensity = hasIntensity;
         HasRgb = hasRgb;
         BoundsMatch = boundsMatch;
@@ -56,7 +60,18 @@ public sealed class LazPointCloud
 
     public int SampleStride { get; }
 
-    public LazPointCloudPoint[] SampledPoints { get; }
+    /// <summary>
+    /// Legacy mutable-array compatibility accessor. New code should use
+    /// <see cref="SampledPointView"/> so ownership remains with this snapshot.
+    /// </summary>
+    [Obsolete("Use SampledPointView for a read-only point view.")]
+    public LazPointCloudPoint[] SampledPoints => sampledPoints;
+
+    /// <summary>
+    /// Read-only view over the owned sampled points. The view does not copy the
+    /// payload and remains valid for the lifetime of this immutable snapshot.
+    /// </summary>
+    public IReadOnlyList<LazPointCloudPoint> SampledPointView => sampledPointView;
 
     public bool HasIntensity { get; }
 
@@ -116,9 +131,14 @@ public sealed class LazPointCloud
                 ? checked((ulong)apiPointCount)
                 : metadata.PointCount;
             var point = reader.get_point_pointer();
-            var sampleStride = checked((int)Math.Max(1, decodedPointCount / (ulong)maxSampledPoints));
+            var sampleCount = LazPointCloudSampling.GetSampleCount(decodedPointCount, maxSampledPoints);
+            var sampleStride = LazPointCloudSampling.GetReportedStride(decodedPointCount, sampleCount);
             var lastReportedProgress = 1;
-            var sampledPoints = new List<LazPointCloudPoint>(Math.Min(maxSampledPoints, checked((int)Math.Min(decodedPointCount, int.MaxValue))));
+            var sampledPoints = new List<LazPointCloudPoint>(checked((int)Math.Min(sampleCount, int.MaxValue)));
+            var sampleOrdinal = 0UL;
+            var nextSampleIndex = sampleCount == 0
+                ? ulong.MaxValue
+                : LazPointCloudSampling.GetSampleIndex(sampleOrdinal, sampleCount, decodedPointCount);
             var minX = double.PositiveInfinity;
             var minY = double.PositiveInfinity;
             var minZ = double.PositiveInfinity;
@@ -175,7 +195,7 @@ public sealed class LazPointCloud
                     blueSum += blue;
                 }
 
-                if (index % (ulong)sampleStride == 0 && sampledPoints.Count < maxSampledPoints)
+                if (index == nextSampleIndex)
                 {
                     sampledPoints.Add(
                         new LazPointCloudPoint(
@@ -183,7 +203,15 @@ public sealed class LazPointCloud
                             point.intensity,
                             red,
                             green,
-                            blue));
+                            blue)
+                        {
+                            HasPreciseSourceCoordinate = true,
+                            SourceCoordinate = new LazPointCloudSourceCoordinate(x, y, z, index)
+                        });
+                    sampleOrdinal++;
+                    nextSampleIndex = sampleOrdinal < sampleCount
+                        ? LazPointCloudSampling.GetSampleIndex(sampleOrdinal, sampleCount, decodedPointCount)
+                        : ulong.MaxValue;
                 }
             }
 
@@ -226,7 +254,7 @@ public sealed class LazPointCloud
     public string FormatContractLine() =>
         string.Create(
             CultureInfo.InvariantCulture,
-            $"LAZ|loaded=True|decoder=points-decoded|source={SourcePath}|compressed={IsCompressed}|pointFormat={Metadata.PointDataFormat}|decodedPoints={DecodedPointCount}|sampledPoints={SampledPoints.Length}|sampleStride={SampleStride}|intensity={HasIntensity}|rgb={HasRgb}|boundsX={MinX:F3}..{MaxX:F3}|boundsY={MinY:F3}..{MaxY:F3}|boundsZ={MinZ:F3}..{MaxZ:F3}|boundsMatch={BoundsMatch}|avgRgb={AverageRed:F3},{AverageGreen:F3},{AverageBlue:F3}");
+            $"LAZ|loaded=True|decoder=points-decoded|source={SourcePath}|compressed={IsCompressed}|pointFormat={Metadata.PointDataFormat}|decodedPoints={DecodedPointCount}|sampledPoints={SampledPointView.Count}|sampleStride={SampleStride}|intensity={HasIntensity}|rgb={HasRgb}|boundsX={MinX:F3}..{MaxX:F3}|boundsY={MinY:F3}..{MaxY:F3}|boundsZ={MinZ:F3}..{MaxZ:F3}|boundsMatch={BoundsMatch}|avgRgb={AverageRed:F3},{AverageGreen:F3},{AverageBlue:F3}");
 
     private static bool SupportsRgb(byte pointDataFormat) =>
         pointDataFormat is 2 or 3 or 5 or 7 or 8 or 10;
@@ -235,9 +263,29 @@ public sealed class LazPointCloud
         Math.Abs(actual - expected) <= 0.001;
 }
 
+/// <summary>
+/// One sampled source point. <see cref="Position"/> is retained as the
+/// historical float compatibility field; decoded points also carry the
+/// original double source coordinate and source index for precise Viewer
+/// mapping and picking.
+/// </summary>
 public readonly record struct LazPointCloudPoint(
     Vector3 Position,
     ushort Intensity,
     ushort Red,
     ushort Green,
-    ushort Blue);
+    ushort Blue)
+{
+    public bool HasPreciseSourceCoordinate { get; init; }
+
+    public LazPointCloudSourceCoordinate SourceCoordinate { get; init; }
+}
+
+public readonly record struct LazPointCloudSourceCoordinate(
+    double X,
+    double Y,
+    double Z,
+    ulong PointIndex)
+{
+    public bool IsFinite => double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Z);
+}

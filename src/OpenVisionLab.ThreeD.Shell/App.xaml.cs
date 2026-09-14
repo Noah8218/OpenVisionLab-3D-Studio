@@ -14,7 +14,7 @@ public partial class App : Application
     {
         if (ShellVerificationCommandRouter.IsVerificationRequest(e.Args))
         {
-            ShellVerificationCommandRouter.Run(e.Args);
+            ShellVerificationCommandRouter.Run(e.Args, Shutdown);
             return;
         }
 

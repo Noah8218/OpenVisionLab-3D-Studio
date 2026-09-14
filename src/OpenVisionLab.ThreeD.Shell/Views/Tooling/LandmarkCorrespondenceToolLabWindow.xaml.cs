@@ -8,8 +8,11 @@ public partial class LandmarkCorrespondenceToolLabWindow : ToolLabWindowBase
 {
     private readonly OpenVisionThreeDViewerControl sourceViewer = new() { SidePanelsVisible = false };
 
-    public LandmarkCorrespondenceToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "landmark-correspondence", "Landmark Correspondence Tool Lab requires a Landmark Correspondence step.")
+    public LandmarkCorrespondenceToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "landmark-correspondence", "Landmark Correspondence Tool Lab requires a Landmark Correspondence step.")
     {
         InitializeComponent();
         DataContext = Workbench;

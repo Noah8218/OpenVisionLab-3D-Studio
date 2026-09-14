@@ -121,6 +121,60 @@ internal static class ShellIntegrationExchangeSmoke
                     "IntegrationExchangeInput|focus=true|longValue=true|textToViewModel=true|viewModelToText=true");
         }
 
+        if (requestedState.Equals("shared-key-binding", StringComparison.OrdinalIgnoreCase))
+        {
+            var input = FindVisualDescendants<PasswordBox>(shellWindow)
+                .FirstOrDefault(passwordBox => passwordBox.Name == "IntegrationSharedKeyBox");
+            if (input is null)
+            {
+                return Failure("Integration exchange shared-key input was not available.");
+            }
+
+            if (!input.Focus() || !input.IsKeyboardFocusWithin)
+            {
+                return Failure("Integration exchange shared-key input did not receive keyboard focus.");
+            }
+
+            var initialStatus = integrationExchange.SharedKeyStatusText;
+            var encodedKey = Convert.ToBase64String(new byte[ThreeDIntegrationSharedKeySession.MinimumKeyLength]);
+            input.Password = encodedKey;
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.DataBind,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
+
+            var readyStatus = integrationExchange.SharedKeyStatusText;
+            var resetButton = FindVisualDescendants<Button>(shellWindow)
+                .FirstOrDefault(button =>
+                    AutomationProperties.GetAutomationId(button) == "ResetIntegrationSetup");
+            if (resetButton is not { IsVisible: true, IsEnabled: true })
+            {
+                return Failure("Integration exchange reset button was not available.");
+            }
+
+            resetButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.DataBind,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
+
+            var restoredStatus = integrationExchange.SharedKeyStatusText;
+            return readyStatus != initialStatus
+                && restoredStatus == initialStatus
+                && input.Password == string.Empty
+                ? Success(
+                    evidenceLine:
+                        "IntegrationExchangeSharedKey|commandBinding=true|validEntry=true|clearEntry=true|reset=true|statusRoundTrip=true|focus=true")
+                : Failure(
+                    $"Integration exchange shared-key command binding did not round-trip status. initial={initialStatus}; ready={readyStatus}; restored={restoredStatus}");
+        }
+
         if (requestedState.Equals("interaction-matrix", StringComparison.OrdinalIgnoreCase))
         {
             shellWindow.Activate();

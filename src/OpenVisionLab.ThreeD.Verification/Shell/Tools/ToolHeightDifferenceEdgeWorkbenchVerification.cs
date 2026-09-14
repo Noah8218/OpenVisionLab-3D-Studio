@@ -70,6 +70,31 @@ internal static class ToolHeightDifferenceEdgeWorkbenchVerification
             workbench.SelectPipelineStep("step.filter.01");
             var filterPreview = workbench.PreviewSelectedFilterAsync().GetAwaiter().GetResult();
             Check("explicit Filter Preview", filterPreview && workbench.HasCurrentFilterPreview, workbench.FilterExecutionSummary);
+            var filterPreviewPath = workbench.CurrentFilterPreviewPath;
+            var filterPreviewBytes = filterPreviewPath is not null
+                ? File.ReadAllBytes(filterPreviewPath)
+                : [];
+            Check(
+                "Filter Preview publishes complete C3D bytes",
+                filterPreviewPath is not null
+                && filterPreviewBytes.Length > 0,
+                filterPreviewPath ?? "missing preview path");
+            Check(
+                "Filter Preview cleans temporary siblings",
+                filterPreviewPath is not null
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(filterPreviewPath)!,
+                    "*.tmp.*").Any(),
+                filterPreviewPath ?? "missing preview path");
+            Check(
+                "repeated Filter Preview remains byte-stable",
+                workbench.PreviewSelectedFilterAsync().GetAwaiter().GetResult()
+                && filterPreviewPath is not null
+                && filterPreviewBytes.SequenceEqual(File.ReadAllBytes(filterPreviewPath))
+                && !Directory.GetFiles(
+                    Path.GetDirectoryName(filterPreviewPath)!,
+                    "*.tmp.*").Any(),
+                filterPreviewPath ?? "missing preview path");
             workbench.SelectPipelineStep("step.edge.01");
             Check("edge refuses unpublished upstream", !workbench.PreviewSelectedStepCommand.CanExecute(null), workbench.HeightDifferenceEdgeUpstreamSummary);
             workbench.SelectPipelineStep("step.filter.01");

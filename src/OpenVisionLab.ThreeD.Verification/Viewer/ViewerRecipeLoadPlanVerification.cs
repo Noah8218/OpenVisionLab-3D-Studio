@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
@@ -185,13 +186,13 @@ public static class ViewerRecipeLoadPlanVerification
             var planeFlatnessViewModel = new MainWindowViewModel();
             var planeFlatnessOverlayCalls = 0;
             var planeFlatnessRenderCalls = 0;
-            PlaneFlatnessEvaluation? planeFlatnessEvaluation = null;
+            ViewerPlaneFlatnessDisplayEvaluation? planeFlatnessEvaluation = null;
             var planeFlatnessPreviewed = false;
             if (planeFlatnessStep is not null)
             {
                 planeFlatnessViewModel.UseC3DSmokeScene();
                 planeFlatnessViewModel.SetPlaneFlatnessRecipeStep(planeFlatnessStep);
-                planeFlatnessPreviewed = C3DPlaneFlatnessRuleCoordinator.Preview(
+                planeFlatnessPreviewed = C3DPlaneFlatnessRuleCoordinator.PreviewDisplay(
                     planeFlatnessPlan.Grid,
                     planeFlatnessViewModel,
                     (_, evaluation) =>
@@ -1215,7 +1216,7 @@ public static class ViewerRecipeLoadPlanVerification
                 LazTwoPointMeasurementRecipe.SupportedRecipeType,
                 "1.0",
                 new HeightDeviationRecipeSource(
-                    MainWindowViewModel.LazEntityId,
+                    ViewerEntityIds.LazEntityId,
                     "LAS owner verification sample",
                     lazSourceRecipePath,
                     "source-units"),
@@ -1245,8 +1246,8 @@ public static class ViewerRecipeLoadPlanVerification
                 && lazPlan.SourcePath == lazSourcePath
                 && ReferenceEquals(lazPlan.Recipe, loadedLazRecipe)
                 && lazPointCloud.SourcePath == lazSourcePath
-                && lazPointCloud.SampledPoints.Length > 1,
-                $"recipe={lazPlan.FullRecipePath}|source={lazPlan.SourcePath}|sampled={lazPointCloud.SampledPoints.Length}");
+                && lazPointCloud.SampledPointView.Count > 1,
+                $"recipe={lazPlan.FullRecipePath}|source={lazPlan.SourcePath}|sampled={lazPointCloud.SampledPointView.Count}");
 
             var normalLazViewModel = new MainWindowViewModel();
             var normalLazClearCalls = 0;

@@ -104,12 +104,10 @@ public static class C3DRoiCropRule
         {
             throw new InvalidDataException("ROI / Crop selection must share the exact current source identity, frame, and grid.");
         }
-        if (rectangle.Row < 0
-            || rectangle.Column < 0
-            || rectangle.RowCount <= 0
-            || rectangle.ColumnCount <= 0
-            || rectangle.Row > input.Source.Height - rectangle.RowCount
-            || rectangle.Column > input.Source.Width - rectangle.ColumnCount)
+        if (ToolRecipeGridRectangleGeometry.Validate(
+                rectangle,
+                input.Source.Width,
+                input.Source.Height).Count > 0)
         {
             throw new InvalidDataException("ROI / Crop selection is outside the current source grid.");
         }

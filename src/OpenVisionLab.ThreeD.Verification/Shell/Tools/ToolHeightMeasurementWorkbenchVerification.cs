@@ -5,6 +5,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Tools;
 
@@ -47,7 +48,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             workbench.Selections.Add(selection);
 
             var thickness = Add(workbench, "Thickness", thicknessReferenceSelection.Id);
-            Check("Thickness is a typed generic adapter", workbench.IsSelectedStepPropertyGridSupported && workbench.SelectedStepAdapterStatus == "Typed adapter ready", workbench.SelectedStepAdapterStatus);
+            Check("Thickness is a typed generic adapter", workbench.IsSelectedStepPropertyGridSupported && workbench.SelectedStepAdapterStatus == workbench.Localization.StepAdapterReady, workbench.SelectedStepAdapterStatus);
             Check("Current one-ROI Thickness treats input 2 as Reference and enables Measurement capture",
                 workbench.IsSelectedStepDualRoiMeasurement
                 && workbench.PlaneFlatnessReferenceSelection?.Id == thicknessReferenceSelection.Id
@@ -787,6 +788,41 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && reopened.SelectedPipelineStep is null
                 && reopened.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == reopenActionLogCount,
                 $"steps={reopened.PipelineSteps.Count}; selections={reopened.Selections.Count}; actionLogs={reopenActionLogCount}");
+
+            var savedDocument = ToolRecipeDocumentStore.Load(recipePath);
+            var canceledDocument = savedDocument with
+            {
+                Source = savedDocument.Source with
+                {
+                    Path = Path.Combine(root, "missing-canceled-source.C3D")
+                }
+            };
+            using var canceledPreparation = new CancellationTokenSource();
+            canceledPreparation.Cancel();
+            var cancellationObserved = false;
+            var cancellationDetail = "no exception";
+            try
+            {
+                _ = ToolRecipeHeightMeasurementExecution.Execute(
+                    canceledDocument,
+                    thickness.Id,
+                    root,
+                    canceledPreparation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationObserved = true;
+                cancellationDetail = nameof(OperationCanceledException);
+            }
+            catch (Exception exception)
+            {
+                cancellationDetail = $"{exception.GetType().Name}: {exception.Message}";
+            }
+            Check(
+                "pre-cancelled Height Measurement stops before raw C3D preparation",
+                cancellationObserved
+                && !File.Exists(canceledDocument.Source.Path),
+                cancellationDetail);
 
             var hadMeasurementOutputBeforeDispose = workbench.CurrentMeasurementOutput is not null;
             workbench.Dispose();

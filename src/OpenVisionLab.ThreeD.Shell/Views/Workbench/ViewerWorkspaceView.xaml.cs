@@ -4,11 +4,10 @@ using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
-using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
@@ -27,10 +26,9 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     private HeightImageViewerView? heightImageViewer;
     private ViewerWorkspacePopoutWindow? popout;
     private Window? ownerWindow;
+    private readonly ViewerWorkspaceLinkCoordinator linkCoordinator = new();
     private string loadedAuxiliaryPath = string.Empty;
     private bool subscriptionsAttached;
-    private bool synchronizingLinkedHeightDisplayRange;
-    private bool synchronizingLinkedCamera;
     private bool roiFocusRatioApplied;
     private ViewerWorkspaceLayout roiFocusLayout;
     private GridLength roiFocusFirstLength;
@@ -77,7 +75,6 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         if (currentPopout is not null)
         {
             currentPopout.Dismissed -= OnPopoutDismissed;
-            currentPopout.AuxiliarySlotFocused -= OnAuxiliarySlotFocused;
             currentPopout.ReleaseViewerContent();
             try
             {
@@ -90,7 +87,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         }
 
         AuxiliaryViewerHost.Content = null;
-        AuxiliaryViewerPresentationBar.ViewerViewModel = null;
+        AuxiliaryViewerPresentationBar.ViewerHost = null;
         AuxiliaryEmptyText.Visibility = Visibility.Visible;
         heightImageViewer = null;
         loadedAuxiliaryPath = string.Empty;
@@ -103,6 +100,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         DataContextChanged -= OnDataContextChanged;
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
+        linkCoordinator.Dispose();
     }
 
     public bool IsPopoutVisible => popout?.IsVisible == true;
@@ -270,24 +268,28 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         workbench.ViewerWorkspace.PropertyChanged += OnViewerWorkspacePropertyChanged;
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
         workbench.CompareCandidates.CollectionChanged += OnCompareCandidatesChanged;
-        workbench.SharedHeightCursor.PropertyChanged += OnSharedHeightCursorChanged;
-        workbench.HeightImageViewer.PropertyChanged += OnHeightImageViewerPropertyChanged;
+        linkCoordinator.SetWorkbench(workbench);
         AttachMainViewer(MainViewerContent as OpenVisionThreeDViewerControl);
         subscriptionsAttached = true;
     }
 
     private void DetachSubscriptions()
     {
-        if (!subscriptionsAttached || workbench is null)
+        if (workbench is null && !subscriptionsAttached)
         {
+            linkCoordinator.SetWorkbench(null);
+            linkCoordinator.SetMainViewer(null);
             return;
         }
 
-        workbench.ViewerWorkspace.PropertyChanged -= OnViewerWorkspacePropertyChanged;
-        workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
-        workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
-        workbench.SharedHeightCursor.PropertyChanged -= OnSharedHeightCursorChanged;
-        workbench.HeightImageViewer.PropertyChanged -= OnHeightImageViewerPropertyChanged;
+        if (workbench is not null)
+        {
+            workbench.ViewerWorkspace.PropertyChanged -= OnViewerWorkspacePropertyChanged;
+            workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+            workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
+        }
+
+        linkCoordinator.SetWorkbench(null);
         AttachMainViewer(null);
         subscriptionsAttached = false;
     }
@@ -314,190 +316,15 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
                 MainViewerPresenter.Content = viewer;
             }
 
-            ApplySharedHeightCursorToMainViewer();
-            SynchronizeLinkedHeightDisplayRangeFromMainViewer();
+            linkCoordinator.SetMainViewer(viewer);
             return;
-        }
-
-        if (mainViewer is not null)
-        {
-            mainViewer.C3DGridHoverChanged -= OnMainViewerC3DGridHoverChanged;
-            mainViewer.CameraChanged -= OnMainViewerCameraChanged;
-            mainViewer.ViewModel.PropertyChanged -= OnMainViewerPropertyChanged;
-            mainViewer.SetLinkedHeightCursor(null);
         }
 
         mainViewer = viewer;
         MainViewerPresenter.Content = viewer;
-        if (mainViewer is not null)
-        {
-            mainViewer.C3DGridHoverChanged += OnMainViewerC3DGridHoverChanged;
-            mainViewer.CameraChanged += OnMainViewerCameraChanged;
-            mainViewer.ViewModel.PropertyChanged += OnMainViewerPropertyChanged;
-        }
+        linkCoordinator.SetMainViewer(mainViewer);
 
         RefreshMainViewer();
-        ApplySharedHeightCursorToMainViewer();
-        SynchronizeLinkedHeightDisplayRangeFromMainViewer();
-    }
-
-    private void OnMainViewerPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName is nameof(MainWindowViewModel.C3DHeightColorRangeRevision)
-            or nameof(MainWindowViewModel.C3DHeightDistributionSourceSha256))
-        {
-            SynchronizeLinkedHeightDisplayRangeFromMainViewer();
-        }
-    }
-
-    private void OnHeightImageViewerPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName == nameof(HeightImageViewerViewModel.Frame))
-        {
-            SynchronizeLinkedHeightDisplayRangeFromMainViewer();
-        }
-        else if (args.PropertyName == nameof(HeightImageViewerViewModel.DisplayRangeRevision))
-        {
-            SynchronizeLinkedHeightDisplayRangeToMainViewer();
-        }
-    }
-
-    private void OnMainViewerCameraChanged(object? sender, EventArgs args) =>
-        SynchronizeLinkedCamera();
-
-    private void SynchronizeLinkedHeightDisplayRangeFromMainViewer()
-    {
-        var viewerViewModel = mainViewer?.ViewModel;
-        var heightImage = workbench?.HeightImageViewer;
-        if (synchronizingLinkedHeightDisplayRange
-            || viewerViewModel is null
-            || heightImage?.Frame is null
-            || !HasMatchingHeightSource(viewerViewModel, heightImage))
-        {
-            return;
-        }
-
-        synchronizingLinkedHeightDisplayRange = true;
-        try
-        {
-            if (viewerViewModel.C3DHeightColorRangeAuto)
-            {
-                heightImage.UseAutoRange();
-            }
-            else
-            {
-                heightImage.TryApplyLinkedDisplayRange(
-                    viewerViewModel.C3DHeightColorMinimumRaw,
-                    viewerViewModel.C3DHeightColorMaximumRaw);
-            }
-        }
-        finally
-        {
-            synchronizingLinkedHeightDisplayRange = false;
-        }
-    }
-
-    private void SynchronizeLinkedHeightDisplayRangeToMainViewer()
-    {
-        var viewerViewModel = mainViewer?.ViewModel;
-        var heightImage = workbench?.HeightImageViewer;
-        if (synchronizingLinkedHeightDisplayRange
-            || viewerViewModel is null
-            || heightImage?.DisplayFrame is not { } displayFrame
-            || !HasMatchingHeightSource(viewerViewModel, heightImage))
-        {
-            return;
-        }
-
-        synchronizingLinkedHeightDisplayRange = true;
-        try
-        {
-            if (heightImage.IsAutoRange)
-            {
-                viewerViewModel.ResetC3DHeightColorRange();
-            }
-            else
-            {
-                viewerViewModel.TryApplyLinkedC3DHeightColorRange(
-                    displayFrame.Minimum,
-                    displayFrame.Maximum);
-            }
-        }
-        finally
-        {
-            synchronizingLinkedHeightDisplayRange = false;
-        }
-    }
-
-    private static bool HasMatchingHeightSource(
-        MainWindowViewModel viewerViewModel,
-        HeightImageViewerViewModel heightImage) =>
-        heightImage.Frame is { } frame
-        && string.Equals(
-            viewerViewModel.C3DHeightDistributionSourceSha256,
-            frame.SourceContentSha256,
-            StringComparison.OrdinalIgnoreCase);
-
-    private void OnMainViewerC3DGridHoverChanged(
-        object? sender,
-        C3DGridHoverChangedEventArgs args)
-    {
-        if (workbench is null)
-        {
-            return;
-        }
-
-        if (args.Cursor is not { } cursor)
-        {
-            workbench.SharedHeightCursor.Clear(
-                SharedHeightCursorOrigin.ThreeDViewer);
-            return;
-        }
-
-        workbench.SharedHeightCursor.Update(
-            SharedHeightCursorOrigin.ThreeDViewer,
-            cursor.SourceContentSha256,
-            cursor.Row,
-            cursor.Column,
-            cursor.RawHeight,
-            cursor.IsValid);
-    }
-
-    private void OnSharedHeightCursorChanged(
-        object? sender,
-        PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName is nameof(SharedHeightCursorSession.Cursor)
-            or nameof(SharedHeightCursorSession.HasCursor)
-            or nameof(SharedHeightCursorSession.Revision))
-        {
-            ApplySharedHeightCursorToMainViewer();
-        }
-    }
-
-    private void ApplySharedHeightCursorToMainViewer()
-    {
-        if (mainViewer is null)
-        {
-            return;
-        }
-
-        mainViewer.SetLinkedHeightCursor(
-            workbench?.SharedHeightCursor.Cursor is { } cursor
-                ? new C3DGridCursor(
-                    cursor.Origin == SharedHeightCursorOrigin.ThreeDViewer
-                        ? C3DGridCursorOrigin.ThreeDViewer
-                        : C3DGridCursorOrigin.HeightImage,
-                    cursor.SourceContentSha256,
-                    cursor.Row,
-                    cursor.Column,
-                    cursor.RawHeight,
-                    cursor.IsValid)
-                : null);
     }
 
     private void OnViewerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -530,7 +357,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         RefreshMainViewer();
         RefreshAuxiliaryViewer();
         UpdateRoiFocusRatio();
-        SynchronizeLinkedCamera();
+        linkCoordinator.Refresh();
     }
 
     private void RefreshMainViewer()
@@ -720,7 +547,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         {
             loadedAuxiliaryPath = string.Empty;
             AuxiliaryViewerHost.Content = null;
-            AuxiliaryViewerPresentationBar.ViewerViewModel = null;
+            AuxiliaryViewerPresentationBar.ViewerHost = null;
             AuxiliaryEmptyText.Visibility = Visibility.Visible;
             popout?.SetViewerContent(
                 null,
@@ -730,11 +557,12 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
         if (candidate.Kind == ViewerWorkspaceCandidateKind.HeightImage)
         {
+            linkCoordinator.SetAuxiliaryViewer(null);
             heightImageViewer ??= new HeightImageViewerView
             {
                 DataContext = currentWorkbench.HeightImageViewer
             };
-            _ = currentWorkbench.EnsureHeightImageSourceAsync();
+            currentWorkbench.BeginHeightImageSourceLoad();
             PresentAuxiliaryContent(heightImageViewer, currentWorkbench);
             return;
         }
@@ -743,7 +571,8 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         {
             SidePanelsVisible = false
         };
-        auxiliaryViewer.ViewModel.HudDetailsVisible = false;
+        linkCoordinator.SetAuxiliaryViewer(auxiliaryViewer);
+        auxiliaryViewer.TrySetHudDetailsVisible(false);
         if (!string.Equals(loadedAuxiliaryPath, candidate.SourcePath, StringComparison.OrdinalIgnoreCase))
         {
             if (candidate.IsSource)
@@ -763,50 +592,12 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         PresentAuxiliaryContent(auxiliaryViewer, currentWorkbench);
     }
 
-    private void SynchronizeLinkedCamera()
-    {
-        var currentWorkbench = workbench;
-        if (currentWorkbench?.ViewerWorkspace.IsCameraLinked != true)
-        {
-            return;
-        }
-
-        var candidate = currentWorkbench.GetViewerWorkspaceCandidate(
-            currentWorkbench.ViewerWorkspace.AuxiliaryContentId);
-        if (candidate?.Kind != ViewerWorkspaceCandidateKind.ThreeDArtifact
-            || mainViewer is null
-            || auxiliaryViewer is null
-            || !File.Exists(candidate.SourcePath))
-        {
-            currentWorkbench.ViewerWorkspace.SetCameraLinked(false);
-            return;
-        }
-
-        if (synchronizingLinkedCamera)
-        {
-            return;
-        }
-
-        synchronizingLinkedCamera = true;
-        try
-        {
-            if (!auxiliaryViewer.TryApplyCameraState(mainViewer.CaptureCameraState()))
-            {
-                currentWorkbench.ViewerWorkspace.SetCameraLinked(false);
-            }
-        }
-        finally
-        {
-            synchronizingLinkedCamera = false;
-        }
-    }
-
     private void PresentAuxiliaryContent(object content, ToolWorkbenchViewModel currentWorkbench)
     {
         AuxiliaryEmptyText.Visibility = Visibility.Collapsed;
-        AuxiliaryViewerPresentationBar.ViewerViewModel =
+        AuxiliaryViewerPresentationBar.ViewerHost =
             content is OpenVisionThreeDViewerControl viewer
-                ? viewer.ViewModel
+                ? viewer
                 : null;
         if (currentWorkbench.ViewerWorkspace.IsPopOut)
         {
@@ -851,7 +642,6 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
                 DataContext = workbench
             };
             popout.Dismissed += OnPopoutDismissed;
-            popout.AuxiliarySlotFocused += OnAuxiliarySlotFocused;
             ownerWindow = Window.GetWindow(this);
             if (ownerWindow is not null)
             {
@@ -881,9 +671,10 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
     private void OnPopoutDismissed(object? sender, EventArgs args)
     {
-        if (workbench?.SetSingleViewerLayoutCommand.CanExecute(null) == true)
+        var command = (sender as ViewerWorkspacePopoutWindow)?.DismissedCommand;
+        if (command?.CanExecute(null) == true)
         {
-            workbench.SetSingleViewerLayoutCommand.Execute(null);
+            command.Execute(null);
         }
     }
 
@@ -901,25 +692,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         }
 
         popout.Dismissed -= OnPopoutDismissed;
-        popout.AuxiliarySlotFocused -= OnAuxiliarySlotFocused;
         popout.CloseForOwner();
         popout = null;
-    }
-
-    private void MainSlot_PreviewMouseDown(object sender, MouseButtonEventArgs args) =>
-        FocusSlot(ViewerWorkspaceSession.MainSlotId);
-
-    private void AuxiliarySlot_PreviewMouseDown(object sender, MouseButtonEventArgs args) =>
-        FocusSlot(ViewerWorkspaceSession.AuxiliarySlotId);
-
-    private void OnAuxiliarySlotFocused(object? sender, EventArgs args) =>
-        FocusSlot(ViewerWorkspaceSession.AuxiliarySlotId);
-
-    private void FocusSlot(string slotId)
-    {
-        if (workbench?.FocusViewerWorkspaceSlotCommand.CanExecute(slotId) == true)
-        {
-            workbench.FocusViewerWorkspaceSlotCommand.Execute(slotId);
-        }
     }
 }

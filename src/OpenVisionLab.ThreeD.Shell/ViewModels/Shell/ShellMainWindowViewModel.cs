@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -10,6 +9,7 @@ using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.Services;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
@@ -34,7 +34,7 @@ public enum ShellInspectionTask
     Warpage
 }
 
-public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposable
+public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposable, IAsyncDisposable
 {
     private readonly RelayCommand selectWorkspaceCommand;
     private readonly RelayCommand openSelectedValidationIssueInTeachCommand;
@@ -48,6 +48,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private readonly ShellRunRecordPersistence runRecordPersistence;
     private readonly string? orderedRunRecordRoot;
     private readonly bool hasStartupEvidenceOverrides;
+    private readonly ShellMainWindowEventCoordinator shellEventCoordinator;
     private bool startupEvidenceActive;
     private string? currentContractPath;
     private string? currentReportPath;
@@ -74,12 +75,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Workbench;
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
     private readonly IReadOnlyList<OpenVisionLanguageOption> languageOptions;
-    private readonly NotifyCollectionChangedEventHandler inspectionStepsChangedHandler;
-    private readonly EventHandler languageChangedHandler;
     private OpenVisionLanguageOption? selectedLanguageOption;
     private double lastLanguageChangeMilliseconds;
     private RunRecordRecentItem? selectedRecentRunRecord;
     private int disposalState;
+    private readonly object disposalGate = new();
+    private Task? disposalTask;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? ApplyRoiAlignmentRequested;
@@ -136,9 +137,6 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         IntegrationExchange = new ThreeDIntegrationViewModel(
             () => currentRunRecordPath,
             integrationSettingsPath);
-        inspectionStepsChangedHandler = (_, _) =>
-            RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
-        InspectionSteps.CollectionChanged += inspectionStepsChangedHandler;
         Calibration = new CalibrationCenterViewModel();
         selectWorkspaceCommand = new RelayCommand(
             parameter => SelectWorkspace(parameter),
@@ -149,11 +147,6 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             _ => CanOpenSelectedValidationIssueInTeach());
         OpenSelectedValidationIssueInTeachCommand =
             openSelectedValidationIssueInTeachCommand;
-        Workbench.PropertyChanged += OnWorkbenchNavigationStateChanged;
-        Workbench.OrderedRunCompleted += OnWorkbenchOrderedRunCompleted;
-        Workbench.OrderedRunInvalidated += OnWorkbenchOrderedRunInvalidated;
-        languageChangedHandler = (_, _) => RefreshLocalizedPresentation();
-        OpenVisionLanguageService.LanguageChanged += languageChangedHandler;
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
@@ -184,6 +177,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         ExportPrivacySafeSupportBundleCommand = new RelayCommand(
             _ => ExportPrivacySafeSupportBundleRequested?.Invoke(this, EventArgs.Empty),
             _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
+        shellEventCoordinator = CreateShellMainWindowEventCoordinator();
         LoadRecentRunRecords();
         if (hasStartupEvidenceOverrides)
         {
@@ -196,21 +190,44 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
-    public void Dispose()
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        Task cleanupTask;
+        lock (disposalGate)
         {
-            return;
+            disposalTask ??= DisposeChildrenAsync();
+            cleanupTask = disposalTask;
         }
 
-        InspectionSteps.CollectionChanged -= inspectionStepsChangedHandler;
-        Workbench.PropertyChanged -= OnWorkbenchNavigationStateChanged;
-        Workbench.OrderedRunCompleted -= OnWorkbenchOrderedRunCompleted;
-        Workbench.OrderedRunInvalidated -= OnWorkbenchOrderedRunInvalidated;
-        OpenVisionLanguageService.LanguageChanged -= languageChangedHandler;
-        Calibration.Dispose();
-        Workbench.Dispose();
+        return new ValueTask(cleanupTask);
     }
+
+    private async Task DisposeChildrenAsync()
+    {
+        Interlocked.Exchange(ref disposalState, 1);
+        try
+        {
+            await IntegrationExchange.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            shellEventCoordinator.Dispose();
+            Calibration.Dispose();
+            Workbench.Dispose();
+        }
+    }
+
+    private ShellMainWindowEventCoordinator CreateShellMainWindowEventCoordinator() =>
+        new(
+            InspectionSteps,
+            Workbench,
+            () => RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary)),
+            args => OnWorkbenchNavigationStateChanged(this, args),
+            args => OnWorkbenchOrderedRunCompleted(this, args),
+            () => OnWorkbenchOrderedRunInvalidated(this, EventArgs.Empty),
+            RefreshLocalizedPresentation);
 
     public ICommand ApplyRoiAlignmentCommand { get; }
     public ICommand SelectWorkspaceCommand { get; }
@@ -234,6 +251,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public ResultsWorkspaceViewModel ResultsWorkspace { get; }
     public CalibrationCenterViewModel Calibration { get; }
     public ThreeDIntegrationViewModel IntegrationExchange { get; }
+
+    internal void SetIntegrationDialogHost(IThreeDIntegrationDialogHost dialogHost) =>
+        IntegrationExchange.SetDialogHost(dialogHost);
     public ThreeDLocalization Localization => ThreeDLocalization.Shared;
     public IReadOnlyList<OpenVisionLanguageOption> LanguageOptions => languageOptions;
 
@@ -280,6 +300,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             nameof(RunSnapshotSummary),
             nameof(RunSnapshotEvidence),
             nameof(InspectionStepSummary),
+            nameof(InspectionSteps),
+            nameof(RecipeRunHistory),
             nameof(InspectionStageNavigationStatus)
         ];
 
@@ -787,13 +809,13 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     public void SetViewerSmokeFailed(string viewerStatus)
     {
-        var root = ResolveWorkspaceRoot();
+        var root = ShellEvidencePathResolver.ResolveWorkspaceRoot();
         currentContractPath = null;
         currentReportPath = null;
-        currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath);
-        currentRunRecordPath = ResolveOptionalPath(root, runRecordPath);
-        currentHtmlReportPath = ResolveOptionalPath(root, htmlReportPath);
-        currentCsvReportPath = ResolveOptionalPath(root, csvReportPath);
+        currentShellScreenshotPath = ShellEvidencePathResolver.ResolveOptionalPath(root, shellScreenshotPath);
+        currentRunRecordPath = ShellEvidencePathResolver.ResolveOptionalPath(root, runRecordPath);
+        currentHtmlReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, htmlReportPath);
+        currentCsvReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, csvReportPath);
         RefreshCommandCanExecute();
 
         StatusText = "Viewer hosted | viewer smoke failed";
@@ -878,22 +900,22 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     private void RefreshRecipeComparison(string? selectedRunRecordPath, bool useStartupOverrides)
     {
-        var root = ResolveWorkspaceRoot();
-        currentRunRecordPath = ResolveOptionalPath(root, selectedRunRecordPath);
+        var root = ShellEvidencePathResolver.ResolveWorkspaceRoot();
+        currentRunRecordPath = ShellEvidencePathResolver.ResolveOptionalPath(root, selectedRunRecordPath);
         var runRecord = runRecordPersistence.Read(currentRunRecordPath);
-        var contractPath = ResolvePath(
+        var contractPath = ShellEvidencePathResolver.ResolvePath(
             root,
             (useStartupOverrides ? comparisonContractPath : null) ?? runRecord?.Artifacts.ViewerContract,
             Path.Combine(root, "artifacts", "shell_recipe_ui_after.txt"));
-        var reportPath = ResolvePath(
+        var reportPath = ShellEvidencePathResolver.ResolvePath(
             root,
             (useStartupOverrides ? comparisonReportPath : null) ?? runRecord?.Artifacts.RunnerTextReport,
             Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
         currentContractPath = contractPath;
         currentReportPath = reportPath;
-        currentShellScreenshotPath = ResolveOptionalPath(root, (useStartupOverrides ? shellScreenshotPath : null) ?? runRecord?.Artifacts.ViewerScreenshot);
-        currentHtmlReportPath = ResolveOptionalPath(root, (useStartupOverrides ? htmlReportPath : null) ?? runRecord?.Artifacts.HtmlReport);
-        currentCsvReportPath = ResolveOptionalPath(root, (useStartupOverrides ? csvReportPath : null) ?? runRecord?.Artifacts.CsvReport);
+        currentShellScreenshotPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? shellScreenshotPath : null) ?? runRecord?.Artifacts.ViewerScreenshot);
+        currentHtmlReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? htmlReportPath : null) ?? runRecord?.Artifacts.HtmlReport);
+        currentCsvReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? csvReportPath : null) ?? runRecord?.Artifacts.CsvReport);
         RefreshCommandCanExecute();
 
         if (runRecord?.ViewerRunnerMatchState
@@ -1336,41 +1358,6 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             evidenceState,
             ShellEvidenceTextParser.FormatShortEvidencePath(root, reportPath)));
     }
-
-    private static string ResolveWorkspaceRoot()
-    {
-        var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "OpenVisionLab.ThreeDStudio.slnx")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        return Directory.GetCurrentDirectory();
-    }
-
-    private static string ResolvePath(string root, string? requestedPath, string fallbackPath)
-    {
-        if (string.IsNullOrWhiteSpace(requestedPath))
-        {
-            return fallbackPath;
-        }
-
-        return Path.IsPathRooted(requestedPath)
-            ? requestedPath
-            : Path.Combine(root, requestedPath);
-    }
-
-    private static string? ResolveOptionalPath(string root, string? requestedPath) =>
-        string.IsNullOrWhiteSpace(requestedPath)
-            ? null
-            : Path.IsPathRooted(requestedPath)
-                ? requestedPath
-                : Path.Combine(root, requestedPath);
 
     private static string[] ReadLinesOrEmpty(string path) =>
         File.Exists(path) ? File.ReadAllLines(path) : [];

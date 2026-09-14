@@ -42,7 +42,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private readonly ToolWorkbenchXyzAffineExecutionOwner xyzAffineExecutionOwner;
     private readonly ToolWorkbenchRegridHeightFieldExecutionOwner regridHeightFieldExecutionOwner;
     private readonly ToolWorkbenchHeightMeasurementExecutionOwner heightMeasurementExecutionOwner;
-    private readonly ToolWorkbenchValidationSetExecutionOwner validationSetExecutionOwner;
     private readonly ToolWorkbenchSourceLoadOwner sourceLoadOwner;
     private readonly ToolWorkbenchLocalizationSubscriptionOwner localizationSubscriptionOwner;
     private readonly ToolWorkbenchOrderedRunExecutionOwner orderedRunExecutionOwner;
@@ -51,6 +50,26 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private readonly ToolWorkbenchLandmarkCorrespondenceEditorOwner
         landmarkCorrespondenceEditorOwner;
     private readonly ToolWorkbenchReferenceCatalogOwner referenceCatalogOwner;
+    private readonly ToolWorkbenchRecipePartEventCoordinator recipePartEventCoordinator;
+    private readonly ToolWorkbenchEditorSessionEventCoordinator editorSessionEventCoordinator;
+    private ToolWorkbenchTeachingSelectionEventCoordinator teachingSelectionEventCoordinator = null!;
+    private ToolWorkbenchReferenceCatalogEventCoordinator referenceCatalogEventCoordinator = null!;
+    private readonly ToolWorkbenchArtifactNavigatorEventCoordinator artifactNavigatorEventCoordinator;
+    private ToolWorkbenchCompatibleToolCatalogEventCoordinator compatibleToolCatalogEventCoordinator = null!;
+    private ToolWorkbenchCompletenessReviewEventCoordinator completenessReviewEventCoordinator = null!;
+    private ToolWorkbenchDisplayedOutputsEventCoordinator displayedOutputsEventCoordinator = null!;
+    private ToolWorkbenchPreparationPresetEventCoordinator preparationPresetEventCoordinator = null!;
+    private ToolWorkbenchSurfaceMatchCollectionEventCoordinator surfaceMatchCollectionEventCoordinator = null!;
+    private ToolWorkbenchSourceQualityEventCoordinator sourceQualityEventCoordinator = null!;
+    private ToolWorkbenchThicknessRepeatGridEventCoordinator thicknessRepeatGridEventCoordinator = null!;
+    private ToolWorkbenchViewerWorkspaceEventCoordinator viewerWorkspaceEventCoordinator = null!;
+    private ViewerWorkspaceViewModel viewerWorkspaceViewModel = null!;
+    private ToolWorkbenchFlowDiagnosticsEventCoordinator flowDiagnosticsEventCoordinator = null!;
+    private readonly ToolWorkbenchFirstRecipeEventCoordinator firstRecipeEventCoordinator;
+    private readonly ToolWorkbenchOutputCompareEventCoordinator outputCompareEventCoordinator;
+    private readonly ToolWorkbenchHeightImageRoiCoordinator heightImageRoiCoordinator;
+    private readonly ToolWorkbenchOrientedBoxEventCoordinator orientedBoxEventCoordinator;
+    private ToolWorkbenchLifetimeCoordinator? lifetimeCoordinator;
     private readonly RelayCommand addSelectedToolCommand;
     private readonly RelayCommand removeSelectedStepCommand;
     private readonly RelayCommand moveSelectedStepUpCommand;
@@ -71,7 +90,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private bool suppressRecipeRefresh;
     private bool deferSelectedStepStateRefresh;
     private int selectedReviewTabIndex;
-    private int disposalState;
 
     public ToolWorkbenchViewModel(string? recentRecipesPath = null)
     {
@@ -82,8 +100,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                     ? System.Windows.Threading.Dispatcher.FromThread(
                         System.Threading.Thread.CurrentThread)
                     : null;
-        validationSetExecutionOwner = new ToolWorkbenchValidationSetExecutionOwner(
-            RefreshValidationSetExecutionState);
         sourceLoadOwner = new ToolWorkbenchSourceLoadOwner(
             Localization,
             propertyName => OnPropertyChanged(propertyName),
@@ -101,13 +117,18 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             RefreshSurfaceMatchExperimentState);
         WorkspaceSelection = new InspectionWorkspaceSelectionSession();
         ViewerWorkspace = new ViewerWorkspaceSession();
+        InitializeViewerWorkspace();
         SharedHeightCursor = new SharedHeightCursorSession();
         HeightImageViewer = new HeightImageViewerViewModel(
             ThreeDLocalization.Shared,
             SharedHeightCursor);
         ThicknessRepeatGrid = new ThicknessRepeatGridAuthoringSession();
         SelectedToolWorkspace = new SelectedToolWorkspaceViewModel(WorkspaceSelection);
-        WorkspaceSelection.SelectionChanged += OnInspectionWorkspaceSelectionChanged;
+        editorSessionEventCoordinator = new ToolWorkbenchEditorSessionEventCoordinator(
+            WorkspaceSelection,
+            OnInspectionWorkspaceSelectionChanged,
+            stepPropertySession,
+            OnStepPropertySessionChanged);
         InitializeInspectionWorkspace();
         InitializeCompletenessReview();
         InitializeThicknessRepeatGrid();
@@ -126,11 +147,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             "raw-height",
             "frame.c3d-grid-index",
             string.Empty);
-        Source.PropertyChanged += OnRecipePartChanged;
+        recipePartEventCoordinator = new ToolWorkbenchRecipePartEventCoordinator(
+            Source,
+            OnRecipePartChanged);
         referenceCatalogOwner = new ToolWorkbenchReferenceCatalogOwner(NormalizeId);
-        referenceCatalogOwner.PropertyChanged += OnReferenceCatalogPropertyChanged;
-        referenceCatalogOwner.ReferencePropertyChanged += OnRecipePartChanged;
-        referenceCatalogOwner.Mutated += OnReferenceCatalogMutated;
+        referenceCatalogEventCoordinator = new ToolWorkbenchReferenceCatalogEventCoordinator(
+            referenceCatalogOwner,
+            OnReferenceCatalogPropertyChanged,
+            OnRecipePartChanged,
+            OnReferenceCatalogMutated);
         teachingSelectionStoreOwner = new ToolWorkbenchTeachingSelectionStoreOwner(
             () => Source.Id,
             () => Source.FrameId,
@@ -140,8 +165,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             () => IsSelectedStepViewerCaptureSupported,
             RemoveTeachingSelection,
             UseExistingTeachingSelection);
-        teachingSelectionStoreOwner.PropertyChanged +=
-            OnTeachingSelectionStoreOwnerPropertyChanged;
         orderedRunExecutionOwner = new ToolWorkbenchOrderedRunExecutionOwner(
             CreateDocument,
             document =>
@@ -518,10 +541,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             RefreshHeightMeasurementStateFromOwner);
         selectedStepExecutionOwner = new ToolWorkbenchSelectedStepExecutionOwner(
             () => SelectedPipelineStep,
-            CreateSelectedStepExecutionRoutes());
+            CreateSelectedStepExecutionRoutes(),
+            AppendLog);
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
-        InitializeOrientedBox3DEditing();
+        orientedBoxEventCoordinator = CreateOrientedBoxEventCoordinator();
         teachingSelectionCaptureOwner = new ToolWorkbenchTeachingSelectionCaptureOwner(
             TeachingCaptureSession,
             CreateTeachingCaptureContext,
@@ -539,10 +563,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             () => OrientedBoxEditor.ApplyCommand.Execute(null),
             () => OrientedBoxEditor.CancelCommand.CanExecute(null),
             () => OrientedBoxEditor.CancelCommand.Execute(null));
-        teachingSelectionCaptureOwner.PropertyChanged +=
-            OnTeachingSelectionCaptureOwnerPropertyChanged;
-        teachingSelectionCaptureOwner.StateChanged +=
-            OnTeachingSelectionCaptureOwnerStateChanged;
         landmarkCorrespondenceEditorOwner =
             new ToolWorkbenchLandmarkCorrespondenceEditorOwner(
                 CreateLandmarkCorrespondenceEditorContext,
@@ -551,8 +571,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 RemoveTeachingSelection,
                 teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged,
                 AppendLog);
-        landmarkCorrespondenceEditorOwner.PropertyChanged +=
-            OnLandmarkCorrespondenceEditorOwnerPropertyChanged;
+        teachingSelectionEventCoordinator = new ToolWorkbenchTeachingSelectionEventCoordinator(
+            teachingSelectionStoreOwner,
+            OnTeachingSelectionStoreOwnerPropertyChanged,
+            teachingSelectionCaptureOwner,
+            OnTeachingSelectionCaptureOwnerPropertyChanged,
+            OnTeachingSelectionCaptureOwnerStateChanged,
+            landmarkCorrespondenceEditorOwner,
+            OnLandmarkCorrespondenceEditorOwnerPropertyChanged);
 
         addSelectedToolCommand = new RelayCommand(
             parameter => AddSelectedTool(parameter as ToolWorkbenchToolItem),
@@ -576,6 +602,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         InitializePropertyGridEditing();
         InitializePreparationPresetAssistant();
         InitializeFirstRecipeUx();
+        firstRecipeEventCoordinator = CreateFirstRecipeEventCoordinator();
         InitializePlaneFlatnessTeaching();
         NewTeachingRecipeCommand = new RelayCommand(_ => BeginFirstRecipeSetup());
         AddSelectedToolCommand = addSelectedToolCommand;
@@ -583,8 +610,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         MoveSelectedStepUpCommand = moveSelectedStepUpCommand;
         MoveSelectedStepDownCommand = moveSelectedStepDownCommand;
         SelectPipelineStepCommand = selectPipelineStepCommand;
-        InitializeHeightImageRoiEditing();
+        heightImageRoiCoordinator = CreateHeightImageRoiCoordinator();
+        InitializeHeightImageRoiProjection();
         InitializeArtifactRegistryAndNavigator();
+        artifactNavigatorEventCoordinator = CreateArtifactNavigatorEventCoordinator();
         SelectNavigatorItemCommand = artifactNavigatorOwner.SelectNavigatorItemCommand;
         openSelectedToolLabCommand = artifactNavigatorOwner.OpenSelectedToolLabCommand;
         OpenSelectedToolLabCommand = openSelectedToolLabCommand;
@@ -598,8 +627,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         OpenToolLibraryCommand = new RelayCommand(_ => OpenToolLibraryRequested?.Invoke(this, EventArgs.Empty));
         OpenTeachingRecipeCommand = new RelayCommand(_ => OpenTeachingRecipeRequested?.Invoke(this, EventArgs.Empty));
         InitializeFilterExecution();
-        InitializeOutputCompareSession();
-        InitializeViewerWorkspace();
+        outputCompareEventCoordinator = CreateOutputCompareEventCoordinator();
         InitializeSurfaceMatchCollectionOwner();
         InitializeDisplayedOutputs();
         InitializeFlowDiagnostics();
@@ -618,6 +646,61 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             OnViewerWorkspaceLocalizationChanged,
             OnFirstRecipeLanguageChanged);
         ValidationWorkspace = new RecipePipelineReviewValidationViewModel(this);
+        lifetimeCoordinator = new ToolWorkbenchLifetimeCoordinator(
+            new IDisposable[]
+            {
+                surfaceMatchExperiment,
+                editorSessionEventCoordinator,
+                localizationSubscriptionOwner,
+                sourceLoadOwner,
+                firstRecipeEventCoordinator,
+                artifactNavigatorEventCoordinator,
+                validationSetWorkspace,
+                flowDiagnosticsEventCoordinator,
+                compatibleToolCatalogEventCoordinator,
+                completenessReviewEventCoordinator,
+                displayedOutputsEventCoordinator,
+                preparationPresetEventCoordinator,
+                surfaceMatchCollectionEventCoordinator,
+                sourceQualityEventCoordinator,
+                thicknessRepeatGridEventCoordinator,
+                viewerWorkspaceEventCoordinator,
+                viewerWorkspaceViewModel,
+                referenceCatalogEventCoordinator,
+                recipePartEventCoordinator,
+                teachingSelectionEventCoordinator,
+                firstRecipeSetupOwner,
+                flowDiagnosticsOwner,
+                orderedRunExecutionOwner,
+                selectedStepExecutionOwner,
+                filterExecutionOwner,
+                heightMeasurementExecutionOwner,
+                editableRegionExecutionOwner,
+                regridHeightFieldExecutionOwner,
+                xyzAffineExecutionOwner,
+                landmarkCorrespondenceExecutionOwner,
+                lineIntersectionExecutionOwner,
+                lineFitExecutionOwner,
+                twoPointLineExecutionOwner,
+                heightDifferenceEdgeExecutionOwner,
+                levelSurfaceExecutionOwner,
+                datumPlaneDeviationExecutionOwner,
+                threePointPlaneExecutionOwner,
+                roiCropExecutionOwner,
+                domainMaskExecutionOwner,
+                connectedRegionExecutionOwner,
+                removeOutlierExecutionOwner,
+                outputCompareEventCoordinator,
+                heightImageRoiCoordinator,
+                orientedBoxEventCoordinator
+            },
+            CancelSourceQualityUiNotification,
+            new IDisposable[]
+            {
+                HeightImageViewer,
+                SourceQuality,
+                SourceSession
+            });
         AppendLog("System", "Tool recipe teaching is ready. Source, routing, parameters, and save/reopen are explicit.");
         SelectedTool = Tools[0];
         RefreshRecipeState();
@@ -628,42 +711,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     /// and active execution resources. The Shell owns this boundary and
     /// invokes it during Window shutdown; repeated calls are safe.
     /// </summary>
-    public void Dispose()
-    {
-        if (System.Threading.Interlocked.Exchange(ref disposalState, 1) != 0)
-        {
-            return;
-        }
+    public void Dispose() => lifetimeCoordinator?.Dispose();
 
-        localizationSubscriptionOwner.Dispose();
-        sourceLoadOwner.Dispose();
-        firstRecipeSetupOwner.Dispose();
-        flowDiagnosticsOwner.Dispose();
-        orderedRunExecutionOwner.Dispose();
-        validationThresholdWorkflowOwner.Dispose();
-        validationSetExecutionOwner.Dispose();
-        filterExecutionOwner.Dispose();
-        heightMeasurementExecutionOwner.Dispose();
-        editableRegionExecutionOwner.Dispose();
-        regridHeightFieldExecutionOwner.Dispose();
-        xyzAffineExecutionOwner.Dispose();
-        landmarkCorrespondenceExecutionOwner.Dispose();
-        lineIntersectionExecutionOwner.Dispose();
-        lineFitExecutionOwner.Dispose();
-        twoPointLineExecutionOwner.Dispose();
-        heightDifferenceEdgeExecutionOwner.Dispose();
-        levelSurfaceExecutionOwner.Dispose();
-        datumPlaneDeviationExecutionOwner.Dispose();
-        threePointPlaneExecutionOwner.Dispose();
-        roiCropExecutionOwner.Dispose();
-        domainMaskExecutionOwner.Dispose();
-        connectedRegionExecutionOwner.Dispose();
-        removeOutlierExecutionOwner.Dispose();
-        CancelSourceQualityUiNotification();
-        HeightImageViewer.Dispose();
-        SourceQuality.Dispose();
-        SourceSession.Dispose();
-    }
+    internal bool IsDisposed => lifetimeCoordinator?.IsDisposed ?? false;
 
     internal ToolWorkbenchTeachingCaptureSession TeachingCaptureSession { get; } = new();
 
@@ -1103,28 +1153,30 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     public bool IsRecipeSaveBlocked => !CanSaveTeachingRecipe;
 
     public string SelectedToolTitle => SelectedTool is null
-        ? "No tool selected"
-        : $"{SelectedTool.Category} / {SelectedTool.Name}";
+        ? Localization.NoToolSelected
+        : string.Format(Localization.SelectedToolTitleFormat, SelectedTool.Category, SelectedTool.Name);
 
     public string SelectedToolHint => SelectedTool is null
         ? "Select a tool to inspect its typed input, output, and required parameters."
         : "Add this tool to the teaching recipe, then set its entity IDs and parameters. Adding or editing never runs inspection.";
 
     public string SelectedPipelineStepTitle => SelectedPipelineStep is null
-        ? "No taught step selected"
-        : $"Step {SelectedPipelineStep.Order}: {SelectedPipelineStep.ToolName}";
+        ? Localization.NoTaughtStepSelected
+        : string.Format(Localization.SelectedPipelineStepTitleFormat, SelectedPipelineStep.Order, SelectedPipelineStep.ToolName);
 
     public string ValidationSummary => SourceSession.SourceIdentityErrors.Count > 0
-            ? $"Recipe source needs {SourceSession.SourceIdentityErrors.Count} correction(s) before Preview or Run."
+            ? string.Format(Localization.ValidationSourceCorrectionsFormat, SourceSession.SourceIdentityErrors.Count)
         : RecipeSession.SourceBindingErrors.Count > 0
-        ? $"Teaching has {RecipeSession.SourceBindingErrors.Count} stale source selection(s); recapture or replace them before saving."
+        ? string.Format(Localization.ValidationStaleSourceSelectionsFormat, RecipeSession.SourceBindingErrors.Count)
         : RecipeSession.Validation.IsValid
         ? RecipeSession.Validation.Warnings.Count == 0
-            ? "Inspection recipe is structurally valid. Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
-            : $"Inspection recipe is valid with {RecipeSession.Validation.Warnings.Count} warning(s). Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
+            ? Localization.ValidationRecipeStructurallyValid
+            : string.Format(Localization.ValidationRecipeValidWithWarningsFormat, RecipeSession.Validation.Warnings.Count)
         : RecipeSession.StorageValidation.IsValid
-            ? $"Teaching needs {RecipeSession.Validation.Errors.Count} correction(s) before Preview or Run. The draft can still be saved."
-            : $"Teaching needs {RecipeSession.StorageValidation.Errors.Count + RecipeSession.SourceBindingErrors.Count} structural correction(s) before it can be saved.";
+            ? string.Format(Localization.ValidationTeachingCorrectionsFormat, RecipeSession.Validation.Errors.Count)
+            : string.Format(
+                Localization.ValidationTeachingStructuralCorrectionsFormat,
+                RecipeSession.StorageValidation.Errors.Count + RecipeSession.SourceBindingErrors.Count);
 
     public string RecipePathSummary => string.IsNullOrWhiteSpace(RecipePath)
         ? "Not saved yet"
@@ -1151,19 +1203,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     }
 
     public string SourceContextSummary => string.IsNullOrWhiteSpace(Source.Path)
-        ? "Source not loaded"
+        ? Localization.SourceNotSelected
         : $"{Source.Format} | {Source.Unit} | {Source.FrameId}";
 
     public string AlignmentStatusSummary =>
         PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "re-grid-height-map", StringComparison.OrdinalIgnoreCase)) is { } regrid
-            ? $"A3 Re-grid Height Map | {regrid.State}"
+            ? string.Format(Localization.AlignmentStatusFormat, "A3", Localization.RegridHeightMap, regrid.State)
             : PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase)) is { } apply
-                ? $"A2 Apply XYZ Affine | {apply.State}"
+                ? string.Format(Localization.AlignmentStatusFormat, "A2", Localization.XYZAffineApply, apply.State)
                 : PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase)) is { } solve
-                    ? $"A1 XYZ Affine Solve | {solve.State}"
+                    ? string.Format(Localization.AlignmentStatusFormat, "A1", Localization.XYZAffineSolve, solve.State)
                     : PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase)) is { } legacy
-                        ? $"Legacy XYZ Affine Transform | {legacy.State}"
-                        : "Alignment not taught";
+                        ? string.Format(Localization.AlignmentLegacyStatusFormat, legacy.State)
+                        : Localization.AlignmentNotTaught;
 
     public ToolWorkbenchTeachingSelectionRequirement? SelectedStepSelectionRequirement =>
         CreateSelectionRequirement(SelectedPipelineStep);
@@ -1197,21 +1249,21 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
     public string SelectedStepSelectionRequirementTitle => SelectedStepSelectionRequirement switch
     {
-        null => "No Viewer selection required",
+        null => Localization.NoViewerSelectionRequired,
         _ when IsSelectedStepThickness => $"{(IsPlaneFlatnessMeasurementRoleActive ? Localization.MeasurementRoi : Localization.ReferenceRoi)} \u00B7 {Localization.TwoGridCorners}",
         { Kind: ToolRecipeSelectionKinds.GridPolygon, UsesViewerCapture: true } requirement =>
-            $"{requirement.Name} - {requirement.RequiredPointCount}+ ordered grid vertex(es)",
-        { UsesViewerCapture: true } requirement => $"{requirement.Name} - {requirement.RequiredPointCount} C3D grid pick(s)",
-        { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => "Landmark correspondence rows",
+            string.Format(Localization.OrderedGridVerticesFormat, requirement.Name, requirement.RequiredPointCount),
+        { UsesViewerCapture: true } requirement => string.Format(Localization.C3DGridPicksFormat, requirement.Name, requirement.RequiredPointCount),
+        { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => Localization.LandmarkCorrespondenceRows,
         var requirement => requirement.Name
     };
 
     public string SelectedStepSelectionRequirementSummary => SelectedStepSelectionRequirement switch
     {
-        null => "This step consumes the source or earlier typed entities. Selecting or editing it never starts Viewer capture.",
+        null => Localization.SelectionRequirementUsesExistingEntities,
         _ when IsSelectedStepThickness => Localization.ThicknessRoiTeachingDetail,
-        { UsesViewerCapture: true } requirement => $"{requirement.Description} Capture stores geometry only; it never runs an inspection algorithm.",
-        { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => "Enter four Published CornerAnchor mappings, reference frame/unit/provenance/revision, and an explicit non-planarity threshold. Editing never runs the tool.",
+        { UsesViewerCapture: true } requirement => $"{requirement.Description}{Localization.SelectionCaptureGeometryOnly}",
+        { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => Localization.LandmarkCorrespondenceRequirementDetail,
         var requirement => requirement.Description
     };
 
@@ -1228,7 +1280,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     public string SelectedStepTeachingSelectionSummary => SelectedStepTeachingSelection is null
         ? (SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
             ? Localization.NoRoiTaught
-            : "No recipe-owned selection is routed to this step.")
+            : Localization.NoRecipeOwnedSelectionRouted)
         : ToolWorkbenchTeachingSelectionPolicy.FormatSelection(
             SelectedStepTeachingSelection);
 
@@ -1289,7 +1341,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     public string TeachingGridPolygonSourceFrameSummary =>
         IsTeachingGridPolygonDraftValid
             ? $"{TeachingGridPolygonVertices.Count} ordered vertex(es) | X=column, Z=row | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
-            : "Polygon vertices must be finite, unique, ordered, non-degenerate, and inside the source grid.";
+            : Localization.GridPolygonSourceFrameInvalid;
 
     public int TeachingGridCircleCenterRow
     {
@@ -1363,17 +1415,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     public string TeachingGridRectangleSourceFrameSummary =>
         IsTeachingGridRectangleDraftValid
             ? $"X columns {TeachingGridRectangleColumn}..{TeachingGridRectangleColumn + TeachingGridRectangleColumnCount - 1} | Z rows {TeachingGridRectangleRow}..{TeachingGridRectangleRow + TeachingGridRectangleRowCount - 1} | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
-            : "X/Z source-frame footprint unavailable until the ROI values are valid.";
+            : Localization.GridRectangleSourceFrameInvalid;
 
     public string TeachingSelectionCaptureTitle => !IsTeachingSelectionCaptureActive
         && OrientedBoxEditor.IsDraftOpen
-            ? $"{OrientedBoxEditor.Name} · 3D Box Review"
+            ? $"{OrientedBoxEditor.Name} · {Localization.ThreeDBoxReview}"
         : SelectedStepSelectionRequirement is null
         ? Localization.SelectionCapture
         : SelectedStepSelectionRequirement.Kind == ToolRecipeSelectionKinds.GridRectangle
             ? $"{SelectedStepSelectionRequirement.Name} \u00B7 {(CanApplyTeachingSelectionCapture ? Localization.RoiReview : Localization.RoiDrawing)}"
             : SelectedStepSelectionRequirement.Kind == ToolRecipeSelectionKinds.GridPolygon
-                ? $"{Localization.SelectionCapture}: {SelectedStepSelectionRequirement.Name} · ordered vertices"
+                ? $"{Localization.SelectionCapture}: {SelectedStepSelectionRequirement.Name} · {Localization.OrderedVertices}"
             : $"{Localization.SelectionCapture}: {SelectedStepSelectionRequirement.Name}";
 
     public string TeachingSelectionCaptureProgress => IsTeachingSelectionCaptureActive
@@ -1382,13 +1434,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 ? Localization.RoiCaptureReadyProgress
             : CanApplyTeachingSelectionCapture
                 && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon
-                    ? $"{TeachingSelectionCapturedPointCount} ordered polygon vertices ready · Enter applies · Esc cancels"
+                    ? string.Format(
+                        Localization.OrderedPolygonVerticesReadyFormat,
+                        TeachingSelectionCapturedPointCount)
                 : string.Format(
                     Localization.SelectionCaptureProgressFormat,
                     TeachingSelectionCapturedPointCount,
                     TeachingSelectionRequiredPointCount)
         : OrientedBoxEditor.IsDraftOpen
-            ? "Viewer handles and numeric values edit one transient candidate. Enter applies; Esc cancels."
+            ? Localization.TransientCandidateEditProgress
         : Localization.SelectionCaptureInactive;
 
     public string TeachingSelectionCaptureInstruction =>
@@ -1403,7 +1457,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                         ? Localization.RoiCaptureStartInstruction
                         : Localization.RoiCaptureSecondInstruction
                 : SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon
-                    ? "Pick or edit three or more ordered vertices. Apply/Enter commits the outline; Cancel/Escape discards it."
+                    ? Localization.GridPolygonCaptureInstruction
                 : TeachingSelectionCaptureProgress;
 
     private void OnTeachingLocalizationChanged(object? sender, PropertyChangedEventArgs args)
@@ -1416,12 +1470,23 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         OnPropertyChanged(nameof(SelectedStepSelectionRequirement));
         OnPropertyChanged(nameof(SelectedStepSelectionRequirementTitle));
         OnPropertyChanged(nameof(SelectedStepSelectionRequirementSummary));
+        OnPropertyChanged(nameof(SelectedToolTitle));
+        OnPropertyChanged(nameof(SelectedPipelineStepTitle));
+        OnPropertyChanged(nameof(ValidationSummary));
+        OnPropertyChanged(nameof(PipelineEmptyHint));
+        OnPropertyChanged(nameof(SourceContextSummary));
+        OnPropertyChanged(nameof(AlignmentStatusSummary));
+        OnPropertyChanged(nameof(SelectedStepAdapterStatus));
+        stepPropertySession.RefreshLocalizedStatus();
+        OnPropertyChanged(nameof(StepParameterEditStatus));
         OnPropertyChanged(nameof(SelectedStepTeachingSelectionSummary));
         OnPropertyChanged(nameof(SelectionCaptureActionText));
         OnPropertyChanged(nameof(ThicknessRoiTeachingDetail));
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
+        OnPropertyChanged(nameof(TeachingGridRectangleSourceFrameSummary));
+        OnPropertyChanged(nameof(TeachingGridPolygonSourceFrameSummary));
         OnPropertyChanged(nameof(OrderedRunStatus));
         OnPropertyChanged(nameof(OrderedRunCapabilitySummary));
         OnPropertyChanged(nameof(OrderedRunEvidenceSummary));
@@ -1438,7 +1503,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         landmarkCorrespondenceEditorOwner.SelectionSummary;
 
     public string PipelineEmptyHint => PipelineSteps.Count == 0
-        ? "No taught tools yet. Select a Toolbox item and add it to this recipe."
+        ? Localization.PipelineEmptyHint
         : string.Empty;
 
     public bool IsPipelineEmpty => PipelineSteps.Count == 0;
@@ -3199,22 +3264,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             TeachingCaptureSession.IsAdditionalLevelSurfaceReference,
             Selections);
     private void SubscribeStep(ToolWorkbenchPipelineStepItem step)
-    {
-        step.PropertyChanged += OnRecipePartChanged;
-        foreach (var parameter in step.Parameters)
-        {
-            parameter.PropertyChanged += OnRecipePartChanged;
-        }
-    }
+        => recipePartEventCoordinator.SubscribeStep(step);
 
     private void UnsubscribeStep(ToolWorkbenchPipelineStepItem step)
-    {
-        step.PropertyChanged -= OnRecipePartChanged;
-        foreach (var parameter in step.Parameters)
-        {
-            parameter.PropertyChanged -= OnRecipePartChanged;
-        }
-    }
+        => recipePartEventCoordinator.UnsubscribeStep(step);
 
     private void OnReferenceCatalogPropertyChanged(
         object? sender,
@@ -3251,6 +3304,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             or nameof(ToolWorkbenchPipelineStepItem.InputPortState)
             or nameof(ToolWorkbenchPipelineStepItem.InputPortDetail)
             or nameof(ToolWorkbenchPipelineStepItem.InputPortHasIssue)
+            or nameof(ToolWorkbenchPipelineStepItem.InputSummary)
             or nameof(ToolWorkbenchPipelineStepItem.OutputPortState)
             or nameof(ToolWorkbenchPipelineStepItem.OutputPortDetail)
             or nameof(ToolWorkbenchPipelineStepItem.OutputPortHasIssue))
@@ -3440,406 +3494,3 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         }
     }
 }
-
-public sealed record ToolWorkbenchStepRemovalRequestEventArgs(
-    string StepId,
-    string StepName,
-    IReadOnlyList<string> OrphanedSelectionNames);
-
-public sealed record ToolWorkbenchToolItem(
-    string Category,
-    string Name,
-    string Id,
-    int MinimumInputCount,
-    string InputContract,
-    string OutputContract,
-    string Description,
-    IReadOnlyList<ToolWorkbenchParameterSeed> Parameters);
-
-public sealed record ToolWorkbenchParameterSeed(string Name, string DefaultValue);
-
-public sealed record ToolWorkbenchTeachingSelectionRequirement(
-    string Name,
-    string Kind,
-    int RequiredPointCount,
-    bool UsesViewerCapture,
-    string Description);
-
-public sealed class ToolWorkbenchTeachingCaptureRequestEventArgs(
-    string stepId,
-    string selectionId,
-    string selectionName,
-    string kind,
-    int requiredPointCount,
-    string rootSourceId,
-    string frameId,
-    ToolRecipeSelectionSourceBinding sourceBinding,
-    ToolRecipeSelection? existingSelection) : EventArgs
-{
-    public string StepId { get; } = stepId;
-    public string SelectionId { get; } = selectionId;
-    public string SelectionName { get; } = selectionName;
-    public string Kind { get; } = kind;
-    public int RequiredPointCount { get; } = requiredPointCount;
-    public string RootSourceId { get; } = rootSourceId;
-    public string FrameId { get; } = frameId;
-    public ToolRecipeSelectionSourceBinding SourceBinding { get; } = sourceBinding;
-    public ToolRecipeSelection? ExistingSelection { get; } = existingSelection;
-}
-
-public sealed class ToolWorkbenchGridRectangleDraftChangedEventArgs(
-    ToolRecipeGridRectangle rectangle) : EventArgs
-{
-    public ToolRecipeGridRectangle Rectangle { get; } = rectangle;
-}
-
-public sealed class ToolWorkbenchGridCircleDraftChangedEventArgs(
-    ToolRecipeGridCircle circle) : EventArgs
-{
-    public ToolRecipeGridCircle Circle { get; } = circle;
-}
-
-public sealed class ToolWorkbenchGridPolygonDraftChangedEventArgs(
-    ToolRecipeGridPolygon polygon) : EventArgs
-{
-    public ToolRecipeGridPolygon Polygon { get; } = polygon;
-}
-
-public sealed class ToolWorkbenchGridPolygonVertexItem : INotifyPropertyChanged
-{
-    private double row;
-    private double column;
-
-    public ToolWorkbenchGridPolygonVertexItem(
-        int order,
-        double row,
-        double column,
-        Action<ToolWorkbenchGridPolygonVertexItem> changed)
-    {
-        Order = order;
-        this.row = row;
-        this.column = column;
-        Changed = changed;
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    internal Action<ToolWorkbenchGridPolygonVertexItem>? Changed { get; set; }
-
-    public int Order { get; private set; }
-
-    public double Row
-    {
-        get => row;
-        set
-        {
-            if (row.Equals(value))
-            {
-                return;
-            }
-
-            row = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Row)));
-            Changed?.Invoke(this);
-        }
-    }
-
-    public double Column
-    {
-        get => column;
-        set
-        {
-            if (column.Equals(value))
-            {
-                return;
-            }
-
-            column = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Column)));
-            Changed?.Invoke(this);
-        }
-    }
-
-    internal void SetOrder(int order)
-    {
-        if (Order == order)
-        {
-            return;
-        }
-
-        Order = order;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Order)));
-    }
-}
-
-public sealed class ToolWorkbenchSourceItem : INotifyPropertyChanged
-{
-    private string id;
-    private string name;
-    private string format;
-    private string unit;
-    private string frameId;
-    private string path;
-
-    public ToolWorkbenchSourceItem(string id, string name, string format, string unit, string frameId, string path)
-    {
-        this.id = id;
-        this.name = name;
-        this.format = format;
-        this.unit = unit;
-        this.frameId = frameId;
-        this.path = path;
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public string Id { get => id; set => SetField(ref id, value ?? string.Empty); }
-    public string Name { get => name; set => SetField(ref name, value ?? string.Empty); }
-    public string Format { get => format; set => SetField(ref format, value ?? string.Empty); }
-    public string Unit { get => unit; set => SetField(ref unit, value ?? string.Empty); }
-    public string FrameId { get => frameId; set => SetField(ref frameId, value ?? string.Empty); }
-    public string Path { get => path; set => SetField(ref path, value ?? string.Empty); }
-
-    private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
-    {
-        if (field == value) return;
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-}
-
-public sealed class ToolWorkbenchReferenceItem : INotifyPropertyChanged
-{
-    private string id;
-    private string name;
-    private string kind;
-
-    public ToolWorkbenchReferenceItem(string id, string name, string kind)
-    {
-        this.id = id;
-        this.name = name;
-        this.kind = kind;
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public string Id { get => id; set => SetField(ref id, value ?? string.Empty); }
-    public string Name { get => name; set => SetField(ref name, value ?? string.Empty); }
-    public string Kind { get => kind; set => SetField(ref kind, value ?? string.Empty); }
-
-    private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
-    {
-        if (field == value) return;
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-}
-
-public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
-{
-    private string id;
-    private string toolName;
-    private string inputEntityIdsText;
-    private string outputEntityId;
-    private string order = "00";
-    private string state = "Taught / pending";
-    private string inputPortState = string.Empty;
-    private string inputPortDetail = string.Empty;
-    private bool inputPortHasIssue;
-    private string outputPortState = string.Empty;
-    private string outputPortDetail = string.Empty;
-    private bool outputPortHasIssue;
-    private ToolRecipeDualRoiRouting? dualRoiRouting;
-    private bool outputEnabled = true;
-
-    public ToolWorkbenchPipelineStepItem(
-        string id,
-        ToolWorkbenchToolItem tool,
-        string inputEntityIdsText,
-        string outputEntityId,
-        IReadOnlyList<ToolRecipeParameter>? parameters = null,
-        string? toolName = null,
-        ToolRecipeDualRoiRouting? dualRoiRouting = null,
-        bool outputEnabled = true)
-    {
-        this.id = id;
-        Tool = tool;
-        this.toolName = string.IsNullOrWhiteSpace(toolName) ? tool.Name : toolName.Trim();
-        this.inputEntityIdsText = inputEntityIdsText;
-        this.outputEntityId = outputEntityId;
-        this.dualRoiRouting = dualRoiRouting;
-        this.outputEnabled = outputEnabled;
-        Parameters = new ObservableCollection<ToolWorkbenchParameterItem>(
-            parameters is null
-                ? tool.Parameters.Select(parameter => new ToolWorkbenchParameterItem(parameter.Name, parameter.DefaultValue))
-                : parameters.Select(parameter => new ToolWorkbenchParameterItem(parameter.Name, parameter.Value)));
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public ToolWorkbenchToolItem Tool { get; }
-    public string ToolId => Tool.Id;
-    public string ToolName
-    {
-        get => toolName;
-        set => SetField(ref toolName, string.IsNullOrWhiteSpace(value) ? Tool.Name : value.Trim());
-    }
-    public int MinimumInputCount => Tool.MinimumInputCount;
-    public string InputContract => Tool.InputContract;
-    public string OutputContract => Tool.OutputContract;
-    public ObservableCollection<ToolWorkbenchParameterItem> Parameters { get; }
-
-    public string Id { get => id; set => SetField(ref id, value ?? string.Empty); }
-    public string Order { get => order; internal set => SetField(ref order, value); }
-    public string InputEntityIdsText
-    {
-        get => inputEntityIdsText;
-        set
-        {
-            if (!SetField(ref inputEntityIdsText, value ?? string.Empty)) return;
-            OnPropertyChanged(nameof(InputEntityIds));
-            OnPropertyChanged(nameof(InputSummary));
-        }
-    }
-
-    public IReadOnlyList<string> InputEntityIds => inputEntityIdsText
-        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .ToArray();
-    public string InputSummary => string.IsNullOrWhiteSpace(InputEntityIdsText) ? "(set input entity IDs)" : InputEntityIdsText;
-    public string OutputEntityId { get => outputEntityId; set => SetField(ref outputEntityId, value ?? string.Empty); }
-    public bool OutputEnabled
-    {
-        get => outputEnabled;
-        set
-        {
-            if (outputEnabled == value) return;
-            outputEnabled = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OutputEnabled)));
-            RaiseCanonicalStatePresentationChanged();
-        }
-    }
-    public ToolRecipeDualRoiRouting? DualRoiRouting
-    {
-        get => dualRoiRouting;
-        set
-        {
-            if (Equals(dualRoiRouting, value)) return;
-            dualRoiRouting = value;
-            OnPropertyChanged();
-        }
-    }
-    public string State
-    {
-        get => state;
-        internal set
-        {
-            if (!SetField(ref state, value)) return;
-            RaiseCanonicalStatePresentationChanged();
-        }
-    }
-    public InspectionStepState CanonicalState =>
-        OutputEnabled
-            ? InspectionStepStateMatrix.Classify(State)
-            : InspectionStepState.Incomplete;
-    public string CanonicalStateKey =>
-        OutputEnabled ? InspectionStepStateMatrix.Describe(State).Key : "disabled";
-    public string CanonicalStateLabel =>
-        OutputEnabled
-            ? ThreeDLocalization.Shared.StateLabel(CanonicalState)
-            : ThreeDLocalization.Shared.OutputDisabled;
-    public string CanonicalStateAccessibleName =>
-        $"{CanonicalStateLabel} ({CanonicalStateKey})";
-    public string InputPortState => inputPortState;
-    public string InputPortDetail => inputPortDetail;
-    public bool InputPortHasIssue => inputPortHasIssue;
-    public string OutputPortState => outputPortState;
-    public string OutputPortDetail => outputPortDetail;
-    public bool OutputPortHasIssue => outputPortHasIssue;
-
-    internal void UpdateFlowPortPresentation(
-        string newInputPortState,
-        string newInputPortDetail,
-        bool newInputPortHasIssue,
-        string newOutputPortState,
-        string newOutputPortDetail,
-        bool newOutputPortHasIssue)
-    {
-        SetField(ref inputPortState, newInputPortState, nameof(InputPortState));
-        SetField(ref inputPortDetail, newInputPortDetail, nameof(InputPortDetail));
-        SetField(ref inputPortHasIssue, newInputPortHasIssue, nameof(InputPortHasIssue));
-        SetField(ref outputPortState, newOutputPortState, nameof(OutputPortState));
-        SetField(ref outputPortDetail, newOutputPortDetail, nameof(OutputPortDetail));
-        SetField(ref outputPortHasIssue, newOutputPortHasIssue, nameof(OutputPortHasIssue));
-    }
-
-    private bool SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
-    {
-        if (field == value) return false;
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        return true;
-    }
-
-    private bool SetField(ref bool field, bool value, [CallerMemberName] string? propertyName = null)
-    {
-        if (field == value) return false;
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    private void RaiseCanonicalStatePresentationChanged()
-    {
-        OnPropertyChanged(nameof(CanonicalState));
-        OnPropertyChanged(nameof(CanonicalStateKey));
-        OnPropertyChanged(nameof(CanonicalStateLabel));
-        OnPropertyChanged(nameof(CanonicalStateAccessibleName));
-    }
-
-    internal void RefreshLocalizedStatePresentation()
-    {
-        OnPropertyChanged(nameof(CanonicalStateLabel));
-        OnPropertyChanged(nameof(CanonicalStateAccessibleName));
-    }
-}
-
-public sealed class ToolWorkbenchParameterItem : INotifyPropertyChanged
-{
-    private string value;
-
-    public ToolWorkbenchParameterItem(string name, string value)
-    {
-        Name = name;
-        this.value = value;
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-    public string Name { get; }
-    public string Value
-    {
-        get => value;
-        set
-        {
-            var normalized = value ?? string.Empty;
-            if (this.value == normalized) return;
-            this.value = normalized;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
-        }
-    }
-}
-
-public sealed record ToolWorkbenchEntityItem(string Id, string Kind, string State, string Detail);
-
-public sealed record ToolWorkbenchValidationItem(string Level, string Message);
-
-public sealed record ToolWorkbenchC3DSourceStatePerformance(
-    double CaptureMilliseconds,
-    double ClearPreviewMilliseconds,
-    double IdentityMilliseconds,
-    double RecipeStateMilliseconds,
-    double SelectionSyncMilliseconds,
-    double LoggingMilliseconds,
-    double TotalMilliseconds);

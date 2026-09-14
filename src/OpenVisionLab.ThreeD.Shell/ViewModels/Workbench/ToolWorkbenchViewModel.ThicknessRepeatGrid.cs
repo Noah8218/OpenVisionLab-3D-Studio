@@ -106,7 +106,10 @@ public sealed partial class ToolWorkbenchViewModel
         cancelThicknessRepeatGridCommand = new RelayCommand(
             _ => CancelThicknessRepeatGrid("Operator cancelled repeat-grid review."),
             _ => ThicknessRepeatGrid.IsActive);
-        ThicknessRepeatGrid.PropertyChanged += OnThicknessRepeatGridPropertyChanged;
+        thicknessRepeatGridEventCoordinator =
+            new ToolWorkbenchThicknessRepeatGridEventCoordinator(
+                ThicknessRepeatGrid,
+                _ => RaiseThicknessRepeatGridPresentation());
     }
 
     private void BeginThicknessRepeatGrid()
@@ -171,11 +174,6 @@ public sealed partial class ToolWorkbenchViewModel
             CancelThicknessRepeatGrid("Selected recipe step changed.");
         }
     }
-
-    private void OnThicknessRepeatGridPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args) =>
-        RaiseThicknessRepeatGridPresentation();
 
     private void OnThicknessRepeatGridLocalizationChanged(
         object? sender,

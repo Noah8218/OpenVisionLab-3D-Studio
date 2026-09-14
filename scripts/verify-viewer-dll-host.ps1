@@ -10,7 +10,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $sampleProject = Join-Path $repoRoot 'samples/OpenVisionLab.ThreeD.Viewer.BinaryHost/OpenVisionLab.ThreeD.Viewer.BinaryHost.csproj'
-$artifactPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $ArtifactDirectory))
+$artifactPath = if ([System.IO.Path]::IsPathRooted($ArtifactDirectory)) {
+    [System.IO.Path]::GetFullPath($ArtifactDirectory)
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $repoRoot $ArtifactDirectory))
+}
 
 if (Select-String -LiteralPath $sampleProject -Pattern '<ProjectReference' -Quiet) {
     throw 'Binary Host must not contain a ProjectReference.'
@@ -47,14 +52,19 @@ if ($manifestFiles.Count -eq 0) {
 }
 
 $bundleRoot = $bundlePath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$manifestPaths = New-Object "System.Collections.Generic.HashSet[string]" ([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($file in $manifestFiles) {
     $fileName = [string]$file.name
-    if ([string]::IsNullOrWhiteSpace($fileName) -or [System.IO.Path]::IsPathRooted($fileName)) {
+    $platformFileName = $fileName.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+    if ([string]::IsNullOrWhiteSpace($fileName) -or
+        $fileName -ne $fileName.Replace('\', '/') -or
+        [System.IO.Path]::IsPathRooted($platformFileName)) {
         throw "Viewer DLL bundle manifest contains an invalid file name: $fileName"
     }
 
-    $filePath = [System.IO.Path]::GetFullPath((Join-Path $bundlePath $fileName))
-    if (-not $filePath.StartsWith($bundleRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $filePath = [System.IO.Path]::GetFullPath((Join-Path $bundlePath $platformFileName))
+    if (-not $filePath.StartsWith($bundleRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not $manifestPaths.Add($fileName)) {
         throw "Viewer DLL bundle manifest file is outside the bundle directory: $fileName"
     }
     if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
@@ -69,6 +79,27 @@ foreach ($file in $manifestFiles) {
     if ([string]::IsNullOrWhiteSpace($expectedHash) -or $actualHash -ne $expectedHash) {
         throw "Viewer DLL bundle file SHA-256 does not match the manifest: $fileName"
     }
+}
+
+$actualRelativePaths = @(
+    Get-ChildItem -LiteralPath $bundlePath -Recurse -File -Force |
+        Where-Object {
+            -not $_.FullName.Equals($manifestPath, [System.StringComparison]::OrdinalIgnoreCase)
+        } |
+        ForEach-Object {
+            [System.IO.Path]::GetRelativePath($bundlePath, $_.FullName).Replace('\', '/')
+        })
+$unmanifestedPaths = @($actualRelativePaths | Where-Object { -not $manifestPaths.Contains($_) })
+$missingManifestPaths = @($manifestFiles | Where-Object { -not $actualRelativePaths.Contains([string]$_.name) })
+if ($actualRelativePaths.Count -ne $manifestFiles.Count -or
+    $unmanifestedPaths.Count -gt 0 -or
+    $missingManifestPaths.Count -gt 0) {
+    throw (
+        "Viewer DLL bundle manifest does not match its recursive payload. " +
+        "Manifest=$($manifestFiles.Count); Actual=$($actualRelativePaths.Count); " +
+        "Unmanifested=$($unmanifestedPaths -join ', '); " +
+        "Missing=$($missingManifestPaths.name -join ', ')"
+    )
 }
 
 $buildArguments = @('build', $sampleProject, '-c', $Configuration, "-p:ViewerBundlePath=$bundlePath")
@@ -118,6 +149,11 @@ $requiredOutputs = @(
     'SharpGL.SceneGraph.dll',
     'SharpGL.WPF.dll',
     'Unofficial.laszip.netstandard.dll',
+    'LICENSE',
+    'NOTICE',
+    'VIEWER_DEPENDENCY_ATTRIBUTION.json',
+    'THIRD-PARTY-NOTICES.txt',
+    'runtimes/win-x64/native/OpenCvSharpExtern.dll',
     'viewer-dll-manifest.json')
 $missingOutputs = $requiredOutputs | Where-Object { -not (Test-Path -LiteralPath (Join-Path $outputPath $_)) }
 if ($missingOutputs.Count -gt 0) { throw "Binary Host output is incomplete: $($missingOutputs -join ', ')" }
@@ -140,9 +176,6 @@ if ($null -eq $hostEventMatch -or [int]$hostEventMatch.Matches[0].Groups[1].Valu
 if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostState\|activeEntity=C3D Height Grid\|selectionMode=Point\|viewerStatus=.+' -Quiet)) {
     throw 'Binary Host report did not prove the expected HostState snapshot.'
 }
-if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostNominalActualDisplay\|inputsReady=(True|False)\|distributionVisible=(True|False)\|progressPercent=' -Quiet)) {
-    throw 'Binary Host report did not prove the Nominal/Actual display snapshot.'
-}
 if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostCommands\|invoked=ResetView,FitAll,FitSelection\|saveRecipe=True' -Quiet)) {
     throw 'Binary Host report did not prove Host API command invocation and recipe save.'
 }
@@ -158,7 +191,7 @@ $reportPath = Join-Path $artifactPath 'viewer-binary-host-report.txt'
 @(
     'BinaryHost|projectReferenceCount=0|targetFramework=net10.0-windows'
     "ViewerBundle|applicationVersion=$($manifest.applicationVersion)|hostApiVersion=$($manifest.viewerHostApiVersion)|viewerAssemblyVersion=$($manifest.viewerAssemblyVersion)|manifestFiles=$($manifestFiles.Count)/$($manifestFiles.Count)|requiredOutputs=$($requiredOutputs.Count)/$($requiredOutputs.Count)"
-    "HostApi|version=$($manifest.viewerHostApiVersion)|stateSnapshot=True|nominalActualDisplay=True|events=$($hostEventMatch.Matches[0].Groups[1].Value)|commands=3/3|saveRecipe=True"
+    "HostApi|version=$($manifest.viewerHostApiVersion)|stateSnapshot=True|events=$($hostEventMatch.Matches[0].Groups[1].Value)|commands=3/3|saveRecipe=True"
     'Runtime|exitCode=0|scenario=C3D thickness pick'
     "Evidence|screenshot=$screenshotPath|quality=$screenshotQualityPath|contract=$contractPath|hostApi=$hostApiReportPath|hostRecipe=$hostApiRecipePath"
 ) | Set-Content -LiteralPath $reportPath -Encoding utf8

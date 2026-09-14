@@ -54,7 +54,7 @@
                                    Foreground="{DynamicResource ThreeD.InfoBrush}"
                                    Text="{views:ThreeDText Key=ThreeD.Workspace.InputFirstAction, Korean='1 · 3D 입력 열기', English='1 · Open 3D input'}"
                                    TextWrapping="Wrap"
-                                   AutomationProperties.Name="Current action: open 3D input">
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CurrentAction.OpenInputAccessible, Korean='현재 작업: 3D 입력 열기', English='Current action: open 3D input'}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Visible" />
@@ -72,7 +72,7 @@
                                    Foreground="{DynamicResource ThreeD.InfoBrush}"
                                    Text="{views:ThreeDText Key=ThreeD.Workspace.SelectToolFirstAction, Korean='2 · 검사 도구 선택', English='2 · Select inspection tool'}"
                                    TextWrapping="Wrap"
-                                   AutomationProperties.Name="Current action: select inspection tool">
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CurrentAction.SelectToolAccessible, Korean='현재 작업: 검사 도구 선택', English='Current action: select inspection tool'}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -94,7 +94,7 @@
                                    Foreground="{DynamicResource ThreeD.InfoBrush}"
                                    Text="{views:ThreeDText Key=ThreeD.Workspace.RoiPreviewFirstAction, Korean='3 · ROI 설정  →  4 · 미리보기', English='3 · Set ROI  →  4 · Preview'}"
                                    TextWrapping="Wrap"
-                                   AutomationProperties.Name="Current actions: set ROI and preview">
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CurrentAction.SetRoiPreviewAccessible, Korean='현재 작업: ROI 설정 및 미리보기', English='Current actions: set ROI and preview'}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -270,7 +270,7 @@
                      VirtualizingPanel.IsVirtualizing="True"
                      VirtualizingPanel.VirtualizationMode="Recycling"
                      AutomationProperties.ItemStatus="{Binding PipelineSteps.Count}"
-                     AutomationProperties.Name="Ordered inspection recipe chain">
+                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.OrderedRecipeChainAccessible, Korean='순서가 지정된 검사 레시피 체인', English='Ordered inspection recipe chain'}">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />

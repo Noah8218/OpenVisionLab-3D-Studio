@@ -1,0 +1,410 @@
+{
+  "schemaVersion": "1.0",
+  "purpose": "Managed/native provenance and license-source map for the OpenVisionLab 3D Viewer dependency bundle.",
+  "bundle": {
+    "project": "src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj",
+    "targetFramework": "net10.0-windows",
+    "rid": "win-x64",
+    "hostApiVersion": "1.1",
+    "manifestFilesMustBeCovered": true,
+    "attributionFile": "THIRD-PARTY-NOTICES.txt",
+    "manifestField": "dependencyAttributionFile"
+  },
+  "evidence": {
+    "dependencyClosure": "src/OpenVisionLab.ThreeD.Viewer/obj/project.assets.json",
+    "bundleManifest": "viewer-dll-manifest.json",
+    "packageEvidence": "Regenerate local package and bundle verification evidence for each exact build.",
+    "scope": "Current source dependency closure; this record is not legal advice or public-release approval."
+  },
+  "components": [
+    {
+      "id": "OpenVisionLab.ThreeD.Viewer",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-project",
+        "path": "src/OpenVisionLab.ThreeD.Viewer",
+        "version": "0.5.6-dev",
+        "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "OpenVisionLab.ThreeD.Viewer.dll",
+        "OpenVisionLab.ThreeD.Viewer.pdb",
+        "OpenVisionLab.ThreeD.Viewer.deps.json"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.Localization",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-project",
+        "path": "src/OpenVisionLab.Localization",
+        "version": "0.5.6-dev",
+        "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "OpenVisionLab.Localization.dll",
+        "OpenVisionLab.Localization.pdb"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.ThreeD.Core",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-project",
+        "path": "src/OpenVisionLab.ThreeD.Core",
+        "version": "0.5.6-dev",
+        "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "OpenVisionLab.ThreeD.Core.dll",
+        "OpenVisionLab.ThreeD.Core.pdb"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.ThreeD.Data",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-project",
+        "path": "src/OpenVisionLab.ThreeD.Data",
+        "version": "0.5.6-dev",
+        "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "OpenVisionLab.ThreeD.Data.dll",
+        "OpenVisionLab.ThreeD.Data.pdb"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.ThreeD.Presentation",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-project",
+        "path": "src/OpenVisionLab.ThreeD.Presentation",
+        "version": "0.5.6-dev",
+        "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "OpenVisionLab.ThreeD.Presentation.dll",
+        "OpenVisionLab.ThreeD.Presentation.pdb"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.ThreeD.Tools",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-project",
+        "path": "src/OpenVisionLab.ThreeD.Tools",
+        "version": "0.5.6-dev",
+        "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "OpenVisionLab.ThreeD.Tools.dll",
+        "OpenVisionLab.ThreeD.Tools.pdb"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.Core",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "vendored-nuget-package",
+        "packageId": "OpenVisionLab.Core",
+        "packageVersion": "3.0.1-dev.20260823.grid-diagnostics.1",
+        "packageSha256": "D06A8D7F9453DFAE8A12D6DE467FBE32F72CE5BDC6866E22E1D3608F2631E022",
+        "packageSha512": "sVhkk5RsEoPKHpjA/cGXI1sBp+vc/2wLMiIaylxOoSsUQO/K9WHOmHj4htguGi7Uj974ZgxJQfkI2iMYs8z51w==",
+        "sourceRepository": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK",
+        "sourceCommit": "8be38403d0d00698431d7ffa4de60a63289672c6"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "package:LICENSE",
+        "notice": "package:NOTICE",
+        "metadata": "https://licenses.nuget.org/MIT"
+      },
+      "payloads": [
+        "OpenVisionLab.Core.dll"
+      ],
+      "embeddedComponents": [
+        "OpenCvSharp",
+        "OpenCvSharp.Blob",
+        "OpenCV 4.3.0",
+        "cvBlob"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.Vision2D",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "vendored-nuget-package",
+        "packageId": "OpenVisionLab.Vision2D",
+        "packageVersion": "3.0.1-dev.20260823.grid-diagnostics.1",
+        "packageSha256": "01FF9B2056A29139351ED619E3E2C6F484E71E057CF16471076A336A3DA85E2F",
+        "packageSha512": "tBkoRTCn/o0pg1kUmOgJUJcdnDHuUiItBSC2bc7LypbTvjgX7bOAJHPo3QMSNSr/29Z2a2dYvz70a2zjJEq33A==",
+        "sourceRepository": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK",
+        "sourceCommit": "8be38403d0d00698431d7ffa4de60a63289672c6"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "package:LICENSE",
+        "notice": "package:NOTICE",
+        "metadata": "https://licenses.nuget.org/MIT"
+      },
+      "payloads": [
+        "OpenVisionLab.Vision2D.dll"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.Vision3D",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "vendored-nuget-package",
+        "packageId": "OpenVisionLab.Vision3D",
+        "packageVersion": "3.0.1-dev.20260829.normal-preparation.1",
+        "packageSha256": "E0A2EB2021EB041D93225D00EEF71F028BD79CE3BA7F9CF27F539634F8D506A2",
+        "packageSha512": "fqm2gG9Dmo3jeS2Th9ko1+cJcNh4D19/J4uEAdZSttY3WU0uSynnIKPr+6Eth3uSVu+UaNcLiuYXrihcV3vuRQ==",
+        "sourceRepository": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK",
+        "sourceCommit": "6da3bcf521efb88681a17e4a7b23a091e7fcbacf"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "package:LICENSE",
+        "notice": "package:NOTICE",
+        "metadata": "https://licenses.nuget.org/MIT"
+      },
+      "payloads": [
+        "OpenVisionLab.Vision3D.dll"
+      ]
+    },
+    {
+      "id": "OpenCvSharp",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "embedded-in-package",
+        "containerPackage": "OpenVisionLab.Core/3.0.1-dev.20260823.grid-diagnostics.1",
+        "sourceRepository": "https://github.com/shimat/opencvsharp",
+        "sourceCommit": "daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "assemblyInformationalVersion": "1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "historicalPackageReference": "OpenCvSharp4 4.3.0.20200421 (BSD-3-Clause metadata; current payload is embedded and is not claimed byte-identical to that archive)"
+      },
+      "license": {
+        "spdx": "BSD-3-Clause",
+        "source": "https://github.com/shimat/opencvsharp/blob/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/LICENSE",
+        "metadata": "https://licenses.nuget.org/BSD-3-Clause"
+      },
+      "payloads": [
+        "OpenCvSharp.dll"
+      ]
+    },
+    {
+      "id": "OpenCvSharp.Blob",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "embedded-in-package",
+        "containerPackage": "OpenVisionLab.Core/3.0.1-dev.20260823.grid-diagnostics.1",
+        "sourceRepository": "https://github.com/shimat/opencvsharp",
+        "sourceCommit": "daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "sourcePath": "src/OpenCvSharp.Blob/ReadMe.txt",
+        "versionEvidence": "assembly 1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae"
+      },
+      "license": {
+        "spdx": null,
+        "declaredText": "LGPL (version not specified in the embedded ReadMe.txt)",
+        "source": "https://github.com/shimat/opencvsharp/blob/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/src/OpenCvSharp.Blob/ReadMe.txt",
+        "upstreamReference": "https://github.com/Steelskin/cvblob/blob/main/COPYING.LESSER",
+        "versionStatus": "requires legal confirmation before public redistribution"
+      },
+      "payloads": [
+        "OpenCvSharp.Blob.dll"
+      ]
+    },
+    {
+      "id": "OpenCV 4.3.0",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "embedded-in-native-binary",
+        "payload": "runtimes/win-x64/native/OpenCvSharpExtern.dll",
+        "version": "4.3.0",
+        "versionControl": "4.3.0-1-gd40fe356e3",
+        "buildTimestamp": "2020-04-04T07:59:40Z",
+        "evidence": "native binary General configuration string; validate from the exact bundle before distribution",
+        "sourceRepository": "https://github.com/opencv/opencv",
+        "sourceTag": "4.3.0"
+      },
+      "license": {
+        "spdx": "BSD-3-Clause",
+        "source": "https://github.com/opencv/opencv/blob/4.3.0/LICENSE"
+      },
+      "payloads": [
+        "runtimes/win-x64/native/OpenCvSharpExtern.dll"
+      ]
+    },
+    {
+      "id": "cvBlob",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "embedded-in-OpenCvSharp.Blob-and-native-wrapper",
+        "sourceEvidence": "OpenCvSharp.Blob ReadMe.txt states that the project wraps cvblob and is LGPL; original Google Code source is archived.",
+        "sourceRepository": "https://github.com/Steelskin/cvblob",
+        "sourceFiles": [
+          "https://github.com/Steelskin/cvblob/blob/main/COPYING",
+          "https://github.com/Steelskin/cvblob/blob/main/COPYING.LESSER"
+        ]
+      },
+      "license": {
+        "spdx": null,
+        "declaredText": "LGPL (version not specified by the embedded wrapper readme; the maintained upstream mirror publishes LGPL-3.0 COPYING.LESSER)",
+        "source": "https://github.com/Steelskin/cvblob/blob/main/COPYING.LESSER",
+        "versionStatus": "requires legal confirmation before public redistribution"
+      },
+      "payloads": [
+        "OpenCvSharp.Blob.dll",
+        "runtimes/win-x64/native/OpenCvSharpExtern.dll"
+      ]
+    },
+    {
+      "id": "SharpGL",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "nuget-package",
+        "packageId": "SharpGL",
+        "packageVersion": "3.1.1",
+        "packageSha256Observed": "6DD4567794FB02F977A6E5CC0CFDCB8E8AE73A6059944255DF7A67AC2A37DACE",
+        "packageSha512": "tLTsMAl0XMjLhVK++ga65tObn/8IyPEfZ9i+icELcAPJ92mgB/DllVlfDBNJOP5T3C4GuT6YEZn3CVR11GH2qQ==",
+        "sourceRepository": "https://github.com/dwmkerr/sharpgl",
+        "sourceRevisionStatus": "package nuspec does not encode a commit"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "https://raw.githubusercontent.com/dwmkerr/sharpgl/master/LICENSE"
+      },
+      "payloads": [
+        "SharpGL.dll"
+      ]
+    },
+    {
+      "id": "SharpGL.SceneGraph",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "nuget-package",
+        "packageId": "SharpGL.SceneGraph",
+        "packageVersion": "3.1.1",
+        "packageSha256Observed": "0DA000BDF2701498298C809F429F5C97E084D0A37FEC545B4CD009D90E845753",
+        "packageSha512": "VY4SS/y8Ob8Mbi/oqh0lHA0SRCfRCeZ+/Kk8AM4EAw/vhHdpS1LEuVa0hVE3gA84tp3YFVmwXn8GjeLIA/VfmA==",
+        "sourceRepository": "https://github.com/dwmkerr/sharpgl",
+        "sourceRevisionStatus": "package nuspec does not encode a commit"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "https://raw.githubusercontent.com/dwmkerr/sharpgl/master/LICENSE"
+      },
+      "payloads": [
+        "SharpGL.SceneGraph.dll"
+      ]
+    },
+    {
+      "id": "SharpGL.WPF",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "nuget-package",
+        "packageId": "SharpGL.WPF",
+        "packageVersion": "3.1.1",
+        "packageSha256Observed": "15106A1814F22978D6DBEDFEEA4491559E64C9560466F26F51594CB3CFE07EC3",
+        "packageSha512": "8L1w5owBTSrj4TMKilUBu4trDwSuZEbU9QK2GNGOXNmWTVDvCuqmFhL5Jlio8yV8uOsdst3Wwnf1fYXrPIXYWA==",
+        "sourceRepository": "https://github.com/dwmkerr/sharpgl",
+        "sourceRevisionStatus": "package nuspec does not encode a commit"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "https://raw.githubusercontent.com/dwmkerr/sharpgl/master/LICENSE"
+      },
+      "payloads": [
+        "SharpGL.WPF.dll"
+      ]
+    },
+    {
+      "id": "Unofficial.laszip.netstandard",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "nuget-package",
+        "packageId": "Unofficial.laszip.netstandard",
+        "packageVersion": "5.6.2",
+        "packageSha256Observed": "9632C5B783979F7ABA05F475FCB3B0DBCE4F18A6A33D7F8FD840D97FB03741C4",
+        "packageSha512": "YekC90x1UoBelWv3KkJjJYeiSpRxq/FD/oWZQmlgpXT557SENA2pXjMzTxKlZRN4V3Wq3wSx7a+4TMutiG0wSw==",
+        "sourceRepository": "https://github.com/aardvark-platform/aardvark.algodat",
+        "sourceRevisionStatus": "package nuspec provides the upstream license URL but no commit"
+      },
+      "license": {
+        "spdx": "LGPL-2.1-only",
+        "source": "https://raw.githubusercontent.com/aardvark-platform/aardvark.algodat/master/src/Unofficial.laszip.netstandard/LICENSE"
+      },
+      "payloads": [
+        "Unofficial.laszip.netstandard.dll"
+      ]
+    },
+    {
+      "id": "Product legal files",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "repository-root"
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "source": "../../LICENSE",
+        "notice": "../../NOTICE"
+      },
+      "payloads": [
+        "LICENSE",
+        "NOTICE",
+        "VIEWER_DEPENDENCY_ATTRIBUTION.json",
+        "THIRD-PARTY-NOTICES.txt"
+      ]
+    },
+    {
+      "id": "System.Data.DataSetExtensions",
+      "delivery": "not-delivered",
+      "origin": {
+        "kind": "nuget-package-in-assets-only",
+        "packageId": "System.Data.DataSetExtensions",
+        "packageVersion": "4.5.0",
+        "packageSha256Observed": "AA9A4ED0BF01A48EDC81A4ADA81867E9825816315D4B0A579518A1D1716C693E",
+        "packageSha512": "221clPs1445HkTBZPL+K9sDBdJRB8UN8rgjO3ztB0CQ26z//fmJXtlsr6whGatscsKGBrhJl5bwJuKSA8mwFOw==",
+        "deliveryNote": "Referenced by project assets but no System.Data.DataSetExtensions.dll is present in the Viewer bundle."
+      },
+      "license": {
+        "source": "package:LICENSE.TXT",
+        "notice": "package:THIRD-PARTY-NOTICES.TXT",
+        "metadata": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT"
+      },
+      "payloads": []
+    }
+  ]
+}

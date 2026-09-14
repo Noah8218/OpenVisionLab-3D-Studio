@@ -63,19 +63,19 @@
                                Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
-                               ToolTip="Explicitly create a temporary Filter Preview"
-                               AutomationProperties.Name="Preview Filter" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.PreviewTip, Korean='필터 미리보기를 명시적으로 생성합니다.', English='Explicitly create a temporary Filter Preview'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.PreviewAction, Korean='필터 미리보기', English='Preview Filter'}" />
                     <ui:Button Margin="0,0,6,0"
                                Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon DataBarVertical24}"
                                Command="{Binding ShowFilterSourceCommand}"
-                               ToolTip="Restore the input view without changing the Preview artifact"
-                               AutomationProperties.Name="Show Filter source" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.ShowInputTip, Korean='미리보기 산출물을 변경하지 않고 입력 보기를 복원합니다.', English='Restore the input view without changing the Preview artifact'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.ShowInputAction, Korean='필터 입력 보기', English='Show Filter source'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="Publish the current Preview without running again"
-                               AutomationProperties.Name="Publish Filter output" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.PublishTip, Korean='다시 실행하지 않고 현재 미리보기를 게시합니다.', English='Publish the current Preview without running again'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.PublishAction, Korean='필터 출력 게시', English='Publish Filter output'}" />
                 </WrapPanel>
             </Grid>
         </Border>

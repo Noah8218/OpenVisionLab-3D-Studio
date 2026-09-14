@@ -20,6 +20,9 @@ internal static class CommonStateKeyboardAccessibilityVerification
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        var fullReportPath = Path.GetFullPath(reportPath);
+        var reportDirectory = Path.GetDirectoryName(fullReportPath)
+            ?? Environment.CurrentDirectory;
 
         var lines = new List<string>
         {
@@ -206,7 +209,7 @@ internal static class CommonStateKeyboardAccessibilityVerification
                 surface.UpdateLayout();
 
                 var screenshotPath = Path.Combine(
-                    Path.GetDirectoryName(Path.GetFullPath(reportPath)) ?? Environment.CurrentDirectory,
+                    reportDirectory,
                     "common-state-badges.png");
                 WpfScreenshotCapture.Save(
                     WpfScreenshotCapture.Capture(surface).Bitmap,
@@ -248,8 +251,7 @@ internal static class CommonStateKeyboardAccessibilityVerification
             OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
         }
 
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
+        Directory.CreateDirectory(reportDirectory);
         var passedAll = passed == total && total > 0 && !lines.Any(line => line.StartsWith("FAIL | verifier-exception", StringComparison.Ordinal));
         lines.Add($"Result={(passedAll ? "PASS" : "FAIL")}|{passed}/{total}");
         File.WriteAllLines(fullReportPath, lines);

@@ -238,6 +238,7 @@ public static class VisionSdkHeightMapInspection
 
         try
         {
+            // The SDK owns a defensive snapshot; array callers need no intermediate copy.
             heightMap = new SdkHeightMap3D(
                 source.Rows,
                 source.Columns,
@@ -245,7 +246,7 @@ public static class VisionSdkHeightMapInspection
                 source.OriginY,
                 source.ColumnPitch,
                 source.RowPitch,
-                source.Values.ToArray(),
+                source.Values as double[] ?? source.Values.ToArray(),
                 source.EffectivePlanarUnit,
                 source.EffectiveHeightUnit,
                 source.FrameId,

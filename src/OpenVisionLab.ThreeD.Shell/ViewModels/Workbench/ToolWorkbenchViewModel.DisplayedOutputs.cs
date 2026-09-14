@@ -53,14 +53,11 @@ public sealed partial class ToolWorkbenchViewModel
                 RefreshNavigatorSelection();
             },
             RefreshSelectedToolWorkspaceProjection);
-        displayedOutputsOwner.PropertyChanged +=
-            OnDisplayedOutputsOwnerPropertyChanged;
+        displayedOutputsEventCoordinator =
+            new ToolWorkbenchDisplayedOutputsEventCoordinator(
+                displayedOutputsOwner,
+                args => OnPropertyChanged(args.PropertyName));
     }
-
-    private void OnDisplayedOutputsOwnerPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args) =>
-        OnPropertyChanged(args.PropertyName);
 
     private void OnDisplayedOutputsLocalizationChanged(
         object? sender,

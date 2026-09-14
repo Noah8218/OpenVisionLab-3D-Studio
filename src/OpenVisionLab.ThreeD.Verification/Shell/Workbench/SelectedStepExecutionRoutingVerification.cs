@@ -1,4 +1,6 @@
 using System.IO;
+using System.Linq;
+using System.Threading;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
@@ -33,6 +35,8 @@ internal static class SelectedStepExecutionRoutingVerification
         var firstCanPublish = true;
         var secondPreview = 0;
         var secondRefresh = 0;
+        var failurePreview = 0;
+        var commandLog = new List<string>();
 
         var routes = new Dictionary<string, ToolWorkbenchSelectedStepExecutionRoute>(
             StringComparer.Ordinal)
@@ -60,11 +64,25 @@ internal static class SelectedStepExecutionRoutingVerification
                 () => true,
                 () => { },
                 () => false,
-                () => secondRefresh++)
+                () => secondRefresh++),
+            ["failure"] = new(
+                () =>
+                {
+                    failurePreview++;
+                    return Task.FromException<bool>(
+                        new InvalidOperationException("verification preview failure"));
+                },
+                () => true,
+                () => { },
+                () => true,
+                () => { },
+                () => false,
+                () => { })
         };
         var owner = new ToolWorkbenchSelectedStepExecutionOwner(
             () => selectedStep,
-            routes);
+            routes,
+            (category, message) => commandLog.Add($"{category}:{message}"));
 
         var previewed = owner.PreviewAsync().GetAwaiter().GetResult();
         Check(
@@ -134,6 +152,88 @@ internal static class SelectedStepExecutionRoutingVerification
             && !owner.PublishCommand.CanExecute(null)
             && !owner.CancelCommand.CanExecute(null),
             $"preview={owner.PreviewCommand.CanExecute(null)};publish={owner.PublishCommand.CanExecute(null)};cancel={owner.CancelCommand.CanExecute(null)}");
+
+        selectedStep = CreateStep("failure", outputEnabled: true);
+        owner.PreviewCommand.Execute(null);
+        Check(
+            "Preview command observes route failures",
+            failurePreview == 1
+            && commandLog.Any(log => log.Contains(
+                "Selected step Preview failed",
+                StringComparison.Ordinal)),
+            $"preview={failurePreview};logCount={commandLog.Count}");
+
+        var commandPreviewStep = CreateStep("command-preview", outputEnabled: true);
+        var commandPreviewCalls = 0;
+        var commandPreviewRelease = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var commandPreviewOwner = new ToolWorkbenchSelectedStepExecutionOwner(
+            () => commandPreviewStep,
+            new Dictionary<string, ToolWorkbenchSelectedStepExecutionRoute>(StringComparer.Ordinal)
+            {
+                ["command-preview"] = new(
+                    async () =>
+                    {
+                        Interlocked.Increment(ref commandPreviewCalls);
+                        return await commandPreviewRelease.Task;
+                    },
+                    () => true,
+                    () => { },
+                    () => true,
+                    () => { },
+                    () => false,
+                    () => { })
+            },
+            (_, _) => { });
+        commandPreviewOwner.PreviewCommand.Execute(null);
+        commandPreviewOwner.PreviewCommand.Execute(null);
+        var commandPreviewAdmitted = SpinWait.SpinUntil(
+            () => Volatile.Read(ref commandPreviewCalls) == 1,
+            TimeSpan.FromSeconds(1));
+        Check(
+            "Preview command is single-flight while its Task is pending",
+            commandPreviewAdmitted
+            && Volatile.Read(ref commandPreviewCalls) == 1
+            && !commandPreviewOwner.PreviewCommand.CanExecute(null),
+            $"admitted={commandPreviewAdmitted};calls={commandPreviewCalls};canExecute={commandPreviewOwner.PreviewCommand.CanExecute(null)}");
+
+        commandPreviewRelease.SetResult(true);
+        var commandPreviewReenabled = SpinWait.SpinUntil(
+            () => commandPreviewOwner.PreviewCommand.CanExecute(null),
+            TimeSpan.FromSeconds(1));
+        commandPreviewOwner.PreviewCommand.Execute(null);
+        var commandPreviewReused = SpinWait.SpinUntil(
+            () => Volatile.Read(ref commandPreviewCalls) == 2,
+            TimeSpan.FromSeconds(1));
+        Check(
+            "Preview command releases its admission after completion",
+            commandPreviewReenabled && commandPreviewReused,
+            $"reenabled={commandPreviewReenabled};reused={commandPreviewReused};calls={commandPreviewCalls}");
+
+        commandPreviewRelease = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        commandPreviewOwner.PreviewCommand.Execute(null);
+        var commandPreviewCancellationAdmitted = SpinWait.SpinUntil(
+            () => Volatile.Read(ref commandPreviewCalls) == 3,
+            TimeSpan.FromSeconds(1));
+        commandPreviewRelease.SetCanceled();
+        var commandPreviewCancellationReleased = SpinWait.SpinUntil(
+            () => commandPreviewOwner.PreviewCommand.CanExecute(null),
+            TimeSpan.FromSeconds(1));
+        Check(
+            "Preview command releases its admission after cancellation",
+            commandPreviewCancellationAdmitted && commandPreviewCancellationReleased,
+            $"admitted={commandPreviewCancellationAdmitted};released={commandPreviewCancellationReleased};calls={commandPreviewCalls}");
+        commandPreviewOwner.Dispose();
+
+        owner.Dispose();
+        Check(
+            "disposed owner fails closed for all selected-step commands",
+            owner.IsDisposed
+            && !owner.PreviewCommand.CanExecute(null)
+            && !owner.PublishCommand.CanExecute(null)
+            && !owner.CancelCommand.CanExecute(null),
+            $"disposed={owner.IsDisposed};preview={owner.PreviewCommand.CanExecute(null)};publish={owner.PublishCommand.CanExecute(null)};cancel={owner.CancelCommand.CanExecute(null)}");
 
         var passedAll = total > 0 && passed == total;
         lines.Add($"SelectedStepExecutionRouting|{(passedAll ? "PASS" : "FAIL")}|checks={passed}/{total}");

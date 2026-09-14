@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
@@ -213,13 +214,7 @@ public partial class RecipePipelineReviewView : UserControl
 
     private void SelectReviewTab(int index)
     {
-        if (DataContext is ToolWorkbenchViewModel workbench)
-        {
-            workbench.SelectedReviewTabIndex = index;
-            return;
-        }
-
-        ReviewTabs.SelectedIndex = index;
+        ReviewTabs.SetCurrentValue(Selector.SelectedIndexProperty, index);
     }
 
     private static bool HasAccessibleText(ContentControl control) =>
@@ -228,7 +223,11 @@ public partial class RecipePipelineReviewView : UserControl
 
     public void SetValidationSection(ValidationWorkspaceSection section)
     {
-        validationWorkspace?.SelectSection(section);
+        if (validationWorkspace?.SelectSectionCommand.CanExecute(section) == true)
+        {
+            validationWorkspace.SelectSectionCommand.Execute(section);
+        }
+
         ApplyValidationSectionLayout();
     }
 

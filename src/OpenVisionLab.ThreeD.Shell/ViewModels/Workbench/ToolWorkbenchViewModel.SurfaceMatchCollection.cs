@@ -54,8 +54,10 @@ public sealed partial class ToolWorkbenchViewModel
             LoadPublishedSurfaceMatchExperiment,
             RaiseSurfaceMatchExperimentDisplay,
             (category, message) => AppendLog(category, message));
-        surfaceMatchCollectionOwner.PropertyChanged += (_, args) =>
-            OnPropertyChanged(args.PropertyName);
+        surfaceMatchCollectionEventCoordinator =
+            new ToolWorkbenchSurfaceMatchCollectionEventCoordinator(
+                surfaceMatchCollectionOwner,
+                args => OnPropertyChanged(args.PropertyName));
     }
 
     public void ShowSurfaceMatchCollectionEvidence(

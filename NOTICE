@@ -5,3 +5,9 @@ This product includes software developed by 최노아 (Noah Choi).
 
 Third-party components remain subject to their respective licenses and
 attribution notices.
+
+Viewer bundle dependency provenance and redistribution boundaries are recorded
+in third_party/Viewer/THIRD-PARTY-NOTICES.txt and
+third_party/Viewer/VIEWER_DEPENDENCY_ATTRIBUTION.json. The exact cvBlob LGPL
+version and source/relink obligations require confirmation before distributing
+the binary Viewer bundle.

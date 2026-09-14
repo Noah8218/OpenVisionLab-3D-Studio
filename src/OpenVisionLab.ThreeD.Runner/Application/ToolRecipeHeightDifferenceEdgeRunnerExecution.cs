@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -6,6 +7,7 @@ internal static class ToolRecipeHeightDifferenceEdgeRunnerExecution
 {
     public static int Run(string recipePath, string edgeStepId, string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
@@ -46,17 +48,77 @@ internal static class ToolRecipeHeightDifferenceEdgeRunnerExecution
             };
             lines.AddRange(output.Points.Select(point =>
                 $"Point|scanline={point.ScanlineIndex}|first={point.FirstRow},{point.FirstColumn},{point.FirstHeight:R}|second={point.SecondRow},{point.SecondColumn},{point.SecondHeight:R}|delta={point.SignedDelta:R}|magnitude={point.Magnitude:R}|xyz={point.X:R},{point.Y:R},{point.Z:R}"));
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath, lines);
+            WriteLinesAtomically(fullReportPath, lines);
             Console.WriteLine($"Height Difference Edge Runner: Pass ({output.Points.Count} points, {output.ContentSha256})");
             return 0;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or InvalidOperationException or OverflowException)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath, ["OpenVisionLab 3D Height Difference Edge Runner report", $"Error|{exception.Message}"]);
+            TryWriteErrorReport(fullReportPath, exception);
             Console.Error.WriteLine(exception.Message);
             return 5;
+        }
+    }
+
+    private static void TryWriteErrorReport(string fullReportPath, Exception exception)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            WriteLinesAtomically(
+                fullReportPath,
+                [
+                    "OpenVisionLab 3D Height Difference Edge Runner report",
+                    $"Error|{exception.Message}"
+                ]);
+        }
+        catch (Exception reportException) when (
+            reportException is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or InvalidOperationException
+                or OverflowException)
+        {
+            Console.Error.WriteLine($"Height Difference Edge report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       bufferSize: 4096,
+                       leaveOpen: true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

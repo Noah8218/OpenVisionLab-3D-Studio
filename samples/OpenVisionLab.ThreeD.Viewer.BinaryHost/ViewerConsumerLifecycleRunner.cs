@@ -1,124 +1,21 @@
-using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.BinaryHost;
 
-internal sealed record ViewerConsumerLifecycleOptions(
-    string ReportPath,
-    string C3DPath,
-    string MeshPath,
-    string PointCloudPath,
-    int RecreateCycles,
-    int WindowCloseCycles,
-    string? SmokeContractPath,
-    bool RequireHardwareOpenGL,
-    bool RequireImportedTextureRelease,
-    string? GpuPostCloseObservationBarrierPath)
-{
-    public static ViewerConsumerLifecycleOptions Parse(
-        string[] args,
-        string reportPath)
-    {
-        return new ViewerConsumerLifecycleOptions(
-            Path.GetFullPath(reportPath),
-            GetRequiredPath(args, "--consumer-c3d"),
-            GetRequiredPath(args, "--consumer-mesh"),
-            GetRequiredPath(args, "--consumer-pointcloud"),
-            GetCycleCount(args),
-            GetWindowCloseCycles(args),
-            GetOptionalPath(args, "--smoke-contracts"),
-            HasFlag(args, "--consumer-require-hardware-opengl"),
-            HasFlag(args, "--consumer-require-texture-release"),
-            GetOptionalPath(args, "--consumer-gpu-post-close-observation-barrier"));
-    }
-
-    private static int GetCycleCount(string[] args)
-    {
-        var value = GetArgumentValue(args, "--consumer-lifecycle-recreate-count");
-        if (value is null)
-        {
-            return 10;
-        }
-
-        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cycles)
-            || cycles < 10
-            || cycles > 100)
-        {
-            throw new ArgumentException(
-                "--consumer-lifecycle-recreate-count must be an integer from 10 through 100.",
-                nameof(args));
-        }
-
-        return cycles;
-    }
-
-    private static int GetWindowCloseCycles(string[] args)
-    {
-        var value = GetArgumentValue(args, "--consumer-window-close-cycles");
-        if (value is null)
-        {
-            return 0;
-        }
-
-        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cycles)
-            || cycles < 0
-            || cycles > 20)
-        {
-            throw new ArgumentException(
-                "--consumer-window-close-cycles must be an integer from 0 through 20.",
-                nameof(args));
-        }
-
-        return cycles;
-    }
-
-    private static string GetRequiredPath(string[] args, string name)
-    {
-        var value = GetOptionalPath(args, name);
-        return value ?? throw new ArgumentException(
-            $"The independent consumer lifecycle requires {name}.",
-            nameof(args));
-    }
-
-    private static string? GetOptionalPath(string[] args, string name)
-    {
-        var value = GetArgumentValue(args, name);
-        return string.IsNullOrWhiteSpace(value) ? null : Path.GetFullPath(value);
-    }
-
-    private static string? GetArgumentValue(string[] args, string name)
-    {
-        var index = Array.IndexOf(args, name);
-        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
-    }
-
-    private static bool HasFlag(string[] args, string name) =>
-        args.Any(argument => string.Equals(argument, name, StringComparison.OrdinalIgnoreCase));
-}
-
 internal sealed class ViewerConsumerLifecycleRunner
 {
-    private const uint GdiObjectCount = 0;
-    private const uint UserObjectCount = 1;
-
-    [DllImport("user32.dll")]
-    private static extern uint GetGuiResources(IntPtr processHandle, uint flags);
-
     private readonly ViewerConsumerLifecycleOptions options;
-    private readonly List<string> reportLines = [];
-    private readonly List<string> contractPaths = [];
-    private readonly Process process = Process.GetCurrentProcess();
+    private readonly ViewerConsumerContractAnalyzer contractAnalyzer;
+    private readonly ViewerConsumerInputPreconditionValidator inputPreconditions;
+    private readonly ViewerConsumerLifecycleReportCoordinator lifecycleReport;
+    private readonly ViewerConsumerContractCaptureCoordinator contractCapture;
     private Application? application;
     private Window? window;
     private OpenVisionThreeDViewerControl? currentViewer;
-    private int totalChecks;
-    private int failedChecks;
-    private bool reportWritten;
     private int exitCode;
     private long cleanProcessBaselinePrivateMemory;
     private long cleanProcessBaselineManagedMemory;
@@ -130,6 +27,20 @@ internal sealed class ViewerConsumerLifecycleRunner
     private ViewerConsumerLifecycleRunner(ViewerConsumerLifecycleOptions options)
     {
         this.options = options;
+        contractAnalyzer = new ViewerConsumerContractAnalyzer(
+            options.RequireHardwareOpenGL,
+            options.RequireImportedTextureRelease);
+        inputPreconditions = new ViewerConsumerInputPreconditionValidator(
+            options.ReportPath,
+            options.C3DPath,
+            options.MeshPath,
+            options.PointCloudPath,
+            options.SmokeContractPath);
+        lifecycleReport = new ViewerConsumerLifecycleReportCoordinator(options.ReportPath);
+        contractCapture = new ViewerConsumerContractCaptureCoordinator(
+            options.SmokeContractPath,
+            options.ReportPath,
+            lifecycleReport.AddLine);
     }
 
     public static int Run(ViewerConsumerLifecycleOptions options)
@@ -142,11 +53,11 @@ internal sealed class ViewerConsumerLifecycleRunner
     {
         try
         {
-            ValidateInputs();
-            CollectForObservation();
-            cleanProcessBaselinePrivateMemory = ReadPrivateMemoryBytes();
-            cleanProcessBaselineManagedMemory = ReadManagedMemoryBytes();
-            cleanProcessBaselineNativeResources = ReadNativeResources();
+            inputPreconditions.Validate();
+            ViewerConsumerProcessResourceObserver.CollectForObservation();
+            cleanProcessBaselinePrivateMemory = ViewerConsumerProcessResourceObserver.ReadPrivateMemoryBytes();
+            cleanProcessBaselineManagedMemory = ViewerConsumerProcessResourceObserver.ReadManagedMemoryBytes();
+            cleanProcessBaselineNativeResources = ViewerConsumerProcessResourceObserver.ReadNativeResources();
             application = new Application
             {
                 ShutdownMode = ShutdownMode.OnExplicitShutdown
@@ -165,32 +76,12 @@ internal sealed class ViewerConsumerLifecycleRunner
         }
         catch (Exception exception)
         {
-            RecordCheck("RunnerStartup", false, exception.ToString());
-            WriteReport();
+            lifecycleReport.RecordCheck("RunnerStartup", false, exception.ToString());
+            lifecycleReport.Write();
             exitCode = 1;
         }
 
         return exitCode;
-    }
-
-    private void ValidateInputs()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(options.ReportPath)!);
-        RequireFile(options.C3DPath, "C3D source");
-        RequireFile(options.MeshPath, "mesh source");
-        RequireFile(options.PointCloudPath, "point-cloud source");
-        if (options.SmokeContractPath is not null)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(options.SmokeContractPath)!);
-        }
-    }
-
-    private static void RequireFile(string path, string label)
-    {
-        if (!File.Exists(path))
-        {
-            throw new FileNotFoundException($"The {label} was not found.", path);
-        }
     }
 
     private async void OnWindowLoaded(object sender, RoutedEventArgs args)
@@ -203,18 +94,18 @@ internal sealed class ViewerConsumerLifecycleRunner
         try
         {
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
-            CollectForObservation();
-            emptyWindowBaselinePrivateMemory = ReadPrivateMemoryBytes();
-            emptyWindowBaselineManagedMemory = ReadManagedMemoryBytes();
-            emptyWindowBaselineNativeResources = ReadNativeResources();
+            ViewerConsumerProcessResourceObserver.CollectForObservation();
+            emptyWindowBaselinePrivateMemory = ViewerConsumerProcessResourceObserver.ReadPrivateMemoryBytes();
+            emptyWindowBaselineManagedMemory = ViewerConsumerProcessResourceObserver.ReadManagedMemoryBytes();
+            emptyWindowBaselineNativeResources = ViewerConsumerProcessResourceObserver.ReadNativeResources();
             currentViewer = CreateViewer();
             window.Content = currentViewer;
             await ExecuteAsync();
-            exitCode = failedChecks == 0 ? 0 : 1;
+            exitCode = lifecycleReport.FailedChecks == 0 ? 0 : 1;
         }
         catch (Exception exception)
         {
-            RecordCheck("RunnerExecution", false, exception.ToString());
+            lifecycleReport.RecordCheck("RunnerExecution", false, exception.ToString());
             exitCode = 1;
         }
         finally
@@ -227,7 +118,7 @@ internal sealed class ViewerConsumerLifecycleRunner
             }
             catch (Exception exception)
             {
-                RecordCheck("FinalCleanup", false, exception.ToString());
+                lifecycleReport.RecordCheck("FinalCleanup", false, exception.ToString());
                 exitCode = 1;
             }
 
@@ -237,18 +128,18 @@ internal sealed class ViewerConsumerLifecycleRunner
             }
             catch (Exception exception)
             {
-                RecordCheck("WindowClose", false, exception.ToString());
+                lifecycleReport.RecordCheck("WindowClose", false, exception.ToString());
                 exitCode = 1;
             }
 
             if (options.GpuPostCloseObservationBarrierPath is not null)
             {
                 var barrier = await WaitForGpuObservationBarrierAsync();
-                RecordCheck("GpuPostCloseObservationBarrier", barrier.Passed, barrier.Details);
+                lifecycleReport.RecordCheck("GpuPostCloseObservationBarrier", barrier.Passed, barrier.Details);
             }
 
-            exitCode = failedChecks == 0 ? 0 : 1;
-            WriteReport();
+            exitCode = lifecycleReport.FailedChecks == 0 ? 0 : 1;
+            lifecycleReport.Write();
             application.Shutdown(exitCode);
         }
     }
@@ -257,75 +148,76 @@ internal sealed class ViewerConsumerLifecycleRunner
     {
         var viewer = currentViewer
             ?? throw new InvalidOperationException("The initial Viewer control was not created.");
+        IOpenVisionThreeDViewerHost host = viewer;
         await WaitForLoadedAsync(viewer);
         await WaitForRenderReadyAsync(viewer);
 
-        reportLines.Add("OpenVisionLab 3D independent Viewer consumer lifecycle");
-        reportLines.Add($"Generated={DateTimeOffset.Now:O}");
-        reportLines.Add("ProjectReferences=0");
-        reportLines.Add($"HostApiVersion={viewer.HostApiVersion}");
-        reportLines.Add($"C3DSource={options.C3DPath}");
-        reportLines.Add($"MeshSource={options.MeshPath}");
-        reportLines.Add($"PointCloudSource={options.PointCloudPath}");
-        reportLines.Add($"RequestedRecreateCycles={options.RecreateCycles}");
-        reportLines.Add($"RequestedWindowCloseCycles={options.WindowCloseCycles}");
-        reportLines.Add($"CleanProcessBaseline|privateBytes={cleanProcessBaselinePrivateMemory}|managedBytes={cleanProcessBaselineManagedMemory}|native={cleanProcessBaselineNativeResources}");
-        reportLines.Add($"EmptyWindowBaseline|privateBytes={emptyWindowBaselinePrivateMemory}|managedBytes={emptyWindowBaselineManagedMemory}|native={emptyWindowBaselineNativeResources}");
+        lifecycleReport.AddLine("OpenVisionLab 3D independent Viewer consumer lifecycle");
+        lifecycleReport.AddLine($"Generated={DateTimeOffset.Now:O}");
+        lifecycleReport.AddLine("ProjectReferences=0");
+        lifecycleReport.AddLine($"HostApiVersion={host.HostApiVersion}");
+        lifecycleReport.AddLine($"C3DSource={options.C3DPath}");
+        lifecycleReport.AddLine($"MeshSource={options.MeshPath}");
+        lifecycleReport.AddLine($"PointCloudSource={options.PointCloudPath}");
+        lifecycleReport.AddLine($"RequestedRecreateCycles={options.RecreateCycles}");
+        lifecycleReport.AddLine($"RequestedWindowCloseCycles={options.WindowCloseCycles}");
+        lifecycleReport.AddLine($"CleanProcessBaseline|privateBytes={cleanProcessBaselinePrivateMemory}|managedBytes={cleanProcessBaselineManagedMemory}|native={cleanProcessBaselineNativeResources}");
+        lifecycleReport.AddLine($"EmptyWindowBaseline|privateBytes={emptyWindowBaselinePrivateMemory}|managedBytes={emptyWindowBaselineManagedMemory}|native={emptyWindowBaselineNativeResources}");
 
-        var c3dLoaded = await viewer.LoadC3DSourceAsync(options.C3DPath, CancellationToken.None);
-        var c3dContract = await CaptureContractAsync(viewer, "height-map");
-        RecordCheck(
+        var c3dLoaded = await host.LoadC3DSourceAsync(options.C3DPath, CancellationToken.None);
+        var c3dContract = await contractCapture.CaptureAsync("height-map", viewer.CaptureConfiguredSmokeViewAsync);
+        lifecycleReport.RecordCheck(
             "HeightMapDisplay",
             c3dLoaded
-                && PathsEqual(viewer.CurrentC3DSourcePath, options.C3DPath)
-                && viewer.ViewModel.C3DSampleVisible
+                && PathsEqual(host.HostState.Sources.CurrentC3DSourcePath, options.C3DPath)
+                && host.HostState.C3DSampleVisible
                 && c3dContract.Contains("C3DMap|loaded=True", StringComparison.Ordinal)
                 && c3dContract.Contains("C3DRenderProxy|loaded=True", StringComparison.Ordinal),
-            $"loaded={c3dLoaded}|current={viewer.CurrentC3DSourcePath}|contract={HasContract(c3dContract, "C3DMap|loaded=True")}");
+            $"loaded={c3dLoaded}|current={host.HostState.Sources.CurrentC3DSourcePath}|contract={HasContract(c3dContract, "C3DMap|loaded=True")}");
 
         var selectionOverlay = await ExerciseSelectionAndOverlayAsync(viewer);
-        RecordCheck("SelectionAndOverlay", selectionOverlay.Passed, selectionOverlay.Details);
-        _ = await CaptureContractAsync(viewer, "selection-overlay");
+        lifecycleReport.RecordCheck("SelectionAndOverlay", selectionOverlay.Passed, selectionOverlay.Details);
+        _ = await contractCapture.CaptureAsync("selection-overlay", viewer.CaptureConfiguredSmokeViewAsync);
 
-        var recipeSourceBeforeViewerOnly = viewer.CurrentC3DSourcePath;
-        var meshLoaded = await viewer.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
-        var meshContract = await CaptureContractAsync(viewer, "mesh");
-        RecordCheck(
+        var recipeSourceBeforeViewerOnly = host.HostState.Sources.CurrentC3DSourcePath;
+        var meshLoaded = await host.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
+        var meshContract = await contractCapture.CaptureAsync("mesh", viewer.CaptureConfiguredSmokeViewAsync);
+        lifecycleReport.RecordCheck(
             "MeshDisplay",
             meshLoaded
-                && PathsEqual(viewer.CurrentViewerOnlySourcePath, options.MeshPath)
-                && string.Equals(viewer.CurrentViewerOnlySourceFormat, "GLB", StringComparison.Ordinal)
-                && viewer.ViewModel.GlbSampleVisible
-                && PathsEqual(viewer.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)
+                && PathsEqual(host.HostState.Sources.CurrentViewerOnlySourcePath, options.MeshPath)
+                && string.Equals(host.HostState.Sources.CurrentViewerOnlySourceFormat, "GLB", StringComparison.Ordinal)
+                && host.HostState.GlbSampleVisible
+                && PathsEqual(host.HostState.Sources.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)
                 && meshContract.Contains("GLB|loaded=True", StringComparison.Ordinal),
-            $"loaded={meshLoaded}|format={viewer.CurrentViewerOnlySourceFormat}|recipeSourceRetained={PathsEqual(viewer.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)}");
+            $"loaded={meshLoaded}|format={host.HostState.Sources.CurrentViewerOnlySourceFormat}|recipeSourceRetained={PathsEqual(host.HostState.Sources.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)}");
 
         if (options.RequireHardwareOpenGL)
         {
-            var hardware = AnalyzeHardwareRenderPath(c3dContract, meshContract);
-            RecordCheck("HardwareOpenGLRenderPath", hardware.Passed, hardware.Details);
+            var hardware = contractAnalyzer.AnalyzeHardwareRenderPath(c3dContract, meshContract);
+            lifecycleReport.RecordCheck("HardwareOpenGLRenderPath", hardware.Passed, hardware.Details);
         }
 
-        var pointCloudLoaded = await viewer.LoadViewerOnlySourceAsync(options.PointCloudPath, CancellationToken.None);
-        var pointCloudContract = await CaptureContractAsync(viewer, "point-cloud");
-        RecordCheck(
+        var pointCloudLoaded = await host.LoadViewerOnlySourceAsync(options.PointCloudPath, CancellationToken.None);
+        var pointCloudContract = await contractCapture.CaptureAsync("point-cloud", viewer.CaptureConfiguredSmokeViewAsync);
+        lifecycleReport.RecordCheck(
             "PointCloudDisplay",
             pointCloudLoaded
-                && PathsEqual(viewer.CurrentViewerOnlySourcePath, options.PointCloudPath)
-                && string.Equals(viewer.CurrentViewerOnlySourceFormat, "LAZ", StringComparison.Ordinal)
-                && viewer.ViewModel.LazSampleVisible
-                && PathsEqual(viewer.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)
+                && PathsEqual(host.HostState.Sources.CurrentViewerOnlySourcePath, options.PointCloudPath)
+                && string.Equals(host.HostState.Sources.CurrentViewerOnlySourceFormat, "LAZ", StringComparison.Ordinal)
+                && host.HostState.LazSampleVisible
+                && PathsEqual(host.HostState.Sources.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)
                 && pointCloudContract.Contains("LAZ|loaded=True", StringComparison.Ordinal)
                 && pointCloudContract.Contains("decoder=points-decoded", StringComparison.Ordinal),
-            $"loaded={pointCloudLoaded}|format={viewer.CurrentViewerOnlySourceFormat}|recipeSourceRetained={PathsEqual(viewer.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)}");
+            $"loaded={pointCloudLoaded}|format={host.HostState.Sources.CurrentViewerOnlySourceFormat}|recipeSourceRetained={PathsEqual(host.HostState.Sources.CurrentC3DSourcePath, recipeSourceBeforeViewerOnly)}");
 
-        var camera = ExerciseCamera(viewer);
-        RecordCheck("CameraCaptureApply", camera.Passed, camera.Details);
+        var camera = ExerciseCamera(host);
+        lifecycleReport.RecordCheck("CameraCaptureApply", camera.Passed, camera.Details);
 
         if (options.WindowCloseCycles > 0)
         {
             var closeCycles = await ExerciseWindowCloseCyclesAsync();
-            RecordCheck(
+            lifecycleReport.RecordCheck(
                 "WindowCloseCycles",
                 closeCycles.Observed == options.WindowCloseCycles,
                 $"observed={closeCycles.Observed}/{options.WindowCloseCycles}|nativeHandleDelta={closeCycles.NativeHandleDelta}|gdiDelta={closeCycles.GdiDelta}|userDelta={closeCycles.UserDelta}");
@@ -334,37 +226,38 @@ internal sealed class ViewerConsumerLifecycleRunner
         if (options.RequireHardwareOpenGL)
         {
             var closeReparent = await ExerciseCloseReparentCancellationAsync(viewer);
-            RecordCheck("CloseReparentCancellation", closeReparent.Passed, closeReparent.Details);
+            lifecycleReport.RecordCheck("CloseReparentCancellation", closeReparent.Passed, closeReparent.Details);
         }
 
-        var firstMemory = ReadPrivateMemoryBytes();
-        var firstManagedMemory = ReadManagedMemoryBytes();
-        var firstNativeResources = ReadNativeResources();
+        var firstMemory = ViewerConsumerProcessResourceObserver.ReadPrivateMemoryBytes();
+        var firstManagedMemory = ViewerConsumerProcessResourceObserver.ReadManagedMemoryBytes();
+        var firstNativeResources = ViewerConsumerProcessResourceObserver.ReadNativeResources();
         var firstRemoval = await RemoveViewerAsync(disposeBeforeRemove: true);
-        RecordCheck("RemoveAndDispose", firstRemoval.Passed, firstRemoval.Details);
+        lifecycleReport.RecordCheck("RemoveAndDispose", firstRemoval.Passed, firstRemoval.Details);
         if (options.RequireHardwareOpenGL)
         {
-            RecordCheck(
+            lifecycleReport.RecordCheck(
                 "HardwareResourceRetirement",
                 firstRemoval.ResourceRetirementPassed,
                 firstRemoval.ResourceRetirementDetails);
         }
 
         var recreated = await AttachViewerAsync();
-        var recreatedLoaded = await recreated.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
+        IOpenVisionThreeDViewerHost recreatedHost = recreated;
+        var recreatedLoaded = await recreatedHost.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
         await WaitForRenderReadyAsync(recreated);
-        RecordCheck(
+        lifecycleReport.RecordCheck(
             "RecreateNewControl",
             recreatedLoaded
-                && PathsEqual(recreated.CurrentViewerOnlySourcePath, options.MeshPath)
-                && recreated.ViewModel.GlbSampleVisible,
-            $"loaded={recreatedLoaded}|current={recreated.CurrentViewerOnlySourcePath}");
+                && PathsEqual(recreatedHost.HostState.Sources.CurrentViewerOnlySourcePath, options.MeshPath)
+                && recreatedHost.HostState.GlbSampleVisible,
+            $"loaded={recreatedLoaded}|current={recreatedHost.HostState.Sources.CurrentViewerOnlySourcePath}");
 
         var secondRemoval = await RemoveViewerAsync(disposeBeforeRemove: false);
-        RecordCheck("RemoveThenDispose", secondRemoval.Passed, secondRemoval.Details);
+        lifecycleReport.RecordCheck("RemoveThenDispose", secondRemoval.Passed, secondRemoval.Details);
 
         await RunRecreateCyclesAsync(firstMemory, firstManagedMemory, firstNativeResources);
-        reportLines.Add($"Contracts={contractPaths.Count}");
+        lifecycleReport.AddLine($"Contracts={contractCapture.ContractCount}");
     }
 
     private async Task<SelectionOverlayObservation> ExerciseSelectionAndOverlayAsync(
@@ -381,8 +274,9 @@ internal sealed class ViewerConsumerLifecycleRunner
         viewer.C3DGridHoverChanged += handler;
         try
         {
-            viewer.ViewModel.SelectedSelectionMode = "Point";
-            viewer.ViewModel.SelectionOverlayVisible = true;
+            var host = (IOpenVisionThreeDViewerHost)viewer;
+            var selectionModeSet = host.TrySetSelectionMode("Point");
+            var overlaySet = host.TrySetSelectionOverlayVisible(true);
             var published = TryPublishFirstValidC3DCell(viewer);
             if (hoverCursor is { } cursor)
             {
@@ -394,10 +288,12 @@ internal sealed class ViewerConsumerLifecycleRunner
                 && hoverCount > 0
                 && hoverCursor is { IsValid: true }
                 && viewer.LinkedHeightCursor is { IsValid: true }
-                && viewer.ViewModel.SelectionOverlayVisible;
+                && selectionModeSet
+                && overlaySet
+                && host.HostState.Selection.OverlayVisible;
             return new SelectionOverlayObservation(
                 passed,
-                $"published={published}|hoverEvents={hoverCount}|cursorValid={hoverCursor?.IsValid ?? false}|linkedCursor={viewer.LinkedHeightCursor is not null}|selectionOverlay={viewer.ViewModel.SelectionOverlayVisible}");
+                $"published={published}|hoverEvents={hoverCount}|cursorValid={hoverCursor?.IsValid ?? false}|linkedCursor={viewer.LinkedHeightCursor is not null}|selectionOverlay={host.HostState.Selection.OverlayVisible}");
         }
         finally
         {
@@ -407,7 +303,8 @@ internal sealed class ViewerConsumerLifecycleRunner
 
     private bool TryPublishFirstValidC3DCell(OpenVisionThreeDViewerControl viewer)
     {
-        if (!viewer.TryGetCurrentC3DSourceBinding(options.C3DPath, out var binding))
+        var host = (IOpenVisionThreeDViewerHost)viewer;
+        if (!host.TryGetCurrentC3DSourceBinding(options.C3DPath, out var binding))
         {
             return false;
         }
@@ -435,7 +332,7 @@ internal sealed class ViewerConsumerLifecycleRunner
         return false;
     }
 
-    private static CameraObservation ExerciseCamera(OpenVisionThreeDViewerControl viewer)
+    private static CameraObservation ExerciseCamera(IOpenVisionThreeDViewerHost viewer)
     {
         var before = viewer.CaptureCameraState();
         var requested = before with
@@ -491,10 +388,10 @@ internal sealed class ViewerConsumerLifecycleRunner
             secondException = exception;
         }
 
-        var resourceRetirement = AnalyzeResourceRetirement(
-            await CaptureContractAsync(
-                viewer,
-                disposeBeforeRemove ? "disposed-before-remove" : "disposed-after-remove"));
+        var resourceRetirement = contractAnalyzer.AnalyzeResourceRetirement(
+            await contractCapture.CaptureAsync(
+                disposeBeforeRemove ? "disposed-before-remove" : "disposed-after-remove",
+                viewer.CaptureConfiguredSmokeViewAsync));
         currentViewer = null;
         var postDisposeApply = viewer.TryApplyCameraState(stateBefore);
         var savedAfterDispose = viewer.SaveRecipe(
@@ -531,131 +428,42 @@ internal sealed class ViewerConsumerLifecycleRunner
         long firstManagedMemory,
         NativeResourceSnapshot firstNativeResources)
     {
-        var cycleObservations = 0;
-        var minimumPrivateMemory = long.MaxValue;
-        var maximumPrivateMemory = 0L;
-        var minimumManagedMemory = long.MaxValue;
-        var maximumManagedMemory = 0L;
-        var minimumNativeResources = firstNativeResources;
-        var maximumNativeResources = firstNativeResources;
-        for (var cycle = 1; cycle <= options.RecreateCycles; cycle++)
+        var coordinator = new ViewerConsumerMemoryObservationCoordinator(
+            options.RecreateCycles,
+            firstPrivateMemory,
+            firstManagedMemory,
+            firstNativeResources,
+            emptyWindowBaselinePrivateMemory,
+            emptyWindowBaselineManagedMemory,
+            emptyWindowBaselineNativeResources,
+            cleanProcessBaselinePrivateMemory,
+            cleanProcessBaselineManagedMemory,
+            cleanProcessBaselineNativeResources,
+            lifecycleReport.AddLine);
+        var observation = await coordinator.RunAsync(async _ =>
         {
-            CollectForObservation();
-            var beforePrivate = ReadPrivateMemoryBytes();
-            var beforeManaged = ReadManagedMemoryBytes();
-            var beforeNative = ReadNativeResources();
-            minimumPrivateMemory = Math.Min(minimumPrivateMemory, beforePrivate);
-            maximumPrivateMemory = Math.Max(maximumPrivateMemory, beforePrivate);
-            minimumManagedMemory = Math.Min(minimumManagedMemory, beforeManaged);
-            maximumManagedMemory = Math.Max(maximumManagedMemory, beforeManaged);
-            minimumNativeResources = minimumNativeResources.Min(beforeNative);
-            maximumNativeResources = maximumNativeResources.Max(beforeNative);
             var viewer = await AttachViewerAsync();
-            var loaded = await viewer.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
+            IOpenVisionThreeDViewerHost host = viewer;
+            var loaded = await host.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
             await WaitForRenderReadyAsync(viewer);
-            var sourcePath = viewer.CurrentViewerOnlySourcePath;
+            var sourceMatch = PathsEqual(host.HostState.Sources.CurrentViewerOnlySourcePath, options.MeshPath);
             var dispose = await RemoveViewerAsync(disposeBeforeRemove: true);
-            CollectForObservation();
-            var afterPrivate = ReadPrivateMemoryBytes();
-            var afterManaged = ReadManagedMemoryBytes();
-            var afterNative = ReadNativeResources();
-            minimumPrivateMemory = Math.Min(minimumPrivateMemory, afterPrivate);
-            maximumPrivateMemory = Math.Max(maximumPrivateMemory, afterPrivate);
-            minimumManagedMemory = Math.Min(minimumManagedMemory, afterManaged);
-            maximumManagedMemory = Math.Max(maximumManagedMemory, afterManaged);
-            minimumNativeResources = minimumNativeResources.Min(afterNative);
-            maximumNativeResources = maximumNativeResources.Max(afterNative);
-            reportLines.Add(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"RecreateCycle|index={cycle}|loaded={loaded}|sourceMatch={PathsEqual(sourcePath, options.MeshPath)}|dispose={dispose.Passed}|privateBeforeBytes={beforePrivate}|privateAfterBytes={afterPrivate}|privateAfterMiB={afterPrivate / 1048576.0:F3}|managedBeforeBytes={beforeManaged}|managedAfterBytes={afterManaged}|managedAfterMiB={afterManaged / 1048576.0:F3}|nativeBefore={beforeNative}|nativeAfter={afterNative}"));
-            if (loaded && PathsEqual(sourcePath, options.MeshPath) && dispose.Passed)
-            {
-                cycleObservations++;
-            }
-        }
-
-        var finalPrivateMemory = ReadPrivateMemoryBytes();
-        var finalManagedMemory = ReadManagedMemoryBytes();
-        var finalNativeResources = ReadNativeResources();
-        reportLines.Add(
-            string.Create(
-                CultureInfo.InvariantCulture,
-                $"MemoryObservation|baselineAfterDataPrivateBytes={firstPrivateMemory}|minimumCycleBeforePrivateBytes={minimumPrivateMemory}|maximumCycleObservedPrivateBytes={maximumPrivateMemory}|finalPrivateBytes={finalPrivateMemory}|privateDeltaFromBaselineMiB={(finalPrivateMemory - firstPrivateMemory) / 1048576.0:F3}|emptyWindowPrivateBytes={emptyWindowBaselinePrivateMemory}|privateDeltaFromEmptyWindowMiB={(finalPrivateMemory - emptyWindowBaselinePrivateMemory) / 1048576.0:F3}|cleanProcessPrivateBytes={cleanProcessBaselinePrivateMemory}|privateDeltaFromCleanProcessMiB={(finalPrivateMemory - cleanProcessBaselinePrivateMemory) / 1048576.0:F3}|baselineAfterDataManagedBytes={firstManagedMemory}|minimumCycleBeforeManagedBytes={minimumManagedMemory}|maximumCycleObservedManagedBytes={maximumManagedMemory}|finalManagedBytes={finalManagedMemory}|managedDeltaFromBaselineMiB={(finalManagedMemory - firstManagedMemory) / 1048576.0:F3}|emptyWindowManagedBytes={emptyWindowBaselineManagedMemory}|managedDeltaFromEmptyWindowMiB={(finalManagedMemory - emptyWindowBaselineManagedMemory) / 1048576.0:F3}|cleanProcessManagedBytes={cleanProcessBaselineManagedMemory}|managedDeltaFromCleanProcessMiB={(finalManagedMemory - cleanProcessBaselineManagedMemory) / 1048576.0:F3}|baselineNative={firstNativeResources}|minimumNativeObserved={minimumNativeResources}|maximumNativeObserved={maximumNativeResources}|finalNative={finalNativeResources}|nativeDelta={finalNativeResources.DeltaFrom(firstNativeResources)}|emptyWindowNativeDelta={finalNativeResources.DeltaFrom(emptyWindowBaselineNativeResources)}|cleanProcessNativeDelta={finalNativeResources.DeltaFrom(cleanProcessBaselineNativeResources)}|interpretation=observation-only-no-leak-free-claim"));
-        RecordCheck(
-            "RecreateCycles",
-            cycleObservations == options.RecreateCycles,
-            $"observed={cycleObservations}/{options.RecreateCycles}|privateDeltaMiB={(finalPrivateMemory - firstPrivateMemory) / 1048576.0:F3}|managedDeltaMiB={(finalManagedMemory - firstManagedMemory) / 1048576.0:F3}|nativeDelta={finalNativeResources.DeltaFrom(firstNativeResources)}|emptyWindowNativeDelta={finalNativeResources.DeltaFrom(emptyWindowBaselineNativeResources)}");
+            return new ViewerConsumerMemoryCycleResult(loaded, sourceMatch, dispose.Passed);
+        });
+        lifecycleReport.RecordCheck("RecreateCycles", observation.Passed, observation.Details);
     }
 
     private async Task<GpuObservationBarrier> WaitForGpuObservationBarrierAsync()
     {
         var readyPath = options.GpuPostCloseObservationBarrierPath
             ?? throw new InvalidOperationException("GPU observation barrier path is not configured.");
-        var continuePath = readyPath + ".continue";
-        if (File.Exists(continuePath))
-        {
-            return new GpuObservationBarrier(false, "ready=False|continued=False|reason=stale-continue-file");
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(readyPath)!);
-        var native = ReadNativeResources();
-        File.WriteAllText(
+        var coordinator = new ViewerConsumerGpuObservationBarrierCoordinator(
             readyPath,
-            $"pid={process.Id}|privateBytes={ReadPrivateMemoryBytes()}|native={native}");
-        var deadline = DateTime.UtcNow.AddSeconds(60);
-        while (!File.Exists(continuePath) && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(100);
-        }
-
-        var continued = File.Exists(continuePath);
-        return new GpuObservationBarrier(
-            continued,
-            $"ready=True|continued={continued}|pid={process.Id}|native={native}");
-    }
-
-    private NativeResourceSnapshot ReadNativeResources()
-    {
-        try
-        {
-            process.Refresh();
-            var processHandle = process.Handle;
-            return new NativeResourceSnapshot(
-                process.HandleCount,
-                GetGuiResources(processHandle, GdiObjectCount),
-                GetGuiResources(processHandle, UserObjectCount));
-        }
-        catch
-        {
-            return new NativeResourceSnapshot(-1, -1, -1);
-        }
-    }
-
-    private async Task<string> CaptureContractAsync(
-        OpenVisionThreeDViewerControl viewer,
-        string stage)
-    {
-        if (options.SmokeContractPath is null)
-        {
-            reportLines.Add($"Contract|stage={stage}|captured=False|reason=no-smoke-contract-path");
-            return string.Empty;
-        }
-
-        var captured = await viewer.CaptureConfiguredSmokeViewAsync();
-        var path = options.SmokeContractPath;
-        var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
-        var stagePath = Path.Combine(
-            Path.GetDirectoryName(options.ReportPath)!,
-            $"viewer-consumer-{stage}-contract.txt");
-        if (File.Exists(path))
-        {
-            File.Copy(path, stagePath, overwrite: true);
-            contractPaths.Add(stagePath);
-        }
-
-        reportLines.Add($"Contract|stage={stage}|captured={content.Length > 0}|smokeResult={captured}|path={stagePath}");
-        return content;
+            ViewerConsumerProcessResourceObserver.ProcessId,
+            ViewerConsumerProcessResourceObserver.ReadPrivateMemoryBytes,
+            ViewerConsumerProcessResourceObserver.ReadNativeResources);
+        var result = await coordinator.WaitAsync();
+        return new GpuObservationBarrier(result.Passed, result.Details);
     }
 
     private OpenVisionThreeDViewerControl CreateViewer()
@@ -687,7 +495,8 @@ internal sealed class ViewerConsumerLifecycleRunner
             await WaitForRenderReadyAsync(transientViewer);
 
             using var cancellation = new CancellationTokenSource();
-            var loadTask = transientViewer.LoadViewerOnlySourceAsync(
+            IOpenVisionThreeDViewerHost transientHost = transientViewer;
+            var loadTask = transientHost.LoadViewerOnlySourceAsync(
                 options.PointCloudPath,
                 cancellation.Token);
             window.Content = null;
@@ -703,7 +512,7 @@ internal sealed class ViewerConsumerLifecycleRunner
             }
 
             await transientViewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
-            var noStaleSource = transientViewer.CurrentViewerOnlySourcePath is null;
+            var noStaleSource = transientHost.HostState.Sources.CurrentViewerOnlySourcePath is null;
             return new CloseReparentObservation(
                 (taskCanceled || !sourceApplied) && noStaleSource,
                 $"taskCanceled={taskCanceled}|sourceApplied={sourceApplied}|noStaleSource={noStaleSource}");
@@ -725,31 +534,16 @@ internal sealed class ViewerConsumerLifecycleRunner
         }
     }
 
-    private async Task<WindowCloseCyclesObservation> ExerciseWindowCloseCyclesAsync()
+    private async Task<ViewerConsumerWindowCloseCyclesResult> ExerciseWindowCloseCyclesAsync()
     {
-        var observed = 0;
-        var first = ReadNativeResources();
-        var last = first;
-        for (var cycle = 1; cycle <= options.WindowCloseCycles; cycle++)
-        {
-            var observation = await ExerciseWindowCloseCycleAsync(cycle);
-            if (observation.Passed)
-            {
-                observed++;
-            }
-
-            last = observation.After;
-            reportLines.Add($"WindowCloseCycle|index={cycle}|{Sanitize(observation.Details)}");
-        }
-
-        return new WindowCloseCyclesObservation(
-            observed,
-            last.HandleCount - first.HandleCount,
-            last.GdiObjects - first.GdiObjects,
-            last.UserObjects - first.UserObjects);
+        var coordinator = new ViewerConsumerWindowCloseObservationCoordinator(
+            options.WindowCloseCycles,
+            ViewerConsumerProcessResourceObserver.ReadNativeResources,
+            lifecycleReport.AddLine);
+        return await coordinator.RunAsync(ExerciseWindowCloseCycleAsync);
     }
 
-    private async Task<WindowCloseCycleObservation> ExerciseWindowCloseCycleAsync(int cycle)
+    private async Task<ViewerConsumerWindowCloseCycleResult> ExerciseWindowCloseCycleAsync(int cycle)
     {
         var closeWindow = new Window
         {
@@ -784,7 +578,7 @@ internal sealed class ViewerConsumerLifecycleRunner
             closedCompletion.TrySetResult(null);
         };
 
-        var before = ReadNativeResources();
+        var before = ViewerConsumerProcessResourceObserver.ReadNativeResources();
         var after = before;
         try
         {
@@ -793,20 +587,27 @@ internal sealed class ViewerConsumerLifecycleRunner
             await WaitForLoadedAsync(viewer);
             await WaitForRenderReadyAsync(viewer);
 
-            var c3dLoaded = await viewer.LoadC3DSourceAsync(options.C3DPath, CancellationToken.None);
-            var c3dContract = await CaptureContractAsync(viewer, $"window-close-{cycle}-c3d");
-            var meshLoaded = await viewer.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
+            IOpenVisionThreeDViewerHost host = viewer;
+            var c3dLoaded = await host.LoadC3DSourceAsync(options.C3DPath, CancellationToken.None);
+            var c3dContract = await contractCapture.CaptureAsync(
+                $"window-close-{cycle}-c3d",
+                viewer.CaptureConfiguredSmokeViewAsync);
+            var meshLoaded = await host.LoadViewerOnlySourceAsync(options.MeshPath, CancellationToken.None);
             await WaitForRenderReadyAsync(viewer);
-            var meshContract = await CaptureContractAsync(viewer, $"window-close-{cycle}-mesh");
+            var meshContract = await contractCapture.CaptureAsync(
+                $"window-close-{cycle}-mesh",
+                viewer.CaptureConfiguredSmokeViewAsync);
             var hardware = options.RequireHardwareOpenGL
-                ? AnalyzeHardwareRenderPath(c3dContract, meshContract)
-                : new HardwareRenderObservation(true, "hardwareRequired=False");
+                ? contractAnalyzer.AnalyzeHardwareRenderPath(c3dContract, meshContract)
+                : new ViewerConsumerHardwareRenderObservation(true, "hardwareRequired=False");
 
             closeWindow.Close();
             await closedCompletion.Task.WaitAsync(TimeSpan.FromSeconds(30));
-            var disposedContract = await CaptureContractAsync(viewer, $"window-close-{cycle}-disposed");
-            var resource = AnalyzeResourceRetirement(disposedContract);
-            after = ReadNativeResources();
+            var disposedContract = await contractCapture.CaptureAsync(
+                $"window-close-{cycle}-disposed",
+                viewer.CaptureConfiguredSmokeViewAsync);
+            var resource = contractAnalyzer.AnalyzeResourceRetirement(disposedContract);
+            after = ViewerConsumerProcessResourceObserver.ReadNativeResources();
             var passed = c3dLoaded
                 && meshLoaded
                 && hardware.Passed
@@ -814,7 +615,7 @@ internal sealed class ViewerConsumerLifecycleRunner
                 && closingDisposed
                 && closingException is null
                 && resource.Passed;
-            return new WindowCloseCycleObservation(
+            return new ViewerConsumerWindowCloseCycleResult(
                 passed,
                 before,
                 after,
@@ -822,8 +623,8 @@ internal sealed class ViewerConsumerLifecycleRunner
         }
         catch (Exception exception)
         {
-            after = ReadNativeResources();
-            return new WindowCloseCycleObservation(
+            after = ViewerConsumerProcessResourceObserver.ReadNativeResources();
+            return new ViewerConsumerWindowCloseCycleResult(
                 false,
                 before,
                 after,
@@ -856,102 +657,6 @@ internal sealed class ViewerConsumerLifecycleRunner
         }
     }
 
-    private HardwareRenderObservation AnalyzeHardwareRenderPath(
-        string c3dContract,
-        string meshContract)
-    {
-        var capabilities = GetContractLine(c3dContract, "OpenGLCapabilities|");
-        var renderProxy = GetContractLine(c3dContract, "C3DRenderProxy|loaded=True|");
-        var c3dHardware = capabilities is not null
-            && !capabilities.Contains("renderer=GDI Generic", StringComparison.Ordinal)
-            && !capabilities.Contains("renderer=(pending)", StringComparison.Ordinal)
-            && capabilities.Contains("c3dPath=VBO+IBO+DrawElements", StringComparison.Ordinal)
-            && capabilities.Contains("fallbacks=0", StringComparison.Ordinal)
-            && renderProxy is not null
-            && renderProxy.Contains("gpuBufferReady=True", StringComparison.Ordinal);
-        var meshLine = GetContractLine(meshContract, "GLB|loaded=True|");
-        var textureUploaded = !options.RequireImportedTextureRelease
-            || (meshLine is not null
-                && string.Equals(
-                    GetContractFieldValue(meshLine, "hasTexture"),
-                    "True",
-                    StringComparison.OrdinalIgnoreCase)
-                && GetContractInt(meshLine, "textureUploads") > 0);
-        var passed = c3dHardware && textureUploaded;
-        return new HardwareRenderObservation(
-            passed,
-            $"c3dHardware={c3dHardware}|textureUploaded={textureUploaded}|capabilities={capabilities ?? "missing"}|renderProxy={renderProxy ?? "missing"}|mesh={meshLine ?? "missing"}");
-    }
-
-    private ResourceRetirementObservation AnalyzeResourceRetirement(string contract)
-    {
-        var line = GetContractLine(contract, "OpenGLResourceLifetime|");
-        if (!options.RequireHardwareOpenGL)
-        {
-            return new ResourceRetirementObservation(
-                true,
-                $"hardwareRequired=False|contract={line ?? "missing"}");
-        }
-
-        if (line is null)
-        {
-            return new ResourceRetirementObservation(
-                false,
-                "hardwareRequired=True|contract=missing");
-        }
-
-        var passed = GetContractBool(line, "disposed")
-            && GetContractBool(line, "managedHandlesCleared")
-            && GetContractInt(line, "c3dGpuReleases") > 0
-            && GetContractInt(line, "c3dGpuReleaseFailures") == 0
-            && GetContractInt(line, "meshTextureReleases") >= (options.RequireImportedTextureRelease ? 1 : 0)
-            && GetContractInt(line, "meshTextureReleaseFailures") == 0
-            && GetContractInt(line, "displayListReleaseFailures") == 0
-            && GetContractInt(line, "retirementAttempts") > 0
-            && GetContractInt(line, "retirementCallbacks") > 0
-            && GetContractInt(line, "retirementContextUnavailable") == 0
-            && GetContractInt(line, "retirementFailures") == 0;
-        passed = passed
-            && GetContractBool(line, "renderContextDisposeAttempted")
-            && GetContractBool(line, "renderContextDisposed")
-            && GetContractInt(line, "renderContextDisposeAttempts") == 1
-            && GetContractInt(line, "renderContextDisposeFailures") == 0
-            && !GetContractBool(line, "renderContextHandleActive");
-        return new ResourceRetirementObservation(
-            passed,
-            $"hardwareRequired=True|contract={line ?? "missing"}");
-    }
-
-    private static string? GetContractLine(string content, string prefix) =>
-        content
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault(line => line.StartsWith(prefix, StringComparison.Ordinal));
-
-    private static string? GetContractFieldValue(string line, string field)
-    {
-        foreach (var segment in line.Split('|', StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (segment.StartsWith(field + "=", StringComparison.Ordinal))
-            {
-                return segment[(field.Length + 1)..];
-            }
-        }
-
-        return null;
-    }
-
-    private static int GetContractInt(string line, string field) =>
-        int.TryParse(
-            GetContractFieldValue(line, field),
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out var value)
-            ? value
-            : 0;
-
-    private static bool GetContractBool(string line, string field) =>
-        bool.TryParse(GetContractFieldValue(line, field), out var value) && value;
-
     private static async Task WaitForLoadedAsync(OpenVisionThreeDViewerControl viewer)
     {
         if (!viewer.IsLoaded)
@@ -981,46 +686,6 @@ internal sealed class ViewerConsumerLifecycleRunner
         await Task.Delay(180);
     }
 
-    private void RecordCheck(string name, bool passed, string details)
-    {
-        totalChecks++;
-        if (!passed)
-        {
-            failedChecks++;
-        }
-
-        reportLines.Add($"Check|name={name}|pass={passed}|{Sanitize(details)}");
-    }
-
-    private void WriteReport()
-    {
-        if (reportWritten)
-        {
-            return;
-        }
-
-        reportWritten = true;
-        reportLines.Add($"Result|{(failedChecks == 0 ? "Pass" : "Fail")}|checks={totalChecks - failedChecks}/{totalChecks}|failed={failedChecks}");
-        Directory.CreateDirectory(Path.GetDirectoryName(options.ReportPath)!);
-        File.WriteAllLines(options.ReportPath, reportLines);
-    }
-
-    private static long ReadPrivateMemoryBytes()
-    {
-        var current = Process.GetCurrentProcess();
-        current.Refresh();
-        return current.PrivateMemorySize64;
-    }
-
-    private static long ReadManagedMemoryBytes() => GC.GetTotalMemory(forceFullCollection: false);
-
-    private static void CollectForObservation()
-    {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-    }
-
     private static bool PathsEqual(string? first, string? second) =>
         first is not null
         && second is not null
@@ -1032,51 +697,11 @@ internal sealed class ViewerConsumerLifecycleRunner
     private static bool HasContract(string content, string marker) =>
         content.Contains(marker, StringComparison.Ordinal);
 
-    private static string Sanitize(string value) =>
-        value.Replace('\r', ' ').Replace('\n', ' ').Replace('|', '/');
-
     private sealed record SelectionOverlayObservation(bool Passed, string Details);
 
     private sealed record CameraObservation(bool Passed, string Details);
 
     private sealed record CloseReparentObservation(bool Passed, string Details);
-
-    private sealed record HardwareRenderObservation(bool Passed, string Details);
-
-    private sealed record ResourceRetirementObservation(bool Passed, string Details);
-
-    private sealed record NativeResourceSnapshot(
-        long HandleCount,
-        long GdiObjects,
-        long UserObjects)
-    {
-        public NativeResourceSnapshot Min(NativeResourceSnapshot other) =>
-            new(
-                Math.Min(HandleCount, other.HandleCount),
-                Math.Min(GdiObjects, other.GdiObjects),
-                Math.Min(UserObjects, other.UserObjects));
-
-        public NativeResourceSnapshot Max(NativeResourceSnapshot other) =>
-            new(
-                Math.Max(HandleCount, other.HandleCount),
-                Math.Max(GdiObjects, other.GdiObjects),
-                Math.Max(UserObjects, other.UserObjects));
-
-        public string DeltaFrom(NativeResourceSnapshot baseline) =>
-            $"handles={HandleCount - baseline.HandleCount},gdi={GdiObjects - baseline.GdiObjects},user={UserObjects - baseline.UserObjects}";
-    }
-
-    private sealed record WindowCloseCycleObservation(
-        bool Passed,
-        NativeResourceSnapshot Before,
-        NativeResourceSnapshot After,
-        string Details);
-
-    private sealed record WindowCloseCyclesObservation(
-        int Observed,
-        long NativeHandleDelta,
-        long GdiDelta,
-        long UserDelta);
 
     private sealed record GpuObservationBarrier(bool Passed, string Details);
 

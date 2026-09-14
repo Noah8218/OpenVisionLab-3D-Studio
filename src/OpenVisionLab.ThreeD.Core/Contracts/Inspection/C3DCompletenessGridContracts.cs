@@ -82,7 +82,7 @@ public sealed record C3DCompletenessGridProfile(
     int CellHeightRows,
     C3DCompletenessCellShape CellShape)
 {
-    public static readonly string[] ParameterNames =
+    private static readonly string[] ParameterNameValues =
     [
         "Rows",
         "Columns",
@@ -92,6 +92,8 @@ public sealed record C3DCompletenessGridProfile(
         "CellHeightRows",
         "CellShape"
     ];
+
+    public static IReadOnlyList<string> ParameterNames { get; } = Array.AsReadOnly(ParameterNameValues);
 
     public IReadOnlyList<ToolRecipeParameter> ToRecipeParameters() =>
     [
@@ -180,12 +182,14 @@ public sealed record C3DCompletenessPresencePolicy(
     double MinimumReferenceRelativeMeanRawHeight,
     double MaximumReferenceRelativeMeanRawHeight)
 {
-    public static readonly string[] ParameterNames =
+    private static readonly string[] ParameterNameValues =
     [
         "MinimumFiniteCoverageRatio",
         "MinimumReferenceRelativeMeanRawHeight",
         "MaximumReferenceRelativeMeanRawHeight"
     ];
+
+    public static IReadOnlyList<string> ParameterNames { get; } = Array.AsReadOnly(ParameterNameValues);
 
     public IReadOnlyList<ToolRecipeParameter> ToRecipeParameters() =>
     [
@@ -211,7 +215,7 @@ public sealed record C3DCompletenessPresencePolicy(
             return null;
         }
 
-        if (policyCount != ParameterNames.Length
+        if (policyCount != ParameterNames.Count
             || ParameterNames.Any(name =>
                 parameters.Count(parameter =>
                     string.Equals(parameter.Name, name, StringComparison.Ordinal)) != 1))

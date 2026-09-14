@@ -55,84 +55,55 @@ public sealed partial class OpenVisionThreeDViewerControl
             });
         try
         {
-            var fullPath = Path.GetFullPath(path);
-            if (!File.Exists(fullPath))
+            var request = ViewerOnlySourceLoadCoordinator.Prepare(
+                path,
+                viewModel.LazMaxSampledPoints);
+            if (!request.FileExists)
             {
                 if (operation.IsCurrent)
                 {
-                    viewModel.ViewerStatus = $"3D import failed; current source retained: file not found ({Path.GetFileName(fullPath)})";
+                    viewModel.ViewerStatus = $"3D import failed; current source retained: file not found ({request.SourceName})";
                     RenderNow();
                 }
 
                 return false;
             }
 
-            var extension = Path.GetExtension(fullPath).ToLowerInvariant();
             operationProgress?.Report(0.0);
-            switch (extension)
+            var loaded = await viewerOnlySourceLoadCoordinator.LoadAsync(
+                request,
+                operation.Token,
+                operationProgress,
+                () => operation.IsCurrent && !operation.IsCancellationRequested,
+                LoadLazPointCloudAsync);
+            operation.Token.ThrowIfCancellationRequested();
+            if (loaded is not { } result)
             {
-                case ".glb":
-                case ".stl":
-                {
-                    var mesh = await Task.Run(
-                        () => extension == ".glb"
-                            ? GlbMesh.Load(fullPath, operation.Token, operationProgress)
-                            : StlMesh.Load(fullPath, operation.Token, operationProgress),
-                        operation.Token);
-                    operation.Token.ThrowIfCancellationRequested();
-                    operationProgress?.Report(90.0);
-                    if (!sourceLoadOperations.TryApply(
-                            operation,
-                            () => ApplyViewerOnlyMesh(mesh, extension == ".glb" ? "GLB" : "STL")))
-                    {
-                        operation.Token.ThrowIfCancellationRequested();
-                        return false;
-                    }
+                return false;
+            }
 
-                    if (!operation.IsCurrent)
-                    {
-                        return false;
-                    }
+            var applied = result.Mesh is { } mesh
+                ? sourceLoadOperations.TryApply(
+                    operation,
+                    () => ApplyViewerOnlyMesh(mesh, result.Format))
+                : result.PointCloud is { } pointCloud
+                    ? sourceLoadOperations.TryApply(
+                        operation,
+                        () => ApplyViewerOnlyPointCloud(
+                            pointCloud,
+                            result.Format,
+                            result.LoadMilliseconds,
+                            result.Reused))
+                    : false;
+            if (!applied)
+            {
+                operation.Token.ThrowIfCancellationRequested();
+                return false;
+            }
 
-                    break;
-                }
-                case ".las":
-                case ".laz":
-                {
-                    var loadResult = await LoadLazPointCloudAsync(
-                        fullPath,
-                        viewModel.LazMaxSampledPoints,
-                        operation.Token,
-                        operationProgress,
-                        () => operation.IsCurrent && !operation.IsCancellationRequested);
-                    operation.Token.ThrowIfCancellationRequested();
-                    if (loadResult is not { PointCloud: { } pointCloud })
-                    {
-                        return false;
-                    }
-
-                    var completedLoad = loadResult.Value;
-                    if (!sourceLoadOperations.TryApply(
-                            operation,
-                            () => ApplyViewerOnlyPointCloud(
-                                pointCloud,
-                                extension == ".las" ? "LAS" : "LAZ",
-                                completedLoad.LoadMilliseconds,
-                                completedLoad.Reused)))
-                    {
-                        operation.Token.ThrowIfCancellationRequested();
-                        return false;
-                    }
-
-                    if (!operation.IsCurrent)
-                    {
-                        return false;
-                    }
-
-                    break;
-                }
-                default:
-                    throw new NotSupportedException($"The '{extension}' format is not available in 3D Import.");
+            if (!operation.IsCurrent)
+            {
+                return false;
             }
 
             operationProgress?.Report(100.0);
@@ -237,7 +208,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             LastC3DSourceLoadPerformance = null;
             var fullPath = C3DSourceLoadPreparation.GetExistingPath(path);
-            var loaded = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
+            var loaded = C3DSourceLoadPreparation.LoadSynchronously(fullPath, viewModel.C3DMaxRenderedPoints);
             return sourceLoadOperations.TryApply(
                 operation,
                 () => ApplyLoadedC3DSource(loaded, fullPath));
@@ -360,12 +331,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var alignmentMilliseconds = 0.0;
         var statusMilliseconds = 0.0;
         var finalRenderMilliseconds = 0.0;
-        c3dSourceApplyRenderRequestCount = 0;
-        c3dSourceApplySuppressedRenderRequestCount = 0;
-        c3dSourceApplyRenderExecutionCount = 0;
-        c3dSourceApplyRenderExecutionMilliseconds = 0.0;
-        c3dSourceApplyActive = true;
-        c3dSourceApplyRenderSuppressed = true;
+        c3dSourceApplyRenderState.Begin();
         try
         {
             var stageStart = Stopwatch.GetTimestamp();
@@ -379,9 +345,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                     preparedRenderProxy,
                     ModelTransform.Identity,
                     preparedPositions);
-                c3dGpuReleasePending = c3dGpuBuffers is not null;
-                c3dGpuBufferKey = null;
-                c3dGpuFailedKey = null;
+                c3dRenderResources.InvalidateGpuForRenderProxy();
                 c3dDisplayListKey = null;
                 c3dInteractionDisplayListKey = null;
                 pendingC3DDisplayListBuildReason = "source-applied";
@@ -430,14 +394,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             statusMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
 
             stageStart = Stopwatch.GetTimestamp();
-            c3dSourceApplyRenderSuppressed = false;
+            c3dSourceApplyRenderState.AllowRender();
             RenderNow();
             finalRenderMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
         }
         finally
         {
-            c3dSourceApplyRenderSuppressed = false;
-            c3dSourceApplyActive = false;
+            c3dSourceApplyRenderState.Complete();
             LastC3DSourceApplyPerformance = new C3DSourceApplyPerformance(
                 sourceStateMilliseconds,
                 clearStateMilliseconds,
@@ -448,10 +411,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                 statusMilliseconds,
                 finalRenderMilliseconds,
                 Stopwatch.GetElapsedTime(totalStart).TotalMilliseconds,
-                c3dSourceApplyRenderRequestCount,
-                c3dSourceApplySuppressedRenderRequestCount,
-                c3dSourceApplyRenderExecutionCount,
-                c3dSourceApplyRenderExecutionMilliseconds,
+                c3dSourceApplyRenderState.RenderRequestCount,
+                c3dSourceApplyRenderState.SuppressedRenderRequestCount,
+                c3dSourceApplyRenderState.RenderExecutionCount,
+                c3dSourceApplyRenderState.RenderExecutionMilliseconds,
                 c3dDisplayListBuildCount - displayListBuildCountBefore,
                 lastC3DDisplayListBuildReason);
         }
@@ -490,7 +453,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         try
         {
             var fullPath = Path.GetFullPath(path);
-            var loaded = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
+            var loaded = C3DSourceLoadPreparation.LoadSynchronously(fullPath, viewModel.C3DMaxRenderedPoints);
             return sourceLoadOperations.TryApply(
                 operation,
                 () =>
@@ -520,7 +483,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private C3DHeightGrid? LoadDefaultC3DSample()
     {
-        var path = ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
+        var path = samplePathResolver.Resolve(DefaultC3DSamplePath);
         if (path is null)
         {
             return null;
@@ -528,7 +491,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         try
         {
-            return C3DHeightGrid.Load(path, viewModel.C3DMaxRenderedPoints);
+            return C3DSourceLoadPreparation.LoadSynchronously(path, viewModel.C3DMaxRenderedPoints);
         }
         catch (IOException)
         {
@@ -542,13 +505,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private ImportedMesh? LoadDefaultGlbSample()
     {
-        var path = ViewerSamplePathLocator.Find(DefaultGlbSamplePath);
+        var path = samplePathResolver.Resolve(DefaultGlbSamplePath);
         return path is null ? null : LoadGlbSample(path);
     }
 
     private LazPointCloudMetadata? LoadDefaultLazSample()
     {
-        var path = ViewerSamplePathLocator.Find(DefaultLazSamplePath);
+        var path = samplePathResolver.Resolve(DefaultLazSamplePath);
         return path is null ? null : LoadLazSample(path);
     }
 
@@ -606,31 +569,26 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ResetImportedMeshTextureUpload()
     {
-        importedMeshTextureReleasePending |= importedMeshTextureId != 0;
-        importedMeshTextureSource = null;
-        importedMeshTextureUploadFailed = false;
-        importedMeshTextureUploadSummary = "texture none";
+        importedMeshTextureState.ResetForSourceChange();
     }
 
     private void ReleaseImportedMeshTexture(OpenGL gl)
     {
-        if (importedMeshTextureId != 0)
+        if (importedMeshTextureState.TextureId != 0)
         {
             try
             {
-                gl.DeleteTextures(1, [importedMeshTextureId]);
-                importedMeshTextureReleaseCount++;
+                gl.DeleteTextures(1, [importedMeshTextureState.TextureId]);
+                importedMeshTextureState.RecordRelease(succeeded: true);
             }
             catch
             {
-                importedMeshTextureReleaseFailureCount++;
+                importedMeshTextureState.RecordRelease(succeeded: false);
                 throw;
             }
         }
 
-        importedMeshTextureId = 0;
-        importedMeshTextureSource = null;
-        importedMeshTextureReleasePending = false;
+        importedMeshTextureState.ClearAfterRelease();
     }
 
     private LazPointCloudMetadata? LoadLazSample(string path)
@@ -666,9 +624,9 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private LazPointCloud? LoadLazPointCloud(string path, int maxSampledPoints)
     {
-        var candidate = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
+        var request = ViewerLazPointCloudLoadPreparation.Prepare(path, maxSampledPoints);
         viewModel.SetLazSampleSource(path, Path.GetFileNameWithoutExtension(path));
-        if (!File.Exists(candidate))
+        if (!request.FileExists)
         {
             viewModel.LazSamplePointCount = "(missing)";
             viewModel.LazSampleSummary = $"Missing LAZ/LAS sample: {path}";
@@ -678,7 +636,9 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         try
         {
-            var loadResult = lazPointCloudLoadCoordinator.Load(candidate, maxSampledPoints);
+            var loadResult = ViewerLazPointCloudLoadPreparation.Load(
+                lazPointCloudLoadCoordinator,
+                request);
             if (loadResult.PointCloud is not { } pointCloud)
             {
                 return null;
@@ -686,11 +646,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (loadResult.Reused)
             {
-                lazPointCloudCacheHitCount++;
+                lazPointCloudLoadTelemetry.RecordCacheHit();
             }
             else
             {
-                lazPointCloudDecodeCount++;
+                lazPointCloudLoadTelemetry.RecordDecode();
             }
 
             SetLoadedLazPointCloudTelemetry(pointCloud, loadResult.LoadMilliseconds, loadResult.Reused);
@@ -713,10 +673,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         IProgress<double>? externalProgress = null,
         Func<bool>? isCurrent = null)
     {
-        var candidate = Path.IsPathRooted(path) ? path : Path.GetFullPath(path);
-        var sourceName = Path.GetFileName(candidate);
-        var sampleLimit = Math.Max(2, maxSampledPoints);
-        if (!File.Exists(candidate))
+        var request = ViewerLazPointCloudLoadPreparation.Prepare(path, maxSampledPoints);
+        var sourceName = request.SourceName;
+        if (!request.FileExists)
         {
             if (isCurrent?.Invoke() ?? true)
             {
@@ -726,7 +685,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return null;
         }
 
-        lazPointCloudLoadRequestCount++;
+        lazPointCloudLoadTelemetry.RecordLoadRequest();
         if (isCurrent?.Invoke() ?? true)
         {
             viewModel.BeginLazPointCloudLoad(sourceName);
@@ -735,9 +694,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         try
         {
             externalProgress?.Report(0.0);
-            var result = await lazPointCloudLoadCoordinator.LoadAsync(
-                candidate,
-                sampleLimit,
+            var result = await ViewerLazPointCloudLoadPreparation.LoadAsync(
+                lazPointCloudLoadCoordinator,
+                request,
                 externalCancellationToken,
                 new Progress<double>(value =>
                 {
@@ -746,10 +705,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                         return;
                     }
 
-                    lazPointCloudProgressUpdateCount++;
-                    lazPointCloudLastProgress = Math.Clamp(value, 0.0, 100.0);
-                    viewModel.ReportLazPointCloudLoadProgress(sourceName, lazPointCloudLastProgress);
-                    externalProgress?.Report(lazPointCloudLastProgress);
+                    var progress = lazPointCloudLoadTelemetry.RecordProgress(value);
+                    viewModel.ReportLazPointCloudLoadProgress(sourceName, progress);
+                    externalProgress?.Report(progress);
                     CaptureLazProgressSmokeScreenshotIfRequested();
                 }),
                 isCurrent);
@@ -760,7 +718,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (loadResult.WasCanceled)
             {
-                lazPointCloudCancellationCount++;
+                lazPointCloudLoadTelemetry.RecordCancellation();
                 if (isCurrent?.Invoke() ?? true)
                 {
                     viewModel.CancelLazPointCloudLoad(sourceName);
@@ -781,12 +739,12 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             if (loadResult.Reused)
             {
-                lazPointCloudCacheHitCount++;
+                lazPointCloudLoadTelemetry.RecordCacheHit();
                 externalProgress?.Report(100.0);
             }
             else
             {
-                lazPointCloudDecodeCount++;
+                lazPointCloudLoadTelemetry.RecordDecode();
             }
 
             return loadResult;
@@ -866,7 +824,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SetLazSampleSource(pointCloud.SourcePath, Path.GetFileNameWithoutExtension(pointCloud.SourcePath));
         viewModel.SetLazSamplingTelemetry(
             pointCloud.DecodedPointCount,
-            pointCloud.SampledPoints.Length,
+            pointCloud.SampledPointView.Count,
             pointCloud.SampleStride,
             loadMilliseconds);
         viewModel.CompleteLazPointCloudLoad(Path.GetFileName(pointCloud.SourcePath), loadMilliseconds, reused);
@@ -875,8 +833,8 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void CaptureLazProgressSmokeScreenshotIfRequested()
     {
         if (smokeLazProgressScreenshotCaptured
-            || smokeLazProgressScreenshotPath is null
-            || lazPointCloudLastProgress is <= 0.0 or >= 100.0
+            || smokeScenario.LazProgressScreenshotPath is null
+            || lazPointCloudLoadTelemetry.LastProgress is <= 0.0 or >= 100.0
             || !IsLoaded)
         {
             return;
@@ -884,7 +842,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         smokeLazProgressScreenshotCaptured = true;
         UpdateLayout();
-        CaptureWindow(smokeLazProgressScreenshotPath);
+        CaptureWindow(smokeScenario.LazProgressScreenshotPath);
     }
 
     private void SetLazSceneTransform(LazPointCloudMetadata metadata)
@@ -909,6 +867,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (c3dSample is null)
         {
             InvalidateC3DRenderProxy();
+            viewModel.SetTeachingRoiDisplayHeightStep(1.0);
             viewModel.SetC3DDisplayCapabilities(surfaceGeometryAvailable: false);
             viewModel.C3DSamplePointCount = "(missing)";
             viewModel.C3DSampleSummary = $"Missing sample: {DefaultC3DSamplePath}";
@@ -918,6 +877,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
+        viewModel.SetTeachingRoiDisplayHeightStep(
+            Math.Max((c3dSample.Max - c3dSample.Min) * 0.01, 10.0));
         var renderProxy = GetC3DRenderProxy();
         viewModel.SetC3DDisplayCapabilities(
             renderProxy.HasSurface,
@@ -997,10 +958,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             viewModel.LazSamplePointCount = string.Create(
                 CultureInfo.InvariantCulture,
-                $"{lazPointCloud.DecodedPointCount:N0} / sampled {lazPointCloud.SampledPoints.Length:N0}");
+                $"{lazPointCloud.DecodedPointCount:N0} / sampled {lazPointCloud.SampledPointView.Count:N0}");
             viewModel.LazSampleSummary = string.Create(
                 CultureInfo.InvariantCulture,
-                $"{Path.GetFileName(lazPointCloud.SourcePath)} | decoded {lazPointCloud.DecodedPointCount:N0} | sampled {lazPointCloud.SampledPoints.Length:N0} | density {viewModel.SelectedRenderDensity} | load {viewModel.LazLoadMilliseconds:F0} ms | sample {viewModel.LazSamplePercent:F2}% | RGB {lazPointCloud.HasRgb} | bounds match {lazPointCloud.BoundsMatch}");
+                $"{Path.GetFileName(lazPointCloud.SourcePath)} | decoded {lazPointCloud.DecodedPointCount:N0} | sampled {lazPointCloud.SampledPointView.Count:N0} | density {viewModel.SelectedRenderDensity} | load {viewModel.LazLoadMilliseconds:F0} ms | sample {viewModel.LazSamplePercent:F2}% | RGB {lazPointCloud.HasRgb} | bounds match {lazPointCloud.BoundsMatch}");
         }
 
         viewModel.SetLazSampleSource(lazSample.SourcePath, Path.GetFileNameWithoutExtension(lazSample.SourcePath));
@@ -1014,12 +975,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        if (ReferenceEquals(importedMeshTextureSource, importedMesh))
+        if (importedMeshTextureState.MatchesSource(importedMesh))
         {
-            return importedMeshTextureId != 0;
+            return importedMeshTextureState.TextureId != 0;
         }
 
-        if (importedMeshTextureUploadFailed)
+        if (importedMeshTextureState.UploadFailed)
         {
             return false;
         }
@@ -1029,8 +990,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             var texture = DecodeTexture(importedMesh.BaseColorTexture!.Bytes);
             var ids = new uint[1];
             gl.GenTextures(1, ids);
-            importedMeshTextureId = ids[0];
-            gl.BindTexture(GlTexture2D, importedMeshTextureId);
+            var textureId = ids[0];
+            importedMeshTextureState.RecordAllocation(textureId);
+            gl.BindTexture(GlTexture2D, textureId);
             gl.TexParameter(GlTexture2D, GlTextureMinFilter, (int)GlLinear);
             gl.TexParameter(GlTexture2D, GlTextureMagFilter, (int)GlLinear);
             gl.TexParameter(GlTexture2D, GlTextureWrapS, (int)GlRepeat);
@@ -1046,18 +1008,16 @@ public sealed partial class OpenVisionThreeDViewerControl
                 GlBgra,
                 GlUnsignedByte,
                 texture.Pixels);
-            importedMeshTextureSource = importedMesh;
-            importedMeshTextureUploadCount++;
-            importedMeshTextureUploadSummary = string.Create(
+            var uploadSummary = string.Create(
                 CultureInfo.InvariantCulture,
                 $"uploaded {texture.Width}x{texture.Height} {importedMesh.BaseColorTexture.MimeType}");
+            importedMeshTextureState.RecordUpload(importedMesh, textureId, uploadSummary);
             return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or NotSupportedException)
         {
             ReleaseImportedMeshTexture(gl);
-            importedMeshTextureUploadFailed = true;
-            importedMeshTextureUploadSummary = $"upload failed: {ex.Message}";
+            importedMeshTextureState.RecordUploadFailure($"upload failed: {ex.Message}");
             return false;
         }
     }
@@ -1165,7 +1125,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ReloadDefaultC3DSample()
     {
-        var sourcePath = c3dSample?.SourcePath ?? ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
+        var sourcePath = c3dSample?.SourcePath ?? samplePathResolver.Resolve(DefaultC3DSamplePath);
         var pointPairStep = viewModel.CreatePointPairDimensionsRecipeStep();
         var restoreThicknessPreview = viewModel.ThicknessVisible;
         var restoreWarpagePreview = viewModel.WarpageVisible;
@@ -1179,7 +1139,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 ? c3dSample.WithMaxRenderedPoints(viewModel.C3DMaxRenderedPoints)
                 : string.IsNullOrWhiteSpace(sourcePath)
                     ? null
-                    : C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
+                    : C3DSourceLoadPreparation.LoadSynchronously(sourcePath, viewModel.C3DMaxRenderedPoints);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
         {
@@ -1189,15 +1149,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         twoPointFirst = null;
         twoPointSecond = null;
-        roiStepLeftBounds = null;
-        roiStepRightBounds = null;
-        roiStepLeftCenter = null;
-        roiStepRightCenter = null;
-        roiStepLeftAnchor = null;
-        roiStepRightAnchor = null;
-        ClearRecipeRoiStep();
-        roiStepInteractiveSelection = false;
-        roiStepNextPickSetsRight = false;
+        roiEditingSession.Reset();
         viewModel.ClearTwoPointMeasurement();
         viewModel.ClearRoiStepMeasurement();
         SetC3DSampleStatus();
@@ -1248,21 +1200,6 @@ public sealed partial class OpenVisionThreeDViewerControl
                 viewModel.RecipeSourceUnit);
         }
     }
-
-    private void DecreaseC3DHeightColorMaximum_Click(object sender, RoutedEventArgs e) =>
-        viewModel.ShiftC3DHeightColorMaximum(-1);
-
-    private void IncreaseC3DHeightColorMaximum_Click(object sender, RoutedEventArgs e) =>
-        viewModel.ShiftC3DHeightColorMaximum(1);
-
-    private void DecreaseC3DHeightColorMinimum_Click(object sender, RoutedEventArgs e) =>
-        viewModel.ShiftC3DHeightColorMinimum(-1);
-
-    private void IncreaseC3DHeightColorMinimum_Click(object sender, RoutedEventArgs e) =>
-        viewModel.ShiftC3DHeightColorMinimum(1);
-
-    private void ResetC3DHeightColorRange_Click(object sender, RoutedEventArgs e) =>
-        viewModel.ResetC3DHeightColorRange();
 
 }
 

@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -20,7 +21,8 @@ internal static class C3DHeightDifferenceEdgeGoldenVerification
             Check("unknown-preserved-recognized-schema-strict", VerifyStrictParameters),
             Check("root-and-selection-identity", VerifyIdentity),
             Check("deterministic-output-hash", VerifyDeterminism),
-            Check("recipe-adapter-contract", VerifyRecipeAdapter)
+            Check("recipe-adapter-contract", VerifyRecipeAdapter),
+            Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath))
         };
         var passed = cases.Count(item => item.Passed);
         var status = passed == cases.Length ? "Pass" : "Fail";
@@ -30,7 +32,7 @@ internal static class C3DHeightDifferenceEdgeGoldenVerification
             "Definition|numeric=X-column,Y-raw-height,Z-row|candidate=StrongestPerScanline|tie=LowestStartIndex|point=PairMidpoint|missing=SkipPair|boundary=WithinSelection|minimumOutput=2",
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(reportPath, lines);
         Console.WriteLine($"C3D Height Difference Edge golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
@@ -290,6 +292,94 @@ internal static class C3DHeightDifferenceEdgeGoldenVerification
         }
     }
 
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var reportDirectory = GetReportDirectory(reportPath) ?? Environment.CurrentDirectory;
+        var directory = Path.Combine(reportDirectory, $"atomic-report-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var fixture = CreateAdapterFixture();
+            var sourcePath = Path.Combine(directory, "source.c3d");
+            fixture.Root.SaveC3D(sourcePath);
+            var document = fixture.Document with { Source = fixture.Document.Source with { Path = sourcePath } };
+            var recipePath = Path.Combine(directory, "edge.ov3d-teach.json");
+            var runnerReportPath = Path.Combine(directory, "runner.txt");
+            ToolRecipeDocumentStore.Save(recipePath, document);
+
+            var firstExit = ToolRecipeHeightDifferenceEdgeRunnerExecution.Run(
+                recipePath,
+                document.Steps[1].Id,
+                runnerReportPath);
+            var firstBytes = File.Exists(runnerReportPath)
+                ? File.ReadAllBytes(runnerReportPath)
+                : [];
+            var firstText = Encoding.UTF8.GetString(firstBytes);
+            File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = ToolRecipeHeightDifferenceEdgeRunnerExecution.Run(
+                recipePath,
+                document.Steps[1].Id,
+                runnerReportPath);
+            var overwriteBytes = File.Exists(runnerReportPath)
+                ? File.ReadAllBytes(runnerReportPath)
+                : [];
+            var overwriteText = Encoding.UTF8.GetString(overwriteBytes);
+
+            var lockedPath = Path.Combine(directory, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = ToolRecipeHeightDifferenceEdgeRunnerExecution.Run(
+                    recipePath,
+                    document.Steps[1].Id,
+                    lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = ToolRecipeHeightDifferenceEdgeRunnerExecution.Run(
+                recipePath,
+                document.Steps[1].Id,
+                Path.Combine(invalidParentMarker, "report.txt"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.txt.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var sentinelAbsent = !overwriteText.Contains("pre-existing-output", StringComparison.Ordinal);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && firstText.Contains("HeightDifferenceEdge|", StringComparison.Ordinal)
+                && firstText.Contains("sha256=", StringComparison.Ordinal)
+                && firstBytes.SequenceEqual(overwriteBytes)
+                && noBom
+                && sentinelAbsent
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};byteStable={firstBytes.SequenceEqual(overwriteBytes)};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
+
     private static C3DHeightDifferenceEdgeEvaluation Evaluate(
         int width,
         int height,
@@ -401,6 +491,8 @@ internal static class C3DHeightDifferenceEdgeGoldenVerification
         $"status={evaluation.Result.Status},points={evaluation.Output?.Points.Count},eligible={evaluation.Output?.Diagnostics.EligiblePairCount},missing={evaluation.Output?.Diagnostics.SkippedMissingPairCount},hash={evaluation.Output?.ContentSha256},message={evaluation.Result.Message}";
 
     private static string Clean(string value) => value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
+
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
 
     private sealed record AdapterFixture(
         C3DHeightFieldSnapshot Root,

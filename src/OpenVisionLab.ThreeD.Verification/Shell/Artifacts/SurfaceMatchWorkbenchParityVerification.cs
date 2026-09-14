@@ -20,6 +20,9 @@ internal static class SurfaceMatchWorkbenchParityVerification
         ArgumentException.ThrowIfNullOrWhiteSpace(scenePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(runnerExecutionPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        var fullReportPath = Path.GetFullPath(reportPath);
+        var reportDirectory = Path.GetDirectoryName(fullReportPath)
+            ?? Environment.CurrentDirectory;
 
         var lines = new List<string>
         {
@@ -98,6 +101,34 @@ internal static class SurfaceMatchWorkbenchParityVerification
                 workbenchExecution,
                 workbenchEvaluation?.Assessment,
                 workbenchEvaluation?.Runtime);
+
+            var admittedEvidence = SurfaceMatchExperimentEvidence.CreateForDisplay(
+                model, scene, workbenchExecution, workbenchEvaluation?.Assessment, workbenchEvaluation?.Runtime);
+            Check(
+                "display-admission-keeps-source-and-result-identities",
+                ReferenceEquals(admittedEvidence.Model, model)
+                && ReferenceEquals(admittedEvidence.Scene, scene)
+                && ReferenceEquals(admittedEvidence.Execution, workbenchExecution),
+                "Admission validates existing artifacts without copying or executing them.");
+            var displayCountBeforeRejection = requestCount;
+            var rejectedDisplay = false;
+            try
+            {
+                workbench.ShowSurfaceMatchEvidence(
+                    model, scene, workbenchExecution with { ModelContentSha256 = new string('0', 64) });
+            }
+            catch (InvalidDataException exception)
+            {
+                rejectedDisplay = exception.Message
+                    == "Workbench surface-match evidence is invalid or does not match the supplied model and scene.";
+            }
+            Check(
+                "invalid-display-admission-preserves-published-evidence",
+                rejectedDisplay
+                && ReferenceEquals(workbench.SurfaceMatchEvidence, workbenchExecution)
+                && requestCount == displayCountBeforeRejection
+                && clearRequestCount == 0,
+                "Invalid linked evidence fails before any clear, publish, or display request.");
 
             Check(
                 "runner-and-workbench-pose-hash-match",
@@ -399,9 +430,7 @@ internal static class SurfaceMatchWorkbenchParityVerification
                     $"candidate={experiment.HasSurfaceMatchExperimentCandidate};published={experiment.SurfaceMatchEvidence?.ContentSha256}");
 
                 var transientRecipePath = Path.Combine(
-                    Path.GetDirectoryName(
-                        Path.GetFullPath(reportPath))
-                    ?? Environment.CurrentDirectory,
+                    reportDirectory,
                     "surface-match-experiment-transient.ov3d-recipe.json");
                 var experimentSaved =
                     experiment.TrySaveTeachingRecipe(
@@ -423,6 +452,19 @@ internal static class SurfaceMatchWorkbenchParityVerification
                         .HasSurfaceMatchExperimentCandidate
                     && reopenedExperimentDisplayRequests == 0,
                     $"saved={experimentSaved};opened={experimentOpened};hasEvidence={experimentReopened.HasSurfaceMatchEvidence};hasCandidate={experimentReopened.HasSurfaceMatchExperimentCandidate};displayRequests={reopenedExperimentDisplayRequests};save={experimentSaveMessage}");
+                experiment.Dispose();
+                var disposedPreview = experiment
+                    .PreviewSelectedSurfaceMatchExperimentAsync()
+                    .GetAwaiter()
+                    .GetResult();
+                Check(
+                    "experiment-dispose-closes-preview-lifetime",
+                    experiment.IsDisposed
+                    && !disposedPreview
+                    && experiment.SurfaceMatchEvidence is null
+                    && !experiment.HasSurfaceMatchExperimentCandidate,
+                    $"disposed={experiment.IsDisposed};preview={disposedPreview};hasEvidence={experiment.HasSurfaceMatchEvidence};hasCandidate={experiment.HasSurfaceMatchExperimentCandidate}");
+                experimentReopened.Dispose();
             }
 
             var authoring = new ToolWorkbenchViewModel();
@@ -483,8 +525,7 @@ internal static class SurfaceMatchWorkbenchParityVerification
                 $"applied={applied};displayRequests={authoringDisplayRequests};hasEvidence={authoring.HasSurfaceMatchEvidence};message={applyMessage}");
 
             var recipePath = Path.Combine(
-                Path.GetDirectoryName(Path.GetFullPath(reportPath))
-                    ?? Environment.CurrentDirectory,
+                reportDirectory,
                 "surface-match-authored-bounds.ov3d-recipe.json");
             var saved = authoring.TrySaveTeachingRecipe(
                 recipePath,
@@ -521,21 +562,20 @@ internal static class SurfaceMatchWorkbenchParityVerification
                 && reopened.SelectedPipelineStep?.State
                     == "Taught / pending",
                 $"opened={opened};displayRequests={reopenedDisplayRequests};hasEvidence={reopened.HasSurfaceMatchEvidence};state={reopened.SelectedPipelineStep?.State}");
+            authoring.Dispose();
+            reopened.Dispose();
+            workbench.Dispose();
         }
         catch (Exception exception)
         {
-            lines.Add(
-                $"FAIL | unexpected-exception | {exception.GetType().Name}: {exception.Message}");
+            Check("unexpected-exception", false, $"{exception.GetType().Name}: {exception.Message}");
         }
 
         var allPassed = passed == total && total > 0;
         lines.Insert(
             0,
             $"SurfaceMatchWorkbenchParityVerification|{(allPassed ? "PASS" : "FAIL")}|cases={total}|passed={passed}|failed={total - passed}");
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(
-            Path.GetDirectoryName(fullReportPath)
-            ?? Environment.CurrentDirectory);
+        Directory.CreateDirectory(reportDirectory);
         File.WriteAllLines(
             fullReportPath,
             lines,

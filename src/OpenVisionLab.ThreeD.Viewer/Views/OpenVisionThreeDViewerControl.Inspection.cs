@@ -163,11 +163,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.UseLazPointSmokeScene();
     }
 
-    private void SetSmokeFailure(string message)
-    {
-        smokeExitCode = 1;
-        viewModel.ViewerStatus = message;
-    }
+    private void SetSmokeFailure(string message) => smokeScenario.SetFailure(message);
 
     private static string CreateSmokeFailureMessage(string prefix, string detail) =>
         string.IsNullOrWhiteSpace(detail)
@@ -181,7 +177,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             ApplySmokeLazPoints(null);
         }
 
-        if (lazPointCloud is null || lazPointCloud.SampledPoints.Length == 0)
+        if (lazPointCloud is null || lazPointCloud.SampledPointView.Count == 0)
         {
             viewModel.SelectedEntity = "(none)";
             viewModel.PickCoordinate = "(none)";
@@ -191,7 +187,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         viewModel.UseLazPointSmokeScene();
         var target = FindLazSmokePickTarget();
-        var viewerPosition = MapLazPosition(target.Position);
+        var viewerPosition = MapLazPosition(target);
         viewModel.CameraTargetX = viewerPosition.X;
         viewModel.CameraTargetY = viewerPosition.Y;
         viewModel.CameraTargetZ = viewerPosition.Z;
@@ -360,7 +356,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
         else
         {
-            smokeExitCode = 1;
+            smokeScenario.MarkFailed();
         }
     }
 
@@ -371,7 +367,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             ApplySmokeLazPoints(null);
         }
 
-        if (lazPointCloud is null || lazPointCloud.SampledPoints.Length < 2)
+        if (lazPointCloud is null || lazPointCloud.SampledPointView.Count < 2)
         {
             viewModel.ViewerStatus = "Smoke measure failed: LAZ/LAS point cloud missing";
             return;
@@ -382,12 +378,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SelectionOverlayVisible = true;
         viewModel.MeasurementVisible = true;
 
-        var first = lazPointCloud.SampledPoints.MinBy(point => MapLazPosition(point.Position).X);
-        var second = lazPointCloud.SampledPoints.MaxBy(point => MapLazPosition(point.Position).X);
+        var first = lazPointCloud.SampledPointView.MinBy(point => MapLazPosition(point).X);
+        var second = lazPointCloud.SampledPointView.MaxBy(point => MapLazPosition(point).X);
         SetLazTwoPointMeasurement(first, second, heightUnit);
 
-        var firstPosition = MapLazPosition(first.Position);
-        var secondPosition = MapLazPosition(second.Position);
+        var firstPosition = MapLazPosition(first);
+        var secondPosition = MapLazPosition(second);
         var midpoint = (firstPosition + secondPosition) * 0.5f;
         viewModel.CameraTargetX = midpoint.X;
         viewModel.CameraTargetY = midpoint.Y;
@@ -424,57 +420,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SelectedEntity = $"{viewModel.ImportedMeshFormat} Two Point Measurement";
         viewModel.PickCoordinate = FormatImportedMeshPoint(second);
         viewModel.ViewerStatus = $"Smoke measure: {viewModel.ImportedMeshFormat} two-point distance";
-    }
-
-    private void ApplySmokeRoiStepMeasurement()
-    {
-        if (c3dSample is null || c3dSample.Points.Length < 2)
-        {
-            viewModel.ViewerStatus = "Smoke measure failed: C3D sample missing";
-            return;
-        }
-
-        viewModel.UseC3DSmokeScene();
-        viewModel.SelectedSelectionMode = RoiStepSelectionMode;
-        viewModel.SelectionOverlayVisible = true;
-        roiStepInteractiveSelection = false;
-        roiStepLeftAnchor = null;
-        roiStepRightAnchor = null;
-        ClearRecipeRoiStep();
-        roiStepNextPickSetsRight = false;
-
-        if (UpdateRoiStepMeasurement())
-        {
-            viewModel.SelectedEntity = "ROI Step Compare";
-            viewModel.ViewerStatus = "Smoke measure: ROI step-height comparison";
-        }
-    }
-
-    private void ApplySmokeInteractiveRoiStepMeasurement()
-    {
-        if (c3dSample is null || c3dSample.Points.Length < 2)
-        {
-            viewModel.ViewerStatus = "Smoke measure failed: C3D sample missing";
-            return;
-        }
-
-        viewModel.UseC3DSmokeScene();
-        viewModel.SelectedSelectionMode = RoiStepSelectionMode;
-        viewModel.SelectionOverlayVisible = true;
-        roiStepInteractiveSelection = true;
-        roiStepNextPickSetsRight = false;
-        ClearRecipeRoiStep();
-
-        var bounds = GetTransformedC3DBounds();
-        var centerZ = (bounds.MinZ + bounds.MaxZ) * 0.5f;
-        roiStepLeftAnchor = new Vector3(bounds.MinX + (bounds.MaxX - bounds.MinX) * 0.30f, 0.0f, centerZ);
-        roiStepRightAnchor = new Vector3(bounds.MinX + (bounds.MaxX - bounds.MinX) * 0.70f, 0.0f, centerZ);
-
-        if (UpdateRoiStepMeasurement())
-        {
-            viewModel.SelectedEntity = "ROI Step Compare";
-            viewModel.ViewerStatus = "Smoke measure: interactive ROI step-height comparison";
-        }
     }
 
     private void ApplySmokePlaneReferenceMeasurement()
@@ -539,10 +484,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         lazTwoPointFirst = null;
         lazTwoPointSecond = null;
         selectedLazPoint = null;
-        roiStepLeftBounds = null;
-        roiStepRightBounds = null;
-        roiStepLeftCenter = null;
-        roiStepRightCenter = null;
+        roiEditingSession.ClearOverlay();
     }
 
     private void ApplyC3DReferencePlaneFitOverlay(
@@ -561,7 +503,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     public bool PreviewC3DPlaneFlatness() =>
-        C3DPlaneFlatnessRuleCoordinator.Preview(
+        C3DPlaneFlatnessRuleCoordinator.PreviewDisplay(
             c3dSample,
             viewModel,
             ApplyC3DPlaneFlatnessPreviewOverlay,
@@ -569,14 +511,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ApplyC3DPlaneFlatnessPreviewOverlay(
         HeightDeviationRecipePlaneFlatness step,
-        PlaneFlatnessEvaluation evaluation)
+        ViewerPlaneFlatnessDisplayEvaluation evaluation)
     {
         twoPointFirst = null;
         twoPointSecond = null;
-        roiStepLeftBounds = null;
-        roiStepRightBounds = null;
-        roiStepLeftCenter = null;
-        roiStepRightCenter = null;
+        roiEditingSession.ClearOverlay();
         planeFlatnessEvaluation = evaluation;
 
         if (evaluation.ReferencePlane is { } plane)
@@ -637,13 +576,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 plane.TargetProjection);
         }
 
-        roiStepLeftBounds = (
-            (float)(step.MeasurementRegion.CenterX - step.MeasurementRegion.HalfWidth),
-            (float)(step.MeasurementRegion.CenterX + step.MeasurementRegion.HalfWidth),
-            (float)(step.MeasurementRegion.CenterZ - step.MeasurementRegion.HalfDepth),
-            (float)(step.MeasurementRegion.CenterZ + step.MeasurementRegion.HalfDepth),
-            (float)meanY);
-        roiStepRightBounds = null;
+        roiEditingSession.ApplyVolumeOverlay(step.MeasurementRegion, meanY);
     }
 
     public bool PreviewC3DCrossSection() =>
@@ -670,13 +603,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             C3DSectionProfilePathBuilder.Build(sourcePoints, minimum, maximum));
     }
 
-    private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>
-        point.X >= region.CenterX - region.HalfWidth
-        && point.X <= region.CenterX + region.HalfWidth
-        && point.Z >= region.CenterZ - region.HalfDepth
-        && point.Z <= region.CenterZ + region.HalfDepth;
-
     private static Vector3 CreatePlaneCorner(HeightFieldPlaneFitResult result, float x, float z) =>
+        new(x, (float)result.EvaluateY(x, z), z);
+
+    private static Vector3 CreatePlaneCorner(ViewerPlaneFitDisplay result, float x, float z) =>
         new(x, (float)result.EvaluateY(x, z), z);
 
 }

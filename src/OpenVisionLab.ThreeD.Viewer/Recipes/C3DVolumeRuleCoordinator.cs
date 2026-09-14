@@ -1,5 +1,4 @@
 using System.IO;
-using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -51,8 +50,12 @@ public static class C3DVolumeRuleCoordinator
         var samples = measurementGrid.Points
             .Select(point => new HeightFieldPlaneSample(transform.Apply(point.Position), point.RawValue))
             .ToArray();
-        var reference = samples.Where(sample => Contains(step.ReferenceRegion, sample.Position)).ToArray();
-        var measured = samples.Where(sample => Contains(step.MeasurementRegion, sample.Position)).ToArray();
+        var reference = samples
+            .Where(sample => HeightDeviationRoiGeometry.Contains(step.ReferenceRegion, sample.Position))
+            .ToArray();
+        var measured = samples
+            .Where(sample => HeightDeviationRoiGeometry.Contains(step.MeasurementRegion, sample.Position))
+            .ToArray();
         var spacing = measurementGrid.HorizontalScale * measurementGrid.PointStride * transform.Scale;
         var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
             step.SourceEntityId,
@@ -71,10 +74,4 @@ public static class C3DVolumeRuleCoordinator
         requestPreviewRender();
         return evaluation.Result.Status != ResultStatus.Error;
     }
-
-    private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>
-        point.X >= region.CenterX - region.HalfWidth
-        && point.X <= region.CenterX + region.HalfWidth
-        && point.Z >= region.CenterZ - region.HalfDepth
-        && point.Z <= region.CenterZ + region.HalfDepth;
 }

@@ -21,11 +21,10 @@ internal sealed class LazPointCloudLoadCoordinator : IDisposable
 
     public void CancelCurrent() => operations.CancelCurrent();
 
-    public LazPointCloudLoadResult Load(string path, int maxSampledPoints)
+    public LazPointCloudLoadResult Load(ViewerLazPointCloudLoadRequest request)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var candidate = Path.GetFullPath(path);
-        var sampleLimit = Math.Max(2, maxSampledPoints);
+        var candidate = request.FullPath;
+        var sampleLimit = request.MaxSampledPoints;
         if (cache.TryGet(candidate, sampleLimit, out var cached))
         {
             return new LazPointCloudLoadResult(cached, 0.0, Reused: true, WasCanceled: false);
@@ -39,21 +38,20 @@ internal sealed class LazPointCloudLoadCoordinator : IDisposable
     }
 
     public async Task<LazPointCloudLoadResult?> LoadAsync(
-        string path,
-        int maxSampledPoints,
+        ViewerLazPointCloudLoadRequest request,
         CancellationToken externalCancellationToken = default,
         IProgress<double>? progress = null,
         Func<bool>? isCurrent = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var candidate = Path.GetFullPath(path);
-        var sampleLimit = Math.Max(2, maxSampledPoints);
+        var candidate = request.FullPath;
+        var sampleLimit = request.MaxSampledPoints;
         using var operation = operations.Begin(externalCancellationToken);
         bool IsOperationCurrent() => operation.IsCurrent && (isCurrent?.Invoke() ?? true);
 
         try
         {
-            if (cache.TryGet(candidate, sampleLimit, out var cached))
+            var cached = await cache.TryGetAsync(candidate, sampleLimit, operation.Token);
+            if (cached is not null)
             {
                 if (!IsOperationCurrent())
                 {

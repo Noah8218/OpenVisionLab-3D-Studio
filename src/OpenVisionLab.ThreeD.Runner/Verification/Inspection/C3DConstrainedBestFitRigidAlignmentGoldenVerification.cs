@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
@@ -10,13 +11,14 @@ internal static class C3DConstrainedBestFitRigidAlignmentGoldenVerification
         {
             VerifyKnownNoisyPose(),
             VerifyDeterminismAndRunnerParity(reportPath),
+            VerifyRunnerReportAtomicity(reportPath),
             VerifyNegativeInput(),
             VerifyCancellation()
         };
         var passed = cases.Count(item => item.Passed);
         var status = passed == cases.Length ? "PASS" : "FAIL";
         var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(fullReportPath,
         [
             $"C3DConstrainedBestFitRigidAlignmentGoldenVerification|{status}|cases={cases.Length}|passed={passed}|failed={cases.Length - passed}",
@@ -53,7 +55,7 @@ internal static class C3DConstrainedBestFitRigidAlignmentGoldenVerification
         var input = KnownInput();
         var first = C3DConstrainedBestFitRigidAlignmentAdapter.Evaluate(input);
         var second = C3DConstrainedBestFitRigidAlignmentAdapter.Evaluate(input);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        var directory = GetReportDirectory(reportPath)!;
         var specificationPath = Path.Combine(directory, "constrained-best-fit-rigid-alignment-spec.json");
         var runnerReportPath = Path.Combine(directory, "constrained-best-fit-rigid-alignment-runner.txt");
         var specification = new C3DConstrainedBestFitRigidAlignmentRunnerSpecification
@@ -102,6 +104,107 @@ internal static class C3DConstrainedBestFitRigidAlignmentGoldenVerification
             && string.Equals(first.Output.ContentSha256, runnerHash, StringComparison.OrdinalIgnoreCase);
         return (pass, "determinism-and-runner-parity", $"direct1={first.Output?.ContentSha256};direct2={second.Output?.ContentSha256};runner={runnerHash};exit={exitCode}");
     }
+
+    private static (bool Passed, string Name, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var input = KnownInput();
+        var directory = Path.Combine(
+            GetReportDirectory(reportPath) ?? Environment.CurrentDirectory,
+            $"constrained-best-fit-rigid-atomic-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var specification = new C3DConstrainedBestFitRigidAlignmentRunnerSpecification
+            {
+                StepId = input.StepId,
+                OutputEntityId = input.OutputEntityId,
+                SourceEntityId = input.SourceEntityId,
+                SourceContentSha256 = input.SourceContentSha256,
+                ReferenceEntityId = input.ReferenceEntityId,
+                ReferenceContentSha256 = input.ReferenceContentSha256,
+                SourceUnit = input.SourceUnit,
+                SourceFrameId = input.SourceFrameId,
+                ReferenceUnit = input.ReferenceUnit,
+                ReferenceFrameId = input.ReferenceFrameId,
+                MaximumCorrespondenceCount = input.MaximumCorrespondenceCount,
+                MinimumNormalizedLineSpread = input.MinimumNormalizedLineSpread,
+                ArithmeticResidualWarning = input.ArithmeticResidualWarning,
+                Pairs = input.Pairs.Select(pair => new C3DConstrainedBestFitRigidAlignmentRunnerPair
+                {
+                    SourcePointId = pair.SourcePointId,
+                    ReferencePointId = pair.ReferencePointId,
+                    SourceX = pair.SourceX,
+                    SourceY = pair.SourceY,
+                    SourceZ = pair.SourceZ,
+                    ReferenceX = pair.ReferenceX,
+                    ReferenceY = pair.ReferenceY,
+                    ReferenceZ = pair.ReferenceZ
+                }).ToList()
+            };
+            var specificationPath = Path.Combine(directory, "alignment.json");
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions { WriteIndented = true }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            var reportOutputPath = Path.Combine(directory, "runner.txt");
+            var firstExit = C3DConstrainedBestFitRigidAlignmentRunnerExecution.Run(specificationPath, reportOutputPath);
+            var firstBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            File.WriteAllText(reportOutputPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = C3DConstrainedBestFitRigidAlignmentRunnerExecution.Run(specificationPath, reportOutputPath);
+            var overwriteBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+
+            var lockedPath = Path.Combine(directory, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = C3DConstrainedBestFitRigidAlignmentRunnerExecution.Run(specificationPath, lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = C3DConstrainedBestFitRigidAlignmentRunnerExecution.Run(
+                specificationPath,
+                Path.Combine(invalidParentMarker, "report.txt"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.txt.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && firstBytes.SequenceEqual(overwriteBytes)
+                && noBom
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                "runner-report-atomicity",
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};noBom={noBom};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static (bool Passed, string Name, string Evidence) VerifyNegativeInput()
     {
@@ -190,4 +293,7 @@ internal static class C3DConstrainedBestFitRigidAlignmentGoldenVerification
 
     private static string Clean(string value)
         => value.Replace('\r', ' ').Replace('\n', ' ').Replace('|', '/');
+
+    private static string? GetReportDirectory(string reportPath)
+        => Path.GetDirectoryName(Path.GetFullPath(reportPath));
 }

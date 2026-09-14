@@ -187,6 +187,20 @@ internal static class RunRecordHistoryVerification
                 && File.ReadAllBytes(exportedHtml).SequenceEqual(File.ReadAllBytes(first.Html))
                 && File.ReadAllBytes(exportedCsv).SequenceEqual(File.ReadAllBytes(first.Csv)),
                 exportDirectory);
+            var secondExported = viewModel.ExportCurrentRunRecordBundle(exportRoot, out var secondExportDirectory);
+            Check(
+                "repeated export uses a collision suffix and removes staging",
+                secondExported
+                && !PathsEqual(exportDirectory, secondExportDirectory)
+                && secondExportDirectory.EndsWith("-2", StringComparison.Ordinal)
+                && !Directory.GetDirectories(exportRoot, "*.staging.*").Any()
+                && File.ReadAllBytes(Path.Combine(secondExportDirectory, Path.GetFileName(first.Json)))
+                    .SequenceEqual(File.ReadAllBytes(first.Json))
+                && File.ReadAllBytes(Path.Combine(secondExportDirectory, Path.GetFileName(first.Html)))
+                    .SequenceEqual(File.ReadAllBytes(first.Html))
+                && File.ReadAllBytes(Path.Combine(secondExportDirectory, Path.GetFileName(first.Csv)))
+                    .SequenceEqual(File.ReadAllBytes(first.Csv)),
+                secondExportDirectory);
 
             var second = WriteFixture(
                 fixtureRoot,

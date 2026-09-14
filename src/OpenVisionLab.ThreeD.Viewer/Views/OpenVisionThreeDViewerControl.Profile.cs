@@ -132,15 +132,18 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var ray = CreatePickRay(screenPoint);
         var position = TransformC3DPosition(endpoint.Position);
-        var alongRay = Vector3.Dot(position - ray.origin, ray.direction);
-        if (alongRay < 0.0f)
+        if (!ViewerRayGeometry.TryProjectPoint(
+                ray.origin,
+                ray.direction,
+                position,
+                out _,
+                out var perpendicularDistance))
         {
             return false;
         }
 
-        var nearest = ray.origin + ray.direction * alongRay;
         var threshold = Math.Max(0.18f, (float)viewModel.CameraDistance * 0.03f);
-        return Vector3.Distance(position, nearest) <= threshold;
+        return perpendicularDistance <= threshold;
     }
 
     private bool TryMoveProfileEndpoint(Point screenPoint)

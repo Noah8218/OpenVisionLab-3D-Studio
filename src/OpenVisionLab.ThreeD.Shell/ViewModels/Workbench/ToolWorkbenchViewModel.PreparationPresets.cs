@@ -69,14 +69,11 @@ public sealed partial class ToolWorkbenchViewModel
                 : 0,
             () => SelectedPipelineStep,
             TryApplyFilterKernelPresetDraftForAssistant);
-        preparationPresetAssistantOwner.PropertyChanged +=
-            OnPreparationPresetAssistantOwnerPropertyChanged;
+        preparationPresetEventCoordinator =
+            new ToolWorkbenchPreparationPresetEventCoordinator(
+                preparationPresetAssistantOwner,
+                args => OnPropertyChanged(args.PropertyName));
     }
-
-    private void OnPreparationPresetAssistantOwnerPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args) =>
-        OnPropertyChanged(args.PropertyName);
 
     private void ResetPreparationPresetAssistant() =>
         preparationPresetAssistantOwner.Reset();

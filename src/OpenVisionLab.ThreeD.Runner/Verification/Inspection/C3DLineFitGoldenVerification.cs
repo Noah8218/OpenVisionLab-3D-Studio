@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -16,6 +17,7 @@ internal static class C3DLineFitGoldenVerification
             Check("degenerate-and-non-finite-fail-closed", VerifyDegenerateFailures),
             Check("deterministic-hash-and-diagnostics", VerifyDeterminism),
             Check("strict-recipe-adapter", VerifyStrictRecipeAdapter),
+            Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath)),
             Check("cancellation-propagates", VerifyCancellation)
         };
         var passed = cases.Count(item => item.Passed);
@@ -26,7 +28,7 @@ internal static class C3DLineFitGoldenVerification
             "Definition|numeric=X-column,Y-raw-height,Z-row|method=DeterministicConsensusOrthogonalTls|hypotheses=Sha256PairSchedule/256|refinement=OrthogonalTlsUntilStable10|residual=source-coordinate"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(reportPath, lines);
         Console.WriteLine($"3D Line Fit golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
@@ -132,6 +134,90 @@ internal static class C3DLineFitGoldenVerification
         }
     }
 
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var reportDirectory = GetReportDirectory(reportPath) ?? Environment.CurrentDirectory;
+        var root = Path.Combine(reportDirectory, $"line-fit-atomic-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(root);
+            var source = C3DHeightFieldSnapshot.CreateForVerification(
+                "source.synthetic",
+                10,
+                10,
+                Enumerable.Range(0, 100).Select(index => index / 10 < 5 && index % 10 < 5 ? 1d : 10d).ToArray());
+            var sourcePath = Path.Combine(root, "source.c3d");
+            source.SaveC3D(sourcePath);
+            var selection = new ToolRecipeSelection("selection.line", "Line", ToolRecipeSelectionKinds.GridRectangle, source.EntityId, source.FrameId,
+                new ToolRecipeSelectionSourceBinding("C3D", source.ContentSha256, source.Width, source.Height), new ToolRecipeGridRectangle(1, 0, 3, 10), null, null);
+            var document = new ToolRecipeDocument(
+                ToolRecipeDocument.CurrentSchemaVersion,
+                "Line Fit atomic report fixture",
+                new ToolRecipeSource(source.EntityId, "Synthetic", "C3D", source.Unit, source.FrameId, sourcePath, source.ByteLength, source.ContentSha256, source.Width, source.Height),
+                [],
+                [
+                    new ToolRecipeStep("step.filter.01", "filter", "Filter", 1, [source.EntityId], "derived.filtered.01", [new("Method", "Median"), new("KernelSize", "3"), new("MissingValuePolicy", "PreserveMask"), new("BoundaryPolicy", "AvailableNeighbors")]),
+                    CreateRunnerEdgeStep("step.edge.01", selection.Id, "AcrossColumns", "derived.edge.01"),
+                    CreateRunnerLineStep("step.line.01", "derived.edge.01", "derived.line.01")
+                ],
+                [selection]);
+            var recipePath = Path.Combine(root, "fixture.ov3d-teach.json");
+            var runnerReportPath = Path.Combine(root, "runner.txt");
+            ToolRecipeDocumentStore.Save(recipePath, document);
+            var filter = ToolRecipeFilterExecution.Execute(document, "step.filter.01", root);
+            var edge = ToolRecipeHeightDifferenceEdgeExecution.Execute(document, "step.edge.01", filter.Output!);
+            var expected = ToolRecipeLineFitExecution.Execute(document, "step.line.01", edge.Output!);
+            var firstExitCode = ToolRecipeLineFitRunnerExecution.Run(recipePath, "step.line.01", runnerReportPath);
+            var firstBytes = File.ReadAllBytes(runnerReportPath);
+            File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var overwriteExitCode = ToolRecipeLineFitRunnerExecution.Run(recipePath, "step.line.01", runnerReportPath);
+            var overwriteBytes = File.ReadAllBytes(runnerReportPath);
+            var report = File.ReadAllText(runnerReportPath);
+            var lockedPath = Path.Combine(root, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExitCode;
+            using (var lockedStream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                lockedExitCode = ToolRecipeLineFitRunnerExecution.Run(recipePath, "step.line.01", lockedPath);
+            }
+            var lockedPreserved = lockedSentinel.SequenceEqual(File.ReadAllBytes(lockedPath));
+            var invalidParentMarker = Path.Combine(root, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-marker", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var invalidParentReport = Path.Combine(invalidParentMarker, "report.txt");
+            var invalidParentExitCode = ToolRecipeLineFitRunnerExecution.Run(recipePath, "step.line.01", invalidParentReport);
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-marker";
+            var temporaryFilesRemain = Directory.GetFiles(root, "*.txt.tmp.*").Length != 0;
+            var passed = firstExitCode == 0
+                && overwriteExitCode == 0
+                && expected.Result.Status == ResultStatus.Pass
+                && expected.Output is not null
+                && firstBytes.SequenceEqual(overwriteBytes)
+                && report.Contains("LineFit|status=Pass", StringComparison.Ordinal)
+                && report.Contains($"sha256={expected.Output.ContentSha256}", StringComparison.Ordinal)
+                && !HasUtf8Bom(overwriteBytes)
+                && lockedExitCode == 5
+                && lockedPreserved
+                && invalidParentExitCode == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (passed, $"firstExit={firstExitCode};overwriteExit={overwriteExitCode};lockedExit={lockedExitCode};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExitCode};invalidParentPreserved={invalidParentPreserved};stable={firstBytes.SequenceEqual(overwriteBytes)};bom={HasUtf8Bom(overwriteBytes)};temporaryFilesRemain={temporaryFilesRemain};expected={expected.Output?.ContentSha256};report={report.Replace(Environment.NewLine, ";")}");
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, true);
+            }
+        }
+    }
+
+    private static ToolRecipeStep CreateRunnerEdgeStep(string id, string selectionId, string axis, string output) =>
+        new(id, "height-difference-edge", "Height Difference Edge", 1, ["derived.filtered.01", selectionId], output, [new("ComparisonAxis", axis), new("Polarity", "Rising"), new("MinimumDelta", "5"), new("CandidatePolicy", "StrongestPerScanline"), new("PointPolicy", "PairMidpoint"), new("MissingValuePolicy", "SkipPair"), new("BoundaryPolicy", "WithinSelection")]);
+
+    private static ToolRecipeStep CreateRunnerLineStep(string id, string input, string output) =>
+        new(id, "three-d-line-fit", "3D Line Fit", 1, [input], output, [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "0.001"), new("MinimumInlierCount", "3"), new("MinimumInlierRatio", "1"), new("MinimumInlierScanlineSpan", "2"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]);
+
     private static C3DLineFitEvaluation Evaluate(C3DHeightDifferenceEdgePointSet edge, double maximumResidual, int minimumCount, double minimumRatio, int minimumSpan) =>
         C3DLineFitRule.Evaluate(new C3DLineFitInput("step.line.01", edge, "derived.line.01", maximumResidual, minimumCount, minimumRatio, minimumSpan));
 
@@ -166,6 +252,8 @@ internal static class C3DLineFitGoldenVerification
             return new VerificationCase(name, false, $"unexpected {exception.GetType().Name}: {exception.Message}");
         }
     }
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
     private static string Clean(string value) => value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
     private sealed record VerificationCase(string Name, bool Passed, string Evidence);
 }

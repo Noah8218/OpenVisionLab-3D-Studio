@@ -39,9 +39,12 @@ public sealed partial class ToolWorkbenchViewModel
     {
         completenessReviewOwner = new ToolWorkbenchCompletenessReviewOwner(
             cellId => HeightImageViewer.SetSelectedCompletenessCellId(cellId),
-            Localize);
-        completenessReviewOwner.PropertyChanged += (_, args) =>
-            OnPropertyChanged(args.PropertyName);
+            Localize,
+            LocalizeStatus);
+        completenessReviewEventCoordinator =
+            new ToolWorkbenchCompletenessReviewEventCoordinator(
+                completenessReviewOwner,
+                args => OnPropertyChanged(args.PropertyName));
     }
 
     private void OnCompletenessLocalizationChanged(

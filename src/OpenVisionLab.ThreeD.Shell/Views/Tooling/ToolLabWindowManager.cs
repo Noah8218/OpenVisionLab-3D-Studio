@@ -8,6 +8,8 @@ internal sealed class ToolLabWindowManager : IDisposable
 {
     private readonly Window owner;
     private readonly ToolWorkbenchViewModel workbench;
+    private readonly Func<string, bool> selectFirstPipelineStepForTool;
+    private readonly Func<string, bool> selectPipelineStep;
     private readonly Action<string> showMissingStep;
     private FilterToolLabWindow? filter;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdge;
@@ -24,10 +26,14 @@ internal sealed class ToolLabWindowManager : IDisposable
     public ToolLabWindowManager(
         Window owner,
         ToolWorkbenchViewModel workbench,
+        Func<string, bool> selectFirstPipelineStepForTool,
+        Func<string, bool> selectPipelineStep,
         Action<string> showMissingStep)
     {
         this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
+        this.selectFirstPipelineStepForTool = selectFirstPipelineStepForTool ?? throw new ArgumentNullException(nameof(selectFirstPipelineStepForTool));
+        this.selectPipelineStep = selectPipelineStep ?? throw new ArgumentNullException(nameof(selectPipelineStep));
         this.showMissingStep = showMissingStep ?? throw new ArgumentNullException(nameof(showMissingStep));
     }
 
@@ -57,7 +63,7 @@ internal sealed class ToolLabWindowManager : IDisposable
         !IsDisposed
         && ((preserveSelectedStep
             && string.Equals(workbench.SelectedPipelineStep?.ToolId, toolId, StringComparison.Ordinal))
-        || workbench.SelectFirstPipelineStepForTool(toolId));
+        || selectFirstPipelineStepForTool(toolId));
 
     public bool ShowForTool(
         string toolId,
@@ -85,7 +91,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Filter",
             showMissing,
             preserveSelectedStep,
-            step => new FilterToolLabWindow(workbench, step),
+            step => new FilterToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -96,7 +102,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Height Difference Edge",
             showMissing,
             preserveSelectedStep,
-            step => new HeightDifferenceEdgeToolLabWindow(workbench, step),
+            step => new HeightDifferenceEdgeToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -107,7 +113,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "2-Point Line",
             showMissing,
             preserveSelectedStep,
-            step => new TwoPointLineToolLabWindow(workbench, step),
+            step => new TwoPointLineToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -118,7 +124,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "3-Point Plane",
             showMissing,
             preserveSelectedStep,
-            step => new ThreePointPlaneToolLabWindow(workbench, step),
+            step => new ThreePointPlaneToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -129,7 +135,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Datum Plane Raw-Height Deviation",
             showMissing,
             preserveSelectedStep,
-            step => new DatumPlaneDeviationToolLabWindow(workbench, step),
+            step => new DatumPlaneDeviationToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -140,7 +146,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Line Intersection",
             showMissing,
             preserveSelectedStep,
-            step => new LineIntersectionToolLabWindow(workbench, step),
+            step => new LineIntersectionToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -151,7 +157,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Landmark Correspondence",
             showMissing,
             preserveSelectedStep,
-            step => new LandmarkCorrespondenceToolLabWindow(workbench, step),
+            step => new LandmarkCorrespondenceToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -162,7 +168,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "XYZ Affine Solve",
             showMissing,
             preserveSelectedStep,
-            step => new XYZAffineSolveToolLabWindow(workbench, step),
+            step => new XYZAffineSolveToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -173,7 +179,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Apply XYZ Affine",
             showMissing,
             preserveSelectedStep,
-            step => new XYZAffineApplyToolLabWindow(workbench, step),
+            step => new XYZAffineApplyToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 
@@ -184,7 +190,7 @@ internal sealed class ToolLabWindowManager : IDisposable
             "Re-grid Height Map",
             showMissing,
             preserveSelectedStep,
-            step => new RegridHeightMapToolLabWindow(workbench, step),
+            step => new RegridHeightMapToolLabWindow(workbench, step, selectPipelineStep),
             (window, step) => window.SetLabStep(step),
             window => window.RefreshViews());
 

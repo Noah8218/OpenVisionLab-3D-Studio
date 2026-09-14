@@ -79,6 +79,28 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
     public bool IsCaptureActive => isCaptureActive;
     public bool IsGestureActive => isGestureActive;
 
+    public HeightImageRoiPointerResult HandlePointer(HeightImageRoiPointerInput input)
+    {
+        var handled = input.Action switch
+        {
+            HeightImageRoiPointerAction.Begin => TryBeginPointer(
+                input.Row,
+                input.Column,
+                input.RowTolerance,
+                input.ColumnTolerance),
+            HeightImageRoiPointerAction.Update => TryUpdatePointer(input.Row, input.Column),
+            HeightImageRoiPointerAction.End => EndPointerAndReport(),
+            _ => false
+        };
+
+        return new(
+            handled,
+            input.Action == HeightImageRoiPointerAction.Begin && handled,
+            input.Action == HeightImageRoiPointerAction.End && handled,
+            IsGestureActive,
+            Candidate);
+    }
+
     public HeightImageRoiOverlayItem? ActiveOverlay => overlays.FirstOrDefault(item =>
         item.IsActive);
 
@@ -265,6 +287,13 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         OnPropertyChanged(nameof(IsGestureActive));
     }
 
+    private bool EndPointerAndReport()
+    {
+        var wasActive = IsGestureActive;
+        EndPointer();
+        return wasActive;
+    }
+
     public void CancelPointer()
     {
         if (!isGestureActive)
@@ -426,3 +455,24 @@ internal enum HeightImageRoiGestureMode
     Move,
     Resize
 }
+
+public enum HeightImageRoiPointerAction
+{
+    Begin,
+    Update,
+    End
+}
+
+public readonly record struct HeightImageRoiPointerInput(
+    HeightImageRoiPointerAction Action,
+    int Row = 0,
+    int Column = 0,
+    int RowTolerance = 0,
+    int ColumnTolerance = 0);
+
+public readonly record struct HeightImageRoiPointerResult(
+    bool Handled,
+    bool CaptureMouse,
+    bool ReleaseMouse,
+    bool IsGestureActive,
+    ToolRecipeGridRectangle? Candidate);

@@ -10,13 +10,8 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
-    private const double LinkedHeightHoverMinimumIntervalMilliseconds = 24.0;
-    private const double LinkedHeightHoverMinimumDistance = 2.0;
-
     private C3DGridCursor? linkedHeightCursor;
     private C3DGridCursor? lastPublishedThreeDGridHover;
-    private long lastLinkedHeightHoverTimestamp;
-    private Point lastLinkedHeightHoverPoint;
 
     public event EventHandler<C3DGridHoverChangedEventArgs>? C3DGridHoverChanged;
 
@@ -73,26 +68,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 : null);
     }
 
-    private bool ShouldSampleLinkedHeightHover(Point screenPoint)
-    {
-        var now = Stopwatch.GetTimestamp();
-        if (lastLinkedHeightHoverTimestamp != 0)
-        {
-            var elapsed = Stopwatch.GetElapsedTime(
-                lastLinkedHeightHoverTimestamp,
-                now).TotalMilliseconds;
-            var delta = screenPoint - lastLinkedHeightHoverPoint;
-            if (elapsed < LinkedHeightHoverMinimumIntervalMilliseconds
-                && delta.Length < LinkedHeightHoverMinimumDistance)
-            {
-                return false;
-            }
-        }
-
-        lastLinkedHeightHoverTimestamp = now;
-        lastLinkedHeightHoverPoint = screenPoint;
-        return true;
-    }
+    private bool ShouldSampleLinkedHeightHover(Point screenPoint) =>
+        linkedHeightHoverSampling.TryAccept(
+            screenPoint.X,
+            screenPoint.Y,
+            Stopwatch.GetTimestamp());
 
     private C3DGridCursor CreateThreeDGridCursor(HeightGridPoint point) =>
         new(
@@ -140,7 +120,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var hadPublishedHover = lastPublishedThreeDGridHover is not null;
         lastPublishedThreeDGridHover = null;
-        lastLinkedHeightHoverTimestamp = 0;
+        linkedHeightHoverSampling.Reset();
         linkedHeightCursor = null;
         viewModel.ClearProfileLinkedCursor();
         if (hadPublishedHover)

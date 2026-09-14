@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.5.5-dev` development line onward. It does not claim that a version was
+`0.5.6-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.5.5-dev
+## [Unreleased] - 0.5.6-dev
 
 ### Added
 
@@ -13,6 +13,17 @@ released; publication state is owned by the release and version policy.
   sampling state.
 
 ### Changed
+
+- Consolidated the current private Dev product snapshot into the public source
+  tree as one compatible refactoring batch.
+- Routed changed Shell, Workbench, and Viewer interaction through existing
+  commands, behaviors, state owners, event coordinators, and lifetime owners,
+  with their focused Verification counterparts.
+- Expanded the independent Viewer binary-host consumer source and added the
+  curated dependency attribution files required by the bundle builder.
+- Moved the supported HeightMap/projection integration consumer and its tests
+  onto the current V2 exchange, transaction-sequence, and Run Record
+  publication owners, and included that test project in both solutions and CI.
 
 - Reorganized the Shell Workbench Viewer display and teaching coordinators
   under `Coordination/Workbench` while retaining the existing WPF View module
@@ -29,7 +40,7 @@ released; publication state is owned by the release and version policy.
 
 ### Compatibility
 
-- Product version is `0.5.5-dev`; the additive Viewer Host API is `1.1`.
+- Product version is `0.5.6-dev`; the additive Viewer Host API is `1.1`.
   Positional `ViewerHostState` construction, Run Record, recipe, and persisted
   storage contracts remain compatible.
 - No tag, release candidate, package publication, or deployment is created by

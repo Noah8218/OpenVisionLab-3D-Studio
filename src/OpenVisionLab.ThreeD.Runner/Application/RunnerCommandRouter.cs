@@ -1,6 +1,7 @@
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using static RunnerApplication;
 
 internal static class RunnerCommandRouter
@@ -14,6 +15,7 @@ internal static class RunnerCommandRouter
         }
 
         var lazProbePath = ReadOption(args, "--laz-probe");
+        var lazLoadPlanPath = ReadOption(args, "--laz-load-plan");
         var stlStreamProbePath = ReadOption(args, "--stl-stream-probe");
         var meshDeviationParityPath = ReadOption(args, "--mesh-deviation-parity");
         var meshDeviationNominalPath = ReadOption(args, "--nominal-stl");
@@ -76,6 +78,13 @@ internal static class RunnerCommandRouter
         var outputC3DPath = ReadOption(args, "--output-c3d");
         var alignedPointRepeatabilityStudyPath = ReadOption(args, "--aligned-point-repeatability-study");
         var syntheticAffinePackagePath = ReadOption(args, "--synthetic-affine-package");
+        var runRecordHistoryRootPath = ReadOption(args, "--run-record-history");
+        var runRecordHistoryStatus = ReadOption(args, "--history-status");
+        var runRecordHistoryTool = ReadOption(args, "--history-tool");
+        var runRecordHistoryFromUtc = ReadOption(args, "--history-from-utc");
+        var runRecordHistoryToUtc = ReadOption(args, "--history-to-utc");
+        var runRecordHistoryCsvPath = ReadOption(args, "--history-csv");
+        var runRecordHistoryJsonPath = ReadOption(args, "--history-json");
         var reportPath = ReadOption(args, "--report");
         var expectedStatus = ReadOption(args, "--expect-status");
         var compareContractPath = ReadOption(args, "--compare-contract");
@@ -84,106 +93,36 @@ internal static class RunnerCommandRouter
             ReadOption(args, "--html-report"),
             ReadOption(args, "--csv-report"),
             ReadOption(args, "--viewer-screenshot"));
-        var verifyPlaneFlatness = args.Contains("--verify-plane-flatness", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DThickness = args.Contains("--verify-c3d-thickness", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DFilter = args.Contains("--verify-c3d-filter", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRemoveOutliers = args.Contains(
-            "--verify-c3d-remove-outliers",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DLevelSurface = args.Contains(
-            "--verify-c3d-level-surface",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRoiCrop = args.Contains(
-            "--verify-c3d-roi-crop",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DDomainMask = args.Contains(
-            "--verify-c3d-domain-mask",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DTwoPointLine = args.Contains("--verify-c3d-two-point-line", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DThreePointPlane = args.Contains("--verify-c3d-three-point-plane", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DDatumPlaneDeviation = args.Contains("--verify-c3d-datum-plane-deviation", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DLineIntersection = args.Contains("--verify-c3d-line-intersection", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DLandmarkCorrespondence = args.Contains("--verify-c3d-landmark-correspondence", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DAffineSolve = args.Contains("--verify-c3d-affine-solve", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DAffineApply = args.Contains("--verify-c3d-affine-apply", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRegridHeightField = args.Contains("--verify-c3d-regrid-height-field", StringComparer.OrdinalIgnoreCase);
-        var verifyOrientedBox3D = args.Contains("--verify-oriented-box-3d", StringComparer.OrdinalIgnoreCase);
-        var verifyGridCircle = args.Contains("--verify-grid-circle", StringComparer.OrdinalIgnoreCase);
-        var verifyGridPolygon = args.Contains("--verify-grid-polygon", StringComparer.OrdinalIgnoreCase);
-        var verifyArtifactOwnedRoiRunner = args.Contains("--verify-artifact-owned-roi-runner", StringComparer.OrdinalIgnoreCase);
-        var verifySyntheticAffineInspectionPlate = args.Contains("--verify-synthetic-affine-inspection-plate", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
-        var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
-        var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
-        var verifyVolume = args.Contains("--verify-volume", StringComparer.OrdinalIgnoreCase);
-        var verifyCrossSection = args.Contains("--verify-cross-section", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DMapFidelity = args.Contains("--verify-c3d-map-fidelity", StringComparer.OrdinalIgnoreCase);
-        var verifyMeshDeviation = args.Contains("--verify-mesh-deviation", StringComparer.OrdinalIgnoreCase);
-        var verifyNominalActualComparison = args.Contains("--verify-nominal-actual-comparison", StringComparer.OrdinalIgnoreCase);
-        var verifyRegistrationAcceptance = args.Contains("--verify-registration-acceptance", StringComparer.OrdinalIgnoreCase);
-        var verifyThicknessRepeatability = args.Contains("--verify-thickness-repeatability", StringComparer.OrdinalIgnoreCase);
-        var verifyThicknessRepeatabilityStudy = args.Contains("--verify-thickness-repeatability-study", StringComparer.OrdinalIgnoreCase);
-        var verifyAlignedPointRepeatability = args.Contains("--verify-aligned-point-repeatability", StringComparer.OrdinalIgnoreCase);
-        var verifyAlignedPointRepeatabilityStudy = args.Contains("--verify-aligned-point-repeatability-study", StringComparer.OrdinalIgnoreCase);
-        var verifyVisionSdkThreeD = args.Contains("--verify-vision-sdk-3d", StringComparer.OrdinalIgnoreCase);
-        var verifySourceQualityReport = args.Contains("--verify-source-quality-report", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DHeightImage = args.Contains("--verify-c3d-height-image", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DHeightImageAlignment = args.Contains("--verify-c3d-height-image-alignment", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRigidPointPairAlignment = args.Contains("--verify-c3d-rigid-point-pair-alignment", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DConstrainedBestFitRigidAlignment = args.Contains("--verify-c3d-constrained-best-fit-rigid-alignment", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DHeightThresholdBackgroundRemoval = args.Contains("--verify-c3d-height-threshold-background-removal", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DHeightBackgroundSubtraction = args.Contains("--verify-c3d-height-background-subtraction", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DPointCloudBackgroundFilter = args.Contains("--verify-c3d-point-cloud-background-filter", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DPointCloudVoxelDownsample = args.Contains("--verify-c3d-point-cloud-voxel-downsample", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DHeightMapNormalPreparation = args.Contains("--verify-c3d-height-map-normal-preparation", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRegionGrowingComponent = args.Contains("--verify-c3d-region-growing-component", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRegionTransformPropagation = args.Contains("--verify-c3d-region-transform-propagation", StringComparer.OrdinalIgnoreCase);
-        var verifyC3DInvalidCellMap = args.Contains("--verify-c3d-invalid-cell-map", StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceModelFoundation = args.Contains(
-            "--verify-surface-model-foundation",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceModelSurfaceSelection = args.Contains(
-            "--verify-surface-model-surface-selection",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyModelKeyPoints = args.Contains(
-            "--verify-model-key-points",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceMatchingFoundation = args.Contains(
-            "--verify-surface-matching-foundation",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceMatchAcceptance = args.Contains(
-            "--verify-surface-match-acceptance",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceMatchPerformanceBudget = args.Contains(
-            "--verify-surface-match-performance-budget",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyMultipleSurfaceMatch = args.Contains(
-            "--verify-multiple-surface-match",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceMatchPoseEquivalence = args.Contains(
-            "--verify-surface-match-pose-equivalence",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceEdgeMatching = args.Contains(
-            "--verify-surface-edge-matching",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceEdgeDiagnosticReview = args.Contains(
-            "--verify-surface-edge-diagnostic-review",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceEdgeAcquisitionDirection = args.Contains(
-            "--verify-surface-edge-acquisition-direction",
-            StringComparer.OrdinalIgnoreCase);
-        var verifySurfaceMatchRunRecordExport = args.Contains(
-            "--verify-surface-match-run-record-export",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DCompletenessGrid = args.Contains(
-            "--verify-c3d-completeness-grid",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DRegionCompletenessOutputState = args.Contains(
-            "--verify-c3d-region-completeness-output-state",
-            StringComparer.OrdinalIgnoreCase);
+
         var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
+
+        if (runRecordHistoryRootPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --run-record-history <directory> --report <path>");
+                return 2;
+            }
+
+            if (!TryCreateRunRecordHistoryOptions(
+                    runRecordHistoryStatus,
+                    runRecordHistoryTool,
+                    runRecordHistoryFromUtc,
+                    runRecordHistoryToUtc,
+                    out var historyOptions,
+                    out var historyFilterError))
+            {
+                Console.Error.WriteLine($"Invalid Run Record history filter: {historyFilterError}");
+                return 2;
+            }
+
+            return RunRecordHistoryExecution.Run(
+                runRecordHistoryRootPath,
+                reportPath,
+                historyOptions,
+                runRecordHistoryCsvPath,
+                runRecordHistoryJsonPath);
+        }
 
         if (sourceQualityC3DPath is not null)
         {
@@ -545,377 +484,53 @@ internal static class RunnerCommandRouter
             return ToolRecipeLandmarkCorrespondenceRunnerExecution.Run(toolTeachingLandmarkCorrespondencePath, toolTeachingStepId, reportPath);
         }
 
-        if (verifyC3DFilter)
+        var preparationExitCode = TryRunVerification(args, reportPath,
+        [
+            new("--verify-c3d-filter", C3DMedianFilterGoldenVerification.Run),
+            new("--verify-c3d-remove-outliers", C3DRemoveOutlierPixelsGoldenVerification.Run),
+            new("--verify-c3d-level-surface", C3DLevelSurfaceGoldenVerification.Run),
+            new("--verify-c3d-roi-crop", C3DRoiCropGoldenVerification.Run),
+            new("--verify-c3d-domain-mask", C3DDomainMaskGoldenVerification.Run),
+            new("--verify-oriented-box-3d", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
+            new("--verify-grid-circle", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
+            new("--verify-grid-polygon", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
+            new("--verify-c3d-completeness-grid", C3DCompletenessGridGoldenVerification.Run),
+            new("--verify-labeled-validation-runner", ToolRecipeLabeledValidationRunnerVerification.Run),
+            new("--verify-threshold-correction-runner", ToolRecipeThresholdCorrectionRunnerVerification.Run),
+            new("--verify-c3d-region-completeness-output-state", C3DRegionCompletenessOutputStateVerification.Run),
+            new("--verify-artifact-owned-roi-runner", report => ArtifactOwnedRoiRunnerVerification.Run(report, runArtifacts)),
+            new("--verify-synthetic-affine-inspection-plate",
+                report => SyntheticAffineInspectionPlateVerification.Run(syntheticAffinePackagePath!, report, runArtifacts),
+                "--synthetic-affine-package <directory>",
+                syntheticAffinePackagePath is not null),
+            new("--verify-c3d-edge", C3DHeightDifferenceEdgeGoldenVerification.Run),
+            new("--verify-c3d-line-fit", C3DLineFitGoldenVerification.Run),
+            new("--verify-c3d-two-point-line", C3DTwoPointLineGoldenVerification.Run),
+            new("--verify-c3d-three-point-plane", C3DThreePointPlaneGoldenVerification.Run),
+            new("--verify-c3d-datum-plane-deviation", C3DDatumPlaneDeviationGoldenVerification.Run),
+            new("--verify-c3d-line-intersection", C3DLineIntersectionGoldenVerification.Run),
+            new("--verify-c3d-landmark-correspondence", C3DLandmarkCorrespondenceGoldenVerification.Run),
+            new("--verify-c3d-affine-solve", C3DAffineSolveGoldenVerification.Run),
+            new("--verify-c3d-affine-apply", C3DAffineApplyGoldenVerification.Run),
+            new("--verify-c3d-regrid-height-field", C3DRegridHeightFieldGoldenVerification.Run),
+            new("--verify-source-quality-report", SourceQualityReportVerification.Run),
+            new("--verify-laz-load-plan", LazPointCloudLoadPlanVerification.Run),
+            new("--verify-c3d-height-image", C3DHeightImageVerification.Run),
+            new("--verify-c3d-height-image-alignment", C3DHeightImageAlignmentGoldenVerification.Run),
+            new("--verify-c3d-rigid-point-pair-alignment", C3DRigidPointPairAlignmentGoldenVerification.Run),
+            new("--verify-c3d-constrained-best-fit-rigid-alignment", C3DConstrainedBestFitRigidAlignmentGoldenVerification.Run),
+            new("--verify-c3d-height-threshold-background-removal", C3DHeightThresholdBackgroundRemovalGoldenVerification.Run),
+            new("--verify-c3d-height-background-subtraction", C3DHeightBackgroundSubtractionGoldenVerification.Run),
+            new("--verify-c3d-point-cloud-background-filter", C3DPointCloudBackgroundFilterGoldenVerification.Run),
+            new("--verify-c3d-point-cloud-voxel-downsample", C3DPointCloudVoxelDownsampleGoldenVerification.Run),
+            new("--verify-c3d-height-map-normal-preparation", C3DHeightMapNormalPreparationGoldenVerification.Run),
+            new("--verify-c3d-region-growing-component", C3DRegionGrowingComponentGoldenVerification.Run),
+            new("--verify-c3d-region-transform-propagation", C3DRegionTransformPropagationGoldenVerification.Run),
+            new("--verify-c3d-invalid-cell-map", C3DInvalidCellMapVerification.Run),
+        ]);
+        if (preparationExitCode.HasValue)
         {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-filter --report <path>");
-                return 2;
-            }
-
-            return C3DMedianFilterGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRemoveOutliers)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
-                return 2;
-            }
-
-            return C3DRemoveOutlierPixelsGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DLevelSurface)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
-                return 2;
-            }
-
-            return C3DLevelSurfaceGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRoiCrop)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-roi-crop --report <path>");
-                return 2;
-            }
-
-            return C3DRoiCropGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DDomainMask)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-domain-mask --report <path>");
-                return 2;
-            }
-
-            return C3DDomainMaskGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyOrientedBox3D || verifyGridCircle || verifyGridPolygon)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-grid-polygon --report <path>");
-                return 2;
-            }
-
-            var succeeded = ToolRecipeSelectionContractVerification.Verify(
-                reportPath,
-                out var summary);
-            Console.WriteLine(summary);
-            return succeeded ? 0 : 5;
-        }
-
-        if (verifyC3DCompletenessGrid)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-completeness-grid --report <path>");
-                return 2;
-            }
-
-            return C3DCompletenessGridGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRegionCompletenessOutputState)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-region-completeness-output-state --report <path>");
-                return 2;
-            }
-
-            return C3DRegionCompletenessOutputStateVerification.Run(reportPath);
-        }
-
-        if (verifyArtifactOwnedRoiRunner)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
-                return 2;
-            }
-            return ArtifactOwnedRoiRunnerVerification.Run(reportPath, runArtifacts);
-        }
-
-        if (verifySyntheticAffineInspectionPlate)
-        {
-            if (syntheticAffinePackagePath is null || reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-synthetic-affine-inspection-plate --synthetic-affine-package <directory> --report <path>");
-                return 2;
-            }
-
-            return SyntheticAffineInspectionPlateVerification.Run(syntheticAffinePackagePath, reportPath, runArtifacts);
-        }
-
-        if (verifyC3DEdge)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
-                return 2;
-            }
-
-            return C3DHeightDifferenceEdgeGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DLineFit)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
-                return 2;
-            }
-
-            return C3DLineFitGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DTwoPointLine)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-two-point-line --report <path>");
-                return 2;
-            }
-
-            return C3DTwoPointLineGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DThreePointPlane)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-three-point-plane --report <path>");
-                return 2;
-            }
-
-            return C3DThreePointPlaneGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DDatumPlaneDeviation)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-datum-plane-deviation --report <path>");
-                return 2;
-            }
-
-            return C3DDatumPlaneDeviationGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DLineIntersection)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-line-intersection --report <path>");
-                return 2;
-            }
-
-            return C3DLineIntersectionGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DLandmarkCorrespondence)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-landmark-correspondence --report <path>");
-                return 2;
-            }
-
-            return C3DLandmarkCorrespondenceGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DAffineSolve)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-affine-solve --report <path>");
-                return 2;
-            }
-
-            return C3DAffineSolveGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DAffineApply)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-affine-apply --report <path>");
-                return 2;
-            }
-
-            return C3DAffineApplyGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRegridHeightField)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-regrid-height-field --report <path>");
-                return 2;
-            }
-
-            return C3DRegridHeightFieldGoldenVerification.Run(reportPath);
-        }
-
-        if (verifySourceQualityReport)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-source-quality-report --report <path>");
-                return 2;
-            }
-
-            return SourceQualityReportVerification.Run(reportPath);
-        }
-
-        if (verifyC3DHeightImage)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-image --report <path>");
-                return 2;
-            }
-
-            return C3DHeightImageVerification.Run(reportPath);
-        }
-
-        if (verifyC3DHeightImageAlignment)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-image-alignment --report <path>");
-                return 2;
-            }
-
-            return C3DHeightImageAlignmentGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRigidPointPairAlignment)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-rigid-point-pair-alignment --report <path>");
-                return 2;
-            }
-
-            return C3DRigidPointPairAlignmentGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DConstrainedBestFitRigidAlignment)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-constrained-best-fit-rigid-alignment --report <path>");
-                return 2;
-            }
-
-            return C3DConstrainedBestFitRigidAlignmentGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DHeightThresholdBackgroundRemoval)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-threshold-background-removal --report <path>");
-                return 2;
-            }
-
-            return C3DHeightThresholdBackgroundRemovalGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DHeightBackgroundSubtraction)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-background-subtraction --report <path>");
-                return 2;
-            }
-
-            return C3DHeightBackgroundSubtractionGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DPointCloudBackgroundFilter)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-background-filter --report <path>");
-                return 2;
-            }
-
-            return C3DPointCloudBackgroundFilterGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DPointCloudVoxelDownsample)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-voxel-downsample --report <path>");
-                return 2;
-            }
-
-            return C3DPointCloudVoxelDownsampleGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DHeightMapNormalPreparation)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-map-normal-preparation --report <path>");
-                return 2;
-            }
-
-            return C3DHeightMapNormalPreparationGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRegionGrowingComponent)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-region-growing-component --report <path>");
-                return 2;
-            }
-
-            return C3DRegionGrowingComponentGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DRegionTransformPropagation)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-region-transform-propagation --report <path>");
-                return 2;
-            }
-
-            return C3DRegionTransformPropagationGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DInvalidCellMap)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-invalid-cell-map --report <path>");
-                return 2;
-            }
-
-            return C3DInvalidCellMapVerification.Run(reportPath);
+            return preparationExitCode.Value;
         }
 
         if (stanfordTransformPath is not null)
@@ -940,326 +555,64 @@ internal static class RunnerCommandRouter
             return AlignedPointRepeatabilityStudyExecution.Run(alignedPointRepeatabilityStudyPath, reportPath);
         }
 
-        if (verifyNominalActualComparison)
+        var inspectionExitCode = TryRunVerification(args, reportPath,
+        [
+            new("--verify-run-record-reports", RunRecordReportVerification.Run),
+            new("--verify-run-record-history-query", RunRecordHistoryQueryVerification.Run),
+            new("--verify-nominal-actual-comparison", NominalActualComparisonVerification.Run),
+            new("--verify-surface-model-foundation", SurfaceModelFoundationVerification.Run),
+            new("--verify-surface-model-surface-selection", SurfaceModelSurfaceSelectionVerification.Run),
+            new("--verify-model-key-points", ModelKeyPointArtifactVerification.Run),
+            new("--verify-surface-matching-foundation", SurfaceMatchingFoundationVerification.Run),
+            new("--verify-surface-match-run-record-export", SurfaceMatchRunRecordExportVerification.Run),
+            new("--verify-surface-match-acceptance", SurfaceMatchAcceptanceGoldenVerification.Run),
+            new("--verify-surface-match-performance-budget", SurfaceMatchPerformanceBudgetVerification.Run),
+            new("--verify-multiple-surface-match", MultipleSurfaceMatchVerification.Run),
+            new("--verify-surface-match-pose-equivalence", SurfaceMatchPoseEquivalenceVerification.Run),
+            new("--verify-surface-edge-matching", SurfaceEdgeMatchingVerification.Run),
+            new("--verify-surface-edge-diagnostic-review", SurfaceEdgeDiagnosticReviewVerification.Run),
+            new("--verify-surface-edge-acquisition-direction", SurfaceEdgeAcquisitionDirectionVerification.Run),
+            new("--verify-registration-acceptance", RegistrationAcceptanceGoldenVerification.Run),
+            new("--verify-thickness-repeatability", ThicknessRepeatabilityGoldenVerification.Run),
+            new("--verify-thickness-repeatability-study", ThicknessRepeatabilityStudyLoaderVerification.Run),
+            new("--verify-aligned-point-repeatability", AlignedPointRepeatabilityGoldenVerification.Run),
+            new("--verify-aligned-point-repeatability-study", AlignedPointRepeatabilityStudyLoaderVerification.Run),
+            new("--verify-vision-sdk-3d", VisionSdkThreeDPackageVerification.Run),
+            new("--verify-mesh-deviation", MeshDeviationGoldenVerification.Run),
+            new("--verify-c3d-map-fidelity", C3DMapFidelityVerification.RunGolden),
+            new("--verify-point-pair-dimensions", PointPairDimensionsGoldenVerification.Run),
+            new("--verify-c3d-thickness", C3DThicknessGoldenVerification.Run),
+            new("--verify-c3d-warpage", C3DWarpageGoldenVerification.Run),
+            new("--verify-gap-flush", GapFlushGoldenVerification.Run),
+            new("--verify-volume", VolumeGoldenVerification.Run),
+            new("--verify-cross-section", CrossSectionDimensionsGoldenVerification.Run),
+            new("--verify-plane-flatness", PlaneFlatnessGoldenVerification.Run),
+        ]);
+        if (inspectionExitCode.HasValue)
         {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
-                return 2;
-            }
-
-            return NominalActualComparisonVerification.Run(reportPath);
+            return inspectionExitCode.Value;
         }
 
-        if (verifySurfaceModelFoundation)
+        if (lazLoadPlanPath is not null)
         {
             if (reportPath is null)
             {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --laz-load-plan <path> --report <path> [--max-sampled-points <count>]");
                 return 2;
             }
 
-            return SurfaceModelFoundationVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceModelSurfaceSelection)
-        {
-            if (reportPath is null)
+            int maxSampledPoints;
+            try
             {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-model-surface-selection --report <path>");
-                return 2;
+                maxSampledPoints = ReadIntOption(args, "--max-sampled-points") ?? 50000;
             }
-
-            return SurfaceModelSurfaceSelectionVerification.Run(reportPath);
-        }
-
-        if (verifyModelKeyPoints)
-        {
-            if (reportPath is null)
+            catch (InvalidDataException ex)
             {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-model-key-points --report <path>");
+                Console.Error.WriteLine(ex.Message);
                 return 2;
             }
 
-            return ModelKeyPointArtifactVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceMatchingFoundation)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
-                return 2;
-            }
-
-            return SurfaceMatchingFoundationVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceMatchRunRecordExport)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-run-record-export --report <path>");
-                return 2;
-            }
-
-            return SurfaceMatchRunRecordExportVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceMatchAcceptance)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
-                return 2;
-            }
-
-            return SurfaceMatchAcceptanceGoldenVerification.Run(
-                reportPath);
-        }
-
-        if (verifySurfaceMatchPerformanceBudget)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
-                return 2;
-            }
-
-            return SurfaceMatchPerformanceBudgetVerification.Run(
-                reportPath);
-        }
-
-        if (verifyMultipleSurfaceMatch)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
-                return 2;
-            }
-
-            return MultipleSurfaceMatchVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceMatchPoseEquivalence)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-pose-equivalence --report <path>");
-                return 2;
-            }
-
-            return SurfaceMatchPoseEquivalenceVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceEdgeMatching)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-edge-matching --report <path>");
-                return 2;
-            }
-
-            return SurfaceEdgeMatchingVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceEdgeDiagnosticReview)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-edge-diagnostic-review --report <path>");
-                return 2;
-            }
-
-            return SurfaceEdgeDiagnosticReviewVerification.Run(reportPath);
-        }
-
-        if (verifySurfaceEdgeAcquisitionDirection)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-edge-acquisition-direction --report <path>");
-                return 2;
-            }
-
-            return SurfaceEdgeAcquisitionDirectionVerification.Run(reportPath);
-        }
-
-        if (verifyRegistrationAcceptance)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
-                return 2;
-            }
-
-            return RegistrationAcceptanceGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyThicknessRepeatability)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-thickness-repeatability --report <path>");
-                return 2;
-            }
-
-            return ThicknessRepeatabilityGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyThicknessRepeatabilityStudy)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-thickness-repeatability-study --report <path>");
-                return 2;
-            }
-
-            return ThicknessRepeatabilityStudyLoaderVerification.Run(reportPath);
-        }
-
-        if (verifyAlignedPointRepeatability)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-aligned-point-repeatability --report <path>");
-                return 2;
-            }
-
-            return AlignedPointRepeatabilityGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyAlignedPointRepeatabilityStudy)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-aligned-point-repeatability-study --report <path>");
-                return 2;
-            }
-
-            return AlignedPointRepeatabilityStudyLoaderVerification.Run(reportPath);
-        }
-
-        if (verifyVisionSdkThreeD)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-vision-sdk-3d --report <path>");
-                return 2;
-            }
-
-            return VisionSdkThreeDPackageVerification.Run(reportPath);
-        }
-
-        if (verifyMeshDeviation)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
-                return 2;
-            }
-
-            return MeshDeviationGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DMapFidelity)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
-                return 2;
-            }
-
-            return C3DMapFidelityVerification.RunGolden(reportPath);
-        }
-
-        if (verifyPointPairDimensions)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
-                return 2;
-            }
-
-            return PointPairDimensionsGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DThickness)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-thickness --report <path>");
-                return 2;
-            }
-
-            return C3DThicknessGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DWarpage)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
-                return 2;
-            }
-
-            return C3DWarpageGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyGapFlush)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
-                return 2;
-            }
-
-            return GapFlushGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyVolume)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
-                return 2;
-            }
-
-            return VolumeGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyCrossSection)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-cross-section --report <path>");
-                return 2;
-            }
-
-            return CrossSectionDimensionsGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyPlaneFlatness)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
-                return 2;
-            }
-
-            return PlaneFlatnessGoldenVerification.Run(reportPath);
+            return RunLazLoadPlan(lazLoadPlanPath, reportPath, maxSampledPoints);
         }
 
         if (lazProbePath is not null)
@@ -1360,15 +713,129 @@ internal static class RunnerCommandRouter
 
     }
 
+    private sealed record VerificationCommand(
+        string Option,
+        Func<string, int> Execute,
+        string? AdditionalUsage = null,
+        bool HasAdditionalArguments = true,
+        string? UsageOption = null);
+
+    // Keep the two registration groups at their existing product-command precedence.
+    // Verifiers retain their own integer exit codes; only argument admission is shared here.
+    private static int? TryRunVerification(string[] args, string? reportPath, VerificationCommand[] commands)
+    {
+        foreach (var command in commands)
+        {
+            if (!args.Contains(command.Option, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (reportPath is null || !command.HasAdditionalArguments)
+            {
+                var additionalUsage = command.AdditionalUsage is null ? string.Empty : $"{command.AdditionalUsage} ";
+                Console.Error.WriteLine($"Usage: OpenVisionLab.ThreeD.Runner {command.UsageOption ?? command.Option} {additionalUsage}--report <path>");
+                return 2;
+            }
+
+            return command.Execute(reportPath);
+        }
+
+        return null;
+    }
+
+    private static int RunSelectionContract(string reportPath)
+    {
+        var succeeded = ToolRecipeSelectionContractVerification.Verify(reportPath, out var summary);
+        Console.WriteLine(summary);
+        return succeeded ? 0 : 5;
+    }
+
+    private static bool TryCreateRunRecordHistoryOptions(
+        string? statusText,
+        string? toolName,
+        string? fromUtcText,
+        string? toUtcText,
+        out RunRecordHistoryQueryOptions options,
+        out string error)
+    {
+        ResultStatus? status = null;
+        if (statusText is not null
+            && (!Enum.TryParse<ResultStatus>(statusText, ignoreCase: true, out var parsedStatus)
+                || !Enum.IsDefined(parsedStatus)))
+        {
+            options = new RunRecordHistoryQueryOptions();
+            error = $"unknown status '{statusText}'";
+            return false;
+        }
+
+        if (statusText is not null)
+        {
+            status = Enum.Parse<ResultStatus>(statusText, ignoreCase: true);
+        }
+
+        if (!TryParseHistoryDate(fromUtcText, "--history-from-utc", out var fromUtc, out error)
+            || !TryParseHistoryDate(toUtcText, "--history-to-utc", out var toUtc, out error))
+        {
+            options = new RunRecordHistoryQueryOptions();
+            return false;
+        }
+
+        options = new RunRecordHistoryQueryOptions(status, toolName, fromUtc, toUtc);
+        try
+        {
+            options.Validate();
+            error = string.Empty;
+            return true;
+        }
+        catch (ArgumentException exception)
+        {
+            error = exception.Message;
+            return false;
+        }
+    }
+
+    private static bool TryParseHistoryDate(
+        string? value,
+        string optionName,
+        out DateTimeOffset? parsed,
+        out string error)
+    {
+        if (value is null)
+        {
+            parsed = null;
+            error = string.Empty;
+            return true;
+        }
+
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.RoundtripKind,
+                out var timestamp))
+        {
+            parsed = timestamp;
+            error = string.Empty;
+            return true;
+        }
+
+        parsed = null;
+        error = $"{optionName} requires an ISO-8601 timestamp.";
+        return false;
+    }
+
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>] [--run-record <json> --html-report <html> --csv-report <csv> --viewer-screenshot <png>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-load-plan <path> --report <path> [--max-sampled-points <count>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-laz-load-plan --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stl-stream-probe <path> --unit <unit> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --source-quality-c3d <path> --entity-id <id> --unit <unit> --frame <frame> --report <json>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --run-record-history <directory> --report <path> [--history-csv <path>] [--history-json <path>] [--history-status Pass|Fail|Warning|Error|NotRun] [--history-tool <exact-name>] [--history-from-utc <ISO-8601>] [--history-to-utc <ISO-8601>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-image-alignment-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --rigid-point-pair-alignment-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --constrained-best-fit-rigid-alignment-spec <json> --report <path>");
@@ -1414,6 +881,8 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-surface-selection --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-model-key-points --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-run-record-reports --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-run-record-history-query --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-run-record-export --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");

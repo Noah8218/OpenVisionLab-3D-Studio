@@ -391,7 +391,7 @@ namespace OpenVisionLab
                 .ToList();
 
             Directory.CreateDirectory(GetConfigDirectory());
-            File.WriteAllText(CatalogPath, BuildCatalogText(normalized), Encoding.UTF8);
+            WriteTextAtomically(CatalogPath, BuildCatalogText(normalized));
             LoadCatalog();
             LanguageChanged?.Invoke(null, EventArgs.Empty);
         }
@@ -412,7 +412,7 @@ namespace OpenVisionLab
             string defaultCatalog = ReadEmbeddedCatalog();
             if (!File.Exists(path))
             {
-                File.WriteAllText(path, defaultCatalog, Encoding.UTF8);
+                WriteTextAtomically(path, defaultCatalog);
                 return;
             }
 
@@ -438,7 +438,7 @@ namespace OpenVisionLab
 
             if (changed)
             {
-                File.WriteAllText(path, BuildCatalogText(currentEntries.Values.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)), Encoding.UTF8);
+                WriteTextAtomically(path, BuildCatalogText(currentEntries.Values.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)));
             }
         }
 
@@ -586,10 +586,31 @@ namespace OpenVisionLab
             try
             {
                 Directory.CreateDirectory(GetConfigDirectory());
-                File.WriteAllText(GetLanguagePath(), language == OpenVisionLanguage.English ? "en" : "ko", Encoding.UTF8);
+                WriteTextAtomically(GetLanguagePath(), language == OpenVisionLanguage.English ? "en" : "ko");
             }
             catch
             {
+            }
+        }
+
+        private static void WriteTextAtomically(string path, string contents)
+        {
+            string fullPath = Path.GetFullPath(path);
+            string directory = Path.GetDirectoryName(fullPath) ?? AppContext.BaseDirectory;
+            Directory.CreateDirectory(directory);
+            string temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+
+            try
+            {
+                File.WriteAllText(temporaryPath, contents, Encoding.UTF8);
+                File.Move(temporaryPath, fullPath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath))
+                {
+                    File.Delete(temporaryPath);
+                }
             }
         }
 

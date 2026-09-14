@@ -24,6 +24,13 @@ internal readonly record struct LazSceneTransform(
 
     public Vector3 Map(Vector3 source) => Map(source.X, source.Y, source.Z);
 
+    public Vector3 Map(LazPointCloudPoint source) => source.HasPreciseSourceCoordinate
+        ? Map(
+            source.SourceCoordinate.X,
+            source.SourceCoordinate.Y,
+            source.SourceCoordinate.Z)
+        : Map(source.Position);
+
     public Vector3 Map(double x, double y, double z) =>
         new((float)(x - OriginX), (float)(z - OriginZ), (float)(y - OriginY));
 

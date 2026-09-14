@@ -1,8 +1,8 @@
 using System.IO;
-using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
@@ -14,6 +14,30 @@ namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 public static class C3DPlaneFlatnessRuleCoordinator
 {
     public static bool Preview(
+        C3DHeightGrid? grid,
+        MainWindowViewModel viewModel,
+        Action<HeightDeviationRecipePlaneFlatness, PlaneFlatnessEvaluation> applyPreviewOverlay,
+        Action requestPreviewRender)
+        => PreviewCore(grid, viewModel, applyPreviewOverlay, requestPreviewRender);
+
+    internal static bool PreviewDisplay(
+        C3DHeightGrid? grid,
+        MainWindowViewModel viewModel,
+        Action<HeightDeviationRecipePlaneFlatness, ViewerPlaneFlatnessDisplayEvaluation> applyPreviewOverlay,
+        Action requestPreviewRender)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(applyPreviewOverlay);
+        ArgumentNullException.ThrowIfNull(requestPreviewRender);
+
+        return PreviewCore(
+            grid,
+            viewModel,
+            (step, evaluation) => applyPreviewOverlay(step, ToDisplayEvaluation(evaluation)),
+            requestPreviewRender);
+    }
+
+    private static bool PreviewCore(
         C3DHeightGrid? grid,
         MainWindowViewModel viewModel,
         Action<HeightDeviationRecipePlaneFlatness, PlaneFlatnessEvaluation> applyPreviewOverlay,
@@ -52,7 +76,7 @@ public static class C3DPlaneFlatnessRuleCoordinator
             .Select(point => new HeightFieldPlaneSample(transform.Apply(point.Position), point.RawValue))
             .ToArray();
         var referenceSamples = measurementSamples
-            .Where(sample => Contains(step.ReferenceRegion, sample.Position))
+            .Where(sample => HeightDeviationRoiGeometry.Contains(step.ReferenceRegion, sample.Position))
             .ToArray();
         var evaluation = PlaneFlatnessRule.Evaluate(new PlaneFlatnessRuleInput(
             step.SourceEntityId,
@@ -72,9 +96,24 @@ public static class C3DPlaneFlatnessRuleCoordinator
         return evaluation.Result.Status != ResultStatus.Error;
     }
 
-    private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>
-        point.X >= region.CenterX - region.HalfWidth
-        && point.X <= region.CenterX + region.HalfWidth
-        && point.Z >= region.CenterZ - region.HalfDepth
-        && point.Z <= region.CenterZ + region.HalfDepth;
+    private static ViewerPlaneFlatnessDisplayEvaluation ToDisplayEvaluation(PlaneFlatnessEvaluation evaluation)
+    {
+        ArgumentNullException.ThrowIfNull(evaluation);
+
+        return new ViewerPlaneFlatnessDisplayEvaluation(
+            evaluation.ReferencePlane is { } referencePlane
+                ? new ViewerPlaneFitDisplay(
+                    referencePlane.SlopeX,
+                    referencePlane.SlopeZ,
+                    referencePlane.Intercept,
+                    referencePlane.Normal,
+                    referencePlane.Offset)
+                : null,
+            evaluation.MinimumSignedDistance,
+            evaluation.MaximumSignedDistance,
+            evaluation.MinimumPoint,
+            evaluation.MaximumPoint,
+            evaluation.MinimumProjection,
+            evaluation.MaximumProjection);
+    }
 }

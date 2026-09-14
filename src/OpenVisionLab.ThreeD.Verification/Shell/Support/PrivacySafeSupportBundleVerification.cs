@@ -74,6 +74,10 @@ internal static class PrivacySafeSupportBundleVerification
                 && File.Exists(second)
                 && !string.Equals(first, second, StringComparison.OrdinalIgnoreCase),
                 $"first={Path.GetFileName(first)};second={Path.GetFileName(second)}");
+            Check(
+                "completed exports leave no sibling staging ZIP",
+                Directory.GetFiles(exportRoot, "*.staging.*", SearchOption.TopDirectoryOnly).Length == 0,
+                $"staging={Directory.GetFiles(exportRoot, "*.staging.*", SearchOption.TopDirectoryOnly).Length}");
 
             var entries = ReadEntries(first);
             var expectedEntries = new[]
@@ -267,6 +271,10 @@ internal static class PrivacySafeSupportBundleVerification
                 invalidRejected
                 && Directory.GetFiles(exportRoot, "*.zip").Length == exportCountBeforeInvalid,
                 $"rejected={invalidRejected};zipCount={Directory.GetFiles(exportRoot, "*.zip").Length}");
+            Check(
+                "rejected export leaves no sibling staging ZIP",
+                Directory.GetFiles(exportRoot, "*.staging.*", SearchOption.TopDirectoryOnly).Length == 0,
+                $"staging={Directory.GetFiles(exportRoot, "*.staging.*", SearchOption.TopDirectoryOnly).Length}");
 
             var recentPath = Path.Combine(root, "recent.json");
             var viewModel = new ShellMainWindowViewModel(

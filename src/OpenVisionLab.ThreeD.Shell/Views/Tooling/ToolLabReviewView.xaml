@@ -3,7 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              AutomationProperties.AutomationId="ToolLabReview">
+    <UserControl.Resources>
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+    </UserControl.Resources>
     <Border Background="{DynamicResource ThreeD.PanelBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="1">
@@ -41,7 +45,7 @@
                     <Border Grid.Column="1"
                             DataContext="{Binding SelectedPipelineStep}"
                             Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
-                            ToolTip="{Binding State, StringFormat=Pipeline step state: {0}}"
+                            ToolTip="{Binding State, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=PipelineStepState}"
                             AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
                             AutomationProperties.HelpText="{Binding State}">
                         <TextBlock MaxWidth="122"

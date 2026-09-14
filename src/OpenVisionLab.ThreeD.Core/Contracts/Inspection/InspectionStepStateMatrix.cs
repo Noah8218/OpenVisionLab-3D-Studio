@@ -24,7 +24,7 @@ public sealed record InspectionStepStateDescriptor(
 
 public static class InspectionStepStateMatrix
 {
-    public static IReadOnlyList<InspectionStepStateDescriptor> All { get; } =
+    private static readonly InspectionStepStateDescriptor[] AllValues =
     [
         new(InspectionStepState.Empty, "empty", true, false),
         new(InspectionStepState.Incomplete, "incomplete", true, false),
@@ -35,6 +35,8 @@ public static class InspectionStepStateMatrix
         new(InspectionStepState.Fail, "fail", false, true),
         new(InspectionStepState.Error, "error", true, false)
     ];
+
+    public static IReadOnlyList<InspectionStepStateDescriptor> All { get; } = Array.AsReadOnly(AllValues);
 
     public static InspectionStepState Classify(
         string? authoredState,

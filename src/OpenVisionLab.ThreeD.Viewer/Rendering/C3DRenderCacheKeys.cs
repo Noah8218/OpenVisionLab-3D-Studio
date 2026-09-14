@@ -1,6 +1,5 @@
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
-using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -27,4 +26,4 @@ internal readonly record struct C3DGpuBufferKey(
     ViewerColorMap ColorMap,
     double HeightColorMinimumRaw,
     double HeightColorMaximumRaw,
-    PlaneFlatnessEvaluation? DynamicColorEvaluation);
+    ViewerPlaneFlatnessDisplayEvaluation? DynamicColorEvaluation);

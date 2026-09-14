@@ -11,8 +11,11 @@ public sealed partial class ToolWorkbenchViewModel
 {
     private readonly System.Windows.Threading.Dispatcher? sourceQualityUiDispatcher;
     private readonly object sourceQualityUiNotificationGate = new();
+    private readonly object sourceQualityHeadlessLoadGate = new();
     private System.Windows.Threading.DispatcherOperation? sourceQualityUiNotificationOperation;
     private int sourceQualityUiArtifactRefreshPending;
+    private int sourceQualityHeadlessLoadInProgress;
+    private int sourceQualityHeadlessNotificationPending;
     private RelayCommand selectSourceQualityCommand = null!;
 
     public SourceQualityWorkspaceViewModel SourceQuality { get; private set; } = null!;
@@ -87,7 +90,9 @@ public sealed partial class ToolWorkbenchViewModel
         SourceQuality = new SourceQualityWorkspaceViewModel(
             Localization,
             ApplySourceAcquisitionProvenance);
-        SourceQuality.PropertyChanged += OnSourceQualityPropertyChanged;
+        sourceQualityEventCoordinator = new ToolWorkbenchSourceQualityEventCoordinator(
+            SourceQuality,
+            OnSourceQualityPropertyChanged);
         selectSourceQualityCommand = new RelayCommand(
             _ => SelectSourceQualityWorkspace(),
             _ => !HasPendingStepParameterChanges
@@ -141,12 +146,58 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
-        _ = SourceQuality.EnsureSourceAsync(
-            Source.Path,
-            Source.Id,
-            Source.Unit,
-            Source.FrameId,
-            GetOrLoadDecodedC3DSourceAsync);
+        if (sourceQualityUiDispatcher is null)
+        {
+            lock (sourceQualityHeadlessLoadGate)
+            {
+                System.Threading.Volatile.Write(ref sourceQualityHeadlessLoadInProgress, 1);
+                try
+                {
+                    SourceQuality.EnsureSourceAsync(
+                        Source.Path,
+                        Source.Id,
+                        Source.Unit,
+                        Source.FrameId,
+                        GetOrLoadDecodedC3DSourceAsync).GetAwaiter().GetResult();
+                }
+                finally
+                {
+                    try
+                    {
+                        var refreshArtifacts =
+                            System.Threading.Interlocked.Exchange(
+                                ref sourceQualityHeadlessNotificationPending,
+                                0) != 0;
+                        ApplySourceQualityPropertyChanged(refreshArtifacts);
+                    }
+                    finally
+                    {
+                        System.Threading.Volatile.Write(
+                            ref sourceQualityHeadlessLoadInProgress,
+                            0);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        SourceQuality.StartObservedLoad(
+            () => SourceQuality.EnsureSourceAsync(
+                Source.Path,
+                Source.Id,
+                Source.Unit,
+                Source.FrameId,
+                GetOrLoadDecodedC3DSourceAsync),
+            ReportSourceQualityLoadFailure);
+    }
+
+    private void ReportSourceQualityLoadFailure(Exception exception)
+    {
+        if (!IsDisposed)
+        {
+            AppendLog("Source Quality", $"Source quality load failed: {exception.Message}");
+        }
     }
 
     private Task<C3DHeightFieldSnapshot> GetOrLoadDecodedC3DSourceAsync(
@@ -192,11 +243,9 @@ public sealed partial class ToolWorkbenchViewModel
             outlierEvidence);
     }
 
-    private void OnSourceQualityPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args)
+    private void OnSourceQualityPropertyChanged(PropertyChangedEventArgs args)
     {
-        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        if (IsDisposed)
         {
             return;
         }
@@ -208,6 +257,23 @@ public sealed partial class ToolWorkbenchViewModel
             or nameof(SourceQualityWorkspaceViewModel.IsAvailableOrLoading)
             or nameof(SourceQualityWorkspaceViewModel.State))
         {
+            if (sourceQualityUiDispatcher is null)
+            {
+                if (System.Threading.Volatile.Read(
+                        ref sourceQualityHeadlessLoadInProgress) != 0)
+                {
+                    System.Threading.Interlocked.Exchange(
+                        ref sourceQualityHeadlessNotificationPending,
+                        1);
+                    return;
+                }
+
+                ApplySourceQualityPropertyChanged(
+                    args.PropertyName is nameof(SourceQualityWorkspaceViewModel.Report)
+                        or nameof(SourceQualityWorkspaceViewModel.HasError));
+                return;
+            }
+
             if (sourceQualityUiDispatcher is { } dispatcher
                 && !dispatcher.CheckAccess())
             {
@@ -223,14 +289,14 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void QueueSourceQualityUiNotification(string? propertyName)
     {
-        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        if (IsDisposed)
         {
             return;
         }
 
         lock (sourceQualityUiNotificationGate)
         {
-            if (System.Threading.Volatile.Read(ref disposalState) != 0)
+            if (IsDisposed)
             {
                 return;
             }
@@ -285,7 +351,7 @@ public sealed partial class ToolWorkbenchViewModel
                 0) != 0;
         }
 
-        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        if (IsDisposed)
         {
             return;
         }
@@ -295,7 +361,7 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void ApplySourceQualityPropertyChanged(bool refreshArtifacts)
     {
-        if (System.Threading.Volatile.Read(ref disposalState) != 0)
+        if (IsDisposed)
         {
             return;
         }

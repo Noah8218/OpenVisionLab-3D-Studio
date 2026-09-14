@@ -47,8 +47,10 @@ public sealed partial class ToolWorkbenchViewModel
             CreateCompatibleToolCatalogSnapshot,
             tool => SelectedTool = tool,
             AddToolToRecipe);
-        compatibleToolCatalogOwner.PropertyChanged +=
-            OnCompatibleToolCatalogOwnerPropertyChanged;
+        compatibleToolCatalogEventCoordinator =
+            new ToolWorkbenchCompatibleToolCatalogEventCoordinator(
+                compatibleToolCatalogOwner,
+                args => OnPropertyChanged(args.PropertyName));
     }
 
     private ToolWorkbenchCompatibleToolCatalogSnapshot
@@ -61,11 +63,6 @@ public sealed partial class ToolWorkbenchViewModel
             IsSourceReadyForRecipe,
             SourceQuality.Report,
             SourceQuality.Error);
-
-    private void OnCompatibleToolCatalogOwnerPropertyChanged(
-        object? sender,
-        PropertyChangedEventArgs args) =>
-        OnPropertyChanged(args.PropertyName);
 
     private void OnCompatibleToolCatalogLocalizationChanged(
         object? sender,

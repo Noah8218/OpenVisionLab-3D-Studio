@@ -147,8 +147,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
         else if (lazTwoPointFirst is { } lazFirst && lazTwoPointSecond is { } lazSecond)
         {
-            firstPosition = MapLazPosition(lazFirst.Position);
-            secondPosition = MapLazPosition(lazSecond.Position);
+            firstPosition = MapLazPosition(lazFirst);
+            secondPosition = MapLazPosition(lazSecond);
         }
         else if (importedMeshTwoPointFirst is { } importedMeshFirst && importedMeshTwoPointSecond is { } importedMeshSecond)
         {
@@ -246,16 +246,16 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void DrawRoiStepMeasurement(OpenGL gl)
     {
-        if (roiStepLeftBounds is not { } left)
+        if (roiEditingSession.LeftBounds is not { } left)
         {
             return;
         }
 
         DrawRoiBounds(gl, left, 0.20, 0.95, 0.45);
 
-        if (roiStepRightBounds is not { } right
-            || roiStepLeftCenter is not { } leftCenter
-            || roiStepRightCenter is not { } rightCenter)
+        if (roiEditingSession.RightBounds is not { } right
+            || roiEditingSession.LeftCenter is not { } leftCenter
+            || roiEditingSession.RightCenter is not { } rightCenter)
         {
             return;
         }
@@ -331,13 +331,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             return Vector3.Zero;
         }
 
-        var centerColumn = (c3dSample.Width - 1) / 2.0f;
-        var centerRow = (c3dSample.Height - 1) / 2.0f;
-        var position = new Vector3(
-            (float)((column - centerColumn) * c3dSample.HorizontalScale),
-            (float)((rawHeight - c3dSample.Mean) * C3DHeightGrid.ViewerHeightScale),
-            (float)((row - centerRow) * c3dSample.HorizontalScale));
-        return TransformC3DPosition(position);
+        return ViewerC3DGridDisplayGeometry.CreatePosition(
+            c3dSample.Width,
+            c3dSample.Height,
+            c3dSample.HorizontalScale,
+            C3DHeightGrid.ViewerHeightScale,
+            c3dSample.Mean,
+            row,
+            column,
+            rawHeight,
+            viewModel.C3DModelTransform);
     }
 
     private static bool IsC3DGridRoiInside(C3DGridRoi roi, C3DHeightGrid grid) =>
@@ -591,9 +594,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.C3DHeightColorMinimumRaw,
             viewModel.C3DHeightColorMaximumRaw,
             UsesDynamicC3DColor() ? planeFlatnessEvaluation : null);
-        if (c3dGpuBuffers is null || c3dGpuBufferKey != bufferKey)
+        if (c3dRenderResources.RequiresGpuReplacement(bufferKey))
         {
-            if (c3dGpuFailedKey == bufferKey)
+            if (c3dRenderResources.IsGpuReplacementFailed(bufferKey))
             {
                 return false;
             }
@@ -611,25 +614,19 @@ public sealed partial class OpenVisionThreeDViewerControl
                     out var gpuBuffers,
                     out var failure))
             {
-                c3dGpuFailedKey = bufferKey;
-                c3dGpuBuffersAvailable = false;
-                c3dGpuFallbackCount++;
-                lastC3DGpuFailure = failure;
+                c3dRenderResources.MarkGpuReplacementFailed(bufferKey);
+                c3dGpuTelemetry.RecordFallback(failure);
                 return false;
             }
 
-            c3dGpuBuffers = gpuBuffers;
-            c3dGpuBufferKey = bufferKey;
-            c3dGpuFailedKey = null;
-            c3dGpuBuffersAvailable = true;
-            c3dGpuUploadCount++;
-            c3dGpuUploadedBytes = gpuBuffers!.UploadedBytes;
-            lastC3DGpuUploadMilliseconds = Stopwatch.GetElapsedTime(uploadStart).TotalMilliseconds;
-            lastC3DGpuFailure = string.Empty;
+            c3dRenderResources.SetGpuReplacement(bufferKey, gpuBuffers!);
+            c3dGpuTelemetry.RecordUpload(
+                gpuBuffers!.UploadedBytes,
+                Stopwatch.GetElapsedTime(uploadStart).TotalMilliseconds);
 
             // Keep established source-apply telemetry compatible while the renderer owner changes.
             c3dDisplayListBuildCount++;
-            lastC3DDisplayListBuildMilliseconds = lastC3DGpuUploadMilliseconds;
+            lastC3DDisplayListBuildMilliseconds = c3dGpuTelemetry.LastUploadMilliseconds;
             lastC3DDisplayListBuildReason = pendingC3DDisplayListBuildReason;
             pendingC3DDisplayListBuildReason = "cache-key-changed";
         }
@@ -651,7 +648,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 break;
         }
 
-        c3dGpuDrawCount++;
+        c3dGpuTelemetry.RecordDraw();
         return true;
     }
 
@@ -681,20 +678,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         var buffers = c3dGpuBuffers;
         if (buffers is not null)
         {
-            if (buffers.Release(gl))
-            {
-                c3dGpuReleaseCount++;
-            }
-            else
-            {
-                c3dGpuReleaseFailureCount++;
-            }
+            c3dGpuTelemetry.RecordRelease(buffers.Release(gl));
         }
 
-        c3dGpuBuffers = null;
-        c3dGpuBufferKey = null;
-        c3dGpuReleasePending = false;
-        c3dGpuBuffersAvailable = false;
+        c3dRenderResources.MarkGpuBuffersReleased();
     }
 
     private static IReadOnlyList<int> GetC3DWireframeIndices(
@@ -859,9 +846,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         c3dRenderProxyCache.Clear();
         c3dRenderPositionCache.Clear();
-        c3dGpuReleasePending = c3dGpuBuffers is not null;
-        c3dGpuBufferKey = null;
-        c3dGpuFailedKey = null;
+        c3dRenderResources.InvalidateGpuForRenderProxy();
         c3dDisplayListKey = null;
         c3dInteractionDisplayListKey = null;
         pendingC3DDisplayListBuildReason = "render-proxy-invalidated";
@@ -962,7 +947,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (useTexture)
         {
             gl.Enable(GlTexture2D);
-            gl.BindTexture(GlTexture2D, importedMeshTextureId);
+            gl.BindTexture(GlTexture2D, importedMeshTextureState.TextureId);
             gl.Color(1.0, 1.0, 1.0);
         }
 
@@ -1297,10 +1282,10 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         gl.PointSize((float)viewModel.PointSize);
         gl.Begin(OpenGL.GL_POINTS);
-        foreach (var point in pointCloud.SampledPoints)
+        foreach (var point in pointCloud.SampledPointView)
         {
             ApplyLazPointColor(gl, point);
-            var position = MapLazPosition(point.Position);
+            var position = MapLazPosition(point);
             gl.Vertex(position.X, position.Y, position.Z);
         }
 
@@ -1311,6 +1296,9 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private Vector3 MapLazPosition(Vector3 source) =>
+        lazSceneTransform.Map(source);
+
+    private Vector3 MapLazPosition(LazPointCloudPoint source) =>
         lazSceneTransform.Map(source);
 
     private Vector3 MapLazPosition(double x, double y, double z) =>
@@ -1330,7 +1318,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        var position = MapLazPosition(point.Position);
+        var position = MapLazPosition(point);
         gl.PointSize((float)Math.Max(8.0, viewModel.PointSize + 6.0));
         gl.Color(1.0, 0.95, 0.10);
         gl.Begin(OpenGL.GL_POINTS);
@@ -1386,7 +1374,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Color(r, g, b);
     }
 
-    private static void ApplyPlaneFlatnessColor(OpenGL gl, Vector3 position, PlaneFlatnessEvaluation evaluation)
+    private static void ApplyPlaneFlatnessColor(
+        OpenGL gl,
+        Vector3 position,
+        ViewerPlaneFlatnessDisplayEvaluation evaluation)
     {
         var color = GetPlaneFlatnessColor(position, evaluation);
         gl.Color(color.R, color.G, color.B);
@@ -1394,7 +1385,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private static (double R, double G, double B) GetPlaneFlatnessColor(
         Vector3 position,
-        PlaneFlatnessEvaluation evaluation)
+        ViewerPlaneFlatnessDisplayEvaluation evaluation)
     {
         var plane = evaluation.ReferencePlane!;
         var signedDistance = plane.Normal.X * position.X

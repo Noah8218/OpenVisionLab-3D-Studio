@@ -8,8 +8,11 @@ public partial class XYZAffineSolveToolLabWindow : ToolLabWindowBase
 {
     private readonly OpenVisionThreeDViewerControl sourceViewer = new() { SidePanelsVisible = false };
 
-    public XYZAffineSolveToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "xyz-affine-solve", "XYZ Affine Solve Tool Lab requires an XYZ Affine Solve step.")
+    public XYZAffineSolveToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "xyz-affine-solve", "XYZ Affine Solve Tool Lab requires an XYZ Affine Solve step.")
     {
         InitializeComponent();
         DataContext = Workbench;
@@ -25,16 +28,4 @@ public partial class XYZAffineSolveToolLabWindow : ToolLabWindowBase
 
     private void RefreshViewsButton_Click(object sender, RoutedEventArgs args) => RefreshViews();
 
-    private void OnApplyParametersClick(object sender, RoutedEventArgs args)
-    {
-        if (!AffineStepPropertyGrid.CommitPendingEdit(out var message))
-        {
-            Workbench.ReportParameterDraftCommitError(message);
-            return;
-        }
-        if (Workbench.ApplySelectedStepParameterDraftCommand.CanExecute(null))
-        {
-            Workbench.ApplySelectedStepParameterDraftCommand.Execute(null);
-        }
-    }
 }

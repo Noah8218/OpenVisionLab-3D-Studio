@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
+        xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
@@ -24,7 +25,7 @@
         </Grid.RowDefinitions>
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
                                   SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.Subtitle, Korean='XYZ 어파인 계산 툴 랩', English='XYZ Affine Solve Tool Lab'}"
-                                  StatusText="CorrespondenceSet → AffineTransform3D" />
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.Status, Korean='대응 집합 → AffineTransform3D', English='CorrespondenceSet → AffineTransform3D'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
@@ -39,11 +40,11 @@
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewMatrix, Korean='행렬 미리보기', English='Preview matrix'}" Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="Explicitly calculate one temporary affine matrix from the routed Published CorrespondenceSet" AutomationProperties.Name="Preview XYZ Affine Solve" />
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PreviewTip, Korean='라우팅된 게시 CorrespondenceSet에서 임시 어파인 행렬 하나를 명시적으로 계산합니다.', English='Explicitly calculate one temporary affine matrix from the routed Published CorrespondenceSet'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PreviewAction, Korean='XYZ 어파인 계산 미리보기', English='Preview XYZ Affine Solve'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshInput, Korean='입력 새로고침', English='Refresh input'}" Icon="{ui:SymbolIcon ArrowSync24}"
-                               Click="RefreshViewsButton_Click" ToolTip="Refresh the source viewer without solving" AutomationProperties.Name="Refresh XYZ Affine Solve input" />
+                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ShowInputTip, Korean='행렬을 계산하지 않고 소스 Viewer를 새로 고칩니다.', English='Refresh the source viewer without solving'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ShowInputAction, Korean='XYZ 어파인 계산 입력 새로고침', English='Refresh XYZ Affine Solve input'}" />
                     <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishMatrix, Korean='행렬 게시', English='Publish matrix'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
-                               Command="{Binding PublishSelectedStepCommand}" ToolTip="Publish the current matrix Preview without recalculation or point-cloud application" AutomationProperties.Name="Publish XYZ Affine Solve output" />
+                               Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PublishTip, Korean='재계산하거나 포인트 클라우드에 적용하지 않고 현재 행렬 미리보기를 게시합니다.', English='Publish the current matrix Preview without recalculation or point-cloud application'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PublishAction, Korean='XYZ 어파인 계산 출력 게시', English='Publish XYZ Affine Solve output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -84,8 +85,14 @@
                             <propertyGrid:RecipeStepPropertyGridHost x:Name="AffineStepPropertyGrid" Grid.Row="1" Margin="0,7,0,0" SelectedObject="{Binding SelectedStepPropertyDraft}" PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}" />
                             <TextBlock Grid.Row="2" Margin="0,7,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding StepParameterEditStatus}" />
                             <WrapPanel Grid.Row="3" Margin="0,7,0,0" HorizontalAlignment="Right">
-                                <Button Margin="0,0,5,0" Content="{Binding Localization.Discard}" Command="{Binding DiscardSelectedStepParameterDraftCommand}" AutomationProperties.Name="Discard XYZ Affine Solve parameter changes" />
-                                <Button Content="{Binding Localization.ApplyParameters}" IsEnabled="{Binding HasPendingStepParameterChanges}" Click="OnApplyParametersClick" AutomationProperties.Name="Apply XYZ Affine Solve parameters without preview" />
+                                <Button Margin="0,0,5,0" Content="{Binding Localization.Discard}" Command="{Binding DiscardSelectedStepParameterDraftCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.DiscardParametersTip, Korean='행렬 미리보기를 만들지 않고 현재 매개변수 초안 변경을 취소합니다.', English='Discard the current parameter draft without creating a matrix Preview'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.DiscardParametersAction, Korean='XYZ 어파인 계산 매개변수 변경 취소', English='Discard XYZ Affine Solve parameter changes'}" />
+                                <Button Content="{Binding Localization.ApplyParameters}"
+                                        behaviors:CommitPropertyGridCommandBehavior.IsEnabled="True"
+                                        behaviors:CommitPropertyGridCommandBehavior.PropertyGrid="{Binding ElementName=AffineStepPropertyGrid}"
+                                        behaviors:CommitPropertyGridCommandBehavior.Command="{Binding ApplySelectedStepParameterDraftCommand}"
+                                        behaviors:CommitPropertyGridCommandBehavior.ErrorCommand="{Binding ReportParameterDraftCommitErrorCommand}"
+                                        ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ApplyParametersTip, Korean='다음 미리보기에서 사용할 매개변수 초안을 적용합니다.', English='Apply the parameter draft for the next Preview'}"
+                                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ApplyParametersAction, Korean='XYZ 어파인 계산 매개변수 적용', English='Apply XYZ Affine Solve parameters without preview'}" />
                             </WrapPanel>
                         </Grid>
                     </Border>

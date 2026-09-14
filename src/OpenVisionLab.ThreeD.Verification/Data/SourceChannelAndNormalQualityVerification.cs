@@ -453,8 +453,8 @@ internal static class SourceChannelAndNormalQualityVerification
             Check(
                 "las-cancellable-overload-preserves-sync-result",
                 lasWithProgress.FormatContractLine() == las.FormatContractLine()
-                && lasWithProgress.SampledPoints.SequenceEqual(las.SampledPoints),
-                $"sync={las.SampledPoints.Length};cancellable={lasWithProgress.SampledPoints.Length}");
+                && lasWithProgress.SampledPointView.SequenceEqual(las.SampledPointView),
+                $"sync={las.SampledPointView.Count};cancellable={lasWithProgress.SampledPointView.Count}");
             Check(
                 "las-load-progress-is-monotonic-and-bounded",
                 lasProgressValues.Count >= 2
@@ -469,10 +469,10 @@ internal static class SourceChannelAndNormalQualityVerification
             Check(
                 "las-loader-preserves-declared-intensity",
                 las.HasIntensity
-                && las.SampledPoints.Length > 0
+                && las.SampledPointView.Count > 0
                 && Find(lasChannels, SourceQualityChannel.Intensity).State
                     == SourceQualityChannelState.Available,
-                $"format={las.Metadata.PointDataFormat};samples={las.SampledPoints.Length};firstIntensity={las.SampledPoints[0].Intensity}");
+                $"format={las.Metadata.PointDataFormat};samples={las.SampledPointView.Count};firstIntensity={las.SampledPointView[0].Intensity}");
             Check(
                 "rgb-las-exposes-declared-intensity-and-color",
                 las.HasRgb

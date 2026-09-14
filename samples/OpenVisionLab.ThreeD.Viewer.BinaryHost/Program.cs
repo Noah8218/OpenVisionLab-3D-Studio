@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
@@ -11,6 +10,15 @@ internal static class Program
     private static void Main()
     {
         var args = Environment.GetCommandLineArgs();
+        if (args.Any(argument => string.Equals(
+                argument,
+                "--verify-consumer-boundaries",
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            Environment.ExitCode = ViewerConsumerBoundaryVerification.Run();
+            return;
+        }
+
         var consumerLifecycleReportPath = GetArgumentValue(args, "--consumer-lifecycle-report");
         if (consumerLifecycleReportPath is not null)
         {
@@ -49,8 +57,9 @@ internal static class Program
         var application = new Application();
         var viewerControl = new OpenVisionThreeDViewerControl();
         IOpenVisionThreeDViewerHost viewer = viewerControl;
-        var hostEventCount = 0;
-        string? lastHostProperty = null;
+        var hostApiReportCoordinator = hostApiReportPath is null
+            ? null
+            : new ViewerConsumerHostApiReportCoordinator(hostApiReportPath, viewer);
         var window = new Window
         {
             Title = $"OpenVisionLab 3D Viewer Binary Host | API {viewer.HostApiVersion}",
@@ -61,12 +70,12 @@ internal static class Program
             Content = viewerControl
         };
 
-        viewer.HostStateChanged += (_, eventArgs) =>
+        EventHandler<ViewerHostStateChangedEventArgs> hostStateChangedHandler = (_, eventArgs) =>
         {
-            hostEventCount++;
-            lastHostProperty = eventArgs.PropertyName;
+            hostApiReportCoordinator?.ObserveStateChanged(eventArgs);
             window.Title = $"OpenVisionLab 3D Viewer Binary Host | API {viewer.HostApiVersion} | {eventArgs.State.ActiveEntity}";
         };
+        viewer.HostStateChanged += hostStateChangedHandler;
         viewerControl.EnableSmokeFromCommandLine();
         var recipeSaved = true;
         if (hostApiReportPath is not null)
@@ -84,26 +93,16 @@ internal static class Program
         }
         finally
         {
+            viewer.HostStateChanged -= hostStateChangedHandler;
             // The binary consumer owns the concrete control lifetime. The
             // compatibility host interface remains unchanged for existing
             // consumers that only need commands and state.
             viewerControl.Dispose();
         }
 
-        if (hostApiReportPath is not null)
+        if (hostApiReportCoordinator is not null)
         {
-            var fullReportPath = Path.GetFullPath(hostApiReportPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-            var state = viewer.HostState;
-            File.WriteAllLines(fullReportPath,
-            [
-                $"HostApi|version={viewer.HostApiVersion}",
-                $"HostState|activeEntity={state.ActiveEntity}|selectionMode={state.SelectionMode}|viewerStatus={state.ViewerStatus}",
-                $"HostNominalActualDisplay|inputsReady={state.NominalActualDisplay.InputsReady}|distributionVisible={state.NominalActualDisplay.DistributionVisible}|progressPercent={state.NominalActualDisplay.ProgressPercent:F1}",
-                $"HostEvents|count={hostEventCount}|lastProperty={lastHostProperty ?? "(none)"}",
-                "HostLifecycle|concreteDisposable=True|disposedAfterRun=True",
-                $"HostCommands|invoked=ResetView,FitAll,FitSelection|saveRecipe={recipeSaved}|recipePath={hostApiRecipePath ?? "(not requested)"}"
-            ]);
+            hostApiReportCoordinator.WriteReport(recipeSaved, hostApiRecipePath);
         }
 
         Environment.ExitCode = recipeSaved ? exitCode : 1;

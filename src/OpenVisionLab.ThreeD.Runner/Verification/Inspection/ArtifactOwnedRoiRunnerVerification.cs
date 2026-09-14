@@ -188,6 +188,16 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 nonFiniteRecord is null
                     ? "record=null"
                     : $"status={nonFiniteRecord.Status};metrics={string.Join(',', nonFiniteRecord.Metrics.Select(metric => metric.Name))}"));
+            checks.Add(("single-tool Run Record preserves validated timing evidence",
+                nonFiniteRecord?.Timing is { State: InspectionRunTimingState.Available } timing
+                && timing.TryValidate(out _)
+                && timing.Clock == InspectionRunTiming.StopwatchClock
+                && timing.Stages is [{ StageId: InspectionRunTiming.ToolExecutionStage }]
+                && timing.TotalElapsedMilliseconds == nonFiniteRecord.ElapsedMilliseconds
+                && timing.Stages[0].ElapsedMilliseconds == nonFiniteRecord.ElapsedMilliseconds,
+                nonFiniteRecord is null
+                    ? "record=null"
+                    : $"timing={nonFiniteRecord.Timing?.State};clock={nonFiniteRecord.Timing?.Clock};totalMs={nonFiniteRecord.Timing?.TotalElapsedMilliseconds:G17};stages={nonFiniteRecord.Timing?.Stages.Count}"));
 
             if (runArtifacts.Requested && orderedAll.Output is not null)
             {

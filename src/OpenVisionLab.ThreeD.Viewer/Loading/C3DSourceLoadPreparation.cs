@@ -25,6 +25,14 @@ internal static class C3DSourceLoadPreparation
         return fullPath;
     }
 
+    /// <summary>
+    /// Loads a C3D grid for synchronous, already-admitted View paths. The
+    /// method intentionally preserves the decoder's original exception and
+    /// path semantics; callers decide whether path validation is required.
+    /// </summary>
+    public static C3DHeightGrid LoadSynchronously(string path, int maxRenderedPoints)
+        => C3DHeightGrid.Load(path, maxRenderedPoints);
+
     public static async Task<C3DSourceLoadPreparationResult> LoadAsync(
         string path,
         int maxRenderedPoints,

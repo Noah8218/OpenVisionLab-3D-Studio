@@ -1,4 +1,4 @@
-using OpenVisionLab.ThreeD.Viewer.ViewModels;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
@@ -10,10 +10,10 @@ namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 internal sealed class ShellNominalActualPreviewWaiter
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
-    private readonly Func<NominalActualComparisonState> readState;
+    private readonly Func<ViewerNominalActualState> readState;
 
     public ShellNominalActualPreviewWaiter(
-        Func<NominalActualComparisonState> readState)
+        Func<ViewerNominalActualState> readState)
     {
         this.readState = readState ?? throw new ArgumentNullException(nameof(readState));
     }
@@ -27,7 +27,7 @@ internal sealed class ShellNominalActualPreviewWaiter
             throw new ArgumentOutOfRangeException(nameof(timeout));
         }
         var deadline = DateTimeOffset.UtcNow + timeout;
-        while (readState() == NominalActualComparisonState.PreviewRunning)
+        while (readState() == ViewerNominalActualState.PreviewRunning)
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -52,7 +52,7 @@ internal sealed class ShellNominalActualPreviewWaiter
             }
         }
 
-        return readState() is NominalActualComparisonState.PreviewReady
-            or NominalActualComparisonState.Published;
+        return readState() is ViewerNominalActualState.PreviewReady
+            or ViewerNominalActualState.Published;
     }
 }

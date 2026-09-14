@@ -1,6 +1,7 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 
@@ -26,7 +27,7 @@ public sealed record C3DPointPairDimensionsRecipeLoadPlan(
         ArgumentNullException.ThrowIfNull(recipe);
 
         var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-        var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints);
+        var grid = C3DSourceLoadPreparation.LoadSynchronously(sourcePath, maxRenderedPoints);
         var first = grid.ReadPoint(recipe.Step.First.Row, recipe.Step.First.Column);
         var second = grid.ReadPoint(recipe.Step.Second.Row, recipe.Step.Second.Column);
 

@@ -42,7 +42,7 @@ internal static class SourceQualityWorkspaceVerification
         result.Lines.Add($"Result={(passedAll ? "PASS" : "FAIL")}|{passed}/{total}");
         var fullReportPath = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(
-            Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
+            GetReportDirectory(reportPath) ?? Environment.CurrentDirectory);
         File.WriteAllLines(fullReportPath, result.Lines);
         summary = result.Lines[^1];
         return passedAll;
@@ -89,6 +89,7 @@ internal static class SourceQualityWorkspaceVerification
                 ]);
             source.SaveC3D(sourcePath);
             await VerifyCancellationSourceLifetimeAsync(source, sourcePath, Check);
+            await VerifyObservedLoadLifetimeAsync(Check);
 
             var streamedSnapshot = C3DHeightFieldSnapshot.LoadIdentified(
                 sourcePath,
@@ -506,6 +507,96 @@ internal static class SourceQualityWorkspaceVerification
             $"cancelled={heightImageToken.IsCancellationRequested};aliveAfterCancel={heightImageTokenAliveAfterCancel};disposedAfterCompletion={heightImageTokenDisposedAfterCompletion}");
     }
 
+    private static async Task VerifyObservedLoadLifetimeAsync(
+        Action<string, bool, string> check)
+    {
+        using var disposedWorkspace = new SourceQualityWorkspaceViewModel(
+            ThreeDLocalization.Shared);
+        var pendingFailure = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lateFailure = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var accepted = disposedWorkspace.StartObservedLoad(
+            () => pendingFailure.Task,
+            exception => lateFailure.TrySetResult(exception));
+        var retainedBeforeDispose = disposedWorkspace.IsObservedLoadRunning;
+        disposedWorkspace.Dispose();
+        pendingFailure.TrySetException(
+            new InvalidOperationException("late source-quality failure"));
+        try
+        {
+            await pendingFailure.Task;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        var lateFailureSuppressed = await Task.WhenAny(
+                lateFailure.Task,
+                Task.Delay(TimeSpan.FromMilliseconds(100)))
+            != lateFailure.Task;
+        check(
+            "source-quality observed load suppresses late failure after disposal",
+            accepted
+            && retainedBeforeDispose
+            && disposedWorkspace.IsDisposed
+            && !disposedWorkspace.IsObservedLoadRunning
+            && lateFailureSuppressed,
+            $"accepted={accepted};retained={retainedBeforeDispose};disposed={disposedWorkspace.IsDisposed};lateFailureSuppressed={lateFailureSuppressed}");
+
+        using var reusableWorkspace = new SourceQualityWorkspaceViewModel(
+            ThreeDLocalization.Shared);
+        var firstCompletion = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstAccepted = reusableWorkspace.StartObservedLoad(
+            () => firstCompletion.Task,
+            _ => { });
+        var retainedFirstLoad = reusableWorkspace.IsObservedLoadRunning;
+        firstCompletion.TrySetResult(null);
+        await firstCompletion.Task;
+        var firstReleased = await WaitUntilAsync(
+            () => !reusableWorkspace.IsObservedLoadRunning,
+            TimeSpan.FromSeconds(5));
+        var secondCompletion = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondAccepted = reusableWorkspace.StartObservedLoad(
+            () => secondCompletion.Task,
+            _ => { });
+        var retainedSecondLoad = reusableWorkspace.IsObservedLoadRunning;
+        secondCompletion.TrySetResult(null);
+        await secondCompletion.Task;
+        var secondReleased = await WaitUntilAsync(
+            () => !reusableWorkspace.IsObservedLoadRunning,
+            TimeSpan.FromSeconds(5));
+        check(
+            "source-quality observed load releases and reuses the owner slot",
+            firstAccepted
+            && retainedFirstLoad
+            && firstReleased
+            && secondAccepted
+            && retainedSecondLoad
+            && secondReleased,
+            $"firstAccepted={firstAccepted};firstRetained={retainedFirstLoad};firstReleased={firstReleased};secondAccepted={secondAccepted};secondRetained={retainedSecondLoad};secondReleased={secondReleased}");
+    }
+
+    private static async Task<bool> WaitUntilAsync(
+        Func<bool> predicate,
+        TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (predicate())
+            {
+                return true;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+
+        return predicate();
+    }
+
     private static async Task VerifySourceSessionDisposalAsync(
         C3DHeightFieldSnapshot source,
         string sourcePath,
@@ -726,8 +817,7 @@ internal static class SourceQualityWorkspaceVerification
             var expectedSurface = view.FindResource("ThreeD.FailSurfaceBrush") as Brush;
             var expectedFail = view.FindResource("ThreeD.FailBrush") as Brush;
             var screenshotPath = Path.Combine(
-                Path.GetDirectoryName(Path.GetFullPath(reportPath))
-                    ?? Environment.CurrentDirectory,
+                GetReportDirectory(reportPath) ?? Environment.CurrentDirectory,
                 "error-state",
                 "coordinate-finiteness-error.png");
             var capture = WpfScreenshotCapture.Capture(errorRow);
@@ -873,8 +963,7 @@ internal static class SourceQualityWorkspaceVerification
                 AutomationProperties.GetAutomationId(border)
                 == "SourceAcquisitionProvenanceEditor");
             var screenshotPath = Path.Combine(
-                Path.GetDirectoryName(Path.GetFullPath(reportPath))
-                    ?? Environment.CurrentDirectory,
+                GetReportDirectory(reportPath) ?? Environment.CurrentDirectory,
                 "acquisition-flags",
                 "source-acquisition-flags.png");
             if (provenanceEditor is not null)
@@ -930,6 +1019,9 @@ internal static class SourceQualityWorkspaceVerification
             }
         }
     }
+
+    private static string? GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath));
 
     private sealed record ErrorDiagnosticViewRuntimeResult(bool Passed, string Detail);
 }

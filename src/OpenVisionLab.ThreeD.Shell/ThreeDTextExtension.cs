@@ -15,6 +15,12 @@ public sealed class ThreeDTextExtension : MarkupExtension
 
     public override object ProvideValue(IServiceProvider serviceProvider)
     {
+        if (serviceProvider.GetService(typeof(IProvideValueTarget)) is IProvideValueTarget target
+            && target.TargetObject is BindingBase)
+        {
+            return ThreeDLocalization.Shared.Resolve(Key, Korean, English);
+        }
+
         var binding = new Binding(nameof(ThreeDLocalization.StudioSubtitle))
         {
             Source = ThreeDLocalization.Shared,

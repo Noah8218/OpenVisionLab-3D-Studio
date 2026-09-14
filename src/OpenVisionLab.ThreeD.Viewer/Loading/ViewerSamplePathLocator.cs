@@ -9,12 +9,6 @@ namespace OpenVisionLab.ThreeD.Viewer.Loading;
 /// </summary>
 internal static class ViewerSamplePathLocator
 {
-    public static string? Find(string relativePath)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
-        return Find(relativePath, [Environment.CurrentDirectory, AppContext.BaseDirectory]);
-    }
-
     internal static string? Find(string relativePath, IEnumerable<string> roots)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);

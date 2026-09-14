@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using System.Threading.Tasks;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -190,7 +191,7 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
 
             filterPreviewOutput = evaluation.Output;
             filterPreviewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
-            evaluation.Output.SaveC3D(filterPreviewPath);
+            SaveC3DAtomically(evaluation.Output, filterPreviewPath);
             if (!IsCurrentPreview(cancellation))
             {
                 return false;
@@ -374,25 +375,6 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
             Volatile.Read(ref filterPreviewCancellation),
             cancellation);
 
-    private static void CancelAndDispose(CancellationTokenSource? cancellation)
-    {
-        if (cancellation is null)
-        {
-            return;
-        }
-
-        try
-        {
-            cancellation.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // A concurrent owner disposal already released the token source.
-        }
-
-        cancellation.Dispose();
-    }
-
     private string GetRecipeDirectory()
     {
         var path = getRecipePath();
@@ -415,6 +397,24 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
             "3DStudio",
             "Preview");
         return Path.Combine(directory, $"filter-{hash}.c3d");
+    }
+
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            output.SaveC3D(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 
 }

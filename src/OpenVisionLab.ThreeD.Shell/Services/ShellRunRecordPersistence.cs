@@ -75,12 +75,25 @@ internal sealed class ShellRunRecordPersistence
             exportDirectory = Path.Combine(Path.GetFullPath(targetRoot), $"RunRecord-{safeRunId}-{suffix}");
         }
 
-        Directory.CreateDirectory(exportDirectory);
-        foreach (var sourcePath in new[] { runRecordPath, htmlReportPath, csvReportPath }
-                     .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path)))
+        var stagingDirectory = $"{exportDirectory}.staging.{Guid.NewGuid():N}";
+        Directory.CreateDirectory(stagingDirectory);
+        try
         {
-            var source = sourcePath!;
-            File.Copy(source, Path.Combine(exportDirectory, Path.GetFileName(source)), overwrite: false);
+            foreach (var sourcePath in new[] { runRecordPath, htmlReportPath, csvReportPath }
+                         .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path)))
+            {
+                var source = sourcePath!;
+                File.Copy(source, Path.Combine(stagingDirectory, Path.GetFileName(source)), overwrite: false);
+            }
+
+            Directory.Move(stagingDirectory, exportDirectory);
+        }
+        finally
+        {
+            if (Directory.Exists(stagingDirectory))
+            {
+                Directory.Delete(stagingDirectory, recursive: true);
+            }
         }
 
         return exportDirectory;

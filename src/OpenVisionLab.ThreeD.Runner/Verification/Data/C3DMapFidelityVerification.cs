@@ -40,7 +40,7 @@ internal static class C3DMapFidelityVerification
             };
             AddRepresentativePoints(lines, grid.Points);
 
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            Directory.CreateDirectory(GetReportDirectory(reportPath));
             File.WriteAllLines(reportPath, lines);
             Console.WriteLine($"C3D map display-frame fidelity: {status} ({grid.Points.Length:N0} points, {export.FaceCount:N0} faces, max error {comparison.MaxCoordinateError:G3})");
             return passed ? 0 : 5;
@@ -86,7 +86,7 @@ internal static class C3DMapFidelityVerification
                 $"KnownGrid|width=3|height=2|values=10,20,30,0,40,50|mean=30|horizontalScale=5|heightScale={Format(C3DHeightGrid.ViewerHeightScale)}"
             };
             lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            Directory.CreateDirectory(GetReportDirectory(reportPath));
             File.WriteAllLines(reportPath, lines);
             Console.WriteLine($"C3D map fidelity golden verification: {status} ({passedCount}/{cases.Length})");
             return passedCount == cases.Length ? 0 : 5;
@@ -96,6 +96,9 @@ internal static class C3DMapFidelityVerification
             Directory.Delete(tempDirectory, recursive: true);
         }
     }
+
+    private static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
 
     private static (bool Passed, string Evidence) VerifyStatistics(C3DHeightGrid grid)
     {

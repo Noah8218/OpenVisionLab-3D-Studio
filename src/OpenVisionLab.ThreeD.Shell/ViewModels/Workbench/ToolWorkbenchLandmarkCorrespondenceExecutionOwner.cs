@@ -1,4 +1,5 @@
 using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -567,22 +568,4 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner : IDispo
             Volatile.Read(ref previewCancellation),
             cancellation);
 
-    private static void CancelAndDispose(CancellationTokenSource? cancellation)
-    {
-        if (cancellation is null)
-        {
-            return;
-        }
-
-        try
-        {
-            cancellation.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-            // A concurrent owner disposal or replacement already released the token source.
-        }
-
-        cancellation.Dispose();
-    }
 }

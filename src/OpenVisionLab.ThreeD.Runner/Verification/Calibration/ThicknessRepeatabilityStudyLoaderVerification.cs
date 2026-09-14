@@ -18,7 +18,7 @@ internal static class ThicknessRepeatabilityStudyLoaderVerification
     {
         var fullReportPath = Path.GetFullPath(reportPath);
         var fixtureDirectory = Path.Combine(
-            Path.GetDirectoryName(fullReportPath)!,
+            GetReportDirectory(reportPath),
             "thickness-repeatability-study-fixture");
         Directory.CreateDirectory(fixtureDirectory);
 
@@ -94,7 +94,7 @@ internal static class ThicknessRepeatabilityStudyLoaderVerification
         };
         lines.AddRange(cases.Select(item =>
             $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         File.WriteAllLines(fullReportPath, lines, new UTF8Encoding(false));
         Console.WriteLine($"Thickness repeatability study loader verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
@@ -274,6 +274,9 @@ internal static class ThicknessRepeatabilityStudyLoaderVerification
 
     private static string Clean(string value) =>
         value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
+
+    private static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
 
     private sealed record StudyFixture(
         string Directory,

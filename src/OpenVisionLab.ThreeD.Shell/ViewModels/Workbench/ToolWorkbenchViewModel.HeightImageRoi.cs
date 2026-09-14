@@ -8,15 +8,42 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel
 {
-    private void InitializeHeightImageRoiEditing()
+    private void InitializeHeightImageRoiProjection()
     {
-        HeightImageViewer.RoiWorkspace.CandidateChanged += OnHeightImageRoiCandidateChanged;
-        HeightImageViewer.RoiWorkspace.SelectionRequested += OnHeightImageRoiSelectionRequested;
-        HeightImageViewer.RoiWorkspace.ApplyRequested += OnHeightImageRoiApplyRequested;
-        HeightImageViewer.RoiWorkspace.CancelRequested += OnHeightImageRoiCancelRequested;
-        HeightImageViewer.RoiWorkspace.DeleteRequested += OnHeightImageRoiDeleteRequested;
         RefreshHeightImageRoiProjection();
     }
+
+    private ToolWorkbenchHeightImageRoiCoordinator CreateHeightImageRoiCoordinator() =>
+        new(
+            HeightImageViewer.RoiWorkspace,
+            rectangle =>
+            {
+                var updated = TryUpdateHeightImageRoiCandidate(rectangle, out var message);
+                return new HeightImageRoiCandidateUpdateResult(updated, message);
+            },
+            selectionId => SelectPipelineStepForSelection(selectionId),
+            message => AppendLog("Warning", message),
+            () =>
+            {
+                if (ApplyTeachingSelectionCaptureCommand.CanExecute(null))
+                {
+                    ApplyTeachingSelectionCaptureCommand.Execute(null);
+                }
+            },
+            () =>
+            {
+                if (CancelTeachingSelectionCaptureCommand.CanExecute(null))
+                {
+                    CancelTeachingSelectionCaptureCommand.Execute(null);
+                }
+            },
+            () =>
+            {
+                if (RemoveSelectedTeachingSelectionCommand.CanExecute(null))
+                {
+                    RemoveSelectedTeachingSelectionCommand.Execute(null);
+                }
+            });
 
     public bool TryUpdateHeightImageRoiCandidate(
         ToolRecipeGridRectangle rectangle,
@@ -109,47 +136,4 @@ public sealed partial class ToolWorkbenchViewModel
             false));
     }
 
-    private void OnHeightImageRoiCandidateChanged(
-        object? sender,
-        HeightImageRoiCandidateChangedEventArgs args)
-    {
-        if (!TryUpdateHeightImageRoiCandidate(args.Rectangle, out var message))
-        {
-            AppendLog("Warning", $"Height Image ROI edit rejected | reason={message}");
-        }
-    }
-
-    private void OnHeightImageRoiSelectionRequested(
-        object? sender,
-        HeightImageRoiSelectionRequestedEventArgs args)
-    {
-        if (!string.IsNullOrWhiteSpace(args.SelectionId))
-        {
-            SelectPipelineStepForSelection(args.SelectionId);
-        }
-    }
-
-    private void OnHeightImageRoiApplyRequested(object? sender, EventArgs args)
-    {
-        if (ApplyTeachingSelectionCaptureCommand.CanExecute(null))
-        {
-            ApplyTeachingSelectionCaptureCommand.Execute(null);
-        }
-    }
-
-    private void OnHeightImageRoiCancelRequested(object? sender, EventArgs args)
-    {
-        if (CancelTeachingSelectionCaptureCommand.CanExecute(null))
-        {
-            CancelTeachingSelectionCaptureCommand.Execute(null);
-        }
-    }
-
-    private void OnHeightImageRoiDeleteRequested(object? sender, EventArgs args)
-    {
-        if (RemoveSelectedTeachingSelectionCommand.CanExecute(null))
-        {
-            RemoveSelectedTeachingSelectionCommand.Execute(null);
-        }
-    }
 }

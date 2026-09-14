@@ -17,6 +17,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDisposable
 {
+    private readonly object loadGate = new();
     private readonly ThreeDLocalization localization;
     private readonly SharedHeightCursorSession sharedCursor;
     private readonly RelayCommand fitCommand;
@@ -48,6 +49,10 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
     private int loadGeneration;
     private int displayRangeRevision;
     private int disposalState;
+    private string loadingSourceKey = string.Empty;
+    private Task? sourceLoadTask;
+    private Task? loadTask;
+    private Task? loadObservationTask;
 
     public HeightImageViewerViewModel(
         ThreeDLocalization localization,
@@ -85,8 +90,73 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
 
         localization.PropertyChanged -= OnLocalizationChanged;
         sharedCursor.PropertyChanged -= OnSharedCursorChanged;
+        lock (loadGate)
+        {
+            Volatile.Write(ref loadTask, null);
+            Volatile.Write(ref loadObservationTask, null);
+        }
         Clear(localization.HeightImageUnavailable);
         RoiWorkspace.Dispose();
+    }
+
+    internal bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    internal bool IsObservedLoadRunning =>
+        !IsDisposed && Volatile.Read(ref loadTask) is { IsCompleted: false };
+
+    internal bool StartObservedLoad(Func<Task> load, Action<Exception> reportFailure)
+    {
+        ArgumentNullException.ThrowIfNull(load);
+        ArgumentNullException.ThrowIfNull(reportFailure);
+        Task? task = null;
+        Exception? synchronousFailure = null;
+        lock (loadGate)
+        {
+            if (IsDisposed)
+            {
+                return false;
+            }
+
+            try
+            {
+                task = load();
+            }
+            catch (Exception exception)
+            {
+                synchronousFailure = exception;
+            }
+
+            if (task is not null)
+            {
+                Volatile.Write(ref loadTask, task);
+            }
+        }
+
+        if (synchronousFailure is not null)
+        {
+            if (!IsDisposed)
+            {
+                reportFailure(synchronousFailure);
+            }
+
+            return false;
+        }
+
+        if (task is null)
+        {
+            return false;
+        }
+
+        var observer = ObserveLoadAsync(task, reportFailure);
+        lock (loadGate)
+        {
+            if (ReferenceEquals(Volatile.Read(ref loadTask), task))
+            {
+                Volatile.Write(ref loadObservationTask, observer);
+            }
+        }
+
+        return true;
     }
 
     public C3DHeightImageFrame? Frame
@@ -359,7 +429,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
                     frameId),
                 cancellationToken));
 
-    internal async Task EnsureSourceAsync(
+    internal Task EnsureSourceAsync(
         string path,
         string entityId,
         string unit,
@@ -370,7 +440,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             Clear(localization.HeightImageUnavailable);
-            return;
+            return Task.CompletedTask;
         }
 
         var fullPath = Path.GetFullPath(path);
@@ -382,29 +452,69 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
             entityId,
             unit,
             frameId);
-        if (string.Equals(loadedSourceKey, sourceKey, StringComparison.OrdinalIgnoreCase) && Frame is not null)
+        AsyncLoadCancellation? previousCancellation;
+        AsyncLoadCancellation cancellation;
+        TaskCompletionSource<bool> completion;
+        lock (loadGate)
         {
-            return;
+            if (string.Equals(loadedSourceKey, sourceKey, StringComparison.OrdinalIgnoreCase)
+                && Frame is not null)
+            {
+                return Task.CompletedTask;
+            }
+
+            if (string.Equals(loadingSourceKey, sourceKey, StringComparison.OrdinalIgnoreCase)
+                && sourceLoadTask is { IsCompleted: false } existingTask)
+            {
+                return existingTask;
+            }
+
+            cancellation = new AsyncLoadCancellation();
+            previousCancellation = loadCancellation;
+            loadCancellation = cancellation;
+            var generation = ++loadGeneration;
+            loadingSourceKey = sourceKey;
+            completion = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            sourceLoadTask = completion.Task;
+            IsLoading = true;
+            Error = string.Empty;
+            Status = localization.HeightImageLoading;
+            HoverSummary = localization.HeightImageCoordinateHint;
+
+            _ = RunSourceLoadAsync(
+                sourceKey,
+                entityId,
+                unit,
+                frameId,
+                loadSourceAsync,
+                cancellation,
+                generation,
+                completion);
         }
 
-        var cancellation = new AsyncLoadCancellation();
-        var previousCancellation = Interlocked.Exchange(ref loadCancellation, cancellation);
         previousCancellation?.Cancel();
-        var cancellationToken = cancellation.Token;
-        var generation = ++loadGeneration;
-        IsLoading = true;
-        Error = string.Empty;
-        Status = localization.HeightImageLoading;
-        HoverSummary = localization.HeightImageCoordinateHint;
+        return completion.Task;
+    }
 
+    private async Task RunSourceLoadAsync(
+        string sourceKey,
+        string entityId,
+        string unit,
+        string frameId,
+        Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync,
+        AsyncLoadCancellation cancellation,
+        int generation,
+        TaskCompletionSource<bool> completion)
+    {
         try
         {
-            var source = await loadSourceAsync(cancellationToken);
+            var source = await loadSourceAsync(cancellation.Token);
             var nextFrame = await Task.Run(
-                () => C3DHeightImageFrame.Create(source, cancellationToken),
-                cancellationToken);
+                () => C3DHeightImageFrame.Create(source, cancellation.Token),
+                cancellation.Token);
 
-            if (generation != loadGeneration || cancellationToken.IsCancellationRequested)
+            if (generation != loadGeneration || cancellation.Token.IsCancellationRequested)
             {
                 return;
             }
@@ -420,15 +530,13 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         }
         catch (Exception exception)
         {
-            if (generation != loadGeneration)
+            if (generation == loadGeneration)
             {
-                return;
+                loadedSourceKey = string.Empty;
+                Frame = null;
+                Error = exception.Message;
+                Status = localization.HeightImageUnavailable;
             }
-
-            loadedSourceKey = string.Empty;
-            Frame = null;
-            Error = exception.Message;
-            Status = localization.HeightImageUnavailable;
         }
         finally
         {
@@ -438,6 +546,39 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
             }
 
             cancellation.Dispose();
+            completion.TrySetResult(true);
+        }
+    }
+
+    private async Task ObserveLoadAsync(
+        Task task,
+        Action<Exception> reportFailure)
+    {
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException)
+        {
+            // Height Image owns expected latest-source cancellation.
+        }
+        catch (Exception exception)
+        {
+            if (!IsDisposed)
+            {
+                reportFailure(exception);
+            }
+        }
+        finally
+        {
+            lock (loadGate)
+            {
+                if (ReferenceEquals(Volatile.Read(ref loadTask), task))
+                {
+                    Volatile.Write(ref loadTask, null);
+                    Volatile.Write(ref loadObservationTask, null);
+                }
+            }
         }
     }
 
@@ -522,9 +663,16 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
 
     private void Clear(string nextStatus)
     {
-        var cancellation = Interlocked.Exchange(ref loadCancellation, null);
+        AsyncLoadCancellation? cancellation;
+        lock (loadGate)
+        {
+            cancellation = loadCancellation;
+            loadCancellation = null;
+            loadingSourceKey = string.Empty;
+            sourceLoadTask = null;
+            loadGeneration++;
+        }
         cancellation?.Cancel();
-        loadGeneration++;
         loadedSourceKey = string.Empty;
         Frame = null;
         DisplayFrame = null;

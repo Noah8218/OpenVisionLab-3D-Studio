@@ -37,6 +37,9 @@
         <KeyBinding Key="F5"
                     Modifiers="Control"
                     Command="{Binding Workbench.RunTeachingRecipeCommand}" />
+        <KeyBinding Key="F5"
+                    Modifiers="Control+Shift"
+                    Command="{Binding Workbench.RunValidationSetCommand}" />
     </UserControl.InputBindings>
 
     <Grid>
@@ -95,7 +98,7 @@
                                FontWeight="SemiBold"
                                Text="{Binding Workbench.RecipeName}"
                                TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Workbench.RecipePathSummary}" />
+                               ToolTip="{Binding Workbench.LocalizedRecipePathSummary}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Margin="0,0,10,0" VerticalAlignment="Center">
                     <TextBlock FontSize="9.5"
@@ -124,7 +127,7 @@
                                Content="{Binding Localization.Save}"
                                Icon="{ui:SymbolIcon DocumentCheckmark24}"
                                Command="{Binding Workbench.SaveTeachingRecipeCommand}"
-                               ToolTip="Ctrl+S"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Command.SaveRecipeTip, Korean='검사 레시피 저장 (Ctrl+S)', English='Save inspection recipe (Ctrl+S)'}"
                                AutomationProperties.AutomationId="SaveTeachingRecipe"
                                AutomationProperties.Name="{Binding Localization.Save}" />
                 </StackPanel>
@@ -137,7 +140,7 @@
                                Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding Workbench.PreviewSelectedStepCommand}"
-                               ToolTip="F5"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Command.PreviewTip, Korean='선택 도구 미리보기 (F5)', English='Preview selected tool (F5)'}"
                                AutomationProperties.AutomationId="PreviewTeachingToolButton"
                                AutomationProperties.Name="{Binding Localization.Preview}" />
                     <ui:Button Margin="0,0,5,0"
@@ -145,9 +148,9 @@
                                Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding Workbench.PublishSelectedStepCommand}"
-                               ToolTip="Ctrl+Enter"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Command.PublishShortcutTip, Korean='현재 미리보기 결과 게시 (Ctrl+Enter)', English='Publish the current Preview result (Ctrl+Enter)'}"
                                AutomationProperties.Name="{Binding Localization.Publish}"
-                               AutomationProperties.HelpText="Publish the current non-stale Preview without re-running" />
+                               AutomationProperties.HelpText="{Binding Localization.PublishHelpText}" />
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
                                Content="{Binding Localization.Cancel}"
@@ -166,7 +169,7 @@
                                Content="{Binding Localization.Save}"
                                Icon="{ui:SymbolIcon DocumentCheckmark24}"
                                Command="{Binding Workbench.SaveTeachingRecipeCommand}"
-                               ToolTip="Ctrl+S"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Command.SaveRecipeTip, Korean='검사 레시피 저장 (Ctrl+S)', English='Save inspection recipe (Ctrl+S)'}"
                                AutomationProperties.AutomationId="SaveTeachingRecipe"
                                AutomationProperties.Name="{Binding Localization.Save}" />
                 </StackPanel>
@@ -180,9 +183,9 @@
                                Content="{views:ThreeDText Key=ThreeD.Command.RunAll, Korean='전체 실행', English='Run all'}"
                                Icon="{ui:SymbolIcon PlayCircle24}"
                                Command="{Binding Workbench.RunTeachingRecipeCommand}"
-                               ToolTip="Ctrl+F5"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Command.RunAllTip, Korean='전체 레시피 실행 (Ctrl+F5)', English='Run the complete recipe (Ctrl+F5)'}"
                                AutomationProperties.Name="{Binding Localization.Run}"
-                               AutomationProperties.HelpText="Run the complete inspection recipe" />
+                               AutomationProperties.HelpText="{Binding Localization.RunAllHelpText}" />
                     <ui:Button Padding="8,4"
                                Content="{Binding Localization.ResultsWorkspaceTitle}"
                                Icon="{ui:SymbolIcon DataHistogram24}"
@@ -315,7 +318,7 @@
                                 BorderThickness="1"
                                 CornerRadius="3"
                                 AutomationProperties.AutomationId="NoRecipeStepBanner"
-                                AutomationProperties.Name="Select an inspection tool">
+                                AutomationProperties.Name="{Binding Localization.SelectInspectionTool}">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -377,7 +380,7 @@
                                     <Button Margin="0,0,5,0"
                                             Command="{Binding Workbench.UndoTeachingSelectionCaptureCommand}"
                                             Visibility="{Binding Workbench.IsTeachingSelectionCaptureActive, Converter={StaticResource BoolToVisibilityConverter}}"
-                                            AutomationProperties.Name="Undo last teaching point">
+                                            AutomationProperties.Name="{Binding Workbench.Localization.UndoLastPoint}">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ArrowUndo24" />
                                             <TextBlock Text="{Binding Workbench.Localization.UndoLastPoint}" />
@@ -386,17 +389,17 @@
                                     <Button Margin="0,0,5,0"
                                             Command="{Binding Workbench.CancelTeachingSelectionCaptureCommand}"
                                             AutomationProperties.AutomationId="CancelSelectionCandidate"
-                                            AutomationProperties.Name="Cancel teaching selection capture">
+                                            AutomationProperties.Name="{Binding Workbench.Localization.Cancel}">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Dismiss24" />
                                             <TextBlock Text="{Binding Workbench.Localization.Cancel}" />
                                         </StackPanel>
                                     </Button>
                                     <ui:Button Appearance="Primary"
-                                               ToolTip="Enter"
+                                               ToolTip="{views:ThreeDText Key=ThreeD.Command.ApplySelectionTip, Korean='티칭 선택 적용 (Enter)', English='Apply the teaching selection (Enter)'}"
                                                Command="{Binding Workbench.ApplyTeachingSelectionCaptureCommand}"
                                                AutomationProperties.AutomationId="ApplyOrientedBox3D"
-                                               AutomationProperties.Name="Apply teaching selection (Enter)">
+                                               AutomationProperties.Name="{Binding Workbench.Localization.ApplySelection}">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Checkmark24" />
                                             <TextBlock Text="{Binding Workbench.Localization.ApplySelection}" />
@@ -413,7 +416,7 @@
                                         CornerRadius="2"
                                         Visibility="{Binding Workbench.IsTeachingGridRectangleEditorEnabled, Converter={StaticResource BoolToVisibilityConverter}}"
                                         AutomationProperties.AutomationId="GridRectangleCandidateCoordinates"
-                                        AutomationProperties.Name="Exact grid candidate coordinates">
+                                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.ExactGridCandidateCoordinatesAccessible, Korean='정확한 그리드 후보 좌표', English='Exact grid candidate coordinates'}">
                                     <WrapPanel VerticalAlignment="Center">
                                         <TextBlock Margin="0,0,12,0"
                                                    FontSize="9.5"

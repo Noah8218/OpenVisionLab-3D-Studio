@@ -55,7 +55,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (!viewModel.C3DSampleVisible || c3dSample is null)
             {
-                var defaultSourcePath = ViewerSamplePathLocator.Find(DefaultC3DSamplePath);
+                var defaultSourcePath = samplePathResolver.Resolve(DefaultC3DSamplePath);
                 if (defaultSourcePath is null || !LoadC3DSource(defaultSourcePath))
                 {
                     throw new InvalidOperationException(

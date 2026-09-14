@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -6,10 +7,12 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
 {
     public static int Run(string recipePath, string correspondenceStepId, string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
             var document = ToolRecipeDocumentStore.Load(fullRecipePath);
+            var recipeDirectory = Path.GetDirectoryName(fullRecipePath);
             var step = document.Steps.Single(candidate => string.Equals(candidate.Id, correspondenceStepId, StringComparison.OrdinalIgnoreCase));
             if (!string.Equals(step.ToolId, "landmark-correspondence", StringComparison.Ordinal) || step.InputEntityIds.Count != 1)
             {
@@ -22,7 +25,7 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
             }
 
             var corners = (selection.Rows ?? [])
-                .Select(row => ExecuteCorner(document, fullRecipePath, row.SourceEntityId))
+                .Select(row => ExecuteCorner(document, recipeDirectory, row.SourceEntityId))
                 .ToArray();
             var correspondence = ToolRecipeLandmarkCorrespondenceExecution.Execute(document, step.Id, corners.Select(item => item.Output).ToArray());
             if (correspondence.Result.Status != ResultStatus.Pass || correspondence.Output is null)
@@ -31,7 +34,7 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
             }
 
             var output = correspondence.Output;
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
             var lines = new List<string>
             {
                 "OpenVisionLab 3D Landmark Correspondence Runner report",
@@ -46,20 +49,61 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
                 $"Corner|index={index + 1}|step={corner.Step.Id}|output={corner.Output.OutputEntityId}|role={corner.Output.OutputRole}|sha256={corner.Output.ContentSha256}|anchor={corner.Output.CornerAnchorX:R},{corner.Output.CornerAnchorY:R},{corner.Output.CornerAnchorZ:R}"));
             lines.AddRange(output.Pairs.Select((pair, index) =>
                 $"Pair|index={index + 1}|source={pair.SourceEntityId}|sourceSha256={pair.SourceContentSha256}|reference={pair.ReferenceLandmarkId}|referenceXyz={pair.ReferenceX:R},{pair.ReferenceY:R},{pair.ReferenceZ:R}"));
-            File.WriteAllLines(reportPath, lines);
+            WriteLinesAtomically(fullReportPath, lines);
             Console.WriteLine($"3D Landmark Correspondence Runner: Pass ({output.Pairs.Count} pairs, {output.ContentSha256})");
             return 0;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or InvalidOperationException or OverflowException)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath, ["OpenVisionLab 3D Landmark Correspondence Runner report", $"Error|{exception.Message}"]);
+            TryWriteErrorReport(fullReportPath, exception);
             Console.Error.WriteLine(exception.Message);
             return 5;
         }
     }
 
-    private static CornerExecution ExecuteCorner(ToolRecipeDocument document, string recipePath, string outputEntityId)
+    private static void TryWriteErrorReport(string reportPath, Exception exception)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+            WriteLinesAtomically(reportPath, ["OpenVisionLab 3D Landmark Correspondence Runner report", $"Error|{exception.Message}"]);
+        }
+        catch (Exception reportException) when (reportException is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or OverflowException)
+        {
+            Console.Error.WriteLine($"Landmark Correspondence report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 4096, leaveOpen: true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static CornerExecution ExecuteCorner(ToolRecipeDocument document, string? recipeDirectory, string outputEntityId)
     {
         var intersectionStep = document.Steps.Single(step => string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal)
             && string.Equals(step.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase));
@@ -67,8 +111,8 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
         {
             throw new InvalidDataException($"Runner CornerAnchor '{outputEntityId}' must originate from exactly two LineFeature inputs.");
         }
-        var first = ExecuteLine(document, recipePath, intersectionStep.InputEntityIds[0]);
-        var second = ExecuteLine(document, recipePath, intersectionStep.InputEntityIds[1]);
+        var first = ExecuteLine(document, recipeDirectory, intersectionStep.InputEntityIds[0]);
+        var second = ExecuteLine(document, recipeDirectory, intersectionStep.InputEntityIds[1]);
         var intersection = ToolRecipeLineIntersectionExecution.Execute(document, intersectionStep.Id, first.Output, second.Output);
         if (intersection.Result.Status != ResultStatus.Pass || intersection.Output is null)
         {
@@ -77,7 +121,7 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
         return new CornerExecution(intersectionStep, intersection.Output);
     }
 
-    private static LineExecution ExecuteLine(ToolRecipeDocument document, string recipePath, string outputEntityId)
+    private static LineExecution ExecuteLine(ToolRecipeDocument document, string? recipeDirectory, string outputEntityId)
     {
         var lineStep = document.Steps.Single(step => string.Equals(step.ToolId, "three-d-line-fit", StringComparison.Ordinal)
             && string.Equals(step.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase));
@@ -88,7 +132,7 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
             && string.Equals(step.OutputEntityId, inputId, StringComparison.OrdinalIgnoreCase)));
         var filterStep = document.Steps.Single(step => string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
             && string.Equals(step.OutputEntityId, filteredHeightFieldId, StringComparison.OrdinalIgnoreCase));
-        var filter = ToolRecipeFilterExecution.Execute(document, filterStep.Id, Path.GetDirectoryName(recipePath));
+        var filter = ToolRecipeFilterExecution.Execute(document, filterStep.Id, recipeDirectory);
         if (filter.Result.Status != ResultStatus.Pass || filter.Output is null) throw new InvalidDataException($"Runner upstream Filter failed: {filter.Result.Message}");
         var edge = ToolRecipeHeightDifferenceEdgeExecution.Execute(document, edgeStep.Id, filter.Output);
         if (edge.Result.Status != ResultStatus.Pass || edge.Output is null) throw new InvalidDataException($"Runner upstream Edge failed: {edge.Result.Message}");
@@ -100,4 +144,3 @@ internal static class ToolRecipeLandmarkCorrespondenceRunnerExecution
     private sealed record CornerExecution(ToolRecipeStep Step, C3DLineIntersectionFeature Output);
     private sealed record LineExecution(ToolRecipeStep Step, C3DLineFeature Output);
 }
-

@@ -1,3 +1,4 @@
+using System.Text;
 using System.Globalization;
 using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
@@ -95,6 +96,8 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
                 && saved?.ContentSha256 == adapterOutput.ContentSha256
                 && sourceFileUnchanged,
                 $"status={adapter.Result.Status};sourceBefore={sourceSha256Before};sourceAfter={sourceSha256After};bytesBefore={sourceBytesBefore.LongLength};bytesAfter={sourceBytesAfter.LongLength};output={adapter.Output?.ContentSha256};outputEntity={adapter.Output?.EntityId};outputPath={outputPath};isDerived={adapter.Output?.IsDerived};root={adapter.Output?.RootSourceSha256};mask={adapter.OutlierMask?.Sha256}"));
+
+        cases.Add(VerifyRunnerReportAtomicity(directory, recipePath));
 
         var connectedRecipe = CreateConnectedRecipe(fixture, Path.GetFileName(fixturePath));
         var connectedCanExecute = ToolRecipeOrderedGraphExecution.CanExecute(
@@ -298,6 +301,79 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
             && evaluation.OutlierMask is null,
             $"status={evaluation.Result.Status};message={evaluation.Result.Message}");
     }
+
+    private static (string Name, bool Passed, string Evidence) VerifyRunnerReportAtomicity(string directory, string recipePath)
+    {
+        var runnerOutputPath = Path.Combine(directory, "runner-remove-outliers-output.c3d");
+        var runnerReportPath = Path.Combine(directory, "runner-remove-outliers-report.json");
+        var firstExitCode = ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(recipePath, "step.remove-outliers.01", runnerOutputPath, runnerReportPath);
+        var firstBytes = File.ReadAllBytes(runnerReportPath);
+        var firstOutputBytes = File.ReadAllBytes(runnerOutputPath);
+        File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        var overwriteExitCode = ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(recipePath, "step.remove-outliers.01", runnerOutputPath, runnerReportPath);
+        var overwriteBytes = File.ReadAllBytes(runnerReportPath);
+        var overwriteOutputBytes = File.ReadAllBytes(runnerOutputPath);
+        var report = File.ReadAllText(runnerReportPath);
+        var lockedPath = Path.Combine(directory, "runner-remove-outliers-locked.json");
+        var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+        File.WriteAllBytes(lockedPath, lockedSentinel);
+        int lockedExitCode;
+        using (var lockedStream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            lockedExitCode = ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(recipePath, "step.remove-outliers.01", runnerOutputPath, lockedPath);
+        }
+        var lockedPreserved = lockedSentinel.SequenceEqual(File.ReadAllBytes(lockedPath));
+        var invalidParentMarker = Path.Combine(directory, "runner-remove-outliers-parent-file");
+        File.WriteAllText(invalidParentMarker, "parent-marker", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        var invalidParentReport = Path.Combine(invalidParentMarker, "report.json");
+        var invalidParentExitCode = ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(recipePath, "step.remove-outliers.01", runnerOutputPath, invalidParentReport);
+        var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-marker";
+        var lockedArtifactPath = Path.Combine(directory, "runner-remove-outliers-locked-artifact.c3d");
+        var lockedArtifactSentinel = Encoding.UTF8.GetBytes("locked-artifact");
+        File.WriteAllBytes(lockedArtifactPath, lockedArtifactSentinel);
+        int lockedArtifactExitCode;
+        using (var lockedArtifactStream = new FileStream(lockedArtifactPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            lockedArtifactExitCode = ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(
+                recipePath,
+                "step.remove-outliers.01",
+                lockedArtifactPath,
+                Path.Combine(directory, "locked-artifact-report.json"));
+        }
+        var lockedArtifactPreserved = lockedArtifactSentinel.SequenceEqual(File.ReadAllBytes(lockedArtifactPath));
+        var invalidArtifactParentMarker = Path.Combine(directory, "runner-remove-outliers-artifact-parent-file");
+        File.WriteAllText(invalidArtifactParentMarker, "artifact-parent-marker", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        var invalidArtifactExitCode = ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(
+            recipePath,
+            "step.remove-outliers.01",
+            Path.Combine(invalidArtifactParentMarker, "output.c3d"),
+            Path.Combine(directory, "invalid-artifact-report.txt"));
+        var invalidArtifactParentPreserved = File.ReadAllText(invalidArtifactParentMarker) == "artifact-parent-marker";
+        var temporaryFilesRemain = Directory.GetFiles(directory, "*.tmp.*").Length != 0;
+        var passed = firstExitCode == 0
+            && overwriteExitCode == 0
+            && firstBytes.Length > 0
+            && overwriteBytes.Length > 0
+            && firstOutputBytes.Length > 0
+            && overwriteOutputBytes.Length > 0
+            && firstOutputBytes.SequenceEqual(overwriteOutputBytes)
+            && report.Contains("\"status\": \"Pass\"", StringComparison.Ordinal)
+            && report.Contains("\"outlierMask\"", StringComparison.Ordinal)
+            && !report.Contains("pre-existing-output", StringComparison.Ordinal)
+            && !HasUtf8Bom(overwriteBytes)
+            && lockedExitCode == 5
+            && lockedPreserved
+            && invalidParentExitCode == 5
+            && invalidParentPreserved
+            && lockedArtifactExitCode == 5
+            && lockedArtifactPreserved
+            && invalidArtifactExitCode == 5
+            && invalidArtifactParentPreserved
+            && !temporaryFilesRemain;
+        return ("runner-report-atomicity", passed, $"firstExit={firstExitCode};overwriteExit={overwriteExitCode};lockedExit={lockedExitCode};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExitCode};invalidParentPreserved={invalidParentPreserved};lockedArtifactExit={lockedArtifactExitCode};lockedArtifactPreserved={lockedArtifactPreserved};invalidArtifactExit={invalidArtifactExitCode};invalidArtifactParentPreserved={invalidArtifactParentPreserved};firstReportBytes={firstBytes.Length};overwriteReportBytes={overwriteBytes.Length};artifactBytes={firstOutputBytes.Length}/{overwriteOutputBytes.Length};artifactStable={firstOutputBytes.SequenceEqual(overwriteOutputBytes)};sentinelPresent={report.Contains("pre-existing-output", StringComparison.Ordinal)};bom={HasUtf8Bom(overwriteBytes)};temporaryFilesRemain={temporaryFilesRemain};report={report.Replace(Environment.NewLine, ";")}");
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
 
     private static ToolRecipeDocument CreateRecipe(
         C3DHeightFieldSnapshot source,

@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
@@ -52,7 +53,7 @@ internal static class C3DRigidPointPairAlignmentRunnerExecution
 
             var output = evaluation.Output;
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-            File.WriteAllLines(fullReportPath,
+            WriteLinesAtomically(fullReportPath,
             [
                 "OpenVisionLab 3D Rigid Point Pair Alignment Runner report",
                 $"Specification|path={fullSpecificationPath}",
@@ -75,14 +76,70 @@ internal static class C3DRigidPointPairAlignmentRunnerExecution
                 or OverflowException
                 or JsonException)
         {
+            TryWriteErrorReport(fullReportPath, exception);
+            Console.Error.WriteLine(exception.Message);
+            return 5;
+        }
+    }
+
+    private static void TryWriteErrorReport(string fullReportPath, Exception exception)
+    {
+        try
+        {
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-            File.WriteAllLines(fullReportPath,
+            WriteLinesAtomically(fullReportPath,
             [
                 "OpenVisionLab 3D Rigid Point Pair Alignment Runner report",
                 $"Error|{exception.Message}"
             ]);
-            Console.Error.WriteLine(exception.Message);
-            return 5;
+        }
+        catch (Exception reportException) when (
+            reportException is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or InvalidOperationException
+                or OverflowException)
+        {
+            Console.Error.WriteLine($"Rigid point-pair alignment report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       bufferSize: 4096,
+                       leaveOpen: true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

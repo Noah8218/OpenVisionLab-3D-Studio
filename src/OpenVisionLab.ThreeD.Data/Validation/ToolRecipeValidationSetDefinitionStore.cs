@@ -20,6 +20,9 @@ public static class ToolRecipeValidationSetDefinitionStore
         return $"{Path.GetFullPath(recipePath)}.validation-set.json";
     }
 
+    private static string GetRecipeDirectory(string fullRecipePath) =>
+        Path.GetDirectoryName(fullRecipePath) ?? Environment.CurrentDirectory;
+
     public static void SaveForRecipe(
         string recipePath,
         ToolRecipeValidationSetDefinition definition)
@@ -27,8 +30,7 @@ public static class ToolRecipeValidationSetDefinitionStore
         ArgumentNullException.ThrowIfNull(definition);
         Validate(definition);
         var fullRecipePath = Path.GetFullPath(recipePath);
-        var recipeDirectory =
-            Path.GetDirectoryName(fullRecipePath) ?? Environment.CurrentDirectory;
+        var recipeDirectory = GetRecipeDirectory(fullRecipePath);
         var portable = definition with
         {
             Samples = definition.Samples
@@ -62,8 +64,7 @@ public static class ToolRecipeValidationSetDefinitionStore
             ?? throw new InvalidDataException(
                 "Validation Set role manifest JSON is empty.");
         Validate(definition);
-        var recipeDirectory =
-            Path.GetDirectoryName(fullRecipePath) ?? Environment.CurrentDirectory;
+        var recipeDirectory = GetRecipeDirectory(fullRecipePath);
         return definition with
         {
             Samples = definition.Samples

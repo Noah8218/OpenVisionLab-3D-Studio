@@ -39,9 +39,11 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
         string frameId,
         CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var fullPath = Path.GetFullPath(path);
         var sourceBinding = SourceBinding;
         return await GetOrLoadDecodedSourceAsyncCore(
-            path,
+            fullPath,
             entityId,
             unit,
             frameId,
@@ -49,7 +51,7 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
             cancellationToken,
             loadToken => Task.FromResult(
                 LoadDecodedSource(
-                    path,
+                    fullPath,
                     entityId,
                     unit,
                     frameId,
@@ -64,17 +66,20 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
         string frameId,
         CancellationToken cancellationToken,
         Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync)
-        => GetOrLoadDecodedSourceAsyncCore(
-            path,
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return GetOrLoadDecodedSourceAsyncCore(
+            Path.GetFullPath(path),
             entityId,
             unit,
             frameId,
             SourceBinding,
             cancellationToken,
             loadSourceAsync);
+    }
 
     private async Task<C3DHeightFieldSnapshot> GetOrLoadDecodedSourceAsyncCore(
-        string path,
+        string fullPath,
         string entityId,
         string unit,
         string frameId,
@@ -82,13 +87,12 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
         CancellationToken cancellationToken,
         Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
         ArgumentException.ThrowIfNullOrWhiteSpace(unit);
         ArgumentException.ThrowIfNullOrWhiteSpace(frameId);
         ArgumentNullException.ThrowIfNull(loadSourceAsync);
 
-        var fullPath = Path.GetFullPath(path);
         var file = new FileInfo(fullPath);
         var sourceKey = string.Join(
             "|",
@@ -120,9 +124,11 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
                 operation = new AsyncLoadCancellation();
                 decodedSourceCancellation = operation;
                 decodedSourceKey = sourceKey;
+                // Always start the wrapper, even when retirement races with task
+                // scheduling. The wrapper owns the operation and disposes it in
+                // its finally block before the task becomes observable complete.
                 decodedSourceTask = Task.Run(
-                    () => loadSourceAsync(operation.Token),
-                    operation.Token);
+                    () => RunLoadAndDisposeAsync(operation, loadSourceAsync));
             }
 
             operation = decodedSourceCancellation!;
@@ -224,14 +230,13 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
     }
 
     private C3DHeightFieldSnapshot LoadDecodedSource(
-        string path,
+        string fullPath,
         string entityId,
         string unit,
         string frameId,
         ToolRecipeSelectionSourceBinding? sourceBinding,
         CancellationToken cancellationToken)
     {
-        var fullPath = Path.GetFullPath(path);
         if (sourceBinding is not { } binding
             || !string.Equals(binding.Format, "C3D", StringComparison.OrdinalIgnoreCase))
         {
@@ -279,5 +284,19 @@ internal sealed class ToolWorkbenchSourceSession : IDisposable
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
+    }
+
+    private static async Task<C3DHeightFieldSnapshot> RunLoadAndDisposeAsync(
+        AsyncLoadCancellation operation,
+        Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync)
+    {
+        try
+        {
+            return await loadSourceAsync(operation.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            operation.Dispose();
+        }
     }
 }

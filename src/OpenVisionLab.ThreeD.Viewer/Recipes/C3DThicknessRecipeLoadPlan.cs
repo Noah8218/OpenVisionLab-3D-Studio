@@ -1,6 +1,7 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 
 namespace OpenVisionLab.ThreeD.Viewer.Recipes;
 
@@ -23,7 +24,7 @@ public sealed record C3DThicknessRecipeLoadPlan(
         ArgumentNullException.ThrowIfNull(recipe);
 
         var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-        var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints);
+        var grid = C3DSourceLoadPreparation.LoadSynchronously(sourcePath, maxRenderedPoints);
         if (!IsRoiInside(recipe.Step.Roi, grid))
         {
             throw new InvalidDataException("Thickness recipe ROI is outside the loaded C3D grid.");

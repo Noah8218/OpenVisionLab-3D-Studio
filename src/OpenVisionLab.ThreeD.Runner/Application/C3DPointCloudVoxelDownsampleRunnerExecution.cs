@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -66,7 +67,7 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
                     points = output.Points.Select(point => new { x = point.X, y = point.Y, z = point.Z })
                 }
             };
-            File.WriteAllText(
+            WriteTextAtomically(
                 outputPath,
                 JsonSerializer.Serialize(outputDocument, new JsonSerializerOptions { WriteIndented = true }));
 
@@ -161,7 +162,7 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
                     "Deterministic XYZ voxel-downsample preparation evidence; no interpolation, alignment, calibration, physical measurement acceptance, or metrology claim."
             };
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllText(
+            WriteTextAtomically(
                 fullReportPath,
                 JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"Point-cloud voxel-downsample output: {outputPath}");
@@ -178,15 +179,79 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
                 or InvalidOperationException
                 or OverflowException)
         {
+            TryWriteErrorReport(fullReportPath, exception);
+            Console.Error.WriteLine(exception.Message);
+            return 5;
+        }
+    }
+
+    private static void TryWriteErrorReport(string fullReportPath, Exception exception)
+    {
+        try
+        {
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
+            WriteLinesAtomically(
                 fullReportPath,
                 [
                     "OpenVisionLab 3D Point-Cloud Voxel Downsample Runner report",
                     $"Error|{exception.Message}"
                 ]);
-            Console.Error.WriteLine(exception.Message);
-            return 5;
+        }
+        catch (Exception reportException) when (
+            reportException is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or InvalidOperationException
+                or OverflowException)
+        {
+            Console.Error.WriteLine($"Point-cloud voxel-downsample report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteTextAtomically(string path, string text) =>
+        WriteAtomically(path, writer => writer.Write(text));
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines) =>
+        WriteAtomically(path, writer =>
+        {
+            foreach (var line in lines)
+            {
+                writer.WriteLine(line);
+            }
+        });
+
+    private static void WriteAtomically(string path, Action<StreamWriter> write)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(
+                       stream,
+                       new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                       bufferSize: 4096,
+                       leaveOpen: true))
+            {
+                write(writer);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 

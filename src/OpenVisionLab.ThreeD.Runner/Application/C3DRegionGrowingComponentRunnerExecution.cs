@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -63,7 +64,7 @@ internal static class C3DRegionGrowingComponentRunnerExecution
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Environment.CurrentDirectory);
-            evaluation.Output.SaveC3D(outputPath);
+            SaveC3DAtomically(evaluation.Output, outputPath);
             var output = evaluation.Output;
             var evidence = evaluation.Evidence;
             var report = new
@@ -157,7 +158,7 @@ internal static class C3DRegionGrowingComponentRunnerExecution
                     "Deterministic selected connected-region component preparation; no automatic region selection, calibration, physical measurement acceptance, or metrology claim."
             };
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllText(
+            WriteTextAtomically(
                 fullReportPath,
                 JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"Region-growing component output: {outputPath}");
@@ -174,16 +175,89 @@ internal static class C3DRegionGrowingComponentRunnerExecution
                 or InvalidOperationException
                 or OverflowException)
         {
+            TryWriteErrorReport(fullReportPath, exception);
+            Console.Error.WriteLine(exception.Message);
+            return 5;
+        }
+    }
+
+    private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
+        => WriteAtomically(path, output.SaveC3D);
+
+    private static void TryWriteErrorReport(string fullReportPath, Exception exception)
+    {
+        try
+        {
             Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
+            WriteLinesAtomically(
                 fullReportPath,
                 [
                     "OpenVisionLab 3D Region-Growing Component Runner report",
                     $"Error|{exception.Message}"
                 ]);
-            Console.Error.WriteLine(exception.Message);
-            return 5;
         }
+        catch (Exception reportException) when (
+            reportException is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or InvalidOperationException
+                or OverflowException)
+        {
+            Console.Error.WriteLine($"Region-growing component report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteTextAtomically(string path, string text) =>
+        WriteAtomically(path, temporaryPath => WriteUtf8File(
+            temporaryPath,
+            writer => writer.Write(text)));
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines) =>
+        WriteAtomically(path, temporaryPath => WriteUtf8File(
+            temporaryPath,
+            writer =>
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+            }));
+
+    private static void WriteAtomically(string path, Action<string> write)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            write(temporaryPath);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
+    private static void WriteUtf8File(string path, Action<StreamWriter> write)
+    {
+        using var stream = new FileStream(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            FileOptions.WriteThrough);
+        using var writer = new StreamWriter(
+            stream,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            bufferSize: 4096,
+            leaveOpen: true);
+        write(writer);
+        writer.Flush();
+        stream.Flush(flushToDisk: true);
     }
 
     private static C3DHeightFieldSnapshot LoadSource(

@@ -120,8 +120,8 @@ internal static class InspectionWorkspaceSelectionVerification
             Check(
                 "selected-tool facade projects three inputs, two ROI roles, and one output",
                 workbench.SelectedToolWorkspace.Inputs.Count == 3
-                && workbench.SelectedToolWorkspace.Inputs[0].State == "Ready"
-                && workbench.SelectedToolWorkspace.Inputs.Skip(1).All(item => item.State == "Missing")
+                && workbench.SelectedToolWorkspace.Inputs[0].State == workbench.Localization.FlowPortReady
+                && workbench.SelectedToolWorkspace.Inputs.Skip(1).All(item => item.State == workbench.Localization.RoiMissing)
                  && workbench.SelectedToolWorkspace.Regions.Count == 2
                  && workbench.SelectedToolWorkspace.Regions[0].Role == InspectionWorkspaceRegionRole.Reference
                  && workbench.SelectedToolWorkspace.Regions[0].Lifecycle == InspectionWorkspaceRegionLifecycleState.Missing

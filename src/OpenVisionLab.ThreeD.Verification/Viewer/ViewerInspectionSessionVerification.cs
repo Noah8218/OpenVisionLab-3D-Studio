@@ -1,4 +1,5 @@
 using System.IO;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Verification.Viewer;
@@ -21,8 +22,8 @@ internal static class ViewerInspectionSessionVerification
             Check(
                 "default state is the synthetic preview identity",
                 session.ActiveKind == ViewerInspectionKind.SyntheticHeightDeviation
-                && session.SourceEntityId == MainWindowViewModel.PointCloudEntityId
-                && session.ResultEntityId == MainWindowViewModel.SyntheticResultEntityId,
+                && session.SourceEntityId == ViewerEntityIds.PointCloudEntityId
+                && session.ResultEntityId == ViewerEntityIds.SyntheticResultEntityId,
                 $"{session.ActiveKind}|{session.SourceEntityId}|{session.ResultEntityId}");
 
             var identities = new List<(string PreviewLayerId, string ResultEntityId, string SourceEntityId)>();
@@ -56,10 +57,10 @@ internal static class ViewerInspectionSessionVerification
                 identities.Select(identity => identity.SourceEntityId).Distinct(StringComparer.Ordinal).Order().SequenceEqual(
                     new[]
                     {
-                        MainWindowViewModel.C3DEntityId,
-                        MainWindowViewModel.C3DWarpageEntityId,
-                        MainWindowViewModel.LazEntityId,
-                        MainWindowViewModel.PointCloudEntityId
+                        ViewerEntityIds.C3DEntityId,
+                        ViewerEntityIds.C3DWarpageEntityId,
+                        ViewerEntityIds.LazEntityId,
+                        ViewerEntityIds.PointCloudEntityId
                     }.Order(),
                     StringComparer.Ordinal),
                 string.Join(",", identities.Select(identity => identity.SourceEntityId).Distinct(StringComparer.Ordinal)));
@@ -71,8 +72,8 @@ internal static class ViewerInspectionSessionVerification
                 session.ActiveKind == ViewerInspectionKind.SyntheticHeightDeviation
                 && session.PreviewLayerId == "layer.preview.synthetic-height-deviation"
                 && session.PreviewLayerName == "Preview: Synthetic Height Deviation"
-                && session.SourceEntityId == MainWindowViewModel.PointCloudEntityId
-                && session.ResultEntityId == MainWindowViewModel.SyntheticResultEntityId
+                && session.SourceEntityId == ViewerEntityIds.PointCloudEntityId
+                && session.ResultEntityId == ViewerEntityIds.SyntheticResultEntityId
                 && session.ResultEntityName == "Published Synthetic Height Deviation",
                 $"{session.ActiveKind}|{session.PreviewLayerId}|{session.ResultEntityId}");
 

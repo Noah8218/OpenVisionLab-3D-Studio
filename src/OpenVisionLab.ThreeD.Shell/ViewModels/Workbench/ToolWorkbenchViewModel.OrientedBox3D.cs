@@ -5,16 +5,14 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 public sealed partial class ToolWorkbenchViewModel
 {
-    private void InitializeOrientedBox3DEditing()
-    {
-        OrientedBoxEditor.ApplyRequested += OnOrientedBoxApplyRequested;
-        OrientedBoxEditor.DeleteRequested += OnOrientedBoxDeleteRequested;
-        OrientedBoxEditor.DraftChanged += OnOrientedBoxDraftChanged;
-    }
+    private ToolWorkbenchOrientedBoxEventCoordinator CreateOrientedBoxEventCoordinator() =>
+        new(
+            OrientedBoxEditor,
+            OnOrientedBoxDraftChanged,
+            OnOrientedBoxApplyRequested,
+            OnOrientedBoxDeleteRequested);
 
-    private void OnOrientedBoxDraftChanged(
-        object? sender,
-        OrientedBox3DDraftChangedEventArgs args)
+    private void OnOrientedBoxDraftChanged(OrientedBox3DDraftChangedEventArgs args)
     {
         OnPropertyChanged(nameof(IsSelectionCandidateActive));
         OnPropertyChanged(nameof(IsPipelineReviewExpanded));
@@ -26,9 +24,7 @@ public sealed partial class ToolWorkbenchViewModel
         teachingSelectionCaptureOwner.RefreshCommandStates();
     }
 
-    private void OnOrientedBoxApplyRequested(
-        object? sender,
-        OrientedBox3DApplyRequestedEventArgs args)
+    private void OnOrientedBoxApplyRequested(OrientedBox3DApplyRequestedEventArgs args)
     {
         var selection = args.Selection;
         if (SourceSession.SourceBinding is null
@@ -62,9 +58,7 @@ public sealed partial class ToolWorkbenchViewModel
             $"OrientedBox3D applied | selection={selection.Id} | frame={selection.FrameId} | recipeChanged=true | inspectionRun=false.");
     }
 
-    private void OnOrientedBoxDeleteRequested(
-        object? sender,
-        OrientedBox3DDeleteRequestedEventArgs args)
+    private void OnOrientedBoxDeleteRequested(OrientedBox3DDeleteRequestedEventArgs args)
     {
         var selection = Selections.FirstOrDefault(item =>
             item.Kind == ToolRecipeSelectionKinds.OrientedBox3D

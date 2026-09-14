@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -12,13 +11,13 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Automation;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Loading;
-using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Localization;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -67,6 +66,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private readonly HeightGridPoint[] generatedPointCloud = ViewerGeneratedPointCloudFactory.Create();
     private readonly ViewerSourceLoadOperationCoordinator sourceLoadOperations = new();
+    private readonly ViewerOnlySourceLoadCoordinator viewerOnlySourceLoadCoordinator;
     private readonly C3DHeightGridRenderProxyCache c3dRenderProxyCache = new();
     private readonly C3DRenderResourceState c3dRenderResources = new();
     private C3DHeightGrid? c3dSample;
@@ -83,35 +83,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         set => c3dRenderResources.DisplayListKey = value;
     }
 
-    private C3DGpuBufferSet? c3dGpuBuffers
-    {
-        get => c3dRenderResources.GpuBuffers;
-        set => c3dRenderResources.GpuBuffers = value;
-    }
+    private C3DGpuBufferSet? c3dGpuBuffers => c3dRenderResources.GpuBuffers;
 
-    private C3DGpuBufferKey? c3dGpuBufferKey
-    {
-        get => c3dRenderResources.GpuBufferKey;
-        set => c3dRenderResources.GpuBufferKey = value;
-    }
+    private bool c3dGpuReleasePending => c3dRenderResources.GpuReleasePending;
 
-    private C3DGpuBufferKey? c3dGpuFailedKey
-    {
-        get => c3dRenderResources.GpuFailedKey;
-        set => c3dRenderResources.GpuFailedKey = value;
-    }
-
-    private bool c3dGpuReleasePending
-    {
-        get => c3dRenderResources.GpuReleasePending;
-        set => c3dRenderResources.GpuReleasePending = value;
-    }
-
-    private bool c3dGpuBuffersAvailable
-    {
-        get => c3dRenderResources.GpuBuffersAvailable;
-        set => c3dRenderResources.GpuBuffersAvailable = value;
-    }
+    private bool c3dGpuBuffersAvailable => c3dRenderResources.GpuBuffersAvailable;
 
     private uint c3dInteractionDisplayListId
     {
@@ -124,19 +100,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         get => c3dRenderResources.InteractionDisplayListKey;
         set => c3dRenderResources.InteractionDisplayListKey = value;
     }
-    private int c3dGpuUploadCount;
-    private int c3dGpuReleaseCount;
-    private int c3dGpuReleaseFailureCount;
-    private int c3dGpuFallbackCount;
-    private int c3dGpuDrawCount;
-    private long c3dGpuUploadedBytes;
-    private double lastC3DGpuUploadMilliseconds;
-    private string lastC3DGpuFailure = string.Empty;
+    private readonly C3DGpuTelemetry c3dGpuTelemetry = new();
     private string openGLVendor = "(pending)";
     private string openGLRenderer = "(pending)";
     private string openGLVersion = "(pending)";
     private ImportedMesh? importedMesh;
-    private readonly ViewerLazPointCloudState lazSourceState = new();
+    private readonly ViewerLazPointCloudSession lazPointCloudSession = new();
+    private ViewerLazPointCloudState lazSourceState => lazPointCloudSession.State;
     private LazPointCloudMetadata? lazSample
     {
         get => lazSourceState.Metadata;
@@ -149,18 +119,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         set => lazSourceState.PointCloud = value;
     }
 
-    private readonly LazPointCloudSampleCache lazPointCloudCache = new();
-    private readonly LazPointCloudLoadCoordinator lazPointCloudLoadCoordinator;
-    private Task lazPointCloudReloadTask = Task.CompletedTask;
-    private bool suppressLazPointCloudDensityReload;
-    private int lazPointCloudLoadRequestCount;
-    private int lazPointCloudDensityEventReloadCount;
-    private int lazPointCloudSmokeReloadCount;
-    private int lazPointCloudDecodeCount;
-    private int lazPointCloudCacheHitCount;
-    private int lazPointCloudCancellationCount;
-    private int lazPointCloudProgressUpdateCount;
-    private double lazPointCloudLastProgress;
+    private LazPointCloudSampleCache lazPointCloudCache => lazPointCloudSession.Cache;
+    private LazPointCloudLoadCoordinator lazPointCloudLoadCoordinator => lazPointCloudSession.LoadCoordinator;
+    private readonly LazPointCloudLoadTelemetry lazPointCloudLoadTelemetry = new();
     private LazSceneTransform lazSceneTransform
     {
         get => lazSourceState.SceneTransform;
@@ -171,81 +132,39 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private int? selectedImportedMeshTriangleIndex;
     private Vector3? selectedImportedMeshSurfaceNormal;
     private LazPointCloudPoint? selectedLazPoint;
-    private ImportedMesh? importedMeshTextureSource;
-    private uint importedMeshTextureId;
-    private bool importedMeshTextureReleasePending;
-    private int importedMeshTextureUploadCount;
-    private int importedMeshTextureReleaseCount;
-    private int importedMeshTextureReleaseFailureCount;
-    private bool importedMeshTextureUploadFailed;
-    private string importedMeshTextureUploadSummary = "texture none";
-    private string? smokeScreenshotPath;
-    private string? smokeScreenshotQualityReportPath;
-    private string? smokeContractsPath;
-    private string? smokePointerInputReportPath;
-    private string? smokeSaveRecipePath;
-    private bool smokePublishResult;
-    private bool smokeNominalActualPreview;
-    private bool smokeReloadImportedMeshTexture;
-    private bool smokeReloadLazPointCloudCache;
-    private bool smokeRaceLazPointCloudDensityLoads;
-    private string? smokeLazProgressScreenshotPath;
+    private readonly ImportedMeshTextureState importedMeshTextureState = new();
     private bool smokeLazProgressScreenshotCaptured;
-    private int smokeRenderFrameCount;
-    private int smokeRenderFramesCompleted;
-    private int smokeExitCode;
     private readonly MainWindowViewModel viewModel = new();
-    private readonly EventHandler fitAllRequestedHandler;
-    private readonly EventHandler fitSelectionRequestedHandler;
-    private readonly EventHandler fitRoiRequestedHandler;
-    private readonly EventHandler topViewRequestedHandler;
-    private readonly EventHandler perspectiveViewRequestedHandler;
-    private readonly EventHandler resetRequestedHandler;
-    private readonly EventHandler openRecipeRequestedHandler;
-    private readonly EventHandler saveRecipeRequestedHandler;
-    private readonly EventHandler applyRoiAlignmentRequestedHandler;
-    private readonly EventHandler fitPlaneRequestedHandler;
-    private readonly EventHandler previewThicknessRequestedHandler;
-    private readonly EventHandler previewWarpageRequestedHandler;
-    private readonly EventHandler previewPlaneFlatnessRequestedHandler;
-    private readonly EventHandler previewPointPairDimensionsRequestedHandler;
-    private readonly EventHandler previewGapFlushRequestedHandler;
-    private readonly EventHandler previewVolumeRequestedHandler;
-    private readonly EventHandler previewCrossSectionRequestedHandler;
-    private readonly EventHandler screenshotRequestedHandler;
-    private readonly EventHandler profileViewRequestedHandler;
-    private readonly EventHandler publishPreviewResultRequestedHandler;
-    private readonly EventHandler<NominalActualPreviewRequestedEventArgs> nominalActualPreviewRequestedHandler;
-    private readonly EventHandler<NominalActualPublishRequestedEventArgs> nominalActualPublishRequestedHandler;
-    private readonly PropertyChangedEventHandler viewModelPropertyChangedHandler;
-    private readonly PropertyChangedEventHandler nominalActualPropertyChangedHandler;
-    private readonly EventHandler languageChangedHandler;
+    private readonly ViewerHostEditorSurface editor;
+    private readonly ViewerHostDisplayEditorSurface displayEditor;
+    private readonly ViewerHostNominalActualEditorSurface nominalActualEditor;
+    private readonly ViewerHostLinkedViewSurface linkedView;
+    private readonly ViewerHostStateCoordinator hostStateCoordinator;
+    private readonly ViewerHostOperationFacade hostOperations;
+    private readonly ViewerWorkbenchOverlayRenderer workbenchOverlayRenderer;
+    private readonly ViewerEventSubscription viewerEventSubscription;
+    private readonly ViewerVisibleFrameRequestCoordinator visibleFrameRequests;
+    private readonly ViewerSourceUnloadCancellationCoordinator sourceUnloadCancellation;
+    private readonly ViewerLanguageRefreshCoordinator languageRefresh;
     private readonly NominalActualComparisonExecutor nominalActualComparisonExecutor = new();
+    private readonly NominalActualComparisonCoordinator nominalActualComparisonCoordinator;
+    private readonly C3DRoiEditingSession roiEditingSession;
+    private readonly ViewerRecipeSaveWorkflow recipeSaveWorkflow;
+    private readonly ViewerRecipeLoadWorkflow recipeLoadWorkflow;
+    private readonly IViewerRecipeDialogHost recipeDialogHost;
+    private readonly IViewerSamplePathResolver samplePathResolver;
+    private readonly IViewerLocalizationProvider localizationProvider;
+    private readonly ViewerSmokeScenarioRunner smokeScenario;
+    private readonly C3DInteractionLodState interactionLodState = new();
+    private readonly ViewerLinkedHeightHoverSamplingState linkedHeightHoverSampling = new();
     private readonly CancellationTokenSource viewerLifetimeCancellation = new();
     private readonly CancellationToken viewerLifetimeToken;
     private int disposalState;
-    private bool viewModelEventsSubscribed;
     private bool isOrbiting;
     private bool isPanning;
     private bool pointerInputRegressionActive;
-    private int pointerInputMouseDownCount;
-    private int pointerInputMouseMoveCount;
-    private int pointerInputMouseUpCount;
-    private int pointerInputMouseWheelCount;
-    private int pointerInputMouseMoveTimingCount;
-    private double pointerInputMouseMoveTotalMilliseconds;
-    private double pointerInputMouseMoveMaximumMilliseconds;
-    private long pointerInputLastMouseMoveTimestamp;
-    private int pointerInputNextFrameTimingCount;
-    private double pointerInputNextFrameTotalMilliseconds;
-    private double pointerInputNextFrameMaximumMilliseconds;
-    private int pointerInputScheduledMouseMoveRenderCount;
-    private int pointerInputImmediateMouseMoveRenderCount;
-    private bool isHandlingPointerMouseMove;
+    private readonly ViewerInteractionTelemetry interactionTelemetry = new();
     private PointerInputRegressionResult? pointerInputRegressionResult;
-    private string? smokePickTarget;
-    private string? smokeMeasureMode;
-    private string? smokeNextRenderDensity;
     private HeightGridPoint? twoPointFirst;
     private HeightGridPoint? twoPointSecond;
     private HeightGridPoint? profileFirst;
@@ -259,40 +178,17 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private Vector3? importedMeshTwoPointSecond;
     private LazPointCloudPoint? lazTwoPointFirst;
     private LazPointCloudPoint? lazTwoPointSecond;
-    private (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY)? roiStepLeftBounds;
-    private (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY)? roiStepRightBounds;
-    private Vector3? roiStepLeftCenter;
-    private Vector3? roiStepRightCenter;
-    private Vector3? roiStepLeftAnchor;
-    private Vector3? roiStepRightAnchor;
-    private HeightDeviationRecipeRoiRegion? roiStepLeftRecipeRegion;
-    private HeightDeviationRecipeRoiRegion? roiStepRightRecipeRegion;
     private (Vector3 A, Vector3 B, Vector3 C, Vector3 D, Vector3 Target, Vector3 Projection)? planeReferenceMeasurement;
-    private PlaneFlatnessEvaluation? planeFlatnessEvaluation;
-    private bool roiStepInteractiveSelection;
-    private bool roiStepNextPickSetsRight;
-    private bool suppressRecipeParameterSync;
-    private long lastFrameTimestamp;
-    private int performanceFrameCount;
-    private int performanceDrawCount;
-    private double accumulatedFrameIntervalMilliseconds;
-    private double accumulatedDrawMilliseconds;
+    private ViewerPlaneFlatnessDisplayEvaluation? planeFlatnessEvaluation;
     private int c3dDisplayListBuildCount;
     private int c3dDisplayListReleaseCount;
     private int c3dDisplayListReleaseFailureCount;
     private double lastC3DDisplayListBuildMilliseconds;
     private string lastC3DDisplayListBuildReason = "none";
     private string pendingC3DDisplayListBuildReason = "initial";
-    private bool c3dSourceApplyActive;
-    private bool c3dSourceApplyRenderSuppressed;
-    private int c3dSourceApplyRenderRequestCount;
-    private int c3dSourceApplySuppressedRenderRequestCount;
-    private int c3dSourceApplyRenderExecutionCount;
-    private double c3dSourceApplyRenderExecutionMilliseconds;
-    private int openGLResourceRetirementAttemptCount;
-    private int openGLResourceRetirementCallbackCount;
-    private int openGLResourceRetirementContextUnavailableCount;
-    private int openGLResourceRetirementFailureCount;
+    private readonly C3DSourceApplyRenderState c3dSourceApplyRenderState = new();
+    private readonly OpenGLResourceRetirementTelemetry openGLResourceRetirementTelemetry = new();
+    private readonly OpenGLResourceRetirementCoordinator openGLResourceRetirement;
     private Point lastMousePosition;
 
     internal bool IsDisposed => Volatile.Read(ref disposalState) != 0;
@@ -367,43 +263,232 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     }
 
     public OpenVisionThreeDViewerControl(bool loadDefaultSamples)
+        : this(loadDefaultSamples, recipeDialogHost: null, samplePathResolver: null)
     {
+    }
+
+    public OpenVisionThreeDViewerControl(bool loadDefaultSamples, IViewerRecipeDialogHost? recipeDialogHost)
+        : this(loadDefaultSamples, recipeDialogHost, samplePathResolver: null)
+    {
+    }
+
+    public OpenVisionThreeDViewerControl(
+        bool loadDefaultSamples,
+        IViewerRecipeDialogHost? recipeDialogHost,
+        IViewerSamplePathResolver? samplePathResolver)
+        : this(loadDefaultSamples, recipeDialogHost, samplePathResolver, localizationProvider: null)
+    {
+    }
+
+    public OpenVisionThreeDViewerControl(
+        bool loadDefaultSamples,
+        IViewerRecipeDialogHost? recipeDialogHost,
+        IViewerSamplePathResolver? samplePathResolver,
+        IViewerLocalizationProvider? localizationProvider)
+    {
+        this.recipeDialogHost = recipeDialogHost ?? new ViewerRecipeDialogHost(this);
+        this.samplePathResolver = samplePathResolver ?? new ViewerSamplePathResolver();
+        this.localizationProvider = localizationProvider ?? ViewerLocalization.Shared;
+        ViewerLocalizationScope.Attach(this, this.localizationProvider);
         viewerLifetimeToken = viewerLifetimeCancellation.Token;
-        lazPointCloudLoadCoordinator = new(lazPointCloudCache);
+        hostStateCoordinator = new ViewerHostStateCoordinator(
+            () => ViewerHostStateProjection.From(
+                viewModel,
+                new ViewerHostSourceState(
+                    CurrentC3DSourcePath,
+                    CurrentViewerOnlySourcePath,
+                    CurrentViewerOnlySourceFormat)),
+            () => IsDisposed,
+            PublishHostStateChanged);
+        viewerOnlySourceLoadCoordinator = new ViewerOnlySourceLoadCoordinator(lazPointCloudLoadCoordinator);
+        openGLResourceRetirement = new OpenGLResourceRetirementCoordinator(
+            ReleaseC3DGpuBuffers,
+            ReleaseImportedMeshTexture,
+            ReleaseC3DDisplayLists,
+            DropOpenGLResourceReferencesAfterDispose,
+            openGLResourceRetirementTelemetry);
+        roiEditingSession = new C3DRoiEditingSession(viewModel, () => c3dSample, ClearPlaneReferenceMeasurement, RenderNow);
+        smokeScenario = new ViewerSmokeScenarioRunner(new SmokeViewAdapter(this), viewerLifetimeToken);
+        nominalActualComparisonCoordinator = new NominalActualComparisonCoordinator(
+            viewModel,
+            nominalActualComparisonExecutor,
+            viewerLifetimeToken,
+            () => IsDisposed,
+            RenderNow,
+            () =>
+            {
+                if (smokeScenario.NominalActualPreviewRequested)
+                {
+                    smokeScenario.MarkFailed();
+                }
+            });
+        recipeSaveWorkflow = new ViewerRecipeSaveWorkflow(
+            viewModel,
+            () => c3dSample,
+            () => lazPointCloud,
+            () => lazPointCloud is not null
+                && (!viewModel.RecipeOutputEnabled
+                    || (lazTwoPointFirst is not null
+                        && lazTwoPointSecond is not null
+                        && viewModel.SelectedEntity.Contains("Two Point Measurement", StringComparison.OrdinalIgnoreCase)))
+                && viewModel.LazSampleVisible,
+            () => lazTwoPointFirst is not null && lazTwoPointSecond is not null,
+            () => viewModel.SelectedSelectionMode == RoiStepSelectionMode,
+            requireRoi =>
+            {
+                roiEditingSession.ValidateRecipeState(requireRoi, out var warning);
+                return new ViewerRecipeValidationResult(warning == "Validation: OK", warning);
+            },
+            () =>
+            {
+                roiEditingSession.ValidatePlaneFlatnessRecipeState(out var warning);
+                return new ViewerRecipeValidationResult(warning == "Validation: OK", warning);
+            },
+            roiEditingSession.CreateCurrentRoiStepRecipe,
+            ResolveCurrentRecipeSourcePath,
+            SetRecipeValidationOk,
+            SetRecipeValidationWarning);
+        recipeLoadWorkflow = new ViewerRecipeLoadWorkflow(
+            new ViewerRecipeLoadWorkflowCallbacks(
+                viewModel,
+                loaded => c3dSample = loaded,
+                loaded =>
+                {
+                    lazPointCloud = loaded;
+                    lazSample = loaded.Metadata;
+                },
+                LoadLazPointCloud,
+                LoadLazPointCloudAsync,
+                SetLoadedLazPointCloudTelemetry,
+                () =>
+                {
+                    lazTwoPointFirst = null;
+                    lazTwoPointSecond = null;
+                    selectedLazPoint = null;
+                },
+                heightUnit => ApplySmokeLazTwoPointMeasurement(heightUnit),
+                ApplySmokeStl,
+                () => importedMesh is not null,
+                () => smokeScenario.RequireNominalActualPreview(),
+                SetC3DSampleStatus,
+                roiEditingSession.ApplyRecipeRoiStep,
+                PreviewC3DPlaneFlatness,
+                PreviewC3DVolume,
+                PreviewC3DCrossSection,
+                () =>
+                {
+                    planeFlatnessEvaluation = null;
+                    planeReferenceMeasurement = null;
+                },
+                ClearWarpageTransientInspectionState,
+                roiEditingSession.ApplyGapFlushRecipeRoiState,
+                roiEditingSession.ApplyGapFlushPreviewOverlay,
+                (first, second) => SetTwoPointMeasurement(first, second, updatePointPairReferences: false),
+                RenderNow,
+                () => IsDisposed,
+                SetRecipeLoadFailure));
         InitializeComponent();
         if (useSoftwareRenderingForProcess)
         {
             Viewport.RenderContextType = RenderContextType.DIBSection;
         }
 
+        if (Resources["ViewerRuntimeTextConverter"] is ViewerRuntimeTextConverter runtimeTextConverter)
+        {
+            runtimeTextConverter.Localization = this.localizationProvider;
+        }
+
+        sourceUnloadCancellation = new ViewerSourceUnloadCancellationCoordinator(
+            Dispatcher,
+            () => IsDisposed,
+            () => IsLoaded,
+            () =>
+            {
+                sourceLoadOperations.CancelCurrent();
+                lazPointCloudLoadCoordinator.CancelCurrent();
+            });
+        languageRefresh = new ViewerLanguageRefreshCoordinator(
+            Dispatcher,
+            () => IsDisposed,
+            () => IsLoaded,
+            viewModel.RefreshLocalizedPresentation);
+        visibleFrameRequests = new ViewerVisibleFrameRequestCoordinator(
+            Dispatcher,
+            () => IsDisposed,
+            () => IsLoaded
+                && IsVisible
+                && Viewport.IsVisible
+                && Viewport.ActualWidth >= 2
+                && Viewport.ActualHeight >= 2,
+            () =>
+            {
+                Viewport.UpdateLayout();
+                Viewport.RenderTrigger = RenderTrigger.Manual;
+                Viewport.DoRender();
+                Viewport.RenderTrigger = RenderTrigger.TimerBased;
+                Viewport.InvalidateVisual();
+            });
+        workbenchOverlayRenderer = new ViewerWorkbenchOverlayRenderer(
+            new ViewerWorkbenchOverlayCallbacks(
+                () => viewModel.IsWorkbenchAffineApplyPublished,
+                () => viewModel.IsWorkbenchRegridHeightFieldPublished,
+                () => viewModel.C3DSampleVisible,
+                () => viewModel.CameraDistance,
+                () => Viewport.ActualWidth,
+                () => Viewport.ActualHeight,
+                CreatePickRay,
+                () => viewModel.AppliedTeachingSelections,
+                () => viewModel.TeachingCaptureSnapshot,
+                () => viewModel.TeachingCaptureSourceBinding));
+        hostOperations = new ViewerHostOperationFacade(
+            viewModel,
+            () => IsDisposed,
+            RequestVisibleFrame,
+            new ViewerHostOperationCallbacks(
+                () => ExecuteViewModelCommand(viewModel.FitAllCommand),
+                () => ExecuteViewModelCommand(viewModel.FitSelectionCommand),
+                () => ExecuteViewModelCommand(viewModel.FitRoiCommand),
+                () => ExecuteViewModelCommand(viewModel.TopViewCommand),
+                () => ExecuteViewModelCommand(viewModel.PerspectiveViewCommand),
+                () => ExecuteViewModelCommand(viewModel.ResetCommand),
+                path => recipeSaveWorkflow.Save(path, isSmoke: false)));
+
         UpdateSidePanelsVisibility();
         DataContext = viewModel;
-        fitAllRequestedHandler = (_, _) => HandleFitAllCommand();
-        fitSelectionRequestedHandler = (_, _) => HandleFitSelectionCommand();
-        fitRoiRequestedHandler = (_, _) => HandleFitRoiCommand();
-        topViewRequestedHandler = (_, _) => HandleTopViewCommand();
-        perspectiveViewRequestedHandler = (_, _) => HandlePerspectiveViewCommand();
-        resetRequestedHandler = (_, _) => HandleResetCommand();
-        openRecipeRequestedHandler = (_, _) => HandleOpenRecipeCommand();
-        saveRecipeRequestedHandler = (_, _) => HandleSaveRecipeCommand();
-        applyRoiAlignmentRequestedHandler = (_, _) => HandleApplyRoiAlignmentCommand();
-        fitPlaneRequestedHandler = (_, _) => FitC3DReferencePlane();
-        previewThicknessRequestedHandler = (_, _) => PreviewC3DThickness();
-        previewWarpageRequestedHandler = (_, _) => PreviewC3DWarpage();
-        previewPlaneFlatnessRequestedHandler = (_, _) => PreviewC3DPlaneFlatness();
-        previewPointPairDimensionsRequestedHandler = (_, _) => PreviewC3DPointPairDimensions();
-        previewGapFlushRequestedHandler = (_, _) => PreviewC3DGapFlush();
-        previewVolumeRequestedHandler = (_, _) => PreviewC3DVolume();
-        previewCrossSectionRequestedHandler = (_, _) => PreviewC3DCrossSection();
-        screenshotRequestedHandler = (_, _) => HandleScreenshotCommand();
-        profileViewRequestedHandler = (_, _) => OpenProfileView();
-        publishPreviewResultRequestedHandler = (_, _) => HandlePublishResultCommand();
-        nominalActualPreviewRequestedHandler = OnNominalActualPreviewRequested;
-        nominalActualPublishRequestedHandler = OnNominalActualPublishRequested;
-        viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
-        nominalActualPropertyChangedHandler = OnNominalActualPropertyChanged;
-        languageChangedHandler = OnViewerLanguageChanged;
-        SubscribeViewModelEvents();
+        viewerEventSubscription = new ViewerEventSubscription(
+            viewModel,
+            this.localizationProvider,
+            new ViewerEventHandlerSet
+            {
+                FitAllRequested = (_, _) => HandleFitAllCommand(),
+                FitSelectionRequested = (_, _) => HandleFitSelectionCommand(),
+                FitRoiRequested = (_, _) => HandleFitRoiCommand(),
+                TopViewRequested = (_, _) => HandleTopViewCommand(),
+                PerspectiveViewRequested = (_, _) => HandlePerspectiveViewCommand(),
+                ResetRequested = (_, _) => HandleResetCommand(),
+                OpenRecipeRequested = (_, _) => HandleOpenRecipeCommand(),
+                SaveRecipeRequested = (_, _) => HandleSaveRecipeCommand(),
+                ApplyRoiAlignmentRequested = (_, _) => HandleApplyRoiAlignmentCommand(),
+                FitPlaneRequested = (_, _) => FitC3DReferencePlane(),
+                PreviewThicknessRequested = (_, _) => PreviewC3DThickness(),
+                PreviewWarpageRequested = (_, _) => PreviewC3DWarpage(),
+                PreviewPlaneFlatnessRequested = (_, _) => PreviewC3DPlaneFlatness(),
+                PreviewPointPairDimensionsRequested = (_, _) => PreviewC3DPointPairDimensions(),
+                PreviewGapFlushRequested = (_, _) => PreviewC3DGapFlush(),
+                PreviewVolumeRequested = (_, _) => PreviewC3DVolume(),
+                PreviewCrossSectionRequested = (_, _) => PreviewC3DCrossSection(),
+                ScreenshotRequested = (_, _) => HandleScreenshotCommand(),
+                ProfileViewRequested = (_, _) => OpenProfileView(),
+                PublishPreviewResultRequested = (_, _) => HandlePublishResultCommand(),
+                NominalActualPreviewRequested = OnNominalActualPreviewRequested,
+                NominalActualPublishRequested = OnNominalActualPublishRequested,
+                ViewModelPropertyChanged = OnViewModelPropertyChanged,
+                NominalActualPropertyChanged = OnNominalActualPropertyChanged,
+                CameraChanged = OnViewModelCameraChanged,
+                TeachingRoiDisplayHeightChanged = OnViewModelTeachingRoiDisplayHeightChanged,
+                LanguageChanged = OnViewerLanguageChanged
+            });
+        viewerEventSubscription.Attach();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         c3dSample = loadDefaultSamples ? LoadDefaultC3DSample() : null;
@@ -422,10 +507,64 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         SetC3DSampleStatus();
         SetGlbSampleStatus();
         SetLazSampleStatus();
-        HostState = CreateHostState();
+        SetCurrentValue(HostStateProperty, hostStateCoordinator.Current);
+        nominalActualEditor = new ViewerHostNominalActualEditorSurface(viewModel.NominalActual);
+        editor = new ViewerHostEditorSurface(viewModel);
+        displayEditor = new ViewerHostDisplayEditorSurface(viewModel.Display);
+        linkedView = new ViewerHostLinkedViewSurface(viewModel);
     }
 
     public static void UseSoftwareRenderingForProcess() =>
         useSoftwareRenderingForProcess = true;
+
+    public void ShowWorkbenchAffineApply(C3DTransformedPointCloud output, bool isPublished, bool standaloneReferenceDisplay = true)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        ArgumentNullException.ThrowIfNull(output);
+        workbenchOverlayRenderer.PrepareAffineApply(output);
+        viewModel.C3DSampleVisible = !standaloneReferenceDisplay;
+        viewModel.SetWorkbenchAffineApply(output, isPublished);
+        RenderNow();
+    }
+
+    public void ClearWorkbenchAffineApply()
+    {
+        workbenchOverlayRenderer.ClearAffineApply();
+        viewModel.ClearWorkbenchAffineApply();
+        RenderNow();
+    }
+
+    public void ShowWorkbenchRegridHeightField(C3DTransformedHeightField output, bool isPublished, bool standaloneReferenceDisplay = true)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        ArgumentNullException.ThrowIfNull(output);
+        workbenchOverlayRenderer.PrepareRegridHeightField(output);
+        viewModel.C3DSampleVisible = !standaloneReferenceDisplay;
+        viewModel.SetWorkbenchRegridHeightField(output, isPublished);
+        RenderNow();
+    }
+
+    public void ClearWorkbenchRegridHeightField()
+    {
+        workbenchOverlayRenderer.ClearRegridHeightField();
+        viewModel.ClearWorkbenchRegridHeightField();
+        RenderNow();
+    }
+
+    private static void ExecuteViewModelCommand(ICommand command)
+    {
+        if (command.CanExecute(null))
+        {
+            command.Execute(null);
+        }
+    }
 
 }

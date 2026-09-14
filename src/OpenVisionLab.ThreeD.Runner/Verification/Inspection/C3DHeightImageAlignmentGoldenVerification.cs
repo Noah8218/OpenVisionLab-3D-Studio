@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
@@ -14,6 +15,7 @@ internal static class C3DHeightImageAlignmentGoldenVerification
             Check("feature-translated", VerifyFeatureTranslated),
             Check("deterministic-content-identity", VerifyDeterminism),
             Check("runner-replay-parity", VerifyRunnerParity),
+            Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath)),
             Check("negative-no-result", VerifyNoResult),
             Check("negative-threshold-rejection", VerifyThresholdRejection),
             Check("negative-ambiguous-candidates", VerifyAmbiguousCandidates),
@@ -28,7 +30,7 @@ internal static class C3DHeightImageAlignmentGoldenVerification
             "Definition|mapping=pixelX=column,pixelY=row,no-flip,one-source-cell-per-pixel|output=software-pixel-grid-pose|physical-calibration=not-claimed|modes=BorderTemplate,FeatureHomography"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(reportPath, lines);
         Console.WriteLine($"C3D Height Image Alignment golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
@@ -151,6 +153,106 @@ internal static class C3DHeightImageAlignmentGoldenVerification
             }
         }
     }
+
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var fixture = CreateFixture();
+        var directory = Path.Combine(
+            GetReportDirectory(reportPath) ?? Environment.CurrentDirectory,
+            $"height-image-alignment-atomic-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var referencePath = Path.Combine(directory, "reference.c3d");
+            var movingPath = Path.Combine(directory, "moving.c3d");
+            fixture.Reference.SaveC3D(referencePath);
+            fixture.Moving.SaveC3D(movingPath);
+            var specification = new C3DHeightImageAlignmentRunnerSpecification
+            {
+                StepId = "step.height-image-align.atomic",
+                SelectionId = "selection.height-image-template.atomic",
+                OutputEntityId = "alignment.height-image.atomic",
+                Mode = C3DHeightImageAlignmentMode.BorderTemplate,
+                TemplateRow = fixture.Selection.Row,
+                TemplateColumn = fixture.Selection.Column,
+                TemplateRowCount = fixture.Selection.RowCount,
+                TemplateColumnCount = fixture.Selection.ColumnCount,
+                SearchScoreMinimum = 0.4d,
+                AcceptanceScoreMinimumPercent = 60d,
+                MinimumCandidateMarginPercent = 1d,
+                AngleMinimumDegrees = -10,
+                AngleMaximumDegrees = 10,
+                AngleStepDegrees = 1d,
+                Reference = ToRunnerSource(fixture.Reference, referencePath),
+                Moving = ToRunnerSource(fixture.Moving, movingPath)
+            };
+            var specificationPath = Path.Combine(directory, "alignment.json");
+            File.WriteAllText(
+                specificationPath,
+                JsonSerializer.Serialize(specification, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
+                }),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            var reportOutputPath = Path.Combine(directory, "runner.txt");
+            var firstExit = C3DHeightImageAlignmentRunnerExecution.Run(specificationPath, reportOutputPath);
+            var firstBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+            File.WriteAllText(reportOutputPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = C3DHeightImageAlignmentRunnerExecution.Run(specificationPath, reportOutputPath);
+            var overwriteBytes = File.Exists(reportOutputPath)
+                ? File.ReadAllBytes(reportOutputPath)
+                : [];
+
+            var lockedPath = Path.Combine(directory, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = C3DHeightImageAlignmentRunnerExecution.Run(specificationPath, lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = C3DHeightImageAlignmentRunnerExecution.Run(
+                specificationPath,
+                Path.Combine(invalidParentMarker, "report.txt"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.txt.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && firstBytes.SequenceEqual(overwriteBytes)
+                && noBom
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};noBom={noBom};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
 
     private static C3DHeightImageAlignmentRunnerSource ToRunnerSource(
         C3DHeightFieldSnapshot snapshot,
@@ -486,6 +588,8 @@ internal static class C3DHeightImageAlignmentGoldenVerification
 
     private static string Clean(string value)
         => value.Replace('\r', ' ').Replace('\n', ' ').Replace('|', '/');
+
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
 
     private sealed record Fixture(
         C3DHeightFieldSnapshot Reference,

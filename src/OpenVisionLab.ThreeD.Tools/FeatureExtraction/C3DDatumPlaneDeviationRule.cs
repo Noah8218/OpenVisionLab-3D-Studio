@@ -143,9 +143,10 @@ public static class C3DDatumPlaneDeviationRule
         {
             throw new InvalidDataException("Datum-plane inputs do not share the exact current raw C3D source identity.");
         }
-        if (rectangle.Row < 0 || rectangle.Column < 0 || rectangle.RowCount <= 0 || rectangle.ColumnCount <= 0
-            || rectangle.Row > input.RawSource.Height - rectangle.RowCount
-            || rectangle.Column > input.RawSource.Width - rectangle.ColumnCount)
+        if (ToolRecipeGridRectangleGeometry.Validate(
+                rectangle,
+                input.RawSource.Width,
+                input.RawSource.Height).Count > 0)
         {
             throw new InvalidDataException("Datum-plane measurement rectangle is outside the current C3D grid.");
         }

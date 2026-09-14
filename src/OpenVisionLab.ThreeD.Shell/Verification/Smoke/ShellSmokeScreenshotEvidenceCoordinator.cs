@@ -5,7 +5,8 @@ namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 /// <summary>
 /// View-free post-capture evidence policy for the Shell Smoke route.
 /// Visual-tree inspection and monitor/DPI measurement stay behind explicit
-/// callbacks owned by MainWindow; this type only orders optional report lines.
+/// callbacks composed by ShellSmokeScenarioRunner; this type only orders
+/// optional report lines.
 /// </summary>
 internal sealed class ShellSmokeScreenshotEvidenceCallbacks
 {

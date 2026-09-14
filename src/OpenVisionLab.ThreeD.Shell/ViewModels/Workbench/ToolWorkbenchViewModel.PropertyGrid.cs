@@ -15,7 +15,8 @@ public sealed partial class ToolWorkbenchViewModel
     private RelayCommand applySelectedStepParameterDraftCommand = null!;
     private RelayCommand discardSelectedStepParameterDraftCommand = null!;
     private RelayCommand markSelectedStepParameterDraftDirtyCommand = null!;
-    private readonly ToolWorkbenchStepPropertySession stepPropertySession = new();
+    private RelayCommand reportParameterDraftCommitErrorCommand = null!;
+    private readonly ToolWorkbenchStepPropertySession stepPropertySession = new(ThreeDLocalization.Shared);
     private readonly string recentRecipesPath;
 
     public event EventHandler<ToolWorkbenchRecipePathRequestEventArgs>? OpenRecentTeachingRecipeRequested;
@@ -52,6 +53,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand MarkSelectedStepParameterDraftDirtyCommand => markSelectedStepParameterDraftDirtyCommand;
 
+    public ICommand ReportParameterDraftCommitErrorCommand => reportParameterDraftCommitErrorCommand;
+
     public ICommand OpenRecentTeachingRecipeCommand { get; private set; } = null!;
 
     public ICommand RemoveRecentTeachingRecipeCommand { get; private set; } = null!;
@@ -84,7 +87,6 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void InitializePropertyGridEditing()
     {
-        stepPropertySession.PropertyChanged += OnStepPropertySessionChanged;
         applySelectedStepParameterDraftCommand = new RelayCommand(
             _ => TryApplySelectedStepParameterDraft(out var _),
             _ => IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
@@ -94,6 +96,14 @@ public sealed partial class ToolWorkbenchViewModel
         markSelectedStepParameterDraftDirtyCommand = new RelayCommand(
             _ => MarkSelectedStepParameterDraftDirty(),
             _ => IsSelectedStepPropertyGridSupported);
+        reportParameterDraftCommitErrorCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is string message)
+                {
+                    ReportParameterDraftCommitError(message);
+                }
+            });
         OpenRecentTeachingRecipeCommand = new RelayCommand(
             parameter =>
             {
@@ -114,7 +124,7 @@ public sealed partial class ToolWorkbenchViewModel
         LoadRecentRecipes();
     }
 
-    private void OnStepPropertySessionChanged(object? sender, PropertyChangedEventArgs args)
+    private void OnStepPropertySessionChanged(PropertyChangedEventArgs args)
     {
         switch (args.PropertyName)
         {
@@ -196,6 +206,7 @@ public sealed partial class ToolWorkbenchViewModel
             {
                 if (!values.ContainsKey(step.Parameters[index].Name))
                 {
+                    recipePartEventCoordinator.UnsubscribeParameter(step.Parameters[index]);
                     step.Parameters.RemoveAt(index);
                     changed = true;
                 }
@@ -208,7 +219,7 @@ public sealed partial class ToolWorkbenchViewModel
             if (parameter is null)
             {
                 parameter = new ToolWorkbenchParameterItem(pair.Key, pair.Value);
-                parameter.PropertyChanged += OnRecipePartChanged;
+                recipePartEventCoordinator.SubscribeParameter(parameter);
                 step.Parameters.Add(parameter);
                 changed = true;
                 continue;

@@ -1,7 +1,6 @@
 using System.IO;
 using System.Windows;
 using OpenVisionLab.ThreeD.Data;
-using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -13,7 +12,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 {
     public bool LoadInspectionTaskRecipe(string recipeFileName)
     {
-        var path = ViewerSamplePathLocator.Find(Path.Combine("recipes", recipeFileName));
+        var path = samplePathResolver.Resolve(Path.Combine("recipes", recipeFileName));
         if (path is null)
         {
             viewModel.ViewerStatus = $"Inspection task recipe was not found: {recipeFileName}";
@@ -22,38 +21,6 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         return ApplyRecipeFile(path, isSmoke: false);
     }
-
-    private bool ApplyC3DWarpageRecipe(
-        ViewerRecipeFile recipeFile,
-        C3DWarpageRecipe recipe,
-        bool isSmoke)
-    {
-        try
-        {
-            var plan = C3DWarpageRecipeLoadPlan.Create(
-                recipeFile,
-                recipe,
-                viewModel.C3DMaxRenderedPoints);
-            c3dSample = plan.Grid;
-            return C3DWarpageRecipeApplyCoordinator.Apply(
-                plan,
-                viewModel,
-                isSmoke,
-                SetC3DSampleStatus,
-                ClearWarpageTransientInspectionState,
-                RenderNow);
-        }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            return SetRecipeLoadFailure(isSmoke ? "Smoke Warpage recipe" : "Warpage recipe", exception);
-        }
-    }
-
-    private bool ShouldSaveCurrentWarpageRecipe() =>
-        C3DWarpageRecipeSaveCoordinator.CanSave(c3dSample, viewModel);
-
-    private bool SaveCurrentWarpageRecipe(string path, bool isSmoke)
-        => C3DWarpageRecipeSaveCoordinator.Save(path, isSmoke, viewModel, c3dSample);
 
     private bool TryHandleWarpageRoiPick(Point screenPoint)
     {
@@ -120,15 +87,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         planeReferenceMeasurement = null;
         twoPointFirst = null;
         twoPointSecond = null;
-        roiStepLeftBounds = null;
-        roiStepRightBounds = null;
-        roiStepLeftCenter = null;
-        roiStepRightCenter = null;
-        roiStepLeftAnchor = null;
-        roiStepRightAnchor = null;
-        ClearRecipeRoiStep();
-        roiStepInteractiveSelection = false;
-        roiStepNextPickSetsRight = false;
+        roiEditingSession.Reset();
         viewModel.ClearTwoPointMeasurement();
         viewModel.ClearPlaneReferenceMeasurement();
         viewModel.ClearRoiStepMeasurement();

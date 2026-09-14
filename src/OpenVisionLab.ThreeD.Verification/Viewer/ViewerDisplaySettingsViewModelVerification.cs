@@ -926,7 +926,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 new HeightFieldPlaneSample(new Vector3(0.0f, 0.0f, 1.0f), 0.0),
             };
             var flatnessEvaluation = PlaneFlatnessRule.Evaluate(new PlaneFlatnessRuleInput(
-                MainWindowViewModel.C3DEntityId,
+                ViewerEntityIds.C3DEntityId,
                 flatnessReference,
                 [.. flatnessReference, new HeightFieldPlaneSample(new Vector3(0.5f, 0.1f, 0.5f), 0.1)],
                 0.2,

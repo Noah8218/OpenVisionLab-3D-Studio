@@ -1,4 +1,6 @@
 using System.IO;
+using System.Threading;
+using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -9,7 +11,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// surface-match result and one temporary candidate. Numerical matching remains
 /// behind <see cref="SurfaceMatchEvaluationExecutor"/>.
 /// </summary>
-internal sealed class SurfaceMatchExperimentSession
+internal sealed class SurfaceMatchExperimentSession : IDisposable
 {
     private readonly Func<bool> isSelectedSurfaceMatch;
     private readonly Func<bool> hasPendingStepParameterChanges;
@@ -27,6 +29,7 @@ internal sealed class SurfaceMatchExperimentSession
     private string statusEnglish =
         "Load a published match result before comparing parameters.";
     private string? stepStateBeforePreview;
+    private int disposalState;
 
     public SurfaceMatchExperimentSession(
         Func<bool> isSelectedSurfaceMatch,
@@ -61,6 +64,7 @@ internal sealed class SurfaceMatchExperimentSession
     public bool IsCandidateStale { get; private set; }
     public bool IsRunning => isRunning;
     public bool IsCandidateDisplayed => isCandidateDisplayed;
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
     public string StatusKorean => statusKorean;
     public string StatusEnglish => statusEnglish;
     public RelayCommand ShowPublishedCommand { get; }
@@ -69,7 +73,8 @@ internal sealed class SurfaceMatchExperimentSession
 
     public async Task<bool> PreviewAsync()
     {
-        if (!CanPreview()
+        if (IsDisposed
+            || !CanPreview()
             || getSelectedPipelineStep() is not { } step
             || Published is not { } published)
         {
@@ -90,9 +95,27 @@ internal sealed class SurfaceMatchExperimentSession
             return false;
         }
 
-        previewCancellation?.Dispose();
-        previewCancellation = new CancellationTokenSource();
-        var cancellation = previewCancellation;
+        var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
+        var previousCancellation = Interlocked.Exchange(
+            ref previewCancellation,
+            cancellation);
+        CancelAndDispose(previousCancellation);
+        if (IsDisposed)
+        {
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    cancellation),
+                cancellation))
+            {
+                cancellation.Dispose();
+            }
+
+            return false;
+        }
+
         stepStateBeforePreview = step.State;
         DiscardCandidate();
         isCandidateDisplayed = false;
@@ -115,8 +138,13 @@ internal sealed class SurfaceMatchExperimentSession
                     published.Scene,
                     search,
                     policy),
-                cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsDisposed)
+            {
+                return false;
+            }
+
             if (!ReferenceEquals(Published, published))
             {
                 throw new OperationCanceledException(
@@ -137,6 +165,11 @@ internal sealed class SurfaceMatchExperimentSession
         }
         catch (OperationCanceledException)
         {
+            if (IsDisposed)
+            {
+                return false;
+            }
+
             DiscardCandidate();
             isCandidateDisplayed = false;
             RestoreStepState(step);
@@ -151,6 +184,11 @@ internal sealed class SurfaceMatchExperimentSession
             or ArgumentException
             or OverflowException)
         {
+            if (IsDisposed)
+            {
+                return false;
+            }
+
             DiscardCandidate();
             isCandidateDisplayed = false;
             RestoreStepState(step);
@@ -165,19 +203,27 @@ internal sealed class SurfaceMatchExperimentSession
         }
         finally
         {
-            if (ReferenceEquals(previewCancellation, cancellation))
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                    ref previewCancellation,
+                    null,
+                    cancellation),
+                cancellation))
             {
-                previewCancellation.Dispose();
-                previewCancellation = null;
+                cancellation.Dispose();
             }
 
-            SetRunning(false);
+            if (!IsDisposed)
+            {
+                SetRunning(false);
+            }
         }
     }
 
     public bool CanPreview()
     {
-        if (!isSelectedSurfaceMatch()
+        if (IsDisposed
+            || !isSelectedSurfaceMatch()
             || hasPendingStepParameterChanges()
             || isRunning
             || getSelectedPipelineStep() is not { } step
@@ -192,7 +238,7 @@ internal sealed class SurfaceMatchExperimentSession
 
     public void Publish()
     {
-        if (!CanPublish() || getSelectedPipelineStep() is not { } step)
+        if (IsDisposed || !CanPublish() || getSelectedPipelineStep() is not { } step)
         {
             return;
         }
@@ -212,21 +258,28 @@ internal sealed class SurfaceMatchExperimentSession
     }
 
     public bool CanPublish() =>
-        isSelectedSurfaceMatch()
+        !IsDisposed
+        && isSelectedSurfaceMatch()
         && !isRunning
         && Candidate is not null
         && !IsCandidateStale;
 
     public void CancelPreview()
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(ref previewCancellation, null);
+        CancelAndDispose(cancellation);
         isCandidateDisplayed = false;
         ShowPublished();
     }
 
     public void ShowPublished()
     {
-        if (Published is not { } published)
+        if (IsDisposed || Published is not { } published)
         {
             return;
         }
@@ -238,7 +291,7 @@ internal sealed class SurfaceMatchExperimentSession
 
     public void ShowCandidate()
     {
-        if (Candidate is not { } candidate || IsCandidateStale)
+        if (IsDisposed || Candidate is not { } candidate || IsCandidateStale)
         {
             return;
         }
@@ -250,7 +303,7 @@ internal sealed class SurfaceMatchExperimentSession
 
     public void Discard()
     {
-        if (Candidate is null)
+        if (IsDisposed || Candidate is null)
         {
             return;
         }
@@ -270,7 +323,8 @@ internal sealed class SurfaceMatchExperimentSession
 
     public void MarkCandidateStaleIfNeeded(ToolWorkbenchPipelineStepItem step)
     {
-        if (!string.Equals(step.ToolId, "surface-match", StringComparison.Ordinal)
+        if (IsDisposed
+            || !string.Equals(step.ToolId, "surface-match", StringComparison.Ordinal)
             || Candidate is null)
         {
             return;
@@ -288,7 +342,13 @@ internal sealed class SurfaceMatchExperimentSession
     public void LoadPublished(SurfaceMatchExperimentEvidence evidence)
     {
         ArgumentNullException.ThrowIfNull(evidence);
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(ref previewCancellation, null);
+        CancelAndDispose(cancellation);
         Published = evidence;
         Candidate = null;
         IsCandidateStale = false;
@@ -302,6 +362,11 @@ internal sealed class SurfaceMatchExperimentSession
 
     public bool ClearAcquisitionDirectionEvidence()
     {
+        if (IsDisposed)
+        {
+            return false;
+        }
+
         var hadEvidence = Published?.AcquisitionDirectionOrientation is not null
             || Candidate?.AcquisitionDirectionOrientation is not null;
         if (Published is not null)
@@ -317,7 +382,13 @@ internal sealed class SurfaceMatchExperimentSession
 
     public void Clear()
     {
-        previewCancellation?.Cancel();
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(ref previewCancellation, null);
+        CancelAndDispose(cancellation);
         Published = null;
         Candidate = null;
         IsCandidateStale = false;
@@ -386,12 +457,22 @@ internal sealed class SurfaceMatchExperimentSession
 
     private void SetRunning(bool value)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         isRunning = value;
         NotifyStateChanged();
     }
 
     private void SetStatus(string korean, string english)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         statusKorean = korean;
         statusEnglish = english;
         NotifyStateChanged();
@@ -399,21 +480,31 @@ internal sealed class SurfaceMatchExperimentSession
 
     private void NotifyStateChanged()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         ShowPublishedCommand.RaiseCanExecuteChanged();
         ShowCandidateCommand.RaiseCanExecuteChanged();
         DiscardCommand.RaiseCanExecuteChanged();
         onStateChanged();
     }
-}
 
-internal sealed record SurfaceMatchExperimentEvidence(
-    SurfaceModelArtifact Model,
-    PreparedSceneArtifact Scene,
-    SurfaceMatchExecutionArtifact Execution,
-    SurfaceMatchAssessmentArtifact? Assessment,
-    SurfaceMatchRuntimeReport? Runtime,
-    SurfaceAndEdgeMatchScoreArtifact? EdgeScore,
-    SurfaceEdgeDiagnosticOverlayArtifact? EdgeDiagnosticOverlay,
-    SurfaceAndEdgeMatchAssessmentArtifact? EdgeAssessment,
-    SurfaceMatchFalsePositiveReviewArtifact? FalsePositiveReview,
-    SurfaceEdgeAcquisitionDirectionArtifact? AcquisitionDirectionOrientation = null);
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        var cancellation = Interlocked.Exchange(ref previewCancellation, null);
+        CancelAndDispose(cancellation);
+        Published = null;
+        Candidate = null;
+        IsCandidateStale = false;
+        isCandidateDisplayed = false;
+        isRunning = false;
+        stepStateBeforePreview = null;
+    }
+}

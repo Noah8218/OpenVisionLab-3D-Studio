@@ -22,6 +22,9 @@ internal static class ToolRecipeOrderedRunVerification
 
     public static bool Verify(string reportPath, out string summary)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
+        var reportDirectory = Path.GetDirectoryName(fullReportPath)
+            ?? throw new InvalidOperationException("Ordered Run verification report has no directory.");
         var lines = new List<string>
         {
             "OpenVisionLab 3D Studio current-recipe ordered Run verification",
@@ -38,8 +41,6 @@ internal static class ToolRecipeOrderedRunVerification
 
         try
         {
-            var reportDirectory = Path.GetDirectoryName(Path.GetFullPath(reportPath))
-                ?? throw new InvalidOperationException("Ordered Run verification report has no directory.");
             Directory.CreateDirectory(reportDirectory);
             var root = Path.Combine(
                 reportDirectory,
@@ -164,6 +165,48 @@ internal static class ToolRecipeOrderedRunVerification
                     StringComparison.Ordinal)
                 && reopenedShell.RunSnapshotSummary.Contains("Pass", StringComparison.OrdinalIgnoreCase),
                 $"completed={runCompleted}; fullRuns={reopenRunCount}; record={recordPath}; schema={record?.SchemaVersion}; status={record?.Status}; sourceQuality={record?.SourceQualityEvidence?.State}; timing={reopenedShell.InspectionSteps.FirstOrDefault()?.Timing}");
+            var stagedRunDirectories = Directory.Exists(runRoot)
+                ? Directory.GetDirectories(runRoot, "*.staging.*")
+                : Array.Empty<string>();
+            Check(
+                "ordered Run publishes a complete directory and removes staging directories",
+                recordPath is { } publishedRecordPath
+                && record?.Artifacts.RunnerTextReport is { } publishedReportPath
+                && File.Exists(publishedRecordPath)
+                && File.Exists(publishedReportPath)
+                && Directory.Exists(Path.GetDirectoryName(publishedRecordPath))
+                && stagedRunDirectories.Length == 0,
+                $"record={recordPath};report={record?.Artifacts.RunnerTextReport};staging={stagedRunDirectories.Length}");
+            var atomicReplacementPassed = false;
+            var atomicReplacementDetail = "record unavailable";
+            if (record is not null)
+            {
+                var atomicRecordPath = Path.Combine(root, "atomic-replacement-run-record.json");
+                InspectionRunRecordJson.Write(atomicRecordPath, record);
+                var initialAtomicRecordBytes = File.ReadAllBytes(atomicRecordPath);
+                var replacementRecord = record with
+                {
+                    RunId = "atomic-replacement",
+                    Message = "atomic replacement"
+                };
+                InspectionRunRecordJson.Write(atomicRecordPath, replacementRecord);
+                var replacementAtomicRecordBytes = File.ReadAllBytes(atomicRecordPath);
+                var reloadedReplacementRecord = InspectionRunRecordJson.Read(atomicRecordPath);
+                var stagedAtomicRecordFiles = Directory.GetFiles(
+                    root,
+                    $"{Path.GetFileName(atomicRecordPath)}.tmp.*");
+                atomicReplacementPassed =
+                    !initialAtomicRecordBytes.SequenceEqual(replacementAtomicRecordBytes)
+                    && reloadedReplacementRecord.RunId == "atomic-replacement"
+                    && reloadedReplacementRecord.Message == "atomic replacement"
+                    && stagedAtomicRecordFiles.Length == 0;
+                atomicReplacementDetail =
+                    $"runId={reloadedReplacementRecord.RunId};staged={stagedAtomicRecordFiles.Length}";
+            }
+            Check(
+                "Run Record JSON replacement preserves the contract and cleans staged files",
+                atomicReplacementPassed,
+                atomicReplacementDetail);
             Check(
                 "Shell reuses the exact loaded Source Quality report and Results exposes its decision evidence",
                 uiSourceQuality is not null
@@ -446,8 +489,7 @@ internal static class ToolRecipeOrderedRunVerification
 
         summary = $"ToolRecipeOrderedRunVerification|{(passed == total ? "Pass" : "Fail")}|checks={total}|passed={passed}|failed={total - passed}";
         lines.Add(summary);
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        Directory.CreateDirectory(reportDirectory);
         File.WriteAllLines(fullReportPath, lines);
         return passed == total;
     }
@@ -539,10 +581,38 @@ internal static class ToolRecipeOrderedRunVerification
             && cancellationOwner.Summary.Contains("canceled", StringComparison.OrdinalIgnoreCase)
             && cancelCommandWasEnabled;
 
+        using var commandFailureObserved = new ManualResetEventSlim();
+        var commandFailureOwner = new ToolWorkbenchOrderedRunExecutionOwner(
+            () => document,
+            _ => (true, "ready"),
+            () => recipePath,
+            () => string.Empty,
+            () => null,
+            () => throw new InvalidOperationException("pipeline callback failure"),
+            _ => "completed",
+            (_, english) => english,
+            (category, _) =>
+            {
+                if (string.Equals(category, "Error", StringComparison.Ordinal))
+                {
+                    commandFailureObserved.Set();
+                }
+            },
+            () => { },
+            _ => { },
+            () => { });
+        var commandWasEnabled = commandFailureOwner.RunCommand.CanExecute(null);
+        commandFailureOwner.RunCommand.Execute(null);
+        var commandFailureWasObserved = commandFailureObserved.Wait(TimeSpan.FromSeconds(5))
+            && !commandFailureOwner.IsRunning
+            && commandFailureOwner.Summary.Contains("failed", StringComparison.OrdinalIgnoreCase);
+        commandFailureOwner.Dispose();
+
         detail = $"singleFlight={singleFlight};capabilityCalls={capabilityCalls};"
-            + $"cancellation={cancellationWorked};completionCount={completionCount};"
+            + $"cancellation={cancellationWorked};commandEnabled={commandWasEnabled};"
+            + $"commandFailureObserved={commandFailureWasObserved};completionCount={completionCount};"
             + $"summary={cancellationOwner.Summary}";
-        return singleFlight && cancellationWorked;
+        return singleFlight && cancellationWorked && commandWasEnabled && commandFailureWasObserved;
     }
 
     private static ShellMainWindowViewModel CreateShell(

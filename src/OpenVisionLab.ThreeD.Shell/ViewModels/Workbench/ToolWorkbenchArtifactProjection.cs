@@ -34,8 +34,8 @@ internal sealed class ToolWorkbenchArtifactProjection
                 selection.FrameId,
                 selection.SourceBinding.ContentSha256,
                 isCurrent
-                    ? "Recipe-owned teaching selection."
-                    : "Recapture is required because the source binding changed.",
+                    ? snapshot.CurrentSelectionDetail
+                    : snapshot.StaleSelectionDetail,
                 null,
                 "Selection"));
         }
@@ -64,7 +64,10 @@ internal sealed class ToolWorkbenchArtifactProjection
             source.FrameId,
             snapshot.SourceBinding?.ContentSha256 ?? string.Empty,
             sourceReady
-                ? $"{snapshot.SourceBinding!.GridWidth} × {snapshot.SourceBinding.GridHeight} verified C3D source."
+                ? string.Format(
+                    snapshot.SourceArtifactReadyDetailFormat,
+                    snapshot.SourceBinding!.GridWidth,
+                    snapshot.SourceBinding.GridHeight)
                 : snapshot.SourceReadinessSummary,
             null,
             "Source");
@@ -87,7 +90,7 @@ internal sealed class ToolWorkbenchArtifactProjection
                 source.Unit,
                 source.FrameId,
                 string.Empty,
-                $"Declared by {step.Id}; output policy disabled it. No Preview, Run output, or evidence is fabricated.",
+                string.Format(snapshot.OutputDisabledDetailFormat, step.Id),
                 step,
                 "DisabledOutput");
         }
@@ -98,7 +101,7 @@ internal sealed class ToolWorkbenchArtifactProjection
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 cropOutput,
                 null,
-                "not evaluated by ROI / Crop");
+                snapshot.RoiCropQualityDeltaEvidence);
             return new ToolWorkbenchArtifactItem(
                 cropOutput.EntityId,
                 step.ToolName,
@@ -113,7 +116,18 @@ internal sealed class ToolWorkbenchArtifactProjection
                 cropOutput.Unit,
                 cropOutput.FrameId,
                 cropOutput.ContentSha256,
-                $"{cropOutput.Width} x {cropOutput.Height} | source origin ({cropOutput.GridOriginColumn}, {cropOutput.GridOriginRow}) | valid {cropOutput.ValidCount:N0} | missing {cropOutput.MissingCount:N0} | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
+                string.Format(
+                    snapshot.RoiCropArtifactDetailFormat,
+                    cropOutput.Width,
+                    cropOutput.Height,
+                    cropOutput.GridOriginColumn,
+                    cropOutput.GridOriginRow,
+                    cropOutput.ValidCount,
+                    cropOutput.MissingCount,
+                    snapshot.SourceIdentityRetainedDetail,
+                    qualityDelta is { } delta
+                        ? snapshot.FormatSourceQualityDeltaSummary(delta)
+                        : snapshot.QualityDeltaUnavailable),
                 step,
                 "HeightField")
             {
@@ -128,7 +142,7 @@ internal sealed class ToolWorkbenchArtifactProjection
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 leveledOutput,
                 null,
-                "not evaluated by Level Surface");
+                snapshot.LevelSurfaceQualityDeltaEvidence);
             return new ToolWorkbenchArtifactItem(
                 leveledOutput.EntityId,
                 step.ToolName,
@@ -143,7 +157,20 @@ internal sealed class ToolWorkbenchArtifactProjection
                 leveledOutput.Unit,
                 leveledOutput.FrameId,
                 leveledOutput.ContentSha256,
-                $"{leveledOutput.Width} x {leveledOutput.Height} | reference RMS {levelingTransform.ReferenceResidualRms:G6} | transform {levelingTransform.ContentSha256} | level frame {snapshot.LevelSurface.LevelFrame?.ContentSha256 ?? "(none)"} | frame chain {snapshot.LevelSurface.FrameChain?.ContentSha256 ?? "(none)"} | quality {snapshot.LevelSurface.QualityEvidence?.State.ToString() ?? "(none)"} {snapshot.LevelSurface.QualityEvidence?.ContentSha256 ?? ""} | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
+                string.Format(
+                    snapshot.LevelSurfaceArtifactDetailFormat,
+                    leveledOutput.Width,
+                    leveledOutput.Height,
+                    levelingTransform.ReferenceResidualRms,
+                    levelingTransform.ContentSha256,
+                    snapshot.LevelSurface.LevelFrame?.ContentSha256 ?? "(none)",
+                    snapshot.LevelSurface.FrameChain?.ContentSha256 ?? "(none)",
+                    snapshot.LevelSurface.QualityEvidence?.State.ToString() ?? "(none)",
+                    snapshot.LevelSurface.QualityEvidence?.ContentSha256 ?? string.Empty,
+                    snapshot.SourceIdentityRetainedDetail,
+                    qualityDelta is { } delta
+                        ? snapshot.FormatSourceQualityDeltaSummary(delta)
+                        : snapshot.QualityDeltaUnavailable),
                 step,
                 "LeveledHeightField")
             {
@@ -175,7 +202,12 @@ internal sealed class ToolWorkbenchArtifactProjection
                 connectedRegionArtifact.Unit,
                 connectedRegionArtifact.FrameId,
                 connectedRegionArtifact.ContentSha256,
-                $"{connectedRegionArtifact.Regions.Count:N0} region(s) | mask {connectedRegionArtifact.MaskContentSha256} | filtered {connectedRegionArtifact.SourceContentSha256} | root {connectedRegionArtifact.RootSourceSha256}",
+                string.Format(
+                    snapshot.ConnectedRegionArtifactDetailFormat,
+                    connectedRegionArtifact.Regions.Count,
+                    connectedRegionArtifact.MaskContentSha256,
+                    connectedRegionArtifact.SourceContentSha256,
+                    connectedRegionArtifact.RootSourceSha256),
                 step,
                 "ConnectedRegionArtifact");
         }
@@ -193,7 +225,7 @@ internal sealed class ToolWorkbenchArtifactProjection
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 domainMaskOutput,
                 null,
-                "domain cells are the explicit Connected Region union");
+                snapshot.DomainMaskQualityDeltaEvidence);
             return new ToolWorkbenchArtifactItem(
                 domainMaskOutput.EntityId,
                 step.ToolName,
@@ -208,7 +240,17 @@ internal sealed class ToolWorkbenchArtifactProjection
                 domainMaskOutput.Unit,
                 domainMaskOutput.FrameId,
                 domainMaskOutput.ContentSha256,
-                $"{domainMaskOutput.Width} × {domainMaskOutput.Height} | valid {domainMaskOutput.ValidCount:N0} | missing {domainMaskOutput.MissingCount:N0} | domain-reduced | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
+                string.Format(
+                    snapshot.DomainMaskArtifactDetailFormat,
+                    domainMaskOutput.Width,
+                    domainMaskOutput.Height,
+                    domainMaskOutput.ValidCount,
+                    domainMaskOutput.MissingCount,
+                    snapshot.DomainMaskReducedDetail,
+                    snapshot.SourceIdentityRetainedDetail,
+                    qualityDelta is { } delta
+                        ? snapshot.FormatSourceQualityDeltaSummary(delta)
+                        : snapshot.QualityDeltaUnavailable),
                 step,
                 "HeightField")
             {
@@ -240,7 +282,13 @@ internal sealed class ToolWorkbenchArtifactProjection
                 editableRegionArtifact.Unit,
                 editableRegionArtifact.FrameId,
                 editableRegionArtifact.ContentSha256,
-                $"region {editableRegionArtifact.RegionIndex} | {editableRegionArtifact.Cells.Count:N0} exact cell(s) | bounds {editableRegionArtifact.Bounding.Width} × {editableRegionArtifact.Bounding.Height} | connected {editableRegionArtifact.SourceConnectedRegionContentSha256}",
+                string.Format(
+                    snapshot.EditableRegionArtifactDetailFormat,
+                    editableRegionArtifact.RegionIndex,
+                    editableRegionArtifact.Cells.Count,
+                    editableRegionArtifact.Bounding.Width,
+                    editableRegionArtifact.Bounding.Height,
+                    editableRegionArtifact.SourceConnectedRegionContentSha256),
                 step,
                 "EditableRegionArtifact");
         }
@@ -255,7 +303,7 @@ internal sealed class ToolWorkbenchArtifactProjection
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 outlierOutput,
                 outlierMask.OutlierCellCount,
-                "detected by Remove Outlier Pixels mask");
+                snapshot.RemoveOutlierQualityDeltaEvidence);
             return new ToolWorkbenchArtifactItem(
                 outlierOutput.EntityId,
                 step.ToolName,
@@ -270,7 +318,16 @@ internal sealed class ToolWorkbenchArtifactProjection
                 outlierOutput.Unit,
                 outlierOutput.FrameId,
                 outlierOutput.ContentSha256,
-                $"{outlierOutput.Width} × {outlierOutput.Height} | removed {outlierMask.OutlierCellCount:N0} | outlier mask {outlierMask.Sha256} | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
+                string.Format(
+                    snapshot.RemoveOutlierArtifactDetailFormat,
+                    outlierOutput.Width,
+                    outlierOutput.Height,
+                    outlierMask.OutlierCellCount,
+                    outlierMask.Sha256,
+                    snapshot.SourceIdentityRetainedDetail,
+                    qualityDelta is { } delta
+                        ? snapshot.FormatSourceQualityDeltaSummary(delta)
+                        : snapshot.QualityDeltaUnavailable),
                 step,
                 "FilteredHeightField")
             {
@@ -284,7 +341,7 @@ internal sealed class ToolWorkbenchArtifactProjection
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 filterPreviewOutput,
                 null,
-                "not evaluated by Median Filter");
+                snapshot.FilterQualityDeltaEvidence);
             return new ToolWorkbenchArtifactItem(
                 filterPreviewOutput.EntityId,
                 step.ToolName,
@@ -295,7 +352,14 @@ internal sealed class ToolWorkbenchArtifactProjection
                 filterPreviewOutput.Unit,
                 filterPreviewOutput.FrameId,
                 filterPreviewOutput.ContentSha256,
-                $"{filterPreviewOutput.Width} × {filterPreviewOutput.Height} | {filterPreviewOutput.Provenance} | {qualityDelta?.Summary ?? "quality delta unavailable"}",
+                string.Format(
+                    snapshot.FilterArtifactDetailFormat,
+                    filterPreviewOutput.Width,
+                    filterPreviewOutput.Height,
+                    filterPreviewOutput.Provenance,
+                    qualityDelta is { } delta
+                        ? snapshot.FormatSourceQualityDeltaSummary(delta)
+                        : snapshot.QualityDeltaUnavailable),
                 step,
                 "FilteredHeightField")
             {
@@ -317,7 +381,10 @@ internal sealed class ToolWorkbenchArtifactProjection
                 edgePreviewOutput.Unit,
                 edgePreviewOutput.FrameId,
                 edgePreviewOutput.ContentSha256,
-                $"{edgePreviewOutput.Points.Count:N0} points | {edgePreviewOutput.Provenance}",
+                string.Format(
+                    snapshot.HeightDifferenceEdgeArtifactDetailFormat,
+                    edgePreviewOutput.Points.Count,
+                    edgePreviewOutput.Provenance),
                 step,
                 "EdgePointSet");
         }
@@ -335,7 +402,11 @@ internal sealed class ToolWorkbenchArtifactProjection
                 publishedLine.Unit,
                 publishedLine.FrameId,
                 publishedLine.ContentSha256,
-                $"{publishedLine.Diagnostics.InlierCount:N0}/{publishedLine.Diagnostics.InputPointCount:N0} inliers | {publishedLine.Provenance}",
+                string.Format(
+                    snapshot.LineFitArtifactDetailFormat,
+                    publishedLine.Diagnostics.InlierCount,
+                    publishedLine.Diagnostics.InputPointCount,
+                    publishedLine.Provenance),
                 step,
                 "LineFeature");
         }
@@ -353,7 +424,13 @@ internal sealed class ToolWorkbenchArtifactProjection
                 publishedTwoPointLine.Unit,
                 publishedTwoPointLine.FrameId,
                 publishedTwoPointLine.ContentSha256,
-                $"ordered picks ({publishedTwoPointLine.FirstRow}, {publishedTwoPointLine.FirstColumn}) -> ({publishedTwoPointLine.SecondRow}, {publishedTwoPointLine.SecondColumn}) | {publishedTwoPointLine.Provenance}",
+                string.Format(
+                    snapshot.TwoPointLineArtifactDetailFormat,
+                    publishedTwoPointLine.FirstRow,
+                    publishedTwoPointLine.FirstColumn,
+                    publishedTwoPointLine.SecondRow,
+                    publishedTwoPointLine.SecondColumn,
+                    publishedTwoPointLine.Provenance),
                 step,
                 "LineFeature");
         }
@@ -371,7 +448,15 @@ internal sealed class ToolWorkbenchArtifactProjection
                 publishedThreePointPlane.Unit,
                 publishedThreePointPlane.FrameId,
                 publishedThreePointPlane.ContentSha256,
-                $"ordered picks ({publishedThreePointPlane.FirstRow}, {publishedThreePointPlane.FirstColumn}) -> ({publishedThreePointPlane.SecondRow}, {publishedThreePointPlane.SecondColumn}) -> ({publishedThreePointPlane.ThirdRow}, {publishedThreePointPlane.ThirdColumn}) | {publishedThreePointPlane.Provenance}",
+                string.Format(
+                    snapshot.ThreePointPlaneArtifactDetailFormat,
+                    publishedThreePointPlane.FirstRow,
+                    publishedThreePointPlane.FirstColumn,
+                    publishedThreePointPlane.SecondRow,
+                    publishedThreePointPlane.SecondColumn,
+                    publishedThreePointPlane.ThirdRow,
+                    publishedThreePointPlane.ThirdColumn,
+                    publishedThreePointPlane.Provenance),
                 step,
                 "PlaneFeature");
         }
@@ -389,7 +474,12 @@ internal sealed class ToolWorkbenchArtifactProjection
                 publishedDatumDeviation.Unit,
                 publishedDatumDeviation.FrameId,
                 publishedDatumDeviation.ContentSha256,
-                $"{publishedDatumDeviation.OutputRole} | P2V {publishedDatumDeviation.PeakToValleyRawHeight:G6} raw-height | {publishedDatumDeviation.ValidSampleCount:N0} samples | {publishedDatumDeviation.Provenance}",
+                string.Format(
+                    snapshot.DatumPlaneDeviationArtifactDetailFormat,
+                    publishedDatumDeviation.OutputRole,
+                    publishedDatumDeviation.PeakToValleyRawHeight,
+                    publishedDatumDeviation.ValidSampleCount,
+                    publishedDatumDeviation.Provenance),
                 step,
                 "DatumPlaneDeviationResult");
         }
@@ -407,7 +497,11 @@ internal sealed class ToolWorkbenchArtifactProjection
                 publishedIntersection.Unit,
                 publishedIntersection.FrameId,
                 publishedIntersection.ContentSha256,
-                $"{publishedIntersection.OutputRole} | gap {publishedIntersection.ClosestApproachDistance:G6} | acute {publishedIntersection.AcuteAngleDegrees:G6} degrees",
+                string.Format(
+                    snapshot.LineIntersectionArtifactDetailFormat,
+                    publishedIntersection.OutputRole,
+                    publishedIntersection.ClosestApproachDistance,
+                    publishedIntersection.AcuteAngleDegrees),
                 step,
                 "CornerAnchor");
         }
@@ -433,7 +527,11 @@ internal sealed class ToolWorkbenchArtifactProjection
                 correspondenceOutput.SourceUnit,
                 correspondenceOutput.SourceFrameId,
                 correspondenceOutput.ContentSha256,
-                $"{correspondenceOutput.Pairs.Count}/4 pairs | source rank {correspondenceOutput.SourceRank}/4 | reference rank {correspondenceOutput.ReferenceRank}/4 | correspondence evidence only",
+                string.Format(
+                    snapshot.LandmarkCorrespondenceArtifactDetailFormat,
+                    correspondenceOutput.Pairs.Count,
+                    correspondenceOutput.SourceRank,
+                    correspondenceOutput.ReferenceRank),
                 step,
                 "CorrespondenceSet");
         }
@@ -451,7 +549,10 @@ internal sealed class ToolWorkbenchArtifactProjection
                 publishedAffine.ReferenceUnit,
                 publishedAffine.ReferenceFrameId,
                 publishedAffine.ContentSha256,
-                $"condition {publishedAffine.ConditionEstimate:G6} | max residual {publishedAffine.ArithmeticMaximumResidual:G6} | matrix evidence only",
+                string.Format(
+                    snapshot.XyzAffineSolveArtifactDetailFormat,
+                    publishedAffine.ConditionEstimate,
+                    publishedAffine.ArithmeticMaximumResidual),
                 step,
                 "AffineTransform3D");
         }
@@ -470,7 +571,10 @@ internal sealed class ToolWorkbenchArtifactProjection
                 affineApplyOutput.ReferenceUnit,
                 affineApplyOutput.ReferenceFrameId,
                 affineApplyOutput.ContentSha256,
-                $"{affineApplyOutput.FinitePointCount:N0} finite transformed points | {affineApplyOutput.MissingPointCount:N0} missing source cells | A3 re-grid excluded",
+                string.Format(
+                    snapshot.XyzAffineApplyArtifactDetailFormat,
+                    affineApplyOutput.FinitePointCount,
+                    affineApplyOutput.MissingPointCount),
                 step,
                 "TransformedPointCloud");
         }
@@ -489,7 +593,13 @@ internal sealed class ToolWorkbenchArtifactProjection
                 regridHeightFieldOutput.ReferenceUnit,
                 regridHeightFieldOutput.ReferenceFrameId,
                 regridHeightFieldOutput.ContentSha256,
-                $"{regridHeightFieldOutput.PopulatedCellCount:N0}/{regridHeightFieldOutput.Cells.Count:N0} populated | coverage {regridHeightFieldOutput.CoverageRatio:P2} | missing {regridHeightFieldOutput.MissingCellCount:N0} | collisions {regridHeightFieldOutput.CollisionCount:N0}",
+                string.Format(
+                    snapshot.RegridHeightFieldArtifactDetailFormat,
+                    regridHeightFieldOutput.PopulatedCellCount,
+                    regridHeightFieldOutput.Cells.Count,
+                    regridHeightFieldOutput.CoverageRatio,
+                    regridHeightFieldOutput.MissingCellCount,
+                    regridHeightFieldOutput.CollisionCount),
                 step,
                 "TransformedHeightField");
         }
@@ -510,7 +620,10 @@ internal sealed class ToolWorkbenchArtifactProjection
                 measurementOutput.Unit,
                 measurementOutput.FrameId,
                 measurementOutput.ContentSha256,
-                $"{measurementOutput.Result.Status} | {measurementOutput.EvidenceSummary}",
+                string.Format(
+                    snapshot.MeasurementArtifactDetailFormat,
+                    snapshot.ResultStatusLabel(measurementOutput.Result.Status),
+                    measurementOutput.EvidenceSummary),
                 step,
                 measurementOutput.CompletenessGrid is null
                     ? "MeasurementResult"
@@ -527,7 +640,7 @@ internal sealed class ToolWorkbenchArtifactProjection
             source.Unit,
             source.FrameId,
             string.Empty,
-            $"Declared by {step.Id}. No Preview or Published output exists yet.",
+            string.Format(snapshot.DeclaredOutputDetailFormat, step.OutputEntityId),
             step,
             "DeclaredOutput");
     }
@@ -560,11 +673,44 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     ToolRecipeSelectionSourceBinding? SourceBinding,
     string SourceReadinessSummary,
     string SourceContextSummary,
+    string SourceArtifactReadyDetailFormat,
     IReadOnlyList<ToolWorkbenchReferenceItem> References,
     IReadOnlyList<ToolRecipeSelection> Selections,
     Func<ToolRecipeSelection, bool> IsSelectionCurrent,
     IReadOnlyList<ToolWorkbenchPipelineStepItem> PipelineSteps,
     Func<C3DHeightFieldSnapshot, long?, string, SourceQualityDelta?> CreateSourceQualityDelta,
+    Func<SourceQualityDelta, string> FormatSourceQualityDeltaSummary,
+    string QualityDeltaUnavailable,
+    string RoiCropQualityDeltaEvidence,
+    string LevelSurfaceQualityDeltaEvidence,
+    string DomainMaskQualityDeltaEvidence,
+    string RemoveOutlierQualityDeltaEvidence,
+    string FilterQualityDeltaEvidence,
+    string DeclaredOutputDetailFormat,
+    string OutputDisabledDetailFormat,
+    string CurrentSelectionDetail,
+    string StaleSelectionDetail,
+    string SourceIdentityRetainedDetail,
+    string DomainMaskReducedDetail,
+    string DomainMaskArtifactDetailFormat,
+    string ConnectedRegionArtifactDetailFormat,
+    string EditableRegionArtifactDetailFormat,
+    string RemoveOutlierArtifactDetailFormat,
+    string RoiCropArtifactDetailFormat,
+    string LevelSurfaceArtifactDetailFormat,
+    string FilterArtifactDetailFormat,
+    string HeightDifferenceEdgeArtifactDetailFormat,
+    string LineFitArtifactDetailFormat,
+    string TwoPointLineArtifactDetailFormat,
+    string ThreePointPlaneArtifactDetailFormat,
+    string DatumPlaneDeviationArtifactDetailFormat,
+    string LineIntersectionArtifactDetailFormat,
+    string LandmarkCorrespondenceArtifactDetailFormat,
+    string XyzAffineSolveArtifactDetailFormat,
+    string XyzAffineApplyArtifactDetailFormat,
+    string RegridHeightFieldArtifactDetailFormat,
+    string MeasurementArtifactDetailFormat,
+    Func<ResultStatus, string> ResultStatusLabel,
     ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot> RoiCrop,
     ToolWorkbenchLevelSurfaceArtifactPreview LevelSurface,
     ToolWorkbenchArtifactPreview<C3DConnectedRegionArtifact> ConnectedRegion,

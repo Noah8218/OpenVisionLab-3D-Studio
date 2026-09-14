@@ -13,6 +13,7 @@ internal static class PointPairDimensionsGoldenVerification
 
     public static int Run(string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         var passingAcceptance = Acceptance(ExpectedDistance, ExpectedWidth, ExpectedAngle);
         var cases = new[]
         {
@@ -36,8 +37,8 @@ internal static class PointPairDimensionsGoldenVerification
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
         Console.WriteLine($"Point pair dimensions golden verification: {status} ({passedCount}/{cases.Length})");
         return passedCount == cases.Length ? 0 : 5;
     }

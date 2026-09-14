@@ -3,13 +3,14 @@ using System.IO;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    public const string C3DWarpageEntityId = ViewerInspectionSession.C3DWarpageEntityId;
-    public const string C3DWarpageResultEntityId = ViewerInspectionSession.C3DWarpageResultEntityId;
+    public const string C3DWarpageEntityId = ViewerEntityIds.C3DWarpageEntityId;
+    public const string C3DWarpageResultEntityId = ViewerEntityIds.C3DWarpageResultEntityId;
     public const string WarpageRoiSelectionMode = "Warpage ROI Teach";
 
     private const string WarpageStepId = "step.c3d-warpage";

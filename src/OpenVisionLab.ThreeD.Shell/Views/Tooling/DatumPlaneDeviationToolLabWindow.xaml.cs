@@ -9,8 +9,11 @@ public partial class DatumPlaneDeviationToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
 
-    public DatumPlaneDeviationToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "datum-plane-raw-height-deviation", "Expected a Datum Plane Raw-Height Deviation step.")
+    public DatumPlaneDeviationToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "datum-plane-raw-height-deviation", "Expected a Datum Plane Raw-Height Deviation step.")
     {
         InitializeComponent();
         InputViewerHost.Content = inputViewer;

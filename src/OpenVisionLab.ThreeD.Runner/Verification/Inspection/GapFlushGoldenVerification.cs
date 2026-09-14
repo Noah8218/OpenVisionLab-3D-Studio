@@ -11,6 +11,7 @@ internal static class GapFlushGoldenVerification
 
     public static int Run(string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         var acceptance = new C3DGapFlushAcceptance(1.0, 1e-6, 4.0, 1e-6);
         var cases = new[]
         {
@@ -32,8 +33,8 @@ internal static class GapFlushGoldenVerification
             "Definition|gap=right.leftEdge-left.rightEdge|flush=right.rawMean-left.rawMean|direction=left-to-right"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
         Console.WriteLine($"Gap / Flush golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
     }

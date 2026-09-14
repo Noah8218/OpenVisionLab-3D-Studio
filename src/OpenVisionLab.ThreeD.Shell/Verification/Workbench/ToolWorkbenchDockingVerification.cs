@@ -14,6 +14,7 @@ using System.Xml.Linq;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.Layout;
+using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Shell;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
@@ -49,6 +50,9 @@ internal static class ToolWorkbenchDockingVerification
 
     private const string ThicknessRecipeRelativePath =
         "3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json";
+
+    private static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
 
     public static bool Verify(string reportPath, out string summary)
     {
@@ -87,20 +91,17 @@ internal static class ToolWorkbenchDockingVerification
             };
             var profileViewerDataContextBeforeDispose =
                 disposedCallbackWorkbench.ProfileViewerDataContext;
+            var profileViewerHostBeforeDispose =
+                disposedCallbackWorkbench.ProfileViewerHost;
             disposedCallbackWorkbench.Dispose();
             disposedCallbackWorkbench.ViewerContent = replacementCallbackViewer;
             Check(
-                "disposed Workbench ignores late ViewerContent callback",
-                ReferenceEquals(
-                    profileViewerDataContextBeforeDispose,
-                    firstCallbackViewer.ViewModel)
-                && ReferenceEquals(
-                    disposedCallbackWorkbench.ProfileViewerDataContext,
-                    profileViewerDataContextBeforeDispose)
-                && !ReferenceEquals(
-                    disposedCallbackWorkbench.ProfileViewerDataContext,
-                    replacementCallbackViewer.ViewModel),
-                $"before={profileViewerDataContextBeforeDispose is not null};after={disposedCallbackWorkbench.ProfileViewerDataContext is not null};replacement={ReferenceEquals(disposedCallbackWorkbench.ProfileViewerDataContext, replacementCallbackViewer.ViewModel)}");
+                "disposed Workbench releases profile adapter and ignores late ViewerContent callback",
+                profileViewerDataContextBeforeDispose is HeightProfileViewModel
+                && ReferenceEquals(profileViewerHostBeforeDispose, firstCallbackViewer)
+                && disposedCallbackWorkbench.ProfileViewerHost is null
+                && disposedCallbackWorkbench.ProfileViewerDataContext is null,
+                $"beforeAdapter={profileViewerDataContextBeforeDispose is HeightProfileViewModel};beforeHost={profileViewerHostBeforeDispose is not null};afterHost={disposedCallbackWorkbench.ProfileViewerHost is not null};after={disposedCallbackWorkbench.ProfileViewerDataContext is not null}");
 
             var dataContextOwner = new object();
             var viewerOwner = new object();
@@ -128,6 +129,7 @@ internal static class ToolWorkbenchDockingVerification
                     (Key.F5, ModifierKeys.None),
                     (Key.Enter, ModifierKeys.Control),
                     (Key.F5, ModifierKeys.Control),
+                    (Key.F5, ModifierKeys.Control | ModifierKeys.Shift),
                 ]),
                 string.Join(", ", shortcutGestures.OrderBy(item => item.Key).ThenBy(item => item.Modifiers)));
             Check("Workbench exposes twelve dock panes", workbenchContracts.Count == 12, Describe(workbenchContracts));
@@ -223,6 +225,37 @@ internal static class ToolWorkbenchDockingVerification
                 navigationRail.HasAccessibleResponsibilityRoutes
                 && navigationRail.HasAccessibleUtilityRoutes,
                 $"responsibilities={navigationRail.HasAccessibleResponsibilityRoutes}; utilities={navigationRail.HasAccessibleUtilityRoutes}");
+            var expectedToolLabIds = new[]
+            {
+                "filter",
+                "height-difference-edge",
+                "two-point-line",
+                "three-point-plane",
+                "datum-plane-raw-height-deviation",
+                "line-intersection",
+                "landmark-correspondence",
+                "xyz-affine-solve",
+                "xyz-affine-apply",
+                "re-grid-height-map",
+            };
+            var requestedToolLabIds = new List<string>();
+            EventHandler<StudioToolLabRequestEventArgs> toolLabRequestHandler = (_, args) =>
+                requestedToolLabIds.Add(args.ToolId);
+            navigationRail.ToolLabRequested += toolLabRequestHandler;
+            var toolLabMenuItems = navigationRail.ToolLabsMenuButton.ContextMenu?.Items
+                .OfType<MenuItem>()
+                .ToArray()
+                ?? [];
+            foreach (var toolLabMenuItem in toolLabMenuItems)
+            {
+                toolLabMenuItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, toolLabMenuItem));
+            }
+            navigationRail.ToolLabRequested -= toolLabRequestHandler;
+            Check(
+                "Studio navigation rail emits one ordered typed Tool Lab request per menu item",
+                expectedToolLabIds.SequenceEqual(toolLabMenuItems.Select(item => item.Tag as string))
+                && expectedToolLabIds.SequenceEqual(requestedToolLabIds),
+                $"menuIds=[{string.Join(",", toolLabMenuItems.Select(item => item.Tag))}]; requests=[{string.Join(",", requestedToolLabIds)}]");
             Check(
                 "Studio language selector retains the shared themed ComboBox base style",
                 navigationRail.LanguageSelector.Style.BasedOn is not null
@@ -465,7 +498,7 @@ internal static class ToolWorkbenchDockingVerification
             var validationFixture =
                 CompletenessValidationVerificationFixtureFactory.Create(
                     Path.Combine(
-                        Path.GetDirectoryName(Path.GetFullPath(reportPath))!,
+                        GetReportDirectory(reportPath),
                         "validation-set-fixture"));
             var validationSamplePaths = validationFixture.Samples
                 .Select(sample => sample.SourcePath)
@@ -480,19 +513,24 @@ internal static class ToolWorkbenchDockingVerification
                 DataContext = shell,
                 ViewerContent = viewerOwner,
             };
+            ShellWindowNativeInterop.TryGetLeftmostWorkAreaOrigin(out var testLeft, out var testTop);
+            var monitorReportPath = Path.GetFullPath(reportPath) + ".monitors.txt";
+            Directory.CreateDirectory(Path.GetDirectoryName(monitorReportPath)!);
+            File.WriteAllText(monitorReportPath, string.Empty);
             var stageHost = new Window
             {
                 Content = stageWorkbench,
                 Width = 1600,
                 Height = 900,
-                Left = -10000,
-                Top = -10000,
+                Left = testLeft,
+                Top = testTop,
                 ShowActivated = false,
                 ShowInTaskbar = false,
                 WindowStyle = WindowStyle.None,
             };
             stageHost.Show();
             stageHost.UpdateLayout();
+            ShellWindowNativeInterop.AppendWindowMonitorEvidence(stageHost, monitorReportPath);
             Check(
                 "dual-ROI Selected Tool keeps input requirements, one next action, and catalog return together",
                 stageWorkbench.HasContextualSelectedStepSetup,
@@ -687,14 +725,15 @@ internal static class ToolWorkbenchDockingVerification
                 Content = ownerPathWorkbench,
                 Width = 1600,
                 Height = 900,
-                Left = -10000,
-                Top = -10000,
+                Left = testLeft,
+                Top = testTop,
                 ShowActivated = false,
                 ShowInTaskbar = false,
                 WindowStyle = WindowStyle.None,
             };
             ownerPathHost.Show();
             ownerPathHost.UpdateLayout();
+            ShellWindowNativeInterop.AppendWindowMonitorEvidence(ownerPathHost, monitorReportPath);
             ownerPathWorkbench.SetValidationWorkspaceSection(
                 ValidationWorkspaceSection.Samples);
             ownerPathHost.UpdateLayout();
@@ -880,8 +919,7 @@ internal static class ToolWorkbenchDockingVerification
             ownerPathHost.Close();
 
             var layoutVerificationDirectory = Path.Combine(
-                Path.GetDirectoryName(Path.GetFullPath(reportPath))
-                    ?? Environment.CurrentDirectory,
+                GetReportDirectory(reportPath),
                 $"layout-profile-{Guid.NewGuid():N}");
             Directory.CreateDirectory(layoutVerificationDirectory);
             var layoutPath = Path.Combine(
@@ -1185,6 +1223,15 @@ internal static class ToolWorkbenchDockingVerification
                 "src",
                 "OpenVisionLab.ThreeD.Shell",
                 "MainWindow.xaml.cs"));
+            var smokeScenarioSource = File.ReadAllText(Path.Combine(
+                repositoryRoot,
+                "src",
+                "OpenVisionLab.ThreeD.Shell",
+                "Automation",
+                "ShellSmokeScenarioRunner.cs"));
+            var hasDialogPrimaryTarget = shellSource.Contains("new ShellSmokeScenarioRunner(", StringComparison.Ordinal)
+                && smokeScenarioSource.Contains("CaptureMessageDialogForSmokeAsync(", StringComparison.Ordinal)
+                && smokeScenarioSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal);
             Check(
                 "Button audit covers all declarations, style owners, custom templates, and dynamic dialog buttons",
                 buttonBaseControls.Length == 359
@@ -1201,8 +1248,8 @@ internal static class ToolWorkbenchDockingVerification
                 "Every app-facing button template owns hover, pressed, focus, disabled, and checked states with semantic glyphs",
                 incompleteButtonTemplates.Length == 0
                 && hardCodedButtonGlyphs.Length == 0
-                && shellSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal),
-                $"incomplete={string.Join(',', incompleteButtonTemplates)}; glyphLeaks={string.Join(',', hardCodedButtonGlyphs)}; dialogPrimaryTarget={shellSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal)}");
+                && hasDialogPrimaryTarget,
+                $"incomplete={string.Join(',', incompleteButtonTemplates)}; glyphLeaks={string.Join(',', hardCodedButtonGlyphs)}; dialogPrimaryTarget={hasDialogPrimaryTarget}");
             var advancedXaml = File.ReadAllText(Path.Combine(
                 repositoryRoot,
                 "src",
@@ -1248,8 +1295,8 @@ internal static class ToolWorkbenchDockingVerification
                 "Shell owns a fixed themed bottom status boundary",
                 advancedXaml.Contains("x:Name=\"StudioBottomStatus\"", StringComparison.Ordinal)
                 && advancedXaml.Contains("Height=\"30\"", StringComparison.Ordinal)
-                && advancedXaml.Contains("Text=\"{Binding InspectionStageNavigationStatus}\"", StringComparison.Ordinal)
-                && advancedXaml.Contains("Text=\"{Binding StatusText}\"", StringComparison.Ordinal),
+                && advancedXaml.Contains("Text=\"{Binding InspectionStageNavigationStatus, Converter={StaticResource ViewerRuntimeTextConverter}}\"", StringComparison.Ordinal)
+                && advancedXaml.Contains("Text=\"{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}\"", StringComparison.Ordinal),
                 "StudioBottomStatus=30; stage and operation status bindings present");
             var dockXaml = File.ReadAllText(Path.Combine(
                 repositoryRoot,
@@ -1304,11 +1351,7 @@ internal static class ToolWorkbenchDockingVerification
             lines.Add($"FAIL | unexpected exception | {exception}");
         }
 
-        var reportDirectory = Path.GetDirectoryName(reportPath);
-        if (!string.IsNullOrWhiteSpace(reportDirectory))
-        {
-            Directory.CreateDirectory(reportDirectory);
-        }
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
 
         var succeeded = passed == total
             && total > 0

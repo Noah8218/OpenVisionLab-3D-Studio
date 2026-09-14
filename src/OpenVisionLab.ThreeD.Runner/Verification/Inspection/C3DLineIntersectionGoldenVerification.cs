@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -17,6 +18,7 @@ internal static class C3DLineIntersectionGoldenVerification
             Check("deterministic-hash-and-input-order", VerifyDeterminismAndOrder),
             Check("runner-full-feature-chain", VerifyRunnerFullFeatureChain),
             Check("runner-two-point-line-chain", VerifyRunnerTwoPointLineChain),
+            Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath)),
             Check("cancellation-propagates", VerifyCancellation)
         };
         var passed = cases.Count(item => item.Passed);
@@ -27,7 +29,7 @@ internal static class C3DLineIntersectionGoldenVerification
             "Definition|numeric=X-column,Y-raw-height,Z-row|closest=MidpointOfClosestPoints|parallel=RejectBelowMinimumAcuteAngle|support=InlierProjectionExtents+MaximumExtension"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(reportPath, lines);
         Console.WriteLine($"3D Line Intersection golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
@@ -230,6 +232,80 @@ internal static class C3DLineIntersectionGoldenVerification
         }
     }
 
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var reportDirectory = GetReportDirectory(reportPath) ?? Environment.CurrentDirectory;
+        var root = Path.Combine(reportDirectory, $"line-intersection-atomic-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(root);
+            var source = C3DHeightFieldSnapshot.CreateForVerification("source.synthetic", 3, 3, Enumerable.Repeat(1d, 9).ToArray());
+            var sourcePath = Path.Combine(root, "source.c3d");
+            source.SaveC3D(sourcePath);
+            var firstSelection = CreatePointSelection(source, "selection.line-a", (0, 0), (0, 2));
+            var secondSelection = CreatePointSelection(source, "selection.line-b", (0, 1), (2, 1));
+            var document = new ToolRecipeDocument(
+                ToolRecipeDocument.CurrentSchemaVersion,
+                "2-Point Line Intersection atomic report fixture",
+                new ToolRecipeSource(source.EntityId, "Synthetic", "C3D", source.Unit, source.FrameId, sourcePath, source.ByteLength, source.ContentSha256, source.Width, source.Height),
+                [],
+                [
+                    new ToolRecipeStep("step.line.a", "two-point-line", "2-Point Line", 1, [source.EntityId, firstSelection.Id], "derived.line.a", [new("OutputRole", "FirstEdge"), new("ConstructionPolicy", "OrderedPointsDefineSegment")]),
+                    new ToolRecipeStep("step.line.b", "two-point-line", "2-Point Line", 1, [source.EntityId, secondSelection.Id], "derived.line.b", [new("OutputRole", "SecondEdge"), new("ConstructionPolicy", "OrderedPointsDefineSegment")]),
+                    new ToolRecipeStep("step.corner.01", "line-intersection", "Line Intersection", 2, ["derived.line.a", "derived.line.b"], "derived.corner.01", Parameters("SyntheticCorner"))
+                ],
+                [firstSelection, secondSelection]);
+            var recipePath = Path.Combine(root, "fixture.ov3d-teach.json");
+            var runnerReportPath = Path.Combine(root, "runner.txt");
+            ToolRecipeDocumentStore.Save(recipePath, document);
+            var first = ToolRecipeTwoPointLineExecution.Execute(document, "step.line.a", root);
+            var second = ToolRecipeTwoPointLineExecution.Execute(document, "step.line.b", root);
+            var expected = ToolRecipeLineIntersectionExecution.Execute(document, "step.corner.01", first.Output!, second.Output!);
+            var firstExitCode = ToolRecipeLineIntersectionRunnerExecution.Run(recipePath, "step.corner.01", runnerReportPath);
+            var firstBytes = File.ReadAllBytes(runnerReportPath);
+            File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var overwriteExitCode = ToolRecipeLineIntersectionRunnerExecution.Run(recipePath, "step.corner.01", runnerReportPath);
+            var overwriteBytes = File.ReadAllBytes(runnerReportPath);
+            var report = File.ReadAllText(runnerReportPath);
+            var lockedPath = Path.Combine(root, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExitCode;
+            using (var lockedStream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                lockedExitCode = ToolRecipeLineIntersectionRunnerExecution.Run(recipePath, "step.corner.01", lockedPath);
+            }
+            var lockedPreserved = lockedSentinel.SequenceEqual(File.ReadAllBytes(lockedPath));
+            var invalidParentMarker = Path.Combine(root, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-marker", new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var invalidParentReport = Path.Combine(invalidParentMarker, "report.txt");
+            var invalidParentExitCode = ToolRecipeLineIntersectionRunnerExecution.Run(recipePath, "step.corner.01", invalidParentReport);
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-marker";
+            var temporaryFilesRemain = Directory.GetFiles(root, "*.txt.tmp.*").Length != 0;
+            var passed = firstExitCode == 0
+                && overwriteExitCode == 0
+                && expected.Output is not null
+                && firstBytes.SequenceEqual(overwriteBytes)
+                && report.Contains("LineIntersection|status=Pass", StringComparison.Ordinal)
+                && report.Contains($"sha256={expected.Output.ContentSha256}", StringComparison.Ordinal)
+                && report.Contains("origin=PickedPoints", StringComparison.Ordinal)
+                && !HasUtf8Bom(overwriteBytes)
+                && lockedExitCode == 5
+                && lockedPreserved
+                && invalidParentExitCode == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (passed, $"firstExit={firstExitCode};overwriteExit={overwriteExitCode};lockedExit={lockedExitCode};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExitCode};invalidParentPreserved={invalidParentPreserved};stable={firstBytes.SequenceEqual(overwriteBytes)};bom={HasUtf8Bom(overwriteBytes)};temporaryFilesRemain={temporaryFilesRemain};report={report.Replace(Environment.NewLine, ";")}");
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, true);
+            }
+        }
+    }
+
     private static ToolRecipeStep CreateEdgeStep(string id, string selectionId, string axis, string output) =>
         new(id, "height-difference-edge", "Height Difference Edge", 1, ["derived.filtered.01", selectionId], output, [new("ComparisonAxis", axis), new("Polarity", "Rising"), new("MinimumDelta", "5"), new("CandidatePolicy", "StrongestPerScanline"), new("PointPolicy", "PairMidpoint"), new("MissingValuePolicy", "SkipPair"), new("BoundaryPolicy", "WithinSelection")]);
 
@@ -275,6 +351,7 @@ internal static class C3DLineIntersectionGoldenVerification
         new("MaximumClosestApproachDistance", "0.5"), new("MinimumAcuteAngleDegrees", "45"), new("MaximumSupportExtension", "0"), new("OutputRole", role),
         new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")
     ];
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
     private static bool Approximately(double actual, double expected, double tolerance = 1e-8) => Math.Abs(actual - expected) <= tolerance;
     private static string Evidence(C3DLineIntersectionEvaluation evaluation) => $"status={evaluation.Result.Status};gap={evaluation.Output?.ClosestApproachDistance};angle={evaluation.Output?.AcuteAngleDegrees};hash={evaluation.Output?.ContentSha256};message={evaluation.Result.Message}";
     private static VerificationCase Check(string name, Func<(bool Passed, string Evidence)> verify)
@@ -289,6 +366,7 @@ internal static class C3DLineIntersectionGoldenVerification
             return new VerificationCase(name, false, $"unexpected {exception.GetType().Name}: {exception.Message}");
         }
     }
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
     private static string Clean(string value) => value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
     private sealed record VerificationCase(string Name, bool Passed, string Evidence);
 }

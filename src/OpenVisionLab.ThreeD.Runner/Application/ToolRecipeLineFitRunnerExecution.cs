@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -6,6 +7,7 @@ internal static class ToolRecipeLineFitRunnerExecution
 {
     public static int Run(string recipePath, string lineFitStepId, string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
@@ -43,17 +45,58 @@ internal static class ToolRecipeLineFitRunnerExecution
                 $"Policy|method=DeterministicConsensusOrthogonalTls|hypotheses=Sha256PairSchedule/256|refinement=OrthogonalTlsUntilStable10|direction=PositiveScanlineAxis|segment=InlierProjectionExtents|contract={C3DLineFeature.ContractVersion}"
             };
             lines.AddRange(output.PointDiagnostics.Select(point => $"Point|index={point.InputPointIndex}|scanline={point.ScanlineIndex}|xyz={point.X:R},{point.Y:R},{point.Z:R}|projected={point.ProjectedX:R},{point.ProjectedY:R},{point.ProjectedZ:R}|residual={point.OrthogonalResidual:R}|inlier={point.IsInlier}"));
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath, lines);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            WriteLinesAtomically(fullReportPath, lines);
             Console.WriteLine($"3D Line Fit Runner: Pass ({diagnostics.InlierCount}/{diagnostics.InputPointCount} inliers, {output.ContentSha256})");
             return 0;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or InvalidOperationException or OverflowException)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-            File.WriteAllLines(reportPath, ["OpenVisionLab 3D Line Fit Runner report", $"Error|{exception.Message}"]);
+            TryWriteErrorReport(fullReportPath, exception);
             Console.Error.WriteLine(exception.Message);
             return 5;
+        }
+    }
+
+    private static void TryWriteErrorReport(string reportPath, Exception exception)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+            WriteLinesAtomically(reportPath, ["OpenVisionLab 3D Line Fit Runner report", $"Error|{exception.Message}"]);
+        }
+        catch (Exception reportException) when (reportException is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or OverflowException)
+        {
+            Console.Error.WriteLine($"Line Fit report could not be written: {reportException.Message}");
+        }
+    }
+
+    private static void WriteLinesAtomically(string path, IEnumerable<string> lines)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
+        try
+        {
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 4096, leaveOpen: true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
         }
     }
 }

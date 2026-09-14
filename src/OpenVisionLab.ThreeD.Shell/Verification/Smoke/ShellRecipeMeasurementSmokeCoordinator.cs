@@ -248,12 +248,15 @@ internal sealed class ShellRecipeMeasurementSmokeCoordinator
         return null;
     }
 
+    private static string GetReportDirectory(string reportPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+
     private static void WriteEdgeReport(
         string reportPath,
         C3DHeightDifferenceEdgePointSet edgeOutput)
     {
         var diagnostics = edgeOutput.Diagnostics;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         File.WriteAllLines(
             reportPath,
             [
@@ -273,7 +276,7 @@ internal sealed class ShellRecipeMeasurementSmokeCoordinator
         int plotPointCount)
     {
         var diagnostics = lineFitOutput.Diagnostics;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath));
         File.WriteAllLines(
             reportPath,
             [

@@ -4,12 +4,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:workbenchVm="clr-namespace:OpenVisionLab.ThreeD.Shell.ViewModels.Workbench"
              AutomationProperties.AutomationId="SelectedToolWorkspace">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
         <Style x:Key="WorkspaceSectionStyle" TargetType="{x:Type Expander}">
             <Setter Property="Margin" Value="0,0,0,7" />
             <Setter Property="IsExpanded" Value="False" />
@@ -140,6 +143,23 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
+    <UserControl.InputBindings>
+        <KeyBinding Key="A"
+                    Modifiers="Control+Alt"
+                    Command="{Binding AnalyzePreparationPresetsCommand}" />
+        <KeyBinding Key="P"
+                    Modifiers="Control+Alt"
+                    Command="{Binding ProposePreparationPresetCommand}" />
+        <KeyBinding Key="R"
+                    Modifiers="Control+Alt"
+                    Command="{Binding ReviewPreparationPresetCommand}" />
+        <KeyBinding Key="C"
+                    Modifiers="Control+Alt"
+                    Command="{Binding CancelPreparationPresetReviewCommand}" />
+        <KeyBinding Key="D"
+                    Modifiers="Control+Alt"
+                    Command="{Binding ApplyPreparationPresetDraftCommand}" />
+    </UserControl.InputBindings>
 
     <Grid Background="{DynamicResource ThreeD.PanelBrush}"
           TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
@@ -238,7 +258,7 @@
                         <TextBlock Margin="0,2,0,0"
                                    FontSize="9.5"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                   Text="{Binding ActiveValidationFailureCorrectionContext.ToolName, StringFormat=Rule: {0}}"
+                                   Text="{Binding ActiveValidationFailureCorrectionContext.ToolName, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=RuleLabel}"
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,3,0,0"
                                    FontSize="9.5"
@@ -683,7 +703,7 @@
                                    Command="{Binding PreviewSelectedStepCommand}"
                                    ToolTip="{views:ThreeDText Key=ThreeD.Command.PreviewTip, Korean='선택 도구 미리보기 (F5)', English='Preview selected tool (F5)'}"
                                    AutomationProperties.AutomationId="PreviewTeachingToolButton"
-                                   AutomationProperties.Name="Preview selected inspection step" />
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.PreviewAccessible, Korean='선택 검사 단계 미리보기', English='Preview selected inspection step'}" />
                         <ui:Button x:Name="PublishActionButton"
                                    Width="34"
                                    Height="30"
@@ -693,7 +713,7 @@
                                    Command="{Binding PublishSelectedStepCommand}"
                                    ToolTip="{views:ThreeDText Key=ThreeD.Command.PublishTip, Korean='현재 미리보기 결과 게시', English='Publish the current Preview result'}"
                                    AutomationProperties.AutomationId="PublishTeachingToolButton"
-                                   AutomationProperties.Name="Publish selected inspection output" />
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.PublishAccessible, Korean='선택 검사 출력 게시', English='Publish selected inspection output'}" />
                         <ui:Button x:Name="CancelPreviewActionButton"
                                    Width="34"
                                    Height="30"
@@ -704,7 +724,7 @@
                                    Visibility="{Binding IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
                                    ToolTip="{views:ThreeDText Key=ThreeD.Command.CancelPreviewTip, Korean='실행 중인 미리보기 취소', English='Cancel the running Preview'}"
                                    AutomationProperties.AutomationId="CancelTeachingPreviewButton"
-                                   AutomationProperties.Name="Cancel selected Preview" />
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.CancelPreviewAccessible, Korean='선택 미리보기 취소', English='Cancel selected Preview'}" />
                         <Border Width="1"
                                 Height="22"
                                 Margin="1,4,6,4"
@@ -717,7 +737,7 @@
                                    Command="{Binding SaveTeachingRecipeCommand}"
                                    ToolTip="{views:ThreeDText Key=ThreeD.Command.SaveRecipeTip, Korean='검사 레시피 저장 (Ctrl+S)', English='Save inspection recipe (Ctrl+S)'}"
                                    AutomationProperties.AutomationId="SaveTeachingRecipe"
-                                   AutomationProperties.Name="Save inspection recipe" />
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.SaveRecipeAccessible, Korean='검사 레시피 저장', English='Save inspection recipe'}" />
                     </StackPanel>
                 </Border>
 
@@ -936,7 +956,7 @@
                                    Content="{views:ThreeDText Key=ThreeD.Command.AddLevelReferenceRoi, Korean='기준 ROI 추가', English='Add reference ROI'}"
                                    Icon="{ui:SymbolIcon AddCircle24}"
                                    Command="{Binding BeginAdditionalLevelSurfaceReferenceCommand}"
-                                   AutomationProperties.Name="Add another Level Surface reference ROI" />
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.LevelSurface.AddReferenceRoiAccessible, Korean='Level Surface 기준 ROI 추가', English='Add another Level Surface reference ROI'}" />
                     </StackPanel>
                 </Border>
 
@@ -954,7 +974,7 @@
                                             BorderThickness="0"
                                             Command="{Binding DataContext.SelectWorkspaceInputCommand, ElementName=SelectedToolRoot}"
                                             CommandParameter="{Binding}"
-                                            AutomationProperties.Name="Select typed tool input">
+                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Input.SelectTypedInputAccessible, Korean='타입이 지정된 도구 입력 선택', English='Select typed tool input'}">
                                         <Border Padding="7,5"
                                                 Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                                                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -1013,7 +1033,7 @@
                 <Expander x:Name="ParametersExpander"
                           Style="{StaticResource WorkspaceSectionStyle}"
                           AutomationProperties.AutomationId="SelectedToolParametersExpander"
-                          AutomationProperties.Name="Selected tool parameters"
+                          AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.SelectedToolAccessible, Korean='선택 도구 파라미터', English='Selected tool parameters'}"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Parameters, Korean='2  파라미터', English='2  Parameters'}">
                     <StackPanel Margin="0,5,0,0">
                         <Border Padding="8"
@@ -1049,7 +1069,7 @@
                                          CornerRadius="3"
                                          Visibility="{Binding IsPreparationPresetAssistantVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                          AutomationProperties.AutomationId="PreparationPresetAssistant"
-                                         AutomationProperties.Name="Preparation preset draft assistant">
+                                         AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.AssistantAccessible, Korean='준비 프리셋 초안 도우미', English='Preparation preset draft assistant'}">
                                      <StackPanel>
                                          <Grid>
                                              <Grid.ColumnDefinitions>
@@ -1090,39 +1110,39 @@
                                                        IsEnabled="{Binding IsPreparationPresetAnalysisReady}"
                                                        ToolTip="{Binding SelectedPreparationPreset.Detail}"
                                                        AutomationProperties.AutomationId="PreparationPresetSelector"
-                                                       AutomationProperties.Name="Select a Filter preparation preset" />
+                                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.SelectAccessible, Korean='Filter 준비 프리셋 선택', English='Select a Filter preparation preset'}" />
                                          </Grid>
                                          <WrapPanel Margin="0,6,0,0">
                                              <Button Margin="0,0,5,5"
                                                      Content="{views:ThreeDText Key=ThreeD.Command.Analyze, Korean='분석', English='Analyze'}"
                                                      Command="{Binding AnalyzePreparationPresetsCommand}"
-                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.AnalyzePreparationPresetsTip, Korean='현재 Filter 초안에 적용할 수 있는 준비 프리셋을 확인합니다. 실행하지 않습니다.', English='Inspect the preparation presets available for the current Filter draft without executing.'}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.AnalyzePreparationPresetsTip, Korean='현재 Filter 초안에 적용할 수 있는 준비 프리셋을 확인합니다. 실행하지 않습니다. (Ctrl+Alt+A)', English='Inspect the preparation presets available for the current Filter draft without executing. (Ctrl+Alt+A)'}"
                                                      AutomationProperties.AutomationId="AnalyzePreparationPresets"
-                                                     AutomationProperties.Name="Analyze preparation presets" />
+                                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.AnalyzeAccessible, Korean='준비 프리셋 분석', English='Analyze preparation presets'}" />
                                              <Button Margin="0,0,5,5"
                                                      Content="{views:ThreeDText Key=ThreeD.Command.Propose, Korean='제안', English='Propose'}"
                                                      Command="{Binding ProposePreparationPresetCommand}"
-                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ProposePreparationPresetTip, Korean='선택한 프리셋을 초안 제안으로 준비합니다. 레시피와 실행은 변경하지 않습니다.', English='Prepare the selected preset as a draft proposal without changing the recipe or execution.'}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ProposePreparationPresetTip, Korean='선택한 프리셋을 초안 제안으로 준비합니다. 레시피와 실행은 변경하지 않습니다. (Ctrl+Alt+P)', English='Prepare the selected preset as a draft proposal without changing the recipe or execution. (Ctrl+Alt+P)'}"
                                                      AutomationProperties.AutomationId="ProposePreparationPreset"
-                                                     AutomationProperties.Name="Propose preparation preset" />
+                                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.ProposeAccessible, Korean='준비 프리셋 제안', English='Propose preparation preset'}" />
                                              <Button Margin="0,0,5,5"
                                                      Content="{views:ThreeDText Key=ThreeD.Command.Review, Korean='검토', English='Review'}"
                                                      Command="{Binding ReviewPreparationPresetCommand}"
-                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ReviewPreparationPresetTip, Korean='제안 내용을 확인합니다. 검토만으로는 초안이나 레시피를 변경하지 않습니다.', English='Review the proposal without changing the draft or recipe.'}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ReviewPreparationPresetTip, Korean='제안 내용을 확인합니다. 검토만으로는 초안이나 레시피를 변경하지 않습니다. (Ctrl+Alt+R)', English='Review the proposal without changing the draft or recipe. (Ctrl+Alt+R)'}"
                                                      AutomationProperties.AutomationId="ReviewPreparationPreset"
-                                                     AutomationProperties.Name="Review preparation preset" />
+                                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.ReviewAccessible, Korean='준비 프리셋 검토', English='Review preparation preset'}" />
                                              <Button Margin="0,0,5,5"
                                                      Content="{views:ThreeDText Key=ThreeD.Command.Cancel, Korean='취소', English='Cancel'}"
                                                      Command="{Binding CancelPreparationPresetReviewCommand}"
-                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.CancelPreparationPresetTip, Korean='임시 프리셋 제안과 검토 상태만 취소합니다. 레시피와 실행은 변경하지 않습니다.', English='Cancel the transient preset proposal and review state without changing the recipe or execution.'}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.CancelPreparationPresetTip, Korean='임시 프리셋 제안과 검토 상태만 취소합니다. 레시피와 실행은 변경하지 않습니다. (Ctrl+Alt+C)', English='Cancel the transient preset proposal and review state without changing the recipe or execution. (Ctrl+Alt+C)'}"
                                                      AutomationProperties.AutomationId="CancelPreparationPresetReview"
-                                                     AutomationProperties.Name="Cancel preparation preset review" />
+                                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.CancelAccessible, Korean='준비 프리셋 검토 취소', English='Cancel preparation preset review'}" />
                                              <Button Margin="0,0,0,5"
                                                      Content="{views:ThreeDText Key=ThreeD.Command.ApplyDraft, Korean='초안 적용', English='Apply draft'}"
                                                      Command="{Binding ApplyPreparationPresetDraftCommand}"
-                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ApplyPreparationPresetDraftTip, Korean='검토한 프리셋을 PropertyGrid 초안에만 적용합니다. 일반 Apply 전에는 레시피가 바뀌지 않습니다.', English='Apply the reviewed preset to the PropertyGrid draft only. The recipe stays unchanged until normal Apply.'}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ApplyPreparationPresetDraftTip, Korean='검토한 프리셋을 PropertyGrid 초안에만 적용합니다. 일반 Apply 전에는 레시피가 바뀌지 않습니다. (Ctrl+Alt+D)', English='Apply the reviewed preset to the PropertyGrid draft only. The recipe stays unchanged until normal Apply. (Ctrl+Alt+D)'}"
                                                      AutomationProperties.AutomationId="ApplyPreparationPresetDraft"
-                                                     AutomationProperties.Name="Apply preparation preset to draft" />
+                                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PreparationPreset.ApplyAccessible, Korean='준비 프리셋을 초안에 적용', English='Apply preparation preset to draft'}" />
                                          </WrapPanel>
                                      </StackPanel>
                                  </Border>
@@ -1135,11 +1155,14 @@
                                     <Button Margin="0,0,5,0"
                                             Content="{Binding Localization.Discard}"
                                             Command="{Binding DiscardSelectedStepParameterDraftCommand}"
-                                            AutomationProperties.Name="Discard selected tool parameter changes" />
+                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.DiscardToolDraftAccessibleName, Korean='선택 도구 파라미터 변경 폐기', English='Discard selected tool parameter changes'}" />
                                     <Button Content="{Binding Localization.ApplyParameters}"
                                             IsEnabled="{Binding HasPendingStepParameterChanges}"
-                                            Click="OnApplyParametersClick"
-                                            AutomationProperties.Name="Apply selected tool parameters without running inspection" />
+                                            behaviors:CommitPropertyGridCommandBehavior.IsEnabled="True"
+                                            behaviors:CommitPropertyGridCommandBehavior.PropertyGrid="{Binding ElementName=StepPropertyGrid}"
+                                            behaviors:CommitPropertyGridCommandBehavior.Command="{Binding ApplySelectedStepParameterDraftCommand}"
+                                            behaviors:CommitPropertyGridCommandBehavior.ErrorCommand="{Binding ReportParameterDraftCommitErrorCommand}"
+                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.ApplyToolDraftAccessibleName, Korean='검사 실행 없이 선택 도구 파라미터 적용', English='Apply selected tool parameters without running inspection'}" />
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -1358,7 +1381,7 @@
                                                Content="{Binding Localization.RepeatAsGrid}"
                                                Command="{Binding BeginThicknessRepeatGridCommand}"
                                                Visibility="{Binding ThicknessRepeatGrid.IsInactive, Converter={StaticResource BoolToVisibilityConverter}}"
-                                               AutomationProperties.Name="Repeat Thickness as a reviewed grid" />
+                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.BeginAccessible, Korean='Thickness를 검토 그리드로 반복', English='Repeat Thickness as a reviewed grid'}" />
                                 </Grid>
 
                                 <StackPanel Margin="0,8,0,0"
@@ -1457,11 +1480,11 @@
                                                         <TextBlock FontSize="8.5"
                                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                                    TextWrapping="Wrap">
-                                                            <Run Text="Ref X=" />
+                                                            <Run Text="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.ReferenceGrid, Korean='기준 X=', English='Reference X='}" />
                                                             <Run Text="{Binding ReferenceSelection.GridRectangle.Column}" />
                                                             <Run Text=", Z=" />
                                                             <Run Text="{Binding ReferenceSelection.GridRectangle.Row}" />
-                                                            <Run Text=" · Measure X=" />
+                                                            <Run Text="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.MeasurementGrid, Korean=' · 측정 X=', English=' · Measurement X='}" />
                                                             <Run Text="{Binding MeasurementSelection.GridRectangle.Column}" />
                                                             <Run Text=", Z=" />
                                                             <Run Text="{Binding MeasurementSelection.GridRectangle.Row}" />
@@ -1479,12 +1502,12 @@
                                                    Content="{Binding Localization.ApplyThicknessRepeat}"
                                                    Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                                    Command="{Binding ApplyThicknessRepeatGridCommand}"
-                                                   AutomationProperties.Name="Apply all reviewed Thickness repeats" />
+                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.ApplyAccessible, Korean='검토한 Thickness 반복 전체 적용', English='Apply all reviewed Thickness repeats'}" />
                                         <ui:Button Padding="8,4"
                                                    Content="{Binding Localization.CancelThicknessRepeat}"
                                                    Icon="{ui:SymbolIcon DismissCircle24}"
                                                    Command="{Binding CancelThicknessRepeatGridCommand}"
-                                                   AutomationProperties.Name="Cancel Thickness repeat review" />
+                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.CancelAccessible, Korean='Thickness 반복 검토 취소', English='Cancel Thickness repeat review'}" />
                                     </WrapPanel>
                                 </StackPanel>
                             </StackPanel>
@@ -1519,7 +1542,7 @@
                                             BorderThickness="0"
                                             Command="{Binding SelectWorkspaceRegionCommand}"
                                             CommandParameter="{Binding SelectedToolWorkspace.Regions[0]}"
-                                            AutomationProperties.Name="Select first ROI role">
+                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.SelectReferenceRoiAccessible, Korean='첫 번째 ROI 역할 선택', English='Select first ROI role'}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -1547,18 +1570,18 @@
                                                     Content="{Binding PlaneFlatnessReferenceActionText}"
                                                     Icon="{ui:SymbolIcon TargetArrow24}"
                                                     Command="{Binding CapturePlaneFlatnessReferenceRoiCommand}"
-                                                    AutomationProperties.Name="Draw or redraw Reference ROI" />
+                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.CaptureReferenceRoiAccessible, Korean='기준 ROI 그리기 또는 다시 그리기', English='Draw or redraw Reference ROI'}" />
                                          <ui:Button Margin="0,0,5,0"
                                                     Padding="7,3"
                                                     Content="{Binding Localization.FitRoi}"
                                                     Command="{Binding FitWorkspaceRegionCommand}"
                                                     CommandParameter="{Binding SelectedToolWorkspace.Regions[0]}"
-                                                    AutomationProperties.Name="Fit Reference ROI" />
+                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.FitReferenceRoiAccessible, Korean='기준 ROI 맞춤', English='Fit Reference ROI'}" />
                                          <ui:Button Padding="7,3"
                                                     Content="{views:ThreeDText Key=ThreeD.Command.DeleteRoi, Korean='ROI 삭제', English='Delete ROI'}"
-                                                    Icon="{ui:SymbolIcon Delete24}"
+                                                   Icon="{ui:SymbolIcon Delete24}"
                                                    Command="{Binding RemovePlaneFlatnessReferenceRoiCommand}"
-                                                   AutomationProperties.Name="Delete Reference ROI" />
+                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.DeleteReferenceRoiAccessible, Korean='기준 ROI 삭제', English='Delete Reference ROI'}" />
                                     </WrapPanel>
                                 </StackPanel>
                             </Border>
@@ -1591,7 +1614,7 @@
                                             BorderThickness="0"
                                             Command="{Binding SelectWorkspaceRegionCommand}"
                                             CommandParameter="{Binding SelectedToolWorkspace.Regions[1]}"
-                                            AutomationProperties.Name="Select second ROI role">
+                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.SelectMeasurementRoiAccessible, Korean='두 번째 ROI 역할 선택', English='Select second ROI role'}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -1619,18 +1642,18 @@
                                                     Content="{Binding PlaneFlatnessMeasurementActionText}"
                                                     Icon="{ui:SymbolIcon TargetArrow24}"
                                                     Command="{Binding CapturePlaneFlatnessMeasurementRoiCommand}"
-                                                    AutomationProperties.Name="Draw or redraw Measurement ROI" />
+                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.CaptureMeasurementRoiAccessible, Korean='측정 ROI 그리기 또는 다시 그리기', English='Draw or redraw Measurement ROI'}" />
                                          <ui:Button Margin="0,0,5,0"
                                                     Padding="7,3"
                                                     Content="{Binding Localization.FitRoi}"
                                                     Command="{Binding FitWorkspaceRegionCommand}"
                                                     CommandParameter="{Binding SelectedToolWorkspace.Regions[1]}"
-                                                    AutomationProperties.Name="Fit Measurement ROI" />
+                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.FitMeasurementRoiAccessible, Korean='측정 ROI 맞춤', English='Fit Measurement ROI'}" />
                                          <ui:Button Padding="7,3"
                                                     Content="{views:ThreeDText Key=ThreeD.Command.DeleteRoi, Korean='ROI 삭제', English='Delete ROI'}"
-                                                    Icon="{ui:SymbolIcon Delete24}"
+                                                   Icon="{ui:SymbolIcon Delete24}"
                                                    Command="{Binding RemovePlaneFlatnessMeasurementRoiCommand}"
-                                                   AutomationProperties.Name="Delete Measurement ROI" />
+                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.DeleteMeasurementRoiAccessible, Korean='측정 ROI 삭제', English='Delete Measurement ROI'}" />
                                     </WrapPanel>
                                 </StackPanel>
                             </Border>
@@ -1660,7 +1683,7 @@
                                                 BorderThickness="0"
                                                 Command="{Binding DataContext.SelectWorkspaceRegionCommand, ElementName=SelectedToolRoot}"
                                                 CommandParameter="{Binding}"
-                                                AutomationProperties.Name="Select tool region">
+                                                AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Roi.SelectToolRegionAccessible, Korean='도구 영역 선택', English='Select tool region'}">
                                             <Border Padding="7"
                                                     Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                                                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -1692,12 +1715,12 @@
                                            Content="{Binding SelectionCaptureActionText}"
                                            Icon="{ui:SymbolIcon TargetArrow24}"
                                            Command="{Binding BeginTeachingSelectionCaptureCommand}"
-                                           AutomationProperties.Name="Draw or replace selected tool ROI" />
+                                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Roi.CaptureSelectedToolAccessible, Korean='선택 도구 ROI 그리기 또는 교체', English='Draw or replace selected tool ROI'}" />
                                 <ui:Button Padding="7,3"
                                            Content="{views:ThreeDText Key=ThreeD.Command.DeleteSelection, Korean='선택 영역 삭제', English='Delete region'}"
                                            Icon="{ui:SymbolIcon Delete24}"
                                            Command="{Binding RemoveSelectedTeachingSelectionCommand}"
-                                           AutomationProperties.Name="Delete selected tool region" />
+                                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Roi.DeleteSelectedToolAccessible, Korean='선택 도구 영역 삭제', English='Delete selected tool region'}" />
                             </WrapPanel>
                         </StackPanel>
 
@@ -1784,7 +1807,7 @@
                                                Padding="7,3"
                                                Content="{views:ThreeDText Key=ThreeD.Workspace.AddPolygonVertex, Korean='정점 추가', English='Add vertex'}"
                                                Command="{Binding AddTeachingGridPolygonVertexCommand}"
-                                               AutomationProperties.Name="Add polygon vertex" />
+                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Polygon.AddVertexAccessible, Korean='다각형 정점 추가', English='Add polygon vertex'}" />
                                 </Grid>
 
                                 <ScrollViewer Margin="0,6,0,0"
@@ -1810,34 +1833,34 @@
                                                     <TextBox Grid.Column="1"
                                                              Margin="0,0,3,0"
                                                              Text="{Binding Column, Mode=TwoWay, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True, NotifyOnValidationError=True}"
-                                                             ToolTip="X / column"
-                                                             AutomationProperties.Name="Polygon vertex X column" />
+                                                             ToolTip="{views:ThreeDText Key=ThreeD.Workbench.Polygon.VertexColumnTip, Korean='X 좌표(열)', English='X / column'}"
+                                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Polygon.VertexColumnAccessible, Korean='다각형 정점 X 열', English='Polygon vertex X column'}" />
                                                     <TextBox Grid.Column="2"
                                                              Margin="3,0"
                                                              Text="{Binding Row, Mode=TwoWay, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True, NotifyOnValidationError=True}"
-                                                             ToolTip="Z / row"
-                                                             AutomationProperties.Name="Polygon vertex Z row" />
+                                                             ToolTip="{views:ThreeDText Key=ThreeD.Workbench.Polygon.VertexRowTip, Korean='Z 좌표(행)', English='Z / row'}"
+                                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Polygon.VertexRowAccessible, Korean='다각형 정점 Z 행', English='Polygon vertex Z row'}" />
                                                     <ui:Button Grid.Column="3"
                                                                Margin="3,0,0,0"
                                                                Padding="4,1"
                                                                Content="↑"
                                                                Command="{Binding DataContext.MoveTeachingGridPolygonVertexUpCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                                CommandParameter="{Binding}"
-                                                               AutomationProperties.Name="Move polygon vertex up" />
+                                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Polygon.MoveVertexUpAccessible, Korean='다각형 정점을 위로 이동', English='Move polygon vertex up'}" />
                                                     <ui:Button Grid.Column="4"
                                                                Margin="2,0,0,0"
                                                                Padding="4,1"
                                                                Content="↓"
                                                                Command="{Binding DataContext.MoveTeachingGridPolygonVertexDownCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                                CommandParameter="{Binding}"
-                                                               AutomationProperties.Name="Move polygon vertex down" />
+                                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Polygon.MoveVertexDownAccessible, Korean='다각형 정점을 아래로 이동', English='Move polygon vertex down'}" />
                                                     <ui:Button Grid.Column="5"
                                                                Margin="2,0,0,0"
                                                                Padding="4,1"
                                                                Content="×"
                                                                Command="{Binding DataContext.RemoveTeachingGridPolygonVertexCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                                CommandParameter="{Binding}"
-                                                               AutomationProperties.Name="Remove polygon vertex" />
+                                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Polygon.RemoveVertexAccessible, Korean='다각형 정점 삭제', English='Remove polygon vertex'}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -1874,21 +1897,21 @@
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.CircleCenterColumn, Korean='중심 X (열)', English='Center X (column)'}" />
                                         <TextBox Text="{Binding TeachingGridCircleCenterColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                 AutomationProperties.Name="Circular ROI center X column" />
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Circle.CenterColumnAccessible, Korean='원형 ROI 중심 X 열', English='Circular ROI center X column'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="3,0">
                                         <TextBlock FontSize="9"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.CircleCenterRow, Korean='중심 Z (행)', English='Center Z (row)'}" />
                                         <TextBox Text="{Binding TeachingGridCircleCenterRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                 AutomationProperties.Name="Circular ROI center Z row" />
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Circle.CenterRowAccessible, Korean='원형 ROI 중심 Z 행', English='Circular ROI center Z row'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="3,0,0,0">
                                         <TextBlock FontSize="9"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.CircleRadius, Korean='반지름 (셀)', English='Radius (cells)'}" />
                                         <TextBox Text="{Binding TeachingGridCircleRadius, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                 AutomationProperties.Name="Circular ROI radius in cells" />
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Circle.RadiusAccessible, Korean='원형 ROI 반지름 셀 수', English='Circular ROI radius in cells'}" />
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Margin="0,4,0,0"
@@ -1934,7 +1957,7 @@
                                                Content="{views:ThreeDText Key=ThreeD.Command.NewOrientedBox, Korean='새 박스', English='New box'}"
                                                Command="{Binding OrientedBoxEditor.NewCommand}"
                                                AutomationProperties.AutomationId="NewOrientedBox3D"
-                                               AutomationProperties.Name="Create numeric OrientedBox3D" />
+                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.CreateAccessible, Korean='숫자 OrientedBox3D 생성', English='Create numeric OrientedBox3D'}" />
                                 </Grid>
 
                                 <Grid Margin="0,6,0,0">
@@ -1947,13 +1970,13 @@
                                               DisplayMemberPath="Name"
                                               SelectedItem="{Binding OrientedBoxEditor.SelectedSelection, Mode=TwoWay}"
                                               ToolTip="{views:ThreeDText Key=ThreeD.Workspace.OrientedBoxSelection, Korean='저장된 3D 박스 선택', English='Select an applied 3D box'}"
-                                              AutomationProperties.Name="Applied OrientedBox3D selections" />
+                                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.SelectAccessible, Korean='적용된 OrientedBox3D 선택', English='Applied OrientedBox3D selections'}" />
                                     <ui:Button Grid.Column="1"
                                                Margin="6,0,0,0"
                                                Padding="7,3"
                                                Content="{views:ThreeDText Key=ThreeD.Command.DeleteOrientedBox, Korean='박스 삭제', English='Delete box'}"
                                                Command="{Binding OrientedBoxEditor.DeleteCommand}"
-                                               AutomationProperties.Name="Delete selected OrientedBox3D" />
+                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.DeleteAccessible, Korean='선택한 OrientedBox3D 삭제', English='Delete selected OrientedBox3D'}" />
                                 </Grid>
 
                                 <StackPanel Margin="0,6,0,0"
@@ -1963,7 +1986,7 @@
                                                Text="{views:ThreeDText Key=ThreeD.Workspace.RegionName, Korean='영역 이름', English='Region name'}" />
                                     <TextBox Margin="0,2,0,5"
                                              Text="{Binding OrientedBoxEditor.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             AutomationProperties.Name="OrientedBox3D region name" />
+                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.NameAccessible, Korean='OrientedBox3D 영역 이름', English='OrientedBox3D region name'}" />
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -1994,7 +2017,10 @@
                                         <TextBox Grid.Row="1" Grid.Column="3" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.CenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
 
-                                        <TextBlock Grid.Row="2" VerticalAlignment="Center" FontSize="8.5" Text="Axis X" />
+                                        <TextBlock Grid.Row="2"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="8.5"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.AxisX, Korean='축 X', English='Axis X'}" />
                                         <TextBox Grid.Row="2" Grid.Column="1" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.AxisXX, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         <TextBox Grid.Row="2" Grid.Column="2" Margin="1"
@@ -2002,7 +2028,10 @@
                                         <TextBox Grid.Row="2" Grid.Column="3" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.AxisXZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
 
-                                        <TextBlock Grid.Row="3" VerticalAlignment="Center" FontSize="8.5" Text="Axis Y" />
+                                        <TextBlock Grid.Row="3"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="8.5"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.AxisY, Korean='축 Y', English='Axis Y'}" />
                                         <TextBox Grid.Row="3" Grid.Column="1" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.AxisYX, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         <TextBox Grid.Row="3" Grid.Column="2" Margin="1"
@@ -2010,7 +2039,10 @@
                                         <TextBox Grid.Row="3" Grid.Column="3" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.AxisYZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
 
-                                        <TextBlock Grid.Row="4" VerticalAlignment="Center" FontSize="8.5" Text="Axis Z" />
+                                        <TextBlock Grid.Row="4"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="8.5"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.AxisZ, Korean='축 Z', English='Axis Z'}" />
                                         <TextBox Grid.Row="4" Grid.Column="1" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.AxisZX, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         <TextBox Grid.Row="4" Grid.Column="2" Margin="1"
@@ -2062,7 +2094,7 @@
                                 <Border Padding="8"
                                         BorderThickness="1"
                                         CornerRadius="3"
-                                        AutomationProperties.Name="Selected tool output and actions">
+                                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.SelectedToolOutputAccessible, Korean='선택 도구 출력 및 작업', English='Selected tool output and actions'}">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
@@ -2082,7 +2114,7 @@
                                                 BorderThickness="0"
                                                 Command="{Binding DataContext.SelectWorkspaceOutputCommand, ElementName=SelectedToolRoot}"
                                                 CommandParameter="{Binding}"
-                                                AutomationProperties.Name="Select tool output">
+                                                AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.SelectToolOutputAccessible, Korean='도구 출력 선택', English='Select tool output'}">
                                             <StackPanel>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -2225,7 +2257,7 @@
                             BorderThickness="1"
                             CornerRadius="3"
                             Visibility="{Binding HasCompletenessCellResults, Converter={StaticResource BoolToVisibilityConverter}}"
-                            AutomationProperties.Name="Completeness failed cell review">
+                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CompletenessFailedCellReviewAccessible, Korean='완전성 실패 셀 검토', English='Completeness failed cell review'}">
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -2261,7 +2293,7 @@
                                            HorizontalAlignment="Stretch"
                                            Command="{Binding PreviousCompletenessFailureCommand}"
                                            ToolTip="{views:ThreeDText Key=ThreeD.Command.PreviousFailedCellTip, Korean='이전 실패 셀을 2D/3D에서 함께 선택합니다.', English='Select the previous failed cell in both 2D and 3D.'}"
-                                           AutomationProperties.Name="Previous failed completeness cell">
+                                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.PreviousFailedCompletenessCellAccessible, Korean='이전 완전성 실패 셀', English='Previous failed completeness cell'}">
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Symbol="ArrowLeft24" />
                                         <TextBlock Margin="5,0,0,0"
@@ -2274,7 +2306,7 @@
                                            HorizontalAlignment="Stretch"
                                            Command="{Binding NextCompletenessFailureCommand}"
                                            ToolTip="{views:ThreeDText Key=ThreeD.Command.NextFailedCellTip, Korean='다음 실패 셀을 2D/3D에서 함께 선택합니다.', English='Select the next failed cell in both 2D and 3D.'}"
-                                           AutomationProperties.Name="Next failed completeness cell">
+                                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.NextFailedCompletenessCellAccessible, Korean='다음 완전성 실패 셀', English='Next failed completeness cell'}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Margin="0,0,5,0"
                                                    Text="{views:ThreeDText Key=ThreeD.Command.NextFailedCell, Korean='다음 실패', English='Next failure'}" />
@@ -2294,7 +2326,7 @@
                                                 BorderThickness="0"
                                                 Command="{Binding DataContext.SelectCompletenessCellCommand, ElementName=SelectedToolRoot}"
                                                 CommandParameter="{Binding}"
-                                                AutomationProperties.Name="Select completeness cell">
+                                                AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.SelectCompletenessCellAccessible, Korean='완전성 셀 선택', English='Select completeness cell'}">
                                             <Border Padding="6,4"
                                                     BorderThickness="1"
                                                     CornerRadius="2">
@@ -2343,10 +2375,10 @@
                                                             <Style TargetType="TextBlock">
                                                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding StatusText}" Value="Pass">
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Pass">
                                                                         <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
                                                                     </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding StatusText}" Value="Fail">
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Fail">
                                                                         <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>

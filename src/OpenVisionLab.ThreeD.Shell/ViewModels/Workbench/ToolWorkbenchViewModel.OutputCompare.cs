@@ -58,13 +58,13 @@ public sealed partial class ToolWorkbenchViewModel
     public ToolWorkbenchCompareCandidateItem? GetCompareCandidate(string? artifactId) =>
         outputCompareSession.GetCompareCandidate(artifactId);
 
-    private void InitializeOutputCompareSession()
-    {
-        outputCompareSession.PropertyChanged += OnOutputCompareSessionPropertyChanged;
-        outputCompareSession.PinsChanged += (_, _) => RefreshDisplayedOutputPresentation();
-    }
+    private ToolWorkbenchOutputCompareEventCoordinator CreateOutputCompareEventCoordinator() =>
+        new(
+            outputCompareSession,
+            OnOutputCompareSessionPropertyChanged,
+            RefreshDisplayedOutputPresentation);
 
-    private void OnOutputCompareSessionPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    private void OnOutputCompareSessionPropertyChanged(PropertyChangedEventArgs args)
     {
         OnPropertyChanged(args.PropertyName);
         if (args.PropertyName is nameof(CompareSlotAArtifactId)
@@ -152,19 +152,27 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         return TryGetCurrentPreparationQualityDelta(candidate, out var delta)
-            ? string.Format(
-                CultureInfo.InvariantCulture,
-                Localization.OutputCompareQualityDeltaSummaryFormat,
-                delta.BeforeValidSampleCount,
-                delta.BeforeMissingSampleCount,
-                delta.AfterValidSampleCount,
-                FormatSigned(delta.ValidSampleDelta),
-                delta.AfterMissingSampleCount,
-                FormatSigned(delta.MissingSampleDelta),
-                DescribeOutliers(delta),
-                Localization.OutputCompareSourceIdentityRetained)
+            ? FormatSourceQualityDeltaSummary(delta)
             : string.Empty;
     }
+
+    private string FormatSourceQualityDeltaSummary(SourceQualityDelta delta) =>
+        FormatSourceQualityDeltaSummary(delta, Localization);
+
+    internal static string FormatSourceQualityDeltaSummary(
+        SourceQualityDelta delta,
+        ThreeDLocalization localization) =>
+        string.Format(
+            CultureInfo.InvariantCulture,
+            localization.OutputCompareQualityDeltaSummaryFormat,
+            delta.BeforeValidSampleCount,
+            delta.BeforeMissingSampleCount,
+            delta.AfterValidSampleCount,
+            FormatSigned(delta.ValidSampleDelta),
+            delta.AfterMissingSampleCount,
+            FormatSigned(delta.MissingSampleDelta),
+            DescribeOutliers(delta, localization),
+            localization.OutputCompareSourceIdentityRetained);
 
     private bool HasCompareSlotQualitySummary(string? artifactId)
     {
@@ -247,10 +255,10 @@ public sealed partial class ToolWorkbenchViewModel
         return true;
     }
 
-    private string DescribeOutliers(SourceQualityDelta delta) =>
+    private static string DescribeOutliers(SourceQualityDelta delta, ThreeDLocalization localization) =>
         delta.DetectedOutlierCount is { } count
             ? count.ToString("N0", CultureInfo.InvariantCulture)
-            : Localization.OutputCompareOutliersNotEvaluated;
+            : localization.OutputCompareOutliersNotEvaluated;
 
     private static string FormatSigned(long value) => value > 0
         ? $"+{value.ToString("N0", CultureInfo.InvariantCulture)}"

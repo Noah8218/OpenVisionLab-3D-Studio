@@ -69,10 +69,11 @@ internal static class ShellHeightImageDisplayRangeSmoke
             requestedMaximum);
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
+        var heightPresentation = viewer.HostState.Presentation;
         var heightImageToThreeDPassed =
-            !viewer.ViewModel.C3DHeightColorRangeAuto
-            && viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
-            && viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
+            !heightPresentation.C3DHeightColorRangeAuto
+            && heightPresentation.C3DHeightColorMinimumRaw == requestedMinimum
+            && heightPresentation.C3DHeightColorMaximumRaw == requestedMaximum;
 
         var mismatchedSourcePath = Path.GetFullPath(Path.Combine(
             Environment.CurrentDirectory,
@@ -92,12 +93,12 @@ internal static class ShellHeightImageDisplayRangeSmoke
             await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
             mismatchedSourceIsolationPassed = mismatchedRangeApplied
                 && heightImage.Frame is { } mismatchedFrame
-                && !string.Equals(
+                    && !string.Equals(
                     mismatchedFrame.SourceContentSha256,
-                    viewer.ViewModel.C3DHeightDistributionSourceSha256,
+                    viewer.HostState.Presentation.C3DHeightDistributionSourceSha256,
                     StringComparison.OrdinalIgnoreCase)
-                && viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
-                && viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
+                && viewer.HostState.Presentation.C3DHeightColorMinimumRaw == requestedMinimum
+                && viewer.HostState.Presentation.C3DHeightColorMaximumRaw == requestedMaximum;
 
             await heightImage.EnsureSourceAsync(
                 source.Path,
@@ -110,7 +111,7 @@ internal static class ShellHeightImageDisplayRangeSmoke
         var nativeSpan = heightImage.Frame.Maximum - heightImage.Frame.Minimum;
         var reciprocalMinimum = heightImage.Frame.Minimum + nativeSpan * 0.25;
         var reciprocalMaximum = heightImage.Frame.Maximum - nativeSpan * 0.25;
-        var reciprocalApplied = viewer.ViewModel.TryApplyLinkedC3DHeightColorRange(
+        var reciprocalApplied = viewer.TryApplyLinkedC3DHeightColorRange(
             reciprocalMinimum,
             reciprocalMaximum);
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
@@ -119,9 +120,9 @@ internal static class ShellHeightImageDisplayRangeSmoke
             && heightImage.DisplayFrame?.Minimum == reciprocalMinimum
             && heightImage.DisplayFrame?.Maximum == reciprocalMaximum;
 
-        viewer.ViewModel.ResetC3DHeightColorRange();
+        viewer.TryResetC3DHeightColorRange();
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        var autoRangePassed = viewer.ViewModel.C3DHeightColorRangeAuto
+        var autoRangePassed = viewer.HostState.Presentation.C3DHeightColorRangeAuto
             && heightImage.IsAutoRange
             && heightImage.DisplayFrame?.Minimum == heightImage.Frame.Minimum
             && heightImage.DisplayFrame?.Maximum == heightImage.Frame.Maximum;
@@ -134,9 +135,9 @@ internal static class ShellHeightImageDisplayRangeSmoke
             && mismatchedSourceIsolationPassed
             && threeDToHeightImagePassed
             && autoRangePassed
-            && !viewer.ViewModel.C3DHeightColorRangeAuto
-            && viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
-            && viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
+            && !viewer.HostState.Presentation.C3DHeightColorRangeAuto
+            && viewer.HostState.Presentation.C3DHeightColorMinimumRaw == requestedMinimum
+            && viewer.HostState.Presentation.C3DHeightColorMaximumRaw == requestedMaximum;
 
         var passed = rangeApplied
                      && finalLinkedRangePassed
@@ -171,7 +172,7 @@ internal static class ShellHeightImageDisplayRangeSmoke
                     $"Source|path={source.Path}|entity={source.Id}|frame={source.FrameId}|unit={source.Unit}",
                     $"Native|width={heightImage.Frame.Width}|height={heightImage.Frame.Height}|min={heightImage.Frame.Minimum:R}|max={heightImage.Frame.Maximum:R}|pixelSha256={nativePixelSha256}|maskSha256={heightImage.Frame.InvalidCellMap.Sha256}",
                     $"Display|mode={heightImage.DisplayRangeMode}|palette={heightImage.SelectedPalette}|min={heightImage.DisplayFrame?.Minimum:R}|max={heightImage.DisplayFrame?.Maximum:R}|pixelSha256={heightImage.DisplayPixelSha256}",
-                    $"LinkedRange|sourceMatch={string.Equals(viewer.ViewModel.C3DHeightDistributionSourceSha256, heightImage.Frame.SourceContentSha256, StringComparison.OrdinalIgnoreCase)}|heightImageToThreeD={heightImageToThreeDPassed}|mismatchedSourceIsolated={mismatchedSourceIsolationPassed}|threeDToHeightImage={threeDToHeightImagePassed}|auto={autoRangePassed}|finalShared={finalLinkedRangePassed}|threeDMin={viewer.ViewModel.C3DHeightColorMinimumRaw:R}|threeDMax={viewer.ViewModel.C3DHeightColorMaximumRaw:R}",
+                    $"LinkedRange|sourceMatch={string.Equals(viewer.HostState.Presentation.C3DHeightDistributionSourceSha256, heightImage.Frame.SourceContentSha256, StringComparison.OrdinalIgnoreCase)}|heightImageToThreeD={heightImageToThreeDPassed}|mismatchedSourceIsolated={mismatchedSourceIsolationPassed}|threeDToHeightImage={threeDToHeightImagePassed}|auto={autoRangePassed}|finalShared={finalLinkedRangePassed}|threeDMin={viewer.HostState.Presentation.C3DHeightColorMinimumRaw:R}|threeDMax={viewer.HostState.Presentation.C3DHeightColorMaximumRaw:R}",
                     $"Boundary|dirty={beforeDirty}->{workbench.IsDirty}|steps={beforeStepCount}->{workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{workbench.Selections.Count}|logs={beforeLogCount}->{workbench.RunLog.Count}|previewRunning={beforePreviewRunning}->{workbench.IsSelectedStepPreviewRunning}|outputSame={ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput)}",
                     $"Error|{heightImage.RangeError}"
                 ]);

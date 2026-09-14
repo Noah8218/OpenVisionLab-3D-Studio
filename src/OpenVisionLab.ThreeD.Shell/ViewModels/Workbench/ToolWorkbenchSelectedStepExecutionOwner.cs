@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -17,21 +18,28 @@ internal sealed record ToolWorkbenchSelectedStepExecutionRoute(
 /// Routes the selected step's explicit Preview, Publish, Cancel, and refresh
 /// operations to the established tool-family execution owner.
 /// </summary>
-internal sealed class ToolWorkbenchSelectedStepExecutionOwner
+internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
 {
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedStep;
     private readonly IReadOnlyDictionary<string, ToolWorkbenchSelectedStepExecutionRoute> routes;
+    private readonly Action<string, string> appendLog;
+    private Task<bool>? commandPreviewTask;
+    private Task? commandPreviewObservationTask;
+    private int commandPreviewInFlight;
+    private int disposalState;
 
     public ToolWorkbenchSelectedStepExecutionOwner(
         Func<ToolWorkbenchPipelineStepItem?> getSelectedStep,
-        IReadOnlyDictionary<string, ToolWorkbenchSelectedStepExecutionRoute> routes)
+        IReadOnlyDictionary<string, ToolWorkbenchSelectedStepExecutionRoute> routes,
+        Action<string, string> appendLog)
     {
-        this.getSelectedStep = getSelectedStep;
-        this.routes = routes;
+        this.getSelectedStep = getSelectedStep ?? throw new ArgumentNullException(nameof(getSelectedStep));
+        this.routes = routes ?? throw new ArgumentNullException(nameof(routes));
+        this.appendLog = appendLog ?? throw new ArgumentNullException(nameof(appendLog));
 
         PreviewCommand = new RelayCommand(
-            _ => _ = PreviewAsync(),
-            _ => CanPreview());
+            _ => StartCommandPreview(),
+            _ => CanStartCommandPreview());
         PublishCommand = new RelayCommand(
             _ => Publish(),
             _ => CanPublish());
@@ -44,11 +52,25 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner
     public RelayCommand PublishCommand { get; }
     public RelayCommand CancelCommand { get; }
 
-    public bool IsRunning => TryGetCurrentRoute(out var route) && route.IsRunning();
+    public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
+
+    public bool IsRunning => !IsDisposed && TryGetCurrentRoute(out var route) && route.IsRunning();
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposalState, 1) != 0)
+        {
+            return;
+        }
+
+        Volatile.Write(ref commandPreviewTask, null);
+        Volatile.Write(ref commandPreviewObservationTask, null);
+        Interlocked.Exchange(ref commandPreviewInFlight, 0);
+    }
 
     public Task<bool> PreviewAsync()
     {
-        if (!CanPreview() || !TryGetCurrentRoute(out var route))
+        if (IsDisposed || !CanPreview() || !TryGetCurrentRoute(out var route))
         {
             return Task.FromResult(false);
         }
@@ -57,26 +79,28 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner
     }
 
     public bool CanPreview() =>
-        getSelectedStep() is { OutputEnabled: true }
+        !IsDisposed
+        && getSelectedStep() is { OutputEnabled: true }
         && TryGetCurrentRoute(out var route)
         && route.CanPreview();
 
     public void Publish()
     {
-        if (CanPublish() && TryGetCurrentRoute(out var route))
+        if (!IsDisposed && CanPublish() && TryGetCurrentRoute(out var route))
         {
             route.Publish();
         }
     }
 
     public bool CanPublish() =>
-        getSelectedStep() is { OutputEnabled: true }
+        !IsDisposed
+        && getSelectedStep() is { OutputEnabled: true }
         && TryGetCurrentRoute(out var route)
         && route.CanPublish();
 
     public void Cancel()
     {
-        if (TryGetCurrentRoute(out var route))
+        if (!IsDisposed && TryGetCurrentRoute(out var route))
         {
             route.Cancel();
         }
@@ -84,6 +108,11 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner
 
     public void RefreshSelectedStepState()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         if (getSelectedStep() is not { } step)
         {
             RefreshCommandStates();
@@ -107,9 +136,86 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner
 
     public void RefreshCommandStates()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         PreviewCommand.RaiseCanExecuteChanged();
         PublishCommand.RaiseCanExecuteChanged();
         CancelCommand.RaiseCanExecuteChanged();
+    }
+
+    private void StartCommandPreview()
+    {
+        if (IsDisposed
+            || Interlocked.CompareExchange(ref commandPreviewInFlight, 1, 0) != 0)
+        {
+            return;
+        }
+
+        if (Volatile.Read(ref commandPreviewObservationTask) is { IsCompleted: true })
+        {
+            Volatile.Write(ref commandPreviewObservationTask, null);
+        }
+
+        RefreshCommandStates();
+
+        Task<bool> task;
+        try
+        {
+            task = PreviewAsync();
+        }
+        catch (Exception exception)
+        {
+            Interlocked.Exchange(ref commandPreviewInFlight, 0);
+            RefreshCommandStates();
+            ReportCommandPreviewFailure(exception);
+            return;
+        }
+
+        Volatile.Write(ref commandPreviewTask, task);
+        Volatile.Write(ref commandPreviewObservationTask, ObserveCommandPreviewAsync(task));
+    }
+
+    private async Task ObserveCommandPreviewAsync(Task<bool> task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException)
+        {
+            // Route owners normally consume cancellation, but command
+            // observation must keep a defensive cancellation boundary.
+        }
+        catch (Exception exception)
+        {
+            ReportCommandPreviewFailure(exception);
+        }
+        finally
+        {
+            if (ReferenceEquals(Volatile.Read(ref commandPreviewTask), task))
+            {
+                Volatile.Write(ref commandPreviewTask, null);
+                Volatile.Write(ref commandPreviewObservationTask, null);
+                Interlocked.Exchange(ref commandPreviewInFlight, 0);
+                RefreshCommandStates();
+            }
+        }
+    }
+
+    private bool CanStartCommandPreview() =>
+        !IsDisposed
+        && Volatile.Read(ref commandPreviewInFlight) == 0
+        && CanPreview();
+
+    private void ReportCommandPreviewFailure(Exception exception)
+    {
+        if (!IsDisposed)
+        {
+            appendLog("Error", $"Selected step Preview failed: {exception.Message}");
+        }
     }
 
     private bool TryGetCurrentRoute(out ToolWorkbenchSelectedStepExecutionRoute route)

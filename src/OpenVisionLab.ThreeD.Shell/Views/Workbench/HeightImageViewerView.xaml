@@ -1,10 +1,19 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.HeightImageViewerView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              Background="{DynamicResource ThreeD.ViewportBrush}"
              Focusable="True"
-             PreviewKeyDown="HeightImageViewer_PreviewKeyDown"
+             behaviors:HeightImageViewerKeyboardBehavior.IsEnabled="True"
+             behaviors:HeightImageViewerKeyboardBehavior.ApplyRoiCommand="{Binding RoiWorkspace.ApplyCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.CancelRoiCommand="{Binding RoiWorkspace.CancelCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.DeleteRoiCommand="{Binding RoiWorkspace.DeleteCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.FitCommand="{Binding FitCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.ActualPixelsCommand="{Binding ActualPixelsCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.ZoomInCommand="{Binding ZoomInCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.ZoomOutCommand="{Binding ZoomOutCommand}"
+             behaviors:HeightImageViewerKeyboardBehavior.AutoRangeCommand="{Binding AutoRangeCommand}"
              AutomationProperties.AutomationId="HeightImageViewer">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -238,8 +247,9 @@
                             <Button Padding="7,2"
                                     Command="{Binding RoiWorkspace.DeleteCommand}"
                                     Content="{Binding Localization.HeightImageRoiDelete}"
-                                    ToolTip="Delete"
-                                    AutomationProperties.AutomationId="HeightImageRoiDelete">
+                                    ToolTip="{Binding Localization.HeightImageRoiDelete}"
+                                    AutomationProperties.AutomationId="HeightImageRoiDelete"
+                                    AutomationProperties.Name="{Binding Localization.HeightImageRoiDelete}">
                                 <Button.Style>
                                     <Style TargetType="Button"
                                            BasedOn="{StaticResource {x:Type Button}}">
@@ -291,7 +301,8 @@
                            MouseLeftButtonUp="HeightImage_MouseLeftButtonUp"
                            MouseMove="HeightImage_MouseMove"
                            MouseLeave="HeightImage_MouseLeave"
-                           AutomationProperties.AutomationId="HeightImagePixels" />
+                           AutomationProperties.AutomationId="HeightImagePixels"
+                           AutomationProperties.Name="{Binding Localization.HeightImage}" />
                     <Canvas x:Name="RoiOverlay"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"

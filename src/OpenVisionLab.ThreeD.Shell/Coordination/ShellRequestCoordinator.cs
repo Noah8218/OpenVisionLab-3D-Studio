@@ -1,4 +1,3 @@
-using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Coordination;
@@ -9,21 +8,18 @@ namespace OpenVisionLab.ThreeD.Shell.Coordination;
 /// </summary>
 internal sealed class ShellRequestCoordinator : IDisposable
 {
-    private readonly OpenVisionThreeDViewerControl viewer;
     private readonly ShellMainWindowViewModel viewModel;
     private readonly ShellRequestCallbacks callbacks;
     private bool disposed;
 
     public ShellRequestCoordinator(
-        OpenVisionThreeDViewerControl viewer,
         ShellMainWindowViewModel viewModel,
         ShellRequestCallbacks callbacks)
     {
-        this.viewer = viewer;
         this.viewModel = viewModel;
         this.callbacks = callbacks;
 
-        viewer.ProfileViewRequested += callbacks.ProfileView;
+        callbacks.SubscribeProfileView(callbacks.ProfileView);
         viewModel.RefreshRecipeComparisonRequested += callbacks.RefreshRecipeComparison;
         viewModel.SaveRecipeRequested += callbacks.SaveRecipe;
         viewModel.ApplyRoiAlignmentRequested += callbacks.ApplyRoiAlignment;
@@ -61,7 +57,7 @@ internal sealed class ShellRequestCoordinator : IDisposable
         }
 
         disposed = true;
-        viewer.ProfileViewRequested -= callbacks.ProfileView;
+        callbacks.UnsubscribeProfileView(callbacks.ProfileView);
         viewModel.RefreshRecipeComparisonRequested -= callbacks.RefreshRecipeComparison;
         viewModel.SaveRecipeRequested -= callbacks.SaveRecipe;
         viewModel.ApplyRoiAlignmentRequested -= callbacks.ApplyRoiAlignment;
@@ -94,6 +90,8 @@ internal sealed class ShellRequestCoordinator : IDisposable
 
 internal sealed record ShellRequestCallbacks
 {
+    public required Action<EventHandler> SubscribeProfileView { get; init; }
+    public required Action<EventHandler> UnsubscribeProfileView { get; init; }
     public required EventHandler ProfileView { get; init; }
     public required EventHandler RefreshRecipeComparison { get; init; }
     public required EventHandler SaveRecipe { get; init; }

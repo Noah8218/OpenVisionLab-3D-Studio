@@ -29,6 +29,11 @@ public sealed partial class OpenVisionThreeDViewerControl
     public event EventHandler<TeachingSelectionSelectedEventArgs>? TeachingSelectionSelected;
     public event EventHandler<TeachingRoiDisplayHeightChangedEventArgs>? TeachingRoiDisplayHeightChanged;
 
+    private void OnViewModelTeachingRoiDisplayHeightChanged(
+        object? sender,
+        TeachingRoiDisplayHeightChangedEventArgs args) =>
+        TeachingRoiDisplayHeightChanged?.Invoke(this, args);
+
     public TeachingCaptureState TeachingCaptureSnapshot => viewModel.TeachingCaptureSnapshot;
 
     public bool BeginC3DTeachingCapture(TeachingCaptureRequest request, out string message)
@@ -47,7 +52,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dSample is null
                 ? null
                 : TeachingCaptureSourceSnapshot.From(c3dSample),
-            regridHeightFieldRenderOutput);
+            workbenchOverlayRenderer.RegridHeightFieldRenderOutput);
         if (!preparation.IsValid)
         {
             message = preparation.Message;
@@ -164,45 +169,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         RenderNow();
     }
 
-    private void DecreaseTeachingRoiDisplayHeight_Click(object sender, RoutedEventArgs e) =>
-        AdjustTeachingRoiDisplayHeight(-GetTeachingRoiDisplayHeightStep(), "decrease button");
-
-    private void IncreaseTeachingRoiDisplayHeight_Click(object sender, RoutedEventArgs e) =>
-        AdjustTeachingRoiDisplayHeight(GetTeachingRoiDisplayHeightStep(), "increase button");
-
-    private void ResetTeachingRoiDisplayHeight_Click(object sender, RoutedEventArgs e)
-    {
-        if (!viewModel.SelectedTeachingGridRectangleVisible)
-        {
-            return;
-        }
-
-        viewModel.SelectedTeachingRoiDisplayHeightOffset = 0;
-        viewModel.ViewerStatus =
-            "Surface ROI overlay returned to its local Y position; ROI size, measurement, and recipe stay unchanged.";
-        RaiseTeachingRoiDisplayHeightChanged("reset");
-        RenderNow();
-    }
-
-    private void AdjustTeachingRoiDisplayHeight(double delta, string source)
-    {
-        if (!viewModel.SelectedTeachingGridRectangleVisible || !double.IsFinite(delta))
-        {
-            return;
-        }
-
-        viewModel.SelectedTeachingRoiDisplayHeightOffset += delta;
-        viewModel.ViewerStatus =
-            $"Surface ROI overlay Y position changed by {source}; ROI size, measurement, and recipe stay unchanged.";
-        RaiseTeachingRoiDisplayHeightChanged(source);
-        RenderNow();
-    }
-
-    private double GetTeachingRoiDisplayHeightStep() =>
-        c3dSample is null
-            ? 1.0
-            : Math.Max((c3dSample.Max - c3dSample.Min) * 0.01, 10.0);
-
     private void TeachingRoiDisplayHeightOffset_LostFocus(object sender, RoutedEventArgs e)
     {
         if (!viewModel.SelectedTeachingGridRectangleVisible)
@@ -309,7 +275,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 "TransformedHeightField",
                 StringComparison.Ordinal))
         {
-            if (!TryPickRegridHeightFieldPoint(screenPoint, out var regridPoint))
+            if (!workbenchOverlayRenderer.TryPickRegridHeightFieldPoint(screenPoint, out var regridPoint))
             {
                 const string message = "Teaching capture pick missed the visible TransformedHeightField grid.";
                 viewModel.SetTeachingCaptureMessage(message);
@@ -404,7 +370,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.ClearWorkbenchLineIntersection();
         viewModel.ClearWorkbenchLandmarkCorrespondence();
         viewModel.ClearWorkbenchAffineApply();
-        ClearAffineApplyRenderData();
+        workbenchOverlayRenderer.ClearAffineApply();
         ClearWorkbenchRegridHeightField();
         RaiseTeachingCaptureStateChanged();
     }
@@ -542,11 +508,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 out var bottomLeft)
             && Math.Min(
                 Math.Min(
-                    DistanceToLineSegment(screenPoint, topLeft, topRight),
-                    DistanceToLineSegment(screenPoint, topRight, bottomRight)),
+                    ViewerScreenGeometry.DistanceToLineSegment(screenPoint, topLeft, topRight),
+                    ViewerScreenGeometry.DistanceToLineSegment(screenPoint, topRight, bottomRight)),
                 Math.Min(
-                    DistanceToLineSegment(screenPoint, bottomRight, bottomLeft),
-                    DistanceToLineSegment(screenPoint, bottomLeft, topLeft))) <= 14.0;
+                    ViewerScreenGeometry.DistanceToLineSegment(screenPoint, bottomRight, bottomLeft),
+                    ViewerScreenGeometry.DistanceToLineSegment(screenPoint, bottomLeft, topLeft))) <= 14.0;
     }
 
     private void UpdateTeachingCaptureDragOverlay(Point start, Point current)
@@ -794,7 +760,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return TeachingGridRectangleEditMode.BottomRight;
         }
 
-        return IsPointInsideConvexQuadrilateral(
+        return ViewerScreenGeometry.IsPointInsideConvexQuadrilateral(
             screenPoint,
             topLeft,
             topRight,
@@ -930,43 +896,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         var origin = CreateC3DGridDisplayPosition(0, 0, rawHeight);
         var rowSpan = CreateC3DGridDisplayPosition(c3dSample.Height - 1, 0, rawHeight) - origin;
         var columnSpan = CreateC3DGridDisplayPosition(0, c3dSample.Width - 1, rawHeight) - origin;
-        var normal = Vector3.Cross(rowSpan, columnSpan);
         var ray = CreatePickRay(screenPoint);
-        var denominator = Vector3.Dot(ray.direction, normal);
-        if (normal.LengthSquared() < 0.0000001f || Math.Abs(denominator) < 0.000001f)
-        {
-            return false;
-        }
-
-        var distance = Vector3.Dot(origin - ray.origin, normal) / denominator;
-        if (!float.IsFinite(distance) || distance < 0.0f)
-        {
-            return false;
-        }
-
-        var offset = ray.origin + ray.direction * distance - origin;
-        var rowRow = Vector3.Dot(rowSpan, rowSpan);
-        var columnColumn = Vector3.Dot(columnSpan, columnSpan);
-        var rowColumn = Vector3.Dot(rowSpan, columnSpan);
-        var determinant = rowRow * columnColumn - rowColumn * rowColumn;
-        if (Math.Abs(determinant) < 0.0000001f)
-        {
-            return false;
-        }
-
-        var offsetRow = Vector3.Dot(offset, rowSpan);
-        var offsetColumn = Vector3.Dot(offset, columnSpan);
-        var rowFraction = (offsetRow * columnColumn - offsetColumn * rowColumn) / determinant;
-        var columnFraction = (offsetColumn * rowRow - offsetRow * rowColumn) / determinant;
-        row = Math.Clamp(
-            (int)Math.Round(rowFraction * (c3dSample.Height - 1), MidpointRounding.AwayFromZero),
-            0,
-            c3dSample.Height - 1);
-        column = Math.Clamp(
-            (int)Math.Round(columnFraction * (c3dSample.Width - 1), MidpointRounding.AwayFromZero),
-            0,
-            c3dSample.Width - 1);
-        return true;
+        return ViewerGridPickingGeometry.TryMapRayToGrid(
+            ray.origin,
+            ray.direction,
+            origin,
+            rowSpan,
+            columnSpan,
+            c3dSample.Height,
+            c3dSample.Width,
+            out row,
+            out column);
     }
 
     private static Cursor GetTeachingGridRectangleCursor(TeachingGridRectangleEditMode mode) =>
@@ -978,46 +918,6 @@ public sealed partial class OpenVisionThreeDViewerControl
             TeachingGridRectangleEditMode.TopRight or TeachingGridRectangleEditMode.BottomLeft => Cursors.SizeNESW,
             _ => Cursors.Cross
         };
-
-    private static double DistanceToLineSegment(Point point, Point start, Point end)
-    {
-        var segment = end - start;
-        var lengthSquared = segment.LengthSquared;
-        if (lengthSquared <= 0.000001)
-        {
-            return (point - start).Length;
-        }
-
-        var fromStart = point - start;
-        var projection = Math.Clamp(
-            (fromStart.X * segment.X + fromStart.Y * segment.Y) / lengthSquared,
-            0.0,
-            1.0);
-        var nearest = start + segment * projection;
-        return (point - nearest).Length;
-    }
-
-    private static bool IsPointInsideConvexQuadrilateral(
-        Point point,
-        Point first,
-        Point second,
-        Point third,
-        Point fourth)
-    {
-        var signs = new[]
-        {
-            Cross(first, second, point),
-            Cross(second, third, point),
-            Cross(third, fourth, point),
-            Cross(fourth, first, point)
-        };
-        return signs.All(value => value >= -0.001)
-            || signs.All(value => value <= 0.001);
-    }
-
-    private static double Cross(Point start, Point end, Point point) =>
-        (end.X - start.X) * (point.Y - start.Y)
-        - (end.Y - start.Y) * (point.X - start.X);
 
     private bool TryGetTeachingGridRectangleCandidate(out ToolRecipeGridRectangle rectangle)
     {
@@ -1215,9 +1115,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
         }
 
-        DrawWorkbenchAffineApply(gl);
-        DrawWorkbenchRegridHeightField(gl);
-        DrawRegridTeachingSelectionOverlays(gl);
+        workbenchOverlayRenderer.DrawAffineApply(gl);
+        workbenchOverlayRenderer.DrawRegridHeightField(gl);
+        workbenchOverlayRenderer.DrawRegridTeachingSelectionOverlays(gl);
         UpdateTeachingRoiHeightHandleOverlay();
         UpdateTeachingOrientedBoxHandleOverlay();
 

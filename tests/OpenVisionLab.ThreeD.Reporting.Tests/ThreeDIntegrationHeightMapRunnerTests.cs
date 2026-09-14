@@ -57,7 +57,7 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
                 "3d-run-record.json")));
         Assert.Equal(
             IntegrationInspectionOutcome.Ng,
-            ThreeDIntegrationExchange.ReadResult(
+            ThreeDIntegrationV2Exchange.ReadResult(
                 fixture.Root,
                 ngHandoff.TransactionId).Outcome);
     }
@@ -88,7 +88,7 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
             result.Metrics,
             metric => string.Equals(
                 metric.Name,
-                "MaximumPeakToValley",
+                "metric.0.MaximumPeakToValley",
                 StringComparison.Ordinal));
     }
 
@@ -303,7 +303,7 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
         }
 
         public void Accept(IntegrationHandoffV2 handoff) =>
-            ThreeDIntegrationExchange.PublishAcknowledgement(
+            ThreeDIntegrationV2Exchange.PublishAcknowledgement(
                 Root,
                 handoff,
                 Consumer);

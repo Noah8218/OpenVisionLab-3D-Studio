@@ -2,11 +2,20 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              MinWidth="720"
              AutomationProperties.AutomationId="RecipeCenterView">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
     </UserControl.Resources>
+    <UserControl.InputBindings>
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewTeachingRecipeCommand}" />
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenTeachingRecipeCommand}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveTeachingRecipeCommand}" />
+        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{Binding SaveTeachingRecipeAsCommand}" />
+    </UserControl.InputBindings>
     <Border Padding="18"
             Background="{DynamicResource ThreeD.PanelBrush}"
             TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
@@ -43,7 +52,7 @@
                            FontWeight="SemiBold"
                            Icon="{ui:SymbolIcon DocumentAdd24}"
                            Command="{Binding NewTeachingRecipeCommand}"
-                           ToolTip="Ctrl+N"
+                           ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.NewTip, Korean='새 검사 레시피 (Ctrl+N)', English='New inspection recipe (Ctrl+N)'}"
                            AutomationProperties.Name="{Binding Localization.NewRecipe}" />
                 <ui:Button Grid.Column="1"
                            Height="64"
@@ -56,7 +65,7 @@
                            FontWeight="SemiBold"
                            Icon="{ui:SymbolIcon FolderOpen24}"
                            Command="{Binding OpenTeachingRecipeCommand}"
-                           ToolTip="Ctrl+O"
+                           ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.OpenTip, Korean='기존 검사 레시피 열기 (Ctrl+O)', English='Open existing inspection recipe (Ctrl+O)'}"
                            AutomationProperties.Name="{Binding Localization.OpenExistingRecipe}" />
             </Grid>
 
@@ -133,7 +142,7 @@
                                 <TextBlock Margin="0,3,0,0"
                                            FontSize="9.5"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           Text="{Binding RecipeSchemaVersion, StringFormat=Schema {0}}" />
+                                           Text="{Binding RecipeSchemaVersion, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=SchemaLabel}" />
                             </StackPanel>
                         </Border>
 
@@ -203,12 +212,12 @@
                                        Content="{Binding Localization.Save}"
                                        Icon="{ui:SymbolIcon DocumentCheckmark24}"
                                        Command="{Binding SaveTeachingRecipeCommand}"
-                                       ToolTip="Ctrl+S"
+                                       ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SaveTip, Korean='검사 레시피 저장 (Ctrl+S)', English='Save inspection recipe (Ctrl+S)'}"
                                        AutomationProperties.Name="{Binding Localization.Save}" />
                             <ui:Button Content="{Binding Localization.SaveAs}"
                                        Icon="{ui:SymbolIcon SaveCopy24}"
                                        Command="{Binding SaveTeachingRecipeAsCommand}"
-                                       ToolTip="Ctrl+Shift+S"
+                                       ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SaveAsTip, Korean='검사 레시피 다른 이름으로 저장 (Ctrl+Shift+S)', English='Save inspection recipe as (Ctrl+Shift+S)'}"
                                        AutomationProperties.Name="{Binding Localization.SaveAs}" />
                             <ui:Button Margin="6,0,0,0"
                                        Content="{Binding Localization.CompatibleVariant}"

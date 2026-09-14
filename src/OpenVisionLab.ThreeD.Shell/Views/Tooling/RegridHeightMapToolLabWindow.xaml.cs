@@ -13,8 +13,11 @@ public partial class RegridHeightMapToolLabWindow : ToolLabWindowBase
     private readonly object refreshViewsOperationGate = new();
     private DispatcherOperation? refreshViewsOperation;
 
-    public RegridHeightMapToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
-        : base(workbench, step, "re-grid-height-map", "Re-grid Height Map Tool Lab requires a Re-grid Height Map step.")
+    public RegridHeightMapToolLabWindow(
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        Func<string, bool> selectPipelineStep)
+        : base(workbench, step, selectPipelineStep, "re-grid-height-map", "Re-grid Height Map Tool Lab requires a Re-grid Height Map step.")
     {
         InitializeComponent();
         DataContext = Workbench;

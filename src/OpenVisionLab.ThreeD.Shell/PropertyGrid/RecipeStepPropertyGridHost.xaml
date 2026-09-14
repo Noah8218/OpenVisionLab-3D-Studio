@@ -108,7 +108,7 @@
                           BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                           Foreground="{DynamicResource ThreeD.TextBrush}"
                           AutomationProperties.AutomationId="RecipeStepPropertyGrid"
-                          AutomationProperties.Name="Selected step parameters"
+                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.SelectedStepParameters, Korean='선택한 단계 파라미터', English='Selected step parameters'}"
                           EditorColumnMinWidth="120"
                           PreviewKeyDown="OnInnerGridPreviewKeyDown"
                           PropertyFilterVisibility="Collapsed"

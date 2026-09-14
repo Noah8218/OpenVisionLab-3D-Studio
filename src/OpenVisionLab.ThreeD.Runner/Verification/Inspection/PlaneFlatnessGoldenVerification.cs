@@ -15,6 +15,7 @@ internal static class PlaneFlatnessGoldenVerification
 
     public static int Run(string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         var referenceSamples = CreateReferenceSamples();
         var measurementSamples = CreateMeasurementSamples();
         var passingEvaluation = Evaluate(referenceSamples, measurementSamples, tolerance: 1.01);
@@ -41,8 +42,8 @@ internal static class PlaneFlatnessGoldenVerification
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
         Console.WriteLine($"Plane flatness golden verification: {status} ({passedCount}/{cases.Length})");
         return passedCount == cases.Length ? 0 : 5;
     }

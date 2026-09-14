@@ -52,15 +52,14 @@ internal static partial class PrivacySafeSupportBundleWriter
             var outputPath = Path.Combine(
                 fullTargetRoot,
                 $"OpenVisionLab-Support-{safeRunId}{suffixText}.zip");
-            FileStream? stream = null;
+            var stagingPath = $"{outputPath}.staging.{Guid.NewGuid():N}";
             try
             {
-                stream = new FileStream(
-                    outputPath,
+                using (var stream = new FileStream(
+                    stagingPath,
                     FileMode.CreateNew,
                     FileAccess.ReadWrite,
-                    FileShare.None);
-                using (stream)
+                    FileShare.None))
                 using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
                 {
                     foreach (var payload in payloads)
@@ -72,21 +71,22 @@ internal static partial class PrivacySafeSupportBundleWriter
                     WriteEntry(archive, "manifest.json", Serialize(manifest));
                 }
 
-                return outputPath;
-            }
-            catch (IOException) when (stream is null && File.Exists(outputPath))
-            {
-                continue;
-            }
-            catch
-            {
-                stream?.Dispose();
-                if (File.Exists(outputPath))
+                try
                 {
-                    File.Delete(outputPath);
+                    File.Move(stagingPath, outputPath);
+                    return outputPath;
                 }
-
-                throw;
+                catch (IOException) when (File.Exists(outputPath))
+                {
+                    continue;
+                }
+            }
+            finally
+            {
+                if (File.Exists(stagingPath))
+                {
+                    File.Delete(stagingPath);
+                }
             }
         }
 

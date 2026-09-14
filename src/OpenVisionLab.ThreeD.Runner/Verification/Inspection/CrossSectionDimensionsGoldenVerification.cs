@@ -14,6 +14,7 @@ internal static class CrossSectionDimensionsGoldenVerification
 
     public static int Run(string reportPath)
     {
+        var fullReportPath = Path.GetFullPath(reportPath);
         var cases = new[]
         {
             Check("known-width-height-pass", () => Verify(Evaluate(Known, 0, 2, 5, 1e-6, 10, 1e-6), ResultStatus.Pass, 5, 10)),
@@ -35,8 +36,8 @@ internal static class CrossSectionDimensionsGoldenVerification
             "Definition|width=max(alignedX)-min(alignedX)|heightRange=max(rawHeight)-min(rawHeight)|selectors=exact source row and inclusive columns"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
-        File.WriteAllLines(reportPath, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(fullReportPath, lines);
         Console.WriteLine($"Cross-section Dimensions golden verification: {status} ({passed}/{cases.Length})");
         return passed == cases.Length ? 0 : 5;
     }

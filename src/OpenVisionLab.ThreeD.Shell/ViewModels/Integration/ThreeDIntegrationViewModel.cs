@@ -5,48 +5,30 @@ using System.IO;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
-using System.Text.Json;
-using Microsoft.Win32;
+using System.Threading;
 using OpenVisionLab;
 using OpenVisionLab.Integration.Contracts;
 using OpenVisionLab.Integration.Transport.Tcp;
 using OpenVisionLab.ThreeD.Presentation.Commands;
 using OpenVisionLab.ThreeD.Reporting.Integration;
+using OpenVisionLab.ThreeD.Shell.Dialogs;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
 
-public sealed record ThreeDIntegrationTransactionItem(
-    Guid TransactionId,
-    string SchemaVersion,
-    DateTimeOffset CreatedAtUtc,
-    string ProjectId,
-    string SequenceId,
-    string StepId,
-    string CameraId,
-    string State,
-    string ModalitySummary,
-    string AcknowledgementSummary,
-    string ResultSummary,
-    bool CanInspectInThreeD,
-    bool HasAcknowledgement,
-    bool HasResult,
-    IntegrationAcknowledgementStatus? AcknowledgementStatus)
-{
-    public string Title => $"{ProjectId} | {State}";
-    public string Detail => $"schema {SchemaVersion} | {ModalitySummary} | {AcknowledgementSummary} | {ResultSummary} | {SequenceId} / {StepId} | {CameraId} | {CreatedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
-}
-
 public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
-    private const string SharedKeyEnvironmentVariable = "OPENVISIONLAB_TCP_SHARED_KEY";
     private readonly Func<string?> runRecordPathProvider;
-    private readonly string settingsPath;
+    private readonly ThreeDIntegrationSettingsStore settingsStore;
+    private readonly ThreeDIntegrationSharedKeySession sharedKeySession = new();
+    private readonly ThreeDIntegrationTransactionWorkflow transactionWorkflow;
     private readonly Func<IntegrationApplicationIdentity>? producerIdentityProvider;
-    private ThreeDIntegrationTcpExchange? tcpListener;
+    private readonly object tcpOperationGate = new();
+    private ThreeDIntegrationTcpTransport? tcpListener;
     private CancellationTokenSource? tcpOperationCancellation;
-    private byte[]? sessionSharedKey;
-    private bool hasSessionSharedKeyInput;
-    private bool disposed;
+    private Task? tcpOperationTask;
+    private Task? disposalTask;
+    private IThreeDIntegrationDialogHost? dialogHost;
+    private int disposedState;
     private string exchangeRoot = string.Empty;
     private string tcpListenAddress = "127.0.0.1";
     private string tcpListenPortText = "45103";
@@ -68,21 +50,26 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         string? settingsPath = null)
     {
         this.runRecordPathProvider = runRecordPathProvider ?? throw new ArgumentNullException(nameof(runRecordPathProvider));
-        this.settingsPath = settingsPath ?? Path.Combine(
+        var resolvedSettingsPath = settingsPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OpenVisionLab",
             "ThreeDStudio",
             "machine-exchange.json");
-        var settings = ExchangeSettings.Load(this.settingsPath);
+        settingsStore = new ThreeDIntegrationSettingsStore(resolvedSettingsPath);
+        var settings = settingsStore.Load();
         exchangeRoot = settings.ExchangeRoot;
         tcpListenAddress = settings.TcpListenAddress;
         tcpListenPortText = settings.TcpListenPort.ToString(CultureInfo.InvariantCulture);
         tcpPeerHost = settings.TcpPeerHost;
         tcpPeerPortText = settings.TcpPeerPort.ToString(CultureInfo.InvariantCulture);
+        transactionWorkflow = new(
+            ResolveProducerIdentity,
+            L);
         sharedKeyStatusText = DescribeSharedKeyStatus();
         BrowseExchangeRootCommand = new RelayCommand(_ => BrowseExchangeRoot(), _ => CanEditTcpSetup);
         SaveSetupCommand = new RelayCommand(_ => SaveSetup(), _ => CanEditTcpSetup);
         ResetSetupCommand = new RelayCommand(_ => ResetSetup(), _ => CanEditTcpSetup);
+        SetSessionSharedKeyCommand = new RelayCommand(parameter => SetSessionSharedKey(parameter as string));
         RefreshHandoffsCommand = new RelayCommand(_ => RefreshHandoffs(), _ => !IsTcpBusy);
         AcceptCommand = new RelayCommand(_ => AcceptSelected(), _ => CanReviewSelected);
         RejectCommand = new RelayCommand(_ => RejectSelected(), _ => CanReviewSelected);
@@ -115,12 +102,18 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             ?? throw new ArgumentNullException(nameof(producerIdentityProvider));
     }
 
+    internal void SetDialogHost(IThreeDIntegrationDialogHost host) =>
+        dialogHost = host ?? throw new ArgumentNullException(nameof(host));
+
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    internal bool IsDisposed => Volatile.Read(ref disposedState) != 0;
 
     public ObservableCollection<ThreeDIntegrationTransactionItem> Transactions { get; } = [];
     public RelayCommand BrowseExchangeRootCommand { get; }
     public RelayCommand SaveSetupCommand { get; }
     public RelayCommand ResetSetupCommand { get; }
+    public RelayCommand SetSessionSharedKeyCommand { get; }
     public RelayCommand RefreshHandoffsCommand { get; }
     public RelayCommand AcceptCommand { get; }
     public RelayCommand RejectCommand { get; }
@@ -284,59 +277,54 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
 
     public void SetSessionSharedKey(string? encodedKey)
     {
-        if (sessionSharedKey is not null)
-        {
-            CryptographicOperations.ZeroMemory(sessionSharedKey);
-        }
-        sessionSharedKey = null;
-        hasSessionSharedKeyInput = !string.IsNullOrWhiteSpace(encodedKey);
-        if (!hasSessionSharedKeyInput)
+        var status = sharedKeySession.SetSession(encodedKey);
+        if (status == ThreeDIntegrationSharedKeyInputStatus.NotConfigured)
         {
             SharedKeyStatusText = DescribeSharedKeyStatus();
             return;
         }
 
-        try
+        SharedKeyStatusText = status switch
         {
-            var parsed = Convert.FromBase64String(encodedKey!.Trim());
-            if (parsed.Length < 32)
-            {
-                CryptographicOperations.ZeroMemory(parsed);
-                SharedKeyStatusText = L(
-                    "TcpKeyTooShort",
-                    "세션 공유 키는 Base64로 인코딩한 32바이트 이상이어야 합니다.",
-                    "The session shared key must be Base64-encoded and contain at least 32 bytes.");
-                return;
-            }
-
-            sessionSharedKey = parsed;
-            SharedKeyStatusText = L(
+            ThreeDIntegrationSharedKeyInputStatus.Ready => L(
                 "TcpSessionKeyReady",
                 "세션 공유 키 준비됨(저장되지 않음)",
-                "Session shared key ready (not saved)");
-        }
-        catch (FormatException)
-        {
-            SharedKeyStatusText = L(
+                "Session shared key ready (not saved)"),
+            ThreeDIntegrationSharedKeyInputStatus.TooShort => L(
+                "TcpKeyTooShort",
+                "세션 공유 키는 Base64로 인코딩한 32바이트 이상이어야 합니다.",
+                "The session shared key must be Base64-encoded and contain at least 32 bytes."),
+            ThreeDIntegrationSharedKeyInputStatus.InvalidBase64 => L(
                 "TcpKeyInvalidBase64",
                 "세션 공유 키가 올바른 Base64가 아닙니다.",
-                "The session shared key is not valid Base64.");
-        }
+                "The session shared key is not valid Base64."),
+            ThreeDIntegrationSharedKeyInputStatus.Disposed => L(
+                "TcpDisposed",
+                "종료 중인 연동 화면에서는 TCP 작업을 시작할 수 없습니다.",
+                "A TCP action cannot start while the integration workspace is closing."),
+            _ => DescribeSharedKeyStatus()
+        };
     }
 
     private void BrowseExchangeRoot()
     {
-        var dialog = new OpenFolderDialog
+        if (dialogHost is null)
         {
-            Title = L(
-                "ChooseFolder",
-                "Machine Studio와 3D Studio가 공유할 교환 폴더 선택",
-                "Choose the shared Machine Studio / 3D Studio exchange folder"),
-            InitialDirectory = Directory.Exists(ExchangeRoot) ? ExchangeRoot : null
-        };
-        if (dialog.ShowDialog() == true)
+            StatusText = L(
+                "FolderPickerUnavailable",
+                "폴더 선택 창을 사용할 수 없습니다.",
+                "The folder picker is unavailable.");
+            return;
+        }
+
+        var title = L(
+            "ChooseFolder",
+            "Machine Studio와 3D Studio가 공유할 교환 폴더 선택",
+            "Choose the shared Machine Studio / 3D Studio exchange folder");
+        var initialDirectory = Directory.Exists(ExchangeRoot) ? ExchangeRoot : null;
+        if (dialogHost.TrySelectExchangeRoot(initialDirectory, title, out var path))
         {
-            ExchangeRoot = dialog.FolderName;
+            ExchangeRoot = path;
             StatusText = L("FolderSelected", "교환 폴더를 선택했습니다. 설정 저장을 눌러 기억하세요.", "Exchange folder selected. Choose Save setup to remember it.");
         }
     }
@@ -350,14 +338,14 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 L("ChooseFolderFirst", "교환 폴더를 선택하세요.", "Choose an exchange folder.")));
             var tcp = ResolveCurrentTcpSettings(root);
             Directory.CreateDirectory(root);
-            new ExchangeSettings
+            settingsStore.Save(new ThreeDIntegrationSettings
             {
                 ExchangeRoot = root,
                 TcpListenAddress = tcp.ListenAddress.ToString(),
                 TcpListenPort = tcp.ListenPort,
                 TcpPeerHost = tcp.PeerHost,
                 TcpPeerPort = tcp.PeerPort
-            }.Save(settingsPath);
+            });
             ExchangeRoot = root;
             TcpListenAddress = tcp.ListenAddress.ToString();
             TcpListenPortText = tcp.ListenPort.ToString(CultureInfo.InvariantCulture);
@@ -378,7 +366,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     {
         try
         {
-            new ExchangeSettings().Save(settingsPath);
+            settingsStore.Save(new ThreeDIntegrationSettings());
             ExchangeRoot = string.Empty;
             TcpListenAddress = "127.0.0.1";
             TcpListenPortText = "45103";
@@ -400,72 +388,9 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     {
         try
         {
-            var root = RequireSavedRoot();
-            var discovered = ThreeDIntegrationExchange.DiscoverHandoffs(root);
-            var items = new List<ThreeDIntegrationTransactionItem>();
+            var items = transactionWorkflow.Discover(RequireSavedRoot());
             Transactions.Clear();
-            foreach (var transaction in discovered)
-            {
-                ThreeDIntegrationTcpSequence sequence;
-                try
-                {
-                    sequence = ThreeDIntegrationTcpExchange.ReadValidatedV2Sequence(
-                        root,
-                        transaction.Handoff.TransactionId);
-                }
-                catch (Exception exception) when (
-                    exception is IOException
-                    or UnauthorizedAccessException
-                    or InvalidDataException
-                    or JsonException
-                    or IntegrationContractException)
-                {
-                    sequence = new(
-                        transaction.Handoff,
-                        null,
-                        null);
-                }
-
-                var acknowledgementPresent = sequence.Acknowledgement is not null
-                    || transaction.HasAcknowledgement;
-                var resultPresent = sequence.Result is not null
-                    || transaction.HasResult;
-                var state = resultPresent
-                    ? L("StatePublished", "결과 게시됨", "Result published")
-                    : acknowledgementPresent
-                        ? L("StateReviewed", "검토됨", "Reviewed")
-                        : L("StatePending", "검토 대기", "Pending review");
-                items.Add(new(
-                    transaction.Handoff.TransactionId,
-                    transaction.Handoff.SchemaVersion,
-                    transaction.Handoff.CreatedAtUtc,
-                    transaction.Handoff.Context.ProjectId,
-                    transaction.Handoff.Context.SequenceId,
-                    transaction.Handoff.Context.StepId,
-                    transaction.Handoff.Context.CameraId,
-                    state,
-                    $"{transaction.Handoff.Context.Modality}/{transaction.Handoff.Context.InputKind}",
-                    sequence.Acknowledgement is not null
-                        ? $"ACK {sequence.Acknowledgement.Status}"
-                        : acknowledgementPresent
-                            ? L("AckPresent", "ACK 있음", "ACK present")
-                            : L("AckAbsent", "ACK 없음", "ACK absent"),
-                    sequence.Result is not null
-                        ? $"Result {sequence.Result.Status}/{sequence.Result.Outcome}/Run {sequence.Result.RunId ?? "-"}"
-                        : resultPresent
-                            ? L("ResultPresent", "Result 있음", "Result present")
-                            : L("ResultAbsent", "Result 없음", "Result absent"),
-                    transaction.Handoff.Context.Modality == IntegrationInspectionModality.ThreeD
-                    && transaction.Handoff.Context.InputKind == IntegrationInspectionInputKind.HeightMap
-                    && string.Equals(
-                        transaction.Handoff.Context.ConsumerBuild.ApplicationId,
-                        IntegrationApplicationIds.ThreeDStudio,
-                        StringComparison.Ordinal),
-                    acknowledgementPresent,
-                    resultPresent,
-                    sequence.Acknowledgement?.Status));
-            }
-            foreach (var item in items.OrderByDescending(candidate => candidate.CreatedAtUtc))
+            foreach (var item in items)
             {
                 Transactions.Add(item);
             }
@@ -505,16 +430,9 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             var selected = SelectedTransaction
                 ?? throw new InvalidOperationException("Choose a Machine Studio handoff first.");
             var root = RequireSavedRoot();
-            var handoff = rejectionReason is null
-                ? ThreeDIntegrationExchange.ReadHandoff(root, selected.TransactionId)
-                : ThreeDIntegrationExchange.ReadHandoffEnvelope(root, selected.TransactionId);
-            var acknowledgement = ThreeDIntegrationExchange.PublishAcknowledgement(
-                root,
-                handoff,
-                ResolveProducerIdentity(handoff.Context.ConsumerBuild),
-                rejectionReason);
+            var status = transactionWorkflow.Review(root, selected, rejectionReason);
             RefreshHandoffs(selected.TransactionId);
-            StatusText = acknowledgement.Status == IntegrationAcknowledgementStatus.Accepted
+            StatusText = status == IntegrationAcknowledgementStatus.Accepted
                 ? L("Accepted", "ACK를 로컬 거래에 기록했습니다. 레시피를 불러오거나 검사를 실행하지 않았습니다. TCP 상대에게 돌려보내려면 선택 거래 보내기를 누르세요.", "ACK recorded in the local transaction. No recipe was loaded and no inspection was run. Choose Push selected transaction to return it to the TCP peer.")
                 : L("Rejected", "거절 ACK를 로컬 거래에 기록했습니다. TCP 상대에게 돌려보내려면 선택 거래 보내기를 누르세요.", "Rejected ACK recorded in the local transaction. Choose Push selected transaction to return it to the TCP peer.");
         }
@@ -535,23 +453,15 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             {
                 throw new InvalidOperationException("Select an existing completed Run Record before publishing a result.");
             }
-            var root = RequireSavedRoot();
-            var handoff = ThreeDIntegrationExchange.ReadHandoff(
-                root,
-                selected.TransactionId);
-            var result = ThreeDIntegrationExchange.PublishCompletedResult(
-                root,
-                selected.TransactionId,
-                ResolveProducerIdentity(handoff.Context.ConsumerBuild),
-                runRecordPath);
+            var published = transactionWorkflow.PublishResult(RequireSavedRoot(), selected, runRecordPath);
             RefreshHandoffs(selected.TransactionId);
             StatusText = string.Format(
                 L(
                     "PublishedFormat",
                     "결과 준비됨: {0} | Run {1}. TCP 상대에게 돌려보내려면 선택 거래 보내기를 누르세요.",
                     "Result prepared: {0} | Run {1}. Choose Push selected transaction to return it to the TCP peer."),
-                result.Outcome,
-                result.RunId);
+                published.Outcome,
+                published.RunId);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
         {
@@ -573,24 +483,32 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
 
             var settings = RequireSavedTcpSettings();
             var key = AcquireSharedKey();
-            ThreeDIntegrationTcpExchange? listener = null;
+            ThreeDIntegrationTcpTransport? listener = null;
             try
             {
-                listener = new ThreeDIntegrationTcpExchange(settings.ExchangeRoot, key);
+                listener = new ThreeDIntegrationTcpTransport(settings.ExchangeRoot, key);
                 var endpoint = await listener.StartListeningAsync(
                     settings.ListenAddress,
                     settings.ListenPort,
                     cancellationToken);
-                tcpListener = listener;
-                listener = null;
-                IsTcpListening = true;
-                TcpListenerStatusText = string.Format(
-                    L("TcpListeningFormat", "TCP 수신 중: {0}", "TCP listening: {0}"),
-                    endpoint);
-                StatusText = L(
-                    "TcpStarted",
-                    "TCP 수신을 시작했습니다. 수신만으로 ACK, 레시피 로드, Preview, Publish, Run 또는 Result를 실행하지 않습니다.",
-                    "TCP listening started. Receipt alone never ACKs, loads a recipe, Previews, Publishes, Runs, or creates a Result.");
+                lock (tcpOperationGate)
+                {
+                    if (IsDisposed || cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    tcpListener = listener;
+                    listener = null;
+                    IsTcpListening = true;
+                    TcpListenerStatusText = string.Format(
+                        L("TcpListeningFormat", "TCP 수신 중: {0}", "TCP listening: {0}"),
+                        endpoint);
+                    StatusText = L(
+                        "TcpStarted",
+                        "TCP 수신을 시작했습니다. 수신만으로 ACK, 레시피 로드, Preview, Publish, Run 또는 Result를 실행하지 않습니다.",
+                        "TCP listening started. Receipt alone never ACKs, loads a recipe, Previews, Publishes, Runs, or creates a Result.");
+                }
             }
             finally
             {
@@ -680,7 +598,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     private Task RunTcpTransferAsync(
         string busyStatus,
         Func<
-            ThreeDIntegrationTcpExchange,
+            ThreeDIntegrationTcpTransport,
             TcpIntegrationEndpoint,
             CancellationToken,
             Task<TcpIntegrationTransferReceipt>> operation,
@@ -693,7 +611,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 var key = AcquireSharedKey();
                 try
                 {
-                    await using var exchange = new ThreeDIntegrationTcpExchange(
+                    await using var exchange = new ThreeDIntegrationTcpTransport(
                         settings.ExchangeRoot,
                         key);
                     var receipt = await operation(
@@ -727,27 +645,61 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 }
             });
 
-    private async Task RunTcpOperationAsync(
+    private Task RunTcpOperationAsync(
         string busyStatus,
         Func<CancellationToken, Task> operation)
     {
-        if (disposed)
+        CancellationTokenSource cancellation;
+        TaskCompletionSource<object?> completion;
+        lock (tcpOperationGate)
         {
-            StatusText = L(
-                "TcpDisposed",
-                "종료 중인 연동 화면에서는 TCP 작업을 시작할 수 없습니다.",
-                "A TCP action cannot start while the integration workspace is closing.");
-            return;
-        }
-        if (IsTcpBusy)
-        {
-            return;
+            if (IsDisposed)
+            {
+                StatusText = L(
+                    "TcpDisposed",
+                    "종료 중인 연동 화면에서는 TCP 작업을 시작할 수 없습니다.",
+                    "A TCP action cannot start while the integration workspace is closing.");
+                return Task.CompletedTask;
+            }
+            if (tcpOperationTask is not null || IsTcpBusy)
+            {
+                return Task.CompletedTask;
+            }
+
+            IsTcpBusy = true;
+            StatusText = busyStatus;
+            cancellation = new CancellationTokenSource();
+            completion = new TaskCompletionSource<object?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            tcpOperationCancellation = cancellation;
+            tcpOperationTask = completion.Task;
         }
 
-        IsTcpBusy = true;
-        StatusText = busyStatus;
-        using var cancellation = new CancellationTokenSource();
-        tcpOperationCancellation = cancellation;
+        return RunTcpOperationAndCompleteAsync(operation, cancellation, completion);
+    }
+
+    private async Task RunTcpOperationAndCompleteAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationTokenSource cancellation,
+        TaskCompletionSource<object?> completion)
+    {
+        try
+        {
+            await RunTcpOperationCoreAsync(operation, cancellation, completion).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
+
+        await completion.Task.ConfigureAwait(false);
+    }
+
+    private async Task RunTcpOperationCoreAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationTokenSource cancellation,
+        TaskCompletionSource<object?> completion)
+    {
         try
         {
             await operation(cancellation.Token);
@@ -765,36 +717,102 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         }
         finally
         {
-            if (ReferenceEquals(tcpOperationCancellation, cancellation))
+            lock (tcpOperationGate)
             {
-                tcpOperationCancellation = null;
+                if (ReferenceEquals(tcpOperationCancellation, cancellation))
+                {
+                    tcpOperationCancellation = null;
+                    tcpOperationTask = null;
+                    IsTcpBusy = false;
+                }
             }
-            IsTcpBusy = false;
+            cancellation.Dispose();
+            completion.TrySetResult(null);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (disposed)
+        Task cleanupTask;
+        TaskCompletionSource<object?>? completion = null;
+        lock (tcpOperationGate)
         {
+            if (disposalTask is null)
+            {
+                completion = new TaskCompletionSource<object?>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                disposalTask = completion.Task;
+            }
+
+            cleanupTask = disposalTask;
+        }
+
+        if (completion is not null)
+        {
+            await DisposeAndCompleteAsync(completion).ConfigureAwait(false);
             return;
         }
 
-        disposed = true;
-        tcpOperationCancellation?.Cancel();
-        var listener = tcpListener;
-        tcpListener = null;
-        IsTcpListening = false;
-        TcpListenerStatusText = L("TcpStopped", "TCP 수신 중지됨", "TCP listener stopped");
-        if (sessionSharedKey is not null)
+        await cleanupTask.ConfigureAwait(false);
+    }
+
+    private async Task DisposeAndCompleteAsync(TaskCompletionSource<object?> completion)
+    {
+        try
         {
-            CryptographicOperations.ZeroMemory(sessionSharedKey);
-            sessionSharedKey = null;
+            await DisposeCoreAsync(completion).ConfigureAwait(false);
         }
-        hasSessionSharedKeyInput = false;
-        if (listener is not null)
+        catch (Exception exception)
         {
-            await listener.DisposeAsync().ConfigureAwait(false);
+            completion.TrySetException(exception);
+        }
+
+        await completion.Task.ConfigureAwait(false);
+    }
+
+    private async Task DisposeCoreAsync(TaskCompletionSource<object?> completion)
+    {
+        try
+        {
+            Task? activeOperation;
+            CancellationTokenSource? cancellation;
+            lock (tcpOperationGate)
+            {
+                if (Interlocked.Exchange(ref disposedState, 1) != 0)
+                {
+                    completion.TrySetResult(null);
+                    return;
+                }
+
+                cancellation = tcpOperationCancellation;
+                activeOperation = tcpOperationTask;
+                IsTcpListening = false;
+                TcpListenerStatusText = L("TcpStopped", "TCP 수신 중지됨", "TCP listener stopped");
+                sharedKeySession.Dispose();
+            }
+
+            cancellation?.Cancel();
+            if (activeOperation is not null)
+            {
+                await activeOperation.ConfigureAwait(false);
+            }
+
+            ThreeDIntegrationTcpTransport? listener;
+            lock (tcpOperationGate)
+            {
+                listener = tcpListener;
+                tcpListener = null;
+            }
+            if (listener is not null)
+            {
+                await listener.DisposeAsync().ConfigureAwait(false);
+            }
+
+            completion.TrySetResult(null);
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
         }
     }
 
@@ -806,7 +824,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 "ChooseAndSaveFolder",
                 "교환 폴더를 선택하고 저장하세요.",
                 "Choose and save an exchange folder.")));
-        var settings = ExchangeSettings.Load(settingsPath);
+        var settings = settingsStore.Load();
         if (!string.Equals(settings.ExchangeRoot, root, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(L(
@@ -828,7 +846,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     {
         var root = RequireSavedRoot();
         var current = ResolveCurrentTcpSettings(root);
-        var saved = ExchangeSettings.Load(settingsPath);
+        var saved = settingsStore.Load();
         if (!string.Equals(
                 saved.TcpListenAddress,
                 current.ListenAddress.ToString(),
@@ -867,88 +885,66 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
 
     private byte[] AcquireSharedKey()
     {
-        if (hasSessionSharedKeyInput)
+        if (sharedKeySession.TryAcquire(out var key, out var failure))
         {
-            if (sessionSharedKey is null)
-            {
-                throw new InvalidOperationException(SharedKeyStatusText);
-            }
-            return sessionSharedKey.ToArray();
+            return key;
         }
 
-        var encoded = Environment.GetEnvironmentVariable(SharedKeyEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(encoded))
+        throw new InvalidOperationException(failure switch
         {
-            throw new InvalidOperationException(string.Format(
+            ThreeDIntegrationSharedKeyAcquireFailure.SessionUnavailable => SharedKeyStatusText,
+            ThreeDIntegrationSharedKeyAcquireFailure.EnvironmentMissing => string.Format(
                 L(
                     "TcpKeyRequired",
                     "세션 공유 키를 입력하거나 환경 변수 {0}에 Base64 키를 설정하세요.",
                     "Enter a session shared key or set environment variable {0} to a Base64 key."),
-                SharedKeyEnvironmentVariable));
-        }
-        try
-        {
-            var key = Convert.FromBase64String(encoded.Trim());
-            if (key.Length >= 32)
-            {
-                return key;
-            }
-            CryptographicOperations.ZeroMemory(key);
-        }
-        catch (FormatException)
-        {
-            // The actionable message below owns both malformed and short values.
-        }
-
-        throw new InvalidOperationException(string.Format(
-            L(
-                "TcpEnvironmentKeyInvalid",
-                "환경 변수 {0}에는 Base64로 인코딩한 32바이트 이상의 키가 필요합니다.",
-                "Environment variable {0} must contain a Base64 key of at least 32 bytes."),
-            SharedKeyEnvironmentVariable));
+                ThreeDIntegrationSharedKeySession.EnvironmentVariableName),
+            ThreeDIntegrationSharedKeyAcquireFailure.Disposed => L(
+                "TcpDisposed",
+                "종료 중인 연동 화면에서는 TCP 작업을 시작할 수 없습니다.",
+                "A TCP action cannot start while the integration workspace is closing."),
+            _ => string.Format(
+                L(
+                    "TcpEnvironmentKeyInvalid",
+                    "환경 변수 {0}에는 Base64로 인코딩한 32바이트 이상의 키가 필요합니다.",
+                    "Environment variable {0} must contain a Base64 key of at least 32 bytes."),
+                ThreeDIntegrationSharedKeySession.EnvironmentVariableName)
+        });
     }
 
     private string DescribeSharedKeyStatus()
     {
-        var encoded = Environment.GetEnvironmentVariable(SharedKeyEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(encoded))
+        return sharedKeySession.DescribeEnvironment() switch
         {
-            return string.Format(
+            ThreeDIntegrationSharedKeyEnvironmentStatus.Ready => string.Format(
                 L(
-                    "TcpEnvironmentKeyMissing",
-                    "공유 키 없음: 세션 입력 또는 환경 변수 {0} 필요",
-                    "No shared key: session input or environment variable {0} required"),
-                SharedKeyEnvironmentVariable);
-        }
-
-        try
-        {
-            var key = Convert.FromBase64String(encoded.Trim());
-            var valid = key.Length >= 32;
-            CryptographicOperations.ZeroMemory(key);
-            return valid
-                ? string.Format(
-                    L(
-                        "TcpEnvironmentKeyReady",
-                        "환경 변수 {0}의 공유 키 준비됨",
-                        "Shared key ready from environment variable {0}"),
-                    SharedKeyEnvironmentVariable)
-                : string.Format(
-                    L(
-                        "TcpEnvironmentKeyShort",
-                        "환경 변수 {0}의 공유 키가 32바이트보다 짧습니다.",
-                        "Shared key in environment variable {0} is shorter than 32 bytes."),
-                    SharedKeyEnvironmentVariable);
-        }
-        catch (FormatException)
-        {
-            return string.Format(
+                    "TcpEnvironmentKeyReady",
+                    "환경 변수 {0}의 공유 키 준비됨",
+                    "Shared key ready from environment variable {0}"),
+                ThreeDIntegrationSharedKeySession.EnvironmentVariableName),
+            ThreeDIntegrationSharedKeyEnvironmentStatus.TooShort => string.Format(
+                L(
+                    "TcpEnvironmentKeyShort",
+                    "환경 변수 {0}의 공유 키가 32바이트보다 짧습니다.",
+                    "Shared key in environment variable {0} is shorter than 32 bytes."),
+                ThreeDIntegrationSharedKeySession.EnvironmentVariableName),
+            ThreeDIntegrationSharedKeyEnvironmentStatus.Invalid => string.Format(
                 L(
                     "TcpEnvironmentKeyMalformed",
                     "환경 변수 {0}의 공유 키가 올바른 Base64가 아닙니다.",
                     "Shared key in environment variable {0} is not valid Base64."),
-                SharedKeyEnvironmentVariable);
-        }
+                ThreeDIntegrationSharedKeySession.EnvironmentVariableName),
+            ThreeDIntegrationSharedKeyEnvironmentStatus.Disposed => L(
+                "TcpDisposed",
+                "종료 중인 연동 화면에서는 TCP 작업을 시작할 수 없습니다.",
+                "A TCP action cannot start while the integration workspace is closing."),
+            _ => string.Format(
+                L(
+                    "TcpEnvironmentKeyMissing",
+                    "공유 키 없음: 세션 입력 또는 환경 변수 {0} 필요",
+                    "No shared key: session input or environment variable {0} required"),
+                ThreeDIntegrationSharedKeySession.EnvironmentVariableName)
+        };
     }
 
     private void RaiseTcpCanExecuteChanged()
@@ -988,13 +984,6 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             ? IntegrationBuildIdentity.LoadQualifiedIdentity()
             : IntegrationBuildIdentity.LoadQualifiedTargetIdentity(expectedTarget));
 
-    private sealed record ResolvedTcpSettings(
-        string ExchangeRoot,
-        IPAddress ListenAddress,
-        int ListenPort,
-        string PeerHost,
-        int PeerPort);
-
     private static string Require(string value, string message) =>
         string.IsNullOrWhiteSpace(value) ? throw new ArgumentException(message) : value.Trim();
 
@@ -1014,45 +1003,11 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         return true;
     }
 
-    private sealed class ExchangeSettings
-    {
-        public string ExchangeRoot { get; set; } = string.Empty;
-        public string TcpListenAddress { get; set; } = "127.0.0.1";
-        public int TcpListenPort { get; set; } = 45103;
-        public string TcpPeerHost { get; set; } = "127.0.0.1";
-        public int TcpPeerPort { get; set; } = 45102;
+    private sealed record ResolvedTcpSettings(
+        string ExchangeRoot,
+        IPAddress ListenAddress,
+        int ListenPort,
+        string PeerHost,
+        int PeerPort);
 
-        public static ExchangeSettings Load(string path)
-        {
-            try
-            {
-                return File.Exists(path)
-                    ? JsonSerializer.Deserialize<ExchangeSettings>(File.ReadAllText(path)) ?? new()
-                    : new();
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
-            {
-                return new();
-            }
-        }
-
-        public void Save(string path)
-        {
-            var fullPath = Path.GetFullPath(path);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            var temporary = $"{fullPath}.{Guid.NewGuid():N}.tmp";
-            try
-            {
-                File.WriteAllText(temporary, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
-                File.Move(temporary, fullPath, overwrite: true);
-            }
-            finally
-            {
-                if (File.Exists(temporary))
-                {
-                    File.Delete(temporary);
-                }
-            }
-        }
-    }
 }

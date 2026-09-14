@@ -38,14 +38,18 @@ public sealed partial class ToolWorkbenchViewModel
             () => SelectedPipelineStep,
             step => SelectedPipelineStep = step,
             toolId => ToolLabRequested?.Invoke(this, new ToolWorkbenchToolLabRequestEventArgs(toolId)));
-        artifactNavigatorOwner.PropertyChanged += (_, args) => OnPropertyChanged(args.PropertyName);
-        artifactNavigatorOwner.Rebuilt += (_, _) =>
-        {
-            RebuildRenderableC3DConsumers();
-            RebuildFlowPortDiagnostics();
-            RebuildCompatibleToolCatalog();
-        };
     }
+
+    private ToolWorkbenchArtifactNavigatorEventCoordinator CreateArtifactNavigatorEventCoordinator() =>
+        new(
+            artifactNavigatorOwner,
+            args => OnPropertyChanged(args.PropertyName),
+            () =>
+            {
+                RebuildRenderableC3DConsumers();
+                RebuildFlowPortDiagnostics();
+                RebuildCompatibleToolCatalog();
+            });
 
     private void RebuildRenderableC3DConsumers()
     {
@@ -111,7 +115,7 @@ public sealed partial class ToolWorkbenchViewModel
                 IsRoiCropPreviewStale,
                 IsRoiCropPreviewPublished)
         ],
-        validationSetDefinitionOwner.Samples
+        validationSetWorkspace.AllSamples
             .Select(sample => new ToolWorkbenchRenderableC3DValidationSampleSnapshot(
                 sample.Order,
                 sample.SourcePath,
@@ -127,11 +131,44 @@ public sealed partial class ToolWorkbenchViewModel
         SourceSession.SourceBinding,
         SourceReadinessSummary,
         SourceContextSummary,
+        Localization.SourceArtifactReadyDetailFormat,
         References,
         Selections,
         IsSelectionCurrent,
         PipelineSteps,
         CreateSourceQualityDelta,
+        FormatSourceQualityDeltaSummary,
+        Localization.OutputCompareQualityDeltaUnavailable,
+        Localization.RoiCropQualityDeltaEvidence,
+        Localization.LevelSurfaceQualityDeltaEvidence,
+        Localization.DomainMaskQualityDeltaEvidence,
+        Localization.RemoveOutlierQualityDeltaEvidence,
+        Localization.FilterQualityDeltaEvidence,
+        Localization.FlowPortDeclaredDetailFormat,
+        Localization.SelectedToolOutputDisabledDetailFormat,
+        Localization.RecipeOwnedSelection,
+        Localization.StaleSelectionRecaptureDetail,
+        Localization.OutputCompareSourceIdentityRetained,
+        Localization.DomainMaskReducedDetail,
+        Localization.DomainMaskArtifactDetailFormat,
+        Localization.ConnectedRegionArtifactDetailFormat,
+        Localization.EditableRegionArtifactDetailFormat,
+        Localization.RemoveOutlierArtifactDetailFormat,
+        Localization.RoiCropArtifactDetailFormat,
+        Localization.LevelSurfaceArtifactDetailFormat,
+        Localization.FilterArtifactDetailFormat,
+        Localization.HeightDifferenceEdgeArtifactDetailFormat,
+        Localization.LineFitArtifactDetailFormat,
+        Localization.TwoPointLineArtifactDetailFormat,
+        Localization.ThreePointPlaneArtifactDetailFormat,
+        Localization.DatumPlaneDeviationArtifactDetailFormat,
+        Localization.LineIntersectionArtifactDetailFormat,
+        Localization.LandmarkCorrespondenceArtifactDetailFormat,
+        Localization.XyzAffineSolveArtifactDetailFormat,
+        Localization.XyzAffineApplyArtifactDetailFormat,
+        Localization.RegridHeightFieldArtifactDetailFormat,
+        Localization.MeasurementArtifactDetailFormat,
+        Localization.ResultStatusLabel,
         new ToolWorkbenchArtifactPreview<OpenVisionLab.ThreeD.Data.C3DHeightFieldSnapshot>(
             CurrentRoiCropPreviewOutput,
             IsRoiCropPreviewStale,

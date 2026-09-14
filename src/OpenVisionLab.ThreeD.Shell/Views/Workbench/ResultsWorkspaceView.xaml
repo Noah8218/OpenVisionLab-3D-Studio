@@ -3,11 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              AutomationProperties.AutomationId="ResultsWorkspace">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
     </UserControl.Resources>
     <Grid Background="{DynamicResource ThreeD.PanelBrush}">
         <Grid.RowDefinitions>
@@ -81,7 +83,7 @@
                                FontSize="11"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding ResultsOperatorDecisionSummary}"
+                               Text="{Binding ResultsOperatorDecisionSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextWrapping="Wrap" />
                     <TextBlock Margin="0,5,0,0"
                                FontSize="9"
@@ -91,7 +93,7 @@
                                Margin="0,1,0,0"
                                FontSize="10"
                                Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding ResultsOperatorAffectedStepsSummary}"
+                               Text="{Binding ResultsOperatorAffectedStepsSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Grid.Row="1"
@@ -220,15 +222,15 @@
                                 <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                           Text="{Binding RunSnapshotSummary}" />
+                                           Text="{Binding RunSnapshotSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,6,0,0"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           Text="{Binding RunSnapshotEvidence}"
+                                           Text="{Binding RunSnapshotEvidence, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,8,0,0"
                                            FontSize="10.5"
                                            FontWeight="SemiBold"
-                                           Text="{Binding InspectionStepSummary}" />
+                                           Text="{Binding InspectionStepSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             </StackPanel>
                         </Border>
                         <StackPanel Grid.Row="2" Margin="0,14,0,0">

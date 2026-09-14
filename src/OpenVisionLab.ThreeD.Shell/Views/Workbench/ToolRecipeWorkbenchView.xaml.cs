@@ -4,10 +4,12 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
@@ -26,12 +28,22 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             typeof(ToolRecipeWorkbenchView),
             new PropertyMetadata(null, OnViewerContentChanged));
 
+    public static readonly DependencyProperty WorkspaceSelectionCommandProperty =
+        DependencyProperty.Register(
+            nameof(WorkspaceSelectionCommand),
+            typeof(ICommand),
+            typeof(ToolRecipeWorkbenchView),
+            new PropertyMetadata(null));
+
     public ToolRecipeWorkbenchView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        SetBinding(
+            WorkspaceSelectionCommandProperty,
+            new Binding("DataContext.SelectWorkspaceCommand") { Source = this });
         BindStageHostedContext(DockWorkspace.ToolLibraryContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.DataLayersContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.ViewerContent, "DataContext");
@@ -96,6 +108,10 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         {
             outputCompare.Dispose();
         }
+        if (DockWorkspace.ProfileContent is HeightProfileView profileView)
+        {
+            profileView.Dispose();
+        }
         ViewerWorkspaceSurface?.Dispose();
         DataContextChanged -= OnDataContextChanged;
         Loaded -= OnLoaded;
@@ -103,6 +119,12 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     }
 
     public OpenVisionOperatorStage OperatorStage => DockWorkspace.OperatorStage;
+
+    public ICommand? WorkspaceSelectionCommand
+    {
+        get => (ICommand?)GetValue(WorkspaceSelectionCommandProperty);
+        set => SetValue(WorkspaceSelectionCommandProperty, value);
+    }
 
     public bool HasSetupStageComposition => DockWorkspace.HasSetupStageComposition;
 
@@ -253,6 +275,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     internal object? ProfileViewerDataContext =>
         (DockWorkspace.ProfileContent as HeightProfileView)?.DataContext;
+
+    internal IOpenVisionThreeDViewerHost? ProfileViewerHost =>
+        (DockWorkspace.ProfileContent as HeightProfileView)?.ViewerHost;
 
     public bool ReleaseMainViewer(object? requestedContent) =>
         ViewerWorkspaceSurface?.ReleaseMainViewer(requestedContent) == true;
@@ -564,11 +589,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     {
         NavigateToStage(ShellWorkspaceMode.Inspect);
         DockWorkspace.ActivateEvidencePane();
-        if (DataContext is ShellMainWindowViewModel shell)
-        {
-            shell.Workbench.SelectedReviewTabIndex = 1;
-        }
-        else if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
             review.ActivateFlowMap();
         }
@@ -581,11 +602,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     {
         NavigateToStage(ShellWorkspaceMode.Inspect);
         DockWorkspace.ActivateEvidencePane();
-        if (DataContext is ShellMainWindowViewModel shell)
-        {
-            shell.Workbench.SelectedReviewTabIndex = 2;
-        }
-        else if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
             review.ActivateProblems();
         }
@@ -605,11 +622,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         {
             DockWorkspace.ActivateEvidencePane();
         }
-        if (DataContext is ShellMainWindowViewModel shell)
-        {
-            shell.Workbench.SelectedReviewTabIndex = 3;
-        }
-        else if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
             review.ActivateRunRecord();
         }
@@ -634,11 +647,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     {
         NavigateToStage(ShellWorkspaceMode.Inspect);
         DockWorkspace.ActivateEvidencePane();
-        if (DataContext is ShellMainWindowViewModel shell)
-        {
-            shell.Workbench.SelectedReviewTabIndex = 4;
-        }
-        else if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
             review.ActivateValidationSet();
         }
@@ -758,9 +767,10 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     private void NavigateToStage(ShellWorkspaceMode mode)
     {
-        if (shell?.SelectWorkspaceCommand.CanExecute(mode) == true)
+        var command = WorkspaceSelectionCommand;
+        if (command?.CanExecute(mode) == true)
         {
-            shell.SelectWorkspaceCommand.Execute(mode);
+            command.Execute(mode);
         }
     }
 
@@ -869,11 +879,17 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
         if (stage == OpenVisionOperatorStage.Validate)
         {
-            shell!.Workbench.SelectedReviewTabIndex = 4;
+            if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+            {
+                review.ActivateValidationSet();
+            }
         }
         else if (stage == OpenVisionOperatorStage.Results)
         {
-            shell!.Workbench.SelectedReviewTabIndex = 3;
+            if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+            {
+                review.ActivateRunRecord();
+            }
         }
     }
 
@@ -940,7 +956,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
         if (view.DockWorkspace.ProfileContent is HeightProfileView profileView)
         {
-            profileView.DataContext = (args.NewValue as OpenVisionThreeDViewerControl)?.ViewModel;
+            profileView.ViewerHost = args.NewValue as IOpenVisionThreeDViewerHost;
         }
     }
 

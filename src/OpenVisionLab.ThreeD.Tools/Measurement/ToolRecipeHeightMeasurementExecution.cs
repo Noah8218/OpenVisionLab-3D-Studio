@@ -107,7 +107,8 @@ public static class ToolRecipeHeightMeasurementExecution
                 publishedEditableRegionArtifact,
                 recipeDirectory,
                 out var prepared,
-                out var message))
+                out var message,
+                cancellationToken))
         {
             var error = new ToolResult("Height measurement", ResultStatus.Error, message, TimeSpan.Zero, [], []);
             return new ToolRecipeHeightMeasurementEvaluation(error, null);
@@ -397,7 +398,16 @@ public static class ToolRecipeHeightMeasurementExecution
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
         out string message) =>
-        TryPrepare(document, stepId, null, null, null, recipeDirectory, out prepared, out message);
+        TryPrepare(
+            document,
+            stepId,
+            null,
+            null,
+            null,
+            recipeDirectory,
+            out prepared,
+            out message,
+            CancellationToken.None);
 
     public static bool TryPrepare(
         ToolRecipeDocument document,
@@ -406,7 +416,16 @@ public static class ToolRecipeHeightMeasurementExecution
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
         out string message) =>
-        TryPrepare(document, stepId, null, publishedTransformedHeightField, null, recipeDirectory, out prepared, out message);
+        TryPrepare(
+            document,
+            stepId,
+            null,
+            publishedTransformedHeightField,
+            null,
+            recipeDirectory,
+            out prepared,
+            out message,
+            CancellationToken.None);
 
     public static bool TryPrepare(
         ToolRecipeDocument document,
@@ -424,7 +443,8 @@ public static class ToolRecipeHeightMeasurementExecution
             null,
             recipeDirectory,
             out prepared,
-            out message);
+            out message,
+            CancellationToken.None);
 
     public static bool TryPrepare(
         ToolRecipeDocument document,
@@ -434,9 +454,31 @@ public static class ToolRecipeHeightMeasurementExecution
         C3DEditableRegionArtifact? publishedEditableRegionArtifact,
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
-        out string message)
+        out string message) =>
+        TryPrepare(
+            document,
+            stepId,
+            publishedHeightField,
+            publishedTransformedHeightField,
+            publishedEditableRegionArtifact,
+            recipeDirectory,
+            out prepared,
+            out message,
+            CancellationToken.None);
+
+    public static bool TryPrepare(
+        ToolRecipeDocument document,
+        string stepId,
+        C3DHeightFieldSnapshot? publishedHeightField,
+        C3DTransformedHeightField? publishedTransformedHeightField,
+        C3DEditableRegionArtifact? publishedEditableRegionArtifact,
+        string? recipeDirectory,
+        out PreparedHeightMeasurement? prepared,
+        out string message,
+        CancellationToken cancellationToken)
     {
         prepared = null;
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             ArgumentNullException.ThrowIfNull(document);
@@ -512,6 +554,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 throw new InvalidDataException("Cross-section Dimensions v1 requires one GridRectangle spanning exactly one row and at least two columns.");
             }
             ValidateParameters(step);
+            cancellationToken.ThrowIfCancellationRequested();
             var rois = pointPair ? [] : selections.Select(selection => ToRoi(selection.GridRectangle!)).ToArray();
             if (string.Equals(step.InputEntityIds[0], document.Source.Id, StringComparison.OrdinalIgnoreCase))
             {
@@ -529,9 +572,11 @@ public static class ToolRecipeHeightMeasurementExecution
                 var path = Path.IsPathFullyQualified(source.Path)
                     ? Path.GetFullPath(source.Path)
                     : Path.GetFullPath(Path.Combine(recipeDirectory ?? Environment.CurrentDirectory, source.Path));
+                cancellationToken.ThrowIfCancellationRequested();
                 var snapshot = C3DHeightFieldSnapshot.LoadVerified(
                     path, source.Id, source.Unit, source.FrameId, source.ByteLength.Value,
-                    source.ContentSha256, source.GridWidth.Value, source.GridHeight.Value);
+                    source.ContentSha256, source.GridWidth.Value, source.GridHeight.Value, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 ValidateEditableRegionCompatibility(
                     inspectionRegionArtifact,
                     step.InputEntityIds[0],
@@ -554,6 +599,7 @@ public static class ToolRecipeHeightMeasurementExecution
             if (publishedHeightField is not null
                 && string.Equals(step.InputEntityIds[0], publishedHeightField.EntityId, StringComparison.OrdinalIgnoreCase))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 foreach (var selection in selections.Take(usesEditableRegionArtifact ? 1 : selections.Length))
                 {
                     var binding = ToolRecipeSelectionSourceBindingVerifier.Verify(publishedHeightField, selection.SourceBinding);
@@ -568,6 +614,7 @@ public static class ToolRecipeHeightMeasurementExecution
                     publishedHeightField.FrameId,
                     publishedHeightField.Width,
                     publishedHeightField.Height);
+                cancellationToken.ThrowIfCancellationRequested();
                 prepared = new PreparedHeightMeasurement(
                     step,
                     selections,
@@ -591,6 +638,7 @@ public static class ToolRecipeHeightMeasurementExecution
             {
                 throw new InvalidDataException($"{step.ToolName} v1 is waiting for its exact Published compatible HeightField first input.");
             }
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var selection in selections.Take(usesEditableRegionArtifact ? 1 : selections.Length))
             {
                 var binding = ToolRecipeSelectionSourceBindingVerifier.Verify(publishedTransformedHeightField, selection.SourceBinding);
@@ -605,6 +653,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 publishedTransformedHeightField.ReferenceFrameId,
                 publishedTransformedHeightField.ColumnCount,
                 publishedTransformedHeightField.RowCount);
+            cancellationToken.ThrowIfCancellationRequested();
             prepared = new PreparedHeightMeasurement(
                 step,
                 selections,

@@ -29,7 +29,7 @@ internal static class C3DRegionTransformPropagationGoldenVerification
             };
             var passed = cases.Count(item => item.Passed);
             var status = passed == cases.Length ? "Pass" : "Fail";
-            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            Directory.CreateDirectory(reportDirectory);
             File.WriteAllLines(
                 fullReportPath,
                 [

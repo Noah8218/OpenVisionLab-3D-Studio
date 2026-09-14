@@ -8,16 +8,14 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
-using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Localization;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -29,17 +27,6 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
-    private DispatcherTimer? visibleFrameRetryTimer;
-    private int visibleFrameRetryGeneration;
-    private int visibleFrameRetryAttempt;
-    private int visibleFrameRequestGeneration;
-    private readonly object visibleFrameRequestOperationGate = new();
-    private DispatcherOperation? visibleFrameRequestOperation;
-    private int sourceLoadUnloadGeneration;
-    private int sourceUnloadCancellationGeneration;
-    private DispatcherOperation? sourceUnloadCancellationOperation;
-    private int languageRefreshGeneration;
-    private DispatcherOperation? languageRefreshOperation;
     private readonly SharpGlRenderContextLifetime renderContextLifetime = new();
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -49,10 +36,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        CancelLanguageRefresh();
-        CancelSourceUnloadCancellation();
-        sourceLoadUnloadGeneration++;
-        SubscribeViewModelEvents();
+        languageRefresh.Cancel();
+        sourceUnloadCancellation.MarkLoaded();
+        viewerEventSubscription.Attach();
         UpdateOrientationTriad();
         RequestVisibleFrame();
     }
@@ -64,103 +50,17 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        CancelLanguageRefresh();
-        var unloadGeneration = ++sourceLoadUnloadGeneration;
-        QueueSourceUnloadCancellation(unloadGeneration);
+        languageRefresh.Cancel();
+        sourceUnloadCancellation.ScheduleAfterUnload();
 
-        visibleFrameRequestGeneration++;
-        CancelVisibleFrameRequest();
-        StopVisibleFrameRetryTimer();
+        visibleFrameRequests.Invalidate();
         StopInteractionWireframeLod();
-        UnsubscribeViewModelEvents();
-    }
-
-    private void SubscribeViewModelEvents()
-    {
-        if (viewModelEventsSubscribed)
-        {
-            return;
-        }
-
-        viewModel.FitAllRequested += fitAllRequestedHandler;
-        viewModel.FitSelectionRequested += fitSelectionRequestedHandler;
-        viewModel.FitRoiRequested += fitRoiRequestedHandler;
-        viewModel.TopViewRequested += topViewRequestedHandler;
-        viewModel.PerspectiveViewRequested += perspectiveViewRequestedHandler;
-        viewModel.ResetRequested += resetRequestedHandler;
-        viewModel.OpenRecipeRequested += openRecipeRequestedHandler;
-        viewModel.SaveRecipeRequested += saveRecipeRequestedHandler;
-        viewModel.ApplyRoiAlignmentRequested += applyRoiAlignmentRequestedHandler;
-        viewModel.FitPlaneRequested += fitPlaneRequestedHandler;
-        viewModel.PreviewThicknessRequested += previewThicknessRequestedHandler;
-        viewModel.PreviewWarpageRequested += previewWarpageRequestedHandler;
-        viewModel.PreviewPlaneFlatnessRequested += previewPlaneFlatnessRequestedHandler;
-        viewModel.PreviewPointPairDimensionsRequested += previewPointPairDimensionsRequestedHandler;
-        viewModel.PreviewGapFlushRequested += previewGapFlushRequestedHandler;
-        viewModel.PreviewVolumeRequested += previewVolumeRequestedHandler;
-        viewModel.PreviewCrossSectionRequested += previewCrossSectionRequestedHandler;
-        viewModel.ScreenshotRequested += screenshotRequestedHandler;
-        viewModel.ProfileViewRequested += profileViewRequestedHandler;
-        viewModel.PublishPreviewResultRequested += publishPreviewResultRequestedHandler;
-        viewModel.NominalActual.PreviewRequested += nominalActualPreviewRequestedHandler;
-        viewModel.NominalActual.PublishRequested += nominalActualPublishRequestedHandler;
-        viewModel.NominalActual.PropertyChanged += nominalActualPropertyChangedHandler;
-        viewModel.PropertyChanged += viewModelPropertyChangedHandler;
-        viewModel.CameraChanged += OnViewModelCameraChanged;
-        OpenVisionLanguageService.LanguageChanged += languageChangedHandler;
-        viewModelEventsSubscribed = true;
-    }
-
-    private void UnsubscribeViewModelEvents()
-    {
-        viewModel.FitAllRequested -= fitAllRequestedHandler;
-        viewModel.FitSelectionRequested -= fitSelectionRequestedHandler;
-        viewModel.FitRoiRequested -= fitRoiRequestedHandler;
-        viewModel.TopViewRequested -= topViewRequestedHandler;
-        viewModel.PerspectiveViewRequested -= perspectiveViewRequestedHandler;
-        viewModel.ResetRequested -= resetRequestedHandler;
-        viewModel.OpenRecipeRequested -= openRecipeRequestedHandler;
-        viewModel.SaveRecipeRequested -= saveRecipeRequestedHandler;
-        viewModel.ApplyRoiAlignmentRequested -= applyRoiAlignmentRequestedHandler;
-        viewModel.FitPlaneRequested -= fitPlaneRequestedHandler;
-        viewModel.PreviewThicknessRequested -= previewThicknessRequestedHandler;
-        viewModel.PreviewWarpageRequested -= previewWarpageRequestedHandler;
-        viewModel.PreviewPlaneFlatnessRequested -= previewPlaneFlatnessRequestedHandler;
-        viewModel.PreviewPointPairDimensionsRequested -= previewPointPairDimensionsRequestedHandler;
-        viewModel.PreviewGapFlushRequested -= previewGapFlushRequestedHandler;
-        viewModel.PreviewVolumeRequested -= previewVolumeRequestedHandler;
-        viewModel.PreviewCrossSectionRequested -= previewCrossSectionRequestedHandler;
-        viewModel.ScreenshotRequested -= screenshotRequestedHandler;
-        viewModel.ProfileViewRequested -= profileViewRequestedHandler;
-        viewModel.PublishPreviewResultRequested -= publishPreviewResultRequestedHandler;
-        viewModel.NominalActual.PreviewRequested -= nominalActualPreviewRequestedHandler;
-        viewModel.NominalActual.PublishRequested -= nominalActualPublishRequestedHandler;
-        viewModel.NominalActual.PropertyChanged -= nominalActualPropertyChangedHandler;
-        viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
-        viewModel.CameraChanged -= OnViewModelCameraChanged;
-        OpenVisionLanguageService.LanguageChanged -= languageChangedHandler;
-        viewModelEventsSubscribed = false;
+        viewerEventSubscription.Detach();
     }
 
     private void OnViewerLanguageChanged(object? sender, EventArgs args)
     {
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        if (!Dispatcher.CheckAccess())
-        {
-            QueueLanguageRefresh();
-            return;
-        }
-
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        viewModel.RefreshLocalizedPresentation();
+        languageRefresh.Request();
     }
 
     /// <summary>
@@ -200,13 +100,15 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
+        ViewerLocalizationScope.Detach(this);
         viewerLifetimeCancellation.Cancel();
-        CancelLanguageRefresh();
-        CancelSourceUnloadCancellation();
-        visibleFrameRequestGeneration++;
-        CancelVisibleFrameRequest();
-        sourceLoadUnloadGeneration++;
-        StopVisibleFrameRetryTimer();
+        nominalActualComparisonCoordinator.Dispose();
+        recipeLoadWorkflow.Dispose();
+        smokeScenario.Dispose();
+        languageRefresh.Cancel();
+        languageRefresh.Dispose();
+        sourceUnloadCancellation.Dispose();
+        visibleFrameRequests.Invalidate();
         DisposeInteractionWireframeLod();
 
         try
@@ -219,9 +121,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             // remains the owner of any resources unavailable to this thread.
         }
 
+        visibleFrameRequests.Dispose();
         sourceLoadOperations.Dispose();
-        lazPointCloudLoadCoordinator.Dispose();
-        UnsubscribeViewModelEvents();
+        lazPointCloudSession.Dispose();
+        viewerEventSubscription.Dispose();
+        nominalActualEditor.Dispose();
+        editor.Dispose();
+        displayEditor.Dispose();
+        linkedView.Dispose();
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
         Loaded -= SmokeCaptureOnLoaded;
@@ -233,102 +140,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         GC.SuppressFinalize(this);
     }
 
-    private void QueueLanguageRefresh()
-    {
-        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
-        {
-            return;
-        }
-
-        if (languageRefreshOperation?.Status == DispatcherOperationStatus.Pending)
-        {
-            return;
-        }
-
-        var refreshGeneration = ++languageRefreshGeneration;
-        try
-        {
-            languageRefreshOperation = Dispatcher.BeginInvoke(
-                DispatcherPriority.Normal,
-                new Action(() => ApplyLanguageRefresh(refreshGeneration)));
-        }
-        catch (InvalidOperationException)
-        {
-            languageRefreshOperation = null;
-        }
-    }
-
-    private void ApplyLanguageRefresh(int refreshGeneration)
-    {
-        languageRefreshOperation = null;
-        if (!IsDisposed
-            && refreshGeneration == languageRefreshGeneration
-            && IsLoaded)
-        {
-            viewModel.RefreshLocalizedPresentation();
-        }
-    }
-
-    private void CancelLanguageRefresh()
-    {
-        languageRefreshGeneration++;
-        var operation = languageRefreshOperation;
-        languageRefreshOperation = null;
-        if (operation?.Status == DispatcherOperationStatus.Pending)
-        {
-            operation.Abort();
-        }
-    }
-
-    private void QueueSourceUnloadCancellation(int unloadGeneration)
-    {
-        CancelSourceUnloadCancellation();
-        sourceUnloadCancellationGeneration = unloadGeneration;
-        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
-        {
-            return;
-        }
-
-        try
-        {
-            sourceUnloadCancellationOperation = Dispatcher.BeginInvoke(
-                DispatcherPriority.Loaded,
-                new Action(ApplySourceUnloadCancellation));
-        }
-        catch (InvalidOperationException)
-        {
-            sourceUnloadCancellationOperation = null;
-        }
-    }
-
-    private void ApplySourceUnloadCancellation()
-    {
-        sourceUnloadCancellationOperation = null;
-        if (!IsDisposed
-            && sourceUnloadCancellationGeneration == sourceLoadUnloadGeneration
-            && !IsLoaded)
-        {
-            sourceLoadOperations.CancelCurrent();
-            lazPointCloudLoadCoordinator.CancelCurrent();
-        }
-    }
-
-    private void CancelSourceUnloadCancellation()
-    {
-        var operation = sourceUnloadCancellationOperation;
-        sourceUnloadCancellationOperation = null;
-        if (operation?.Status == DispatcherOperationStatus.Pending)
-        {
-            operation.Abort();
-        }
-    }
-
     private void TryRetireOpenGLResourcesForDispose()
     {
-        openGLResourceRetirementAttemptCount++;
+        openGLResourceRetirementTelemetry.RecordAttempt();
         if (!Viewport.IsLoaded)
         {
-            openGLResourceRetirementContextUnavailableCount++;
+            openGLResourceRetirementTelemetry.RecordContextUnavailable();
             DropOpenGLResourceReferencesAfterDispose();
             return;
         }
@@ -343,7 +160,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             // SharpGL may reject a draw after its context has started closing.
             // Drop managed handles and let context teardown own unavailable GL
             // objects; this path is intentionally not a leak-proof guarantee.
-            openGLResourceRetirementFailureCount++;
+            openGLResourceRetirementTelemetry.RecordFailure();
         }
         finally
         {
@@ -363,9 +180,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void DropOpenGLResourceReferencesAfterDispose()
     {
         c3dRenderResources.ClearManagedReferences();
-        importedMeshTextureId = 0;
-        importedMeshTextureSource = null;
-        importedMeshTextureReleasePending = false;
+        importedMeshTextureState.ClearManagedReferencesAfterDispose();
     }
 
     /// <summary>
@@ -380,9 +195,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         c3dRenderProxyCache.Clear();
         c3dRenderPositionCache.Clear();
         importedMesh = null;
-        lazSourceState.Clear();
-        lazPointCloudCache.Clear();
-        lazPointCloudReloadTask = Task.CompletedTask;
+        lazPointCloudSession.Clear();
+        lazPointCloudLoadTelemetry.ClearReloadTask();
         CurrentViewerOnlySourcePath = null;
         CurrentViewerOnlySourceFormat = null;
         selectedImportedMeshPoint = null;
@@ -407,8 +221,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         teachingOrientedBoxDragStart = null;
         teachingGridRectangleDragStart = null;
         teachingGridRectangleAutomaticHeights.Clear();
-        ClearAffineApplyRenderData();
-        ClearRegridHeightFieldRenderData();
+        workbenchOverlayRenderer.Clear();
         ClearSurfaceMatchRenderData();
     }
 
@@ -417,15 +230,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         || c3dRenderProxyCache.HasValue
         || c3dRenderPositionCache.HasValue
         || importedMesh is not null
-        || lazSample is not null
-        || lazPointCloud is not null
-        || lazPointCloudCache.HasEntries
-        || affineApplyRenderOutput is not null
-        || affineApplyLocatorToPointIndex is not null
-        || affineApplyRenderedPointIndexes is not null
-        || regridHeightFieldRenderOutput is not null
-        || regridHeightFieldPositions is not null
-        || regridHeightFieldPopulated is not null
+        || lazPointCloudSession.HasManagedData
+        || workbenchOverlayRenderer.HasManagedData
         || surfaceMatchRenderExecution is not null
         || surfaceMatchOverlayPositions is not null
         || surfaceMatchOverlayTriangles is not null
@@ -440,297 +246,109 @@ public sealed partial class OpenVisionThreeDViewerControl
         set => SetValue(SidePanelsVisibleProperty, value);
     }
 
+    /// <summary>
+    /// Compatibility facade for existing Shell WPF composition. New hosts
+    /// should use <see cref="IOpenVisionThreeDViewerHost"/> state and
+    /// operations instead of reaching into the concrete ViewModel.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public MainWindowViewModel ViewModel => viewModel;
+
+    /// <summary>
+    /// Stable task and inspection editor bindings for WPF hosts. The surface
+    /// forwards to Viewer-owned state and does not create a second state store.
+    /// </summary>
+    public ViewerHostEditorSurface Editor => editor;
+
+    /// <summary>
+    /// Stable WPF bindings for the Viewer display-settings editor.
+    /// </summary>
+    public ViewerHostDisplayEditorSurface DisplayEditor => displayEditor;
+
+    /// <summary>
+    /// Stable WPF bindings for the Nominal/Actual comparison editor.
+    /// </summary>
+    public ViewerHostNominalActualEditorSurface NominalActualEditor => nominalActualEditor;
+
+    /// <summary>
+    /// Stable WPF bindings for the Linked View height-map presentation.
+    /// </summary>
+    public ViewerHostLinkedViewSurface LinkedView => linkedView;
 
     public event EventHandler? CameraChanged;
 
-    public ViewerCameraState CaptureCameraState() =>
-        viewModel.CaptureCameraState();
+    public ViewerCameraState CaptureCameraState() => hostOperations.CaptureCameraState();
 
-    public bool TryApplyCameraState(ViewerCameraState state)
-    {
-        if (IsDisposed)
-        {
-            return false;
-        }
+    public bool TryApplyCameraState(ViewerCameraState state) => hostOperations.TryApplyCameraState(state);
 
-        if (!viewModel.TryApplyCameraState(state))
-        {
-            return false;
-        }
+    public bool TrySetSelectionMode(string selectionMode) => hostOperations.TrySetSelectionMode(selectionMode);
 
-        RequestVisibleFrame();
-        return true;
-    }
+    public bool TrySetSelectionOverlayVisible(bool visible) => hostOperations.TrySetSelectionOverlayVisible(visible);
 
-    public int SmokeExitCode => smokeExitCode;
+    public bool TrySetHudDetailsVisible(bool visible) => hostOperations.TrySetHudDetailsVisible(visible);
 
-    public int VisibleFrameRequestCount { get; private set; }
+    public bool TrySetC3DSampleVisible(bool visible) => hostOperations.TrySetC3DSampleVisible(visible);
+
+    public bool TrySetSelectedColorMap(string colorMap) => hostOperations.TrySetSelectedColorMap(colorMap);
+
+    public bool TrySetSelectedDiagnosticChannel(ViewerDiagnosticChannelOption? channel) =>
+        hostOperations.TrySetSelectedDiagnosticChannel(channel);
+
+    public bool TrySetResultOverlayVisible(bool visible) => hostOperations.TrySetResultOverlayVisible(visible);
+
+    public bool TrySetMeasurementVisible(bool visible) => hostOperations.TrySetMeasurementVisible(visible);
+
+    public bool TrySetC3DHeightColorMinimumRaw(double value) => hostOperations.TrySetC3DHeightColorMinimumRaw(value);
+
+    public bool TrySetC3DHeightColorMaximumRaw(double value) => hostOperations.TrySetC3DHeightColorMaximumRaw(value);
+
+    public bool TryShiftC3DHeightColorMinimum(int direction) => hostOperations.TryShiftC3DHeightColorMinimum(direction);
+
+    public bool TryShiftC3DHeightColorMaximum(int direction) => hostOperations.TryShiftC3DHeightColorMaximum(direction);
+
+    public bool TryResetC3DHeightColorRange() => hostOperations.TryResetC3DHeightColorRange();
+
+    public bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum) =>
+        hostOperations.TryApplyLinkedC3DHeightColorRange(minimum, maximum);
+
+    public int SmokeExitCode => smokeScenario.ExitCode;
+
+    public int VisibleFrameRequestCount => visibleFrameRequests.RequestCount;
 
     public string HostApiVersion => ViewerHostContract.ApiVersion;
 
-    public ViewerHostState HostState
-    {
-        get => (ViewerHostState)GetValue(HostStateProperty);
-        private set => SetValue(HostStateProperty, value);
-    }
-
-    private ViewerHostState CreateHostState() => new(
-        viewModel.C3DSampleVisible,
-        viewModel.SelectedEntity,
-        viewModel.SelectedSelectionMode,
-        viewModel.PickCoordinate,
-        viewModel.MeasurementSummary,
-        viewModel.ResultSummary,
-        viewModel.RecipeSummary,
-        viewModel.ViewerStatus,
-        viewModel.CoordinateFrameSummary)
-    {
-        NominalActualDisplay = new ViewerHostNominalActualDisplayState(
-            viewModel.NominalActual.InputsReady,
-            viewModel.NominalActual.EvidenceSummary)
-        {
-            StateSummary = viewModel.NominalActual.StateSummary,
-            DirectionSummary = viewModel.NominalActual.DirectionSummary,
-            CurrentDisplaySamplingSummary = viewModel.NominalActual.CurrentDisplaySamplingSummary,
-            NextPreviewSamplingSummary = viewModel.NominalActual.NextPreviewSamplingSummary,
-            DisplaySamplingChangePending = viewModel.NominalActual.DisplaySamplingChangePending,
-            ProgressPercent = viewModel.NominalActual.ProgressPercent,
-            DistributionVisible = viewModel.NominalActual.DistributionVisible,
-            DistributionSummary = viewModel.NominalActual.DistributionSummary
-        }
-    };
+    public ViewerHostState HostState =>
+        (ViewerHostState)GetValue(HostStateProperty);
 
     public event EventHandler<ViewerHostStateChangedEventArgs>? HostStateChanged;
     public event EventHandler? ProfileViewRequested;
 
+    private void PublishHostStateChanged(ViewerHostStateChangedEventArgs args)
+    {
+        SetCurrentValue(HostStateProperty, args.State);
+        HostStateChanged?.Invoke(this, args);
+    }
+
     private void OnViewModelCameraChanged(object? sender, EventArgs args) =>
         CameraChanged?.Invoke(this, args);
 
-    public void FitAll() => ExecuteHostCommand(viewModel.FitAllCommand);
+    public void FitAll() => hostOperations.FitAll();
 
-    public void FitSelection() => ExecuteHostCommand(viewModel.FitSelectionCommand);
+    public void FitSelection() => hostOperations.FitSelection();
 
-    public void FitRoi() => ExecuteHostCommand(viewModel.FitRoiCommand);
+    public void FitRoi() => hostOperations.FitRoi();
 
-    public void UseTopView() => ExecuteHostCommand(viewModel.TopViewCommand);
+    public void UseTopView() => hostOperations.UseTopView();
 
-    public void UsePerspectiveView() => ExecuteHostCommand(viewModel.PerspectiveViewCommand);
+    public void UsePerspectiveView() => hostOperations.UsePerspectiveView();
 
-    public void ResetView() => ExecuteHostCommand(viewModel.ResetCommand);
+    public void ResetView() => hostOperations.ResetView();
 
-    public void RequestVisibleFrame()
-    {
-        if (IsDisposed)
-        {
-            return;
-        }
+    public void RequestVisibleFrame() => visibleFrameRequests.Request();
 
-        if (!Dispatcher.CheckAccess())
-        {
-            if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
-            {
-                QueueVisibleFrameRequest();
-            }
+    public bool SaveRecipe(string path) => hostOperations.SaveRecipe(path);
 
-            return;
-        }
-
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        visibleFrameRequestGeneration++;
-        StopVisibleFrameRetryTimer();
-        RequestVisibleFrameCore(visibleFrameRequestGeneration, attempt: 0);
-    }
-
-    private void RequestVisibleFrameCore(int generation, int attempt)
-    {
-        CancelVisibleFrameRequest();
-        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
-        {
-            return;
-        }
-
-        try
-        {
-            var operation = Dispatcher.BeginInvoke(
-                DispatcherPriority.ContextIdle,
-                new Action(() => ApplyVisibleFrameRequest(generation, attempt)));
-            lock (visibleFrameRequestOperationGate)
-            {
-                visibleFrameRequestOperation = operation;
-            }
-        }
-        catch (InvalidOperationException)
-        {
-            lock (visibleFrameRequestOperationGate)
-            {
-                visibleFrameRequestOperation = null;
-            }
-        }
-    }
-
-    private void QueueVisibleFrameRequest()
-    {
-        if (IsDisposed
-            || Dispatcher.HasShutdownStarted
-            || Dispatcher.HasShutdownFinished)
-        {
-            return;
-        }
-
-        lock (visibleFrameRequestOperationGate)
-        {
-            if (visibleFrameRequestOperation?.Status
-                is DispatcherOperationStatus.Pending
-                or DispatcherOperationStatus.Executing)
-            {
-                return;
-            }
-
-            try
-            {
-                visibleFrameRequestOperation = Dispatcher.BeginInvoke(
-                    DispatcherPriority.Loaded,
-                    new Action(ApplyQueuedVisibleFrameRequest));
-            }
-            catch (InvalidOperationException)
-            {
-                visibleFrameRequestOperation = null;
-            }
-        }
-    }
-
-    private void ApplyQueuedVisibleFrameRequest()
-    {
-        lock (visibleFrameRequestOperationGate)
-        {
-            visibleFrameRequestOperation = null;
-        }
-        RequestVisibleFrame();
-    }
-
-    private void ApplyVisibleFrameRequest(int generation, int attempt)
-    {
-        lock (visibleFrameRequestOperationGate)
-        {
-            visibleFrameRequestOperation = null;
-        }
-        if (IsDisposed || generation != visibleFrameRequestGeneration)
-        {
-            return;
-        }
-
-        if (IsLoaded
-            && IsVisible
-            && Viewport.IsVisible
-            && Viewport.ActualWidth >= 2
-            && Viewport.ActualHeight >= 2)
-        {
-            Viewport.UpdateLayout();
-            Viewport.RenderTrigger = RenderTrigger.Manual;
-            Viewport.DoRender();
-            Viewport.RenderTrigger = RenderTrigger.TimerBased;
-            Viewport.InvalidateVisual();
-            VisibleFrameRequestCount++;
-        }
-
-        if (attempt >= 2)
-        {
-            return;
-        }
-
-        StopVisibleFrameRetryTimer();
-        visibleFrameRetryGeneration = generation;
-        visibleFrameRetryAttempt = attempt;
-        visibleFrameRetryTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
-        {
-            Interval = TimeSpan.FromMilliseconds(attempt == 0 ? 160 : 360)
-        };
-        visibleFrameRetryTimer.Tick += OnVisibleFrameRetryTimerTick;
-        visibleFrameRetryTimer.Start();
-    }
-
-    private void CancelVisibleFrameRequest()
-    {
-        DispatcherOperation? operation;
-        lock (visibleFrameRequestOperationGate)
-        {
-            operation = visibleFrameRequestOperation;
-            visibleFrameRequestOperation = null;
-        }
-
-        if (operation?.Status == DispatcherOperationStatus.Pending)
-        {
-            operation.Abort();
-        }
-    }
-
-    private void OnVisibleFrameRetryTimerTick(object? sender, EventArgs args)
-    {
-        if (sender is not DispatcherTimer timer
-            || !ReferenceEquals(timer, visibleFrameRetryTimer))
-        {
-            return;
-        }
-
-        var generation = visibleFrameRetryGeneration;
-        var attempt = visibleFrameRetryAttempt;
-        StopVisibleFrameRetryTimer(timer);
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        RequestVisibleFrameCore(generation, attempt + 1);
-    }
-
-    private void StopVisibleFrameRetryTimer(DispatcherTimer? expectedTimer = null)
-    {
-        var timer = visibleFrameRetryTimer;
-        if (timer is null
-            || expectedTimer is not null && !ReferenceEquals(timer, expectedTimer))
-        {
-            return;
-        }
-
-        timer.Stop();
-        timer.Tick -= OnVisibleFrameRetryTimerTick;
-        visibleFrameRetryTimer = null;
-        visibleFrameRetryGeneration = 0;
-        visibleFrameRetryAttempt = 0;
-    }
-
-    public bool SaveRecipe(string path) => !IsDisposed && SaveCurrentRecipe(path, isSmoke: false);
-
-    public bool PublishCurrentPreviewResult()
-    {
-        if (IsDisposed)
-        {
-            return false;
-        }
-
-        if (!EnsureRecipeOutputEnabled())
-        {
-            return false;
-        }
-
-        if (viewModel.NominalActualInput is not null)
-        {
-            if (!viewModel.NominalActual.CanPublish)
-            {
-                return false;
-            }
-
-            viewModel.NominalActual.PublishCommand.Execute(null);
-            return viewModel.NominalActual.State == NominalActualComparisonState.Published;
-        }
-
-        return viewModel.PublishPreviewResult();
-    }
+    public bool PublishCurrentPreviewResult() => hostOperations.PublishCurrentPreviewResult();
 
     private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
@@ -744,88 +362,65 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        if (args.PropertyName == nameof(MainWindowViewModel.DeviationLegendVisible))
+        var effects = ViewerViewModelPropertyChangePolicy.Classify(args.PropertyName);
+        if ((effects & ViewerViewModelPropertyChangeEffects.UpdateDeviationLegendVisibility) != 0)
         {
             UpdateDeviationLegendVisibility();
         }
 
-        if (args.PropertyName == nameof(MainWindowViewModel.PointCloudColorLegendVisible))
+        if ((effects & ViewerViewModelPropertyChangeEffects.UpdatePointCloudColorLegendVisibility) != 0)
         {
             UpdatePointCloudColorLegendVisibility();
         }
 
-        if (args.PropertyName is nameof(MainWindowViewModel.CubeVisible)
-            or nameof(MainWindowViewModel.PointCloudVisible)
-            or nameof(MainWindowViewModel.C3DSampleVisible)
-            or nameof(MainWindowViewModel.GlbSampleVisible)
-            or nameof(MainWindowViewModel.LazSampleVisible)
-            or nameof(MainWindowViewModel.MeasurementVisible)
-            or nameof(MainWindowViewModel.DisplaySettingsRevision)
-            or nameof(MainWindowViewModel.C3DHeightColorRangeRevision)
-            or nameof(MainWindowViewModel.PointSize)
-            or nameof(MainWindowViewModel.RecipePeakTolerance)
-            or nameof(MainWindowViewModel.C3DModelTransform)
-            or nameof(MainWindowViewModel.ProjectionMode)
-            or nameof(MainWindowViewModel.OrthographicHeight)
-            or nameof(MainWindowViewModel.SelectedTeachingRoiDisplayHeightOffset)
-            or nameof(MainWindowViewModel.SelectedSelectionMode)
-            or nameof(MainWindowViewModel.SelectionOverlayVisible)
-            or nameof(MainWindowViewModel.ResultOverlayVisible)
-            or nameof(MainWindowViewModel.WorkbenchTwoPointLine)
-            or nameof(MainWindowViewModel.IsWorkbenchTwoPointLinePublished)
-            or nameof(MainWindowViewModel.WorkbenchThreePointPlane)
-            or nameof(MainWindowViewModel.IsWorkbenchThreePointPlanePublished)
-            or nameof(MainWindowViewModel.WorkbenchLineFit)
-            or nameof(MainWindowViewModel.SelectedWorkbenchLineFitPoint)
-            or nameof(MainWindowViewModel.LineFitInliersVisible)
-            or nameof(MainWindowViewModel.LineFitOutliersVisible)
-            or nameof(MainWindowViewModel.LineFitSegmentVisible)
-            or nameof(MainWindowViewModel.LineFitSelectedResidualVisible)
-            or nameof(MainWindowViewModel.WorkbenchFirstIntersectionLine)
-            or nameof(MainWindowViewModel.WorkbenchSecondIntersectionLine)
-            or nameof(MainWindowViewModel.WorkbenchLineIntersection)
-            or nameof(MainWindowViewModel.LineIntersectionFirstLineVisible)
-            or nameof(MainWindowViewModel.LineIntersectionSecondLineVisible)
-            or nameof(MainWindowViewModel.LineIntersectionClosestConnectorVisible)
-            or nameof(MainWindowViewModel.LineIntersectionCornerAnchorVisible)
-            or nameof(MainWindowViewModel.WorkbenchLandmarkCorrespondenceAnchors)
-            or nameof(MainWindowViewModel.WorkbenchLandmarkCorrespondence)
-            or nameof(MainWindowViewModel.WorkbenchAffineApply)
-            or nameof(MainWindowViewModel.IsWorkbenchAffineApplyPublished)
-            or nameof(MainWindowViewModel.WorkbenchRegridHeightField)
-            or nameof(MainWindowViewModel.IsWorkbenchRegridHeightFieldPublished)
-            or nameof(MainWindowViewModel.WorkbenchSurfaceMatch)
-            or nameof(MainWindowViewModel.ResultEntities))
+        if ((effects & ViewerViewModelPropertyChangeEffects.ReloadRenderDensity) != 0)
         {
-            if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))
+            ReloadDefaultC3DSample();
+            if (!lazPointCloudLoadTelemetry.IsDensityReloadSuppressed)
             {
-                if (c3dSample is not null)
-                {
-                    HeightDeviationRuleCoordinator.ApplyToViewModel(
-                        viewModel,
-                        c3dSample,
-                        viewModel.RecipeSourceName,
-                        viewModel.RecipePeakTolerance,
-                        viewModel.RecipeSourceUnit);
-                }
+                lazPointCloudLoadTelemetry.RecordDensityEventReload(ReloadCurrentLazPointCloudAsync);
             }
 
-            if ((args.PropertyName == nameof(MainWindowViewModel.SelectedSelectionMode)
-                    || args.PropertyName == nameof(MainWindowViewModel.C3DSampleVisible)
-                    || args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform))
+            if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
+            {
+                roiEditingSession.UpdateRoiStepMeasurement();
+            }
+
+            RenderNow();
+        }
+        else if ((effects & ViewerViewModelPropertyChangeEffects.SyncRecipeRoiParameters) != 0)
+        {
+            roiEditingSession.ApplyEditedParametersFromPropertyChange();
+
+            RenderNow();
+        }
+        else if ((effects & ViewerViewModelPropertyChangeEffects.Render) != 0)
+        {
+            if ((effects & ViewerViewModelPropertyChangeEffects.ApplyHeightDeviationRule) != 0
+                && c3dSample is not null)
+            {
+                HeightDeviationRuleCoordinator.ApplyToViewModel(
+                    viewModel,
+                    c3dSample,
+                    viewModel.RecipeSourceName,
+                    viewModel.RecipePeakTolerance,
+                    viewModel.RecipeSourceUnit);
+            }
+
+            if ((effects & ViewerViewModelPropertyChangeEffects.UpdateRoiStepMeasurement) != 0
                 && viewModel.SelectedSelectionMode == RoiStepSelectionMode)
             {
-                UpdateRoiStepMeasurement();
+                roiEditingSession.UpdateRoiStepMeasurement();
             }
 
-            if (args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform)
+            if ((effects & ViewerViewModelPropertyChangeEffects.FitReferencePlane) != 0
                 && viewModel.SelectedSelectionMode == "Plane Distance"
                 && viewModel.PlaneReferenceMeasurementVisible)
             {
                 FitC3DReferencePlane();
             }
 
-            if (args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform)
+            if ((effects & ViewerViewModelPropertyChangeEffects.InvalidatePlaneFlatness) != 0
                 && viewModel.PlaneFlatnessVisible)
             {
                 planeFlatnessEvaluation = null;
@@ -835,32 +430,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             RenderNow();
         }
-        else if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity))
-        {
-            ReloadDefaultC3DSample();
-            if (!suppressLazPointCloudDensityReload)
-            {
-                lazPointCloudDensityEventReloadCount++;
-                lazPointCloudReloadTask = ReloadCurrentLazPointCloudAsync();
-            }
-            if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
-            {
-                UpdateRoiStepMeasurement();
-            }
 
-            RenderNow();
-        }
-        else if (IsRecipeRoiEditProperty(args.PropertyName))
-        {
-            if (!suppressRecipeParameterSync)
-            {
-                ApplyEditedRoiStepParameters();
-            }
-
-            RenderNow();
-        }
-
-        RaiseHostStateChanged(args.PropertyName);
+        hostStateCoordinator.Notify(args.PropertyName);
     }
 
     private void OnNominalActualPropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -876,6 +447,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             RenderNow();
         }
 
+        if (args.PropertyName == nameof(NominalActualComparisonViewModel.State))
+        {
+            hostStateCoordinator.Notify("NominalActual.State");
+        }
+
         if (args.PropertyName is nameof(NominalActualComparisonViewModel.InputsReady)
             or nameof(NominalActualComparisonViewModel.EvidenceSummary)
             or nameof(NominalActualComparisonViewModel.StateSummary)
@@ -887,175 +463,19 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(NominalActualComparisonViewModel.DistributionVisible)
             or nameof(NominalActualComparisonViewModel.DistributionSummary))
         {
-            RaiseHostStateChanged(nameof(ViewerHostState.NominalActualDisplay));
+            hostStateCoordinator.Notify($"NominalActual.{args.PropertyName}");
         }
     }
 
-    private async void OnNominalActualPreviewRequested(
+    private void OnNominalActualPreviewRequested(
         object? sender,
-        NominalActualPreviewRequestedEventArgs args)
-    {
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        var comparison = viewModel.NominalActual;
-        if (!viewModel.RecipeOutputEnabled)
-        {
-            comparison.FailPreview(args.RequestId, "Recipe output is disabled; Preview did not run.");
-            viewModel.ViewerStatus = "Recipe output is disabled; Preview did not run";
-            return;
-        }
-
-        if (viewModel.NominalActualInput is not { } configuredInput)
-        {
-            comparison.FailPreview(args.RequestId, "Comparison inputs are not connected.");
-            return;
-        }
-
-        var executionInput = configuredInput with
-        {
-            LowerTolerance = comparison.LowerTolerance,
-            UpperTolerance = comparison.UpperTolerance
-        };
-        if (!executionInput.ExecutionFingerprint.Equals(args.Fingerprint, StringComparison.Ordinal))
-        {
-            comparison.FailPreview(args.RequestId, "Comparison input fingerprint changed before execution.");
-            return;
-        }
-
-        var progress = new Progress<NominalActualComparisonProgress>(value =>
-        {
-            if (IsDisposed
-                || viewerLifetimeToken.IsCancellationRequested
-                || args.CancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            comparison.ReportPreviewProgress(
-                args.RequestId,
-                value.ProcessedPointCount,
-                value.TotalPointCount,
-                value.Elapsed,
-                value.Stage);
-        });
-        CancellationTokenSource? viewerLifetimeLinkedCancellation = null;
-        var operationToken = args.CancellationToken;
-
-        try
-        {
-            viewerLifetimeLinkedCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(
-                    args.CancellationToken,
-                    viewerLifetimeToken);
-            operationToken = viewerLifetimeLinkedCancellation.Token;
-            var result = await nominalActualComparisonExecutor.ExecuteAsync(
-                executionInput,
-                args.MaximumDisplaySamples,
-                progress,
-                operationToken);
-            if (IsDisposed || operationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            if (!comparison.CompletePreview(args.RequestId, result))
-            {
-                return;
-            }
-
-            viewModel.SelectedEntity = "Nominal / Actual Surface Deviation";
-            viewModel.MeasurementSummary = result.Message;
-            viewModel.ViewerStatus =
-                $"Nominal/actual Preview complete: {result.Status}, {result.ComparedPointCount:N0} full-query points";
-            RenderNow();
-        }
-        catch (OperationCanceledException) when (operationToken.IsCancellationRequested)
-        {
-            // The ViewModel already owns the cancelled/stale state transition.
-        }
-        catch (Exception exception)
-        {
-            if (IsDisposed)
-            {
-                return;
-            }
-
-            if (comparison.FailPreview(args.RequestId, exception.Message))
-            {
-                viewModel.ViewerStatus = $"Nominal/actual Preview failed: {exception.Message}";
-            }
-
-            if (smokeNominalActualPreview)
-            {
-                smokeExitCode = 1;
-            }
-
-            RenderNow();
-        }
-        finally
-        {
-            viewerLifetimeLinkedCancellation?.Dispose();
-        }
-    }
+        NominalActualPreviewRequestedEventArgs args) =>
+        nominalActualComparisonCoordinator.StartPreview(args);
 
     private void OnNominalActualPublishRequested(
         object? sender,
-        NominalActualPublishRequestedEventArgs args)
-    {
-        var comparison = viewModel.NominalActual;
-        if (!viewModel.RecipeOutputEnabled)
-        {
-            viewModel.ViewerStatus = "Recipe output is disabled; Publish did not run";
-            return;
-        }
-
-        var result = comparison.PreviewResult;
-        if (result is null
-            || !result.Input.ExecutionFingerprint.Equals(args.Fingerprint, StringComparison.Ordinal)
-            || !viewModel.PublishNominalActualComparison(result))
-        {
-            viewModel.ViewerStatus = "Nominal/actual Publish failed: current Preview evidence is unavailable";
-            return;
-        }
-
-        comparison.ConfirmPublished(
-            $"Published result entity {NominalActualComparisonContract.ResultEntityId} | fingerprint {args.Fingerprint}");
-        RenderNow();
-    }
-
-    private void RaiseHostStateChanged(string? viewModelPropertyName)
-    {
-        var hostPropertyName = viewModelPropertyName switch
-        {
-            nameof(MainWindowViewModel.C3DSampleVisible) => nameof(ViewerHostState.C3DSampleVisible),
-            nameof(MainWindowViewModel.SelectedEntity) => nameof(ViewerHostState.ActiveEntity),
-            nameof(MainWindowViewModel.SelectedSelectionMode) => nameof(ViewerHostState.SelectionMode),
-            nameof(MainWindowViewModel.PickCoordinate) => nameof(ViewerHostState.PickCoordinate),
-            nameof(MainWindowViewModel.MeasurementSummary) => nameof(ViewerHostState.MeasurementSummary),
-            nameof(MainWindowViewModel.ResultSummary) => nameof(ViewerHostState.ResultSummary),
-            nameof(MainWindowViewModel.RecipeSummary) => nameof(ViewerHostState.RecipeSummary),
-            nameof(MainWindowViewModel.ViewerStatus) => nameof(ViewerHostState.ViewerStatus),
-            nameof(ViewerHostState.NominalActualDisplay) => nameof(ViewerHostState.NominalActualDisplay),
-            _ => null
-        };
-
-        if (hostPropertyName is not null)
-        {
-            HostState = CreateHostState();
-            HostStateChanged?.Invoke(this, new ViewerHostStateChangedEventArgs(HostState, hostPropertyName));
-        }
-    }
-
-    private void ExecuteHostCommand(ICommand command)
-    {
-        if (!IsDisposed && command.CanExecute(null))
-        {
-            command.Execute(null);
-        }
-    }
+        NominalActualPublishRequestedEventArgs args) =>
+        nominalActualComparisonCoordinator.HandlePublish(args);
 
     private void UpdateSidePanelsVisibility()
     {

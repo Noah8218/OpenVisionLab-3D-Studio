@@ -1,3 +1,4 @@
+using System.Text;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -12,11 +13,12 @@ internal static class C3DDatumPlaneDeviationGoldenVerification
             Check("vertical-plane-rejected", VerifyVerticalPlaneRejected),
             Check("strict-lineage-and-roi-binding", VerifyStrictLineage),
             Check("runner-replay", VerifyRunnerReplay),
+            Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath)),
             Check("cancellation-propagates", VerifyCancellation)
         };
         var passed = cases.Count(item => item.Passed);
         var status = passed == cases.Length ? "Pass" : "Fail";
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        Directory.CreateDirectory(GetReportDirectory(reportPath)!);
         File.WriteAllLines(reportPath,
         [
             $"C3DDatumPlaneDeviationGoldenVerification|{status}|cases={cases.Length}|passed={passed}|failed={cases.Length - passed}",
@@ -84,6 +86,90 @@ internal static class C3DDatumPlaneDeviationGoldenVerification
             && report.Contains("p2vRawHeight=", StringComparison.Ordinal), $"exit={exitCode};report={report.Replace(Environment.NewLine, " / ")}");
     }
 
+    private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string reportPath)
+    {
+        var reportDirectory = GetReportDirectory(reportPath) ?? Environment.CurrentDirectory;
+        var directory = Path.Combine(reportDirectory, $"atomic-report-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            using var fixture = Fixture.Create(directory);
+            var recipePath = Path.Combine(directory, "fixture.recipe.json");
+            ToolRecipeDocumentStore.Save(recipePath, fixture.Document);
+            var runnerReportPath = Path.Combine(directory, "runner.txt");
+            var firstExit = ToolRecipeDatumPlaneDeviationRunnerExecution.Run(
+                recipePath,
+                fixture.StepId,
+                runnerReportPath);
+            var firstBytes = File.Exists(runnerReportPath) ? File.ReadAllBytes(runnerReportPath) : [];
+            var firstText = Encoding.UTF8.GetString(firstBytes);
+
+            File.WriteAllText(runnerReportPath, "pre-existing-output", new UTF8Encoding(false));
+            var overwriteExit = ToolRecipeDatumPlaneDeviationRunnerExecution.Run(
+                recipePath,
+                fixture.StepId,
+                runnerReportPath);
+            var overwriteBytes = File.Exists(runnerReportPath) ? File.ReadAllBytes(runnerReportPath) : [];
+            var overwriteText = Encoding.UTF8.GetString(overwriteBytes);
+
+            var lockedPath = Path.Combine(directory, "locked.txt");
+            var lockedSentinel = Encoding.UTF8.GetBytes("locked-output");
+            File.WriteAllBytes(lockedPath, lockedSentinel);
+            int lockedExit;
+            using (var lockStream = new FileStream(
+                       lockedPath,
+                       FileMode.Open,
+                       FileAccess.ReadWrite,
+                       FileShare.None))
+            {
+                lockedExit = ToolRecipeDatumPlaneDeviationRunnerExecution.Run(
+                    recipePath,
+                    fixture.StepId,
+                    lockedPath);
+            }
+            var lockedPreserved = File.ReadAllBytes(lockedPath).SequenceEqual(lockedSentinel);
+
+            var invalidParentMarker = Path.Combine(directory, "parent-file");
+            File.WriteAllText(invalidParentMarker, "parent-file", new UTF8Encoding(false));
+            var invalidParentExit = ToolRecipeDatumPlaneDeviationRunnerExecution.Run(
+                recipePath,
+                fixture.StepId,
+                Path.Combine(invalidParentMarker, "report.txt"));
+            var invalidParentPreserved = File.ReadAllText(invalidParentMarker) == "parent-file";
+            var temporaryFilesRemain = Directory.GetFiles(directory, "*.txt.tmp.*").Length != 0;
+            var noBom = !HasUtf8Bom(overwriteBytes);
+            var sentinelAbsent = !overwriteText.Contains("pre-existing-output", StringComparison.Ordinal);
+            var reportShape = firstText.Contains("DatumPlaneDeviation|status=Pass", StringComparison.Ordinal)
+                && firstText.Contains("Metrics|p2vRawHeight=", StringComparison.Ordinal)
+                && firstText.Contains("Policy|residual=", StringComparison.Ordinal)
+                && overwriteText.Contains("DatumPlaneDeviation|status=Pass", StringComparison.Ordinal)
+                && firstBytes.SequenceEqual(overwriteBytes);
+            var passed = firstExit == 0
+                && overwriteExit == 0
+                && firstBytes.Length > 0
+                && reportShape
+                && noBom
+                && sentinelAbsent
+                && lockedExit == 5
+                && lockedPreserved
+                && invalidParentExit == 5
+                && invalidParentPreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};reportShape={reportShape};byteStable={firstBytes.SequenceEqual(overwriteBytes)};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static bool HasUtf8Bom(byte[] bytes) => bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF });
+
     private static (bool Passed, string Evidence) VerifyCancellation()
     {
         using var fixture = Fixture.Create();
@@ -129,6 +215,8 @@ internal static class C3DDatumPlaneDeviationGoldenVerification
     private static bool Approximately(double actual, double expected, double tolerance = 1e-9) => double.IsFinite(actual) && Math.Abs(actual - expected) <= tolerance;
     private static string Evidence(C3DDatumPlaneDeviationEvaluation evaluation) => $"status={evaluation.Result.Status};p2v={evaluation.Output?.PeakToValleyRawHeight};hash={evaluation.Output?.ContentSha256};message={evaluation.Result.Message}";
     private static string Clean(string value) => value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
+
+    private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
     private static VerificationCase Check(string name, Func<(bool Passed, string Evidence)> verify)
     {
         try { var result = verify(); return new VerificationCase(name, result.Passed, result.Evidence); }
@@ -150,9 +238,9 @@ internal static class C3DDatumPlaneDeviationGoldenVerification
         public string StepId { get; }
         public ToolRecipeDocument Document { get; }
 
-        public static Fixture Create()
+        public static Fixture Create(string? rootOverride = null)
         {
-            var root = Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", "DatumPlaneDeviation", Guid.NewGuid().ToString("N"));
+            var root = rootOverride ?? Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", "DatumPlaneDeviation", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
             var source = C3DHeightFieldSnapshot.CreateForVerification("source.c3d.height-map", 3, 3, [10d, 11d, 12d, 12d, 13d, 14d, 14d, 15d, 16.4d]);
             var sourcePath = Path.Combine(root, "source.c3d");

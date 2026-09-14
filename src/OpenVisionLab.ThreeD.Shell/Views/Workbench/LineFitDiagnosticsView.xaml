@@ -2,8 +2,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              Background="{DynamicResource ThreeD.PanelBrush}"
              AutomationProperties.AutomationId="LineFitDiagnosticsView">
+    <UserControl.Resources>
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+    </UserControl.Resources>
     <Grid Margin="12,8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -16,14 +21,20 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}" Text="Fit Diagnostics / Orthogonal residual" />
-                <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}" Text="Residuals are full-XYZ source-coordinate values. Select a marker or row to link the 3D point." />
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Title, Korean='피팅 진단 / 직교 잔차', English='Fit Diagnostics / Orthogonal residual'}" />
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Caption, Korean='잔차는 전체 XYZ 소스 좌표값입니다. 마커나 행을 선택하면 3D 점이 연결됩니다.', English='Residuals are full-XYZ source-coordinate values. Select a marker or row to link the 3D point.'}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Ellipse Width="9" Height="9" Fill="{DynamicResource ThreeD.AccentBrush}" />
-                <TextBlock Margin="4,0,10,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Inlier" />
+                <TextBlock Margin="4,0,10,0"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Inlier, Korean='인라이어', English='Inlier'}" />
                 <Ellipse Width="9" Height="9" Fill="{DynamicResource ThreeD.WarningBrush}" />
-                <TextBlock Margin="4,0,0,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Outlier" />
+                <TextBlock Margin="4,0,0,0"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Outlier, Korean='아웃라이어', English='Outlier'}" />
             </StackPanel>
         </Grid>
         <Grid Grid.Row="1" Margin="0,8,0,6">
@@ -36,7 +47,11 @@
                     <Canvas Width="288" Height="76">
                         <Line X1="8" Y1="64" X2="276" Y2="64" Stroke="#475569" StrokeThickness="0.8" />
                         <Line X1="8" Y1="10" X2="276" Y2="10" Stroke="{DynamicResource ThreeD.WarningBrush}" StrokeThickness="1.2" StrokeDashArray="3,2" />
-                        <TextBlock Canvas.Left="9" Canvas.Top="0" FontSize="7" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="Maximum residual" />
+                        <TextBlock Canvas.Left="9"
+                                   Canvas.Top="0"
+                                   FontSize="7"
+                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.MaximumResidual, Korean='최대 잔차', English='Maximum residual'}" />
                         <ItemsControl ItemsSource="{Binding LineFitResidualPlotPoints}">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemContainerStyle>
@@ -47,7 +62,7 @@
                             </ItemsControl.ItemContainerStyle>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Width="11" Height="11" Padding="0" BorderThickness="0" Command="{Binding DataContext.SelectLineFitDiagnosticCommand, RelativeSource={RelativeSource AncestorType=local:LineFitDiagnosticsView}}" CommandParameter="{Binding InputPointIndex}" ToolTip="{Binding ScanlineIndex, StringFormat=Scanline {0}}">
+                                    <Button Width="11" Height="11" Padding="0" BorderThickness="0" Command="{Binding DataContext.SelectLineFitDiagnosticCommand, RelativeSource={RelativeSource AncestorType=local:LineFitDiagnosticsView}}" CommandParameter="{Binding InputPointIndex}" ToolTip="{Binding ScanlineIndex, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Scanline}">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="{DynamicResource ThreeD.WarningBrush}" /><Style.Triggers><DataTrigger Binding="{Binding IsInlier}" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" /></DataTrigger></Style.Triggers></Style>
                                         </Button.Style>
@@ -69,9 +84,17 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="48" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Scanline" />
-                    <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Residual" />
-                    <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="State" />
+                    <TextBlock FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Scanline, Korean='스캔라인', English='Scanline'}" />
+                    <TextBlock Grid.Column="1"
+                               FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Residual, Korean='잔차', English='Residual'}" />
+                    <TextBlock Grid.Column="2"
+                               FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.State, Korean='상태', English='State'}" />
                 </Grid>
                 <ListBox Grid.Row="1" MinHeight="88" ItemsSource="{Binding LineFitPointDiagnostics}" SelectedValuePath="InputPointIndex" SelectedValue="{Binding SelectedLineFitDiagnostic.InputPointIndex}">
                 <ListBox.ItemTemplate>
@@ -85,16 +108,9 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock FontFamily="Consolas" FontSize="10" Text="{Binding ScanlineIndex}" />
                                 <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="10" Text="{Binding OrthogonalResidual, StringFormat=F6}" />
-                                <TextBlock Grid.Column="2" FontSize="10">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="outlier" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsInlier}" Value="True"><Setter Property="Text" Value="inlier" /></DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <TextBlock Grid.Column="2"
+                                           FontSize="10"
+                                           Text="{Binding IsInlier, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=LineFitPointState}" />
                             </Grid>
                         </Button>
                     </DataTemplate>

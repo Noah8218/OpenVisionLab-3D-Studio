@@ -24,7 +24,7 @@
         </Grid.RowDefinitions>
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
                                   SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Subtitle, Korean='높이맵 재그리드 툴 랩', English='Re-grid Height Map Tool Lab'}"
-                                  StatusText="A2 Cloud | A3 Grid" />
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Status, Korean='A2 클라우드 | A3 그리드', English='A2 Cloud | A3 Grid'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
@@ -39,11 +39,11 @@
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewGrid, Korean='그리드 미리보기', English='Preview grid'}" Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="Project the current Published A2 cloud into the authored ReferenceGridProfile" AutomationProperties.Name="Preview Re-grid Height Map" />
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PreviewTip, Korean='현재 게시된 A2 클라우드를 작성된 ReferenceGridProfile에 투영합니다.', English='Project the current Published A2 cloud into the authored ReferenceGridProfile'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PreviewAction, Korean='높이맵 재그리드 미리보기', English='Preview Re-grid Height Map'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshViews, Korean='보기 새로고침', English='Refresh views'}" Icon="{ui:SymbolIcon ArrowSync24}"
-                               Click="RefreshViewsButton_Click" ToolTip="Reload both tool viewers without calculation" AutomationProperties.Name="Refresh Re-grid Height Map views" />
+                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.ShowInputTip, Korean='계산 없이 두 툴 뷰어를 새로 고칩니다.', English='Reload both tool viewers without calculation'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.ShowInputAction, Korean='높이맵 재그리드 보기 새로 고침', English='Refresh Re-grid Height Map views'}" />
                     <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishGrid, Korean='그리드 게시', English='Publish grid'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
-                               Command="{Binding PublishSelectedStepCommand}" ToolTip="Publish the exact Preview only when its authored coverage gate passes" AutomationProperties.Name="Publish Re-grid Height Map output" />
+                               Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PublishTip, Korean='작성된 커버리지 게이트를 통과한 정확한 미리보기만 게시합니다.', English='Publish the exact Preview only when its authored coverage gate passes'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PublishAction, Korean='높이맵 재그리드 출력 게시', English='Publish Re-grid Height Map output'}" />
                 </WrapPanel>
             </Grid>
         </Border>

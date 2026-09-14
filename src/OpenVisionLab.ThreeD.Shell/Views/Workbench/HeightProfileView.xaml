@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
              MinHeight="150"
              Background="{DynamicResource ThreeD.PanelBrush}"
              AutomationProperties.AutomationId="HeightProfileView">
@@ -19,24 +20,31 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
-                           Text="P1–P2 Height Profile" />
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.Title, Korean='P1–P2 높이 프로파일', English='P1–P2 Height Profile'}" />
                 <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
-                           Text="Drag either endpoint in the 3D View; the sampled height trace updates immediately." />
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.Caption, Korean='3D 뷰에서 양 끝점을 드래그하면 샘플링된 높이 추적이 즉시 갱신됩니다.', English='Drag either endpoint in the 3D View; the sampled height trace updates immediately.'}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Margin="0,0,10,0"
                         Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
-                        ToolTip="The exact current-source cell can be linked across Height Image, Profile, and the 3D View."
-                        AutomationProperties.Name="Cross-view linked height profile">
+                        ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.CrossViewTip, Korean='현재 소스 셀을 높이 이미지, 프로파일, 3D 뷰에서 동일하게 연결할 수 있습니다.', English='The exact current-source cell can be linked across Height Image, Profile, and the 3D View.'}"
+                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.CrossViewAction, Korean='뷰 간 연결 높이 프로파일', English='Cross-view linked height profile'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="Link24" />
-                        <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Cross-view linked" />
+                        <TextBlock FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.CrossViewLinked, Korean='뷰 간 연결', English='Cross-view linked'}" />
                     </StackPanel>
                 </Border>
                 <Ellipse Width="9" Height="9" Fill="#33e6ff" />
-                <TextBlock Margin="4,0,10,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="P1" />
+                <TextBlock Margin="4,0,10,0"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.Point1, Korean='P1', English='P1'}" />
                 <Ellipse Width="9" Height="9" Fill="#ff7338" />
-                <TextBlock Margin="4,0,0,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="P2" />
+                <TextBlock Margin="4,0,0,0"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.Point2, Korean='P2', English='P2'}" />
             </StackPanel>
         </Grid>
 
@@ -70,7 +78,7 @@
                               Stroke="{DynamicResource ThreeD.InfoBrush}"
                               StrokeDashArray="2,1"
                               StrokeThickness="1.5"
-                              AutomationProperties.Name="Linked C3D Profile cursor">
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.Cursor, Korean='연결된 C3D 프로파일 커서', English='Linked C3D Profile cursor'}">
                             <Line.Style>
                                 <Style TargetType="Line">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -89,7 +97,7 @@
                                  Fill="{DynamicResource ThreeD.InfoBrush}"
                                  Stroke="{DynamicResource ThreeD.PrimaryTextBrush}"
                                  StrokeThickness="0.8"
-                                 AutomationProperties.Name="Linked C3D Profile sample">
+                                 AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.Sample, Korean='연결된 C3D 프로파일 샘플', English='Linked C3D Profile sample'}">
                             <Ellipse.Style>
                                 <Style TargetType="Ellipse">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -120,7 +128,7 @@
                            FontSize="10.5"
                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                            TextWrapping="Wrap"
-                           AutomationProperties.Name="Linked C3D Profile cursor status"
+                            AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.HeightProfile.CursorStatus, Korean='연결된 C3D 프로파일 커서 상태', English='Linked C3D Profile cursor status'}"
                            Text="{Binding ProfileLinkedCursorSummary}" />
             </StackPanel>
         </Grid>

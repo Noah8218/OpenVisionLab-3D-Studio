@@ -161,7 +161,7 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{views:ThreeDText Key=ThreeD.Navigation.AuthoringTip, Korean='검사 순서, 도구 설정과 3D 결과를 한 화면에서 편집합니다.', English='Edit the inspection chain, selected tool, and 3D result together.'}"
                              AutomationProperties.AutomationId="AuthoringModeButton"
-                             AutomationProperties.Name="Inspection authoring workspace">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.AuthoringAccessible, Korean='검사 작성 워크스페이스', English='Inspection authoring workspace'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="WrenchScrewdriver24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -177,7 +177,7 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ValidateTip, Korean='샘플 세트를 실행하고 실패 근거를 검토합니다.', English='Run the sample set and review failure evidence.'}"
                              AutomationProperties.AutomationId="ValidateModeButton"
-                             AutomationProperties.Name="Validate inspection workspace">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ValidateAccessible, Korean='검사 검증 워크스페이스', English='Validate inspection workspace'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="CheckmarkCircle24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -193,7 +193,7 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ResultsTip, Korean='검사 판정, 실행 기록과 출력 비교를 확인합니다.', English='Review decisions, run records, and output comparison.'}"
                              AutomationProperties.AutomationId="ResultsModeButton"
-                             AutomationProperties.Name="Inspection results workspace">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ResultsAccessible, Korean='검사 결과 워크스페이스', English='Inspection results workspace'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="DataHistogram24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -209,7 +209,7 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{Binding Localization.Calibrate}"
                              AutomationProperties.AutomationId="CalibrateModeButton"
-                             AutomationProperties.Name="Calibration workspace">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.CalibrationAccessible, Korean='캘리브레이션 워크스페이스', English='Calibration workspace'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="TargetArrow24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -225,7 +225,7 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{Binding Localization.OpenAdvancedToolTip}"
                              AutomationProperties.AutomationId="AdvancedModeButton"
-                             AutomationProperties.Name="Advanced layout">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.AdvancedAccessible, Korean='고급 레이아웃', English='Advanced layout'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="SettingsCogMultiple24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -241,7 +241,7 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ExchangeTip, Korean='Machine Studio Handoff를 검토하고 기존 Run Record 결과를 게시합니다.', English='Review Machine Studio handoffs and publish existing Run Record results.'}"
                              AutomationProperties.AutomationId="ExchangeModeButton"
-                             AutomationProperties.Name="Machine Studio exchange workspace">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ExchangeAccessible, Korean='Machine Studio 연동 워크스페이스', English='Machine Studio exchange workspace'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="ArrowSwap24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -258,7 +258,7 @@
                         Click="OpenRecipeManagerButton_Click"
                         ToolTip="{Binding Localization.OpenRecipeManagerToolTip}"
                         AutomationProperties.AutomationId="OpenRecipeManagerButton"
-                        AutomationProperties.Name="Open Recipe Manager">
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.RecipeManagerAccessible, Korean='레시피 관리자 열기', English='Open Recipe Manager'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="18" Height="18" Symbol="DocumentBulletList24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -271,53 +271,63 @@
                         Click="OpenToolLabsMenuButton_Click"
                         ToolTip="{Binding Localization.OpenToolLabsToolTip}"
                         AutomationProperties.AutomationId="ToolLabsMenu"
-                        AutomationProperties.Name="Open Tool Labs menu">
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ToolLabsAccessible, Korean='도구 실험실 메뉴 열기', English='Open Tool Labs menu'}">
                     <Button.ContextMenu>
                         <ContextMenu Placement="Right"
                                      Background="{DynamicResource ThreeD.PanelBrush}"
                                      Foreground="{DynamicResource ThreeD.TextBrush}">
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.Filter, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenFilterToolLabButton_Click"
+                                      Tag="filter"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenFilterToolLabButton"
-                                      AutomationProperties.Name="Open Filter Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.FilterToolLabAccessible, Korean='필터 도구 실험실 열기', English='Open Filter Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.HeightDifferenceEdge, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenEdgeToolLabButton_Click"
+                                      Tag="height-difference-edge"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenEdgeToolLabButton"
-                                      AutomationProperties.Name="Open Height Difference Edge Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.HeightDifferenceEdgeToolLabAccessible, Korean='높이 차이 에지 도구 실험실 열기', English='Open Height Difference Edge Tool Lab'}" />
                             <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.TwoPointLine, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenTwoPointLineToolLabButton_Click"
+                                      Tag="two-point-line"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenTwoPointLineToolLabButton"
-                                      AutomationProperties.Name="Open 2-Point Line Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.TwoPointLineToolLabAccessible, Korean='2점 선 도구 실험실 열기', English='Open 2-Point Line Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.ThreePointPlane, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenThreePointPlaneToolLabButton_Click"
+                                      Tag="three-point-plane"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenThreePointPlaneToolLabButton"
-                                      AutomationProperties.Name="Open 3-Point Plane Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ThreePointPlaneToolLabAccessible, Korean='3점 평면 도구 실험실 열기', English='Open 3-Point Plane Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.DatumPlaneDeviation, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenDatumPlaneDeviationToolLabButton_Click"
+                                      Tag="datum-plane-raw-height-deviation"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenDatumPlaneDeviationToolLabButton"
-                                      AutomationProperties.Name="Open Datum Plane Deviation Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.DatumPlaneDeviationToolLabAccessible, Korean='기준면 편차 도구 실험실 열기', English='Open Datum Plane Deviation Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LineIntersection, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenLineIntersectionToolLabButton_Click"
+                                      Tag="line-intersection"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
-                                      AutomationProperties.Name="Open Line Intersection Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LineIntersectionToolLabAccessible, Korean='선 교차 도구 실험실 열기', English='Open Line Intersection Tool Lab'}" />
                             <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LandmarkCorrespondence, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenLandmarkCorrespondenceToolLabButton_Click"
+                                      Tag="landmark-correspondence"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenLandmarkCorrespondenceToolLabButton"
-                                      AutomationProperties.Name="Open Landmark Correspondence Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LandmarkCorrespondenceToolLabAccessible, Korean='랜드마크 대응 도구 실험실 열기', English='Open Landmark Correspondence Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineSolve, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenXYZAffineSolveToolLabButton_Click"
+                                      Tag="xyz-affine-solve"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenXYZAffineSolveToolLabButton"
-                                      AutomationProperties.Name="Open XYZ Affine Solve Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineSolveToolLabAccessible, Korean='XYZ 아핀 해 도구 실험실 열기', English='Open XYZ Affine Solve Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineApply, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenXYZAffineApplyToolLabButton_Click"
+                                      Tag="xyz-affine-apply"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenXYZAffineApplyToolLabButton"
-                                      AutomationProperties.Name="Open Apply XYZ Affine Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineApplyToolLabAccessible, Korean='XYZ 아핀 적용 도구 실험실 열기', English='Open Apply XYZ Affine Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.RegridHeightMap, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                      Click="OpenRegridHeightMapToolLabButton_Click"
+                                      Tag="re-grid-height-map"
+                                      Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenRegridHeightMapToolLabButton"
-                                      AutomationProperties.Name="Open Re-grid Height Map Tool Lab" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.RegridHeightMapToolLabAccessible, Korean='높이 맵 재격자화 도구 실험실 열기', English='Open Re-grid Height Map Tool Lab'}" />
                         </ContextMenu>
                     </Button.ContextMenu>
                     <StackPanel Orientation="Horizontal">
@@ -332,7 +342,7 @@
                         Click="ResetLayoutButton_Click"
                         ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ResetLayoutTip, Korean='저장된 패널 크기와 탭 배치를 기본값으로 되돌립니다.', English='Reset saved panel sizes and tab placement to safe defaults.'}"
                         AutomationProperties.AutomationId="ResetStudioLayoutButton"
-                        AutomationProperties.Name="Reset saved studio layout">
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ResetLayoutAccessible, Korean='저장된 스튜디오 레이아웃 초기화', English='Reset saved studio layout'}">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="18" Height="18" Symbol="ArrowReset24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
@@ -346,7 +356,7 @@
                           SelectedItem="{Binding SelectedLanguageOption, Mode=TwoWay}"
                           ToolTip="{Binding Localization.Language}"
                           AutomationProperties.AutomationId="StudioLanguageSelector"
-                          AutomationProperties.Name="Select Korean or English">
+                          AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LanguageAccessible, Korean='한국어 또는 영어 선택', English='Select Korean or English'}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock VerticalAlignment="Center"

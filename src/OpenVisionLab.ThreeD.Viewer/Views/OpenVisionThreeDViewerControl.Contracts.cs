@@ -72,7 +72,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add(surfaceMatch is null
             ? "SurfaceMatchOverlay|visible=False|displayOnly=True|acceptancePolicy=none"
             : $"SurfaceMatchOverlay|visible={viewModel.SurfaceMatchEvidenceVisible}|state={surfaceMatch.PoseResult.State}|modelSha256={surfaceMatch.ModelContentSha256}|sceneSha256={surfaceMatch.SceneContentSha256}|poseSha256={surfaceMatch.PoseResult.ContentSha256}|overlaySha256={surfaceMatch.Overlay?.ContentSha256 ?? "(none)"}|executionSha256={surfaceMatch.ContentSha256}|coverage={FormatPreciseContractNumber(surfaceMatch.PoseResult.Coverage.CoverageRatio)}|rmse={(surfaceMatch.PoseResult.Coverage.InlierRmse is { } rmse ? FormatPreciseContractNumber(rmse) : "unavailable")}|points={surfaceMatch.Overlay?.TransformedPoints.Length ?? 0}|triangles={surfaceMatch.Overlay?.Triangles.Length ?? 0}|displayOnly=True|acceptancePolicy=none");
-        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|maxNominalActualDisplaySamples={viewModel.NominalActualMaxDisplaySamples}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
+        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|maxNominalActualDisplaySamples={viewModel.NominalActualMaxDisplaySamples}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPointView.Count ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
         lines.Add(c3dSample is null
             ? "C3DMap|loaded=False|displayFrame=NotAvailable|physicalScale=Unverified"
             : string.Create(
@@ -81,22 +81,25 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add(c3dRenderProxyForContract is null
             ? "C3DRenderProxy|loaded=False"
             : $"C3DRenderProxy|loaded=True|points={c3dRenderProxyForContract.Points.Length}|triangles={c3dRenderProxyForContract.TriangleCount}|edges={c3dRenderProxyForContract.EdgeCount}|gridEdges={c3dRenderProxyForContract.GridEdgeCount}|mediumGridEdges={c3dRenderProxyForContract.InteractionGridEdgeCount}|coarseGridEdges={c3dRenderProxyForContract.CoarseInteractionGridEdgeCount}|mediumLineInterval={C3DHeightGridRenderProxy.MediumWireframeLineInterval}|coarseLineInterval={C3DHeightGridRenderProxy.CoarseWireframeLineInterval}|surfaceEdges={c3dRenderProxyForContract.SurfaceEdgeCount}|surfaceEdgeInterval={C3DHeightGridRenderProxy.SurfaceEdgeSampleInterval}|topology=sampled-grid-neighbors|effectiveStyle={displaySettings.GeometryStyle}|renderCache={(c3dGpuBuffersAvailable ? "OpenGLVboIbo" : "OpenGLDisplayListFallback")}|renderCacheReady={c3dGpuBuffersAvailable || c3dDisplayListId != 0}|gpuBufferReady={c3dGpuBuffersAvailable}|wireframeLod={interactionWireframeLodLevel}|interactionLodActive={interactionWireframeLodActive}|displayOnly=True|measurementGeometry=SourceCells");
-        lines.Add($"OpenGLCapabilities|vendor={CleanContractText(openGLVendor)}|renderer={CleanContractText(openGLRenderer)}|version={CleanContractText(openGLVersion)}|c3dPath={(c3dGpuBuffersAvailable ? "VBO+IBO+DrawElements" : "DisplayListFallback")}|usage=GL_STATIC_DRAW|uploads={c3dGpuUploadCount}|draws={c3dGpuDrawCount}|uploadedBytes={c3dGpuUploadedBytes}|lastUploadMs={FormatContractNumber(lastC3DGpuUploadMilliseconds)}|fallbacks={c3dGpuFallbackCount}|failure={CleanContractText(lastC3DGpuFailure)}");
+        lines.Add($"OpenGLCapabilities|vendor={CleanContractText(openGLVendor)}|renderer={CleanContractText(openGLRenderer)}|version={CleanContractText(openGLVersion)}|c3dPath={(c3dGpuBuffersAvailable ? "VBO+IBO+DrawElements" : "DisplayListFallback")}|usage=GL_STATIC_DRAW|uploads={c3dGpuTelemetry.UploadCount}|draws={c3dGpuTelemetry.DrawCount}|uploadedBytes={c3dGpuTelemetry.UploadedBytes}|lastUploadMs={FormatContractNumber(c3dGpuTelemetry.LastUploadMilliseconds)}|fallbacks={c3dGpuTelemetry.FallbackCount}|failure={CleanContractText(c3dGpuTelemetry.LastFailure)}");
         var managedOpenGLHandlesCleared = c3dGpuBuffers is null
             && c3dDisplayListId == 0
             && c3dInteractionDisplayListId == 0
-            && importedMeshTextureId == 0;
+            && importedMeshTextureState.TextureId == 0;
         var renderContextProvider = Viewport.OpenGL.RenderContextProvider;
         var renderContextHandleActive = renderContextProvider?.RenderContextHandle != IntPtr.Zero;
-        lines.Add($"OpenGLResourceLifetime|disposed={IsDisposed}|c3dGpuActive={c3dGpuBuffers is not null}|c3dGpuAvailable={c3dGpuBuffersAvailable}|c3dGpuReleases={c3dGpuReleaseCount}|c3dGpuReleaseFailures={c3dGpuReleaseFailureCount}|displayListReleases={c3dDisplayListReleaseCount}|displayListReleaseFailures={c3dDisplayListReleaseFailureCount}|meshTextureReleases={importedMeshTextureReleaseCount}|meshTextureReleaseFailures={importedMeshTextureReleaseFailureCount}|retirementAttempts={openGLResourceRetirementAttemptCount}|retirementCallbacks={openGLResourceRetirementCallbackCount}|retirementContextUnavailable={openGLResourceRetirementContextUnavailableCount}|retirementFailures={openGLResourceRetirementFailureCount}|managedHandlesCleared={managedOpenGLHandlesCleared}|renderContextDisposeAttempted={renderContextLifetime.DisposeAttempted}|renderContextDisposed={renderContextLifetime.DisposeSucceeded}|renderContextDisposeAttempts={renderContextLifetime.DisposeAttempts}|renderContextDisposeFailures={renderContextLifetime.DisposeFailures}|renderContextDisposeFailureType={CleanContractText(renderContextLifetime.FailureType)}|renderContextHandleActive={renderContextHandleActive}");
+        lines.Add($"OpenGLResourceLifetime|disposed={IsDisposed}|c3dGpuActive={c3dGpuBuffers is not null}|c3dGpuAvailable={c3dGpuBuffersAvailable}|c3dGpuReleases={c3dGpuTelemetry.ReleaseCount}|c3dGpuReleaseFailures={c3dGpuTelemetry.ReleaseFailureCount}|displayListReleases={c3dDisplayListReleaseCount}|displayListReleaseFailures={c3dDisplayListReleaseFailureCount}|meshTextureReleases={importedMeshTextureState.ReleaseCount}|meshTextureReleaseFailures={importedMeshTextureState.ReleaseFailureCount}|retirementAttempts={openGLResourceRetirementTelemetry.AttemptCount}|retirementCallbacks={openGLResourceRetirementTelemetry.CallbackCount}|retirementContextUnavailable={openGLResourceRetirementTelemetry.ContextUnavailableCount}|retirementFailures={openGLResourceRetirementTelemetry.FailureCount}|managedHandlesCleared={managedOpenGLHandlesCleared}|renderContextDisposeAttempted={renderContextLifetime.DisposeAttempted}|renderContextDisposed={renderContextLifetime.DisposeSucceeded}|renderContextDisposeAttempts={renderContextLifetime.DisposeAttempts}|renderContextDisposeFailures={renderContextLifetime.DisposeFailures}|renderContextDisposeFailureType={CleanContractText(renderContextLifetime.FailureType)}|renderContextHandleActive={renderContextHandleActive}");
         lines.Add($"PointCloudPerformance|loadMs={FormatContractNumber(viewModel.LazLoadMilliseconds)}|samplePercent={FormatContractNumber(viewModel.LazSamplePercent)}|sampleStride={viewModel.LazSampleStride}|summary={CleanContractText(viewModel.LazSamplingSummary)}");
-        lines.Add($"PointCloudLoadLifecycle|running={viewModel.IsLazPointCloudLoading}|progress={FormatContractNumber(viewModel.LazPointCloudLoadProgress)}|requests={lazPointCloudLoadRequestCount}|densityEventReloads={lazPointCloudDensityEventReloadCount}|smokeReloads={lazPointCloudSmokeReloadCount}|decodes={lazPointCloudDecodeCount}|cacheHits={lazPointCloudCacheHitCount}|cancellations={lazPointCloudCancellationCount}|progressUpdates={lazPointCloudProgressUpdateCount}|lastProgress={FormatContractNumber(lazPointCloudLastProgress)}|progressCapture={smokeLazProgressScreenshotCaptured}");
+        lines.Add($"PointCloudLoadLifecycle|running={viewModel.IsLazPointCloudLoading}|progress={FormatContractNumber(viewModel.LazPointCloudLoadProgress)}|requests={lazPointCloudLoadTelemetry.LoadRequestCount}|densityEventReloads={lazPointCloudLoadTelemetry.DensityEventReloadCount}|smokeReloads={lazPointCloudLoadTelemetry.SmokeReloadCount}|decodes={lazPointCloudLoadTelemetry.DecodeCount}|cacheHits={lazPointCloudLoadTelemetry.CacheHitCount}|cancellations={lazPointCloudLoadTelemetry.CancellationCount}|progressUpdates={lazPointCloudLoadTelemetry.ProgressUpdateCount}|lastProgress={FormatContractNumber(lazPointCloudLoadTelemetry.LastProgress)}|progressCapture={smokeLazProgressScreenshotCaptured}");
+        var lazCacheSnapshot = lazPointCloudCache.GetSnapshot();
+        lines.Add($"PointCloudCacheMemory|source={CleanContractText(lazCacheSnapshot.SourcePath ?? "(none)")}|entries={lazCacheSnapshot.EntryCount}|capacity={lazCacheSnapshot.Capacity}|byteBudget={lazCacheSnapshot.ByteBudget}|cachedSampledPoints={lazCacheSnapshot.SampledPointCount}|estimatedSampledPointBytes={lazCacheSnapshot.EstimatedSampledPointBytes}|sourceBytes={lazCacheSnapshot.SourceByteLength}|sourceSha256={CleanContractText(lazCacheSnapshot.SourceContentSha256 ?? "(none)")}|scope=managed-sampled-array-payload-only|processMemory=Unverified|nativeGpu=Unverified");
         lines.Add("ImportedMesh");
         lines.Add(CreateImportedMeshContractLine());
         var normalQuality = viewModel.Display.ImportedMeshNormalQuality;
         lines.Add($"NormalDiagnostic|state={normalQuality?.State.ToString() ?? "Unavailable"}|dense={normalQuality?.IsDense ?? false}|usable={viewModel.Display.IsImportedMeshNormalDisplayable}|normalCount={normalQuality?.NormalCount ?? 0}|positionCount={normalQuality?.PositionCount ?? 0}|selected={viewModel.Display.EffectiveSettings.ColorMap == ViewerColorMap.Normal}|source=declared-vertex-normals|displayOnly=True|evidence={CleanContractText(normalQuality?.Evidence ?? "No declared normal-quality report is available.")}");
         lines.Add("ImportedPointCloud");
         lines.Add(CreateLazContractLine());
+        lines.Add(CreateLazLoadPlanContractLine());
         lines.Add($"ViewerInternalHud|detailsVisible={viewModel.HudDetailsVisible}|importedMeshDetailsVisible={viewModel.ImportedMeshHudDetailsVisible}|lazDetailsVisible={viewModel.LazHudDetailsVisible}");
         var nominalActual = viewModel.NominalActual;
         var nominalActualInput = viewModel.NominalActualInput;
@@ -120,7 +123,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add(nominalActual.SelectedDeviation is not { } selectedDeviation
             ? "NominalActualSelectedDeviation|selected=False"
             : $"NominalActualSelectedDeviation|selected=True|queryIndex={selectedDeviation.QueryPointIndex}|position={FormatVector(selectedDeviation.Position)}|signedDeviation={FormatPreciseContractNumber(selectedDeviation.SignedDeviation)}|unsignedDeviation={FormatPreciseContractNumber(selectedDeviation.UnsignedDeviation)}|nominalTriangleIndex={selectedDeviation.NominalTriangleIndex}|closestNominal={FormatVector(selectedDeviation.ClosestNominalPoint)}|toleranceStatus={CleanContractText(nominalActual.SelectedDeviationToleranceStatus)}|robustSignRecovered={selectedDeviation.RobustSignRecovered}|actualId={CleanContractText(nominalActualResult!.Input.ActualSource.Id)}|queryId={CleanContractText(nominalActualResult.Input.QuerySource.Id)}|unit={CleanContractText(nominalActualResult.Input.Unit)}");
-        lines.Add($"ViewerStatus|summary={CleanContractText(viewModel.ViewerStatus)}|smokeExitCode={smokeExitCode}");
+        lines.Add($"ViewerStatus|summary={CleanContractText(viewModel.ViewerStatus)}|smokeExitCode={smokeScenario.ExitCode}");
         lines.Add($"CoordinateFrame|visible=True|summary={CleanContractText(viewModel.CoordinateFrameSummary)}");
         lines.Add($"Camera|yaw={FormatContractNumber(viewModel.YawDegrees)}|pitch={FormatContractNumber(viewModel.PitchDegrees)}|distance={FormatContractNumber(viewModel.CameraDistance)}|target={FormatVector(GetCameraTarget())}|summary={CleanContractText(viewModel.BottomStatus)}");
         var cameraEye = GetCameraPosition();
@@ -133,9 +136,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add(CreateImportedMeshSurfaceOverlayContractLine());
         lines.Add(CreateLazPickContractLine());
         lines.Add($"Performance|fps={FormatContractNumber(viewModel.ViewportFps)}|drawMs={FormatContractNumber(viewModel.ViewportDrawMilliseconds)}|summary={CleanContractText(viewModel.PerformanceSummary)}");
-        lines.Add($"PerformanceSmoke|configured={smokeRenderFrameCount > 0}|requestedFrames={smokeRenderFrameCount}|completedFrames={smokeRenderFramesCompleted}|finite={double.IsFinite(viewModel.ViewportFps) && double.IsFinite(viewModel.ViewportDrawMilliseconds)}|interactionLodRequested={smokeInteractionLodRequested}|interactionLodActive={interactionWireframeLodActive}|measurement=SharpGL.DoRender");
+        lines.Add($"PerformanceSmoke|configured={smokeScenario.RenderFrameCount > 0}|requestedFrames={smokeScenario.RenderFrameCount}|completedFrames={smokeScenario.RenderFramesCompleted}|finite={double.IsFinite(viewModel.ViewportFps) && double.IsFinite(viewModel.ViewportDrawMilliseconds)}|interactionLodRequested={smokeScenario.InteractionLodRequested}|interactionLodActive={interactionWireframeLodActive}|measurement=SharpGL.DoRender");
         lines.Add("TransformAlignment");
-        lines.Add($"C3DTransform|entity={MainWindowViewModel.C3DEntityId}|tx={FormatContractNumber(viewModel.C3DModelTransform.TranslateX)}|ty={FormatContractNumber(viewModel.C3DModelTransform.TranslateY)}|tz={FormatContractNumber(viewModel.C3DModelTransform.TranslateZ)}|rx={FormatContractNumber(viewModel.C3DModelTransform.RotateXDegrees)}|ry={FormatContractNumber(viewModel.C3DModelTransform.RotateYDegrees)}|rz={FormatContractNumber(viewModel.C3DModelTransform.RotateZDegrees)}|scale={FormatContractNumber(viewModel.C3DModelTransform.Scale)}|summary={CleanContractText(viewModel.TransformSummary)}");
+        lines.Add($"C3DTransform|entity={ViewerEntityIds.C3DEntityId}|tx={FormatContractNumber(viewModel.C3DModelTransform.TranslateX)}|ty={FormatContractNumber(viewModel.C3DModelTransform.TranslateY)}|tz={FormatContractNumber(viewModel.C3DModelTransform.TranslateZ)}|rx={FormatContractNumber(viewModel.C3DModelTransform.RotateXDegrees)}|ry={FormatContractNumber(viewModel.C3DModelTransform.RotateYDegrees)}|rz={FormatContractNumber(viewModel.C3DModelTransform.RotateZDegrees)}|scale={FormatContractNumber(viewModel.C3DModelTransform.Scale)}|summary={CleanContractText(viewModel.TransformSummary)}");
         lines.Add($"Alignment|summary={CleanContractText(viewModel.AlignmentSummary)}|mapping={CleanContractText(viewModel.CoordinateMappingSummary)}");
         lines.Add($"AlignmentWorkflow|summary={CleanContractText(viewModel.AlignmentWorkflowSummary)}");
         lines.Add("TwoPointMeasurement");
@@ -257,7 +260,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add($"RecipeValidation|summary={CleanContractText(string.IsNullOrWhiteSpace(viewModel.RecipeValidationSummary) ? "Validation: OK" : viewModel.RecipeValidationSummary)}");
             lines.Add($"RecipeParameterSummary|summary={CleanContractText(viewModel.RecipeParameterSummary)}");
             lines.Add($"RecipeTransform|tx={FormatContractNumber(viewModel.C3DModelTransform.TranslateX)}|ty={FormatContractNumber(viewModel.C3DModelTransform.TranslateY)}|tz={FormatContractNumber(viewModel.C3DModelTransform.TranslateZ)}|rx={FormatContractNumber(viewModel.C3DModelTransform.RotateXDegrees)}|ry={FormatContractNumber(viewModel.C3DModelTransform.RotateYDegrees)}|rz={FormatContractNumber(viewModel.C3DModelTransform.RotateZDegrees)}|scale={FormatContractNumber(viewModel.C3DModelTransform.Scale)}");
-            lines.Add(CreateCurrentRoiStepRecipe() is { } roiStep
+            lines.Add(roiEditingSession.CreateCurrentRoiStepRecipe() is { } roiStep
                 ? $"RecipeRoiStep|configured=True|mode={roiStep.Mode}|maxSampledPoints={roiStep.MaxSampledPoints}|left={FormatContractRegion(roiStep.Left)}|right={FormatContractRegion(roiStep.Right)}"
                 : "RecipeRoiStep|configured=False");
         }
@@ -342,7 +345,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         selectedImportedMeshTriangleIndex = triangleIndex;
         selectedImportedMeshSurfaceNormal = surfaceNormal;
         selectedLazPoint = null;
-        var summary = FormatImportedMeshPoint(point, kind);
+        var summary = FormatImportedMeshPoint(point, kind, surfaceNormal);
         var format = viewModel.ImportedMeshFormat;
         viewModel.SelectedEntity = format == "GLB" ? "Public GLB Mesh" : $"{format} Mesh";
         viewModel.SelectedSelectionMode = "Point";
@@ -435,19 +438,48 @@ public sealed partial class OpenVisionThreeDViewerControl
             (float)((metadata.MinY + metadata.MaxY) * 0.5),
             (float)((metadata.MinZ + metadata.MaxZ) * 0.5));
         var viewerCenter = MapLazPosition(sourceCenter);
-        return lazPointCloud.SampledPoints.MinBy(point => Vector3.DistanceSquared(MapLazPosition(point.Position), viewerCenter));
+        return lazPointCloud.SampledPointView.MinBy(point => Vector3.DistanceSquared(MapLazPosition(point), viewerCenter));
     }
 
     private string FormatLazPoint(LazPointCloudPoint point)
     {
-        var viewer = MapLazPosition(point.Position);
+        var viewer = MapLazPosition(point);
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"src {FormatVector(point.Position)} -> viewer {FormatVector(viewer)} | RGB {point.Red},{point.Green},{point.Blue}");
+            $"src {FormatLazSourceCoordinate(point)} -> viewer {FormatVector(viewer)} | RGB {point.Red},{point.Green},{point.Blue}");
     }
 
-    private static string FormatImportedMeshPoint(Vector3 point, string kind = "mesh point") =>
-        string.Create(CultureInfo.InvariantCulture, $"{kind} {FormatVector(point)}");
+    private static string FormatLazSourceCoordinate(LazPointCloudPoint point)
+    {
+        var source = point.HasPreciseSourceCoordinate
+            ? point.SourceCoordinate
+            : new LazPointCloudSourceCoordinate(point.Position.X, point.Position.Y, point.Position.Z, 0);
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"({source.X:G17},{source.Y:G17},{source.Z:G17})");
+    }
+
+    private static string FormatImportedMeshPoint(
+        Vector3 point,
+        string kind = "mesh point",
+        Vector3? surfaceNormal = null)
+    {
+        var summary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{kind} {FormatVector(point)}");
+        if (surfaceNormal is not { } normal
+            || !float.IsFinite(normal.X)
+            || !float.IsFinite(normal.Y)
+            || !float.IsFinite(normal.Z)
+            || normal.LengthSquared() <= 0.0f)
+        {
+            return summary;
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{summary} | normal {FormatVector(Vector3.Normalize(normal))}");
+    }
 
     private Vector3 TransformC3DPosition(Vector3 sourcePosition) =>
         viewModel.C3DModelTransform.Apply(sourcePosition);
@@ -476,7 +508,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var normalQuality = viewModel.Display.ImportedMeshNormalQuality;
-        return $"{format}|loaded=True|entity={MainWindowViewModel.GlbEntityId}|visible={viewModel.GlbSampleVisible}|source={CleanContractText(viewModel.GlbSampleSourcePath)}|vertices={importedMesh.Positions.Length}|triangles={importedMesh.TriangleCount}|renderedTriangles={GetImportedMeshRenderedTriangleCount()}|renderTriangleStride={GetImportedMeshRenderTriangleStride()}|vertexColors={importedMesh.VertexColors.Length}|usesVertexColors={importedMesh.HasVertexColors}|texCoords={importedMesh.TextureCoordinates.Length}|hasTexture={importedMesh.HasBaseColorTexture}|textureBytes={importedMesh.BaseColorTexture?.Bytes.Length ?? 0}|textureMime={importedMesh.BaseColorTexture?.MimeType ?? "(none)"}|normals={importedMesh.Normals.Length}|declaredNormals={importedMesh.DeclaredNormalCount}|normalQuality={normalQuality?.State.ToString() ?? "Unavailable"}|normalQualityUsable={viewModel.Display.IsImportedMeshNormalDisplayable}|textureUpload={CleanContractText(importedMeshTextureUploadSummary)}|textureUploads={importedMeshTextureUploadCount}|textureReleases={importedMeshTextureReleaseCount}|min={FormatVector(importedMesh.Min)}|max={FormatVector(importedMesh.Max)}|summary={CleanContractText(viewModel.GlbSampleSummary)}";
+        return $"{format}|loaded=True|entity={MainWindowViewModel.GlbEntityId}|visible={viewModel.GlbSampleVisible}|source={CleanContractText(viewModel.GlbSampleSourcePath)}|vertices={importedMesh.Positions.Length}|triangles={importedMesh.TriangleCount}|renderedTriangles={GetImportedMeshRenderedTriangleCount()}|renderTriangleStride={GetImportedMeshRenderTriangleStride()}|vertexColors={importedMesh.VertexColors.Length}|usesVertexColors={importedMesh.HasVertexColors}|texCoords={importedMesh.TextureCoordinates.Length}|hasTexture={importedMesh.HasBaseColorTexture}|textureBytes={importedMesh.BaseColorTexture?.Bytes.Length ?? 0}|textureMime={importedMesh.BaseColorTexture?.MimeType ?? "(none)"}|normals={importedMesh.Normals.Length}|declaredNormals={importedMesh.DeclaredNormalCount}|normalQuality={normalQuality?.State.ToString() ?? "Unavailable"}|normalQualityUsable={viewModel.Display.IsImportedMeshNormalDisplayable}|textureUpload={CleanContractText(importedMeshTextureState.UploadSummary)}|textureUploads={importedMeshTextureState.UploadCount}|textureReleases={importedMeshTextureState.ReleaseCount}|min={FormatVector(importedMesh.Min)}|max={FormatVector(importedMesh.Max)}|summary={CleanContractText(viewModel.GlbSampleSummary)}";
     }
 
     private string CreateLazContractLine()
@@ -486,10 +518,30 @@ public sealed partial class OpenVisionThreeDViewerControl
             return $"LAZ|loaded=False|source={CleanContractText(viewModel.LazSampleSourcePath)}|summary={CleanContractText(viewModel.LazSampleSummary)}";
         }
 
-        var common = $"LAZ|loaded=True|entity={MainWindowViewModel.LazEntityId}|visible={viewModel.LazSampleVisible}|source={CleanContractText(viewModel.LazSampleSourcePath)}|version={lazSample.Version}|pointFormat={lazSample.PointDataFormat}|rawPointFormat={lazSample.RawPointDataFormat}|compressed={lazSample.IsCompressed}|laszipVlr={lazSample.HasLaszipVlr}|points={lazSample.PointCount}|recordLength={lazSample.PointDataRecordLength}|offset={lazSample.PointDataOffset}|boundsX={FormatContractNumber(lazSample.MinX)}..{FormatContractNumber(lazSample.MaxX)}|boundsY={FormatContractNumber(lazSample.MinY)}..{FormatContractNumber(lazSample.MaxY)}|boundsZ={FormatContractNumber(lazSample.MinZ)}..{FormatContractNumber(lazSample.MaxZ)}";
+        var common = $"LAZ|loaded=True|entity={ViewerEntityIds.LazEntityId}|visible={viewModel.LazSampleVisible}|source={CleanContractText(viewModel.LazSampleSourcePath)}|version={lazSample.Version}|pointFormat={lazSample.PointDataFormat}|rawPointFormat={lazSample.RawPointDataFormat}|compressed={lazSample.IsCompressed}|laszipVlr={lazSample.HasLaszipVlr}|points={lazSample.PointCount}|recordLength={lazSample.PointDataRecordLength}|offset={lazSample.PointDataOffset}|boundsX={FormatContractNumber(lazSample.MinX)}..{FormatContractNumber(lazSample.MaxX)}|boundsY={FormatContractNumber(lazSample.MinY)}..{FormatContractNumber(lazSample.MaxY)}|boundsZ={FormatContractNumber(lazSample.MinZ)}..{FormatContractNumber(lazSample.MaxZ)}";
         return lazPointCloud is null
             ? $"{common}|decoder=metadata-only|summary={CleanContractText(viewModel.LazSampleSummary)}"
-            : $"{common}|decoder=points-decoded|decodedPoints={lazPointCloud.DecodedPointCount}|sampledPoints={lazPointCloud.SampledPoints.Length}|sampleStride={lazPointCloud.SampleStride}|rgb={lazPointCloud.HasRgb}|boundsMatch={lazPointCloud.BoundsMatch}|avgRgb={FormatContractNumber(lazPointCloud.AverageRed)},{FormatContractNumber(lazPointCloud.AverageGreen)},{FormatContractNumber(lazPointCloud.AverageBlue)}|summary={CleanContractText(viewModel.LazSampleSummary)}";
+            : $"{common}|decoder=points-decoded|decodedPoints={lazPointCloud.DecodedPointCount}|sampledPoints={lazPointCloud.SampledPointView.Count}|sampleStride={lazPointCloud.SampleStride}|rgb={lazPointCloud.HasRgb}|boundsMatch={lazPointCloud.BoundsMatch}|avgRgb={FormatContractNumber(lazPointCloud.AverageRed)},{FormatContractNumber(lazPointCloud.AverageGreen)},{FormatContractNumber(lazPointCloud.AverageBlue)}|summary={CleanContractText(viewModel.LazSampleSummary)}";
+    }
+
+    private string CreateLazLoadPlanContractLine()
+    {
+        var source = CleanContractText(viewModel.LazSampleSourcePath);
+        var scope = CleanContractText(LazPointCloudLoadPlan.EstimateScope);
+        if (lazSample is null)
+        {
+            return $"LAZLoadPlan|available=False|source={source}|reason=metadata-unavailable|scope={scope}";
+        }
+
+        try
+        {
+            var plan = LazPointCloudLoadPlan.Create(lazSample, viewModel.LazMaxSampledPoints);
+            return $"LAZLoadPlan|available=True|source={source}|pointCount={plan.PointCount}|requestedSampleLimit={plan.RequestedSampleLimit}|sampledPointCount={plan.SampledPointCount}|sourceBytes={plan.SourceFileBytes}|estimatedDecodedRecordBytes={plan.EstimatedDecodedRecordBytes}|estimatedManagedSampleBytes={plan.EstimatedManagedSampleBytes}|estimatesSaturated={plan.EstimatesSaturated}|fullPointStreamDecodeRequired={plan.FullPointStreamDecodeRequired}|scope={scope}";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        {
+            return $"LAZLoadPlan|available=False|source={source}|reason={CleanContractText(exception.Message)}|scope={scope}";
+        }
     }
 
     private string CreateImportedMeshPickContractLine()
@@ -523,7 +575,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return "LAZPick|selected=False";
         }
 
-        return $"LAZPick|selected=True|source={FormatVector(point.Position)}|viewer={FormatVector(MapLazPosition(point.Position))}|rgb={point.Red},{point.Green},{point.Blue}|summary={CleanContractText(viewModel.PickCoordinate)}";
+        return $"LAZPick|selected=True|source={FormatLazSourceCoordinate(point)}|viewer={FormatVector(MapLazPosition(point))}|rgb={point.Red},{point.Green},{point.Blue}|summary={CleanContractText(viewModel.PickCoordinate)}";
     }
 
     private static string FormatContractNumber(double value) =>
@@ -536,16 +588,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         string.Create(
             CultureInfo.InvariantCulture,
             $"cx={region.CenterX:F3},cz={region.CenterZ:F3},halfWidth={region.HalfWidth:F3},halfDepth={region.HalfDepth:F3}");
-
-    private static bool IsRecipeRoiEditProperty(string? propertyName) =>
-        propertyName is nameof(MainWindowViewModel.RecipeRoiLeftCenterX)
-            or nameof(MainWindowViewModel.RecipeRoiLeftCenterZ)
-            or nameof(MainWindowViewModel.RecipeRoiLeftHalfWidth)
-            or nameof(MainWindowViewModel.RecipeRoiLeftHalfDepth)
-            or nameof(MainWindowViewModel.RecipeRoiRightCenterX)
-            or nameof(MainWindowViewModel.RecipeRoiRightCenterZ)
-            or nameof(MainWindowViewModel.RecipeRoiRightHalfWidth)
-            or nameof(MainWindowViewModel.RecipeRoiRightHalfDepth);
 
     private static string CleanContractText(string value) => value.Replace('|', '/').Replace(Environment.NewLine, " ");
 
@@ -570,19 +612,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        if (c3dSourceApplyActive)
+        if (c3dSourceApplyRenderState.TrySuppressRenderRequest())
         {
-            c3dSourceApplyRenderRequestCount++;
-            if (c3dSourceApplyRenderSuppressed)
-            {
-                c3dSourceApplySuppressedRenderRequestCount++;
-                return;
-            }
+            return;
         }
 
-        if (pointerInputRegressionActive && isHandlingPointerMouseMove)
+        if (pointerInputRegressionActive && interactionTelemetry.IsHandlingMouseMove)
         {
-            pointerInputImmediateMouseMoveRenderCount++;
+            interactionTelemetry.RecordImmediateMouseMoveRender();
         }
 
         UpdateOrientationTriad();
@@ -590,12 +627,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var renderStart = Stopwatch.GetTimestamp();
             Viewport.DoRender();
-            if (c3dSourceApplyActive)
-            {
-                c3dSourceApplyRenderExecutionCount++;
-                c3dSourceApplyRenderExecutionMilliseconds +=
-                    Stopwatch.GetElapsedTime(renderStart).TotalMilliseconds;
-            }
+            c3dSourceApplyRenderState.RecordRenderExecution(
+                Stopwatch.GetElapsedTime(renderStart).TotalMilliseconds);
         }
     }
 }

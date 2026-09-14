@@ -35,9 +35,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var hoverRecovery = default(OrientedBoxHoverRecoverySmokeResult);
         var yHandleSemanticsPassed = false;
 
-        pointerInputMouseDownCount = 0;
-        pointerInputMouseMoveCount = 0;
-        pointerInputMouseUpCount = 0;
+        interactionTelemetry.ResetPointerInput();
 
         try
         {
@@ -238,9 +236,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                 ReferenceEquals(initialPreview, viewModel.PreviewToolResult)
                 && ReferenceEquals(initialResults, viewModel.ResultEntities);
             var routedEventsPassed =
-                pointerInputMouseDownCount >= 7
-                && pointerInputMouseMoveCount >= 7
-                && pointerInputMouseUpCount >= 7;
+                interactionTelemetry.MouseDownCount >= 7
+                && interactionTelemetry.MouseMoveCount >= 7
+                && interactionTelemetry.MouseUpCount >= 7;
             var gesturesPassed =
                 moveResult.Passed
                 && resizeXResult.Passed
@@ -280,7 +278,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add(
                 $"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}|gestureCameraStable={gestureCameraStable}");
             lines.Add(
-                $"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}|actualWindowsPointer=true");
+                $"RoutedEvents|pass={routedEventsPassed}|mouseDown={interactionTelemetry.MouseDownCount}|mouseMove={interactionTelemetry.MouseMoveCount}|mouseUp={interactionTelemetry.MouseUpCount}|actualWindowsPointer=true");
             lines.Add(
                 $"InteractionStates|normal={hoverRecovery.NormalPassed}|hover={hoverRecovery.HoverPassed}|pressedReleased={routedEventsPassed}|mouseLeaveRecovery={hoverRecovery.MouseLeaveRecoveryPassed}|cursorRecovery={hoverRecovery.CursorRecoveryPassed}|statusRecovery={hoverRecovery.StatusRecoveryPassed}");
             lines.Add(

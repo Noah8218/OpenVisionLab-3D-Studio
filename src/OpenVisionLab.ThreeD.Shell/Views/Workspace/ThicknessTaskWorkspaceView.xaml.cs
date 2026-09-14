@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workspace;
 
@@ -12,10 +13,10 @@ public partial class ThicknessTaskWorkspaceView : UserControl
             typeof(ThicknessTaskWorkspaceView),
             new PropertyMetadata(null));
 
-    public static readonly DependencyProperty ViewerViewModelProperty =
+    public static readonly DependencyProperty ViewerEditorProperty =
         DependencyProperty.Register(
-            nameof(ViewerViewModel),
-            typeof(object),
+            nameof(ViewerEditor),
+            typeof(ViewerHostEditorSurface),
             typeof(ThicknessTaskWorkspaceView),
             new PropertyMetadata(null));
 
@@ -30,9 +31,9 @@ public partial class ThicknessTaskWorkspaceView : UserControl
         set => SetValue(ViewerContentProperty, value);
     }
 
-    public object? ViewerViewModel
+    public ViewerHostEditorSurface? ViewerEditor
     {
-        get => GetValue(ViewerViewModelProperty);
-        set => SetValue(ViewerViewModelProperty, value);
+        get => (ViewerHostEditorSurface?)GetValue(ViewerEditorProperty);
+        set => SetValue(ViewerEditorProperty, value);
     }
 }

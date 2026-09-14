@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows.Threading;
+using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -118,6 +119,46 @@ internal static class ToolRecipeTeachingVerification
                 routeWorkbench.RunLog.Count(item =>
                     item.Category is "Preview" or "Publish" or "Run") == routeActionLogCount,
                 $"actionLogs={routeActionLogCount}");
+
+            var inputSummaryLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var inputSummaryWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(fixtureRoot, "recent-input-summary.json"));
+            try
+            {
+                var emptyInputStep = new ToolWorkbenchPipelineStepItem(
+                    "verification.empty-input",
+                    inputSummaryWorkbench.Tools.Single(tool => tool.Id == "thickness"),
+                    string.Empty,
+                    "verification.empty-output");
+                inputSummaryWorkbench.PipelineSteps.Add(emptyInputStep);
+                var inputSummaryPropertyChanges = new List<string>();
+                emptyInputStep.PropertyChanged += (_, args) =>
+                {
+                    if (!string.IsNullOrWhiteSpace(args.PropertyName))
+                    {
+                        inputSummaryPropertyChanges.Add(args.PropertyName);
+                    }
+                };
+
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishInputSummary = emptyInputStep.InputSummary;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanInputSummary = emptyInputStep.InputSummary;
+                Check(
+                    "empty input summary localizes and refreshes without changing input identity or execution",
+                    englishInputSummary == "Specify an input entity ID."
+                    && koreanInputSummary == inputSummaryWorkbench.Localization.FlowPortNoInputDetail
+                    && englishInputSummary != koreanInputSummary
+                    && emptyInputStep.InputEntityIds.Count == 0
+                    && inputSummaryPropertyChanges.Contains(nameof(ToolWorkbenchPipelineStepItem.InputSummary), StringComparer.Ordinal)
+                    && inputSummaryWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
+                    $"en={englishInputSummary}; ko={koreanInputSummary}; ids={emptyInputStep.InputEntityIds.Count}; changes={string.Join(',', inputSummaryPropertyChanges)}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(inputSummaryLanguage, save: false);
+                inputSummaryWorkbench.Dispose();
+            }
 
             var circleSourcePath = Path.Combine(fixtureRoot, "grid-circle-source.C3D");
             C3DHeightFieldSnapshot.CreateForVerification(
@@ -397,62 +438,158 @@ internal static class ToolRecipeTeachingVerification
                     .InputEntityIds.SequenceEqual([reopenedRouteWorkbench.Source.Id]),
                 repairedSaveMessage);
 
-            var alignment = new ToolWorkbenchViewModel();
-            Check(
-                "alignment summary reports no taught stage initially",
-                alignment.AlignmentStatusSummary == "Alignment not taught",
-                alignment.AlignmentStatusSummary);
-            alignment.SetC3DSource(sourcePath, markDirty: false);
-            var legacyTool = new ToolWorkbenchToolItem(
-                "Transform", "XYZ Affine Transform", "xyz-affine-transform", 1,
-                "Legacy input", "Legacy output", "Verification-only legacy recipe step.", []);
-            var legacyStep = new ToolWorkbenchPipelineStepItem(
-                "step.legacy-affine", legacyTool, alignment.Source.Id, "legacy.affine");
-            alignment.PipelineSteps.Add(legacyStep);
-            Check(
-                "legacy alignment summary reports the legacy step state",
-                alignment.AlignmentStatusSummary == $"Legacy XYZ Affine Transform | {legacyStep.State}",
-                alignment.AlignmentStatusSummary);
-            var alignmentSolve = AddTool(alignment, "XYZ Affine Solve");
-            Check(
-                "A1 alignment summary supersedes the legacy stage",
-                alignment.AlignmentStatusSummary == $"A1 XYZ Affine Solve | {alignmentSolve.State}",
-                alignment.AlignmentStatusSummary);
-            var alignmentApply = AddTool(alignment, "Apply XYZ Affine");
-            Check(
-                "A2 alignment summary supersedes A1",
-                alignment.AlignmentStatusSummary == $"A2 Apply XYZ Affine | {alignmentApply.State}",
-                alignment.AlignmentStatusSummary);
-            var alignmentRegrid = AddTool(alignment, "Re-grid Height Map");
-            Check(
-                "A3 alignment summary supersedes A2",
-                alignment.AlignmentStatusSummary == $"A3 Re-grid Height Map | {alignmentRegrid.State}",
-                alignment.AlignmentStatusSummary);
-            var alignmentSummaryNotifications = 0;
-            alignment.PropertyChanged += (_, args) =>
+            var alignmentLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
             {
-                if (args.PropertyName == nameof(ToolWorkbenchViewModel.AlignmentStatusSummary))
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var alignment = new ToolWorkbenchViewModel();
+                Check(
+                    "alignment summary reports no taught stage initially",
+                    alignment.AlignmentStatusSummary == "Alignment not taught",
+                    alignment.AlignmentStatusSummary);
+                alignment.SetC3DSource(sourcePath, markDirty: false);
+                var legacyTool = new ToolWorkbenchToolItem(
+                    "Transform", "XYZ Affine Transform", "xyz-affine-transform", 1,
+                    "Legacy input", "Legacy output", "Verification-only legacy recipe step.", []);
+                var legacyStep = new ToolWorkbenchPipelineStepItem(
+                    "step.legacy-affine", legacyTool, alignment.Source.Id, "legacy.affine");
+                alignment.PipelineSteps.Add(legacyStep);
+                Check(
+                    "legacy alignment summary reports the legacy step state",
+                    alignment.AlignmentStatusSummary == $"Legacy XYZ Affine Transform | {legacyStep.State}",
+                    alignment.AlignmentStatusSummary);
+                var alignmentSolve = AddTool(alignment, "XYZ Affine Solve");
+                Check(
+                    "A1 alignment summary supersedes the legacy stage",
+                    alignment.AlignmentStatusSummary == $"A1 XYZ Affine Solve | {alignmentSolve.State}",
+                    alignment.AlignmentStatusSummary);
+                var alignmentApply = AddTool(alignment, "Apply XYZ Affine");
+                Check(
+                    "A2 alignment summary supersedes A1",
+                    alignment.AlignmentStatusSummary == $"A2 Apply XYZ Affine | {alignmentApply.State}",
+                    alignment.AlignmentStatusSummary);
+                var alignmentRegrid = AddTool(alignment, "Re-grid Height Map");
+                Check(
+                    "A3 alignment summary supersedes A2",
+                    alignment.AlignmentStatusSummary == $"A3 Re-grid Height Map | {alignmentRegrid.State}",
+                    alignment.AlignmentStatusSummary);
+                var alignmentSummaryNotifications = 0;
+                alignment.PropertyChanged += (_, args) =>
                 {
-                    alignmentSummaryNotifications++;
-                }
-            };
-            var actionLogCount = alignment.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
-            alignmentRegrid.State = "Published";
-            Check(
-                "alignment step state change refreshes the header summary",
-                alignmentSummaryNotifications == 1
-                && alignment.AlignmentStatusSummary == "A3 Re-grid Height Map | Published",
-                $"notifications={alignmentSummaryNotifications}; summary={alignment.AlignmentStatusSummary}");
-            Check(
-                "alignment status refresh causes no Preview, Publish, or Run action",
-                alignment.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == actionLogCount,
-                $"actionLogs={actionLogCount}");
+                    if (args.PropertyName == nameof(ToolWorkbenchViewModel.AlignmentStatusSummary))
+                    {
+                        alignmentSummaryNotifications++;
+                    }
+                };
+                var actionLogCount = alignment.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
+                alignmentRegrid.State = "Published";
+                Check(
+                    "alignment step state change refreshes the header summary",
+                    alignmentSummaryNotifications == 1
+                    && alignment.AlignmentStatusSummary == "A3 Re-grid Height Map | Published",
+                    $"notifications={alignmentSummaryNotifications}; summary={alignment.AlignmentStatusSummary}");
+                var adapterStatusNotifications = 0;
+                alignment.PropertyChanged += (_, args) =>
+                {
+                    if (args.PropertyName == nameof(ToolWorkbenchViewModel.SelectedStepAdapterStatus))
+                    {
+                        adapterStatusNotifications++;
+                    }
+                };
+                Check(
+                    "selected step adapter status keeps the existing English ready label",
+                    alignment.SelectedStepAdapterStatus == "Typed adapter ready",
+                    alignment.SelectedStepAdapterStatus);
+                Check(
+                    "alignment status refresh causes no Preview, Publish, or Run action",
+                    alignment.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == actionLogCount,
+                    $"actionLogs={actionLogCount}");
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                Check(
+                    "alignment summary refreshes localized labels without changing state",
+                    alignmentSummaryNotifications == 2
+                    && alignment.AlignmentStatusSummary == "A3 \uB192\uC774 \uB9F5 \uC7AC\uACA9\uC790\uD654 | Published",
+                    $"notifications={alignmentSummaryNotifications}; summary={alignment.AlignmentStatusSummary}");
+                Check(
+                    "selected step adapter status refreshes its localized label without changing state",
+                    adapterStatusNotifications == 1
+                    && alignment.SelectedStepAdapterStatus == "\uC815\uC2DD \uC5B4\uB311\uD130 \uC900\uBE44\uB428",
+                    $"notifications={adapterStatusNotifications}; status={alignment.SelectedStepAdapterStatus}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(alignmentLanguage, save: false);
+            }
 
             var workbench = new ToolWorkbenchViewModel();
             Check(
                 "initial empty recipe is clean and unsaved",
                 !workbench.IsDirty && string.IsNullOrWhiteSpace(workbench.RecipePath),
                 workbench.RecipeStateSummary);
+            var emptyWorkspaceLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishInitialWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                var englishInitialParameterStatus = englishInitialWorkspace.ParameterStatus;
+                var englishInitialHelp = englishInitialWorkspace.Help;
+                var englishInitialCommonState = englishInitialWorkspace.CommonState;
+                var englishInitialOutputPolicy = englishInitialWorkspace.OutputPolicy;
+                var englishInitialParameterStatusExpected = workbench.Localization.StepParameterSelectTypedTool;
+                var englishInitialOutputPolicyExpected = workbench.Localization.OutputEnabled;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanInitialWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                var koreanInitialParameterStatus = koreanInitialWorkspace.ParameterStatus;
+                var koreanInitialHelp = koreanInitialWorkspace.Help;
+                var koreanInitialCommonState = koreanInitialWorkspace.CommonState;
+                var koreanInitialOutputPolicy = koreanInitialWorkspace.OutputPolicy;
+                Check(
+                    "selected-tool workspace initial defaults localize without recipe state",
+                    englishInitialParameterStatus == englishInitialParameterStatusExpected
+                    && englishInitialHelp == "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance."
+                    && englishInitialCommonState == "Empty"
+                    && englishInitialOutputPolicy == englishInitialOutputPolicyExpected
+                    && koreanInitialParameterStatus == workbench.Localization.StepParameterSelectTypedTool
+                    && koreanInitialHelp != englishInitialHelp
+                    && koreanInitialCommonState == workbench.Localization.StateLabel(InspectionStepState.Empty)
+                    && koreanInitialOutputPolicy == workbench.Localization.OutputEnabled
+                    && englishInitialParameterStatus != koreanInitialParameterStatus
+                    && englishInitialCommonState != koreanInitialCommonState
+                    && englishInitialOutputPolicy != koreanInitialOutputPolicy
+                    && !workbench.IsDirty,
+                    $"enParameter={englishInitialParameterStatus}; koParameter={koreanInitialParameterStatus}; enState={englishInitialCommonState}; koState={koreanInitialCommonState}; enPolicy={englishInitialOutputPolicy}; koPolicy={koreanInitialOutputPolicy}");
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishEmptyWorkspaceTitle = workbench.SelectedToolWorkspace.Title;
+                var englishEmptyWorkspaceState = workbench.SelectedToolWorkspace.State;
+                var englishEmptyWorkspaceExample = workbench.SelectedToolWorkspace.Example;
+                var englishEmptyWorkspaceOverlay = workbench.SelectedToolWorkspace.ExpectedOverlay;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanEmptyWorkspaceTitle = workbench.SelectedToolWorkspace.Title;
+                var koreanEmptyWorkspaceState = workbench.SelectedToolWorkspace.State;
+                var koreanEmptyWorkspaceExample = workbench.SelectedToolWorkspace.Example;
+                var koreanEmptyWorkspaceOverlay = workbench.SelectedToolWorkspace.ExpectedOverlay;
+                Check(
+                    "selected-tool workspace empty title and state localize without changing recipe state",
+                    englishEmptyWorkspaceTitle == "No taught step selected"
+                    && englishEmptyWorkspaceState == "No selection"
+                    && koreanEmptyWorkspaceTitle == workbench.Localization.NoTaughtStepSelected
+                    && koreanEmptyWorkspaceState == workbench.Localization.NoSelectedToolState
+                    && englishEmptyWorkspaceExample == "Select an inspection step to see a concrete authoring example."
+                    && englishEmptyWorkspaceOverlay == "Select an inspection step to see the expected review overlay."
+                    && koreanEmptyWorkspaceExample == workbench.Localization.SelectedToolEmptyExample
+                    && koreanEmptyWorkspaceOverlay == workbench.Localization.SelectedToolEmptyExpectedOverlay
+                    && englishEmptyWorkspaceTitle != koreanEmptyWorkspaceTitle
+                    && englishEmptyWorkspaceExample != koreanEmptyWorkspaceExample
+                    && englishEmptyWorkspaceOverlay != koreanEmptyWorkspaceOverlay
+                    && !workbench.IsDirty,
+                    $"enTitle={englishEmptyWorkspaceTitle}; koTitle={koreanEmptyWorkspaceTitle}; enState={englishEmptyWorkspaceState}; koState={koreanEmptyWorkspaceState}; enExample={englishEmptyWorkspaceExample}; koExample={koreanEmptyWorkspaceExample}; enOverlay={englishEmptyWorkspaceOverlay}; koOverlay={koreanEmptyWorkspaceOverlay}; dirty={workbench.IsDirty}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(emptyWorkspaceLanguage, save: false);
+            }
             var sourceLoadCancellationRequested = false;
             workbench.CancelC3DSourceLoadRequested += (_, _) => sourceLoadCancellationRequested = true;
             workbench.BeginC3DSourceLoad(sourcePath);
@@ -598,6 +735,661 @@ internal static class ToolRecipeTeachingVerification
             var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
             var filter = AddTool(workbench, "Filter");
             filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value = "5";
+            var selectedWorkspaceLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishSelectedWorkspaceTitle = workbench.SelectedToolWorkspace.Title;
+                var englishSelectedWorkspaceTitleExpected = string.Format(
+                    workbench.Localization.SelectedPipelineStepTitleFormat,
+                    filter.Order,
+                    filter.ToolName);
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanSelectedWorkspaceTitle = workbench.SelectedToolWorkspace.Title;
+                Check(
+                    "selected-tool workspace selected title uses the shared step format",
+                    englishSelectedWorkspaceTitle == englishSelectedWorkspaceTitleExpected
+                    && koreanSelectedWorkspaceTitle == string.Format(
+                        workbench.Localization.SelectedPipelineStepTitleFormat,
+                        filter.Order,
+                        filter.ToolName)
+                    && englishSelectedWorkspaceTitle != koreanSelectedWorkspaceTitle
+                    && workbench.SelectedToolWorkspace.State == filter.State,
+                    $"en={englishSelectedWorkspaceTitle}; ko={koreanSelectedWorkspaceTitle}; state={workbench.SelectedToolWorkspace.State}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(selectedWorkspaceLanguage, save: false);
+            }
+            var outputFallbackLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                var fallbackWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                fallbackWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var englishOutput = fallbackWorkspace.Outputs.Single();
+                var englishOutputState = englishOutput.State;
+                var englishOutputDetail = englishOutput.Detail;
+                var englishOutputStateExpected = workbench.Localization.FlowPortDeclared;
+                var englishOutputValueLabelExpected = workbench.Localization.SelectedToolOutputValueLabel;
+                var englishOutputDetailExpected = string.Format(
+                    workbench.Localization.FlowPortDeclaredDetailFormat,
+                    filter.OutputEntityId);
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                fallbackWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var koreanOutput = fallbackWorkspace.Outputs.Single();
+                Check(
+                    "selected-tool workspace output fallback localizes without changing output identity or display state",
+                    englishOutputState == englishOutputStateExpected
+                    && englishOutputDetail == englishOutputDetailExpected
+                    && englishOutput.ValueLabel == englishOutputValueLabelExpected
+                    && koreanOutput.State == workbench.Localization.FlowPortDeclared
+                    && koreanOutput.Detail == string.Format(
+                        workbench.Localization.FlowPortDeclaredDetailFormat,
+                        filter.OutputEntityId)
+                    && koreanOutput.ValueLabel == workbench.Localization.SelectedToolOutputValueLabel
+                    && englishOutputState != koreanOutput.State
+                    && englishOutputDetail != koreanOutput.Detail
+                    && englishOutput.ValueLabel != koreanOutput.ValueLabel
+                    && koreanOutput.EntityId == filter.OutputEntityId
+                    && !koreanOutput.CanShowInViewer
+                    && !koreanOutput.CanPinToCompare
+                    && !koreanOutput.IsShownInViewer
+                    && !koreanOutput.IsPinnedToCompare,
+                    $"enState={englishOutputState}; koState={koreanOutput.State}; enDetail={englishOutputDetail}; koDetail={koreanOutput.Detail}; enValueLabel={englishOutput.ValueLabel}; koValueLabel={koreanOutput.ValueLabel}; entity={koreanOutput.EntityId}; show={koreanOutput.CanShowInViewer}; pin={koreanOutput.CanPinToCompare}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(outputFallbackLanguage, save: false);
+            }
+            var outputEvidenceLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                var outputEvidenceWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                SelectedToolOutputItem ReadOutputEvidence(
+                    IReadOnlyList<SelectedToolOutputEvidence> evidence)
+                {
+                    outputEvidenceWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                        filter,
+                        null,
+                        false,
+                        false,
+                        string.Empty,
+                        Array.Empty<ToolWorkbenchArtifactItem>(),
+                        Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                        evidence[0],
+                        null,
+                        null,
+                        false,
+                        false,
+                        null,
+                        null,
+                        string.Empty,
+                        string.Empty,
+                        false,
+                        false,
+                        workbench.Localization));
+                    return outputEvidenceWorkspace.Outputs.Single();
+                }
+
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishStatuses = new[]
+                {
+                    workbench.Localization.Preview,
+                    workbench.Localization.RecipeHealthPublished,
+                    workbench.Localization.Preview,
+                    workbench.Localization.Preview
+                };
+                var englishEvidence = new[]
+                {
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolRemovedOutliersLabel, "2", "count", englishStatuses[0]),
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolReferenceRmsLabel, "0.125", "mm", englishStatuses[1]),
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolOutputMissingCellsLabel, "3", "count", englishStatuses[2]),
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolOutputCellsLabel, "9", "count", englishStatuses[3])
+                };
+                var englishLabels = englishEvidence.Select(evidence => evidence.ValueLabel).ToArray();
+                var englishOutputs = englishEvidence.Select(evidence => ReadOutputEvidence([evidence])).ToArray();
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanStatuses = new[]
+                {
+                    workbench.Localization.Preview,
+                    workbench.Localization.RecipeHealthPublished,
+                    workbench.Localization.Preview,
+                    workbench.Localization.Preview
+                };
+                var koreanEvidence = new[]
+                {
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolRemovedOutliersLabel, "2", "count", koreanStatuses[0]),
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolReferenceRmsLabel, "0.125", "mm", koreanStatuses[1]),
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolOutputMissingCellsLabel, "3", "count", koreanStatuses[2]),
+                    new SelectedToolOutputEvidence(workbench.Localization.SelectedToolOutputCellsLabel, "9", "count", koreanStatuses[3])
+                };
+                var koreanLabels = koreanEvidence.Select(evidence => evidence.ValueLabel).ToArray();
+                var koreanOutputs = koreanEvidence.Select(evidence => ReadOutputEvidence([evidence])).ToArray();
+                Check(
+                    "selected-tool output evidence labels localize without changing values, units, status, or identity",
+                    englishOutputs.Length == 4
+                    && koreanOutputs.Length == 4
+                    && englishOutputs.Zip(koreanOutputs).All(pair =>
+                        pair.First.EntityId == filter.OutputEntityId
+                        && pair.Second.EntityId == filter.OutputEntityId
+                        && pair.First.Value == pair.Second.Value
+                        && pair.First.Unit == pair.Second.Unit
+                        && !string.IsNullOrWhiteSpace(pair.First.ResultStatus)
+                        && !string.IsNullOrWhiteSpace(pair.Second.ResultStatus)
+                        && !pair.First.CanShowInViewer
+                        && !pair.First.CanPinToCompare
+                        && !pair.Second.CanShowInViewer
+                        && !pair.Second.CanPinToCompare)
+                    && englishOutputs.Select(item => item.ValueLabel).SequenceEqual(englishLabels)
+                    && koreanOutputs.Select(item => item.ValueLabel).SequenceEqual(koreanLabels)
+                    && !englishLabels.SequenceEqual(koreanLabels),
+                    $"en={string.Join(",", englishOutputs.Select(item => item.ValueLabel))}; ko={string.Join(",", koreanOutputs.Select(item => item.ValueLabel))}; values={string.Join(",", koreanOutputs.Select(item => item.Value))}");
+                Check(
+                    "selected-tool output evidence statuses localize without changing values, units, or identity",
+                    englishOutputs.Length == 4
+                    && koreanOutputs.Length == 4
+                    && englishOutputs.Select(item => item.ResultStatus).SequenceEqual(englishStatuses)
+                    && koreanOutputs.Select(item => item.ResultStatus).SequenceEqual(koreanStatuses)
+                    && !englishStatuses.SequenceEqual(koreanStatuses)
+                    && englishOutputs.Zip(koreanOutputs).All(pair =>
+                        pair.First.EntityId == pair.Second.EntityId
+                        && pair.First.Value == pair.Second.Value
+                        && pair.First.Unit == pair.Second.Unit),
+                    $"en={string.Join(",", englishOutputs.Select(item => item.ResultStatus))}; ko={string.Join(",", koreanOutputs.Select(item => item.ResultStatus))}; values={string.Join(",", koreanOutputs.Select(item => item.Value))}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(outputEvidenceLanguage, save: false);
+            }
+            var resultStatusLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                var resultStatuses = Enum.GetValues<ResultStatus>();
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishResultStatuses = resultStatuses
+                    .Select(workbench.Localization.ResultStatusLabel)
+                    .ToArray();
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanResultStatuses = resultStatuses
+                    .Select(workbench.Localization.ResultStatusLabel)
+                    .ToArray();
+                Check(
+                    "selected-tool measurement output status formatter localizes every ResultStatus value",
+                    englishResultStatuses.SequenceEqual(["Not run", "Pass", "Fail", "Warning", "Error"])
+                    && koreanResultStatuses.SequenceEqual(["미실행", "통과", "실패", "경고", "오류"])
+                    && !englishResultStatuses.SequenceEqual(koreanResultStatuses),
+                    $"en={string.Join(",", englishResultStatuses)}; ko={string.Join(",", koreanResultStatuses)}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(resultStatusLanguage, save: false);
+            }
+            var outputStateLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                var outputStates = new[] { "Preview", "Published", "Stale", "Ready", "Disabled", "CustomState" };
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishOutputStates = outputStates
+                    .Select(workbench.Localization.SelectedToolOutputStateLabel)
+                    .ToArray();
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanOutputStates = outputStates
+                    .Select(workbench.Localization.SelectedToolOutputStateLabel)
+                    .ToArray();
+                Check(
+                    "selected-tool output state labels localize known states and preserve unknown identity",
+                    englishOutputStates.SequenceEqual(["Preview", "Published", "Stale", "Ready", "Disabled", "CustomState"])
+                    && koreanOutputStates.SequenceEqual([
+                        workbench.Localization.Preview,
+                        workbench.Localization.RecipeHealthPublished,
+                        workbench.Localization.FlowPortStale,
+                        workbench.Localization.FlowPortReady,
+                        workbench.Localization.OutputDisabled,
+                        "CustomState"])
+                    && !englishOutputStates.SequenceEqual(koreanOutputStates),
+                    $"en={string.Join(",", englishOutputStates)}; ko={string.Join(",", koreanOutputStates)}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(outputStateLanguage, save: false);
+            }
+            var regionSummaryLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                var regionWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                var regionSelection = new ToolRecipeSelection(
+                    "selection.fixture-grid-rectangle",
+                    "Fixture grid rectangle",
+                    ToolRecipeSelectionKinds.GridRectangle,
+                    sourcePath,
+                    binding.FrameId ?? workbench.Source.FrameId,
+                    binding,
+                    new ToolRecipeGridRectangle(2, 3, 4, 5),
+                    null,
+                    null);
+                var regionRequirement = new ToolWorkbenchTeachingSelectionRequirement(
+                    "Fixture ROI",
+                    ToolRecipeSelectionKinds.GridRectangle,
+                    0,
+                    false,
+                    "Fixture ROI for Selected Tool Workspace summary.");
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                regionWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    regionRequirement,
+                    regionSelection,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var englishRegion = regionWorkspace.Regions.Single();
+                var englishRegionDetailExpected = string.Format(
+                    workbench.Localization.SelectedToolGridRectangleFormat,
+                    regionSelection.GridRectangle!.Column,
+                    regionSelection.GridRectangle.Row,
+                    regionSelection.GridRectangle.ColumnCount,
+                    regionSelection.GridRectangle.RowCount);
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                regionWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    regionRequirement,
+                    regionSelection,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var koreanRegion = regionWorkspace.Regions.Single();
+                Check(
+                    "selected-tool workspace region summary localizes without changing selection identity or lifecycle",
+                    englishRegion.Detail == englishRegionDetailExpected
+                    && koreanRegion.Detail == string.Format(
+                        workbench.Localization.SelectedToolGridRectangleFormat,
+                        regionSelection.GridRectangle.Column,
+                        regionSelection.GridRectangle.Row,
+                        regionSelection.GridRectangle.ColumnCount,
+                        regionSelection.GridRectangle.RowCount)
+                    && englishRegion.Detail != koreanRegion.Detail
+                    && englishRegion.SelectionId == koreanRegion.SelectionId
+                    && englishRegion.Lifecycle == koreanRegion.Lifecycle
+                    && englishRegion.State == "Applied"
+                    && koreanRegion.State == workbench.Localization.RoiApplied,
+                    $"en={englishRegion.Detail}; ko={koreanRegion.Detail}; id={koreanRegion.SelectionId}; lifecycle={koreanRegion.Lifecycle}; state={koreanRegion.State}");
+
+                var regionCircleSelection = regionSelection with
+                {
+                    Id = "selection.fixture-grid-circle",
+                    Name = "Fixture grid circle",
+                    Kind = ToolRecipeSelectionKinds.GridCircle,
+                    GridRectangle = null,
+                    GridCircle = new ToolRecipeGridCircle(3, 3, 1)
+                };
+                var circleRequirement = regionRequirement with
+                {
+                    Name = "Fixture circle",
+                    Kind = ToolRecipeSelectionKinds.GridCircle
+                };
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                regionWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    circleRequirement,
+                    regionCircleSelection,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var englishCircle = regionWorkspace.Regions.Single();
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                regionWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    circleRequirement,
+                    regionCircleSelection,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var koreanCircle = regionWorkspace.Regions.Single();
+                Check(
+                    "selected-tool workspace localizes known non-rectangle selection kinds while preserving identity and lifecycle",
+                    englishCircle.Detail == $"Grid circle selection | {regionCircleSelection.Id}"
+                    && koreanCircle.Detail == $"격자 원 선택 | {regionCircleSelection.Id}"
+                    && englishCircle.Detail != koreanCircle.Detail
+                    && englishCircle.SelectionId == koreanCircle.SelectionId
+                    && englishCircle.Lifecycle == koreanCircle.Lifecycle
+                    && englishCircle.State == "Applied"
+                    && koreanCircle.State == workbench.Localization.RoiApplied,
+                    $"en={englishCircle.Detail}; ko={koreanCircle.Detail}; id={koreanCircle.SelectionId}; lifecycle={koreanCircle.Lifecycle}; state={koreanCircle.State}");
+
+                var unknownSelection = regionCircleSelection with
+                {
+                    Id = "selection.fixture-custom",
+                    Name = "Fixture custom",
+                    Kind = "custom-kind",
+                    GridCircle = null
+                };
+                var unknownRequirement = circleRequirement with
+                {
+                    Name = "Fixture custom",
+                    Kind = "custom-kind"
+                };
+                regionWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    filter,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    Array.Empty<ToolWorkbenchArtifactItem>(),
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    unknownRequirement,
+                    unknownSelection,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var unknownRegion = regionWorkspace.Regions.Single();
+                Check(
+                    "selected-tool workspace preserves unknown selection kind identity",
+                    unknownRegion.Detail == $"custom-kind | {unknownSelection.Id}"
+                    && unknownRegion.SelectionId == unknownSelection.Id
+                    && unknownRegion.Lifecycle == InspectionWorkspaceRegionLifecycleState.Applied,
+                    $"detail={unknownRegion.Detail}; id={unknownRegion.SelectionId}; lifecycle={unknownRegion.Lifecycle}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(regionSummaryLanguage, save: false);
+            }
+            var inputFallbackLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                var inputFallbackWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                var inputFallbackTool = new ToolWorkbenchToolItem(
+                    "Verification",
+                    "Input fallback",
+                    "input-fallback",
+                    2,
+                    "HeightField",
+                    "MeasurementResult",
+                    "Verification-only input fallback fixture.",
+                    []);
+                var inputFallbackStep = new ToolWorkbenchPipelineStepItem(
+                    "step.input-fallback",
+                    inputFallbackTool,
+                    "source.fixture",
+                    "derived.input-fallback");
+                var inputFallbackArtifact = new ToolWorkbenchArtifactItem(
+                    "source.fixture",
+                    "Fixture source",
+                    "HeightField",
+                    "Published",
+                    "source.fixture",
+                    string.Empty,
+                    "mm",
+                    binding.FrameId ?? workbench.Source.FrameId,
+                    string.Empty,
+                    "Fixture input artifact.",
+                    inputFallbackStep,
+                    "Source");
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                inputFallbackWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    inputFallbackStep,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    [inputFallbackArtifact],
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var englishInputs = inputFallbackWorkspace.Inputs.ToArray();
+                var englishInputContractExpected = string.Format(
+                    workbench.Localization.SelectedToolInputFormat,
+                    2);
+                var englishInputNotAssignedExpected = workbench.Localization.SelectedToolInputNotAssigned;
+                var englishInputMissingExpected = workbench.Localization.RoiMissing;
+                var englishInputPublishedState = workbench.Localization.SelectedToolOutputStateLabel("Published");
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                inputFallbackWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    inputFallbackStep,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    [inputFallbackArtifact],
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var koreanInputs = inputFallbackWorkspace.Inputs.ToArray();
+                var koreanInputPublishedState = workbench.Localization.SelectedToolOutputStateLabel("Published");
+                Check(
+                    "selected-tool workspace input fallbacks localize without changing entity or artifact state",
+                    englishInputs.Length == 2
+                    && koreanInputs.Length == 2
+                    && englishInputs[0].EntityId == koreanInputs[0].EntityId
+                    && englishInputs[0].DisplayName == "Fixture source"
+                    && koreanInputs[0].DisplayName == "Fixture source"
+                    && englishInputs[0].State == englishInputPublishedState
+                    && koreanInputs[0].State == koreanInputPublishedState
+                    && englishInputs[1].EntityId.Length == 0
+                    && koreanInputs[1].EntityId.Length == 0
+                    && englishInputs[1].RequiredContract == englishInputContractExpected
+                    && koreanInputs[1].RequiredContract == string.Format(
+                        workbench.Localization.SelectedToolInputFormat,
+                        2)
+                    && englishInputs[1].DisplayName == englishInputNotAssignedExpected
+                    && koreanInputs[1].DisplayName == workbench.Localization.SelectedToolInputNotAssigned
+                    && englishInputs[1].State == englishInputMissingExpected
+                    && koreanInputs[1].State == workbench.Localization.RoiMissing
+                    && englishInputs[1].RequiredContract != koreanInputs[1].RequiredContract
+                    && englishInputs[1].DisplayName != koreanInputs[1].DisplayName,
+                    $"enContract={englishInputs[1].RequiredContract}; koContract={koreanInputs[1].RequiredContract}; enName={englishInputs[1].DisplayName}; koName={koreanInputs[1].DisplayName}; enState={englishInputs[1].State}; koState={koreanInputs[1].State}; entity={koreanInputs[0].EntityId}; artifactState={koreanInputs[0].State}");
+
+                var currentSelectionArtifact = inputFallbackArtifact with
+                {
+                    State = "Current selection",
+                    Detail = "Verification-only current selection fixture."
+                };
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                inputFallbackWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    inputFallbackStep,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    [currentSelectionArtifact],
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var englishCurrentSelectionInput = inputFallbackWorkspace.Inputs.First();
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                inputFallbackWorkspace.Refresh(new SelectedToolWorkspaceProjection(
+                    inputFallbackStep,
+                    null,
+                    false,
+                    false,
+                    string.Empty,
+                    [currentSelectionArtifact],
+                    Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                    SelectedToolOutputEvidence.Empty,
+                    null,
+                    null,
+                    false,
+                    false,
+                    null,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    false,
+                    workbench.Localization));
+                var koreanCurrentSelectionInput = inputFallbackWorkspace.Inputs.First();
+                Check(
+                    "selected-tool workspace input artifact state localizes without changing canonical identity",
+                    englishCurrentSelectionInput.State == "Current selection"
+                    && koreanCurrentSelectionInput.State == "현재 선택"
+                    && englishCurrentSelectionInput.State != koreanCurrentSelectionInput.State
+                    && englishCurrentSelectionInput.EntityId == currentSelectionArtifact.Id
+                    && koreanCurrentSelectionInput.EntityId == currentSelectionArtifact.Id
+                    && englishCurrentSelectionInput.DisplayName == currentSelectionArtifact.DisplayName
+                    && koreanCurrentSelectionInput.DisplayName == currentSelectionArtifact.DisplayName
+                    && englishCurrentSelectionInput.FrameId == (currentSelectionArtifact.FrameId ?? string.Empty)
+                    && koreanCurrentSelectionInput.FrameId == (currentSelectionArtifact.FrameId ?? string.Empty)
+                    && englishCurrentSelectionInput.Unit == currentSelectionArtifact.Unit
+                    && koreanCurrentSelectionInput.Unit == currentSelectionArtifact.Unit,
+                    $"enState={englishCurrentSelectionInput.State}; koState={koreanCurrentSelectionInput.State}; entity={koreanCurrentSelectionInput.EntityId}; frame={koreanCurrentSelectionInput.FrameId}; unit={koreanCurrentSelectionInput.Unit}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(inputFallbackLanguage, save: false);
+            }
+            var parameterStatusLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishParameterStatus = workbench.StepParameterEditStatus;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanParameterStatus = workbench.StepParameterEditStatus;
+                workbench.MarkSelectedStepParameterDraftDirty();
+                var koreanPendingParameterStatus = workbench.StepParameterEditStatus;
+                Check(
+                    "step parameter lifecycle status localizes and refreshes without executing inspection",
+                    englishParameterStatus == "Parameters match the committed recipe. Editing does not run Preview or Publish."
+                    && koreanParameterStatus == workbench.Localization.StepParameterMatchesRecipe
+                    && koreanPendingParameterStatus == workbench.Localization.StepParameterPendingChanges
+                    && englishParameterStatus != koreanParameterStatus
+                    && workbench.HasPendingStepParameterChanges,
+                    $"en={englishParameterStatus}; ko={koreanParameterStatus}; pending={koreanPendingParameterStatus}; pendingState={workbench.HasPendingStepParameterChanges}");
+            }
+            finally
+            {
+                workbench.DiscardSelectedStepParameterDraft();
+                OpenVisionLanguageService.SetLanguage(parameterStatusLanguage, save: false);
+            }
             Check(
                 "typed Filter is ready for explicit Preview only",
                 filter.State == "Ready"
@@ -645,6 +1437,24 @@ internal static class ToolRecipeTeachingVerification
             workbench.AddReferenceCommand.Execute(null);
 
             var correspondence = AddTool(workbench, "Landmark Correspondence");
+            var selectionSummaryLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishSelectionSummary = workbench.SelectedStepTeachingSelectionSummary;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanSelectionSummary = workbench.SelectedStepTeachingSelectionSummary;
+                Check(
+                    "selected-step teaching-selection fallback localizes without creating a selection",
+                    englishSelectionSummary == "No recipe-owned selection is routed to this step."
+                    && koreanSelectionSummary == "\uC774 \uB2E8\uACC4\uC5D0 \uB808\uC2DC\uD53C \uC18C\uC720 \uC120\uD0DD\uC774 \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC74C"
+                    && workbench.SelectedStepTeachingSelection is null,
+                    $"en={englishSelectionSummary}; ko={koreanSelectionSummary}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(selectionSummaryLanguage, save: false);
+            }
             var correspondenceSelection = new ToolRecipeSelection(
                 "selection.fixture-correspondences",
                 "Fixture correspondences",
@@ -838,6 +1648,33 @@ internal static class ToolRecipeTeachingVerification
                     && staleCategory == ToolWorkbenchRecipeHealthCategory.StalePreview
                     && publishedCategory == ToolWorkbenchRecipeHealthCategory.Published,
                     $"ready={readyCategory}; input={dependentWithoutPublishedInput}; selection={dependentAfterPublished}; parameters={parameterCategory}; stale={staleCategory}; published={publishedCategory}");
+
+                var flowDiagnosticsLanguage = OpenVisionLanguageService.CurrentLanguage;
+                try
+                {
+                    var dependentInputId = firstDependent.InputEntityIds.Single();
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                    templateFilter.State = "Published";
+                    var originalFirstDependentToolName = firstDependent.ToolName;
+                    firstDependent.ToolName = originalFirstDependentToolName + " [localization-test]";
+                    firstDependent.ToolName = originalFirstDependentToolName;
+                    var englishInputPortDetail = firstDependent.InputPortDetail;
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                    var koreanInputPortDetail = firstDependent.InputPortDetail;
+                    Check(
+                        "flow diagnostics artifact state detail localizes without changing route identity",
+                        englishInputPortDetail == $"{dependentInputId} | Published"
+                        && koreanInputPortDetail == $"{dependentInputId} | {template.Localization.RecipeHealthPublished}"
+                        && englishInputPortDetail != koreanInputPortDetail
+                        && firstDependent.InputPortState == template.Localization.FlowPortReady
+                        && firstDependent.InputEntityIds.Single() == dependentInputId,
+                        $"en={englishInputPortDetail}; ko={koreanInputPortDetail}; state={firstDependent.InputPortState}; input={firstDependent.InputEntityIds.Single()}");
+                }
+                finally
+                {
+                    templateFilter.State = originalFilterState;
+                    OpenVisionLanguageService.SetLanguage(flowDiagnosticsLanguage, save: false);
+                }
 
                 var beforeNavigationRecipe = string.Join(
                     "|",

@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Security.Cryptography;
 using OpenVisionLab.Vision3D.FeatureExtraction;
 
@@ -111,7 +110,7 @@ public sealed class C3DHeightFieldSnapshot
         ArgumentException.ThrowIfNullOrWhiteSpace(frameId);
         cancellationToken.ThrowIfCancellationRequested();
         var fullPath = Path.GetFullPath(path);
-        var (byteLength, hash, width, height, values) = ParseAndHash(fullPath, cancellationToken);
+        var (byteLength, hash, width, height, values) = C3DHeightFieldBinaryCodec.ParseAndHash(fullPath, cancellationToken);
         return new C3DHeightFieldSnapshot(
             entityId,
             fullPath,
@@ -165,7 +164,7 @@ public sealed class C3DHeightFieldSnapshot
         ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
         cancellationToken.ThrowIfCancellationRequested();
         var fullPath = Path.GetFullPath(path);
-        var (byteLength, hash, width, height, values) = ParseAndHash(fullPath, cancellationToken);
+        var (byteLength, hash, width, height, values) = C3DHeightFieldBinaryCodec.ParseAndHash(fullPath, cancellationToken);
         if (byteLength != expectedByteLength
             || !string.Equals(hash, expectedContentSha256, StringComparison.OrdinalIgnoreCase))
         {
@@ -211,7 +210,7 @@ public sealed class C3DHeightFieldSnapshot
         var values = sourceValues
             .Select(value => double.IsFinite(value) && value != 0.0 ? value : double.NaN)
             .ToArray();
-        var bytes = Encode(width, height, values);
+        var bytes = C3DHeightFieldBinaryCodec.Encode(width, height, values);
         var hash = Convert.ToHexString(SHA256.HashData(bytes));
         return new C3DHeightFieldSnapshot(
             entityId,
@@ -245,7 +244,8 @@ public sealed class C3DHeightFieldSnapshot
             throw new InvalidDataException(
                 "Derived C3D contains a finite zero that the C3D format reserves for missing data; preserving the missing mask requires a controlled error.");
         }
-        var bytes = Encode(Width, Height, copy);
+        var normalized = C3DHeightFieldBinaryCodec.NormalizeDerivedValues(copy);
+        var bytes = C3DHeightFieldBinaryCodec.Encode(Width, Height, normalized);
         var hash = Convert.ToHexString(SHA256.HashData(bytes));
         return new C3DHeightFieldSnapshot(
             outputEntityId,
@@ -259,7 +259,7 @@ public sealed class C3DHeightFieldSnapshot
             Height,
             GridOriginColumn,
             GridOriginRow,
-            copy,
+            normalized,
             provenance,
             true,
             CancellationToken.None);
@@ -302,7 +302,8 @@ public sealed class C3DHeightFieldSnapshot
                 "Cropped C3D contains a finite zero that the C3D format reserves for missing data.");
         }
 
-        var bytes = Encode(output.Columns, output.Rows, copy);
+        var normalized = C3DHeightFieldBinaryCodec.NormalizeDerivedValues(copy);
+        var bytes = C3DHeightFieldBinaryCodec.Encode(output.Columns, output.Rows, normalized);
         var hash = Convert.ToHexString(SHA256.HashData(bytes));
         return new C3DHeightFieldSnapshot(
             outputEntityId,
@@ -316,7 +317,7 @@ public sealed class C3DHeightFieldSnapshot
             output.Rows,
             expectedOriginColumn,
             expectedOriginRow,
-            copy,
+            normalized,
             provenance,
             true,
             CancellationToken.None);
@@ -327,78 +328,6 @@ public sealed class C3DHeightFieldSnapshot
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory);
-        File.WriteAllBytes(fullPath, Encode(Width, Height, values));
-    }
-
-    private static (long ByteLength, string ContentSha256, int Width, int Height, double[] Values)
-        ParseAndHash(string fullPath, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        using var stream = new FileStream(
-            fullPath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize: 64 * 1024,
-            FileOptions.SequentialScan);
-        var byteLength = stream.Length;
-        var layout = C3DSourceTopology.ReadAndValidate(stream);
-        cancellationToken.ThrowIfCancellationRequested();
-        Span<byte> header = stackalloc byte[8];
-        stream.Position = 0;
-        stream.ReadExactly(header);
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        hash.AppendData(header);
-        var values = new double[layout.SampleCount];
-        var buffer = new byte[64 * 1024];
-        var index = 0;
-        while (index < layout.SampleCount)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var remainingBytes = checked((layout.SampleCount - index) * sizeof(float));
-            var bytesToRead = remainingBytes < buffer.Length
-                ? remainingBytes
-                : buffer.Length;
-            stream.ReadExactly(buffer.AsSpan(0, bytesToRead));
-            hash.AppendData(buffer.AsSpan(0, bytesToRead));
-            for (var offset = 0; offset < bytesToRead; offset += sizeof(float))
-            {
-                if ((index & 0x3fff) == 0)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-
-                var bits = BinaryPrimitives.ReadInt32LittleEndian(buffer.AsSpan(offset));
-                var value = BitConverter.Int32BitsToSingle(bits);
-                values[index++] = float.IsFinite(value) && value != 0.0f
-                    ? value
-                    : double.NaN;
-            }
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return (
-            byteLength,
-            Convert.ToHexString(hash.GetHashAndReset()),
-            layout.Width,
-            layout.Height,
-            values);
-    }
-
-    private static byte[] Encode(int width, int height, IReadOnlyList<double> values)
-    {
-        var bytes = new byte[checked(8 + values.Count * sizeof(float))];
-        BinaryPrimitives.WriteInt32LittleEndian(bytes, width);
-        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(4), height);
-        for (var index = 0; index < values.Count; index++)
-        {
-            var value = double.IsFinite(values[index]) ? checked((float)values[index]) : 0.0f;
-            BinaryPrimitives.WriteInt32LittleEndian(
-                bytes.AsSpan(8 + index * sizeof(float)),
-                BitConverter.SingleToInt32Bits(value));
-        }
-
-        return bytes;
+        File.WriteAllBytes(fullPath, C3DHeightFieldBinaryCodec.Encode(Width, Height, values));
     }
 }

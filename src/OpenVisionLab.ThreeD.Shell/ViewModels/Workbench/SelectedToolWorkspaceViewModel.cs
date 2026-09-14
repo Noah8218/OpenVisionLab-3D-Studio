@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Shell;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -15,12 +16,13 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
     private object? parameterDraft;
     private bool isParameterEditorSupported;
     private bool hasPendingParameterChanges;
-    private string parameterStatus = "Select an inspection step.";
-    private string help = "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance.";
-    private string example = "Select an inspection step to see a concrete authoring example.";
-    private string expectedOverlay = "Select an inspection step to see the expected review overlay.";
-    private string commonState = "Empty";
-    private string outputPolicy = "Enabled";
+    private ThreeDLocalization localization = ThreeDLocalization.Shared;
+    private string parameterStatus = ThreeDLocalization.Shared.StepParameterSelectTypedTool;
+    private string help = CreateHelp(null, ThreeDLocalization.Shared);
+    private string example = ThreeDLocalization.Shared.SelectedToolEmptyExample;
+    private string expectedOverlay = ThreeDLocalization.Shared.SelectedToolEmptyExpectedOverlay;
+    private string commonState = ThreeDLocalization.Shared.StateLabel(InspectionStepState.Empty);
+    private string outputPolicy = ThreeDLocalization.Shared.OutputPolicyLabel(true);
 
     internal SelectedToolWorkspaceViewModel(InspectionWorkspaceSelectionSession selection)
     {
@@ -33,9 +35,9 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
     public ToolWorkbenchPipelineStepItem? SelectedStep => selectedStep;
     public bool HasSelectedStep => selectedStep is not null;
     public string Title => selectedStep is null
-        ? "No inspection step selected"
-        : $"Step {selectedStep.Order}: {selectedStep.ToolName}";
-    public string State => selectedStep?.State ?? "No selection";
+        ? localization.NoTaughtStepSelected
+        : string.Format(localization.SelectedPipelineStepTitleFormat, selectedStep.Order, selectedStep.ToolName);
+    public string State => selectedStep?.State ?? localization.NoSelectedToolState;
 
     public ResettableObservableCollection<SelectedToolInputItem> Inputs { get; } = [];
     public ResettableObservableCollection<SelectedToolRegionItem> Regions { get; } = [];
@@ -61,6 +63,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
 
     internal void Refresh(SelectedToolWorkspaceProjection projection)
     {
+        localization = projection.Localization;
         selectedStep = projection.Step;
         parameterDraft = projection.ParameterDraft;
         isParameterEditorSupported = projection.IsParameterEditorSupported;
@@ -115,10 +118,15 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
                 string.Equals(item.Id, entityId, StringComparison.OrdinalIgnoreCase));
             yield return new SelectedToolInputItem(
                 index + 1,
-                requiredContracts.ElementAtOrDefault(index) ?? $"Input {index + 1}",
+                requiredContracts.ElementAtOrDefault(index)
+                    ?? string.Format(projection.Localization.SelectedToolInputFormat, index + 1),
                 entityId,
-                artifact?.DisplayName ?? (entityId.Length == 0 ? "Not assigned" : entityId),
-                entityId.Length == 0 ? "Missing" : artifact?.State ?? "Missing",
+                artifact?.DisplayName ?? (entityId.Length == 0
+                    ? projection.Localization.SelectedToolInputNotAssigned
+                    : entityId),
+                entityId.Length == 0 || artifact is null
+                    ? projection.Localization.RoiMissing
+                    : projection.Localization.SelectedToolOutputStateLabel(artifact.State),
                 artifact?.FrameId ?? string.Empty,
                 artifact?.Unit ?? string.Empty,
                 string.Equals(
@@ -186,7 +194,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
             selection?.Id ?? string.Empty,
             lifecycle,
             FormatLifecycleState(lifecycle, projection.Localization),
-            FormatSelection(selection),
+                FormatSelection(selection, projection.Localization),
             isActive);
     }
 
@@ -214,13 +222,18 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
         var displayedOutput = projection.DisplayedOutputs.FirstOrDefault(item =>
             string.Equals(item.Id, step.OutputEntityId, StringComparison.OrdinalIgnoreCase));
         var evidence = projection.OutputEvidence;
+        var valueLabel = string.IsNullOrWhiteSpace(evidence.ValueLabel)
+            ? projection.Localization.SelectedToolOutputValueLabel
+            : evidence.ValueLabel;
         yield return new SelectedToolOutputItem(
             step.OutputEntityId,
             artifact?.DisplayName ?? step.ToolName,
             artifact?.Contract ?? step.OutputContract,
-            artifact?.State ?? "Declared",
-            artifact?.Detail ?? "No Preview or Published output exists yet.",
-            evidence.ValueLabel,
+            artifact is null
+                ? projection.Localization.FlowPortDeclared
+                : projection.Localization.SelectedToolOutputStateLabel(artifact.State),
+            artifact?.Detail ?? string.Format(projection.Localization.FlowPortDeclaredDetailFormat, step.OutputEntityId),
+            valueLabel,
             evidence.Value,
             evidence.Unit.Length == 0 ? artifact?.Unit ?? string.Empty : evidence.Unit,
             evidence.ResultStatus,
@@ -237,12 +250,19 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string FormatSelection(ToolRecipeSelection? selection) =>
+    private static string FormatSelection(
+        ToolRecipeSelection? selection,
+        ThreeDLocalization localization) =>
         selection?.GridRectangle is { } rectangle
-            ? $"column {rectangle.Column}, row {rectangle.Row}, columns {rectangle.ColumnCount}, rows {rectangle.RowCount}"
+            ? string.Format(
+                localization.SelectedToolGridRectangleFormat,
+                rectangle.Column,
+                rectangle.Row,
+                rectangle.ColumnCount,
+                rectangle.RowCount)
             : selection is null
-                ? "No recipe-owned region."
-                : $"{selection.Kind} | {selection.Id}";
+                ? localization.NoRecipeOwnedRegion
+                : $"{localization.SelectedToolSelectionKindLabel(selection.Kind)} | {selection.Id}";
 
     private static string CreateHelp(
         ToolWorkbenchPipelineStepItem? step,
@@ -286,8 +306,8 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
         if (projection.Step is not { } step)
         {
             return new(
-                "Select an inspection step to see a concrete authoring example.",
-                "Select an inspection step to see the expected review overlay.");
+                projection.Localization.SelectedToolEmptyExample,
+                projection.Localization.SelectedToolEmptyExpectedOverlay);
         }
 
         var localization = projection.Localization;
@@ -444,5 +464,5 @@ internal sealed record SelectedToolOutputEvidence(
     string ResultStatus)
 {
     public static SelectedToolOutputEvidence Empty { get; } =
-        new("Value", "\u2014", string.Empty, string.Empty);
+        new(string.Empty, "\u2014", string.Empty, string.Empty);
 }

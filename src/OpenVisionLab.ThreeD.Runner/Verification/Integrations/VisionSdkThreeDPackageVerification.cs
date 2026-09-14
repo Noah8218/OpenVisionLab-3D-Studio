@@ -28,6 +28,7 @@ internal static class VisionSdkThreeDPackageVerification
             ("connected-region-presence", VerifyConnectedRegionPresence),
             ("connected-region-all-regions-acceptance", VerifyConnectedRegionAllRegionsAcceptance),
             ("connected-region-fill-height", VerifyConnectedRegionFillHeight),
+            ("height-map-array-allocation-and-isolation", VerifyHeightMapArrayAllocationAndIsolation),
             ("thickness-pass-metrics", () => VerifyThicknessPass(thicknessSource)),
             ("thickness-fail-retains-measurement", () => VerifyThicknessFailure(thicknessSource)),
             ("invalid-roi-is-controlled", () => VerifyInvalidRoi(thicknessSource)),
@@ -1210,6 +1211,52 @@ internal static class VisionSdkThreeDPackageVerification
             && range.Decisions.Select(item => item.ObservationIndex)
                 .SequenceEqual([0, 1, 2, 3]);
         return (passed, $"success={result.Success},candidates={result.Candidates.Count},minimum={minimum.Minimum:R}:{minimum.ErrorCount},maximum={maximum.Maximum:R}:{maximum.ErrorCount},range={range.Minimum:R}..{range.Maximum:R}:{range.ErrorCount}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyHeightMapArrayAllocationAndIsolation()
+    {
+        const int side = 1024;
+        var values = new double[side * side];
+        Array.Fill(values, 1.0);
+        var source = CreateSource(side, side, values);
+        var roi = new VisionSdkGridRoi(0, 0, 1, 1);
+        var arrayInput = new VisionSdkThicknessInspectionInput(source, roi, 0.9, 1.1);
+        var listInput = arrayInput with { Source = source with { Values = Array.AsReadOnly(values) } };
+        _ = VisionSdkHeightMapInspection.EvaluateThickness(arrayInput);
+        _ = VisionSdkHeightMapInspection.EvaluateThickness(listInput);
+        var (arrayBytes, arrayResult) = Measure(arrayInput);
+        var (listBytes, listResult) = Measure(listInput);
+
+        // The SDK must retain its defensive copy when the adapter passes an array directly.
+        double[] sdkInput = [1.0, 2.0];
+        var sdkSnapshot = new HeightMap3D(1, 2, 0.0, 0.0, 1.0, 1.0, sdkInput, Unit, FrameId, SourceId);
+        sdkInput[0] = 99.0;
+        var isolated = sdkSnapshot.CopyValues()[0] == 1.0;
+        var payloadBytes = (long)values.Length * sizeof(double);
+        var passed = arrayResult.HasMeasurement
+            && arrayResult.Result.Status == ResultStatus.Pass
+            && Evidence(arrayResult) == Evidence(listResult)
+            && values.All(value => value == 1.0)
+            && isolated
+            && arrayBytes >= payloadBytes
+            && arrayBytes < payloadBytes + 128 * 1024
+            && listBytes - arrayBytes >= payloadBytes;
+        return (passed, $"cells={values.Length},arrayMedianBytes={arrayBytes},listMedianBytes={listBytes},avoidedBytes={listBytes - arrayBytes},sdkSnapshotIsolated={isolated},metricsEqual={Evidence(arrayResult) == Evidence(listResult)}");
+
+        static (long AllocatedBytes, VisionSdkInspectionEvaluation Evaluation) Measure(VisionSdkThicknessInspectionInput input)
+        {
+            var allocations = new long[3];
+            VisionSdkInspectionEvaluation evaluation = null!;
+            for (var index = 0; index < allocations.Length; index++)
+            {
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                evaluation = VisionSdkHeightMapInspection.EvaluateThickness(input);
+                allocations[index] = GC.GetAllocatedBytesForCurrentThread() - before;
+            }
+
+            Array.Sort(allocations);
+            return (allocations[1], evaluation);
+        }
     }
 
     private static (bool Passed, string Evidence) VerifyThicknessPass(VisionSdkHeightMapInput source)
