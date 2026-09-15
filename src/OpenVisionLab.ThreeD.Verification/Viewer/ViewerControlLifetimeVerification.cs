@@ -227,14 +227,63 @@ internal static class ViewerControlLifetimeVerification
                         control.TryApplyCameraState(cameraState),
                         $"yaw={cameraState.YawDegrees:G6}|pitch={cameraState.PitchDegrees:G6}|distance={cameraState.Distance:G6}");
 
+                    var workerCaptureException = CaptureWorkerException(
+                        () => control.CaptureCameraState());
+                    var workerMutationException = CaptureWorkerException(
+                        () => control.TrySetSelectionMode("Point"));
+                    var workerAsyncException = CaptureWorkerException(
+                        () => control.LoadC3DSourceAsync(
+                            "worker-thread.C3D",
+                            CancellationToken.None)
+                            .GetAwaiter()
+                            .GetResult());
+                    var workerEventException = CaptureWorkerException(
+                        () => control.HostStateChanged += (_, _) => { });
+                    var workerExceptions = new[]
+                    {
+                        workerCaptureException,
+                        workerMutationException,
+                        workerAsyncException,
+                        workerEventException
+                    };
+                    var workerErrorContract = workerExceptions.All(exception =>
+                        exception is InvalidOperationException
+                        && exception.Message.Contains(
+                            "must be called on the Viewer Dispatcher thread",
+                            StringComparison.Ordinal));
+                    Check(
+                        "Host API worker calls fail with one Dispatcher contract",
+                        workerErrorContract,
+                        string.Join(
+                            "|",
+                            workerExceptions.Select(exception =>
+                                $"{exception?.GetType().Name ?? "none"}:{exception?.Message ?? "none"}")));
+
+                    var versionCompatibility = ViewerHostContract.IsCompatibleVersion(
+                            "1.1",
+                            control.HostApiVersion)
+                        && ViewerHostContract.IsCompatibleVersion("1.1", "1.2")
+                        && !ViewerHostContract.IsCompatibleVersion("1.1", "1.0")
+                        && !ViewerHostContract.IsCompatibleVersion("1.1", "2.0");
+                    Check(
+                        "Host API version policy accepts additive minor versions and rejects mismatches",
+                        versionCompatibility,
+                        $"current={control.HostApiVersion}|compatibleMinor={ViewerHostContract.IsCompatibleVersion("1.1", "1.2")}|older={ViewerHostContract.IsCompatibleVersion("1.1", "1.0")}|major={ViewerHostContract.IsCompatibleVersion("1.1", "2.0")}");
+
                     var hostStateNotificationCount = 0;
+                    var eventRaisedOnDispatcher = true;
                     ViewerHostStateChangedEventArgs? latestHostStateNotification = null;
                     EventHandler<ViewerHostStateChangedEventArgs> hostStateChanged = (_, args) =>
                     {
                         hostStateNotificationCount++;
+                        eventRaisedOnDispatcher &= control.Dispatcher.CheckAccess();
                         latestHostStateNotification = args;
                     };
+                    var postDisposeHostStateNotificationCount = 0;
+                    EventHandler<ViewerHostStateChangedEventArgs> postDisposeHostStateChanged = (_, _) =>
+                        postDisposeHostStateNotificationCount++;
                     control.HostStateChanged += hostStateChanged;
+                    control.HostStateChanged += postDisposeHostStateChanged;
                     var selectionHostUpdateSucceeded = control.TrySetSelectionMode("Box ROI");
                     Check(
                         "HostState dependency property follows selection notification",
@@ -242,9 +291,10 @@ internal static class ViewerControlLifetimeVerification
                         && control.HostState.Selection.SelectionMode == "Box ROI"
                         && control.HostState.Selection.Summary == "Box ROI: viewer state only"
                         && hostStateNotificationCount > 0
+                        && eventRaisedOnDispatcher
                         && latestHostStateNotification is not null
                         && latestHostStateNotification.State == control.HostState,
-                        $"selection={control.HostState.Selection.SelectionMode}|summary={control.HostState.Selection.Summary}|notifications={hostStateNotificationCount}|eventMatchesProperty={latestHostStateNotification?.State == control.HostState}");
+                        $"selection={control.HostState.Selection.SelectionMode}|summary={control.HostState.Selection.Summary}|notifications={hostStateNotificationCount}|eventOnDispatcher={eventRaisedOnDispatcher}|eventMatchesProperty={latestHostStateNotification?.State == control.HostState}");
                     control.HostStateChanged -= hostStateChanged;
 
                     var disposable = (IDisposable)control;
@@ -257,6 +307,14 @@ internal static class ViewerControlLifetimeVerification
                         "Dispose releases control-owned managed source/render data",
                         !control.HasManagedDataReferences,
                         $"hasManagedData={control.HasManagedDataReferences}");
+
+                    var postDisposeNotificationCountBeforeMutation = postDisposeHostStateNotificationCount;
+                    control.ViewModel.SelectedSelectionMode = "Point";
+                    Check(
+                        "HostStateChanged is suppressed after Dispose",
+                        postDisposeHostStateNotificationCount == postDisposeNotificationCountBeforeMutation,
+                        $"before={postDisposeNotificationCountBeforeMutation}|after={postDisposeHostStateNotificationCount}");
+                    control.HostStateChanged -= postDisposeHostStateChanged;
 
                     var repeatedDisposeSucceeded = true;
                     try
@@ -490,5 +548,18 @@ internal static class ViewerControlLifetimeVerification
         File.WriteAllLines(fullReportPath, lines);
         summary = $"ViewerControlLifetime|pass={succeeded}|checks={passed}/{total}|report={fullReportPath}";
         return succeeded;
+    }
+
+    private static Exception? CaptureWorkerException(Action action)
+    {
+        try
+        {
+            Task.Run(action).GetAwaiter().GetResult();
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
     }
 }

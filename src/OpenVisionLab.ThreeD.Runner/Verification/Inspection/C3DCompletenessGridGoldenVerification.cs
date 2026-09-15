@@ -377,7 +377,7 @@ internal static class C3DCompletenessGridGoldenVerification
                 $"sameInstance={ReferenceEquals(policyRunSteps[0].CompletenessGrid, policyGraph.Steps[0].CompletenessGrid)};sha={policyRunSteps[0].CompletenessGrid?.ContentSha256}"),
             Check(
                 "run-record-preserves-exact-typed-cells",
-                exportedRecord?.SchemaVersion == "1.9"
+                exportedRecord?.SchemaVersion == InspectionRunRecord.CurrentSchemaVersion
                 && exportedCompleteness?.ContentSha256
                     == policyOutput?.ContentSha256
                 && exportedCompleteness?.Cells.SequenceEqual(

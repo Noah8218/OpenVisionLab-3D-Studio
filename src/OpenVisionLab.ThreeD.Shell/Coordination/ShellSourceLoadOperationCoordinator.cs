@@ -12,7 +12,7 @@ internal sealed class ShellSourceLoadOperationCoordinator : IDisposable
     private long nextGeneration;
     private bool disposed;
 
-    public ShellSourceLoadOperation Begin()
+    public ShellSourceLoadOperation Begin(CancellationToken externalCancellationToken = default)
     {
         ShellSourceLoadOperation? previous;
         ShellSourceLoadOperation operation;
@@ -24,7 +24,7 @@ internal sealed class ShellSourceLoadOperationCoordinator : IDisposable
             }
 
             previous = current;
-            operation = new(this, unchecked(++nextGeneration));
+            operation = new(this, unchecked(++nextGeneration), externalCancellationToken);
             current = operation;
         }
 
@@ -95,11 +95,14 @@ internal sealed class ShellSourceLoadOperation : IDisposable
 
     internal ShellSourceLoadOperation(
         ShellSourceLoadOperationCoordinator owner,
-        long generation)
+        long generation,
+        CancellationToken externalCancellationToken)
     {
         this.owner = owner;
         Generation = generation;
-        var source = new CancellationTokenSource();
+        var source = externalCancellationToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(externalCancellationToken)
+            : new CancellationTokenSource();
         cancellation = source;
         token = source.Token;
     }

@@ -17,7 +17,16 @@ public sealed record ToolRecipeOrderedGraphStepResult(
     C3DCompletenessGridMetricOutput? CompletenessGrid = null,
     string? LevelFrameContentSha256 = null,
     string? LevelFrameQualityContentSha256 = null,
-    string? FrameChainContentSha256 = null);
+    string? FrameChainContentSha256 = null,
+    string? OutputSemanticFingerprint = null)
+{
+    public ToolRecipeSemanticIdentityEvidence? SemanticIdentityEvidence { get; init; }
+}
+
+public sealed record ToolRecipeSemanticIdentityEvidence(
+    string AlgorithmDefinitionVersion,
+    string SdkPackageId,
+    string SdkPackageVersion);
 
 public sealed record ToolRecipeOrderedGraphExecutionResult(
     ResultStatus Status,
@@ -116,8 +125,15 @@ public static class ToolRecipeOrderedGraphExecution
                 identity.GridWidth,
                 identity.GridHeight);
             sourceQuality = existingSourceQuality is null
-                ? C3DSourceQualityAnalyzer.Create(snapshot)
-                : RequireCompatibleSourceQuality(existingSourceQuality, snapshot);
+                ? C3DSourceQualityAnalyzer.Create(
+                    snapshot,
+                    measurementEvidence: document.Source.MeasurementEvidence,
+                    sourceSensorId: document.Source.SensorId)
+                : RequireCompatibleSourceQuality(
+                    existingSourceQuality,
+                    snapshot,
+                    document.Source.MeasurementEvidence,
+                    document.Source.SensorId);
             var rebound = RebindRawSource(document, path, snapshot);
             var artifacts = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
@@ -154,7 +170,21 @@ public static class ToolRecipeOrderedGraphExecution
                         : null,
                     execution.LevelFrame?.ContentSha256,
                     execution.LevelFrameQuality?.ContentSha256,
-                    execution.FrameChain?.ContentSha256));
+                    execution.FrameChain?.ContentSha256,
+                    execution.Output is ToolRecipeHeightMeasurementOutput measurementOutput
+                        ? measurementOutput.SemanticFingerprint
+                        : null)
+                {
+                    SemanticIdentityEvidence = execution.Output is ToolRecipeHeightMeasurementOutput
+                    {
+                        SemanticFingerprint: not null
+                    }
+                        ? new ToolRecipeSemanticIdentityEvidence(
+                            ToolRecipeHeightMeasurementExecution.SemanticFingerprintAlgorithmVersion,
+                            VisionSdkHeightMapInspection.PackageId,
+                            VisionSdkHeightMapInspection.PackageVersion)
+                        : null
+                });
 
                 if (!step.OutputEnabled)
                 {
@@ -258,8 +288,22 @@ public static class ToolRecipeOrderedGraphExecution
 
     private static SourceQualityReport RequireCompatibleSourceQuality(
         SourceQualityReport report,
-        C3DHeightFieldSnapshot snapshot)
+        C3DHeightFieldSnapshot snapshot,
+        HeightMeasurementEvidence? measurementEvidence,
+        string? sourceSensorId)
     {
+        var normalizedMeasurementEvidence = HeightMeasurementEvidence.Normalize(measurementEvidence);
+        if (!normalizedMeasurementEvidence.TryValidate(
+                snapshot.Unit,
+                snapshot.FrameId,
+                sourceSensorId,
+                DateTimeOffset.UtcNow,
+                out _))
+        {
+            throw new InvalidDataException(
+                "Source measurement evidence is invalid or expired for the exact ordered-run source.");
+        }
+
         if (!report.TryValidateGridDiagnostics(out _)
             || !string.Equals(
                 report.Source.EntityId,
@@ -284,7 +328,9 @@ public static class ToolRecipeOrderedGraphExecution
             || !string.Equals(
                 report.Coordinates.FrameId,
                 snapshot.FrameId,
-                StringComparison.Ordinal))
+                StringComparison.Ordinal)
+            || report.EffectiveMeasurementEvidence
+                != normalizedMeasurementEvidence)
         {
             throw new InvalidDataException(
                 "Existing Source Quality does not match the exact ordered-run source identity, grid, unit, or frame.");

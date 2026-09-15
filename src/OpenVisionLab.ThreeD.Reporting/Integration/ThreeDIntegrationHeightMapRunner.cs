@@ -276,10 +276,13 @@ public static class ThreeDIntegrationHeightMapRunner
             sourceArtifact.RelativePath,
             sourceArtifact.Sha256,
             sourceArtifact.ByteLength,
-            context.Unit);
+            context.Unit)
+        {
+            FrameId = context.FrameId
+        };
 
         return new InspectionRunRecord(
-            "1.9",
+            InspectionRunRecord.CurrentSchemaVersion,
             runId,
             DateTimeOffset.UtcNow,
             new InspectionRunRecipe(

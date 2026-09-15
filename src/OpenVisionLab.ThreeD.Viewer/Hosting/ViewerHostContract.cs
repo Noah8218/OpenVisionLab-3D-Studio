@@ -10,6 +10,23 @@ public static class ViewerHostContract
         .GetCustomAttributes<AssemblyMetadataAttribute>()
         .FirstOrDefault(attribute => attribute.Key == "OpenVisionLabViewerHostApiVersion")
         ?.Value ?? "unknown";
+
+    /// <summary>
+    /// Checks the additive Host API compatibility policy. A provider may add
+    /// members within the same major version, while an older provider or a
+    /// changed major version is rejected.
+    /// </summary>
+    public static bool IsCompatibleVersion(string? requiredApiVersion, string? availableApiVersion)
+    {
+        if (!Version.TryParse(requiredApiVersion, out var required)
+            || !Version.TryParse(availableApiVersion, out var available))
+        {
+            return false;
+        }
+
+        return required.Major == available.Major
+            && available.Minor >= required.Minor;
+    }
 }
 
 /// <summary>
@@ -415,6 +432,21 @@ public sealed class ViewerHostStateChangedEventArgs(
     public string? PropertyName { get; } = propertyName;
 }
 
+/// <remarks>
+/// Except for <see cref="HostApiVersion"/> and the concrete control's
+/// <c>Dispose()</c>, members are called on the Viewer control's WPF
+/// <see cref="System.Windows.Threading.Dispatcher"/> thread. A call from a
+/// different thread is rejected with <see cref="InvalidOperationException"/>.
+/// <see cref="HostStateChanged"/> is raised on that Dispatcher thread and
+/// consumers must unsubscribe before closing the Dispatcher. Asynchronous
+/// source-load tasks report completion only after the current operation has
+/// been applied; external cancellation propagates as
+/// <see cref="OperationCanceledException"/>, while a superseded or disposed
+/// operation does not apply stale state. The concrete
+/// <see cref="OpenVisionLab.ThreeD.Viewer.OpenVisionThreeDViewerControl"/>
+/// remains the lifetime and Dispose owner; the interface intentionally does
+/// not inherit <see cref="IDisposable"/>.
+/// </remarks>
 public interface IOpenVisionThreeDViewerHost
 {
     string HostApiVersion { get; }

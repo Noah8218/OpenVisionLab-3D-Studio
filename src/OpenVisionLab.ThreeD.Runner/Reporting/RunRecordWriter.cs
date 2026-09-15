@@ -88,16 +88,26 @@ internal static class RunRecordWriter
             ToStepResult(
                 item.RecipeIndex,
                 document.Steps[item.RecipeIndex],
-                item.Output.Result)));
+                item.Output.Result,
+                semanticFingerprint: item.Output.SemanticFingerprint,
+                algorithmEvidence: item.Output.SemanticFingerprint is null
+                    ? null
+                    : new InspectionRunAlgorithmEvidence(
+                        ToolRecipeHeightMeasurementExecution.SemanticFingerprintAlgorithmVersion,
+                        VisionSdkHeightMapInspection.PackageId,
+                        VisionSdkHeightMapInspection.PackageVersion))));
 
         var runSource = new InspectionRunSource(
             document.Source.Id,
             Path.GetFullPath(sourcePath),
             sourceHash,
             new FileInfo(sourcePath).Length,
-            document.Source.Unit);
+            document.Source.Unit)
+        {
+            FrameId = document.Source.FrameId
+        };
         var record = new InspectionRunRecord(
-            "1.9",
+            InspectionRunRecord.CurrentSchemaVersion,
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
@@ -171,7 +181,10 @@ internal static class RunRecordWriter
             source.Path,
             source.RootSourceSha256,
             source.ByteLength,
-            scene.Unit);
+            scene.Unit)
+        {
+            FrameId = scene.SourceQuality.Coordinates.FrameId
+        };
         var status = assessment?.Decision == SurfaceMatchDecision.Pass
             ? ResultStatus.Pass
             : ResultStatus.Fail;
@@ -180,7 +193,7 @@ internal static class RunRecordWriter
             : $"Surface/edge assessment: {assessment.Decision} ({assessment.Reason}).";
         var timing = CreateSurfaceMatchTiming(execution, assessment, runtime);
         var record = new InspectionRunRecord(
-            "1.9",
+            InspectionRunRecord.CurrentSchemaVersion,
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe(
@@ -216,7 +229,9 @@ internal static class RunRecordWriter
         int recipeIndex,
         ToolRecipeStep step,
         ToolResult result,
-        string? outputContentSha256 = null) =>
+        string? outputContentSha256 = null,
+        string? semanticFingerprint = null,
+        InspectionRunAlgorithmEvidence? algorithmEvidence = null) =>
         new InspectionRunStepResult(
             recipeIndex,
             step.Id,
@@ -231,6 +246,8 @@ internal static class RunRecordWriter
             ToOverlays(result.Overlays))
         {
             OutputContentSha256 = outputContentSha256,
+            SemanticFingerprint = semanticFingerprint,
+            AlgorithmEvidence = algorithmEvidence,
             Timing = CreateToolTiming(result.Elapsed.TotalMilliseconds)
         };
 

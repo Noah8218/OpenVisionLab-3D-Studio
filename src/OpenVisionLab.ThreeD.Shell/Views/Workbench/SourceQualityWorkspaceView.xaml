@@ -648,7 +648,7 @@
                     </ItemsControl>
 
                     <Expander Margin="0,8,6,0"
-                              IsExpanded="False"
+                              IsExpanded="True"
                               Header="{views:ThreeDText Key=ThreeD.SourceQuality.Identity, Korean='식별·좌표·출처', English='Identity, coordinates &amp; provenance'}">
                         <Border Margin="0,5,0,0"
                                 Padding="9"
@@ -673,6 +673,27 @@
                                            FontSize="8.5"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding CoordinateConvention}" />
+                                <TextBlock Margin="0,7,0,0"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.SourceQuality.MeasurementState, Korean='높이 단위 상태', English='Height unit state'}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           AutomationProperties.AutomationId="SourceQualityMeasurementState"
+                                           Text="{Binding MeasurementState}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           AutomationProperties.AutomationId="SourceQualityMeasurementEvidence"
+                                           Text="{Binding MeasurementEvidenceSummary}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,3,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           AutomationProperties.AutomationId="SourceQualityMeasurementCalibration"
+                                           Text="{Binding MeasurementCalibrationSummary}"
+                                           TextWrapping="Wrap" />
                                 <TextBlock Margin="0,5,0,0"
                                            FontSize="8.5"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"

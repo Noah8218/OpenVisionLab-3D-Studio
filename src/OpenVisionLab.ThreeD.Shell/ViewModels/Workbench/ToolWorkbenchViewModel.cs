@@ -147,6 +147,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             "raw-height",
             "frame.c3d-grid-index",
             string.Empty);
+        Source.MeasurementEvidence = HeightMeasurementEvidence.RawHeight();
         recipePartEventCoordinator = new ToolWorkbenchRecipePartEventCoordinator(
             Source,
             OnRecipePartChanged);
@@ -932,6 +933,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             }
 
             CancelThicknessRepeatGridForSelectionChange();
+            MarkMeasurementPreviewStaleIfNeeded();
             var started = Stopwatch.GetTimestamp();
             selectedPipelineStep = value;
             OnPropertyChanged();
@@ -1676,7 +1678,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         try
         {
             var fullPath = Path.GetFullPath(path);
-            ToolRecipeDocumentStore.Save(fullPath, CreateDocument());
+            ToolRecipeDocumentStore.Save(fullPath, CreateDocument(fullPath));
             SaveValidationSetDefinition(fullPath);
             SaveValidationThresholdCorrectionEvidence(fullPath);
             RecipePath = fullPath;
@@ -1684,6 +1686,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             domainMaskExecutionOwner.PersistPublishedArtifactIfPossible();
             editableRegionExecutionOwner.PersistPublishedArtifactIfPossible();
             levelSurfaceExecutionOwner.PersistPublishedArtifactIfPossible();
+            roiCropExecutionOwner.PersistPublishedArtifactIfPossible();
             SetDirty(false);
             RecordRecentRecipe(fullPath);
             message = $"Teaching recipe saved: {Path.GetFileName(fullPath)}";
@@ -1724,6 +1727,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             domainMaskExecutionOwner.RestorePublishedArtifact();
             editableRegionExecutionOwner.RestorePublishedArtifact();
             levelSurfaceExecutionOwner.RestorePublishedArtifact();
+            roiCropExecutionOwner.RestorePublishedArtifact();
             LoadValidationSetDefinition(fullPath, document);
             LoadValidationThresholdCorrectionEvidence(fullPath, document);
             SetDirty(false);
@@ -2585,6 +2589,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             Source.Unit = document.Source.Unit;
             Source.FrameId = document.Source.FrameId;
             Source.Path = document.Source.Path;
+            Source.MeasurementEvidence = document.Source.MeasurementEvidence;
+            Source.SensorId = document.Source.SensorId;
             SourceSession.SetSourceAcquisitionProvenance(document.Source.AcquisitionProvenance);
 
             referenceCatalogOwner.ReplaceAll(document.References);
@@ -2636,54 +2642,160 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         OnPropertyChanged(nameof(RecipeSchemaVersion));
     }
 
-    private ToolRecipeDocument CreateDocument() => new(
-        RecipeSession.SchemaVersion,
-        RecipeName.Trim(),
-        new ToolRecipeSource(
-            Source.Id.Trim(),
-            Source.Name.Trim(),
-            Source.Format.Trim(),
-            Source.Unit.Trim(),
-            Source.FrameId.Trim(),
-            Source.Path.Trim(),
-            SourceSession.SourceBinding is null ? null : new FileInfo(Source.Path.Trim()).Length,
-            SourceSession.SourceBinding?.ContentSha256,
-            SourceSession.SourceBinding?.GridWidth,
-            SourceSession.SourceBinding?.GridHeight,
-            SourceSession.SourceAcquisitionProvenance),
-        referenceCatalogOwner.CreateSnapshot(),
-        PipelineSteps.Select(step => new ToolRecipeStep(
-            step.Id.Trim(),
-            step.ToolId,
-            step.ToolName,
-            step.MinimumInputCount,
-            step.InputEntityIds.ToArray(),
-            step.OutputEntityId.Trim(),
-            step.Parameters.Select(parameter => new ToolRecipeParameter(parameter.Name, parameter.Value)).ToArray(),
-            step.DualRoiRouting,
-            step.OutputEnabled)).ToArray(),
-        string.Equals(RecipeSession.SchemaVersion, ToolRecipeDocument.LegacySchemaVersion, StringComparison.Ordinal)
-            && Selections.Count == 0
-                ? null
-                : Selections.ToArray());
+    private ToolRecipeDocument CreateDocument() => CreateDocument(documentPath: null);
+
+    private ToolRecipeDocument CreateDocument(string? documentPath)
+    {
+        var currentSourcePath = Source.Path.Trim();
+        var persistedSourcePath = string.IsNullOrWhiteSpace(documentPath)
+            ? currentSourcePath
+            : PersistSourcePath(documentPath, currentSourcePath);
+        var currentSourceByteLength = ResolveCurrentSourceByteLength(currentSourcePath);
+        return new ToolRecipeDocument(
+            RecipeSession.SchemaVersion,
+            RecipeName.Trim(),
+            new ToolRecipeSource(
+                Source.Id.Trim(),
+                Source.Name.Trim(),
+                Source.Format.Trim(),
+                Source.Unit.Trim(),
+                Source.FrameId.Trim(),
+                persistedSourcePath,
+                currentSourceByteLength,
+                SourceSession.SourceBinding?.ContentSha256,
+                SourceSession.SourceBinding?.GridWidth,
+                SourceSession.SourceBinding?.GridHeight,
+                SourceSession.SourceAcquisitionProvenance,
+                Source.MeasurementEvidence,
+                Source.SensorId),
+            referenceCatalogOwner.CreateSnapshot(),
+            PipelineSteps.Select(step => new ToolRecipeStep(
+                step.Id.Trim(),
+                step.ToolId,
+                step.ToolName,
+                step.MinimumInputCount,
+                step.InputEntityIds.ToArray(),
+                step.OutputEntityId.Trim(),
+                step.Parameters.Select(parameter => new ToolRecipeParameter(parameter.Name, parameter.Value)).ToArray(),
+                step.DualRoiRouting,
+                step.OutputEnabled)).ToArray(),
+            string.Equals(RecipeSession.SchemaVersion, ToolRecipeDocument.LegacySchemaVersion, StringComparison.Ordinal)
+                && Selections.Count == 0
+                    ? null
+                    : Selections.ToArray());
+    }
+
+    private long? ResolveCurrentSourceByteLength(string currentSourcePath)
+    {
+        if (SourceSession.SourceBinding is null)
+        {
+            return null;
+        }
+
+        if (File.Exists(currentSourcePath))
+        {
+            try
+            {
+                return new FileInfo(currentSourcePath).Length;
+            }
+            catch (Exception exception) when (exception is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or NotSupportedException)
+            {
+                // Preserve the last opened identity when the source disappears
+                // or becomes temporarily inaccessible during a draft refresh.
+            }
+        }
+
+        return SourceSession.OpenedSourceIdentity?.ByteLength;
+    }
 
     private static ToolRecipeDocument ResolveRelativeSourcePath(ToolRecipeDocument document, string documentPath)
     {
         if (string.IsNullOrWhiteSpace(document.Source.Path)
-            || Path.IsPathFullyQualified(document.Source.Path))
+            || !Path.IsPathFullyQualified(document.Source.Path))
+        {
+            if (string.IsNullOrWhiteSpace(document.Source.Path))
+            {
+                return document;
+            }
+
+            var relativeDocumentDirectory = Path.GetDirectoryName(documentPath)
+                ?? Environment.CurrentDirectory;
+            return document with
+            {
+                Source = document.Source with
+                {
+                    Path = Path.GetFullPath(Path.Combine(relativeDocumentDirectory, document.Source.Path))
+                }
+            };
+        }
+
+        var sourcePath = Path.GetFullPath(document.Source.Path);
+        if (File.Exists(sourcePath))
         {
             return document;
         }
 
         var documentDirectory = Path.GetDirectoryName(documentPath)
             ?? Environment.CurrentDirectory;
-        return document with
+        var movedSourcePath = Path.Combine(documentDirectory, Path.GetFileName(sourcePath));
+        return HasRecordedSourceIdentity(movedSourcePath, document.Source)
+            ? document with { Source = document.Source with { Path = Path.GetFullPath(movedSourcePath) } }
+            : document;
+    }
+
+    private static string PersistSourcePath(string documentPath, string sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
         {
-            Source = document.Source with
+            return sourcePath;
+        }
+
+        var sourceFullPath = Path.GetFullPath(sourcePath);
+        var documentDirectory = Path.GetDirectoryName(Path.GetFullPath(documentPath))
+            ?? Environment.CurrentDirectory;
+        var relativePath = Path.GetRelativePath(documentDirectory, sourceFullPath);
+        return IsContainedPath(relativePath)
+            ? relativePath.Replace(Path.DirectorySeparatorChar, '/')
+            : sourceFullPath;
+    }
+
+    private static bool IsContainedPath(string relativePath) =>
+        !Path.IsPathRooted(relativePath)
+        && !string.Equals(relativePath, "..", StringComparison.Ordinal)
+        && !relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+        && !relativePath.StartsWith($"..{Path.AltDirectorySeparatorChar}", StringComparison.Ordinal);
+
+    private static bool HasRecordedSourceIdentity(string path, ToolRecipeSource source)
+    {
+        if (!File.Exists(path)
+            || source.ByteLength is not > 0
+            || string.IsNullOrWhiteSpace(source.ContentSha256))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (new FileInfo(path).Length != source.ByteLength)
             {
-                Path = Path.GetFullPath(Path.Combine(documentDirectory, document.Source.Path))
+                return false;
             }
-        };
+
+            var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(path);
+            return string.Equals(binding.ContentSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or InvalidDataException
+            or ArgumentException
+            or NotSupportedException
+            or OverflowException)
+        {
+            return false;
+        }
     }
 
     private void RefreshRecipeState()

@@ -30,7 +30,8 @@ public sealed record ToolRecipeHeightMeasurementOutput(
     string ContentSha256,
     ToolResult Result,
     string EvidenceSummary,
-    C3DCompletenessGridMetricOutput? CompletenessGrid = null);
+    C3DCompletenessGridMetricOutput? CompletenessGrid = null,
+    string? SemanticFingerprint = null);
 
 public sealed record ToolRecipeHeightMeasurementEvaluation(
     ToolResult Result,
@@ -44,6 +45,12 @@ public sealed record ToolRecipeHeightMeasurementEvaluation(
 /// </summary>
 public static class ToolRecipeHeightMeasurementExecution
 {
+    /// <summary>
+    /// Version of the semantic identity contract. Increment it when the
+    /// measurement definition changes in a way that must invalidate reuse.
+    /// </summary>
+    public const string SemanticFingerprintAlgorithmVersion = "height-measurement-execution-v1";
+
     private static readonly string[] ThicknessParameterNames =
         ["MinimumThickness", "MaximumThickness", "MinimumValidSampleCount"];
     private static readonly string[] WarpageParameterNames =
@@ -295,18 +302,32 @@ public static class ToolRecipeHeightMeasurementExecution
         }
         else if (string.Equals(step.ToolId, "volume", StringComparison.Ordinal))
         {
-            var referenceSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.ReferenceRoi!, "Volume");
-            var measurementSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.MeasurementRoi!, "Volume");
-            var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
-                prepared.InputEntityId,
-                referenceSamples,
-                measurementSamples,
-                prepared.ReferenceGridProfile!.PitchU * prepared.ReferenceGridProfile.PitchV,
-                ParseFinite(Parameter(step, "ExpectedNetVolume"), "ExpectedNetVolume"),
-                ParseNonNegative(Parameter(step, "VolumeTolerance"), "VolumeTolerance"),
-                $"{prepared.Unit}^3"));
-            result = evaluation.Result;
-            evidence = $"net {evaluation.NetVolume:G6} | above {evaluation.AboveVolume:G6} | below {evaluation.BelowVolume:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0}";
+            string? referenceError = null;
+            string? measurementError = null;
+            var referenceValid = TryEnsureFiniteVolumeRoi(prepared, prepared.ReferenceRoi!, "Reference", out referenceError);
+            var measurementValid = referenceValid
+                && TryEnsureFiniteVolumeRoi(prepared, prepared.MeasurementRoi!, "Measurement", out measurementError);
+            if (!referenceValid || !measurementValid)
+            {
+                var errorMessage = referenceError ?? measurementError;
+                result = new ToolResult("Volume", ResultStatus.Error, errorMessage!, TimeSpan.Zero, [], []);
+                evidence = errorMessage!;
+            }
+            else
+            {
+                var referenceSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.ReferenceRoi!, "Volume");
+                var measurementSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.MeasurementRoi!, "Volume");
+                var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
+                    prepared.InputEntityId,
+                    referenceSamples,
+                    measurementSamples,
+                    prepared.ReferenceGridProfile!.PitchU * prepared.ReferenceGridProfile.PitchV,
+                    ParseFinite(Parameter(step, "ExpectedNetVolume"), "ExpectedNetVolume"),
+                    ParseNonNegative(Parameter(step, "VolumeTolerance"), "VolumeTolerance"),
+                    $"{prepared.Unit}^3"));
+                result = evaluation.Result;
+                evidence = $"net {evaluation.NetVolume:G6} | above {evaluation.AboveVolume:G6} | below {evaluation.BelowVolume:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0}";
+            }
         }
         else if (string.Equals(step.ToolId, "cross-section-dimensions", StringComparison.Ordinal))
         {
@@ -378,6 +399,12 @@ public static class ToolRecipeHeightMeasurementExecution
 
         var hash = completenessGrid?.ContentSha256
             ?? CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
+        var semanticFingerprint = CalculateSemanticFingerprint(
+            step,
+            prepared.InputContentSha256,
+            prepared.Unit,
+            prepared.FrameId,
+            prepared.Selections);
         var output = new ToolRecipeHeightMeasurementOutput(
             step.OutputEntityId,
             document.Source.Id,
@@ -388,8 +415,46 @@ public static class ToolRecipeHeightMeasurementExecution
             hash,
             result,
             evidence,
-            completenessGrid);
+            completenessGrid,
+            semanticFingerprint);
         return new ToolRecipeHeightMeasurementEvaluation(result, output);
+    }
+
+    /// <summary>
+    /// Creates the opt-in semantic identity for a measurement execution.
+    /// This is intentionally separate from <see cref="ToolRecipeHeightMeasurementOutput.ContentSha256"/>,
+    /// whose existing source-content and ordered-graph correlation contract is preserved.
+    /// </summary>
+    public static string CalculateSemanticFingerprint(
+        ToolRecipeStep step,
+        string inputContentSha256,
+        string unit,
+        string frameId,
+        IReadOnlyList<ToolRecipeSelection> selections,
+        string algorithmDefinitionVersion = SemanticFingerprintAlgorithmVersion,
+        string sdkVersion = VisionSdkHeightMapInspection.PackageVersion)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        ArgumentNullException.ThrowIfNull(selections);
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputContentSha256);
+        ArgumentException.ThrowIfNullOrWhiteSpace(unit);
+        ArgumentException.ThrowIfNullOrWhiteSpace(frameId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(algorithmDefinitionVersion);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sdkVersion);
+
+        var canonical = new StringBuilder()
+            .Append("contract=").Append(SemanticFingerprintAlgorithmVersion)
+            .Append("|algorithm=").Append(algorithmDefinitionVersion)
+            .Append("|sdk=").Append(VisionSdkHeightMapInspection.PackageId)
+            .Append('@').Append(sdkVersion)
+            .Append("|tool=").Append(step.ToolId)
+            .Append("|toolName=").Append(step.ToolName)
+            .Append("|output=").Append(step.OutputEntityId)
+            .Append("|input=").Append(inputContentSha256.ToUpperInvariant())
+            .Append("|unit=").Append(unit)
+            .Append("|frame=").Append(frameId);
+        AppendSelectionsAndParameters(canonical, step, selections);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString())));
     }
 
     public static bool TryPrepare(
@@ -869,6 +934,25 @@ public static class ToolRecipeHeightMeasurementExecution
     private static C3DGridRoi ToRoi(ToolRecipeGridRectangle rectangle) =>
         new(rectangle.Row, rectangle.Column, rectangle.RowCount, rectangle.ColumnCount);
 
+    private static bool TryEnsureFiniteVolumeRoi(PreparedHeightMeasurement prepared, C3DGridRoi roi, string name, out string? error)
+    {
+        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+        {
+            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
+            {
+                var value = prepared.Values[row * prepared.Width + column];
+                if (!double.IsFinite(value))
+                {
+                    error = $"Volume {name} ROI contains a missing or non-finite height cell.";
+                    return false;
+                }
+            }
+        }
+
+        error = null;
+        return true;
+    }
+
     private static IReadOnlyList<HeightFieldPlaneSample> CreatePlaneSamples(PreparedHeightMeasurement prepared, C3DGridRoi roi)
     {
         var profile = prepared.ReferenceGridProfile
@@ -1046,6 +1130,15 @@ public static class ToolRecipeHeightMeasurementExecution
         var canonical = new StringBuilder()
             .Append(step.ToolId).Append('|').Append(step.OutputEntityId).Append('|')
             .Append(inputHash.ToUpperInvariant());
+        AppendSelectionsAndParameters(canonical, step, selections);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString())));
+    }
+
+    private static void AppendSelectionsAndParameters(
+        StringBuilder canonical,
+        ToolRecipeStep step,
+        IReadOnlyList<ToolRecipeSelection> selections)
+    {
         foreach (var selection in selections)
         {
             canonical.Append('|').Append(selection.Id).Append('|').Append(selection.Kind);
@@ -1063,6 +1156,5 @@ public static class ToolRecipeHeightMeasurementExecution
         {
             canonical.Append('|').Append(parameter.Name).Append('=').Append(parameter.Value);
         }
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString())));
     }
 }

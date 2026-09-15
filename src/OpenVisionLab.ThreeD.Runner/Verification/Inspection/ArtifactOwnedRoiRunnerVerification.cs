@@ -124,6 +124,35 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 && Approximately(directVolume.Result.Metrics.Single(metric => metric.Name == "Signed net volume").Value, 0d)
                 && directVolume.Result.Metrics.Single(metric => metric.Name == "Signed net volume").Unit == "fixture-unit^3",
                 directVolume.Output is null ? directVolume.Result.Message : directVolume.Output.EvidenceSummary));
+            var holeCloud = CreateCloud(Path.Combine(root, "hole-fixture.c3d"),
+            [
+                new C3DTransformedPoint(0, 0, 10, 0.25, 0.25, 10),
+                new C3DTransformedPoint(0, 1, 12, 1.25, 0.25, 12),
+                new C3DTransformedPoint(1, 0, 14, 0.25, 1.25, 14)
+            ]);
+            var holeProfile = CreateProfile(holeCloud, 0.75);
+            var holeBaseDocument = CreateDocument(holeCloud, holeProfile, null, includeMeasurement: false);
+            var holeA3 = ToolRecipeRegridHeightFieldExecution.Execute(holeBaseDocument, "step.regrid", holeCloud).Output
+                ?? throw new InvalidDataException("Synthetic missing-cell A3 fixture did not produce a height field.");
+            var holeBinding = ToolRecipeSelectionSourceBindingVerifier.FromTransformedHeightField(holeA3);
+            var holeMeasurementSelection = new ToolRecipeSelection(
+                "selection.transformed.roi", "Missing-cell measurement ROI", ToolRecipeSelectionKinds.GridRectangle,
+                holeCloud.RootSourceEntityId, holeA3.ReferenceFrameId, holeBinding,
+                new ToolRecipeGridRectangle(0, 0, 2, 2), null, null);
+            var holeReferenceSelection = holeMeasurementSelection with
+            {
+                Id = "selection.transformed.reference-roi",
+                Name = "Missing-cell reference ROI"
+            };
+            var holeDocument = CreateDocument(
+                holeCloud, holeProfile, [holeReferenceSelection, holeMeasurementSelection],
+                includeMeasurement: true, includeVolume: true);
+            var holeVolume = ToolRecipeHeightMeasurementExecution.Execute(holeDocument, "step.volume", holeA3);
+            checks.Add(("Volume rejects a preserved C3D hole before finite-sample reconstruction",
+                holeA3.MissingCellCount == 1
+                && holeVolume.Result.Status == ResultStatus.Error
+                && holeVolume.Result.Message.Contains("missing", StringComparison.OrdinalIgnoreCase),
+                $"a3Missing={holeA3.MissingCellCount};status={holeVolume.Result.Status};message={holeVolume.Result.Message}"));
             checks.Add(("Cross-section consumes one A3 row segment in U/H space",
                 directCrossSection.Output is not null
                 && directCrossSection.Output.SelectionId == crossSectionSelection.Id
@@ -221,7 +250,7 @@ internal static class ArtifactOwnedRoiRunnerVerification
                     var record = JsonSerializer.Deserialize<InspectionRunRecord>(
                         File.ReadAllText(runArtifacts.JsonPath), jsonOptions);
                     checks.Add(("schema 1.9 JSON explicitly marks unavailable Source Quality for the legacy A2 route and preserves ordered evidence",
-                        record is { SchemaVersion: "1.9", Step: null, Steps.Count: 8 }
+                        record is { SchemaVersion: InspectionRunRecord.CurrentSchemaVersion, Step: null, Steps.Count: 8 }
                         && record.SourceQualityEvidence is
                         {
                             State: InspectionRunSourceQualityEvidenceState.Unavailable,
@@ -422,7 +451,7 @@ internal static class ArtifactOwnedRoiRunnerVerification
             [], steps, selections ?? []);
     }
 
-    private static C3DTransformedPointCloud CreateCloud(string sourcePath)
+    private static C3DTransformedPointCloud CreateCloud(string sourcePath, IReadOnlyList<C3DTransformedPoint>? points = null)
     {
         var snapshot = C3DHeightFieldSnapshot.CreateForVerification(
             "source.artifact-roi", 2, 2, [10d, 12d, 14d, 17d], "raw-height", "frame.c3d-grid-index");
@@ -441,24 +470,24 @@ internal static class ArtifactOwnedRoiRunnerVerification
         var transform = C3DAffineSolveRule.Evaluate(new C3DAffineSolveInput(
             "step.fixture.solve", "fixture.affine", correspondence, 1e9, 1e-9)).Output
             ?? throw new InvalidDataException("Synthetic affine fixture failed.");
-        var points = new[]
-        {
+        var transformedPoints = points ??
+        [
             new C3DTransformedPoint(0, 0, 10, 0.25, 0.25, 10),
             new C3DTransformedPoint(0, 1, 12, 1.25, 0.25, 12),
             new C3DTransformedPoint(1, 0, 14, 0.25, 1.25, 14),
             new C3DTransformedPoint(1, 1, 17, 1.25, 1.25, 17)
-        };
+        ];
         return C3DTransformedPointCloud.Create(
             "fixture.cloud", snapshot.EntityId, snapshot.RootSourceSha256, snapshot.Unit, snapshot.FrameId,
-            C3DAffineApplyRule.SourceCoordinateConvention, snapshot.Width, snapshot.Height, transform, points, "artifact ROI fixture cloud");
+            C3DAffineApplyRule.SourceCoordinateConvention, snapshot.Width, snapshot.Height, transform, transformedPoints, "artifact ROI fixture cloud");
     }
 
-    private static C3DReferenceGridProfile CreateProfile(C3DTransformedPointCloud cloud) =>
+    private static C3DReferenceGridProfile CreateProfile(C3DTransformedPointCloud cloud, double minimumCoverage = 1.0) =>
         C3DReferenceGridProfile.Create(
             cloud.ReferenceFrameId, cloud.ReferenceUnit, cloud.ReferenceProvenance, cloud.ReferenceRevision,
             new C3DReferenceGridVector(0, 0, 0), new C3DReferenceGridVector(1, 0, 0),
             new C3DReferenceGridVector(0, 1, 0), new C3DReferenceGridVector(0, 0, 1),
-            1, 1, 2, 2, 1);
+            1, 1, 2, 2, minimumCoverage);
 
     private static string Clean(string value) => value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
 

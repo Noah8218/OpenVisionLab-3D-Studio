@@ -16,7 +16,9 @@ public static class C3DSourceQualityAnalyzer
 
     public static SourceQualityReport Create(
         C3DHeightFieldSnapshot snapshot,
-        int distributionBinCount = C3DHeightDistribution.DefaultBinCount)
+        int distributionBinCount = C3DHeightDistribution.DefaultBinCount,
+        HeightMeasurementEvidence? measurementEvidence = null,
+        string? sourceSensorId = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         if (distributionBinCount <= 0)
@@ -39,6 +41,17 @@ public static class C3DSourceQualityAnalyzer
         }
 
         var invalidCellMap = C3DInvalidCellMap.Create(snapshot);
+        var normalizedMeasurementEvidence = HeightMeasurementEvidence.Normalize(measurementEvidence);
+        if (!normalizedMeasurementEvidence.TryValidate(
+                snapshot.Unit,
+                snapshot.FrameId,
+                sourceSensorId,
+                DateTimeOffset.UtcNow,
+                out var measurementValidationMessage))
+        {
+            throw new InvalidDataException(measurementValidationMessage);
+        }
+
         var distribution = snapshot.ValidCount == 0
             ? null
             : CreateDistribution(
@@ -79,7 +92,8 @@ public static class C3DSourceQualityAnalyzer
             SourceChannelCatalogAnalyzer.CreateForC3DHeightGrid())
         {
             GridDiagnostics = SourceQualityGridDiagnosticsAnalyzer
-                .AnalyzeImplicitC3D(snapshot.Width, snapshot.Height)
+                .AnalyzeImplicitC3D(snapshot.Width, snapshot.Height),
+            MeasurementEvidence = normalizedMeasurementEvidence
         };
     }
 

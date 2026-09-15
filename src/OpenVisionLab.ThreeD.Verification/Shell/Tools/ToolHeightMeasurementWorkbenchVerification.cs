@@ -31,6 +31,10 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             C3DHeightFieldSnapshot.CreateForVerification(
                 "source.measurement", 4, 4,
                 [10, 11, 12, 13, 11, 12, 13, 14, 17, 18, 19, 20, 18, 19, 20, 21]).SaveC3D(sourcePath);
+            var changedSourcePath = Path.Combine(root, "measurement-changed.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification(
+                "source.measurement.changed", 4, 4,
+                [10, 11, 12, 13, 11, 12, 13, 14, 17, 18, 19, 20, 18, 19, 20, 22]).SaveC3D(changedSourcePath);
             var recipePath = Path.Combine(root, "measurement.ov3d-recipe.json");
             var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent.json"));
             workbench.RecipeName = "Generic measurement recipe";
@@ -165,7 +169,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 selectedThicknessOutput.ValueLabel == "Mean"
                 && selectedThicknessOutput.Value == "5"
                 && selectedThicknessOutput.Unit == workbench.CurrentMeasurementOutput?.Unit
-                && selectedThicknessOutput.ResultStatus == "Pass"
+                && selectedThicknessOutput.ResultStatus == workbench.Localization.ResultStatusLabel(ResultStatus.Pass)
                 && selectedThicknessOutput.Detail.Contains("H-axis thickness mean 5", StringComparison.Ordinal)
                 && !selectedThicknessOutput.CanShowInViewer
                 && !selectedThicknessOutput.CanPinToCompare
@@ -177,6 +181,34 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 $"value={selectedThicknessOutput.Value} {selectedThicknessOutput.Unit};status={selectedThicknessOutput.ResultStatus};availability={selectedThicknessOutput.Availability}");
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Thickness publishes exact Preview", thickness.State == "Published" && workbench.IsMeasurementPreviewPublished, thickness.State);
+            var thicknessPublishedOutput = workbench.CurrentMeasurementOutput;
+            var thicknessMinimum = thickness.Parameters.Single(parameter => parameter.Name == "MinimumThickness");
+            thicknessMinimum.Value = "1";
+            Check(
+                "parameter revision marks the previous Thickness Preview stale before Publish",
+                thicknessPublishedOutput is not null
+                && workbench.IsMeasurementPreviewStale
+                && !workbench.HasCurrentMeasurementPreview
+                && !workbench.PublishSelectedStepCommand.CanExecute(null),
+                $"stale={workbench.IsMeasurementPreviewStale};current={workbench.HasCurrentMeasurementPreview};publish={workbench.PublishSelectedStepCommand.CanExecute(null)};state={thickness.State}");
+            thicknessMinimum.Value = "0";
+            var thicknessRevisionPreview = workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
+            Check(
+                "the corrected parameter revision requires a new Thickness Preview",
+                thicknessRevisionPreview
+                && workbench.HasCurrentMeasurementPreview
+                && !workbench.IsMeasurementPreviewPublished,
+                $"preview={thicknessRevisionPreview};current={workbench.HasCurrentMeasurementPreview};published={workbench.IsMeasurementPreviewPublished}");
+            workbench.PublishSelectedStepCommand.Execute(null);
+            Check(
+                "the corrected Thickness Preview publishes without changing its output identity",
+                workbench.IsMeasurementPreviewPublished
+                && thicknessPublishedOutput is not null
+                && workbench.CurrentMeasurementOutput is { } correctedThicknessOutput
+                && correctedThicknessOutput.OutputEntityId == thicknessPublishedOutput.OutputEntityId
+                && correctedThicknessOutput.ContentSha256 == thicknessPublishedOutput.ContentSha256
+                && correctedThicknessOutput.SemanticFingerprint == thicknessPublishedOutput.SemanticFingerprint,
+                $"published={workbench.IsMeasurementPreviewPublished};sameIdentity={thicknessPublishedOutput is not null && workbench.CurrentMeasurementOutput is { } correctedOutput && correctedOutput.OutputEntityId == thicknessPublishedOutput.OutputEntityId && correctedOutput.ContentSha256 == thicknessPublishedOutput.ContentSha256 && correctedOutput.SemanticFingerprint == thicknessPublishedOutput.SemanticFingerprint}");
 
             ToolWorkbenchTeachingCaptureRequestEventArgs? thicknessReplaceRequest = null;
             ToolWorkbenchGridRectangleDraftChangedEventArgs? thicknessDraft = null;
@@ -239,11 +271,57 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 editMessage);
 
             var warpage = Add(workbench, "Warpage", selection.Id);
+            var thicknessOutputBeforeStepChange = workbench.CurrentMeasurementOutput;
+            Check(
+                "changing the selected measurement step removes the previous step's Publish candidate",
+                thicknessOutputBeforeStepChange is not null
+                && !workbench.HasCurrentMeasurementPreview
+                && !workbench.PublishSelectedStepCommand.CanExecute(null),
+                $"current={workbench.HasCurrentMeasurementPreview};publish={workbench.PublishSelectedStepCommand.CanExecute(null)};published={workbench.IsMeasurementPreviewPublished};output={thicknessOutputBeforeStepChange?.OutputEntityId}");
             Check("Warpage is another tool step, not a workspace mode", workbench.IsSelectedStepWarpage && workbench.IsSelectedStepPropertyGridSupported, workbench.SelectedPipelineStepTitle);
             var warpagePreview = workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
             Check("Warpage Preview produces P2V evidence", warpagePreview && workbench.MeasurementEvidenceSummary.Contains("P2V", StringComparison.Ordinal), workbench.MeasurementEvidenceSummary);
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Warpage publishes exact Preview", warpage.State == "Published" && workbench.IsMeasurementPreviewPublished, warpage.State);
+            var warpageInputRoute = warpage.InputEntityIdsText;
+            warpage.InputEntityIdsText = $"{workbench.Source.Id}; {thicknessReferenceSelection.Id}";
+            Check(
+                "ROI/input route revision marks the Warpage Preview stale before Publish",
+                workbench.IsMeasurementPreviewStale
+                && !workbench.HasCurrentMeasurementPreview
+                && !workbench.PublishSelectedStepCommand.CanExecute(null),
+                $"stale={workbench.IsMeasurementPreviewStale};current={workbench.HasCurrentMeasurementPreview};publish={workbench.PublishSelectedStepCommand.CanExecute(null)};state={warpage.State}");
+            warpage.InputEntityIdsText = warpageInputRoute;
+            var warpageRepairPreview = workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
+            Check(
+                "restoring the ROI/input route requires and accepts a fresh Warpage Preview",
+                warpageRepairPreview && workbench.HasCurrentMeasurementPreview,
+                $"preview={warpageRepairPreview};current={workbench.HasCurrentMeasurementPreview}");
+            workbench.PublishSelectedStepCommand.Execute(null);
+
+            using var runningWorkbench = CreateRunningMeasurementWorkbench(root);
+            var previousWarpageOutput = runningWorkbench.CurrentMeasurementOutput;
+            runningWorkbench.PreviewSelectedStepCommand.Execute(null);
+            var runningPreviewObserved = runningWorkbench.IsMeasurementPreviewRunning;
+            var sameOutputWhileRunning = ReferenceEquals(previousWarpageOutput, runningWorkbench.CurrentMeasurementOutput);
+            var publishCandidateWhileRunning = runningWorkbench.HasCurrentMeasurementPreview
+                || runningWorkbench.PublishSelectedStepCommand.CanExecute(null);
+            runningWorkbench.PublishSelectedStepCommand.Execute(null);
+            var publishedWhileRunning = runningWorkbench.IsMeasurementPreviewPublished;
+            WaitForMeasurementPreviewIdle(runningWorkbench);
+            Check(
+                "a replacement Preview hides the previous output and rejects direct Publish while running",
+                runningPreviewObserved
+                && sameOutputWhileRunning
+                && !publishCandidateWhileRunning
+                && !publishedWhileRunning,
+                $"running={runningPreviewObserved};sameOutput={sameOutputWhileRunning};candidate={publishCandidateWhileRunning};publishedDuringRun={publishedWhileRunning}");
+            Check(
+                "the replacement Preview commits only after its current revision completes",
+                !runningWorkbench.IsMeasurementPreviewRunning
+                && runningWorkbench.HasCurrentMeasurementPreview
+                && !runningWorkbench.IsMeasurementPreviewPublished,
+                $"running={runningWorkbench.IsMeasurementPreviewRunning};current={runningWorkbench.HasCurrentMeasurementPreview};published={runningWorkbench.IsMeasurementPreviewPublished}");
 
             var planeWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-plane.json"));
             planeWorkbench.SetC3DSource(sourcePath);
@@ -789,7 +867,142 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && reopened.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == reopenActionLogCount,
                 $"steps={reopened.PipelineSteps.Count}; selections={reopened.Selections.Count}; actionLogs={reopenActionLogCount}");
 
+            var sourceChangeWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-source-change.json"));
+            sourceChangeWorkbench.SetC3DSource(sourcePath);
+            sourceChangeWorkbench.Selections.Add(thicknessReferenceSelection);
+            sourceChangeWorkbench.Selections.Add(selection);
+            var sourceChangeStep = Add(sourceChangeWorkbench, "Thickness", selection.Id);
+            sourceChangeWorkbench.SelectedCompatibleSelection = thicknessReferenceSelection;
+            sourceChangeWorkbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(null);
+            sourceChangeWorkbench.SelectedCompatibleSelection = selection;
+            sourceChangeWorkbench.ReusePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            var sourceChangePreview = sourceChangeWorkbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
+            sourceChangeWorkbench.PublishSelectedStepCommand.Execute(null);
+            sourceChangeWorkbench.SetC3DSource(changedSourcePath);
+            Check(
+                "source replacement keeps the existing Clear contract and removes the measurement Publish candidate",
+                sourceChangePreview
+                && sourceChangeStep.State != "Published"
+                && !sourceChangeWorkbench.HasCurrentMeasurementPreview
+                && !sourceChangeWorkbench.IsMeasurementPreviewPublished
+                && sourceChangeWorkbench.CurrentMeasurementOutput is null,
+                $"preview={sourceChangePreview};state={sourceChangeStep.State};current={sourceChangeWorkbench.HasCurrentMeasurementPreview};published={sourceChangeWorkbench.IsMeasurementPreviewPublished};output={sourceChangeWorkbench.CurrentMeasurementOutput is not null}");
+            sourceChangeWorkbench.Dispose();
+
             var savedDocument = ToolRecipeDocumentStore.Load(recipePath);
+            var semanticStep = savedDocument.Steps.Single(step => step.Id == thickness.Id);
+            var semanticEvaluation = ToolRecipeHeightMeasurementExecution.Execute(
+                savedDocument,
+                semanticStep.Id,
+                root);
+            var semanticOutput = semanticEvaluation.Output;
+            var semanticPreparationReady = ToolRecipeHeightMeasurementExecution.TryPrepare(
+                savedDocument,
+                semanticStep.Id,
+                root,
+                out var semanticPreparation,
+                out var semanticPreparationMessage);
+            var changedUnit = $"{savedDocument.Source.Unit}.changed";
+            var changedFrame = $"{savedDocument.Source.FrameId}.changed";
+            var changedMetadataSelections = semanticPreparationReady
+                ? semanticPreparation!.Selections
+                    .Select(selection => selection with
+                    {
+                        FrameId = changedFrame,
+                        SourceBinding = selection.SourceBinding with
+                        {
+                            Unit = changedUnit,
+                            FrameId = changedFrame
+                        }
+                    })
+                    .ToArray()
+                : [];
+            var changedMetadataFingerprint = semanticPreparationReady
+                ? ToolRecipeHeightMeasurementExecution.CalculateSemanticFingerprint(
+                    semanticPreparation!.Step,
+                    semanticPreparation.InputContentSha256,
+                    changedUnit,
+                    changedFrame,
+                    changedMetadataSelections)
+                : string.Empty;
+            Check(
+                "same source bytes keep ContentSha256 but changed unit/frame receive a different semantic fingerprint",
+                semanticOutput is not null
+                && semanticPreparationReady
+                && semanticEvaluation.Result.Status == ResultStatus.Pass
+                && string.Equals(
+                    savedDocument.Source.ContentSha256,
+                    semanticPreparation!.InputContentSha256,
+                    StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(semanticOutput.SemanticFingerprint, changedMetadataFingerprint, StringComparison.Ordinal),
+                $"content={semanticOutput?.ContentSha256};source={semanticPreparation?.InputContentSha256};" +
+                $"semantic={semanticOutput?.SemanticFingerprint};changedSemantic={changedMetadataFingerprint};" +
+                $"unit={changedUnit};frame={changedFrame}");
+
+            var reorderedParametersDocument = savedDocument with
+            {
+                Steps = savedDocument.Steps
+                    .Select(step => step.Id == semanticStep.Id
+                        ? step with { Parameters = step.Parameters.Reverse().ToArray() }
+                        : step)
+                    .ToArray()
+            };
+            var reorderedParametersEvaluation = ToolRecipeHeightMeasurementExecution.Execute(
+                reorderedParametersDocument,
+                semanticStep.Id,
+                root);
+            Check(
+                "parameter dictionary order does not change the semantic fingerprint",
+                semanticOutput is not null
+                && reorderedParametersEvaluation.Output is { } reorderedOutput
+                && reorderedParametersEvaluation.Result.Status == ResultStatus.Pass
+                && reorderedOutput.ContentSha256 == semanticOutput.ContentSha256
+                && reorderedOutput.SemanticFingerprint == semanticOutput.SemanticFingerprint,
+                $"base={semanticOutput?.SemanticFingerprint};reordered={reorderedParametersEvaluation.Output?.SemanticFingerprint};" +
+                $"parameters={string.Join(",", reorderedParametersDocument.Steps.Single(step => step.Id == semanticStep.Id).Parameters.Select(parameter => parameter.Name))}");
+
+            var orderedGraphEvaluation = ToolRecipeOrderedGraphExecution.Execute(
+                savedDocument,
+                sourcePath);
+            var orderedSemanticStep = orderedGraphEvaluation.Steps.SingleOrDefault(step => step.StepId == semanticStep.Id);
+            Check(
+                "ordered graph exposes the separate measurement semantic fingerprint without changing output correlation",
+                semanticOutput is not null
+                && orderedGraphEvaluation.Status == ResultStatus.Pass
+                && orderedSemanticStep is not null
+                && orderedSemanticStep.OutputContentSha256 == semanticOutput.ContentSha256
+                && orderedSemanticStep.OutputSemanticFingerprint == semanticOutput.SemanticFingerprint,
+                $"status={orderedGraphEvaluation.Status};message={orderedGraphEvaluation.Message};" +
+                $"content={orderedSemanticStep?.OutputContentSha256};semantic={orderedSemanticStep?.OutputSemanticFingerprint}");
+
+            var alternateAlgorithmFingerprint = semanticPreparationReady
+                ? ToolRecipeHeightMeasurementExecution.CalculateSemanticFingerprint(
+                    semanticPreparation!.Step,
+                    semanticPreparation.InputContentSha256,
+                    semanticPreparation.Unit,
+                    semanticPreparation.FrameId,
+                    semanticPreparation.Selections,
+                    algorithmDefinitionVersion: "height-measurement-execution-v2")
+                : string.Empty;
+            var alternateSdkFingerprint = semanticPreparationReady
+                ? ToolRecipeHeightMeasurementExecution.CalculateSemanticFingerprint(
+                    semanticPreparation!.Step,
+                    semanticPreparation.InputContentSha256,
+                    semanticPreparation.Unit,
+                    semanticPreparation.FrameId,
+                    semanticPreparation.Selections,
+                    sdkVersion: "3.0.1-dev.next")
+                : string.Empty;
+            Check(
+                "algorithm-definition and SDK version changes invalidate the semantic fingerprint",
+                semanticOutput is not null
+                && semanticPreparationReady
+                && !string.IsNullOrWhiteSpace(semanticOutput.SemanticFingerprint)
+                && alternateAlgorithmFingerprint != semanticOutput.SemanticFingerprint
+                && alternateSdkFingerprint != semanticOutput.SemanticFingerprint,
+                $"prepared={semanticPreparationReady};message={semanticPreparationMessage};base={semanticOutput?.SemanticFingerprint};" +
+                $"algorithmV2={alternateAlgorithmFingerprint};sdkNext={alternateSdkFingerprint}");
+
             var canceledDocument = savedDocument with
             {
                 Source = savedDocument.Source with
@@ -925,6 +1138,77 @@ internal static class ToolHeightMeasurementWorkbenchVerification
         {
             Thread.Sleep(10);
         }
+    }
+
+    private static void WaitForMeasurementPreviewIdle(ToolWorkbenchViewModel workbench)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
+        while (workbench.IsMeasurementPreviewRunning && DateTimeOffset.UtcNow < deadline)
+        {
+            Thread.Sleep(10);
+        }
+    }
+
+    private static ToolWorkbenchViewModel CreateRunningMeasurementWorkbench(string root)
+    {
+        const int width = 512;
+        const int height = 512;
+        var sourcePath = Path.Combine(root, "running-measurement.C3D");
+        var values = Enumerable.Range(0, width * height)
+            .Select(index => 10d + index % 37)
+            .ToArray();
+        C3DHeightFieldSnapshot.CreateForVerification(
+            "source.running.measurement",
+            width,
+            height,
+            values).SaveC3D(sourcePath);
+
+        var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-running-measurement.json"));
+        workbench.SetC3DSource(sourcePath);
+        var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
+        var reference = new ToolRecipeSelection(
+            "selection.running.reference",
+            "Running reference ROI",
+            ToolRecipeSelectionKinds.GridRectangle,
+            workbench.Source.Id,
+            workbench.Source.FrameId,
+            binding,
+            new ToolRecipeGridRectangle(0, 0, width / 2, height),
+            null,
+            null);
+        var measurement = new ToolRecipeSelection(
+            "selection.running.measurement",
+            "Running measurement ROI",
+            ToolRecipeSelectionKinds.GridRectangle,
+            workbench.Source.Id,
+            workbench.Source.FrameId,
+            binding,
+            new ToolRecipeGridRectangle(width / 2, 0, width / 2, height),
+            null,
+            null);
+        workbench.Selections.Add(reference);
+        workbench.Selections.Add(measurement);
+        _ = Add(workbench, "Thickness", measurement.Id);
+        workbench.SelectedCompatibleSelection = reference;
+        workbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(null);
+        workbench.SelectedCompatibleSelection = measurement;
+        workbench.ReusePlaneFlatnessMeasurementRoiCommand.Execute(null);
+        if (!workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult())
+        {
+            workbench.Dispose();
+            throw new InvalidOperationException("The running measurement Thickness fixture did not preview.");
+        }
+
+        workbench.PublishSelectedStepCommand.Execute(null);
+        _ = Add(workbench, "Warpage", measurement.Id);
+        if (!workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult())
+        {
+            workbench.Dispose();
+            throw new InvalidOperationException("The running measurement Warpage fixture did not preview.");
+        }
+
+        workbench.PublishSelectedStepCommand.Execute(null);
+        return workbench;
     }
 
     private static ToolRecipeSelection CapturedRectangle(

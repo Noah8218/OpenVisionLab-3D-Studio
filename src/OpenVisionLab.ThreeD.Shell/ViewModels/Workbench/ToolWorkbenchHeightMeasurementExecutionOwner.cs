@@ -1,4 +1,7 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
@@ -22,9 +25,11 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
     private readonly Action<string, string> appendLog;
     private readonly Action<ToolRecipeHeightMeasurementOutput?> updateCompletenessPresentation;
     private readonly Action onExecutionStateChanged;
+    private readonly object previewStateGate = new();
 
     private CancellationTokenSource? previewCancellation;
     private ToolRecipeHeightMeasurementOutput? previewOutput;
+    private string? previewExecutionFingerprint;
     private bool isPreviewRunning;
     private bool isPreviewStale;
     private bool isPreviewPublished;
@@ -63,7 +68,12 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
     }
 
     public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
-    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool HasCurrentPreview => !IsDisposed
+        && !isPreviewRunning
+        && previewOutput is not null
+        && previewExecutionFingerprint is not null
+        && !isPreviewStale
+        && IsCurrentExecutionSnapshot(previewExecutionFingerprint);
     public bool IsPreviewStale => !IsDisposed && isPreviewStale;
     public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
     public ToolRecipeHeightMeasurementOutput? CurrentOutput => IsDisposed ? null : previewOutput;
@@ -89,6 +99,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewExecutionFingerprint = null;
         isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -139,76 +150,107 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
         SetSummary($"{step.ToolName} Preview is evaluating only the selected tool step.");
         if (!IsCurrentPreview(currentCancellation))
         {
+            TryShowPreviewCanceled(currentCancellation, step);
             return false;
         }
 
         appendLog("Preview", $"{step.ToolName} Preview started: {step.Id}.");
         try
         {
+            var documentSnapshot = createDocument();
+            var stepIdSnapshot = step.Id;
+            var inputEntityIdsSnapshot = step.InputEntityIds;
+            var sourceEntityIdSnapshot = getSourceEntityId();
+            var croppedHeightFieldSnapshot = GetCurrentCroppedHeightField(
+                inputEntityIdsSnapshot,
+                sourceEntityIdSnapshot);
+            var transformedHeightFieldSnapshot = GetCurrentTransformedHeightField(
+                inputEntityIdsSnapshot,
+                sourceEntityIdSnapshot);
+            var editableRegionSnapshot = GetCurrentEditableRegion(
+                step.ToolId,
+                inputEntityIdsSnapshot);
+            var recipeDirectorySnapshot = GetRecipeDirectory(getRecipePath());
+            var pendingStepParameterChangesSnapshot = hasPendingStepParameterChanges();
+            var executionFingerprint = CreateExecutionFingerprint(
+                documentSnapshot,
+                stepIdSnapshot,
+                inputEntityIdsSnapshot,
+                sourceEntityIdSnapshot,
+                croppedHeightFieldSnapshot,
+                transformedHeightFieldSnapshot,
+                editableRegionSnapshot,
+                recipeDirectorySnapshot,
+                pendingStepParameterChangesSnapshot);
             var evaluation = await Task.Run(
                 () => ToolRecipeHeightMeasurementExecution.Execute(
-                    createDocument(),
-                    step.Id,
-                    GetCurrentCroppedHeightField(),
-                    GetCurrentTransformedHeightField(),
-                    GetCurrentEditableRegion(),
-                    GetRecipeDirectory(),
+                    documentSnapshot,
+                    stepIdSnapshot,
+                    croppedHeightFieldSnapshot,
+                    transformedHeightFieldSnapshot,
+                    editableRegionSnapshot,
+                    recipeDirectorySnapshot,
                     cancellationToken),
                 cancellationToken);
             if (!IsCurrentPreview(currentCancellation))
             {
+                TryShowPreviewCanceled(currentCancellation, step);
+                return false;
+            }
+
+            if (!IsCurrentExecutionSnapshot(executionFingerprint))
+            {
+                TryShowPreviewStale(currentCancellation, step);
                 return false;
             }
 
             if (evaluation.Output is null || evaluation.Result.Status == ResultStatus.Error)
             {
-                if (!IsCurrentPreview(currentCancellation))
+                if (!TryCommitCurrentPreview(
+                        currentCancellation,
+                        () =>
+                        {
+                            previewOutput = null;
+                            previewExecutionFingerprint = null;
+                            UpdateCompletenessPresentation(null);
+                            step.State = "Error";
+                            SetSummary(evaluation.Result.Message);
+                            appendLog("Error", $"{step.ToolName} Preview failed: {evaluation.Result.Message}");
+                        }))
                 {
+                    TryShowPreviewCanceled(currentCancellation, step);
                     return false;
                 }
 
-                previewOutput = null;
-                UpdateCompletenessPresentation(null);
-                step.State = "Error";
-                SetSummary(evaluation.Result.Message);
-                if (IsCurrentPreview(currentCancellation))
+                return false;
+            }
+
+            if (!TryCommitCurrentPreview(
+                    currentCancellation,
+                    () =>
+                    {
+                        previewOutput = evaluation.Output;
+                        previewExecutionFingerprint = executionFingerprint;
+                        UpdateCompletenessPresentation(previewOutput);
+                        step.State = "Preview ready";
+                        SetSummary($"Preview ready | {previewOutput!.EvidenceSummary} | {evaluation.Result.Status} | declared source units only.");
+                        appendLog("Preview", $"{step.ToolName} Preview ready: {previewOutput.ContentSha256}.");
+                    },
+                    executionFingerprint))
+            {
+                if (!TryShowPreviewCanceled(currentCancellation, step))
                 {
-                    appendLog("Error", $"{step.ToolName} Preview failed: {evaluation.Result.Message}");
+                    TryShowPreviewStale(currentCancellation, step);
                 }
 
                 return false;
-            }
-
-            previewOutput = evaluation.Output;
-            if (!IsCurrentPreview(currentCancellation))
-            {
-                return false;
-            }
-
-            UpdateCompletenessPresentation(previewOutput);
-            step.State = "Preview ready";
-            SetSummary($"Preview ready | {previewOutput.EvidenceSummary} | {evaluation.Result.Status} | declared source units only.");
-            if (IsCurrentPreview(currentCancellation))
-            {
-                appendLog("Preview", $"{step.ToolName} Preview ready: {previewOutput.ContentSha256}.");
             }
 
             return true;
         }
         catch (OperationCanceledException)
         {
-            if (!IsCurrentPreview(currentCancellation))
-            {
-                return false;
-            }
-
-            step.State = "Ready";
-            SetSummary("Preview canceled. The source, ROI, and authored recipe were not changed.");
-            if (IsCurrentPreview(currentCancellation))
-            {
-                appendLog("Preview", $"{step.ToolName} Preview canceled.");
-            }
-
+            TryShowPreviewCanceled(currentCancellation, step);
             return false;
         }
         finally
@@ -249,10 +291,36 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             out _);
     }
 
+    public bool CanPublish()
+    {
+        if (IsDisposed
+            || isPreviewRunning
+            || getSelectedPipelineStep() is not { }
+            || !HasCurrentPreview
+            || previewExecutionFingerprint is null)
+        {
+            return false;
+        }
+
+        return IsCurrentExecutionSnapshot(previewExecutionFingerprint);
+    }
+
     public void Publish()
     {
-        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed
+            || isPreviewRunning
+            || getSelectedPipelineStep() is not { } step
+            || previewOutput is null
+            || previewExecutionFingerprint is null
+            || isPreviewStale)
         {
+            return;
+        }
+
+        if (!IsCurrentExecutionSnapshot(previewExecutionFingerprint))
+        {
+            var previewStep = findStepByOutputEntityId(previewOutput.OutputEntityId) ?? step;
+            MarkCurrentPreviewStale(previewStep);
             return;
         }
 
@@ -271,7 +339,10 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
 
         try
         {
-            Volatile.Read(ref previewCancellation)?.Cancel();
+            lock (previewStateGate)
+            {
+                Volatile.Read(ref previewCancellation)?.Cancel();
+            }
         }
         catch (ObjectDisposedException)
         {
@@ -291,6 +362,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewExecutionFingerprint = null;
         UpdateCompletenessPresentation(null);
         SetRunning(false);
         isPreviewStale = false;
@@ -319,11 +391,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             return;
         }
 
-        isPreviewStale = true;
-        isPreviewPublished = false;
-        UpdateCompletenessPresentation(null);
-        step.State = "Preview stale";
-        SetSummary("Source, route, ROI, output, or parameter changed. Preview again before Publish.");
+        MarkCurrentPreviewStale(step);
     }
 
     public void MarkInputStaleIfNeeded(string? inputEntityId)
@@ -340,11 +408,9 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             return;
         }
 
-        isPreviewStale = true;
-        isPreviewPublished = false;
-        UpdateCompletenessPresentation(null);
-        step.State = "Preview stale";
-        SetSummary("The Published input HeightField changed. Preview this measurement again before Publish.");
+        MarkCurrentPreviewStale(
+            step,
+            "The Published input HeightField changed. Preview this measurement again before Publish.");
     }
 
     public void RefreshState()
@@ -381,52 +447,73 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
         onExecutionStateChanged();
     }
 
-    private C3DTransformedHeightField? GetCurrentTransformedHeightField()
+    private C3DTransformedHeightField? GetCurrentTransformedHeightField() =>
+        getSelectedPipelineStep() is { } step
+            ? GetCurrentTransformedHeightField(step.InputEntityIds, getSourceEntityId())
+            : null;
+
+    private C3DTransformedHeightField? GetCurrentTransformedHeightField(
+        IReadOnlyList<string> inputEntityIds,
+        string sourceEntityId)
     {
         if (IsDisposed
-            || getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
+            || inputEntityIds.Count == 0
             || string.Equals(
-                step.InputEntityIds[0],
-                getSourceEntityId(),
+                inputEntityIds[0],
+                sourceEntityId,
                 StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
-        return getPublishedHeightField(step.InputEntityIds[0]);
+        return getPublishedHeightField(inputEntityIds[0]);
     }
 
-    private C3DHeightFieldSnapshot? GetCurrentCroppedHeightField()
+    private C3DHeightFieldSnapshot? GetCurrentCroppedHeightField() =>
+        getSelectedPipelineStep() is { } step
+            ? GetCurrentCroppedHeightField(step.InputEntityIds, getSourceEntityId())
+            : null;
+
+    private C3DHeightFieldSnapshot? GetCurrentCroppedHeightField(
+        IReadOnlyList<string> inputEntityIds,
+        string sourceEntityId)
     {
         if (IsDisposed
-            || getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
+            || inputEntityIds.Count == 0
             || string.Equals(
-                step.InputEntityIds[0],
-                getSourceEntityId(),
+                inputEntityIds[0],
+                sourceEntityId,
                 StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
-        return getPublishedCroppedHeightField(step.InputEntityIds[0]);
+        return getPublishedCroppedHeightField(inputEntityIds[0]);
     }
 
-    private C3DEditableRegionArtifact? GetCurrentEditableRegion()
+    private C3DEditableRegionArtifact? GetCurrentEditableRegion() =>
+        getSelectedPipelineStep() is { } step
+            ? GetCurrentEditableRegion(step.ToolId, step.InputEntityIds)
+            : null;
+
+    private C3DEditableRegionArtifact? GetCurrentEditableRegion(
+        string toolId,
+        IReadOnlyList<string> inputEntityIds)
     {
         if (IsDisposed
-            || getSelectedPipelineStep() is not { } step
-            || !string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal)
-            || step.InputEntityIds.Count < 3)
+            || !string.Equals(toolId, "completeness-grid", StringComparison.Ordinal)
+            || inputEntityIds.Count < 3)
         {
             return null;
         }
 
-        return getPublishedEditableRegion(step.InputEntityIds[2]);
+        return getPublishedEditableRegion(inputEntityIds[2]);
     }
 
-    private string? GetRecipeDirectory()
+    private string? GetRecipeDirectory() => GetRecipeDirectory(getRecipePath());
+
+    private static string? GetRecipeDirectory(string? recipePath)
     {
-        var recipePath = getRecipePath();
         return recipePath is null
             ? Environment.CurrentDirectory
             : Path.GetDirectoryName(Path.GetFullPath(recipePath));
@@ -465,9 +552,155 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
         updateCompletenessPresentation(output);
     }
 
-    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+    private bool IsCurrentExecutionSnapshot(string expectedFingerprint)
+    {
+        if (IsDisposed)
+        {
+            return false;
+        }
+
+        var pendingStepParameterChanges = hasPendingStepParameterChanges();
+        if (pendingStepParameterChanges || getSelectedPipelineStep() is not { } step)
+        {
+            return false;
+        }
+
+        var inputEntityIds = step.InputEntityIds;
+        var sourceEntityId = getSourceEntityId();
+        var currentFingerprint = CreateExecutionFingerprint(
+            createDocument(),
+            step.Id,
+            inputEntityIds,
+            sourceEntityId,
+            GetCurrentCroppedHeightField(inputEntityIds, sourceEntityId),
+            GetCurrentTransformedHeightField(inputEntityIds, sourceEntityId),
+            GetCurrentEditableRegion(step.ToolId, inputEntityIds),
+            GetRecipeDirectory(getRecipePath()),
+            pendingStepParameterChanges);
+        return string.Equals(expectedFingerprint, currentFingerprint, StringComparison.Ordinal);
+    }
+
+    private static string CreateExecutionFingerprint(
+        ToolRecipeDocument document,
+        string stepId,
+        IReadOnlyList<string> inputEntityIds,
+        string sourceEntityId,
+        C3DHeightFieldSnapshot? croppedHeightField,
+        C3DTransformedHeightField? transformedHeightField,
+        C3DEditableRegionArtifact? editableRegion,
+        string? recipeDirectory,
+        bool hasPendingStepParameterChanges)
+    {
+        var canonical = new StringBuilder();
+        AppendFingerprintValue(canonical, JsonSerializer.Serialize(document));
+        AppendFingerprintValue(canonical, stepId);
+        AppendFingerprintValue(canonical, string.Join(";", inputEntityIds));
+        AppendFingerprintValue(canonical, sourceEntityId);
+        AppendFingerprintValue(canonical, recipeDirectory);
+        AppendFingerprintValue(canonical, hasPendingStepParameterChanges ? "pending" : "applied");
+        AppendFingerprintValue(canonical, croppedHeightField?.EntityId);
+        AppendFingerprintValue(canonical, croppedHeightField?.ContentSha256);
+        AppendFingerprintValue(canonical, croppedHeightField?.RootSourceSha256);
+        AppendFingerprintValue(canonical, croppedHeightField is null ? null : $"{croppedHeightField.Width}x{croppedHeightField.Height}");
+        AppendFingerprintValue(canonical, transformedHeightField?.OutputEntityId);
+        AppendFingerprintValue(canonical, transformedHeightField?.ContentSha256);
+        AppendFingerprintValue(canonical, transformedHeightField?.RootSourceSha256);
+        AppendFingerprintValue(canonical, transformedHeightField?.SourceContentSha256);
+        AppendFingerprintValue(canonical, transformedHeightField is null ? null : $"{transformedHeightField.RowCount}x{transformedHeightField.ColumnCount}");
+        AppendFingerprintValue(canonical, editableRegion?.ArtifactId);
+        AppendFingerprintValue(canonical, editableRegion?.ContentSha256);
+        AppendFingerprintValue(canonical, editableRegion?.SourceEntityId);
+        AppendFingerprintValue(canonical, editableRegion?.SourceContentSha256);
+        AppendFingerprintValue(canonical, editableRegion is null ? null : $"{editableRegion.GridWidth}x{editableRegion.GridHeight}");
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString())));
+    }
+
+    private static void AppendFingerprintValue(StringBuilder canonical, string? value)
+    {
+        canonical.Append(value?.Length ?? -1).Append(':').Append(value).Append('|');
+    }
+
+    private bool TryCommitCurrentPreview(
+        CancellationTokenSource cancellation,
+        Action commit,
+        string? expectedFingerprint = null)
+    {
+        lock (previewStateGate)
+        {
+            if (!IsCurrentPreview(cancellation)
+                || (expectedFingerprint is not null
+                    && !IsCurrentExecutionSnapshot(expectedFingerprint)))
+            {
+                return false;
+            }
+
+            commit();
+            return IsCurrentPreview(cancellation);
+        }
+    }
+
+    private bool TryShowPreviewCanceled(
+        CancellationTokenSource cancellation,
+        ToolWorkbenchPipelineStepItem step)
+    {
+        lock (previewStateGate)
+        {
+            if (!OwnsPreview(cancellation) || !cancellation.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            previewOutput = null;
+            previewExecutionFingerprint = null;
+            UpdateCompletenessPresentation(null);
+            step.State = "Ready";
+            SetSummary("Preview canceled. The source, ROI, and authored recipe were not changed.");
+            appendLog("Preview", $"{step.ToolName} Preview canceled.");
+            return true;
+        }
+    }
+
+    private bool TryShowPreviewStale(
+        CancellationTokenSource cancellation,
+        ToolWorkbenchPipelineStepItem step)
+    {
+        lock (previewStateGate)
+        {
+            if (!OwnsPreview(cancellation))
+            {
+                return false;
+            }
+
+            previewOutput = null;
+            previewExecutionFingerprint = null;
+            isPreviewStale = true;
+            isPreviewPublished = false;
+            UpdateCompletenessPresentation(null);
+            step.State = "Preview stale";
+            SetSummary("Preview discarded because the recipe, selection, ROI, source, or upstream input changed after its start snapshot. Preview again before Publish.");
+            appendLog("Preview", $"{step.ToolName} Preview discarded because its start snapshot is no longer current.");
+            return true;
+        }
+    }
+
+    private bool OwnsPreview(CancellationTokenSource cancellation) =>
         !IsDisposed && ReferenceEquals(
             Volatile.Read(ref previewCancellation),
             cancellation);
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        OwnsPreview(cancellation) && !cancellation.IsCancellationRequested;
+
+    private void MarkCurrentPreviewStale(
+        ToolWorkbenchPipelineStepItem step,
+        string summary = "Source, route, ROI, output, or parameter changed. Preview again before Publish.")
+    {
+        isPreviewStale = true;
+        isPreviewPublished = false;
+        previewExecutionFingerprint = null;
+        UpdateCompletenessPresentation(null);
+        step.State = "Preview stale";
+        SetSummary(summary);
+    }
 
 }

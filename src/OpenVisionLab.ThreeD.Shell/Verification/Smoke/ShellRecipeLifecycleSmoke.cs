@@ -44,12 +44,19 @@ internal static class ShellRecipeLifecycleSmoke
             createdDocument = ToolRecipeDocumentStore.Load(createdPath);
         }
 
+        var persistedSourcePath = createdDocument is null
+            ? string.Empty
+            : Path.IsPathFullyQualified(createdDocument.Source.Path)
+                ? Path.GetFullPath(createdDocument.Source.Path)
+                : Path.GetFullPath(Path.Combine(
+                    Path.GetDirectoryName(createdPath) ?? Environment.CurrentDirectory,
+                    createdDocument.Source.Path));
         var expectedStepCount = starterId == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId ? 0 : 1;
         var passed = clickedDoNotSave
             && createdDocument is not null
             && createdDocument.Steps.Count == expectedStepCount
             && (expectedStepCount == 0 || createdDocument.Steps[0].ToolId == "thickness")
-            && string.Equals(createdDocument.Source.Path, fullSourcePath, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(persistedSourcePath, fullSourcePath, StringComparison.OrdinalIgnoreCase)
             && string.Equals(viewModel.Workbench.RecipePath, createdPath, StringComparison.OrdinalIgnoreCase)
             && viewModel.Workbench.IsSourceReadyForRecipe
             && string.Equals(viewer.CurrentC3DSourcePath, fullSourcePath, StringComparison.OrdinalIgnoreCase)

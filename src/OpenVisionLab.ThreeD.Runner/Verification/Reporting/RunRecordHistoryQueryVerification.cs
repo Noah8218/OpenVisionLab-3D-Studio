@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
 
 internal static class RunRecordHistoryQueryVerification
@@ -369,6 +370,7 @@ internal static class RunRecordHistoryQueryVerification
                 query.Records.SequenceEqual(RunRecordHistoryQuery.Read(fixtureRoot).Records)
                 && query.Issues.SequenceEqual(RunRecordHistoryQuery.Read(fixtureRoot).Issues),
                 "two independent reads have the same projection order"));
+            checks.AddRange(VerifyRecoveryContracts(fixtureRoot));
         }
         catch (Exception exception)
         {
@@ -376,6 +378,23 @@ internal static class RunRecordHistoryQueryVerification
                 "unexpected-exception",
                 false,
                 $"{exception.GetType().Name}: {exception.Message}"));
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(fixtureRoot))
+                {
+                    Directory.Delete(fixtureRoot, recursive: true);
+                }
+            }
+            catch (Exception exception)
+            {
+                checks.Add(new VerificationCase(
+                    "fixture-cleanup",
+                    false,
+                    $"{exception.GetType().Name}: {exception.Message}"));
+            }
         }
 
         var passed = checks.Count(check => check.Passed);
@@ -449,6 +468,271 @@ internal static class RunRecordHistoryQueryVerification
         };
         InspectionRunRecordJson.Write(jsonPath, record);
         return jsonPath;
+    }
+
+    private static IReadOnlyList<VerificationCase> VerifyRecoveryContracts(string fixtureRoot)
+    {
+        var recoveryRoot = Path.Combine(fixtureRoot, "recovery-contracts");
+        Directory.CreateDirectory(recoveryRoot);
+        var checks = new List<VerificationCase>();
+        var sourcePath = Path.Combine(recoveryRoot, "source.C3D");
+        var source = C3DHeightFieldSnapshot.CreateForVerification(
+            "recovery-source",
+            3,
+            3,
+            [1, 2, 4, 2, 4, 8, 3, 6, 12]);
+        source.SaveC3D(sourcePath);
+        var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
+        var recipe = new ToolRecipeDocument(
+            ToolRecipeDocument.CurrentSchemaVersion,
+            "Recovery recipe",
+            new ToolRecipeSource(
+                source.EntityId,
+                "Recovery source",
+                "C3D",
+                source.Unit,
+                source.FrameId,
+                sourcePath,
+                source.ByteLength,
+                binding.ContentSha256,
+                binding.GridWidth,
+                binding.GridHeight),
+            [],
+            [],
+            [new ToolRecipeSelection(
+                "selection.recovery",
+                "Recovery selection",
+                ToolRecipeSelectionKinds.GridRectangle,
+                source.EntityId,
+                source.FrameId,
+                binding,
+                new ToolRecipeGridRectangle(0, 0, 1, 1),
+                null,
+                null)]);
+        var currentRecipePath = Path.Combine(recoveryRoot, "current.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(currentRecipePath, recipe);
+        var currentRecipeBytes = File.ReadAllBytes(currentRecipePath);
+        var reopenedCurrent = ToolRecipeDocumentStore.Load(currentRecipePath);
+        checks.Add(Check(
+            "current recipe reopens without mutation",
+            reopenedCurrent.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+            && reopenedCurrent.Selections is { Count: 1 }
+            && File.ReadAllBytes(currentRecipePath).AsSpan().SequenceEqual(currentRecipeBytes),
+            $"schema={reopenedCurrent.SchemaVersion};bytes={currentRecipeBytes.Length}"));
+
+        var legacyRecipePath = Path.Combine(recoveryRoot, "legacy.ov3d-recipe.json");
+        var legacyRecipe = recipe with
+        {
+            SchemaVersion = ToolRecipeDocument.LegacySchemaVersion,
+            Selections = null,
+            Source = recipe.Source with { Path = sourcePath }
+        };
+        ToolRecipeDocumentStore.Save(legacyRecipePath, legacyRecipe);
+        var reopenedLegacy = ToolRecipeDocumentStore.Load(legacyRecipePath);
+        checks.Add(Check(
+            "legacy recipe reopens as a supported previous format",
+            reopenedLegacy.SchemaVersion == ToolRecipeDocument.LegacySchemaVersion
+            && reopenedLegacy.Selections is null,
+            $"schema={reopenedLegacy.SchemaVersion}"));
+
+        var currentText = File.ReadAllText(currentRecipePath, Encoding.UTF8);
+        var futureRecipePath = Path.Combine(recoveryRoot, "future-recipe.ov3d-recipe.json");
+        File.WriteAllText(
+            futureRecipePath,
+            currentText.Replace(
+                $"\"schemaVersion\": \"{ToolRecipeDocument.CurrentSchemaVersion}\"",
+                "\"schemaVersion\": \"9.9\"",
+                StringComparison.Ordinal),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "future recipe schema is rejected without rewriting the original",
+            ReadFailsAndPreserves<ToolRecipeDocument, InvalidDataException>(
+                futureRecipePath,
+                ToolRecipeDocumentStore.Load,
+                out var futureRecipeDetail),
+            futureRecipeDetail));
+
+        var truncatedRecipePath = Path.Combine(recoveryRoot, "truncated-recipe.ov3d-recipe.json");
+        File.WriteAllText(
+            truncatedRecipePath,
+            currentText[..(currentText.Length / 2)],
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "truncated recipe is rejected without rewriting the original",
+            ReadFailsAndPreserves<ToolRecipeDocument, JsonException>(
+                truncatedRecipePath,
+                ToolRecipeDocumentStore.Load,
+                out var truncatedRecipeDetail),
+            truncatedRecipeDetail));
+
+        var unknownRecipePath = Path.Combine(recoveryRoot, "unknown-recipe.ov3d-recipe.json");
+        File.WriteAllText(
+            unknownRecipePath,
+            currentText.Insert(1, "\"futureField\": { \"sentinel\": true },"),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "unknown recipe fields are rejected instead of silently discarded",
+            ReadFailsAndPreserves<ToolRecipeDocument, JsonException>(
+                unknownRecipePath,
+                ToolRecipeDocumentStore.Load,
+                out var unknownRecipeDetail),
+            unknownRecipeDetail));
+
+        var invalidRoiPath = Path.Combine(recoveryRoot, "invalid-roi-recipe.ov3d-recipe.json");
+        File.WriteAllText(
+            invalidRoiPath,
+            currentText.Replace("\"rowCount\": 1", "\"rowCount\": 0", StringComparison.Ordinal),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "invalid recipe ROI is rejected without rewriting the original",
+            ReadFailsAndPreserves<ToolRecipeDocument, InvalidDataException>(
+                invalidRoiPath,
+                ToolRecipeDocumentStore.Load,
+                out var invalidRoiDetail),
+            invalidRoiDetail));
+
+        var invalidSourcePath = Path.Combine(recoveryRoot, "invalid-source-recipe.ov3d-recipe.json");
+        File.WriteAllText(
+            invalidSourcePath,
+            currentText.Replace("\"id\": \"recovery-source\"", "\"id\": \"\"", StringComparison.Ordinal),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "invalid recipe source identity is rejected without rewriting the original",
+            ReadFailsAndPreserves<ToolRecipeDocument, InvalidDataException>(
+                invalidSourcePath,
+                ToolRecipeDocumentStore.Load,
+                out var invalidSourceDetail),
+            invalidSourceDetail));
+
+        var interruptedRecipeTempPath = currentRecipePath + ".tmp.interrupted";
+        File.WriteAllText(interruptedRecipeTempPath, currentText[..(currentText.Length / 3)], new UTF8Encoding(false));
+        var reopenedAfterRecipeTemp = ToolRecipeDocumentStore.Load(currentRecipePath);
+        checks.Add(Check(
+            "interrupted recipe temp does not replace a previous normal recipe",
+            reopenedAfterRecipeTemp.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+            && File.ReadAllBytes(currentRecipePath).AsSpan().SequenceEqual(currentRecipeBytes)
+            && File.Exists(interruptedRecipeTempPath),
+            $"finalBytes={File.ReadAllBytes(currentRecipePath).Length};tempPreserved={File.Exists(interruptedRecipeTempPath)}"));
+        File.Delete(interruptedRecipeTempPath);
+
+        var validReplacement = recipe with { Name = "Recovery retry" };
+        var replacementSaveSucceeded = true;
+        try
+        {
+            ToolRecipeDocumentStore.Save(currentRecipePath, validReplacement);
+        }
+        catch (Exception exception)
+        {
+            replacementSaveSucceeded = false;
+            checks.Add(Check("recipe retry does not throw after interrupted temp", false, exception.Message));
+        }
+
+        checks.Add(Check(
+            "recipe retry replaces the old file and cleans temp siblings",
+            replacementSaveSucceeded
+            && ToolRecipeDocumentStore.Load(currentRecipePath).Name == "Recovery retry"
+            && !Directory.EnumerateFiles(recoveryRoot, "*.tmp.*", SearchOption.TopDirectoryOnly).Any(),
+            $"retry={replacementSaveSucceeded};temps={Directory.EnumerateFiles(recoveryRoot, "*.tmp.*", SearchOption.TopDirectoryOnly).Count()}"));
+
+        var runRecordPath = WriteRecord(
+            recoveryRoot,
+            "recovery-run",
+            new DateTimeOffset(2026, 9, 15, 12, 0, 0, TimeSpan.Zero),
+            ResultStatus.Pass,
+            "Recovery tool");
+        var runRecordText = File.ReadAllText(runRecordPath, Encoding.UTF8);
+        var runRecordBytes = File.ReadAllBytes(runRecordPath);
+        var legacyRunRecordPath = Path.Combine(recoveryRoot, "legacy-run-record.json");
+        File.WriteAllText(
+            legacyRunRecordPath,
+            runRecordText.Replace("\"SchemaVersion\": \"1.9\"", "\"SchemaVersion\": \"1.2\"", StringComparison.Ordinal),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "legacy Run Record schema reopens as a supported previous format",
+            InspectionRunRecordJson.Read(legacyRunRecordPath).SchemaVersion == "1.2",
+            "schema=1.2"));
+
+        var futureRunRecordPath = Path.Combine(recoveryRoot, "future-run-record.json");
+        File.WriteAllText(
+            futureRunRecordPath,
+            runRecordText.Replace("\"SchemaVersion\": \"1.9\"", "\"SchemaVersion\": \"2.0\"", StringComparison.Ordinal),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "future Run Record schema is rejected without rewriting the original",
+            ReadFailsAndPreserves<InspectionRunRecord, InvalidDataException>(
+                futureRunRecordPath,
+                InspectionRunRecordJson.Read,
+                out var futureRunRecordDetail),
+            futureRunRecordDetail));
+
+        var truncatedRunRecordPath = Path.Combine(recoveryRoot, "truncated-run-record.json");
+        File.WriteAllText(truncatedRunRecordPath, runRecordText[..(runRecordText.Length / 2)], new UTF8Encoding(false));
+        checks.Add(Check(
+            "truncated Run Record is rejected without rewriting the original",
+            ReadFailsAndPreserves<InspectionRunRecord, JsonException>(
+                truncatedRunRecordPath,
+                InspectionRunRecordJson.Read,
+                out var truncatedRunRecordDetail),
+            truncatedRunRecordDetail));
+
+        var unknownRunRecordPath = Path.Combine(recoveryRoot, "unknown-run-record.json");
+        File.WriteAllText(
+            unknownRunRecordPath,
+            runRecordText.Insert(1, "\"FutureField\": { \"Sentinel\": true },"),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "unknown Run Record fields are rejected instead of silently discarded",
+            ReadFailsAndPreserves<InspectionRunRecord, JsonException>(
+                unknownRunRecordPath,
+                InspectionRunRecordJson.Read,
+                out var unknownRunRecordDetail),
+            unknownRunRecordDetail));
+
+        var missingRunIdPath = Path.Combine(recoveryRoot, "missing-run-id.json");
+        File.WriteAllText(
+            missingRunIdPath,
+            runRecordText.Replace("\"RunId\": \"recovery-run\"", "\"RunId\": \"\"", StringComparison.Ordinal),
+            new UTF8Encoding(false));
+        checks.Add(Check(
+            "missing required Run Record identity is rejected without rewriting the original",
+            ReadFailsAndPreserves<InspectionRunRecord, InvalidDataException>(
+                missingRunIdPath,
+                InspectionRunRecordJson.Read,
+                out var missingRunIdDetail),
+            missingRunIdDetail));
+
+        var interruptedRunRecordTempPath = runRecordPath + ".tmp.interrupted";
+        File.WriteAllText(interruptedRunRecordTempPath, runRecordText[..(runRecordText.Length / 3)], new UTF8Encoding(false));
+        var reopenedRunRecord = InspectionRunRecordJson.Read(runRecordPath);
+        checks.Add(Check(
+            "interrupted Run Record temp does not replace a previous normal record",
+            reopenedRunRecord.RunId == "recovery-run"
+            && File.ReadAllBytes(runRecordPath).AsSpan().SequenceEqual(runRecordBytes)
+            && File.Exists(interruptedRunRecordTempPath),
+            $"runId={reopenedRunRecord.RunId};tempPreserved={File.Exists(interruptedRunRecordTempPath)}"));
+
+        return checks;
+    }
+
+    private static bool ReadFailsAndPreserves<TDocument, TException>(
+        string path,
+        Func<string, TDocument> read,
+        out string detail)
+        where TException : Exception
+    {
+        var before = File.ReadAllBytes(path);
+        try
+        {
+            read(path);
+            detail = "read unexpectedly succeeded";
+            return false;
+        }
+        catch (TException exception)
+        {
+            var preserved = before.AsSpan().SequenceEqual(File.ReadAllBytes(path));
+            detail = $"{exception.GetType().Name};bytesPreserved={preserved}";
+            return preserved;
+        }
     }
 
     private static VerificationCase Check(

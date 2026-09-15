@@ -1,5 +1,6 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
@@ -19,6 +20,7 @@ internal static class ViewerConsumerBoundaryVerification
             ("ProcessObservation", VerifyProcessObservation()),
             ("ContractCaptureWithoutPath", VerifyContractCaptureWithoutPath()),
             ("HostApiSourceAndSelectionSurface", VerifyHostApiSourceAndSelectionSurface()),
+            ("HostApiVersionPolicy", VerifyHostApiVersionPolicy()),
             ("HostApiReportPolicy", VerifyHostApiReportPolicy()),
             ("MemoryObservationPolicy", VerifyMemoryObservationPolicy()),
             ("LifecycleOptionsPolicy", VerifyLifecycleOptionsPolicy()),
@@ -153,6 +155,19 @@ internal static class ViewerConsumerBoundaryVerification
                 File.Delete(reportPath);
             }
         }
+    }
+
+    private static bool VerifyHostApiVersionPolicy()
+    {
+        var hostType = typeof(IOpenVisionThreeDViewerHost);
+        var concreteType = typeof(OpenVisionThreeDViewerControl);
+        return ViewerHostContract.IsCompatibleVersion("1.1", "1.1")
+            && ViewerHostContract.IsCompatibleVersion("1.1", "1.2")
+            && !ViewerHostContract.IsCompatibleVersion("1.1", "1.0")
+            && !ViewerHostContract.IsCompatibleVersion("1.1", "2.0")
+            && !ViewerHostContract.IsCompatibleVersion("1.1", "unknown")
+            && !typeof(IDisposable).IsAssignableFrom(hostType)
+            && typeof(IDisposable).IsAssignableFrom(concreteType);
     }
 
     private static bool VerifyHostApiSourceAndSelectionSurface()

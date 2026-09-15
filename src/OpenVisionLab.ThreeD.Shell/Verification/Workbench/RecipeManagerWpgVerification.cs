@@ -127,7 +127,10 @@ internal static class RecipeManagerWpgVerification
                 "confirmed first-use setup creates one source-routed starter and saves without running inspection",
                 firstUsePreferenceSaved
                 && firstUseDocument is not null
-                && string.Equals(firstUseDocument.Source.Path, sourcePath, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    ResolvePersistedSourcePath(firstUseRecipePath, firstUseDocument.Source.Path),
+                    sourcePath,
+                    StringComparison.OrdinalIgnoreCase)
                 && firstUseDocument.Steps.Count == 1
                 && firstUseDocument.Steps[0].ToolId == "thickness"
                 && !firstUse.IsDirty
@@ -246,7 +249,10 @@ internal static class RecipeManagerWpgVerification
                 && variantSetup.IsCompatibleSourceVariant
                 && string.Equals(variantSetup.RecipePath, variantPath, StringComparison.OrdinalIgnoreCase)
                 && variantDocument.Name == "variant-copy"
-                && string.Equals(variantDocument.Source.Path, variantSourcePath, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    ResolvePersistedSourcePath(variantPath, variantDocument.Source.Path),
+                    variantSourcePath,
+                    StringComparison.OrdinalIgnoreCase)
                 && variantDocument.Steps.Count == originalVariantDocument.Steps.Count
                 && variantDocument.Steps[0].Id == originalVariantDocument.Steps[0].Id
                 && variantDocument.Steps[0].ToolId == originalVariantDocument.Steps[0].ToolId
@@ -774,6 +780,158 @@ internal static class RecipeManagerWpgVerification
                 mismatchOpened && !mismatch.IsSourceReadyForRecipe && mismatch.SourceReadinessSummary.Contains("mismatch", StringComparison.OrdinalIgnoreCase),
                 mismatch.SourceReadinessSummary);
 
+            var portableRoot = Path.Combine(fixtureRoot, "portable-bundle");
+            Directory.CreateDirectory(portableRoot);
+            var portableSourcePath = Path.Combine(portableRoot, "source.C3D");
+            File.Copy(sourcePath, portableSourcePath);
+            var portableRecipePath = Path.Combine(portableRoot, "portable.ov3d-recipe.json");
+            var portableWorkbench = new ToolWorkbenchViewModel(Path.Combine(portableRoot, "recent.json"));
+            portableWorkbench.RecipeName = "Portable Recipe";
+            portableWorkbench.SetC3DSource(portableSourcePath);
+            var portableSaved = portableWorkbench.TrySaveTeachingRecipe(portableRecipePath, out var portableSaveMessage);
+            var portableDocument = portableSaved ? ToolRecipeDocumentStore.Load(portableRecipePath) : null;
+            Check(
+                "Save As stores an in-bundle source as a portable relative path",
+                portableSaved
+                && portableDocument is not null
+                && !Path.IsPathFullyQualified(portableDocument.Source.Path)
+                && portableDocument.Source.Path.Replace('\\', '/') == "source.C3D",
+                portableSaveMessage);
+
+            var movedBundleRoot = Path.Combine(fixtureRoot, "moved-bundle");
+            Directory.CreateDirectory(movedBundleRoot);
+            var movedSourcePath = Path.Combine(movedBundleRoot, "source.C3D");
+            var movedRecipePath = Path.Combine(movedBundleRoot, "portable.ov3d-recipe.json");
+            File.Copy(portableSourcePath, movedSourcePath);
+            File.Copy(portableRecipePath, movedRecipePath);
+            var movedBundle = new ToolWorkbenchViewModel(Path.Combine(movedBundleRoot, "recent.json"));
+            var movedBundleOpened = movedBundle.TryOpenTeachingRecipe(movedRecipePath, out var movedBundleMessage);
+            Check(
+                "moving the recipe folder rebinds the relative source without copying input bytes",
+                movedBundleOpened
+                && string.Equals(movedBundle.Source.Path, movedSourcePath, StringComparison.OrdinalIgnoreCase)
+                && movedBundle.IsSourceReadyForRecipe
+                && File.Exists(movedSourcePath),
+                movedBundleMessage);
+
+            var recipeOnlyRoot = Path.Combine(fixtureRoot, "recipe-only-move");
+            Directory.CreateDirectory(recipeOnlyRoot);
+            var recipeOnlyPath = Path.Combine(recipeOnlyRoot, "portable.ov3d-recipe.json");
+            File.Copy(portableRecipePath, recipeOnlyPath);
+            var recipeOnly = new ToolWorkbenchViewModel(Path.Combine(recipeOnlyRoot, "recent.json"));
+            var recipeOnlyOpened = recipeOnly.TryOpenTeachingRecipe(recipeOnlyPath, out var recipeOnlyMessage);
+            Check(
+                "moving only the recipe remains repairable and does not copy the source",
+                recipeOnlyOpened
+                && !recipeOnly.IsSourceReadyForRecipe
+                && !File.Exists(Path.Combine(recipeOnlyRoot, "source.C3D")),
+                recipeOnlyMessage);
+
+            var absoluteSourceRoot = Path.Combine(fixtureRoot, "absolute-source");
+            var absoluteRecipeRoot = Path.Combine(fixtureRoot, "absolute-recipe");
+            Directory.CreateDirectory(absoluteSourceRoot);
+            Directory.CreateDirectory(absoluteRecipeRoot);
+            var absoluteSourcePath = Path.Combine(absoluteSourceRoot, "source.C3D");
+            var absoluteRecipePath = Path.Combine(absoluteRecipeRoot, "absolute.ov3d-recipe.json");
+            File.Copy(sourcePath, absoluteSourcePath);
+            var absoluteDocument = stored with
+            {
+                Source = stored.Source with { Path = absoluteSourcePath }
+            };
+            ToolRecipeDocumentStore.Save(absoluteRecipePath, absoluteDocument);
+            var storedAbsoluteDocument = ToolRecipeDocumentStore.Load(absoluteRecipePath);
+            Check(
+                "Save As keeps an out-of-bundle source absolute",
+                Path.IsPathFullyQualified(storedAbsoluteDocument.Source.Path)
+                && string.Equals(storedAbsoluteDocument.Source.Path, absoluteSourcePath, StringComparison.OrdinalIgnoreCase),
+                storedAbsoluteDocument.Source.Path);
+
+            var precedenceRoot = Path.Combine(fixtureRoot, "original-path-precedence");
+            Directory.CreateDirectory(precedenceRoot);
+            var precedenceRecipePath = Path.Combine(precedenceRoot, "absolute.ov3d-recipe.json");
+            var precedenceCandidatePath = Path.Combine(precedenceRoot, "source.C3D");
+            File.Copy(absoluteRecipePath, precedenceRecipePath);
+            C3DHeightFieldSnapshot.CreateForVerification(
+                "source.recipe-manager.precedence-mismatch",
+                3,
+                3,
+                [10, 11, 14, 11, 14, 18, 12, 16, 22]).SaveC3D(precedenceCandidatePath);
+            var precedence = new ToolWorkbenchViewModel(Path.Combine(precedenceRoot, "recent.json"));
+            var precedenceOpened = precedence.TryOpenTeachingRecipe(precedenceRecipePath, out var precedenceMessage);
+            Check(
+                "an available original absolute source takes precedence over a same-name candidate",
+                precedenceOpened
+                && precedence.IsSourceReadyForRecipe
+                && string.Equals(precedence.Source.Path, absoluteSourcePath, StringComparison.OrdinalIgnoreCase),
+                precedenceMessage);
+
+            var rejoinRoot = Path.Combine(fixtureRoot, "source-rejoin");
+            Directory.CreateDirectory(rejoinRoot);
+            var rejoinRecipePath = Path.Combine(rejoinRoot, "absolute.ov3d-recipe.json");
+            var rejoinCandidatePath = Path.Combine(rejoinRoot, "source.C3D");
+            File.Copy(absoluteRecipePath, rejoinRecipePath);
+            File.Delete(absoluteSourcePath);
+            File.Copy(sourcePath, rejoinCandidatePath);
+            var rejoined = new ToolWorkbenchViewModel(Path.Combine(rejoinRoot, "recent.json"));
+            var rejoinedOpened = rejoined.TryOpenTeachingRecipe(rejoinRecipePath, out var rejoinedMessage);
+            Check(
+                "a moved same-byte source is rejoined only after identity validation",
+                rejoinedOpened
+                && rejoined.IsSourceReadyForRecipe
+                && string.Equals(rejoined.Source.Path, rejoinCandidatePath, StringComparison.OrdinalIgnoreCase),
+                rejoinedMessage);
+
+            var mismatchMoveRoot = Path.Combine(fixtureRoot, "source-rejoin-mismatch");
+            Directory.CreateDirectory(mismatchMoveRoot);
+            var mismatchMoveRecipePath = Path.Combine(mismatchMoveRoot, "absolute.ov3d-recipe.json");
+            var mismatchMoveCandidatePath = Path.Combine(mismatchMoveRoot, "source.C3D");
+            File.Copy(absoluteRecipePath, mismatchMoveRecipePath);
+            C3DHeightFieldSnapshot.CreateForVerification(
+                "source.recipe-manager.rejoin-mismatch",
+                3,
+                3,
+                [101, 102, 104, 102, 104, 108, 103, 106, 112]).SaveC3D(mismatchMoveCandidatePath);
+            var mismatchMove = new ToolWorkbenchViewModel(Path.Combine(mismatchMoveRoot, "recent.json"));
+            var mismatchMoveOpened = mismatchMove.TryOpenTeachingRecipe(mismatchMoveRecipePath, out var mismatchMoveMessage);
+            Check(
+                "a same-name different-byte candidate is rejected instead of silently rebound",
+                mismatchMoveOpened
+                && !mismatchMove.IsSourceReadyForRecipe
+                && string.Equals(mismatchMove.Source.Path, absoluteSourcePath, StringComparison.OrdinalIgnoreCase),
+                mismatchMoveMessage);
+            File.Copy(sourcePath, absoluteSourcePath);
+
+            var failedSaveTarget = Path.Combine(fixtureRoot, "save-as-failure", "portable.ov3d-recipe.json");
+            Directory.CreateDirectory(failedSaveTarget);
+            var portableRecipeBytesBeforeFailure = File.ReadAllBytes(portableRecipePath);
+            var portableRecipePathBeforeFailure = portableWorkbench.RecipePath;
+            var failedSave = portableWorkbench.TrySaveTeachingRecipe(failedSaveTarget, out var failedSaveMessage);
+            var temporaryFilesAfterFailedSave = Directory.EnumerateFiles(
+                fixtureRoot,
+                "*.tmp.*",
+                SearchOption.AllDirectories).Any();
+            Check(
+                "Save As failure preserves the active recipe and cleans its temporary file",
+                !failedSave
+                && string.Equals(portableWorkbench.RecipePath, portableRecipePathBeforeFailure, StringComparison.OrdinalIgnoreCase)
+                && portableRecipeBytesBeforeFailure.SequenceEqual(File.ReadAllBytes(portableRecipePath))
+                && !temporaryFilesAfterFailedSave,
+                failedSaveMessage);
+
+            var retryRoot = Path.Combine(fixtureRoot, "save-as-retry");
+            Directory.CreateDirectory(retryRoot);
+            var retryRecipePath = Path.Combine(retryRoot, "portable.ov3d-recipe.json");
+            var retrySaved = portableWorkbench.TrySaveTeachingRecipe(retryRecipePath, out var retrySaveMessage);
+            var retryDocument = retrySaved ? ToolRecipeDocumentStore.Load(retryRecipePath) : null;
+            Check(
+                "a later Save As retry commits without changing the source bytes",
+                retrySaved
+                && retryDocument is not null
+                && string.Equals(portableWorkbench.RecipePath, retryRecipePath, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(retryDocument.Source.ContentSha256, portableDocument?.Source.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                && !Directory.EnumerateFiles(fixtureRoot, "*.tmp.*", SearchOption.AllDirectories).Any(),
+                retrySaveMessage);
+
             var recentCandidates = Enumerable.Range(0, 12).Select(index => Path.Combine(fixtureRoot, $"recent-{index:00}.json")).ToArray();
             RecipeRecentFileStore.Save(recentPath, recentCandidates);
             var recent = RecipeRecentFileStore.Load(recentPath);
@@ -1020,6 +1178,18 @@ internal static class RecipeManagerWpgVerification
         }
 
         return workspace.Report;
+    }
+
+    private static string ResolvePersistedSourcePath(string recipePath, string sourcePath)
+    {
+        if (Path.IsPathFullyQualified(sourcePath))
+        {
+            return Path.GetFullPath(sourcePath);
+        }
+
+        var recipeDirectory = Path.GetDirectoryName(Path.GetFullPath(recipePath))
+            ?? Environment.CurrentDirectory;
+        return Path.GetFullPath(Path.Combine(recipeDirectory, sourcePath));
     }
 
     private static bool MatchesInvariantNumber(string text, double expected) =>

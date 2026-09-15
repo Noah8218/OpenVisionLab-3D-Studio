@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OpenVisionLab.ThreeD.Core;
 
 public sealed record InspectionRunRecord(
@@ -15,6 +17,21 @@ public sealed record InspectionRunRecord(
     string ViewerRunnerMatchState,
     InspectionRunArtifacts Artifacts)
 {
+    public const string CurrentSchemaVersion = "1.10";
+
+    public static bool SupportsSchemaVersion(string? schemaVersion) =>
+        schemaVersion is "1.0"
+            or "1.1"
+            or "1.2"
+            or "1.3"
+            or "1.4"
+            or "1.5"
+            or "1.6"
+            or "1.7"
+            or "1.8"
+            or "1.9"
+            or "1.10";
+
     public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
     public InspectionRunStep? Step { get; init; }
     public IReadOnlyList<InspectionRunStepResult>? Steps { get; init; }
@@ -126,7 +143,17 @@ public sealed record InspectionRunSourceQualityEvidence(
             || !string.Equals(
                 source.Unit,
                 Report.Coordinates.Unit,
-                StringComparison.Ordinal))
+                StringComparison.Ordinal)
+            || (source.FrameId is not null
+                && !string.Equals(
+                    source.FrameId,
+                    Report.Coordinates.FrameId,
+                    StringComparison.Ordinal))
+            || !string.Equals(
+                source.SensorId ?? string.Empty,
+                Report.EffectiveMeasurementEvidence.SensorId ?? string.Empty,
+                StringComparison.Ordinal)
+            || source.EffectiveMeasurementEvidence != Report.EffectiveMeasurementEvidence)
         {
             validationMessage =
                 "Source entity, byte length, SHA-256, unit, or report identity does not match.";
@@ -202,7 +229,17 @@ public sealed record InspectionRunSource(
     string Path,
     string Sha256,
     long ByteLength,
-    string Unit);
+    string Unit)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FrameId { get; init; }
+    public string? SensorId { get; init; }
+    public HeightMeasurementEvidence? MeasurementEvidence { get; init; }
+
+    [JsonIgnore]
+    public HeightMeasurementEvidence EffectiveMeasurementEvidence =>
+        HeightMeasurementEvidence.Normalize(MeasurementEvidence);
+}
 
 public sealed record InspectionRunStep(
     string Id,
@@ -223,12 +260,58 @@ public sealed record InspectionRunStepResult(
     IReadOnlyList<InspectionRunMetric> Metrics,
     IReadOnlyList<InspectionRunOverlay> Overlays)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SemanticFingerprint { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public InspectionRunAlgorithmEvidence? AlgorithmEvidence { get; init; }
     public string? OutputContentSha256 { get; init; }
     public string? LevelFrameContentSha256 { get; init; }
     public string? LevelFrameQualityContentSha256 { get; init; }
     public string? FrameChainContentSha256 { get; init; }
     public InspectionRunTiming? Timing { get; init; }
     public C3DCompletenessGridMetricOutput? CompletenessGrid { get; init; }
+
+    public bool TryValidateEvidence(out string validationMessage)
+    {
+        if (SemanticFingerprint is not null
+            && (SemanticFingerprint.Length != 64
+                || SemanticFingerprint.Any(character => !Uri.IsHexDigit(character))))
+        {
+            validationMessage = "Semantic fingerprint must be a 64-character hexadecimal SHA-256 value.";
+            return false;
+        }
+
+        if (AlgorithmEvidence is not null && !AlgorithmEvidence.TryValidate(out validationMessage))
+        {
+            return false;
+        }
+
+        if (SemanticFingerprint is null && AlgorithmEvidence is not null)
+        {
+            validationMessage = "Algorithm evidence requires a semantic fingerprint.";
+            return false;
+        }
+
+        validationMessage = "Run step evidence is valid.";
+        return true;
+    }
+}
+
+public sealed record InspectionRunAlgorithmEvidence(
+    string AlgorithmDefinitionVersion,
+    string SdkPackageId,
+    string SdkPackageVersion)
+{
+    public bool TryValidate(out string validationMessage)
+    {
+        var valid = !string.IsNullOrWhiteSpace(AlgorithmDefinitionVersion)
+            && !string.IsNullOrWhiteSpace(SdkPackageId)
+            && !string.IsNullOrWhiteSpace(SdkPackageVersion);
+        validationMessage = valid
+            ? "Algorithm and SDK evidence is valid."
+            : "Algorithm and SDK evidence requires definition, package, and version values.";
+        return valid;
+    }
 }
 
 public enum InspectionRunTimingState

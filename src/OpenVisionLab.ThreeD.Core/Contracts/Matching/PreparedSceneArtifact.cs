@@ -233,6 +233,16 @@ public static class SourceQualityReportContentIdentity
                 ?? string.Empty);
             writer.Write(report.Provenance ?? string.Empty);
             writer.Write(report.IsDerived);
+            if (report.MeasurementEvidence is { } measurementEvidence)
+            {
+                writer.Write(measurementEvidence.SchemaVersion ?? string.Empty);
+                writer.Write((int)measurementEvidence.State);
+                writer.Write(measurementEvidence.Evidence ?? string.Empty);
+                writer.Write(measurementEvidence.SensorId ?? string.Empty);
+                writer.Write(measurementEvidence.CalibrationId ?? string.Empty);
+                writer.Write(measurementEvidence.CalibrationFrameId ?? string.Empty);
+                writer.Write(measurementEvidence.ExpiresAtUtc?.UtcDateTime.Ticks ?? long.MinValue);
+            }
 
             var channels = report.Channels
                 .OrderBy(channel => channel.Channel)

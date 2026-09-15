@@ -145,6 +145,8 @@ public sealed class ToolWorkbenchSourceItem : INotifyPropertyChanged
     private string unit;
     private string frameId;
     private string path;
+    private HeightMeasurementEvidence? measurementEvidence;
+    private string? sensorId;
 
     public ToolWorkbenchSourceItem(string id, string name, string format, string unit, string frameId, string path)
     {
@@ -164,10 +166,20 @@ public sealed class ToolWorkbenchSourceItem : INotifyPropertyChanged
     public string Unit { get => unit; set => SetField(ref unit, value ?? string.Empty); }
     public string FrameId { get => frameId; set => SetField(ref frameId, value ?? string.Empty); }
     public string Path { get => path; set => SetField(ref path, value ?? string.Empty); }
-
-    private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
+    public HeightMeasurementEvidence? MeasurementEvidence
     {
-        if (field == value) return;
+        get => measurementEvidence;
+        set => SetField(ref measurementEvidence, value);
+    }
+    public string? SensorId
+    {
+        get => sensorId;
+        set => SetField(ref sensorId, value);
+    }
+
+    private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

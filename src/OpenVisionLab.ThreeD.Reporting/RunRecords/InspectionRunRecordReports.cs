@@ -27,7 +27,7 @@ public static class InspectionRunRecordReports
             : string.Join(Environment.NewLine, record.Metrics.Select(metric =>
                 $"<tr><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>"));
         var tableHeader = hasSteps
-            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Stage timing</th><th>Output SHA-256</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
+            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Stage timing</th><th>Output SHA-256</th><th>Semantic fingerprint</th><th>Algorithm definition</th><th>SDK package</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
             : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
         var timingSection = FormatTimingHtml(record.Timing);
         var sourceQualitySection =
@@ -227,6 +227,9 @@ public static class InspectionRunRecordReports
                     <dt>Invalid-cell mask</dt><dd>{Encode(report.Coverage.InvalidCellMask.Encoding)}; {report.Coverage.InvalidCellMask.ByteLength} bytes; SHA-256 {report.Coverage.InvalidCellMask.Sha256}</dd>
                     <dt>Height</dt><dd>{Encode(report.Height.ScalarMeaning)}; min {FormatNullable(report.Height.Minimum)}; max {FormatNullable(report.Height.Maximum)}; mean {FormatNullable(report.Height.Mean)}</dd>
                     <dt>Coordinates</dt><dd>{Encode(report.Coordinates.FrameId)}; {Encode(report.Coordinates.Unit)}; {Encode(report.Coordinates.CoordinateConvention)}</dd>
+                    <dt>Measurement state</dt><dd>{Encode(report.EffectiveMeasurementEvidence.State.ToString())}</dd>
+                    <dt>Measurement evidence</dt><dd>{Encode(report.EffectiveMeasurementEvidence.Evidence)}</dd>
+                    <dt>Calibration identity</dt><dd>{Encode(FormatMeasurementCalibration(report.EffectiveMeasurementEvidence))}</dd>
                     <dt>Provenance</dt><dd>{Encode(report.Provenance)}</dd>
                     <dt>Derived</dt><dd>{report.IsDerived}</dd>
                   </dl>
@@ -267,6 +270,21 @@ public static class InspectionRunRecordReports
                <table><thead><tr><th>Check</th><th>State</th><th>Affected</th><th>First sample ordinal</th><th>First row</th><th>First column</th><th>First component</th><th>Message</th></tr></thead><tbody>{rows}</tbody></table>
                """;
     }
+
+    private static string FormatMeasurementCalibration(HeightMeasurementEvidence evidence) =>
+        evidence.State == HeightMeasurementEvidenceState.CalibratedPhysical
+            ? string.Join(
+                " | ",
+                new[]
+                {
+                    $"sensor={evidence.SensorId}",
+                    $"calibration={evidence.CalibrationId}",
+                    $"frame={evidence.CalibrationFrameId}",
+                    evidence.ExpiresAtUtc is { } expiresAt
+                        ? $"expires={expiresAt:O}"
+                        : "expiry=none"
+                })
+            : "Physical calibration evidence is not asserted.";
 
     private static string FormatTimingHtml(InspectionRunTiming? timing)
     {
@@ -546,6 +564,13 @@ public static class InspectionRunRecordReports
         add("source-quality", "frameId", report.Coordinates.FrameId, string.Empty, reportSha);
         add("source-quality", "unit", report.Coordinates.Unit, string.Empty, reportSha);
         add("source-quality", "coordinateConvention", report.Coordinates.CoordinateConvention, string.Empty, reportSha);
+        var measurementEvidence = report.EffectiveMeasurementEvidence;
+        add("source-quality", "measurementState", measurementEvidence.State.ToString(), string.Empty, reportSha);
+        add("source-quality", "measurementEvidence", measurementEvidence.Evidence, string.Empty, reportSha);
+        add("source-quality", "sensorId", measurementEvidence.SensorId ?? string.Empty, string.Empty, reportSha);
+        add("source-quality", "calibrationId", measurementEvidence.CalibrationId ?? string.Empty, string.Empty, reportSha);
+        add("source-quality", "calibrationFrameId", measurementEvidence.CalibrationFrameId ?? string.Empty, string.Empty, reportSha);
+        add("source-quality", "calibrationExpiresAtUtc", measurementEvidence.ExpiresAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty, string.Empty, reportSha);
         add("source-quality", "provenance", report.Provenance, string.Empty, reportSha);
         add("source-quality", "isDerived", report.IsDerived.ToString(CultureInfo.InvariantCulture), string.Empty, reportSha);
         foreach (var channel in report.Channels)
@@ -593,7 +618,7 @@ public static class InspectionRunRecordReports
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
     {
-        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason" };
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,semanticFingerprint,algorithmDefinitionVersion,sdkPackageId,sdkPackageVersion,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,sourceFrameId,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason,sourceQualityMeasurementState,sourceQualityMeasurementEvidence,sourceQualityCalibrationId,sourceQualityCalibrationFrameId,sourceQualityCalibrationExpiresAtUtc" };
         lines.AddRange(record.Steps!.SelectMany(step =>
         {
             var stepRows = step.Metrics.Count == 0
@@ -627,6 +652,10 @@ public static class InspectionRunRecordReports
             Csv(step.Timing?.Clock ?? string.Empty),
             Csv(FormatStageTimings(step.Timing)),
             Csv(step.OutputContentSha256 ?? string.Empty),
+            Csv(step.SemanticFingerprint ?? string.Empty),
+            Csv(step.AlgorithmEvidence?.AlgorithmDefinitionVersion ?? string.Empty),
+            Csv(step.AlgorithmEvidence?.SdkPackageId ?? string.Empty),
+            Csv(step.AlgorithmEvidence?.SdkPackageVersion ?? string.Empty),
             Csv(FormatIds(step.Overlays.Select(overlay => overlay.Id).ToArray())),
             Csv(metric?.Name ?? string.Empty),
             Csv(metric?.Kind.ToString() ?? string.Empty),
@@ -635,6 +664,7 @@ public static class InspectionRunRecordReports
             Csv(metric?.Status?.ToString() ?? string.Empty),
             Csv(record.Recipe.Sha256),
             Csv(record.Source.Sha256),
+            Csv(record.Source.FrameId ?? string.Empty),
             Csv(record.ViewerRunnerMatchState),
             Csv(record.SourceQualityEvidence?.State.ToString() ?? "Unavailable"),
             Csv(record.SourceQualityEvidence?.SourceQualitySha256 ?? string.Empty),
@@ -670,7 +700,12 @@ public static class InspectionRunRecordReports
                 ? Format(relative)
                 : string.Empty),
             Csv(cell?.Decision?.ToString() ?? string.Empty),
-            Csv(cell?.DecisionReason ?? string.Empty));
+            Csv(cell?.DecisionReason ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.State.ToString() ?? "Unavailable"),
+            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.Evidence ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.CalibrationId ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.CalibrationFrameId ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.ExpiresAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty));
 
     private static string FormatHtmlStepRow(
         InspectionRunStepResult step,
@@ -679,7 +714,11 @@ public static class InspectionRunRecordReports
         + $"<td>{Encode($"{FormatIds(step.InputEntityIds)} -> {step.OutputEntityId}")}</td>"
         + $"<td class=\"{step.Status}\">{step.Status}</td><td>{Format(step.ElapsedMilliseconds)}</td>"
         + $"<td>{Encode(FormatStageTimings(step.Timing))}</td>"
-        + $"<td>{Encode(step.OutputContentSha256 ?? string.Empty)}</td><td>{Encode(metric?.Name ?? string.Empty)}</td>"
+        + $"<td>{Encode(step.OutputContentSha256 ?? string.Empty)}</td>"
+        + $"<td>{Encode(step.SemanticFingerprint ?? string.Empty)}</td>"
+        + $"<td>{Encode(step.AlgorithmEvidence?.AlgorithmDefinitionVersion ?? string.Empty)}</td>"
+        + $"<td>{Encode(step.AlgorithmEvidence is { } evidence ? $"{evidence.SdkPackageId} {evidence.SdkPackageVersion}" : string.Empty)}</td>"
+        + $"<td>{Encode(metric?.Name ?? string.Empty)}</td>"
         + $"<td>{Encode(metric?.Kind.ToString() ?? string.Empty)}</td><td>{(metric is null ? string.Empty : Format(metric.Value))}</td>"
         + $"<td>{Encode(metric?.Unit ?? string.Empty)}</td><td>{Encode(metric?.Status?.ToString() ?? string.Empty)}</td>"
         + $"<td>{Encode(FormatIds(step.Overlays.Select(overlay => overlay.Id).ToArray()))}</td></tr>";

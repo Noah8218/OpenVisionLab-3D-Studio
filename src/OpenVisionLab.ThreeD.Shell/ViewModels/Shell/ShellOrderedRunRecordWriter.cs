@@ -104,7 +104,7 @@ internal static class ShellOrderedRunRecordWriter
             $"RunId|{record.RunId}",
             $"RecordedAtUtc|{record.RecordedAtUtc:O}",
             $"Recipe|{record.Recipe.Path}|sha256={record.Recipe.Sha256}",
-            $"Source|{record.Source.Path}|sha256={record.Source.Sha256}",
+            $"Source|{record.Source.Path}|sha256={record.Source.Sha256}|frame={record.Source.FrameId ?? "(none)"}",
             $"SourceQuality|{FormatSourceQuality(record.SourceQualityEvidence)}",
             $"ToolResult|{record.ToolName}|{record.Status}|{record.Message}",
             $"ElapsedMilliseconds|{record.ElapsedMilliseconds.ToString("F3", CultureInfo.InvariantCulture)}"
@@ -114,7 +114,7 @@ internal static class ShellOrderedRunRecordWriter
             var recordedStep = record.Steps![step.Order - 1];
             lines.Add(
                 $"Step|order={step.Order}|id={step.StepId}|tool={step.ToolId}|status={step.Result.Status}|output={step.OutputEntityId}|sha256={step.OutputContentSha256 ?? "(none)"}|elapsedMs={recordedStep.ElapsedMilliseconds.ToString("F3", CultureInfo.InvariantCulture)}|stages={FormatStages(recordedStep.Timing)}");
-            lines[^1] += $"|levelFrameSha256={step.LevelFrameContentSha256 ?? "(none)"}|levelFrameQualitySha256={step.LevelFrameQualityContentSha256 ?? "(none)"}|frameChainSha256={step.FrameChainContentSha256 ?? "(none)"}";
+            lines[^1] += $"|levelFrameSha256={step.LevelFrameContentSha256 ?? "(none)"}|levelFrameQualitySha256={step.LevelFrameQualityContentSha256 ?? "(none)"}|frameChainSha256={step.FrameChainContentSha256 ?? "(none)"}|semanticFingerprint={recordedStep.SemanticFingerprint ?? "(none)"}|algorithmDefinition={recordedStep.AlgorithmEvidence?.AlgorithmDefinitionVersion ?? "(none)"}|sdkPackage={recordedStep.AlgorithmEvidence?.SdkPackageId ?? "(none)"}|sdkVersion={recordedStep.AlgorithmEvidence?.SdkPackageVersion ?? "(none)"}";
             lines.Add($"Evidence|order={step.Order}|{step.Evidence}");
             lines.AddRange(step.Result.Metrics
                 .Where(metric => double.IsFinite(metric.Value))

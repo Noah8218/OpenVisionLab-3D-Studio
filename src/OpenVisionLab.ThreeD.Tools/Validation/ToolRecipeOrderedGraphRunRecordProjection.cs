@@ -63,6 +63,13 @@ public static class ToolRecipeOrderedGraphRunRecordProjection
                 LevelFrameContentSha256 = step.LevelFrameContentSha256,
                 LevelFrameQualityContentSha256 = step.LevelFrameQualityContentSha256,
                 FrameChainContentSha256 = step.FrameChainContentSha256,
+                SemanticFingerprint = step.OutputSemanticFingerprint,
+                AlgorithmEvidence = step.SemanticIdentityEvidence is { } semanticEvidence
+                    ? new InspectionRunAlgorithmEvidence(
+                        semanticEvidence.AlgorithmDefinitionVersion,
+                        semanticEvidence.SdkPackageId,
+                        semanticEvidence.SdkPackageVersion)
+                    : null,
                 Timing = CreateToolTiming(step.Result.Elapsed.TotalMilliseconds),
                 CompletenessGrid = ValidateCompletenessGrid(recipeStep, step)
             };

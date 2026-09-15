@@ -10,7 +10,8 @@ public static class InspectionRunRecordJson
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
+        Converters = { new JsonStringEnumConverter() },
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
     public static void Write(string path, InspectionRunRecord record)
@@ -57,9 +58,43 @@ public static class InspectionRunRecordJson
             throw new FileNotFoundException("Run Record was not found.", fullPath);
         }
 
-        return JsonSerializer.Deserialize<InspectionRunRecord>(
-                   File.ReadAllText(fullPath, Encoding.UTF8),
-                   Options)
-               ?? throw new InvalidDataException("Run Record JSON contains null.");
+        var record = JsonSerializer.Deserialize<InspectionRunRecord>(
+                         File.ReadAllText(fullPath, Encoding.UTF8),
+                         Options)
+                     ?? throw new InvalidDataException("Run Record JSON contains null.");
+        ValidateRead(record);
+        return record;
+    }
+
+    private static void ValidateRead(InspectionRunRecord record)
+    {
+        if (!InspectionRunRecord.SupportsSchemaVersion(record.SchemaVersion))
+        {
+            throw new InvalidDataException(
+                $"Unsupported Run Record schema '{record.SchemaVersion}'.");
+        }
+
+        if (string.IsNullOrWhiteSpace(record.RunId)
+            || record.Recipe is null
+            || record.Source is null
+            || record.Artifacts is null
+            || string.IsNullOrWhiteSpace(record.ToolName)
+            || !Enum.IsDefined(record.Status)
+            || !double.IsFinite(record.ElapsedMilliseconds)
+            || record.ElapsedMilliseconds < 0.0
+            || string.IsNullOrWhiteSpace(record.Recipe.Path)
+            || string.IsNullOrWhiteSpace(record.Source.EntityId)
+            || string.IsNullOrWhiteSpace(record.Source.Path))
+        {
+            throw new InvalidDataException(
+                "Run Record is missing a required identity, source, tool, status, or elapsed-time field.");
+        }
+
+        if (record.Steps is { } steps
+            && steps.Any(step => step is null || !step.TryValidateEvidence(out _)))
+        {
+            throw new InvalidDataException(
+                "Run Record contains invalid semantic algorithm or SDK evidence.");
+        }
     }
 }

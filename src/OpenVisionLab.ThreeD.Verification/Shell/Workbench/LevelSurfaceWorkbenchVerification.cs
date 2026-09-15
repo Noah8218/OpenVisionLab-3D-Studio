@@ -438,7 +438,7 @@ internal static class LevelSurfaceWorkbenchVerification
                 && orderedRunCount == 1
                 && orderedExecution?.Status == ResultStatus.Pass
                 && orderedRecord is not null
-                && orderedRecord.SchemaVersion == "1.9"
+                && orderedRecord.SchemaVersion == InspectionRunRecord.CurrentSchemaVersion
                 && orderedRecord.Status == ResultStatus.Pass
                 && orderedRecord.Source.Sha256 == source.ContentSha256
                 && orderedRecordStep is not null

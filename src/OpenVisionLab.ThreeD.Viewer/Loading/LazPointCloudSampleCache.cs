@@ -158,12 +158,20 @@ internal sealed class LazPointCloudSampleCache
     public void Store(
         string path,
         int maxSampledPoints,
-        LazPointCloud pointCloud)
+        LazPointCloud pointCloud,
+        LazPointCloudSourceIdentity? expectedIdentity = null,
+        LazPointCloudSourceIdentity? observedIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(pointCloud);
 
         var fullPath = Path.GetFullPath(path);
-        var identity = LazPointCloudSourceIdentity.Capture(fullPath);
+        var identity = observedIdentity ?? LazPointCloudSourceIdentity.Capture(fullPath);
+        if (expectedIdentity is { } expected && expected != identity)
+        {
+            throw new InvalidDataException(
+                $"LAZ/LAS source changed between decode admission and cache store: {fullPath}");
+        }
+
         lock (syncRoot)
         {
             if (!string.Equals(sourcePath, fullPath, StringComparison.OrdinalIgnoreCase)

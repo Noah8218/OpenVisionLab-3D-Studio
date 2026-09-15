@@ -219,6 +219,14 @@ internal static class RoiCropWorkbenchVerification
                     && reopenedOutput?.ContentSha256 == previewHash,
                 saveMessage);
 
+            var metadataRoundTrip = VerifyRecipeMetadataRoundTrip(
+                root,
+                out var metadataDetail);
+            Check(
+                "recipe-level crop metadata restores same-folder and moved bundles",
+                metadataRoundTrip,
+                metadataDetail);
+
             var ordered = ToolRecipeOrderedGraphExecution.Execute(document, sourcePath);
             Check(
                 "ordered Shell and Runner execution path reproduces the crop",
@@ -358,5 +366,209 @@ internal static class RoiCropWorkbenchVerification
             [],
             steps,
             selections);
+    }
+
+    private static bool VerifyRecipeMetadataRoundTrip(string root, out string detail)
+    {
+        var bundle = Path.Combine(root, "recipe-metadata-bundle");
+        Directory.CreateDirectory(bundle);
+        var sourcePath = Path.Combine(bundle, "raw.c3d");
+        CreateSource().SaveC3D(sourcePath);
+        var source = C3DHeightFieldSnapshot.LoadIdentified(
+            sourcePath,
+            "source.roi-crop",
+            "raw-height",
+            "frame.c3d-grid-index");
+        var seed = CreateDocument(source, "raw.c3d");
+        var crop = ToolRecipeRoiCropExecution.Execute(seed, "step.roi-crop.01", bundle).Output;
+        if (crop is null)
+        {
+            detail = "metadata fixture crop did not execute";
+            return false;
+        }
+
+        var document = CreateDocument(source, "raw.c3d", crop);
+        var recipePath = Path.Combine(bundle, "recipe.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(recipePath, document);
+        using (var first = new ToolWorkbenchViewModel())
+        {
+            if (!first.TryOpenTeachingRecipe(recipePath, out var openMessage)
+                || !first.SelectPipelineStep("step.roi-crop.01")
+                || !first.PreviewSelectedRoiCropAsync().GetAwaiter().GetResult())
+            {
+                detail = $"initial metadata bundle setup failed: {openMessage}";
+                return false;
+            }
+
+            first.PublishSelectedStepCommand.Execute(null);
+            if (!first.TrySaveTeachingRecipe(recipePath, out var saveMessage))
+            {
+                detail = $"metadata bundle save failed: {saveMessage}";
+                return false;
+            }
+        }
+
+        var artifactPath = Directory.GetFiles(bundle, "recipe*.roi-crop.*.c3d").SingleOrDefault();
+        var sidecarPath = Directory.GetFiles(bundle, "recipe*.roi-crop.*.json").SingleOrDefault();
+        if (artifactPath is null || sidecarPath is null)
+        {
+            detail = $"metadata pair missing: c3d={artifactPath};json={sidecarPath}";
+            return false;
+        }
+
+        var sameFolderRestored = VerifyRestoredBundle(
+            recipePath,
+            sourcePath,
+            crop,
+            out var sameFolderDetail);
+        var moved = Path.Combine(root, "recipe-metadata-moved");
+        Directory.CreateDirectory(moved);
+        var movedSourcePath = Path.Combine(moved, "raw.c3d");
+        var movedRecipePath = Path.Combine(moved, "recipe.ov3d-recipe.json");
+        File.Copy(sourcePath, movedSourcePath, overwrite: true);
+        File.Copy(artifactPath, Path.Combine(moved, Path.GetFileName(artifactPath)), overwrite: true);
+        File.Copy(sidecarPath, Path.Combine(moved, Path.GetFileName(sidecarPath)), overwrite: true);
+        ToolRecipeDocumentStore.Save(movedRecipePath, document);
+        var movedRestored = VerifyRestoredBundle(
+            movedRecipePath,
+            movedSourcePath,
+            crop,
+            out var movedDetail);
+
+        var missingSource = VerifyRestoreFailure(
+            root,
+            "missing-source",
+            movedRecipePath,
+            movedSourcePath,
+            missingSource: true,
+            missingMetadata: false,
+            replaceCropBytes: false,
+            out var missingSourceDetail);
+        var missingMetadata = VerifyRestoreFailure(
+            root,
+            "missing-metadata",
+            movedRecipePath,
+            movedSourcePath,
+            missingSource: false,
+            missingMetadata: true,
+            replaceCropBytes: false,
+            out var missingMetadataDetail);
+        var replacedCrop = VerifyRestoreFailure(
+            root,
+            "replaced-crop-bytes",
+            movedRecipePath,
+            movedSourcePath,
+            missingSource: false,
+            missingMetadata: false,
+            replaceCropBytes: true,
+            out var replacedCropDetail);
+
+        detail = $"same={sameFolderRestored}({sameFolderDetail});moved={movedRestored}({movedDetail});"
+            + $"missingSource={missingSource}({missingSourceDetail});missingMetadata={missingMetadata}({missingMetadataDetail});"
+            + $"replacedCrop={replacedCrop}({replacedCropDetail})";
+        return sameFolderRestored
+            && movedRestored
+            && missingSource
+            && missingMetadata
+            && replacedCrop;
+    }
+
+    private static bool VerifyRestoredBundle(
+        string recipePath,
+        string sourcePath,
+        C3DHeightFieldSnapshot expected,
+        out string detail)
+    {
+        using var workbench = new ToolWorkbenchViewModel();
+        if (!workbench.TryOpenTeachingRecipe(recipePath, out var openMessage))
+        {
+            detail = $"open failed: {openMessage}";
+            return false;
+        }
+
+        var restored = workbench.CurrentRoiCropPreviewOutput;
+        var restoredIdentity = restored is not null
+            && workbench.HasCurrentRoiCropPreview
+            && workbench.IsRoiCropPreviewPublished
+            && restored.ContentSha256 == expected.ContentSha256
+            && restored.RootSourceSha256 == expected.RootSourceSha256
+            && restored.GridOriginColumn == expected.GridOriginColumn
+            && restored.GridOriginRow == expected.GridOriginRow
+            && restored.Unit == expected.Unit
+            && restored.FrameId == expected.FrameId
+            && workbench.RoiCropExecutionSummary.Contains("without executing", StringComparison.OrdinalIgnoreCase);
+        var binaryOnly = restored is not null
+            && C3DHeightFieldSnapshot.LoadIdentified(
+                    restored.SourcePath,
+                    restored.EntityId,
+                    restored.Unit,
+                    restored.FrameId)
+                is { GridOriginColumn: 0, GridOriginRow: 0 } binary
+            && binary.RootSourceSha256 == binary.ContentSha256
+            && binary.RootSourceSha256 != restored.RootSourceSha256;
+
+        workbench.SelectPipelineStep("step.warpage.01");
+        var measurementRan = workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
+        var measurementOutput = workbench.CurrentMeasurementOutput;
+        var measurementParity = measurementRan
+            && measurementOutput?.InputEntityId == expected.EntityId
+            && measurementOutput.Result.Status == ResultStatus.Pass;
+        var sourcePathParity = Path.GetFullPath(workbench.Source.Path) == Path.GetFullPath(sourcePath);
+        detail = $"restored={restoredIdentity};binaryOnlyBoundary={binaryOnly};measurement={measurementParity};source={sourcePathParity};summary={workbench.RoiCropExecutionSummary}";
+        return restoredIdentity && binaryOnly && measurementParity && sourcePathParity;
+    }
+
+    private static bool VerifyRestoreFailure(
+        string root,
+        string name,
+        string sourceRecipePath,
+        string sourcePath,
+        bool missingSource,
+        bool missingMetadata,
+        bool replaceCropBytes,
+        out string detail)
+    {
+        var target = Path.Combine(root, $"recipe-metadata-{name}");
+        Directory.CreateDirectory(target);
+        var recipePath = Path.Combine(target, "recipe.ov3d-recipe.json");
+        File.Copy(sourceRecipePath, recipePath, overwrite: true);
+        var sourceTarget = Path.Combine(target, "raw.c3d");
+        File.Copy(sourcePath, sourceTarget, overwrite: true);
+        foreach (var file in Directory.GetFiles(Path.GetDirectoryName(sourceRecipePath)!, "recipe*.roi-crop.*.*"))
+        {
+            File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
+        }
+
+        if (missingSource)
+        {
+            File.Delete(sourceTarget);
+        }
+        if (missingMetadata)
+        {
+            foreach (var file in Directory.GetFiles(target, "recipe*.roi-crop.*.json"))
+            {
+                File.Delete(file);
+            }
+        }
+        if (replaceCropBytes)
+        {
+            var replacement = C3DHeightFieldSnapshot.CreateForVerification(
+                "replacement.roi-crop",
+                6,
+                5,
+                Enumerable.Range(101, 30).Select(value => (double)value).ToArray());
+            var cropPath = Directory.GetFiles(target, "recipe*.roi-crop.*.c3d").Single();
+            replacement.SaveC3D(cropPath);
+        }
+
+        using var workbench = new ToolWorkbenchViewModel();
+        var opened = workbench.TryOpenTeachingRecipe(recipePath, out var openMessage);
+        var failedClosed = opened
+            && !workbench.HasCurrentRoiCropPreview
+            && !workbench.IsRoiCropPreviewPublished
+            && workbench.CurrentRoiCropPreviewOutput is null
+            && workbench.RoiCropExecutionSummary.Contains("not restored", StringComparison.OrdinalIgnoreCase);
+        detail = $"opened={opened};failedClosed={failedClosed};summary={workbench.RoiCropExecutionSummary};open={openMessage}";
+        return failedClosed;
     }
 }

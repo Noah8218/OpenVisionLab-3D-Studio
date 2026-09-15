@@ -54,6 +54,9 @@ public static class ViewerLocalizationScope
     }
 
     internal static void Detach(DependencyObject scope)
+        => Detach(scope, clearAttachedProperties: true);
+
+    internal static void Detach(DependencyObject scope, bool clearAttachedProperties)
     {
         ArgumentNullException.ThrowIfNull(scope);
 
@@ -63,8 +66,11 @@ public static class ViewerLocalizationScope
             Subscriptions.Remove(scope);
         }
 
-        scope.ClearValue(ProviderProperty);
-        scope.ClearValue(RevisionProperty);
+        if (clearAttachedProperties && scope.Dispatcher.CheckAccess())
+        {
+            scope.ClearValue(ProviderProperty);
+            scope.ClearValue(RevisionProperty);
+        }
     }
 
     private sealed class Subscription : IDisposable

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -150,7 +151,7 @@ internal static class ToolRecipeOrderedRunVerification
                 runCompleted
                 && reopenRunCount == 1
                 && record is not null
-                && record.SchemaVersion == "1.9"
+                && record.SchemaVersion == InspectionRunRecord.CurrentSchemaVersion
                 && record.Status == ResultStatus.Pass
                 && record.Steps?.Count == 1
                 && record.SourceQualityEvidence is
@@ -165,6 +166,35 @@ internal static class ToolRecipeOrderedRunVerification
                     StringComparison.Ordinal)
                 && reopenedShell.RunSnapshotSummary.Contains("Pass", StringComparison.OrdinalIgnoreCase),
                 $"completed={runCompleted}; fullRuns={reopenRunCount}; record={recordPath}; schema={record?.SchemaVersion}; status={record?.Status}; sourceQuality={record?.SourceQualityEvidence?.State}; timing={reopenedShell.InspectionSteps.FirstOrDefault()?.Timing}");
+            var valueValiditySummary = reopenedShell.ResultsValueValiditySummary;
+            var validSampleMetric = record?.Steps?.SingleOrDefault()?.Metrics.SingleOrDefault(metric =>
+                metric.Name.Equals("ValidSampleCount", StringComparison.OrdinalIgnoreCase));
+            Check(
+                "Results explains stored definition, raw-height unit basis, ROI, valid count, and unavailable residual without recomputation",
+                (valueValiditySummary.Contains("Definition", StringComparison.Ordinal)
+                    || valueValiditySummary.Contains("정의", StringComparison.Ordinal))
+                && (valueValiditySummary.Contains("Unit basis", StringComparison.Ordinal)
+                    || valueValiditySummary.Contains("단위 근거", StringComparison.Ordinal))
+                && valueValiditySummary.Contains("ROI", StringComparison.OrdinalIgnoreCase)
+                && valueValiditySummary.Contains("ValidSampleCount", StringComparison.Ordinal)
+                && validSampleMetric is not null
+                && valueValiditySummary.Contains(
+                    validSampleMetric.Value.ToString("G6", System.Globalization.CultureInfo.CurrentCulture),
+                    StringComparison.Ordinal)
+                && (valueValiditySummary.Contains("physical calibration", StringComparison.OrdinalIgnoreCase)
+                    || valueValiditySummary.Contains("물리 보정", StringComparison.Ordinal))
+                && (valueValiditySummary.Contains("Fit residual", StringComparison.Ordinal)
+                    || valueValiditySummary.Contains("Unknown", StringComparison.Ordinal)),
+                valueValiditySummary.Replace(Environment.NewLine, " | "));
+            var valueValidityScenarios = VerifyResultsValueValidityScenarios(
+                root,
+                runRoot,
+                record,
+                out var valueValidityScenarioDetail);
+            Check(
+                "Results keeps Warpage residuals, unknown units, and failure reasons distinguishable",
+                valueValidityScenarios,
+                valueValidityScenarioDetail);
             var stagedRunDirectories = Directory.Exists(runRoot)
                 ? Directory.GetDirectories(runRoot, "*.staging.*")
                 : Array.Empty<string>();
@@ -351,9 +381,34 @@ internal static class ToolRecipeOrderedRunVerification
                 [
                     {
                         StageId: InspectionRunTiming.ToolExecutionStage
-                    }
+                }
                 ],
                 $"status={record?.Status}/{directExecution.Status}; step={recordStep?.Id}/{projectedStep?.Id}; output={recordStep?.OutputEntityId}; hash={recordStep?.OutputContentSha256}; studioTiming={recordStep?.Timing?.TotalElapsedMilliseconds:G17};runnerTiming={projectedStep?.Timing?.TotalElapsedMilliseconds:G17}");
+            var publishedCropParity = VerifyPublishedCropParity(
+                root,
+                runRoot,
+                out var publishedCropParityDetail);
+            Check(
+                "published ROI/Crop input keeps UI Ordered Run and headless Run Record semantically equivalent",
+                publishedCropParity,
+                publishedCropParityDetail);
+            var noDataParity = VerifyNoDataParity(
+                root,
+                runRoot,
+                out var noDataParityDetail);
+            Check(
+                "NoData remains an NG/Fail (not execution Error) in UI Ordered Run and headless replay",
+                noDataParity,
+                noDataParityDetail);
+            var recordSaveFailure = VerifyRecordSaveFailure(
+                root,
+                passRecipePath,
+                runRoot,
+                out var recordSaveFailureDetail);
+            Check(
+                "Run completion remains distinct from Run Record save failure",
+                recordSaveFailure,
+                recordSaveFailureDetail);
             Check(
                 "Thickness Pass metric remains exact",
                 recordStep?.Metrics.Single(metric => metric.Name == "Mean").Value is { } mean
@@ -695,6 +750,429 @@ internal static class ToolRecipeOrderedRunVerification
             [],
             [step],
             [reference, measurement]);
+    }
+
+    private static bool VerifyPublishedCropParity(
+        string root,
+        string runRoot,
+        out string detail)
+    {
+        var sourcePath = Path.Combine(root, "thickness-crop-source.C3D");
+        var sourceValues = Enumerable.Range(0, 4)
+            .SelectMany(_ => new[] { 99d, 10d, 10d, 15d, 15d, 88d })
+            .ToArray();
+        C3DHeightFieldSnapshot.CreateForVerification(
+            "source.c3d.height-map",
+            6,
+            4,
+            sourceValues)
+            .SaveC3D(sourcePath);
+        var sourceIdentity = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
+        var source = new ToolRecipeSource(
+            "source.c3d.height-map",
+            "Thickness crop verification",
+            "C3D",
+            "raw-height",
+            "frame.c3d-grid-index",
+            Path.GetFullPath(sourcePath),
+            new FileInfo(sourcePath).Length,
+            sourceIdentity.ContentSha256,
+            sourceIdentity.GridWidth,
+            sourceIdentity.GridHeight);
+        var cropSelection = new ToolRecipeSelection(
+            "selection.thickness.crop",
+            "Published crop ROI",
+            ToolRecipeSelectionKinds.GridRectangle,
+            source.Id,
+            source.FrameId,
+            new ToolRecipeSelectionSourceBinding(
+                "C3D",
+                source.ContentSha256!,
+                source.GridWidth!.Value,
+                source.GridHeight!.Value),
+            new ToolRecipeGridRectangle(0, 1, 4, 4),
+            null,
+            null);
+        var cropStep = new ToolRecipeStep(
+            "step.thickness.crop",
+            "roi-crop",
+            "ROI / Crop",
+            1,
+            [source.Id, cropSelection.Id],
+            "derived.thickness.crop",
+            [
+                new ToolRecipeParameter("ROI", "Select in Viewer"),
+                new ToolRecipeParameter("Output frame", "Keep source frame")
+            ]);
+        var seedDocument = new ToolRecipeDocument(
+            ToolRecipeDocument.CurrentSchemaVersion,
+            "Thickness published crop verification",
+            source,
+            [],
+            [cropStep],
+            [cropSelection]);
+        var cropEvaluation = ToolRecipeRoiCropExecution.Execute(
+            seedDocument,
+            cropStep.Id,
+            root);
+        if (cropEvaluation.Output is not C3DHeightFieldSnapshot cropOutput)
+        {
+            detail = $"crop preparation failed: status={cropEvaluation.Result.Status};message={cropEvaluation.Result.Message}";
+            return false;
+        }
+
+        var cropBinding = new ToolRecipeSelectionSourceBinding(
+            "HeightField",
+            cropOutput.ContentSha256,
+            cropOutput.Width,
+            cropOutput.Height,
+            cropOutput.EntityId,
+            source.ContentSha256,
+            cropOutput.Unit,
+            cropOutput.FrameId);
+        var reference = new ToolRecipeSelection(
+            "selection.thickness.crop.reference",
+            "Cropped reference ROI",
+            ToolRecipeSelectionKinds.GridRectangle,
+            source.Id,
+            cropOutput.FrameId,
+            cropBinding,
+            new ToolRecipeGridRectangle(0, 0, 4, 2),
+            null,
+            null);
+        var measurement = new ToolRecipeSelection(
+            "selection.thickness.crop.measurement",
+            "Cropped measurement ROI",
+            ToolRecipeSelectionKinds.GridRectangle,
+            source.Id,
+            cropOutput.FrameId,
+            cropBinding,
+            new ToolRecipeGridRectangle(0, 2, 4, 2),
+            null,
+            null);
+        var measurementStep = new ToolRecipeStep(
+            "step.thickness.crop.measurement",
+            "thickness",
+            "Thickness",
+            3,
+            [cropStep.OutputEntityId, reference.Id, measurement.Id],
+            "derived.thickness.crop.measurement",
+            [
+                new ToolRecipeParameter("MinimumThickness", "4.5"),
+                new ToolRecipeParameter("MaximumThickness", "5.5"),
+                new ToolRecipeParameter("MinimumValidSampleCount", "1")
+            ]);
+        var document = seedDocument with
+        {
+            Steps = [cropStep, measurementStep],
+            Selections = [cropSelection, reference, measurement]
+        };
+        var recipePath = Path.Combine(root, "thickness-published-crop.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(recipePath, document);
+        var savedRecipePath = Path.Combine(root, "thickness-published-crop-saved.ov3d-recipe.json");
+        using (var firstShell = CreateShell(root, "published-crop-first", runRoot))
+        {
+            var opened = firstShell.Workbench.TryOpenTeachingRecipe(
+                recipePath,
+                out var openMessage);
+            var firstSourceQuality = WaitForSourceQuality(
+                firstShell.Workbench.SourceQuality);
+            if (!opened || firstSourceQuality is null)
+            {
+                detail = $"initial crop recipe open failed: {openMessage}";
+                return false;
+            }
+
+            if (!firstShell.Workbench.SelectPipelineStep(cropStep.Id)
+                || !firstShell.Workbench.PreviewSelectedRoiCropAsync().GetAwaiter().GetResult()
+                || !firstShell.Workbench.HasCurrentRoiCropPreview)
+            {
+                detail = $"crop Preview failed: {firstShell.Workbench.RoiCropExecutionSummary}";
+                return false;
+            }
+
+            firstShell.Workbench.PublishSelectedStepCommand.Execute(null);
+            if (!firstShell.Workbench.IsRoiCropPreviewPublished)
+            {
+                detail = $"crop Publish failed: {firstShell.Workbench.RoiCropExecutionSummary}";
+                return false;
+            }
+
+            if (!firstShell.Workbench.TrySaveTeachingRecipe(savedRecipePath, out var saveMessage))
+            {
+                detail = $"crop recipe save failed: {saveMessage}";
+                return false;
+            }
+        }
+
+        var reopenedDocument = ToolRecipeDocumentStore.Load(savedRecipePath);
+        if (!Path.IsPathFullyQualified(reopenedDocument.Source.Path))
+        {
+            reopenedDocument = reopenedDocument with
+            {
+                Source = reopenedDocument.Source with
+                {
+                    Path = Path.GetFullPath(Path.Combine(
+                        Path.GetDirectoryName(savedRecipePath)!,
+                        reopenedDocument.Source.Path))
+                }
+            };
+        }
+        using var reopenedShell = CreateShell(root, "published-crop-reopen", runRoot);
+        if (!reopenedShell.Workbench.TryOpenTeachingRecipe(savedRecipePath, out var reopenMessage))
+        {
+            detail = $"reopened crop recipe failed: {reopenMessage}";
+            return false;
+        }
+
+        var sourceQuality = WaitForSourceQuality(reopenedShell.Workbench.SourceQuality);
+        if (sourceQuality is null || !reopenedShell.Workbench.RunTeachingRecipeCommand.CanExecute(null))
+        {
+            detail = $"reopened crop recipe is not Run-ready: quality={sourceQuality is not null};summary={reopenedShell.Workbench.OrderedRunCapabilitySummary}";
+            return false;
+        }
+
+        var runCompleted = reopenedShell.Workbench.RunTeachingRecipeAsync()
+            .GetAwaiter()
+            .GetResult();
+        var recordPath = reopenedShell.Workbench.CurrentOrderedRunRecordPath;
+        var uiRecord = ReadRecord(recordPath);
+        var headless = ToolRecipeOrderedGraphExecution.Execute(
+            reopenedDocument,
+            reopenedDocument.Source.Path,
+            sourceQuality);
+        var parity = CompareSemanticRunRecord(
+            uiRecord,
+            reopenedDocument,
+            headless,
+            savedRecipePath,
+            out var parityDetail);
+        detail = $"opened=1;crop={cropOutput.Width}x{cropOutput.Height}@{cropOutput.GridOriginColumn},{cropOutput.GridOriginRow};"
+            + $"runCompleted={runCompleted};uiRecord={recordPath};headless={headless.Status};{parityDetail}";
+        return runCompleted && parity;
+    }
+
+    private static bool CompareSemanticRunRecord(
+        InspectionRunRecord? uiRecord,
+        ToolRecipeDocument document,
+        ToolRecipeOrderedGraphExecutionResult headless,
+        string recipePath,
+        out string detail)
+    {
+        var projection = ToolRecipeOrderedGraphRunRecordProjection.Create(
+            document,
+            headless);
+        var uiSteps = uiRecord?.Steps ?? [];
+        var stepParity = uiSteps.Count == projection.Count
+            && uiSteps.Zip(projection).All(pair =>
+                pair.First.Id == pair.Second.Id
+                && pair.First.ToolId == pair.Second.ToolId
+                && pair.First.InputEntityIds.SequenceEqual(pair.Second.InputEntityIds)
+                && pair.First.OutputEntityId == pair.Second.OutputEntityId
+                && pair.First.Status == pair.Second.Status
+                && pair.First.OutputContentSha256 == pair.Second.OutputContentSha256
+                && pair.First.Metrics.SequenceEqual(pair.Second.Metrics));
+        var sourceParity = uiRecord is not null
+            && uiRecord.Status == headless.Status
+            && uiRecord.Source.EntityId == document.Source.Id
+            && uiRecord.Source.Sha256 == document.Source.ContentSha256
+            && uiRecord.Source.ByteLength == document.Source.ByteLength
+            && uiRecord.Source.Unit == document.Source.Unit
+            && headless.SourceContentSha256 == document.Source.ContentSha256;
+        var recipeBytes = File.ReadAllBytes(recipePath);
+        var recipeHash = Convert.ToHexString(SHA256.HashData(recipeBytes));
+        var headlessCropOutputSha256 = headless.Steps.FirstOrDefault()?.OutputContentSha256;
+        var recipeParity = uiRecord?.Recipe.Path == Path.GetFullPath(recipePath)
+            && string.Equals(uiRecord.Recipe.Sha256, recipeHash, StringComparison.OrdinalIgnoreCase)
+            && document.Steps.Any(step => step.ToolId == "roi-crop")
+            && document.Selections?.Where(selection => selection.SourceBinding.OwnerEntityId == "derived.thickness.crop")
+                .Count() == 2
+            && headless.ReboundDocument.Selections?.Where(selection => selection.SourceBinding.OwnerEntityId == "derived.thickness.crop")
+                .All(selection => headlessCropOutputSha256 is not null
+                    && selection.SourceBinding.ContentSha256 == headlessCropOutputSha256)
+                == true;
+        detail = $"status={uiRecord?.Status}/{headless.Status};steps={uiSteps.Count}/{projection.Count};"
+            + $"source={sourceParity};recipe={recipeParity};stepFields={stepParity};"
+            + $"headlessMessage={headless.Message};outputs={string.Join(',', uiSteps.Select(step => step.OutputContentSha256 ?? "(none)"))}";
+        return sourceParity && recipeParity && stepParity;
+    }
+
+    private static bool VerifyNoDataParity(
+        string root,
+        string runRoot,
+        out string detail)
+    {
+        var sourcePath = Path.Combine(root, "thickness-no-data-source.C3D");
+        var sourceValues = Enumerable.Range(0, 4)
+            .SelectMany(_ => new[] { 10d, 10d, double.NaN, double.NaN })
+            .ToArray();
+        C3DHeightFieldSnapshot.CreateForVerification(
+            "source.c3d.height-map",
+            4,
+            4,
+            sourceValues)
+            .SaveC3D(sourcePath);
+        var recipePath = Path.Combine(root, "thickness-no-data.ov3d-recipe.json");
+        var document = CreateThicknessDocument(sourcePath, 4.5, 5.5);
+        ToolRecipeDocumentStore.Save(recipePath, document);
+        using var shell = CreateShell(root, "no-data", runRoot);
+        if (!shell.Workbench.TryOpenTeachingRecipe(recipePath, out var openMessage))
+        {
+            detail = $"NoData recipe open failed: {openMessage}";
+            return false;
+        }
+
+        var sourceQuality = WaitForSourceQuality(shell.Workbench.SourceQuality);
+        var runCompleted = shell.Workbench.RunTeachingRecipeAsync()
+            .GetAwaiter()
+            .GetResult();
+        var record = ReadRecord(shell.Workbench.CurrentOrderedRunRecordPath);
+        var headless = ToolRecipeOrderedGraphExecution.Execute(
+            document,
+            sourcePath,
+            sourceQuality);
+        var uiStep = record?.Steps?.SingleOrDefault();
+        var headlessStep = headless.Steps.SingleOrDefault();
+        var passed = runCompleted
+            && headless.Status == ResultStatus.Fail
+            && record?.Status == ResultStatus.Fail
+            && headlessStep?.Result.Status == ResultStatus.Fail
+            && uiStep?.Status == ResultStatus.Fail
+            && headless.Status is not ResultStatus.Error
+            && record.Status is not ResultStatus.Error;
+        detail = $"quality={sourceQuality is not null};runCompleted={runCompleted};"
+            + $"ui={record?.Status};headless={headless.Status};uiStep={uiStep?.Status};"
+            + $"headlessStep={headlessStep?.Result.Status};message={headless.Message}";
+        return passed;
+    }
+
+    private static bool VerifyRecordSaveFailure(
+        string root,
+        string recipePath,
+        string runRoot,
+        out string detail)
+    {
+        var blockedRoot = Path.Combine(root, "run-record-root-file");
+        File.WriteAllText(blockedRoot, "record root intentionally occupied by a file");
+        using var shell = CreateShell(root, "record-save-failure", blockedRoot);
+        if (!shell.Workbench.TryOpenTeachingRecipe(recipePath, out var openMessage))
+        {
+            detail = $"record-save-failure recipe open failed: {openMessage}";
+            return false;
+        }
+
+        _ = WaitForSourceQuality(shell.Workbench.SourceQuality);
+        var runCompleted = shell.Workbench.RunTeachingRecipeAsync()
+            .GetAwaiter()
+            .GetResult();
+        var failedToPersist = shell.Workbench.CurrentOrderedRunRecordPath is null
+            && shell.Workbench.HasOrderedRunResult
+            && shell.StatusText.Contains("Run Record", StringComparison.OrdinalIgnoreCase)
+            && shell.ResultsValueValiditySummary.Contains(
+                "Run Record",
+                StringComparison.OrdinalIgnoreCase)
+            && (shell.ResultsValueValiditySummary.Contains("Error", StringComparison.Ordinal)
+                || shell.ResultsValueValiditySummary.Contains("오류", StringComparison.Ordinal));
+        detail = $"runCompleted={runCompleted};record={(shell.Workbench.CurrentOrderedRunRecordPath ?? "(none)")};"
+            + $"result={shell.Workbench.HasOrderedRunResult};status={shell.StatusText}";
+        return runCompleted && failedToPersist;
+    }
+
+    private static bool VerifyResultsValueValidityScenarios(
+        string root,
+        string runRoot,
+        InspectionRunRecord? sourceRecord,
+        out string detail)
+    {
+        if (sourceRecord?.Steps?.SingleOrDefault() is not { } sourceStep)
+        {
+            detail = "source Run Record step is unavailable";
+            return false;
+        }
+
+        var warpageStep = sourceStep with
+        {
+            ToolId = "warpage",
+            ToolName = "C3D Warpage",
+            Status = ResultStatus.Pass,
+            Message = "Best-fit residuals use declared raw-height scalar values; physical calibration is not inferred.",
+            Metrics =
+            [
+                new InspectionRunMetric("PeakToValley", MetricKind.Deviation, 0.3, "raw-height", ResultStatus.Pass),
+                new InspectionRunMetric("Rms", MetricKind.Deviation, 0.1, "raw-height", ResultStatus.Pass),
+                new InspectionRunMetric("MinimumResidual", MetricKind.Deviation, -0.2, "raw-height", ResultStatus.Pass),
+                new InspectionRunMetric("MaximumResidual", MetricKind.Deviation, 0.1, "raw-height", ResultStatus.Pass),
+                new InspectionRunMetric("ValidSampleCount", MetricKind.Count, 8, "count", ResultStatus.Pass)
+            ],
+            Overlays =
+            [
+                new InspectionRunOverlay(
+                    "overlay.c3d-warpage-roi",
+                    OverlayKind.Box,
+                    "C3D Warpage best-fit inspection ROI",
+                    ResultStatus.Pass,
+                    sourceRecord.Source.EntityId)
+            ],
+            AlgorithmEvidence = new InspectionRunAlgorithmEvidence(
+                "C3DWarpage.v1",
+                "OpenVisionLab.VisionSdk.ThreeD",
+                "verification")
+        };
+        var warpageRecord = sourceRecord with
+        {
+            ToolName = "C3D Warpage",
+            Status = ResultStatus.Pass,
+            Message = "Warpage result uses the declared raw-height frame.",
+            Steps = [warpageStep]
+        };
+        var warpagePath = Path.Combine(root, "results-value-validity-warpage.json");
+        InspectionRunRecordJson.Write(warpagePath, warpageRecord);
+        using var warpageShell = CreateShell(root, "results-value-validity-warpage", runRoot);
+        var warpageLoaded = warpageShell.LoadRunRecord(warpagePath, out var warpageMessage);
+        var warpageSummary = warpageShell.ResultsValueValiditySummary;
+        var warpagePass = warpageLoaded
+            && warpageSummary.Contains("PeakToValley=0.3", StringComparison.Ordinal)
+            && warpageSummary.Contains("Rms=0.1", StringComparison.Ordinal)
+            && warpageSummary.Contains("ValidSampleCount=8", StringComparison.Ordinal)
+            && warpageSummary.Contains("best-fit inspection ROI", StringComparison.OrdinalIgnoreCase)
+            && warpageSummary.Contains("Pass", StringComparison.Ordinal);
+
+        var invalidMetrics = warpageStep.Metrics
+            .Select(metric => metric with { Unit = string.Empty })
+            .ToArray();
+        var invalidRecord = warpageRecord with
+        {
+            Source = warpageRecord.Source with { Unit = string.Empty },
+            SourceQualityEvidence = InspectionRunSourceQualityEvidence.Unavailable(
+                "Unit was not declared for this failure fixture."),
+            Status = ResultStatus.Fail,
+            Message = "Bad reference plane prevented a valid warpage decision.",
+            Steps =
+            [
+                warpageStep with
+                {
+                    Status = ResultStatus.Fail,
+                    Message = "Insufficient valid ROI samples for the fitted reference plane.",
+                    Metrics = invalidMetrics
+                }
+            ]
+        };
+        var invalidPath = Path.Combine(root, "results-value-validity-invalid.json");
+        InspectionRunRecordJson.Write(invalidPath, invalidRecord);
+        using var invalidShell = CreateShell(root, "results-value-validity-invalid", runRoot);
+        var invalidLoaded = invalidShell.LoadRunRecord(invalidPath, out var invalidMessage);
+        var invalidSummary = invalidShell.ResultsValueValiditySummary;
+        var invalidPass = invalidLoaded
+            && invalidSummary.Contains("Unknown", StringComparison.Ordinal)
+            && invalidSummary.Contains("Fail (NG)", StringComparison.Ordinal)
+            && invalidSummary.Contains("Bad reference plane", StringComparison.Ordinal)
+            && invalidSummary.Contains("Insufficient valid ROI samples", StringComparison.Ordinal);
+
+        detail = $"warpageLoaded={warpageLoaded};warpagePass={warpagePass};warpageMessage={warpageMessage};"
+            + $"invalidLoaded={invalidLoaded};invalidPass={invalidPass};invalidMessage={invalidMessage};"
+            + $"warpage={warpageSummary.Replace(Environment.NewLine, " | ")};"
+            + $"invalid={invalidSummary.Replace(Environment.NewLine, " | ")}";
+        return warpagePass && invalidPass;
     }
 
     private static InspectionRunRecord? ReadRecord(string? path) =>

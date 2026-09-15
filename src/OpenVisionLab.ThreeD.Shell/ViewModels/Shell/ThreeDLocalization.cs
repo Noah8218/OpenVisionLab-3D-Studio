@@ -102,7 +102,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ResultsWorkspaceOutputCompare), nameof(ResultsWorkspaceReports),
         nameof(ResultsWorkspaceReportsDetail), nameof(ResultsWorkspaceAdvanced),
         nameof(ResultsWorkspaceImmutable), nameof(ResultsOperatorSummaryTitle),
-        nameof(ResultsOperatorDecision), nameof(ResultsOperatorAffectedSteps),
+        nameof(ResultsValueValidityTitle), nameof(ResultsOperatorDecision), nameof(ResultsOperatorAffectedSteps),
         nameof(ResultsOperatorNextAction),
         nameof(ValidationSet), nameof(ValidationSetTitle), nameof(ValidationSetDetail),
         nameof(ValidationSetAddSamples), nameof(ValidationSetAddCurrentInput), nameof(ValidationSetRunAll),
@@ -635,6 +635,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ResultsWorkspaceAdvanced => T("ThreeD.Results.Advanced", "\uACE0\uAE09 \uC9C4\uB2E8", "Advanced diagnostics");
     public string ResultsWorkspaceImmutable => T("ThreeD.Results.Immutable", "\uC774 \uD654\uBA74\uC758 \uC2E4\uD589 \uC99D\uAC70\uB294 \uC77D\uAE30 \uC804\uC6A9\uC785\uB2C8\uB2E4. \uD2F0\uCE6D\uACFC \uD30C\uB77C\uBBF8\uD130 \uC218\uC815\uC740 \uD2F0\uCE6D \uD654\uBA74\uC5D0\uC11C\uB9CC \uC218\uD589\uD558\uC138\uC694.", "Recorded evidence is read-only. Return to Teach to change regions or parameters.");
     public string ResultsOperatorSummaryTitle => T("ThreeD.Results.OperatorSummaryTitle", "\uC791\uC5C5\uC790 \uACB0\uACFC \uC694\uC57D", "Operator result summary");
+    public string ResultsValueValidityTitle => T("ThreeD.Results.ValueValidityTitle", "\uAC12\uC758 \uC758\uBBF8\uC640 \uC720\uD6A8\uC131", "Value meaning and validity");
     public string ResultsOperatorDecision => T("ThreeD.Results.OperatorDecision", "\uCD5C\uC885 \uD310\uC815\uACFC \uD575\uC2EC \uCE21\uC815\uAC12", "Decision and key measurement");
     public string ResultsOperatorAffectedSteps => T("ThreeD.Results.OperatorAffectedSteps", "\uC2E4\uD589 \uB2E8\uACC4", "Executed steps");
     public string ResultsOperatorNextAction => T(

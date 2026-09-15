@@ -718,7 +718,7 @@ internal static class SyntheticAffineInspectionPlateVerification
                     Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
                 });
             checks.Add(Check("schema 1.9 JSON preserves exact Source Quality and the complete general graph",
-                record is { SchemaVersion: "1.9", Step: null, Steps.Count: 27 }
+                record is { SchemaVersion: InspectionRunRecord.CurrentSchemaVersion, Step: null, Steps.Count: 27 }
                 && record.SourceQualityEvidence is
                 {
                     State: InspectionRunSourceQualityEvidenceState.Available,

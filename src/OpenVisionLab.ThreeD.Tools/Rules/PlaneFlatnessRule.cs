@@ -26,6 +26,13 @@ public sealed record PlaneFlatnessEvaluation(
     Vector3 MinimumProjection,
     Vector3 MaximumProjection);
 
+/// <summary>
+/// Evaluates the signed orthogonal deviations of a measurement ROI from the
+/// least-squares plane fitted to a separate reference ROI. The reported
+/// Flatness value is the reference-plane deviation range (maximum signed
+/// deviation minus minimum signed deviation); the absolute peak is derived
+/// from those signed extrema. This is not a GD&amp;T minimum-zone result.
+/// </summary>
 public static class PlaneFlatnessRule
 {
     public const string ToolName = "C3D Plane Flatness";
@@ -76,7 +83,7 @@ public static class PlaneFlatnessRule
                 input.MeasurementSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
                 input.Tolerance);
         }
-        catch (ArgumentException exception)
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
             return Error(input, exception.Message, stopwatch.Elapsed);
         }
@@ -89,11 +96,13 @@ public static class PlaneFlatnessRule
             ToolName,
             status,
             status == ResultStatus.Pass
-                ? "Measured surface flatness is within tolerance. Source geometry is unchanged."
-                : "Measured surface flatness exceeds tolerance. Source geometry is unchanged.",
+                ? "Reference-plane signed deviation range is within tolerance; this is not a GD&T minimum-zone result. Source geometry is unchanged."
+                : "Reference-plane signed deviation range exceeds tolerance; this is not a GD&T minimum-zone result. Source geometry is unchanged.",
             stopwatch.Elapsed,
             [
                 new Metric("Flatness", MetricKind.Deviation, evaluation.Flatness, input.Unit, status),
+                new Metric("Reference-plane deviation range", MetricKind.Deviation, evaluation.Flatness, input.Unit, status),
+                new Metric("Reference-plane absolute peak", MetricKind.Deviation, Math.Max(Math.Abs(evaluation.MinimumSignedDistance), Math.Abs(evaluation.MaximumSignedDistance)), input.Unit, status),
                 new Metric("Flatness tolerance", MetricKind.Deviation, input.Tolerance, input.Unit, status),
                 new Metric("Minimum signed deviation", MetricKind.Deviation, evaluation.MinimumSignedDistance, input.Unit),
                 new Metric("Maximum signed deviation", MetricKind.Deviation, evaluation.MaximumSignedDistance, input.Unit),
@@ -136,6 +145,8 @@ public static class PlaneFlatnessRule
                 elapsed,
                 [
                     new Metric("Flatness", MetricKind.Deviation, double.NaN, input.Unit ?? string.Empty, ResultStatus.Error),
+                    new Metric("Reference-plane deviation range", MetricKind.Deviation, double.NaN, input.Unit ?? string.Empty, ResultStatus.Error),
+                    new Metric("Reference-plane absolute peak", MetricKind.Deviation, double.NaN, input.Unit ?? string.Empty, ResultStatus.Error),
                     new Metric("Flatness tolerance", MetricKind.Deviation, tolerance, input.Unit ?? string.Empty, ResultStatus.Error),
                     new Metric("Reference sample count", MetricKind.Count, referenceCount, "count", ResultStatus.Error),
                     new Metric("Measurement sample count", MetricKind.Count, measurementCount, "count", ResultStatus.Error)

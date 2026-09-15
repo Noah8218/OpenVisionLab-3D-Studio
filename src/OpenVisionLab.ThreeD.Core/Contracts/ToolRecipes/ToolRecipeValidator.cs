@@ -130,6 +130,16 @@ public static class ToolRecipeValidator
                 ValidateAcquisitionDirection(source, acquisition, direction, errors);
             }
         }
+        if (source.MeasurementEvidence is { } measurementEvidence
+            && !measurementEvidence.TryValidate(
+                source.Unit,
+                source.FrameId,
+                source.SensorId,
+                DateTimeOffset.UtcNow,
+                out var measurementValidationMessage))
+        {
+            errors.Add($"Source measurement evidence is invalid: {measurementValidationMessage}");
+        }
 
         var globalIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var routableEntityIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

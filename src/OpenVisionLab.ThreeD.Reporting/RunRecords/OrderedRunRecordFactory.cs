@@ -26,9 +26,15 @@ public static class OrderedRunRecordFactory
             identity.SourcePath,
             identity.SourceSha256,
             identity.SourceByteLength,
-            document.Source.Unit);
+            document.Source.Unit)
+        {
+            FrameId = document.Source.FrameId,
+            SensorId = document.Source.SensorId,
+            MeasurementEvidence = HeightMeasurementEvidence.Normalize(
+                document.Source.MeasurementEvidence)
+        };
         return new InspectionRunRecord(
-            "1.9",
+            InspectionRunRecord.CurrentSchemaVersion,
             identity.RunId,
             identity.RecordedAtUtc,
             new InspectionRunRecipe(

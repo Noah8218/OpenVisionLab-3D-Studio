@@ -194,6 +194,68 @@ public sealed class C3DHeightFieldSnapshot
             cancellationToken);
     }
 
+    /// <summary>
+    /// Reopens canonical C3D bytes as a derived HeightField only when an
+    /// external recipe/sidecar contract supplies and verifies the derived
+    /// identity that the binary format intentionally does not contain.
+    /// </summary>
+    public static C3DHeightFieldSnapshot LoadDerivedVerified(
+        string path,
+        string entityId,
+        string unit,
+        string frameId,
+        long expectedByteLength,
+        string expectedContentSha256,
+        string expectedRootSourceSha256,
+        int expectedWidth,
+        int expectedHeight,
+        int expectedGridOriginColumn,
+        int expectedGridOriginRow,
+        string provenance)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(unit);
+        ArgumentException.ThrowIfNullOrWhiteSpace(frameId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedContentSha256);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedRootSourceSha256);
+        ArgumentException.ThrowIfNullOrWhiteSpace(provenance);
+        if (expectedByteLength <= 0 || expectedWidth <= 0 || expectedHeight <= 0)
+        {
+            throw new InvalidDataException("Derived C3D sidecar dimensions and byte length must be positive.");
+        }
+
+        var fullPath = Path.GetFullPath(path);
+        var (byteLength, hash, width, height, values) = C3DHeightFieldBinaryCodec.ParseAndHash(fullPath, CancellationToken.None);
+        if (byteLength != expectedByteLength
+            || !string.Equals(hash, expectedContentSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException("Derived C3D bytes do not match the recipe sidecar identity.");
+        }
+
+        if (width != expectedWidth || height != expectedHeight)
+        {
+            throw new InvalidDataException("Derived C3D grid identity does not match the recipe sidecar.");
+        }
+
+        return new C3DHeightFieldSnapshot(
+            entityId,
+            fullPath,
+            unit,
+            frameId,
+            byteLength,
+            hash,
+            expectedRootSourceSha256,
+            width,
+            height,
+            expectedGridOriginColumn,
+            expectedGridOriginRow,
+            values,
+            provenance,
+            true,
+            CancellationToken.None);
+    }
+
     public static C3DHeightFieldSnapshot CreateForVerification(
         string entityId,
         int width,

@@ -86,6 +86,10 @@ internal static class ResultsWorkspaceSectionBindingVerification
             "ActiveSectionDependencyPropertyRoundTrip",
             view.ActiveSection == ResultsWorkspaceSection.Reports,
             $"section={view.ActiveSection}"));
+        checks.Add((
+            "ResultsValueValiditySurfaceIsAccessible",
+            view.HasResultsValueValiditySurface,
+            $"surface={view.HasResultsValueValiditySurface}"));
 
         return checks;
     }

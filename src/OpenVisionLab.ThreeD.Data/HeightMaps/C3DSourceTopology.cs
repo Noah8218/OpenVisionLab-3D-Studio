@@ -7,6 +7,7 @@ public enum C3DSourceTopologyReason
     HeaderIncomplete,
     DimensionsNonPositive,
     CellCountOverflow,
+    AdmissionLimitExceeded,
     PayloadLengthMismatch
 }
 
@@ -28,6 +29,8 @@ public sealed class C3DSourceTopologyException : IOException
             "C3D topology error [DimensionsNonPositive]: grid width and height must be positive.",
         C3DSourceTopologyReason.CellCountOverflow =>
             "C3D topology error [CellCountOverflow]: declared grid dimensions exceed the supported cell-count or byte-length range.",
+        C3DSourceTopologyReason.AdmissionLimitExceeded =>
+            $"C3D admission error [AdmissionLimitExceeded]: declared grid dimensions exceed the measured Dev limit of {C3DMemoryAdmissionPolicy.MaxSupportedSampleCount:N0} cells.",
         C3DSourceTopologyReason.PayloadLengthMismatch =>
             "C3D topology error [PayloadLengthMismatch]: actual byte length does not match the declared grid dimensions.",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null)
@@ -86,6 +89,12 @@ internal static class C3DSourceTopology
         {
             throw new C3DSourceTopologyException(
                 C3DSourceTopologyReason.CellCountOverflow);
+        }
+
+        if (!C3DMemoryAdmissionPolicy.Evaluate(width, height).IsAdmitted)
+        {
+            throw new C3DSourceTopologyException(
+                C3DSourceTopologyReason.AdmissionLimitExceeded);
         }
 
         if (actualByteLength != expectedByteLength)

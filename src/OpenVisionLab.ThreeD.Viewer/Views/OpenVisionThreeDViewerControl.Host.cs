@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -28,6 +29,7 @@ namespace OpenVisionLab.ThreeD.Viewer;
 public sealed partial class OpenVisionThreeDViewerControl
 {
     private readonly SharpGlRenderContextLifetime renderContextLifetime = new();
+    private EventHandler<ViewerHostStateChangedEventArgs>? hostStateChanged;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -74,33 +76,33 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
             {
-                DisposeCore();
+                DisposeCore(dispatcherAccess: false);
                 return;
             }
 
             try
             {
-                Dispatcher.Invoke(DisposeCore);
+                Dispatcher.Invoke(() => DisposeCore(dispatcherAccess: true));
             }
             catch (InvalidOperationException)
             {
-                DisposeCore();
+                DisposeCore(dispatcherAccess: false);
             }
 
             return;
         }
 
-        DisposeCore();
+        DisposeCore(dispatcherAccess: true);
     }
 
-    private void DisposeCore()
+    private void DisposeCore(bool dispatcherAccess)
     {
         if (Interlocked.Exchange(ref disposalState, 1) != 0)
         {
             return;
         }
 
-        ViewerLocalizationScope.Detach(this);
+        ViewerLocalizationScope.Detach(this, clearAttachedProperties: dispatcherAccess);
         viewerLifetimeCancellation.Cancel();
         nominalActualComparisonCoordinator.Dispose();
         recipeLoadWorkflow.Dispose();
@@ -111,14 +113,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         visibleFrameRequests.Invalidate();
         DisposeInteractionWireframeLod();
 
-        try
+        if (dispatcherAccess)
         {
-            Viewport.ReleaseMouseCapture();
-        }
-        catch (InvalidOperationException)
-        {
-            // The Dispatcher may already be shutting down; context teardown
-            // remains the owner of any resources unavailable to this thread.
+            try
+            {
+                Viewport.ReleaseMouseCapture();
+            }
+            catch (InvalidOperationException)
+            {
+                // The Dispatcher may already be shutting down; context teardown
+                // remains the owner of any resources unavailable to this thread.
+            }
         }
 
         visibleFrameRequests.Dispose();
@@ -129,16 +134,36 @@ public sealed partial class OpenVisionThreeDViewerControl
         editor.Dispose();
         displayEditor.Dispose();
         linkedView.Dispose();
-        Loaded -= OnLoaded;
-        Unloaded -= OnUnloaded;
-        Loaded -= SmokeCaptureOnLoaded;
+        Interlocked.Exchange(ref hostStateChanged, null);
+        if (dispatcherAccess)
+        {
+            Loaded -= OnLoaded;
+            Unloaded -= OnUnloaded;
+            Loaded -= SmokeCaptureOnLoaded;
+        }
 
-        TryRetireOpenGLResourcesForDispose();
-        renderContextLifetime.Dispose(Viewport);
+        if (dispatcherAccess)
+        {
+            TryRetireOpenGLResourcesForDispose();
+            renderContextLifetime.Dispose(Viewport);
+        }
+        else
+        {
+            openGLResourceRetirementTelemetry.RecordAttempt();
+            openGLResourceRetirementTelemetry.RecordContextUnavailable();
+            DropOpenGLResourceReferencesAfterDispose();
+            renderContextLifetime.RecordContextUnavailable();
+        }
+
         ClearManagedDataReferencesAfterDispose();
         viewerLifetimeCancellation.Dispose();
         GC.SuppressFinalize(this);
     }
+
+    internal bool RenderContextDisposeUnavailable => renderContextLifetime.DisposeUnavailable;
+
+    internal int OpenGLResourceRetirementContextUnavailableCount =>
+        openGLResourceRetirementTelemetry.ContextUnavailableCount;
 
     private void TryRetireOpenGLResourcesForDispose()
     {
@@ -277,39 +302,101 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public event EventHandler? CameraChanged;
 
-    public ViewerCameraState CaptureCameraState() => hostOperations.CaptureCameraState();
+    public ViewerCameraState CaptureCameraState()
+    {
+        VerifyHostDispatcherAccess(nameof(CaptureCameraState));
+        return hostOperations.CaptureCameraState();
+    }
 
-    public bool TryApplyCameraState(ViewerCameraState state) => hostOperations.TryApplyCameraState(state);
+    public bool TryApplyCameraState(ViewerCameraState state)
+    {
+        VerifyHostDispatcherAccess(nameof(TryApplyCameraState));
+        return hostOperations.TryApplyCameraState(state);
+    }
 
-    public bool TrySetSelectionMode(string selectionMode) => hostOperations.TrySetSelectionMode(selectionMode);
+    public bool TrySetSelectionMode(string selectionMode)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetSelectionMode));
+        return hostOperations.TrySetSelectionMode(selectionMode);
+    }
 
-    public bool TrySetSelectionOverlayVisible(bool visible) => hostOperations.TrySetSelectionOverlayVisible(visible);
+    public bool TrySetSelectionOverlayVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetSelectionOverlayVisible));
+        return hostOperations.TrySetSelectionOverlayVisible(visible);
+    }
 
-    public bool TrySetHudDetailsVisible(bool visible) => hostOperations.TrySetHudDetailsVisible(visible);
+    public bool TrySetHudDetailsVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetHudDetailsVisible));
+        return hostOperations.TrySetHudDetailsVisible(visible);
+    }
 
-    public bool TrySetC3DSampleVisible(bool visible) => hostOperations.TrySetC3DSampleVisible(visible);
+    public bool TrySetC3DSampleVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetC3DSampleVisible));
+        return hostOperations.TrySetC3DSampleVisible(visible);
+    }
 
-    public bool TrySetSelectedColorMap(string colorMap) => hostOperations.TrySetSelectedColorMap(colorMap);
+    public bool TrySetSelectedColorMap(string colorMap)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetSelectedColorMap));
+        return hostOperations.TrySetSelectedColorMap(colorMap);
+    }
 
-    public bool TrySetSelectedDiagnosticChannel(ViewerDiagnosticChannelOption? channel) =>
-        hostOperations.TrySetSelectedDiagnosticChannel(channel);
+    public bool TrySetSelectedDiagnosticChannel(ViewerDiagnosticChannelOption? channel)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetSelectedDiagnosticChannel));
+        return hostOperations.TrySetSelectedDiagnosticChannel(channel);
+    }
 
-    public bool TrySetResultOverlayVisible(bool visible) => hostOperations.TrySetResultOverlayVisible(visible);
+    public bool TrySetResultOverlayVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetResultOverlayVisible));
+        return hostOperations.TrySetResultOverlayVisible(visible);
+    }
 
-    public bool TrySetMeasurementVisible(bool visible) => hostOperations.TrySetMeasurementVisible(visible);
+    public bool TrySetMeasurementVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetMeasurementVisible));
+        return hostOperations.TrySetMeasurementVisible(visible);
+    }
 
-    public bool TrySetC3DHeightColorMinimumRaw(double value) => hostOperations.TrySetC3DHeightColorMinimumRaw(value);
+    public bool TrySetC3DHeightColorMinimumRaw(double value)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetC3DHeightColorMinimumRaw));
+        return hostOperations.TrySetC3DHeightColorMinimumRaw(value);
+    }
 
-    public bool TrySetC3DHeightColorMaximumRaw(double value) => hostOperations.TrySetC3DHeightColorMaximumRaw(value);
+    public bool TrySetC3DHeightColorMaximumRaw(double value)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetC3DHeightColorMaximumRaw));
+        return hostOperations.TrySetC3DHeightColorMaximumRaw(value);
+    }
 
-    public bool TryShiftC3DHeightColorMinimum(int direction) => hostOperations.TryShiftC3DHeightColorMinimum(direction);
+    public bool TryShiftC3DHeightColorMinimum(int direction)
+    {
+        VerifyHostDispatcherAccess(nameof(TryShiftC3DHeightColorMinimum));
+        return hostOperations.TryShiftC3DHeightColorMinimum(direction);
+    }
 
-    public bool TryShiftC3DHeightColorMaximum(int direction) => hostOperations.TryShiftC3DHeightColorMaximum(direction);
+    public bool TryShiftC3DHeightColorMaximum(int direction)
+    {
+        VerifyHostDispatcherAccess(nameof(TryShiftC3DHeightColorMaximum));
+        return hostOperations.TryShiftC3DHeightColorMaximum(direction);
+    }
 
-    public bool TryResetC3DHeightColorRange() => hostOperations.TryResetC3DHeightColorRange();
+    public bool TryResetC3DHeightColorRange()
+    {
+        VerifyHostDispatcherAccess(nameof(TryResetC3DHeightColorRange));
+        return hostOperations.TryResetC3DHeightColorRange();
+    }
 
-    public bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum) =>
-        hostOperations.TryApplyLinkedC3DHeightColorRange(minimum, maximum);
+    public bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum)
+    {
+        VerifyHostDispatcherAccess(nameof(TryApplyLinkedC3DHeightColorRange));
+        return hostOperations.TryApplyLinkedC3DHeightColorRange(minimum, maximum);
+    }
 
     public int SmokeExitCode => smokeScenario.ExitCode;
 
@@ -317,38 +404,123 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public string HostApiVersion => ViewerHostContract.ApiVersion;
 
-    public ViewerHostState HostState =>
-        (ViewerHostState)GetValue(HostStateProperty);
+    public ViewerHostState HostState
+    {
+        get
+        {
+            VerifyHostDispatcherAccess(nameof(HostState));
+            return (ViewerHostState)GetValue(HostStateProperty);
+        }
+    }
 
-    public event EventHandler<ViewerHostStateChangedEventArgs>? HostStateChanged;
+    public event EventHandler<ViewerHostStateChangedEventArgs>? HostStateChanged
+    {
+        add
+        {
+            VerifyHostDispatcherAccess(nameof(HostStateChanged));
+            hostStateChanged += value;
+        }
+        remove
+        {
+            VerifyHostDispatcherAccess(nameof(HostStateChanged));
+            hostStateChanged -= value;
+        }
+    }
     public event EventHandler? ProfileViewRequested;
 
     private void PublishHostStateChanged(ViewerHostStateChangedEventArgs args)
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            try
+            {
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.DataBind,
+                    new Action(() => PublishHostStateChanged(args)));
+            }
+            catch (InvalidOperationException)
+            {
+                // The Dispatcher may begin shutting down between the checks.
+            }
+
+            return;
+        }
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
         SetCurrentValue(HostStateProperty, args.State);
-        HostStateChanged?.Invoke(this, args);
+        hostStateChanged?.Invoke(this, args);
     }
 
     private void OnViewModelCameraChanged(object? sender, EventArgs args) =>
         CameraChanged?.Invoke(this, args);
 
-    public void FitAll() => hostOperations.FitAll();
+    public void FitAll()
+    {
+        VerifyHostDispatcherAccess(nameof(FitAll));
+        hostOperations.FitAll();
+    }
 
-    public void FitSelection() => hostOperations.FitSelection();
+    public void FitSelection()
+    {
+        VerifyHostDispatcherAccess(nameof(FitSelection));
+        hostOperations.FitSelection();
+    }
 
-    public void FitRoi() => hostOperations.FitRoi();
+    public void FitRoi()
+    {
+        VerifyHostDispatcherAccess(nameof(FitRoi));
+        hostOperations.FitRoi();
+    }
 
-    public void UseTopView() => hostOperations.UseTopView();
+    public void UseTopView()
+    {
+        VerifyHostDispatcherAccess(nameof(UseTopView));
+        hostOperations.UseTopView();
+    }
 
-    public void UsePerspectiveView() => hostOperations.UsePerspectiveView();
+    public void UsePerspectiveView()
+    {
+        VerifyHostDispatcherAccess(nameof(UsePerspectiveView));
+        hostOperations.UsePerspectiveView();
+    }
 
-    public void ResetView() => hostOperations.ResetView();
+    public void ResetView()
+    {
+        VerifyHostDispatcherAccess(nameof(ResetView));
+        hostOperations.ResetView();
+    }
 
     public void RequestVisibleFrame() => visibleFrameRequests.Request();
 
-    public bool SaveRecipe(string path) => hostOperations.SaveRecipe(path);
+    public bool SaveRecipe(string path)
+    {
+        VerifyHostDispatcherAccess(nameof(SaveRecipe));
+        return hostOperations.SaveRecipe(path);
+    }
 
-    public bool PublishCurrentPreviewResult() => hostOperations.PublishCurrentPreviewResult();
+    public bool PublishCurrentPreviewResult()
+    {
+        VerifyHostDispatcherAccess(nameof(PublishCurrentPreviewResult));
+        return hostOperations.PublishCurrentPreviewResult();
+    }
+
+    private void VerifyHostDispatcherAccess(string memberName)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            throw new InvalidOperationException(
+                $"Viewer Host API member '{memberName}' must be called on the Viewer Dispatcher thread.");
+        }
+    }
 
     private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
@@ -357,6 +529,27 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            try
+            {
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.DataBind,
+                    new Action(() => OnViewModelPropertyChanged(sender, args)));
+            }
+            catch (InvalidOperationException)
+            {
+                // The Dispatcher may begin shutting down between the checks.
+            }
+
+            return;
+        }
+
         if (IsDisposed)
         {
             return;
@@ -436,6 +629,27 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void OnNominalActualPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            try
+            {
+                Dispatcher.BeginInvoke(
+                    DispatcherPriority.DataBind,
+                    new Action(() => OnNominalActualPropertyChanged(sender, args)));
+            }
+            catch (InvalidOperationException)
+            {
+                // The Dispatcher may begin shutting down between the checks.
+            }
+
+            return;
+        }
+
         if (args.PropertyName is nameof(NominalActualComparisonViewModel.ActualVisible)
             or nameof(NominalActualComparisonViewModel.NominalVisible)
             or nameof(NominalActualComparisonViewModel.LowerTolerance)

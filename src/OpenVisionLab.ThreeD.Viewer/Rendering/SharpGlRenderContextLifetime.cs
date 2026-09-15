@@ -16,6 +16,7 @@ internal sealed class SharpGlRenderContextLifetime
 {
     private bool disposeAttempted;
     private bool disposeSucceeded;
+    private bool disposeUnavailable;
     private string? disposeFailureType;
 
     public int DisposeAttempts { get; private set; }
@@ -24,9 +25,21 @@ internal sealed class SharpGlRenderContextLifetime
 
     public bool DisposeSucceeded => disposeSucceeded;
 
+    public bool DisposeUnavailable => disposeUnavailable;
+
     public bool DisposeAttempted => disposeAttempted;
 
     public string FailureType => disposeFailureType ?? "(none)";
+
+    public void RecordContextUnavailable()
+    {
+        if (disposeAttempted || disposeUnavailable)
+        {
+            return;
+        }
+
+        disposeUnavailable = true;
+    }
 
     public void Dispose(OpenGLControl control)
     {
@@ -36,6 +49,7 @@ internal sealed class SharpGlRenderContextLifetime
             return;
         }
 
+        disposeUnavailable = false;
         disposeAttempted = true;
         DisposeAttempts++;
 

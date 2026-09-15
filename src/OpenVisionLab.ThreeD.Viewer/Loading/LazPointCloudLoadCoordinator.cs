@@ -30,10 +30,11 @@ internal sealed class LazPointCloudLoadCoordinator : IDisposable
             return new LazPointCloudLoadResult(cached, 0.0, Reused: true, WasCanceled: false);
         }
 
+        var expectedIdentity = LazPointCloudSourceIdentity.Capture(candidate);
         var loadStart = Stopwatch.GetTimestamp();
         var pointCloud = LazPointCloud.Load(candidate, sampleLimit);
         var loadMilliseconds = Stopwatch.GetElapsedTime(loadStart).TotalMilliseconds;
-        cache.Store(candidate, sampleLimit, pointCloud);
+        cache.Store(candidate, sampleLimit, pointCloud, expectedIdentity);
         return new LazPointCloudLoadResult(pointCloud, loadMilliseconds, Reused: false, WasCanceled: false);
     }
 
@@ -61,6 +62,9 @@ internal sealed class LazPointCloudLoadCoordinator : IDisposable
                 return new LazPointCloudLoadResult(cached, 0.0, Reused: true, WasCanceled: false);
             }
 
+            var expectedIdentity = await LazPointCloudSourceIdentity
+                .CaptureAsync(candidate, operation.Token)
+                .ConfigureAwait(false);
             var loadStart = Stopwatch.GetTimestamp();
             var decodeProgress = new Progress<double>(value =>
             {
@@ -78,10 +82,13 @@ internal sealed class LazPointCloudLoadCoordinator : IDisposable
                 return null;
             }
 
+            var observedIdentity = await LazPointCloudSourceIdentity
+                .CaptureAsync(candidate, operation.Token)
+                .ConfigureAwait(false);
             var loadMilliseconds = Stopwatch.GetElapsedTime(loadStart).TotalMilliseconds;
             if (!operations.TryApply(
                     operation,
-                    () => cache.Store(candidate, sampleLimit, pointCloud)))
+                    () => cache.Store(candidate, sampleLimit, pointCloud, expectedIdentity, observedIdentity)))
             {
                 operation.Token.ThrowIfCancellationRequested();
                 return null;

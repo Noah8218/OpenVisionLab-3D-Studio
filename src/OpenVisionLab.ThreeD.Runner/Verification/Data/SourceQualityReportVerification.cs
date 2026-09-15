@@ -31,7 +31,8 @@ internal static class SourceQualityReportVerification
         var legacyQuality = quality with
         {
             SchemaVersion = SourceQualityReport.LegacySchemaVersion,
-            GridDiagnostics = null
+            GridDiagnostics = null,
+            MeasurementEvidence = null
         };
         var legacyJson = JsonSerializer.Serialize(legacyQuality, jsonOptions);
         var legacyRoundtrip = JsonSerializer.Deserialize<SourceQualityReport>(
@@ -232,6 +233,135 @@ internal static class SourceQualityReportVerification
                 && quality.Provenance.StartsWith("verification:", StringComparison.Ordinal)
                 && !quality.IsDerived,
                 $"unit={quality.Coordinates.Unit},frame={quality.Coordinates.FrameId},convention={quality.Coordinates.CoordinateConvention},derived={quality.IsDerived}"),
+            Check("measurement-evidence-states-and-fail-closed-validation", () =>
+            {
+                var declaredSource = C3DHeightFieldSnapshot.CreateForVerification(
+                    "source.declared-mm",
+                    2,
+                    2,
+                    [1.0, 2.0, 3.0, 4.0],
+                    unit: "mm",
+                    frameId: "frame.declared-mm");
+                var declaredEvidence = HeightMeasurementEvidence.DeclaredUnit(
+                    "Source declares millimetres; no physical calibration evidence was supplied.");
+                var declaredReport = C3DSourceQualityAnalyzer.Create(
+                    declaredSource,
+                    measurementEvidence: declaredEvidence);
+                var calibratedEvidence = HeightMeasurementEvidence.CalibratedPhysical(
+                    "sensor-1",
+                    "calibration-1",
+                    declaredSource.FrameId,
+                    "Operator supplied calibration record calibration-1.",
+                    DateTimeOffset.UtcNow.AddHours(1));
+                var calibratedReport = C3DSourceQualityAnalyzer.Create(
+                    declaredSource,
+                    measurementEvidence: calibratedEvidence,
+                    sourceSensorId: "sensor-1");
+                var now = DateTimeOffset.UtcNow;
+                var mismatchedSensor = !calibratedEvidence.TryValidate(
+                    declaredSource.Unit,
+                    declaredSource.FrameId,
+                    "sensor-2",
+                    now,
+                    out var mismatchedSensorMessage);
+                var mismatchedFrame = !calibratedEvidence.TryValidate(
+                    declaredSource.Unit,
+                    "frame.other",
+                    "sensor-1",
+                    now,
+                    out var mismatchedFrameMessage);
+                var missingIdentity = !HeightMeasurementEvidence.CalibratedPhysical(
+                    "sensor-1",
+                    string.Empty,
+                    declaredSource.FrameId,
+                    "missing calibration identity")
+                    .TryValidate(
+                        declaredSource.Unit,
+                        declaredSource.FrameId,
+                        "sensor-1",
+                        now,
+                        out var missingIdentityMessage);
+                var expired = !HeightMeasurementEvidence.CalibratedPhysical(
+                    "sensor-1",
+                    "calibration-expired",
+                    declaredSource.FrameId,
+                    "expired calibration record",
+                    now.AddMinutes(-1))
+                    .TryValidate(
+                        declaredSource.Unit,
+                        declaredSource.FrameId,
+                        "sensor-1",
+                        now,
+                        out var expiredMessage);
+                return quality.EffectiveMeasurementEvidence.State
+                    == HeightMeasurementEvidenceState.Unavailable
+                    && declaredReport.EffectiveMeasurementEvidence.State
+                    == HeightMeasurementEvidenceState.DeclaredUnit
+                    && calibratedReport.EffectiveMeasurementEvidence.State
+                    == HeightMeasurementEvidenceState.CalibratedPhysical
+                    && declaredReport.EffectiveMeasurementEvidence == declaredEvidence
+                    && calibratedReport.EffectiveMeasurementEvidence == calibratedEvidence
+                    && mismatchedSensor
+                    && mismatchedSensorMessage.Contains("sensor", StringComparison.OrdinalIgnoreCase)
+                    && mismatchedFrame
+                    && mismatchedFrameMessage.Contains("frame", StringComparison.OrdinalIgnoreCase)
+                    && missingIdentity
+                    && missingIdentityMessage.Contains("calibration", StringComparison.OrdinalIgnoreCase)
+                    && expired
+                    && expiredMessage.Contains("expired", StringComparison.OrdinalIgnoreCase);
+            }, "raw-height, declared-unit, and calibrated-physical states remain explicit; sensor/frame/identity/expiry contradictions fail closed"),
+            Check("recipe-reopen-preserves-raw-and-declared-unit-states", () =>
+            {
+                var rawPath = Path.Combine(artifactDirectory, "raw-height-state.recipe.json");
+                var declaredPath = Path.Combine(artifactDirectory, "declared-mm-state.recipe.json");
+                try
+                {
+                    var rawDocument = new ToolRecipeDocument(
+                        ToolRecipeDocument.CurrentSchemaVersion,
+                        "raw-height-state",
+                        new ToolRecipeSource(
+                            "source.raw",
+                            "Raw source",
+                            "C3D",
+                            "raw-height",
+                            "frame.raw",
+                            "raw.c3d",
+                            MeasurementEvidence: HeightMeasurementEvidence.RawHeight()),
+                        [],
+                        []);
+                    var declaredEvidence = HeightMeasurementEvidence.DeclaredUnit(
+                        "Source declares millimetres; physical calibration remains unavailable.");
+                    var declaredDocument = rawDocument with
+                    {
+                        Name = "declared-mm-state",
+                        Source = rawDocument.Source with
+                        {
+                            Id = "source.declared",
+                            Name = "Declared mm source",
+                            Unit = "mm",
+                            FrameId = "frame.declared",
+                            Path = "declared.c3d",
+                            MeasurementEvidence = declaredEvidence
+                        }
+                    };
+                    ToolRecipeDocumentStore.Save(rawPath, rawDocument);
+                    ToolRecipeDocumentStore.Save(declaredPath, declaredDocument);
+                    var reopenedRaw = ToolRecipeDocumentStore.Load(rawPath);
+                    var reopenedDeclared = ToolRecipeDocumentStore.Load(declaredPath);
+                    return reopenedRaw.Source.MeasurementEvidence
+                        == HeightMeasurementEvidence.RawHeight()
+                        && reopenedDeclared.Source.MeasurementEvidence == declaredEvidence
+                        && reopenedRaw.Source.MeasurementEvidence?.State
+                        == HeightMeasurementEvidenceState.RawHeight
+                        && reopenedDeclared.Source.MeasurementEvidence?.State
+                        == HeightMeasurementEvidenceState.DeclaredUnit;
+                }
+                finally
+                {
+                    File.Delete(rawPath);
+                    File.Delete(declaredPath);
+                }
+            }, "ToolRecipeDocumentStore save/reopen retains raw-height and declared-mm evidence without promoting calibration"),
             Check("actual-channel-only", () =>
                 quality.Channels.Count == 7
                 && quality.Channels.Count(channel => channel.State == SourceQualityChannelState.Available) == 1

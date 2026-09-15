@@ -490,6 +490,7 @@ internal static class RunnerCommandRouter
             new("--verify-c3d-remove-outliers", C3DRemoveOutlierPixelsGoldenVerification.Run),
             new("--verify-c3d-level-surface", C3DLevelSurfaceGoldenVerification.Run),
             new("--verify-c3d-roi-crop", C3DRoiCropGoldenVerification.Run),
+            new("--verify-c3d-crop-axis-grid-roundtrip", C3DCropAxisGridRoundTripVerification.Run),
             new("--verify-c3d-domain-mask", C3DDomainMaskGoldenVerification.Run),
             new("--verify-oriented-box-3d", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
             new("--verify-grid-circle", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
@@ -512,6 +513,7 @@ internal static class RunnerCommandRouter
             new("--verify-c3d-landmark-correspondence", C3DLandmarkCorrespondenceGoldenVerification.Run),
             new("--verify-c3d-affine-solve", C3DAffineSolveGoldenVerification.Run),
             new("--verify-c3d-affine-apply", C3DAffineApplyGoldenVerification.Run),
+            new("--verify-c3d-coordinate-transform", C3DCoordinateTransformGoldenVerification.Run),
             new("--verify-c3d-regrid-height-field", C3DRegridHeightFieldGoldenVerification.Run),
             new("--verify-source-quality-report", SourceQualityReportVerification.Run),
             new("--verify-laz-load-plan", LazPointCloudLoadPlanVerification.Run),
@@ -582,6 +584,7 @@ internal static class RunnerCommandRouter
             new("--verify-c3d-map-fidelity", C3DMapFidelityVerification.RunGolden),
             new("--verify-point-pair-dimensions", PointPairDimensionsGoldenVerification.Run),
             new("--verify-c3d-thickness", C3DThicknessGoldenVerification.Run),
+            new("--verify-c3d-thickness-h-axis", C3DThicknessAxisGoldenVerification.Run),
             new("--verify-c3d-warpage", C3DWarpageGoldenVerification.Run),
             new("--verify-gap-flush", GapFlushGoldenVerification.Run),
             new("--verify-volume", VolumeGoldenVerification.Run),
@@ -857,6 +860,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-roi-crop --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-crop-axis-grid-roundtrip --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-domain-mask --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");

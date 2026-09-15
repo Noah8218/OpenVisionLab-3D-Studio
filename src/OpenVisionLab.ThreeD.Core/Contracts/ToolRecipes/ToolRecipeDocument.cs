@@ -69,7 +69,9 @@ public sealed record ToolRecipeSource(
     string? ContentSha256 = null,
     int? GridWidth = null,
     int? GridHeight = null,
-    ToolRecipeAcquisitionProvenance? AcquisitionProvenance = null);
+    ToolRecipeAcquisitionProvenance? AcquisitionProvenance = null,
+    HeightMeasurementEvidence? MeasurementEvidence = null,
+    string? SensorId = null);
 
 [JsonConverter(typeof(JsonStringEnumConverter<ToolRecipeAcquisitionProvenanceState>))]
 public enum ToolRecipeAcquisitionProvenanceState

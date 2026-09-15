@@ -307,8 +307,8 @@ internal static class SurfaceMatchRunRecordExportVerification
             && !temporarySummaryFilesRemain,
             $"lockedExit={lockedExitCode};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExitCode};invalidParentPreserved={invalidParentPreserved};temporaryFiles={temporarySummaryFilesRemain}");
         Check(
-            "run-record-schema-1.9",
-            record?.SchemaVersion == "1.9"
+            "run-record-schema-current",
+            record?.SchemaVersion == InspectionRunRecord.CurrentSchemaVersion
             && exported?.SchemaVersion
                 == InspectionRunSurfaceMatchEvidence.CurrentSchemaVersion,
             $"record={record?.SchemaVersion};surface={exported?.SchemaVersion}");

@@ -68,6 +68,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel>
                     <TextBlock FontSize="11"
@@ -96,7 +97,32 @@
                                Text="{Binding ResultsOperatorAffectedStepsSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Grid.Row="1"
+                <Border Grid.Row="1"
+                        x:Name="ResultsValueValidityPanel"
+                        Margin="0,8,0,0"
+                        Padding="9"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        AutomationProperties.AutomationId="ResultsValueValidity"
+                        AutomationProperties.Name="{Binding Localization.ResultsValueValidityTitle}">
+                    <StackPanel>
+                        <TextBlock FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding Localization.ResultsValueValidityTitle}" />
+                        <TextBlock x:Name="ResultsValueValidityValue"
+                                   Margin="0,5,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                   Text="{Binding ResultsValueValiditySummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="ResultsValueValidityText"
+                                   AutomationProperties.Name="{Binding Localization.ResultsValueValidityTitle}" />
+                    </StackPanel>
+                </Border>
+                <StackPanel Grid.Row="2"
                             Margin="0,8,0,0"
                             VerticalAlignment="Center">
                     <TextBlock FontSize="9.5"

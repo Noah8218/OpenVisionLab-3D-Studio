@@ -276,7 +276,7 @@ public sealed partial class ToolWorkbenchViewModel
             PreviewSelectedMeasurementAsync,
             CanPreviewSelectedMeasurement,
             PublishSelectedMeasurement,
-            () => HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished,
+            () => heightMeasurementExecutionOwner.CanPublish(),
             CancelMeasurementPreview,
             () => IsMeasurementPreviewRunning,
             RefreshMeasurementExecutionState);

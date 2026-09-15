@@ -227,7 +227,7 @@ internal static class C3DLevelSurfaceGoldenVerification
         cases.Add(Check("ordered-runner-run-record-parity-and-source-file-immutability",
             orderedRunnerExitCode == 0
             && orderedRunRecord is not null
-            && orderedRunRecord.SchemaVersion == "1.9"
+            && orderedRunRecord.SchemaVersion == InspectionRunRecord.CurrentSchemaVersion
             && orderedRunRecord.Status == ResultStatus.Pass
             && orderedRunRecord.Source.Sha256 == sourceSha256Before
             && orderedRunStep is not null

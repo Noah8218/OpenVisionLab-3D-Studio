@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -28,7 +29,8 @@ internal static class C3DMedianFilterGoldenVerification
                 Check("unknown-parameter-preserved", () => VerifyStrictParameters(tempDirectory)),
                 Check("same-byte-source-identity", () => VerifySourceIdentity(tempDirectory)),
                 Check("recipe-adapter-output-roundtrip-and-source-immutability", () => VerifyRecipeAdapter(tempDirectory)),
-                Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath))
+                Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(reportPath)),
+                Check("runner-path-collision-admission", () => VerifyRunnerPathCollisions(reportPath))
             };
 
             var passed = cases.Count(item => item.Passed);
@@ -291,6 +293,10 @@ internal static class C3DMedianFilterGoldenVerification
                 Path.Combine(invalidArtifactParentMarker, "output.c3d"),
                 Path.Combine(directory, "invalid-artifact-report.txt"));
             var invalidArtifactParentPreserved = File.ReadAllText(invalidArtifactParentMarker) == "artifact-parent-file";
+            var committedPair = VerifyRunnerCommittedPairFailureBoundaries(
+                directory,
+                recipePath,
+                document);
             var temporaryFilesRemain = Directory.GetFiles(directory, "*.tmp.*").Length != 0;
             var noBom = !HasUtf8Bom(overwriteBytes);
             var sentinelAbsent = !overwriteText.Contains("pre-existing-output", StringComparison.Ordinal);
@@ -317,10 +323,11 @@ internal static class C3DMedianFilterGoldenVerification
                 && lockedArtifactPreserved
                 && invalidArtifactExit == 5
                 && invalidArtifactParentPreserved
+                && committedPair.Passed
                 && !temporaryFilesRemain;
             return (
                 passed,
-                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};artifactBytes={firstOutputBytes.Length}/{overwriteOutputBytes.Length};artifactStable={artifactStable};reportShape={reportShape};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};lockedArtifactExit={lockedArtifactExit};lockedArtifactPreserved={lockedArtifactPreserved};invalidArtifactExit={invalidArtifactExit};invalidArtifactParentPreserved={invalidArtifactParentPreserved};temporaryFiles={temporaryFilesRemain}");
+                $"firstExit={firstExit};overwriteExit={overwriteExit};bytes={firstBytes.Length}/{overwriteBytes.Length};artifactBytes={firstOutputBytes.Length}/{overwriteOutputBytes.Length};artifactStable={artifactStable};reportShape={reportShape};noBom={noBom};sentinelAbsent={sentinelAbsent};lockedExit={lockedExit};lockedPreserved={lockedPreserved};invalidParentExit={invalidParentExit};invalidParentPreserved={invalidParentPreserved};lockedArtifactExit={lockedArtifactExit};lockedArtifactPreserved={lockedArtifactPreserved};invalidArtifactExit={invalidArtifactExit};invalidArtifactParentPreserved={invalidArtifactParentPreserved};committedPair={Clean(committedPair.Evidence)};temporaryFiles={temporaryFilesRemain}");
         }
         finally
         {
@@ -330,6 +337,240 @@ internal static class C3DMedianFilterGoldenVerification
             }
         }
     }
+
+    private static (bool Passed, string Evidence) VerifyRunnerPathCollisions(string reportPath)
+    {
+        var reportDirectory = GetReportDirectory(reportPath) ?? Environment.CurrentDirectory;
+        var directory = Path.Combine(reportDirectory, $"path-collision-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var cases = new[]
+            {
+                Check("output-source", () => VerifyRunnerPathCollision(directory, "output-source")),
+                Check("output-recipe", () => VerifyRunnerPathCollision(directory, "output-recipe")),
+                Check("report-source", () => VerifyRunnerPathCollision(directory, "report-source")),
+                Check("report-recipe", () => VerifyRunnerPathCollision(directory, "report-recipe")),
+                Check("report-output", () => VerifyRunnerPathCollision(directory, "report-output")),
+                Check("relative-source-alias", () => VerifyRunnerPathCollision(directory, "relative-source-alias")),
+                Check("case-source-alias", () => VerifyRunnerPathCollision(directory, "case-source-alias"))
+            };
+            var passed = cases.Count(item => item.Passed);
+            return (
+                passed == cases.Length,
+                string.Join('|', cases.Select(item => $"{item.Name}={(item.Passed ? "Pass" : "Fail")}:{Clean(item.Evidence)}")));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static (bool Passed, string Evidence) VerifyRunnerPathCollision(string rootDirectory, string caseName)
+    {
+        if (caseName == "case-source-alias" && !OperatingSystem.IsWindows())
+        {
+            return (true, "not-applicable-on-case-sensitive-platform");
+        }
+
+        var directory = Path.Combine(rootDirectory, caseName);
+        Directory.CreateDirectory(directory);
+        var document = CreateRecipe(directory);
+        var recipePath = Path.Combine(directory, "filter.recipe.json");
+        ToolRecipeDocumentStore.Save(recipePath, document);
+        var sourcePath = Path.Combine(directory, document.Source.Path);
+        var outputPath = Path.Combine(directory, "output.c3d");
+        var reportPath = Path.Combine(directory, "report.json");
+        switch (caseName)
+        {
+            case "output-source":
+                outputPath = sourcePath;
+                break;
+            case "output-recipe":
+                outputPath = recipePath;
+                break;
+            case "report-source":
+                reportPath = sourcePath;
+                break;
+            case "report-recipe":
+                reportPath = recipePath;
+                break;
+            case "report-output":
+                reportPath = outputPath;
+                break;
+            case "relative-source-alias":
+                outputPath = Path.Combine(directory, "nested", "..", Path.GetFileName(sourcePath));
+                break;
+            case "case-source-alias":
+                outputPath = Path.Combine(directory, Path.GetFileName(sourcePath).ToUpperInvariant());
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(caseName), caseName, "Unknown Runner path-collision case.");
+        }
+
+        var sourceBefore = File.ReadAllBytes(sourcePath);
+        var recipeBefore = File.ReadAllBytes(recipePath);
+        var exitCode = ToolRecipeFilterRunnerExecution.Run(
+            recipePath,
+            document.Steps[0].Id,
+            outputPath,
+            reportPath);
+        var sourcePreserved = File.ReadAllBytes(sourcePath).SequenceEqual(sourceBefore);
+        var recipePreserved = File.ReadAllBytes(recipePath).SequenceEqual(recipeBefore);
+        var onlyInputsRemain = Directory.GetFiles(directory).Select(Path.GetFileName).OrderBy(name => name)
+            .SequenceEqual(
+                new[] { Path.GetFileName(recipePath), Path.GetFileName(sourcePath) }.OrderBy(name => name),
+                StringComparer.OrdinalIgnoreCase);
+        return (
+            exitCode == 5 && sourcePreserved && recipePreserved && onlyInputsRemain,
+            $"exit={exitCode};sourcePreserved={sourcePreserved};recipePreserved={recipePreserved};onlyInputsRemain={onlyInputsRemain}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyRunnerCommittedPairFailureBoundaries(
+        string parentDirectory,
+        string recipePath,
+        ToolRecipeDocument document)
+    {
+        var directory = Path.Combine(parentDirectory, "committed-pair");
+        Directory.CreateDirectory(directory);
+        var sourcePath = Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(recipePath) ?? Environment.CurrentDirectory,
+            document.Source.Path));
+        var sourceBefore = File.ReadAllBytes(sourcePath);
+        var recipeBefore = File.ReadAllBytes(recipePath);
+        try
+        {
+            var firstTempParent = Path.Combine(directory, "first-temp-parent");
+            File.WriteAllText(firstTempParent, "first-temp-parent", new UTF8Encoding(false));
+            var firstTempOutput = Path.Combine(firstTempParent, "output.c3d");
+            var firstTempReport = Path.Combine(directory, "first-temp-report.json");
+            var firstTempExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                firstTempOutput,
+                firstTempReport);
+            var firstTempPreserved = File.ReadAllText(firstTempParent) == "first-temp-parent"
+                && !File.Exists(firstTempReport)
+                && NoTemporaryFiles(directory);
+
+            var firstReplacementOutput = Path.Combine(directory, "first-replacement-output.c3d");
+            Directory.CreateDirectory(firstReplacementOutput);
+            var firstReplacementReport = Path.Combine(directory, "first-replacement-report.json");
+            var firstReplacementExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                firstReplacementOutput,
+                firstReplacementReport);
+            var firstReplacementPreserved = Directory.Exists(firstReplacementOutput)
+                && !File.Exists(firstReplacementReport)
+                && NoTemporaryFiles(directory);
+
+            var secondWriteParent = Path.Combine(directory, "second-write-parent");
+            File.WriteAllText(secondWriteParent, "second-write-parent", new UTF8Encoding(false));
+            var secondWriteOutput = Path.Combine(directory, "second-write-output.c3d");
+            var secondWriteReport = Path.Combine(secondWriteParent, "report.json");
+            var secondWriteExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                secondWriteOutput,
+                secondWriteReport);
+            var secondWritePreserved = File.ReadAllText(secondWriteParent) == "second-write-parent"
+                && !File.Exists(secondWriteOutput)
+                && NoTemporaryFiles(directory);
+
+            var pairOutput = Path.Combine(directory, "pair-output.c3d");
+            var pairReport = Path.Combine(directory, "pair-report.json");
+            var normalExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                pairOutput,
+                pairReport);
+            var normalPair = VerifyCommittedPair(pairOutput, pairReport);
+            var previousOutputBytes = File.ReadAllBytes(pairOutput);
+            File.Delete(pairReport);
+            Directory.CreateDirectory(pairReport);
+            var secondReplacementExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                pairOutput,
+                pairReport);
+            var secondReplacementPreserved = File.ReadAllBytes(pairOutput).SequenceEqual(previousOutputBytes)
+                && Directory.Exists(pairReport)
+                && NoTemporaryFiles(directory);
+            Directory.Delete(pairReport, recursive: true);
+
+            var retryExit = ToolRecipeFilterRunnerExecution.Run(
+                recipePath,
+                document.Steps[0].Id,
+                pairOutput,
+                pairReport);
+            var retryPair = VerifyCommittedPair(pairOutput, pairReport);
+            var sourcePreserved = File.ReadAllBytes(sourcePath).SequenceEqual(sourceBefore);
+            var recipePreserved = File.ReadAllBytes(recipePath).SequenceEqual(recipeBefore);
+            var temporaryFilesRemain = !NoTemporaryFiles(directory);
+            var passed = firstTempExit == 5
+                && firstTempPreserved
+                && firstReplacementExit == 5
+                && firstReplacementPreserved
+                && secondWriteExit == 5
+                && secondWritePreserved
+                && normalExit == 0
+                && normalPair.Passed
+                && secondReplacementExit == 5
+                && secondReplacementPreserved
+                && retryExit == 0
+                && retryPair.Passed
+                && sourcePreserved
+                && recipePreserved
+                && !temporaryFilesRemain;
+            return (
+                passed,
+                $"firstTempExit={firstTempExit};firstTempPreserved={firstTempPreserved};firstReplacementExit={firstReplacementExit};firstReplacementPreserved={firstReplacementPreserved};secondWriteExit={secondWriteExit};secondWritePreserved={secondWritePreserved};normalExit={normalExit};normalPair={Clean(normalPair.Evidence)};secondReplacementExit={secondReplacementExit};secondReplacementPreserved={secondReplacementPreserved};retryExit={retryExit};retryPair={Clean(retryPair.Evidence)};sourcePreserved={sourcePreserved};recipePreserved={recipePreserved};temporaryFiles={temporaryFilesRemain}");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    private static (bool Passed, string Evidence) VerifyCommittedPair(
+        string outputPath,
+        string reportPath)
+    {
+        if (!File.Exists(outputPath) || !File.Exists(reportPath))
+        {
+            return (false, "output-or-report-missing");
+        }
+
+        var outputSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(outputPath)));
+        using var report = JsonDocument.Parse(File.ReadAllText(reportPath, Encoding.UTF8));
+        var publication = report.RootElement.GetProperty("publication");
+        var state = publication.GetProperty("state").GetString();
+        var publishedOutput = publication.GetProperty("output");
+        var publishedOutputPath = publishedOutput.GetProperty("path").GetString();
+        var publishedOutputSha256 = publishedOutput.GetProperty("contentSha256").GetString();
+        var publishedReportPath = publication.GetProperty("report").GetProperty("path").GetString();
+        var reportSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(reportPath)));
+        var pathComparer = OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
+        var passed = string.Equals(state, "Committed", StringComparison.Ordinal)
+            && pathComparer.Equals(Path.GetFullPath(outputPath), Path.GetFullPath(publishedOutputPath ?? string.Empty))
+            && string.Equals(outputSha256, publishedOutputSha256, StringComparison.OrdinalIgnoreCase)
+            && pathComparer.Equals(Path.GetFullPath(reportPath), Path.GetFullPath(publishedReportPath ?? string.Empty));
+        return (
+            passed,
+            $"state={state};outputSha={outputSha256};publishedOutputSha={publishedOutputSha256};reportSha={reportSha256};outputRef={publishedOutputPath};reportRef={publishedReportPath}");
+    }
+
+    private static bool NoTemporaryFiles(string directory) =>
+        !Directory.EnumerateFiles(directory, "*.tmp.*", SearchOption.AllDirectories).Any();
 
     private static string? GetReportDirectory(string reportPath) => Path.GetDirectoryName(Path.GetFullPath(reportPath));
 

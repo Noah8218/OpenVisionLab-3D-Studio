@@ -170,11 +170,7 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
 
         public HeightMapExchangeFixture()
         {
-            Root = Path.Combine(
-                "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio",
-                "integration-heightmap-runner-tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Root);
+            Root = ReportingTestRoot.Create("integration-heightmap-runner");
         }
 
         public string Root { get; }
@@ -316,10 +312,7 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Root))
-            {
-                Directory.Delete(Root, recursive: true);
-            }
+            ReportingTestRoot.DeleteBestEffort(Root);
         }
 
         private static IntegrationArtifactReference Artifact(

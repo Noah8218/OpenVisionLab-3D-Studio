@@ -29,7 +29,10 @@ public sealed record DualSurfaceThicknessEvaluation(
 
 /// <summary>
 /// Measures signed height-axis separation from a least-squares reference surface.
-/// It deliberately does not reinterpret a height-field footprint as a 3D volume.
+/// For each measurement sample the scalar is
+/// <c>sample.RawHeight - referencePlane.EvaluateY(sample.Position.X, sample.Position.Z)</c>.
+/// It is not perpendicular normal distance, and it deliberately does not
+/// reinterpret a height-field footprint as a 3D volume.
 /// </summary>
 public static class DualSurfaceThicknessRule
 {

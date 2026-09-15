@@ -104,6 +104,13 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             StringComparison.Ordinal)
         && HasAccessibleText(ResultsFixInTeachButton);
 
+    public bool HasResultsValueValiditySurface =>
+        ResultsValueValidityPanel.Visibility == Visibility.Visible
+        && !string.IsNullOrWhiteSpace(
+            AutomationProperties.GetAutomationId(ResultsValueValidityPanel))
+        && !string.IsNullOrWhiteSpace(
+            AutomationProperties.GetAutomationId(ResultsValueValidityValue));
+
     public void SetSection(ResultsWorkspaceSection section)
     {
         var command = SelectSectionCommand;

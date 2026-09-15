@@ -43,6 +43,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         CancellationToken cancellationToken,
         IProgress<double>? progress = null)
     {
+        VerifyHostDispatcherAccess(nameof(LoadViewerOnlySourceAsync));
         using var operation = sourceLoadOperations.Begin(cancellationToken);
         IProgress<double>? operationProgress = progress is null
             ? null
@@ -177,6 +178,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         string path,
         out ToolRecipeSelectionSourceBinding binding)
     {
+        VerifyHostDispatcherAccess(nameof(TryGetCurrentC3DSourceBinding));
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var fullPath = Path.GetFullPath(path);
         if (c3dSample is null
@@ -203,6 +205,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     /// </summary>
     public bool LoadC3DSource(string path)
     {
+        VerifyHostDispatcherAccess(nameof(LoadC3DSource));
         using var operation = sourceLoadOperations.Begin();
         try
         {
@@ -230,6 +233,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         CancellationToken cancellationToken,
         IProgress<double>? progress = null)
     {
+        VerifyHostDispatcherAccess(nameof(LoadC3DSourceAsync));
         using var operation = sourceLoadOperations.Begin(cancellationToken);
         IProgress<double>? operationProgress = progress is null
             ? null

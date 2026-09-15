@@ -299,6 +299,30 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
 
     public string CoordinateConvention => Report?.Coordinates.CoordinateConvention ?? "\u2014";
 
+    public string MeasurementState => Report?.EffectiveMeasurementEvidence.State.ToString()
+        ?? HeightMeasurementEvidenceState.Unavailable.ToString();
+
+    public string MeasurementEvidenceSummary => Report is { } report
+        ? report.EffectiveMeasurementEvidence.Evidence
+        : localization.SourceQualityUnavailable;
+
+    public string MeasurementCalibrationSummary => Report?.EffectiveMeasurementEvidence is
+        {
+            State: HeightMeasurementEvidenceState.CalibratedPhysical
+        } evidence
+        ? string.Join(
+            " | ",
+            new[]
+            {
+                $"sensor={evidence.SensorId}",
+                $"calibration={evidence.CalibrationId}",
+                $"frame={evidence.CalibrationFrameId}",
+                evidence.ExpiresAtUtc is { } expiresAt
+                    ? $"expires={expiresAt:O}"
+                    : "expiry=none"
+            })
+        : "Physical calibration evidence is not asserted.";
+
     public string MaskSummary => Report is null
         ? "\u2014"
         : string.Create(
@@ -360,14 +384,38 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
                     entityId,
                     unit,
                     frameId),
-                cancellationToken));
+                cancellationToken),
+            measurementEvidence: null);
+
+    public Task EnsureSourceAsync(
+        string path,
+        string entityId,
+        string unit,
+        string frameId,
+        HeightMeasurementEvidence? measurementEvidence)
+        => EnsureSourceAsync(
+            path,
+            entityId,
+            unit,
+            frameId,
+            cancellationToken => Task.Run(
+                () => C3DHeightFieldSnapshot.LoadIdentified(
+                    Path.GetFullPath(path),
+                    entityId,
+                    unit,
+                    frameId),
+                cancellationToken),
+            measurementEvidence,
+            sourceSensorId: null);
 
     internal async Task EnsureSourceAsync(
         string path,
         string entityId,
         string unit,
         string frameId,
-        Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync)
+        Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync,
+        HeightMeasurementEvidence? measurementEvidence = null,
+        string? sourceSensorId = null)
     {
         ArgumentNullException.ThrowIfNull(loadSourceAsync);
         if (string.IsNullOrWhiteSpace(path))
@@ -390,7 +438,9 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
             File.GetLastWriteTimeUtc(fullPath).Ticks.ToString(CultureInfo.InvariantCulture),
             entityId,
             unit,
-            frameId);
+            frameId,
+            measurementEvidence?.ToString() ?? string.Empty,
+            sourceSensorId ?? string.Empty);
         if (string.Equals(loadedSourceKey, sourceKey, StringComparison.OrdinalIgnoreCase)
             && Report is not null
             && !IsLoading)
@@ -411,7 +461,10 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         {
             var snapshot = await loadSourceAsync(cancellationToken);
             var nextReport = await Task.Run(
-                () => C3DSourceQualityAnalyzer.Create(snapshot),
+                () => C3DSourceQualityAnalyzer.Create(
+                    snapshot,
+                    measurementEvidence: measurementEvidence,
+                    sourceSensorId: sourceSensorId),
                 cancellationToken);
 
             if (generation != loadGeneration || cancellationToken.IsCancellationRequested)
@@ -675,6 +728,9 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         OnPropertyChanged(nameof(DistributionSummary));
         OnPropertyChanged(nameof(CoordinateSummary));
         OnPropertyChanged(nameof(CoordinateConvention));
+        OnPropertyChanged(nameof(MeasurementState));
+        OnPropertyChanged(nameof(MeasurementEvidenceSummary));
+        OnPropertyChanged(nameof(MeasurementCalibrationSummary));
         OnPropertyChanged(nameof(MaskSummary));
         OnPropertyChanged(nameof(MaskSha256));
         OnPropertyChanged(nameof(SourceIdentitySummary));

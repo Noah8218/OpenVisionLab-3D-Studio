@@ -470,7 +470,7 @@ internal static class PrivacySafeSupportBundleVerification
             [new InspectionRunStageTiming(InspectionRunTiming.ToolExecutionStage, 2.5)],
             "Recorded from the ordered run.");
         var record = new InspectionRunRecord(
-            "1.9",
+            InspectionRunRecord.CurrentSchemaVersion,
             "run-private-support",
             new DateTimeOffset(2026, 8, 18, 4, 0, 0, TimeSpan.Zero),
             new InspectionRunRecipe(

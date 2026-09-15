@@ -15,6 +15,10 @@ internal static class ShellVerificationCommandRouter
     [
         ("--verify-source-quality-workspace", SourceQualityWorkspaceVerification.Verify),
         ("--verify-recipe-manager-wpg", RecipeManagerWpgVerification.Verify),
+        ("--verify-height-measurement-cancellation", HeightMeasurementCancellationVerification.Verify),
+        ("--verify-height-measurement-snapshot", HeightMeasurementSnapshotVerification.Verify),
+        ("--verify-source-load-cancellation", ShellSourceLoadCancellationVerification.Verify),
+        ("--verify-source-reload", ShellSourceReloadVerification.Verify),
         ("--verify-tool-recipe-selections", ToolRecipeSelectionContractVerification.Verify),
         ("--verify-workbench-docking", ToolWorkbenchDockingVerification.Verify),
         ("--verify-viewer-workspace-presentation", ViewerWorkspacePresentationVerification.Verify),

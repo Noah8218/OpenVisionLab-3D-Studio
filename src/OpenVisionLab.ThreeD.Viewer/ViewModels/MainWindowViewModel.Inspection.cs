@@ -64,16 +64,17 @@ public sealed partial class MainWindowViewModel
         PlaneFlatnessReferenceSampleCount = evaluation.ReferenceSampleCount;
         PlaneFlatnessMeasurementSampleCount = evaluation.MeasurementSampleCount;
 
+        var absolutePeak = Math.Max(Math.Abs(evaluation.MinimumSignedDistance), Math.Abs(evaluation.MaximumSignedDistance));
         PlaneFlatnessSummary = evaluation.ReferencePlane is null
-            ? $"Flatness: {evaluation.Result.Status} | {evaluation.Result.Message}"
+            ? $"Reference-plane flatness: {evaluation.Result.Status} | {evaluation.Result.Message}"
             : string.Create(
                 CultureInfo.InvariantCulture,
-                $"Flatness: {evaluation.Result.Status} | {evaluation.Flatness:F3} / {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}");
+                $"Reference-plane range: {evaluation.Result.Status} | {evaluation.Flatness:F3} / {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}");
         PlaneFlatnessDetails = evaluation.ReferencePlane is null
             ? "Reference ROI did not produce a valid fitted plane."
             : string.Create(
                 CultureInfo.InvariantCulture,
-                $"Signed min {evaluation.MinimumSignedDistance:F3}, max {evaluation.MaximumSignedDistance:F3}, RMS {evaluation.RootMeanSquareDistance:F3} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
+                $"Reference-plane signed min {evaluation.MinimumSignedDistance:F3}, max {evaluation.MaximumSignedDistance:F3}, range {evaluation.Flatness:F3}, absolute peak {absolutePeak:F3}, RMS {evaluation.RootMeanSquareDistance:F3} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0} | GD&T minimum-zone: not computed");
 
         inspectionSession.Activate(ViewerInspectionKind.C3DPlaneFlatness);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
@@ -102,8 +103,8 @@ public sealed partial class MainWindowViewModel
         PlaneFlatnessRms = double.NaN;
         PlaneFlatnessReferenceSampleCount = 0;
         PlaneFlatnessMeasurementSampleCount = 0;
-        PlaneFlatnessSummary = "Flatness: preview not run";
-        PlaneFlatnessDetails = "Reference ROI and signed surface deviation: pending";
+        PlaneFlatnessSummary = "Reference-plane flatness: preview not run";
+        PlaneFlatnessDetails = "Reference ROI and signed surface deviation range: pending";
     }
 
     public void ClearPlaneFlatnessRecipeStep()

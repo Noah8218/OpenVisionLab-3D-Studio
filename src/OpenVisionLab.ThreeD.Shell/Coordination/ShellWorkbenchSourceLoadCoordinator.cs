@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -65,7 +66,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
             return false;
         }
 
-        using var operation = sourceLoadOperations.Begin();
+        using var operation = sourceLoadOperations.Begin(cancellationToken);
         LastWorkbenchSourceBindingMilliseconds = 0.0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         viewModel.Workbench.BeginC3DSourceLoad(path);
@@ -75,7 +76,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
         {
             if (await viewer.LoadC3DSourceAsync(path, operation.Token, progress)
                 && operation.IsCurrent
-                && !cancellationToken.IsCancellationRequested
+                && !operation.IsCancellationRequested
                 && viewer.CurrentC3DSourcePath is { } sourcePath)
             {
                 if (bindToWorkbench)
@@ -88,7 +89,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
                 return true;
             }
 
-            if (!operation.IsCurrent)
+            if (!operation.IsCurrent || operation.IsCancellationRequested)
             {
                 return false;
             }
@@ -182,7 +183,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
             throw new NotSupportedException($"Viewer-only import does not support '{extension}'.");
         }
 
-        using var operation = sourceLoadOperations.Begin();
+        using var operation = sourceLoadOperations.Begin(cancellationToken);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         viewModel.Workbench.Begin3DDataImport(path, format);
         var progress = new Progress<double>(viewModel.Workbench.ReportC3DSourceLoadProgress);
@@ -191,14 +192,14 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
         {
             if (await viewer.LoadViewerOnlySourceAsync(path, operation.Token, progress)
                 && operation.IsCurrent
-                && !cancellationToken.IsCancellationRequested)
+                && !operation.IsCancellationRequested)
             {
                 viewer.TrySetHudDetailsVisible(false);
                 viewModel.Workbench.CompleteViewerOnlyImport(path, format, stopwatch.ElapsedMilliseconds);
                 return true;
             }
 
-            if (!operation.IsCurrent)
+            if (!operation.IsCurrent || operation.IsCancellationRequested)
             {
                 return false;
             }
@@ -224,15 +225,31 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
 
     public bool IsViewerSourceAlreadyLoaded(string path)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (viewer.CurrentC3DSourcePath is not { } currentPath)
         {
             return false;
         }
 
-        return string.Equals(
+        if (!string.Equals(
             Path.GetFullPath(currentPath),
             Path.GetFullPath(path),
-            StringComparison.OrdinalIgnoreCase);
+            StringComparison.OrdinalIgnoreCase)
+            || !viewer.TryGetCurrentC3DSourceBinding(path, out var currentBinding))
+        {
+            return false;
+        }
+
+        var verification = ToolRecipeSelectionSourceBindingVerifier.Verify(path, currentBinding);
+        if (!verification.IsCurrent)
+        {
+            OVLog.Write(
+                LogCategory.UI,
+                LogLevel.Info,
+                $"Workbench[source reload] same path has changed; reloading '{path}': {verification.Message}");
+        }
+
+        return verification.IsCurrent;
     }
 
     public void SetWorkbenchC3DSourceFromViewer(string path, bool markDirty = true)

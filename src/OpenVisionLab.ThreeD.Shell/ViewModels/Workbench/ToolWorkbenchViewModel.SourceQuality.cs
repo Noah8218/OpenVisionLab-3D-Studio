@@ -158,7 +158,9 @@ public sealed partial class ToolWorkbenchViewModel
                         Source.Id,
                         Source.Unit,
                         Source.FrameId,
-                        GetOrLoadDecodedC3DSourceAsync).GetAwaiter().GetResult();
+                        GetOrLoadDecodedC3DSourceAsync,
+                        Source.MeasurementEvidence,
+                        Source.SensorId).GetAwaiter().GetResult();
                 }
                 finally
                 {
@@ -188,7 +190,9 @@ public sealed partial class ToolWorkbenchViewModel
                 Source.Id,
                 Source.Unit,
                 Source.FrameId,
-                GetOrLoadDecodedC3DSourceAsync),
+                GetOrLoadDecodedC3DSourceAsync,
+                Source.MeasurementEvidence,
+                Source.SensorId),
             ReportSourceQualityLoadFailure);
     }
 

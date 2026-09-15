@@ -23,6 +23,17 @@ public sealed record SourceQualityReport(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SourceQualityGridDiagnostics? GridDiagnostics { get; init; }
 
+    /// <summary>
+    /// Explicit interpretation evidence for the height scalar. Null is kept
+    /// readable for legacy reports and is treated as Unavailable by consumers.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HeightMeasurementEvidence? MeasurementEvidence { get; init; }
+
+    [JsonIgnore]
+    public HeightMeasurementEvidence EffectiveMeasurementEvidence =>
+        HeightMeasurementEvidence.Normalize(MeasurementEvidence);
+
     public static bool IsSupportedSchemaVersion(string? schemaVersion) =>
         schemaVersion is LegacySchemaVersion or CurrentSchemaVersion;
 

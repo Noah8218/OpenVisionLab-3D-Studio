@@ -63,6 +63,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private string runSnapshotSummary = "No run snapshot evidence loaded.";
     private string runSnapshotEvidence = "(pending)";
     private string inspectionStepSummary = "No inspection steps loaded.";
+    private string resultsValueValiditySummary =
+        "Definition: Unknown\nUnit: Unknown\nSource / ROI: Unknown\nValid samples: Unknown\nFit residual: Unknown\nInvalid reason: No current recipe Run Record is loaded.";
     private string thresholdCorrectionState = "Unavailable";
     private string thresholdCorrectionSummary =
         "No threshold-correction evidence was recorded.";
@@ -300,6 +302,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             nameof(RunSnapshotSummary),
             nameof(RunSnapshotEvidence),
             nameof(InspectionStepSummary),
+            nameof(ResultsValueValiditySummary),
             nameof(InspectionSteps),
             nameof(RecipeRunHistory),
             nameof(InspectionStageNavigationStatus)
@@ -611,6 +614,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
+    public string ResultsValueValiditySummary
+    {
+        get => resultsValueValiditySummary;
+        private set => SetField(ref resultsValueValiditySummary, value);
+    }
+
     public string ThresholdCorrectionState
     {
         get => thresholdCorrectionState;
@@ -801,6 +810,30 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             StatusText = L(
                 $"현재 레시피 실행은 완료되었지만 Run Record 저장에 실패했습니다: {exception.Message}",
                 $"The current recipe Run completed, but its Run Record could not be saved: {exception.Message}");
+            RunSnapshotSummary = L(
+                $"실행 완료 · 상태를 확정할 Run Record 저장 실패: {exception.Message}",
+                $"Run completed · Run Record save failed before the result could be confirmed: {exception.Message}");
+            RunSnapshotEvidence = L(
+                "Run Record가 생성되지 않았습니다. 결과를 Pass로 해석하지 마세요.",
+                "No Run Record was created. Do not interpret the result as Pass.");
+            InspectionStepSummary = L(
+                "실행은 완료되었지만 Run Record 저장 실패로 판정 증거를 확정할 수 없습니다.",
+                "Execution completed, but Run Record save failure prevents confirming the decision evidence.");
+            InspectionSteps.Clear();
+            InspectionSteps.Add(new InspectionStepItem(
+                "1",
+                "Run Record",
+                ResultStatus.Error.ToString(),
+                exception.Message));
+            RefreshSourceQuality(null);
+            RefreshThresholdCorrection(null);
+            RefreshResultsValueValiditySummary(
+                null,
+                L(
+                    $"Run Record 저장 실패: {exception.Message}",
+                    $"Run Record save failed: {exception.Message}"),
+                ResultStatus.Error);
+            RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
         }
     }
 
@@ -829,6 +862,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         InspectionStepSummary = "Viewer smoke: Failed";
         RefreshSourceQuality(null);
         RefreshThresholdCorrection(null);
+        RefreshResultsValueValiditySummary(null, viewerStatus);
         InspectionSteps.Clear();
         InspectionSteps.Add(new InspectionStepItem("1", "Viewer smoke", "Failed", string.IsNullOrWhiteSpace(viewerStatus) ? "Viewer smoke failed before recipe comparison." : viewerStatus));
         RecipeRunHistory.Clear();
@@ -891,6 +925,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         InspectionStepSummary = L(
             "현재 레시피의 Run Record가 없습니다.",
             "No current recipe Run Record is loaded.");
+        RefreshResultsValueValiditySummary(null);
         InspectionSteps.Clear();
         RecipeRunHistory.Clear();
         RefreshSourceQuality(null);
@@ -1069,6 +1104,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         InspectionStepSummary = recipeSteps.Length == 0
             ? $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}"
             : $"Recipe steps: {recipeSteps.Length} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}";
+        RefreshResultsValueValiditySummary(runRecord);
     }
 
     private void RefreshInspectionStepsFromRecord(InspectionRunRecord record)
@@ -1109,6 +1145,183 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             record.SchemaVersion,
             orderedRunSteps.Count,
             record.Status);
+        RefreshResultsValueValiditySummary(record);
+    }
+
+    private void RefreshResultsValueValiditySummary(
+        InspectionRunRecord? record,
+        string? overrideInvalidReason = null,
+        ResultStatus? statusOverride = null) =>
+        ResultsValueValiditySummary = FormatResultsValueValiditySummary(
+            record,
+            overrideInvalidReason,
+            statusOverride);
+
+    private static string FormatResultsValueValiditySummary(
+        InspectionRunRecord? record,
+        string? overrideInvalidReason,
+        ResultStatus? statusOverride)
+    {
+        var unknown = "Unknown";
+        if (record is null)
+        {
+            var reason = string.IsNullOrWhiteSpace(overrideInvalidReason)
+                ? L(
+                    "현재 레시피의 Run Record가 없습니다.",
+                    "No current recipe Run Record is loaded.")
+                : overrideInvalidReason;
+            return string.Join(
+                Environment.NewLine,
+                [
+                    $"{L("정의", "Definition")}: {unknown}",
+                    $"{L("단위", "Unit")}: {unknown}",
+                    $"{L("소스 / ROI", "Source / ROI")}: {unknown}",
+                    $"{L("유효 샘플 수", "Valid samples")}: {unknown}",
+                    $"{L("Fit residual", "Fit residual")}: {unknown}",
+                    $"{L("상태 / 판정", "Status / decision")}: {FormatResultStatus(statusOverride ?? ResultStatus.NotRun)}",
+                    $"{L("무효 사유", "Invalid reason")}: {reason}"
+                ]);
+        }
+
+        var step = SelectResultsExplanationStep(record);
+        var metrics = (step?.Metrics ?? record.Metrics ?? [])
+            .Where(metric => double.IsFinite(metric.Value))
+            .ToArray();
+        var definition = step is null
+            ? record.ToolName
+            : step.ToolName;
+        if (step?.AlgorithmEvidence is { } algorithmEvidence)
+        {
+            definition = string.Join(
+                " · ",
+                definition,
+                algorithmEvidence.AlgorithmDefinitionVersion);
+        }
+
+        var metricUnit = metrics
+            .Where(metric => metric.Kind != MetricKind.Count)
+            .Select(metric => metric.Unit)
+            .FirstOrDefault(unit => !string.IsNullOrWhiteSpace(unit));
+        var sourceUnit = string.IsNullOrWhiteSpace(record.Source.Unit)
+            ? null
+            : record.Source.Unit;
+        var unit = metricUnit ?? sourceUnit ?? unknown;
+        var usesRawHeight = step?.ToolId.Contains("thickness", StringComparison.OrdinalIgnoreCase) == true
+            || step?.ToolId.Contains("warpage", StringComparison.OrdinalIgnoreCase) == true
+            || step?.ToolName.Contains("height", StringComparison.OrdinalIgnoreCase) == true;
+        var unitBasis = unit == unknown
+            ? L(
+                "Unknown (선언된 측정 단위가 없습니다.)",
+                "Unknown (no declared measurement unit was recorded).")
+            : usesRawHeight
+                ? L(
+                    $"선언된 원시 높이 scalar · {unit}; 물리 보정은 추론하지 않습니다.",
+                    $"Declared raw-height scalar · {unit}; physical calibration is not inferred.")
+                : L(
+                    $"저장된 측정 단위 · {unit}",
+                    $"Stored measurement unit · {unit}");
+
+        var roiOverlay = step?.Overlays?
+            .FirstOrDefault(overlay => overlay.Label.Contains("ROI", StringComparison.OrdinalIgnoreCase));
+        var roi = step?.CompletenessGrid is { } completeness
+            ? FormatGridRegion(completeness.InspectionGridRegion)
+            : roiOverlay?.Label ?? L(
+                "ROI 형상은 Run Record에 기록되지 않았습니다.",
+                "ROI geometry was not recorded in the Run Record.");
+        var inputIds = step?.InputEntityIds is { Count: > 0 } ids
+            ? string.Join(", ", ids)
+            : unknown;
+        var source = string.IsNullOrWhiteSpace(record.Source.Path)
+            ? record.Source.EntityId
+            : $"{record.Source.EntityId} · {Path.GetFileName(record.Source.Path)}";
+
+        var validCountMetric = metrics.FirstOrDefault(IsValidCountMetric);
+        var validCount = validCountMetric is null
+            ? unknown
+            : FormatMetric(validCountMetric);
+        var residuals = metrics
+            .Where(IsFitResidualMetric)
+            .Take(6)
+            .Select(FormatMetric)
+            .ToArray();
+        var residualSummary = residuals.Length == 0
+            ? unknown
+            : string.Join("; ", residuals);
+        var status = statusOverride ?? step?.Status ?? record.Status;
+        var invalidReasons = new List<string>();
+        AddReason(invalidReasons, overrideInvalidReason);
+        if (record.Status != ResultStatus.Pass)
+        {
+            AddReason(invalidReasons, record.Message);
+        }
+
+        if (step is not null && step.Status != ResultStatus.Pass)
+        {
+            AddReason(invalidReasons, step.Message);
+        }
+
+        foreach (var metric in metrics.Where(metric => metric.Status is not null and not ResultStatus.Pass))
+        {
+            AddReason(
+                invalidReasons,
+                $"{metric.Name}: {FormatResultStatus(metric.Status!.Value)}");
+        }
+
+        var invalidReason = invalidReasons.Count == 0
+            ? L("기록된 무효 사유 없음", "None recorded")
+            : string.Join("; ", invalidReasons);
+        return string.Join(
+            Environment.NewLine,
+            [
+                $"{L("정의", "Definition")}: {definition}",
+                $"{L("단위 근거", "Unit basis")}: {unitBasis}",
+                $"{L("소스 / ROI", "Source / ROI")}: {source} · input={inputIds} · ROI={roi}",
+                $"{L("유효 샘플 수", "Valid samples")}: {validCount}",
+                $"{L("Fit residual", "Fit residual")}: {residualSummary}",
+                $"{L("상태 / 판정", "Status / decision")}: {FormatResultStatus(status)}",
+                $"{L("무효 사유", "Invalid reason")}: {invalidReason}"
+            ]);
+    }
+
+    private static InspectionRunStepResult? SelectResultsExplanationStep(
+        InspectionRunRecord record) =>
+        record.Steps?.FirstOrDefault(step =>
+            step.ToolId.Equals("thickness", StringComparison.OrdinalIgnoreCase)
+            || step.ToolId.Equals("warpage", StringComparison.OrdinalIgnoreCase))
+        ?? record.Steps?.FirstOrDefault();
+
+    private static bool IsValidCountMetric(InspectionRunMetric metric) =>
+        metric.Kind == MetricKind.Count
+        && ((metric.Name.Contains("valid", StringComparison.OrdinalIgnoreCase)
+                || metric.Name.Contains("finite", StringComparison.OrdinalIgnoreCase))
+            && (metric.Name.Contains("sample", StringComparison.OrdinalIgnoreCase)
+                || metric.Name.Contains("cell", StringComparison.OrdinalIgnoreCase)));
+
+    private static bool IsFitResidualMetric(InspectionRunMetric metric) =>
+        metric.Name.Contains("residual", StringComparison.OrdinalIgnoreCase)
+        || metric.Name.Equals("PeakToValley", StringComparison.OrdinalIgnoreCase)
+        || metric.Name.Equals("Rms", StringComparison.OrdinalIgnoreCase);
+
+    private static string FormatMetric(InspectionRunMetric metric) =>
+        string.IsNullOrWhiteSpace(metric.Unit)
+            ? $"{metric.Name}={metric.Value:G6}"
+            : $"{metric.Name}={metric.Value:G6} {metric.Unit}";
+
+    private static string FormatGridRegion(ToolRecipeGridRectangle region) =>
+        string.Create(
+            CultureInfo.CurrentCulture,
+            $"row={region.Row}, column={region.Column}, size={region.RowCount} × {region.ColumnCount}");
+
+    private static string FormatResultStatus(ResultStatus status) =>
+        status == ResultStatus.Fail ? "Fail (NG)" : status.ToString();
+
+    private static void AddReason(ICollection<string> reasons, string? reason)
+    {
+        if (!string.IsNullOrWhiteSpace(reason)
+            && !reasons.Contains(reason, StringComparer.Ordinal))
+        {
+            reasons.Add(reason);
+        }
     }
 
     private static string FormatTiming(InspectionRunTiming? timing)

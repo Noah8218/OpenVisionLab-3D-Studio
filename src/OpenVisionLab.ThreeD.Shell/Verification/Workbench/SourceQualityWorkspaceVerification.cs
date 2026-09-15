@@ -30,14 +30,18 @@ internal static class SourceQualityWorkspaceVerification
             .GetResult();
         var errorViewRuntime = VerifyErrorDiagnosticViewRuntime(reportPath);
         var acquisitionFlagsRuntime = VerifyAcquisitionFlagsViewRuntime(reportPath);
+        var measurementEvidenceRuntime = VerifyMeasurementEvidenceViewRuntime(reportPath);
         var passed = result.Passed
             + (errorViewRuntime.Passed ? 1 : 0)
-            + (acquisitionFlagsRuntime.Passed ? 1 : 0);
-        var total = result.Total + 2;
+            + (acquisitionFlagsRuntime.Passed ? 1 : 0)
+            + (measurementEvidenceRuntime.Passed ? 1 : 0);
+        var total = result.Total + 3;
         result.Lines.Add(
             $"{(errorViewRuntime.Passed ? "PASS" : "FAIL")} | actual-wpf-error-row-resolves-semantic-trigger-and-long-binding | {errorViewRuntime.Detail}");
         result.Lines.Add(
             $"{(acquisitionFlagsRuntime.Passed ? "PASS" : "FAIL")} | actual-wpf-acquisition-flags-render-and-two-way-bind | {acquisitionFlagsRuntime.Detail}");
+        result.Lines.Add(
+            $"{(measurementEvidenceRuntime.Passed ? "PASS" : "FAIL")} | actual-wpf-measurement-evidence-state-and-calibration-render | {measurementEvidenceRuntime.Detail}");
         var passedAll = passed == total;
         result.Lines.Add($"Result={(passedAll ? "PASS" : "FAIL")}|{passed}/{total}");
         var fullReportPath = Path.GetFullPath(reportPath);
@@ -255,6 +259,61 @@ internal static class SourceQualityWorkspaceVerification
                 && viewModel.CoordinateConvention == "column-rawHeight-row",
                 $"coordinates={viewModel.CoordinateSummary},convention={viewModel.CoordinateConvention}");
             Check(
+                "missing-measurement-evidence-is-unavailable",
+                viewModel.MeasurementState == nameof(HeightMeasurementEvidenceState.Unavailable)
+                && viewModel.MeasurementEvidenceSummary.Contains("No explicit", StringComparison.Ordinal)
+                && viewModel.MeasurementCalibrationSummary.Contains("not asserted", StringComparison.Ordinal),
+                $"state={viewModel.MeasurementState},evidence={viewModel.MeasurementEvidenceSummary},calibration={viewModel.MeasurementCalibrationSummary}");
+            await viewModel.EnsureSourceAsync(
+                sourcePath,
+                source.EntityId,
+                source.Unit,
+                source.FrameId,
+                HeightMeasurementEvidence.RawHeight());
+            Check(
+                "raw-height-measurement-state-is-visible",
+                viewModel.MeasurementState == nameof(HeightMeasurementEvidenceState.RawHeight)
+                && viewModel.MeasurementEvidenceSummary.Contains("raw height", StringComparison.OrdinalIgnoreCase)
+                && viewModel.MeasurementCalibrationSummary.Contains("not asserted", StringComparison.Ordinal),
+                $"state={viewModel.MeasurementState},evidence={viewModel.MeasurementEvidenceSummary},calibration={viewModel.MeasurementCalibrationSummary}");
+            var declaredSnapshot = C3DHeightFieldSnapshot.CreateForVerification(
+                "source.quality-workspace-declared",
+                source.Width,
+                source.Height,
+                source.Values.ToArray(),
+                unit: "mm",
+                frameId: "frame.declared-mm");
+            var declaredEvidence = HeightMeasurementEvidence.DeclaredUnit(
+                "Source declares millimetres; physical calibration evidence was not supplied.");
+            var declaredReport = C3DSourceQualityAnalyzer.Create(
+                declaredSnapshot,
+                measurementEvidence: declaredEvidence);
+            viewModel.SetReportForVerification(declaredReport);
+            Check(
+                "declared-unit-measurement-state-is-visible",
+                viewModel.MeasurementState == nameof(HeightMeasurementEvidenceState.DeclaredUnit)
+                && viewModel.MeasurementEvidenceSummary == declaredEvidence.Evidence
+                && viewModel.MeasurementCalibrationSummary.Contains("not asserted", StringComparison.Ordinal),
+                $"state={viewModel.MeasurementState},evidence={viewModel.MeasurementEvidenceSummary},calibration={viewModel.MeasurementCalibrationSummary}");
+            var calibratedEvidence = HeightMeasurementEvidence.CalibratedPhysical(
+                "sensor-workspace",
+                "calibration-workspace",
+                declaredSnapshot.FrameId,
+                "Operator supplied calibration record.",
+                DateTimeOffset.UtcNow.AddHours(1));
+            var calibratedReport = C3DSourceQualityAnalyzer.Create(
+                declaredSnapshot,
+                measurementEvidence: calibratedEvidence,
+                sourceSensorId: "sensor-workspace");
+            viewModel.SetReportForVerification(calibratedReport);
+            Check(
+                "calibrated-measurement-state-is-visible",
+                viewModel.MeasurementState == nameof(HeightMeasurementEvidenceState.CalibratedPhysical)
+                && viewModel.MeasurementCalibrationSummary.Contains("sensor-workspace", StringComparison.Ordinal)
+                && viewModel.MeasurementCalibrationSummary.Contains("calibration-workspace", StringComparison.Ordinal)
+                && viewModel.MeasurementCalibrationSummary.Contains("frame.declared-mm", StringComparison.Ordinal),
+                $"state={viewModel.MeasurementState},evidence={viewModel.MeasurementEvidenceSummary},calibration={viewModel.MeasurementCalibrationSummary}");
+            Check(
                 "only-real-height-channel-available",
                 viewModel.Channels.Count == 7
                 && viewModel.Channels.Count(channel => channel.IsAvailable) == 1
@@ -277,6 +336,9 @@ internal static class SourceQualityWorkspaceVerification
                 propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.HasReport))
                 && propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.GridValue))
                 && propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.MaskSha256))
+                && propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.MeasurementState))
+                && propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.MeasurementEvidenceSummary))
+                && propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.MeasurementCalibrationSummary))
                 && propertyChanges.Contains(nameof(SourceQualityWorkspaceViewModel.GridDiagnosticsSummary)),
                 $"notifications={propertyChanges.Distinct().Count()}");
 
@@ -981,6 +1043,135 @@ internal static class SourceQualityWorkspaceVerification
             return new(
                 passed,
                 $"apartment=STA|rendered={allRendered}|initial={initialBinding}|twoWay={twoWayBinding}|panel={flagsPanel is not null}|editor={provenanceEditor is not null}|screenshot={screenshotPath}");
+        }
+        catch (Exception exception)
+        {
+            return new(false, $"{exception.GetType().Name}: {exception.Message}");
+        }
+        finally
+        {
+            host?.Close();
+            application.ShutdownMode = originalShutdownMode;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+        }
+    }
+
+    private static ErrorDiagnosticViewRuntimeResult VerifyMeasurementEvidenceViewRuntime(
+        string reportPath)
+    {
+        if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+        {
+            return new(
+                false,
+                $"apartment={Thread.CurrentThread.GetApartmentState()}|expected=STA");
+        }
+
+        var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+        var application = Application.Current;
+        if (application is null)
+        {
+            return new(false, "application=null");
+        }
+
+        var originalShutdownMode = application.ShutdownMode;
+        Window? host = null;
+        try
+        {
+            application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var snapshot = C3DHeightFieldSnapshot.CreateForVerification(
+                "source.quality-measurement-runtime",
+                2,
+                2,
+                [1.0, 2.0, 3.0, 4.0],
+                unit: "mm",
+                frameId: "frame.runtime-calibrated");
+            var evidence = HeightMeasurementEvidence.CalibratedPhysical(
+                "sensor-runtime",
+                "calibration-runtime",
+                snapshot.FrameId,
+                "Runtime calibration evidence is explicitly supplied.",
+                DateTimeOffset.UtcNow.AddHours(1));
+            var report = C3DSourceQualityAnalyzer.Create(
+                snapshot,
+                measurementEvidence: evidence,
+                sourceSensorId: "sensor-runtime");
+            var viewModel = new SourceQualityWorkspaceViewModel(ThreeDLocalization.Shared);
+            viewModel.SetReportForVerification(report);
+            var view = new SourceQualityWorkspaceView
+            {
+                Width = 520,
+                Height = 900,
+                DataContext = viewModel
+            };
+            host = new Window
+            {
+                Width = 520,
+                Height = 900,
+                Left = SystemParameters.VirtualScreenLeft,
+                Top = SystemParameters.VirtualScreenTop,
+                Content = view,
+                Opacity = 0.01,
+                ShowActivated = false,
+                ShowInTaskbar = false,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.None
+            };
+            host.Show();
+            host.UpdateLayout();
+            foreach (var expander in FindVisualDescendants<Expander>(view))
+            {
+                expander.IsExpanded = true;
+                expander.ApplyTemplate();
+                expander.UpdateLayout();
+            }
+            view.UpdateLayout();
+
+            var state = FindVisualDescendants<TextBlock>(view).SingleOrDefault(text =>
+                AutomationProperties.GetAutomationId(text) == "SourceQualityMeasurementState");
+            var measurement = FindVisualDescendants<TextBlock>(view).SingleOrDefault(text =>
+                AutomationProperties.GetAutomationId(text) == "SourceQualityMeasurementEvidence");
+            var calibration = FindVisualDescendants<TextBlock>(view).SingleOrDefault(text =>
+                AutomationProperties.GetAutomationId(text) == "SourceQualityMeasurementCalibration");
+            var screenshotPath = Path.Combine(
+                GetReportDirectory(reportPath) ?? Environment.CurrentDirectory,
+                "measurement-evidence",
+                "calibrated-state.png");
+            if (calibration is not null)
+            {
+                WpfScreenshotCapture.Save(
+                    WpfScreenshotCapture.Capture(calibration).Bitmap,
+                    screenshotPath);
+            }
+
+            var passed = state is
+                {
+                    IsVisible: true,
+                    ActualWidth: > 0,
+                    ActualHeight: > 0,
+                    Text: nameof(HeightMeasurementEvidenceState.CalibratedPhysical)
+                }
+                && measurement is
+                {
+                    IsVisible: true,
+                    ActualWidth: > 0,
+                    ActualHeight: > 0,
+                    TextWrapping: TextWrapping.Wrap
+                }
+                && measurement.Text.Contains("explicitly supplied", StringComparison.Ordinal)
+                && calibration is
+                {
+                    IsVisible: true,
+                    ActualWidth: > 0,
+                    ActualHeight: > 0,
+                    TextWrapping: TextWrapping.Wrap
+                }
+                && calibration.Text.Contains("sensor-runtime", StringComparison.Ordinal)
+                && calibration.Text.Contains("calibration-runtime", StringComparison.Ordinal)
+                && calibration.Text.Contains("frame.runtime-calibrated", StringComparison.Ordinal);
+            return new(
+                passed,
+                $"apartment=STA|state={state?.Text}|stateSize={state?.ActualWidth:0.###}x{state?.ActualHeight:0.###}|evidenceVisible={measurement?.IsVisible}|evidenceWrap={measurement?.TextWrapping}|calibrationVisible={calibration?.IsVisible}|calibrationWrap={calibration?.TextWrapping}|calibrationSize={calibration?.ActualWidth:0.###}x{calibration?.ActualHeight:0.###}|screenshot={screenshotPath}");
         }
         catch (Exception exception)
         {

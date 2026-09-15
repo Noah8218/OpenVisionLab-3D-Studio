@@ -12,6 +12,9 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        var fullReportPath = Path.GetFullPath(reportPath);
+        var reportDirectory = Path.GetDirectoryName(fullReportPath)!;
+        Directory.CreateDirectory(reportDirectory);
         var lines = new List<string>
         {
             "OpenVisionLab 3D Viewer LAZ/LAS load coordinator verification",
@@ -226,6 +229,61 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
                 if (File.Exists(replacementPath))
                 {
                     File.Delete(replacementPath);
+                }
+            }
+
+            var decodeStorePath = Path.Combine(
+                reportDirectory,
+                $"openvisionlab-laz-decode-store-{Guid.NewGuid():N}.las");
+            try
+            {
+                File.Copy(samplePath, decodeStorePath, overwrite: true);
+                var expectedDecodeIdentity = LazPointCloudSourceIdentity.Capture(decodeStorePath);
+                var decodedPointCloud = LazPointCloud.Load(decodeStorePath, 64);
+                var originalDecodeWriteTime = File.GetLastWriteTimeUtc(decodeStorePath);
+                var replacedDecodeBytes = File.ReadAllBytes(decodeStorePath);
+                replacedDecodeBytes[^1] ^= 0x01;
+                File.WriteAllBytes(decodeStorePath, replacedDecodeBytes);
+                File.SetLastWriteTimeUtc(decodeStorePath, originalDecodeWriteTime);
+
+                var guardedCache = new LazPointCloudSampleCache();
+                var guardedStoreRejected = false;
+                try
+                {
+                    guardedCache.Store(
+                        decodeStorePath,
+                        64,
+                        decodedPointCloud,
+                        expectedDecodeIdentity);
+                }
+                catch (InvalidDataException)
+                {
+                    guardedStoreRejected = true;
+                }
+
+                Check(
+                    "cache store rejects decoded data after same-length same-mtime replacement",
+                    guardedStoreRejected && guardedCache.Count == 0 && !guardedCache.HasEntries,
+                    $"rejected={guardedStoreRejected};count={guardedCache.Count};hasEntries={guardedCache.HasEntries}");
+
+                var acceptedCache = new LazPointCloudSampleCache();
+                File.Copy(samplePath, decodeStorePath, overwrite: true);
+                var acceptedIdentity = LazPointCloudSourceIdentity.Capture(decodeStorePath);
+                var acceptedPointCloud = LazPointCloud.Load(decodeStorePath, 64);
+                acceptedCache.Store(decodeStorePath, 64, acceptedPointCloud, acceptedIdentity);
+                var acceptedHit = acceptedCache.TryGet(decodeStorePath, 64, out var acceptedCachedPointCloud);
+                Check(
+                    "cache store accepts decoded data when source identity is unchanged",
+                    acceptedHit
+                    && ReferenceEquals(acceptedPointCloud, acceptedCachedPointCloud)
+                    && acceptedCache.Count == 1,
+                    $"hit={acceptedHit};sameObject={ReferenceEquals(acceptedPointCloud, acceptedCachedPointCloud)};count={acceptedCache.Count}");
+            }
+            finally
+            {
+                if (File.Exists(decodeStorePath))
+                {
+                    File.Delete(decodeStorePath);
                 }
             }
 
@@ -497,8 +555,6 @@ internal static class ViewerSourceLoadOperationCoordinatorVerification
 
         var succeeded = passed == total;
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
-        var fullReportPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
         File.WriteAllLines(fullReportPath, lines);
         summary = $"ViewerLazPointCloudLoadCoordinator|pass={succeeded}|checks={passed}/{total}|report={fullReportPath}";
         return succeeded;

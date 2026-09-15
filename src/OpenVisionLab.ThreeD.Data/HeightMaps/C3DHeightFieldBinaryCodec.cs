@@ -117,6 +117,19 @@ internal static class C3DHeightFieldBinaryCodec
 
     public static byte[] Encode(int width, int height, IReadOnlyList<double> values)
     {
+        var admission = C3DMemoryAdmissionPolicy.Evaluate(width, height);
+        if (!admission.IsAdmitted)
+        {
+            throw new InvalidDataException(admission.Reason);
+        }
+
+        if (values.Count != admission.SampleCount)
+        {
+            throw new ArgumentException(
+                "C3D values do not match the admitted grid dimensions.",
+                nameof(values));
+        }
+
         var bytes = new byte[checked(8 + values.Count * sizeof(float))];
         BinaryPrimitives.WriteInt32LittleEndian(bytes, width);
         BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(4), height);

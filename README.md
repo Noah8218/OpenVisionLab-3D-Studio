@@ -18,11 +18,22 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.5.6-dev`
+Current version: `v0.5.7-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.5.7-dev` (2026-09-16)
+
+- Hardens C3D source admission, crop/axis/grid identity, Height Measurement,
+  and Run Record evidence while preserving explicit Preview, Publish, Run,
+  Save, and Reopen boundaries.
+- Adds deterministic verification for coordinate/thickness contracts,
+  source stability, memory admission, Viewer host lifetime, and independent
+  BinaryHost consumption.
+- Keeps Viewer Host API `1.1` and existing recipe/storage contracts
+  compatible; no calibration or production metrology claim is added.
 
 #### `v0.5.6-dev` (2026-09-14)
 
@@ -110,13 +121,6 @@ This project is maintained using explicit version numbers.
   the WPF Viewer control into a WPF-neutral Loading owner.
 - Preserved the public Viewer load contract, OpenGL apply boundary, recipe
   semantics, and explicit Preview/Publish/Run workflow.
-
-#### `v0.4.7-dev` (2026-09-01)
-
-- Extracted teaching-capture source identity validation and C3D ROI point
-  preparation from the WPF Viewer control into a WPF-neutral owner.
-- Preserved the public Viewer capture API, recipe/Selection contracts,
-  OpenGL interaction, and explicit Preview/Publish/Run workflow.
 
 ## Start here
 

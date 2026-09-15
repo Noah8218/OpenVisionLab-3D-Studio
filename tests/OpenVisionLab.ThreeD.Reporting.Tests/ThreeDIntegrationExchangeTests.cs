@@ -178,10 +178,7 @@ public sealed class ThreeDIntegrationExchangeTests
     {
         public ExchangeFixture()
         {
-            Root = Path.Combine(
-                "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio",
-                "integration-reporting-tests",
-                Guid.NewGuid().ToString("N"));
+            Root = ReportingTestRoot.Create("integration-exchange");
             TransactionId = Guid.NewGuid();
             TransactionDirectory = Path.Combine(
                 Root,
@@ -296,10 +293,7 @@ public sealed class ThreeDIntegrationExchangeTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Root))
-            {
-                Directory.Delete(Root, recursive: true);
-            }
+            ReportingTestRoot.DeleteBestEffort(Root);
         }
 
         private static string WriteArtifact(
