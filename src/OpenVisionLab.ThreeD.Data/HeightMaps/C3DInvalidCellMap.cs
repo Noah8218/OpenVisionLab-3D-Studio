@@ -48,8 +48,36 @@ public sealed class C3DInvalidCellMap
     public static C3DInvalidCellMap Create(C3DHeightFieldSnapshot source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        var expectedCellCount = checked(source.Width * source.Height);
-        if (source.Values.Length != expectedCellCount)
+        return CreateCore(
+            source.Width,
+            source.Height,
+            source.Values.Span,
+            source.MissingCount);
+    }
+
+    internal static C3DInvalidCellMap CreateSignedDelta(
+        int width,
+        int height,
+        ReadOnlySpan<double> values,
+        int expectedMissingCellCount)
+    {
+        return CreateCore(width, height, values, expectedMissingCellCount);
+    }
+
+    private static C3DInvalidCellMap CreateCore(
+        int width,
+        int height,
+        ReadOnlySpan<double> values,
+        int expectedMissingCellCount)
+    {
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidDataException(
+                "C3D invalid-cell mapping requires positive native grid dimensions.");
+        }
+
+        var expectedCellCount = checked(width * height);
+        if (values.Length != expectedCellCount)
         {
             throw new InvalidDataException(
                 "C3D invalid-cell mapping requires one source value for every native grid cell.");
@@ -57,7 +85,6 @@ public sealed class C3DInvalidCellMap
 
         var packedBits = new byte[(expectedCellCount + 7) / 8];
         var missingCellCount = 0;
-        var values = source.Values.Span;
         for (var index = 0; index < values.Length; index++)
         {
             if (double.IsFinite(values[index]))
@@ -69,18 +96,18 @@ public sealed class C3DInvalidCellMap
             missingCellCount++;
         }
 
-        if (missingCellCount != source.MissingCount)
+        if (missingCellCount != expectedMissingCellCount)
         {
             throw new InvalidDataException(
-                $"C3D invalid-cell count mismatch: snapshot={source.MissingCount}, map={missingCellCount}.");
+                $"C3D invalid-cell count mismatch: expected={expectedMissingCellCount}, map={missingCellCount}.");
         }
 
         return new C3DInvalidCellMap(
-            source.Width,
-            source.Height,
+            width,
+            height,
             missingCellCount,
             packedBits,
-            CalculateSha256(source.Width, source.Height, packedBits));
+            CalculateSha256(width, height, packedBits));
     }
 
     public bool TryIsMissing(int column, int row, out bool isMissing)

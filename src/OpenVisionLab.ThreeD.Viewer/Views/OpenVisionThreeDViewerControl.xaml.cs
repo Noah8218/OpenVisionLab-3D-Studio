@@ -31,6 +31,16 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 {
     private static bool useSoftwareRenderingForProcess;
 
+    public static readonly DependencyProperty WorkspaceContextMenuProperty = DependencyProperty.Register(
+        nameof(WorkspaceContextMenu), typeof(ContextMenu), typeof(OpenVisionThreeDViewerControl),
+        new PropertyMetadata(null, (owner, args) =>
+        {
+            var view = (OpenVisionThreeDViewerControl)owner;
+            if (view.Viewport is not null) view.Viewport.ContextMenu = args.NewValue as ContextMenu ?? view.standaloneViewportContextMenu;
+        }));
+    public ContextMenu? WorkspaceContextMenu { get => (ContextMenu?)GetValue(WorkspaceContextMenuProperty); set => SetValue(WorkspaceContextMenuProperty, value); }
+    private ContextMenu? standaloneViewportContextMenu;
+
     public static readonly DependencyProperty SidePanelsVisibleProperty =
         DependencyProperty.Register(
             nameof(SidePanelsVisible),
@@ -167,11 +177,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private PointerInputRegressionResult? pointerInputRegressionResult;
     private HeightGridPoint? twoPointFirst;
     private HeightGridPoint? twoPointSecond;
-    private HeightGridPoint? profileFirst;
-    private HeightGridPoint? profileSecond;
-    private HeightGridPoint[] profileSamples = [];
     private int profileDraggedEndpoint;
-    private string? profileSourceSha256;
     private Point? profilePointerDownPosition;
     private bool profilePointerDragExceeded;
     private Vector3? importedMeshTwoPointFirst;
@@ -388,6 +394,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
                 () => IsDisposed,
                 SetRecipeLoadFailure));
         InitializeComponent();
+        standaloneViewportContextMenu = Viewport.ContextMenu;
         if (useSoftwareRenderingForProcess)
         {
             Viewport.RenderContextType = RenderContextType.DIBSection;

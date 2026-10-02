@@ -207,6 +207,7 @@ public sealed partial class ToolWorkbenchViewModel
         beginThicknessRepeatGridCommand?.RaiseCanExecuteChanged();
         applyThicknessRepeatGridCommand?.RaiseCanExecuteChanged();
         cancelThicknessRepeatGridCommand?.RaiseCanExecuteChanged();
+        RefreshFlowConnectionCommands();
         ThicknessRepeatGridPreviewChanged?.Invoke(
             this,
             new ThicknessRepeatGridPreviewChangedEventArgs(

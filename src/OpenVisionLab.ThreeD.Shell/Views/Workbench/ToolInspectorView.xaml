@@ -43,7 +43,7 @@
                                            Text="{Binding Localization.NoRecipeStepSelected}" />
                             </StackPanel>
                             <TextBlock Margin="24,4,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        Text="{Binding Localization.NoRecipeStepSelectedDetail}"
                                        TextWrapping="Wrap" />
@@ -58,10 +58,10 @@
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                        Text="{Binding SelectedToolTitle}" />
                             <TextBlock Margin="0,4,0,0"
-                                       FontSize="10.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        TextWrapping="Wrap"
-                                       Text="{Binding SelectedTool.Description}" />
+                                       Text="{Binding SelectedTool.DisplayDescription}" />
                             <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                        Text="{Binding Localization.Input}" />
                             <TextBlock FontWeight="SemiBold"
@@ -82,7 +82,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock FontSize="10.5"
+                        <TextBlock FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Text="{Binding SelectedPipelineStepTitle}"
@@ -103,7 +103,7 @@
                                                Margin="0,0,4,0"
                                                Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
                                 <TextBlock MaxWidth="122"
-                                           FontSize="9.5"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
                                            Text="{Binding CanonicalStateLabel}"
@@ -112,10 +112,21 @@
                         </Border>
                     </Grid>
                     <TextBlock Margin="0,4,0,0"
-                               FontSize="10.5"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                TextWrapping="Wrap"
                                Text="{Binding Localization.StepPropertiesEditDetail}" />
+                    <Expander Margin="0,7,0,0" Header="{i18n:ThreeDText Key=ThreeD.Workbench.ConnectionDetails, Korean='연결·데이터 정보', English='Connection and data details'}">
+                        <Expander.Style>
+                            <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+                                <Setter Property="IsExpanded" Value="False" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelectedStepPropertyGridSupported}" Value="False">
+                                        <Setter Property="IsExpanded" Value="True" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Expander.Style>
                     <Border Margin="0,7,0,0"
                             Padding="8"
                             ToolTip="{Binding SelectedStepAdapterStatus}"
@@ -141,7 +152,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock FontSize="10"
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Text="{Binding Localization.InputParameterOutputSummary}" />
@@ -153,10 +164,10 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon Width="14" Height="14" Margin="0,1,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="ArrowRight24" />
-                                <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold" Text="{Binding Localization.Inputs}" />
+                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.Inputs}" />
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.InputContract}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.InputContract}" />
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding SelectedPipelineStep.InputSummary}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.InputSummary}" />
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.InputContract}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.InputContract}" />
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding SelectedPipelineStep.InputSummary}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.InputSummary}" />
                                 </StackPanel>
                             </Grid>
 
@@ -167,8 +178,8 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon Width="14" Height="14" Margin="0,1,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="WrenchScrewdriver24" />
-                                <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold" Text="{Binding Localization.TypedParameters}" />
-                                <TextBlock Grid.Column="2" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedStepAdapterStatus}" TextWrapping="Wrap" ToolTip="{Binding SelectedStepAdapterStatus}" />
+                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.TypedParameters}" />
+                                <TextBlock Grid.Column="2" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedStepAdapterStatus}" TextWrapping="Wrap" ToolTip="{Binding SelectedStepAdapterStatus}" />
                             </Grid>
 
                             <Grid Grid.Row="3" Margin="0,6,0,0">
@@ -178,14 +189,15 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon Width="14" Height="14" Margin="0,1,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="Cube24" />
-                                <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold" Text="{Binding Localization.Output}" />
+                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.Output}" />
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.OutputContract}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.OutputContract}" />
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding SelectedPipelineStep.OutputEntityId}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.OutputEntityId}" />
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.OutputContract}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.OutputContract}" />
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding SelectedPipelineStep.OutputEntityId}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.OutputEntityId}" />
                                 </StackPanel>
                             </Grid>
                         </Grid>
                     </Border>
+                    </Expander>
 
                     <Expander Margin="0,10,0,0"
                               Header="{Binding Localization.Inputs}">
@@ -221,7 +233,7 @@
                                        Text="{Binding Localization.InputEntities}" />
                             <TextBox Text="{Binding SelectedPipelineStep.InputEntityIdsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Margin="0,3,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        TextWrapping="Wrap"
                                        Text="{Binding AvailableInputEntitiesSummary, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=AvailableNow}" />
@@ -263,7 +275,7 @@
                                                    Text="{Binding Localization.SurfaceRoiEditor}" />
                                     </StackPanel>
                                     <TextBlock Margin="21,2,0,6"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding Localization.SurfaceRoiEditorDetail}" />
@@ -278,7 +290,7 @@
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
                                         <StackPanel>
-                                            <TextBlock FontSize="10"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding Localization.RoiColumn}" />
                                             <TextBox Margin="0,2,0,0"
@@ -286,7 +298,7 @@
                                                      AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.SurfaceRoi.StartColumnAccessibleName, Korean='Surface ROI 시작 X 열', English='Surface ROI start X column'}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock FontSize="10"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding Localization.RoiRow}" />
                                             <TextBox Margin="0,2,0,0"
@@ -294,7 +306,7 @@
                                                      AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.SurfaceRoi.StartRowAccessibleName, Korean='Surface ROI 시작 Z 행', English='Surface ROI start Z row'}" />
                                         </StackPanel>
                                         <StackPanel Grid.Row="1" Margin="0,5,0,0">
-                                            <TextBlock FontSize="10"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding Localization.RoiColumnCount}" />
                                             <TextBox Margin="0,2,0,0"
@@ -302,7 +314,7 @@
                                                      AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.SurfaceRoi.WidthAccessibleName, Korean='Surface ROI 열 너비', English='Surface ROI width in columns'}" />
                                         </StackPanel>
                                         <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,5,0,0">
-                                            <TextBlock FontSize="10"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding Localization.RoiRowCount}" />
                                             <TextBox Margin="0,2,0,0"
@@ -311,12 +323,12 @@
                                         </StackPanel>
                                     </Grid>
                                     <TextBlock Margin="0,5,0,0"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding TeachingGridRectangleSourceFrameSummary}" />
                                     <TextBlock Margin="0,2,0,0"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding TeachingGridRectangleValidationSummary}" />
@@ -334,7 +346,7 @@
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                Text="{Binding SelectedStepSelectionRequirementTitle}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               FontSize="10.5"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding SelectedStepSelectionRequirementSummary}" />
@@ -346,7 +358,7 @@
                                 <TextBlock FontWeight="SemiBold"
                                            Text="{Binding DualRoiTeachingTitle}" />
                                 <TextBlock Margin="0,2,0,7"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding DualRoiTeachingDetail}" />
@@ -380,11 +392,11 @@
                                             </Border>
                                             <TextBlock Grid.Column="1" Margin="7,0,4,0" VerticalAlignment="Center"
                                                        FontWeight="SemiBold" Text="{Binding DualRoiFirstLabel}" />
-                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="10.5"
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                        Text="{Binding PlaneFlatnessReferenceState}" />
                                         </Grid>
-                                        <TextBlock Margin="29,4,0,0" FontSize="10.5"
+                                        <TextBlock Margin="29,4,0,0" FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    TextWrapping="Wrap" Text="{Binding PlaneFlatnessReferenceSummary}" />
                                         <WrapPanel Margin="29,7,0,0">
@@ -441,11 +453,11 @@
                                             </Border>
                                             <TextBlock Grid.Column="1" Margin="7,0,4,0" VerticalAlignment="Center"
                                                        FontWeight="SemiBold" Text="{Binding DualRoiSecondLabel}" />
-                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="10.5"
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                        Text="{Binding PlaneFlatnessMeasurementState}" />
                                         </Grid>
-                                        <TextBlock Margin="29,4,0,0" FontSize="10.5"
+                                        <TextBlock Margin="29,4,0,0" FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    TextWrapping="Wrap" Text="{Binding PlaneFlatnessMeasurementSummary}" />
                                         <WrapPanel Margin="29,7,0,0">
@@ -470,7 +482,7 @@
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Margin="0,8,0,2" FontSize="10.5"
+                                <TextBlock Margin="0,8,0,2" FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.ExistingCompatibleRoi}" />
                                 <ComboBox ItemsSource="{Binding AvailableCompatibleSelections}"
@@ -538,13 +550,13 @@
                                                        Text="{Binding Localization.ThicknessRoiTeaching}" />
                                         </StackPanel>
                                         <TextBlock Margin="21,4,0,0"
-                                                   FontSize="10.5"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    TextWrapping="Wrap"
                                                    Text="{Binding ThicknessRoiTeachingDetail}" />
                                     </StackPanel>
                                 </Border>
-                                <TextBlock FontSize="10.5"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.RecipeOwnedSelection}" />
                                 <TextBlock Margin="0,2,0,0"
@@ -572,7 +584,7 @@
                                 </WrapPanel>
 
                                 <TextBlock Margin="0,5,0,2"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.UseExistingSelection}" />
                                 <Grid>
@@ -620,7 +632,7 @@
                                 </DataGrid>
                                 <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                            Margin="0,7,0,3"
-                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.SourceEntity, Korean='소스 엔터티', English='Source entity'}" />
+                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.SourceEntity, Korean='입력 데이터', English='Source entity'}" />
                                 <ComboBox IsEditable="True"
                                           ItemsSource="{Binding AvailableCorrespondenceSourceEntityIds}"
                                           Text="{Binding CorrespondenceSourceEntityId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -636,26 +648,26 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock FontSize="10.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceX, Korean='기준 X', English='Reference X'}" />
                                         <TextBox Text="{Binding CorrespondenceReferenceX, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock FontSize="10.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceY, Korean='기준 Y', English='Reference Y'}" />
                                         <TextBox Text="{Binding CorrespondenceReferenceY, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
-                                        <TextBlock FontSize="10.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceZ, Korean='기준 Z', English='Reference Z'}" />
                                         <TextBox Text="{Binding CorrespondenceReferenceZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceFrameId, Korean='기준 프레임 ID', English='Reference frame ID'}" />
+                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceFrameId, Korean='기준 좌표계 ID', English='Reference frame ID'}" />
                                 <TextBox Text="{Binding CorrespondenceReferenceFrameId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 <Grid Margin="0,7,0,0">
                                     <Grid.ColumnDefinitions>
@@ -664,15 +676,15 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock FontSize="10.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceUnit, Korean='기준 단위', English='Reference unit'}" />
                                         <TextBox Text="{Binding CorrespondenceReferenceUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock FontSize="10.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceRevision, Korean='기준 리비전', English='Reference revision'}" />
+                                                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceRevision, Korean='기준 버전', English='Reference revision'}" />
                                         <TextBox Text="{Binding CorrespondenceReferenceRevision, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
                                 </Grid>
@@ -695,7 +707,7 @@
                                             AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Correspondence.RemoveAccessibleName, Korean='랜드마크 대응 제거', English='Remove landmark correspondence'}" />
                                 </WrapPanel>
                                 <TextBlock Margin="0,3,0,0"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding CorrespondenceSelectionSummary}" />
@@ -721,7 +733,7 @@
                                            Text="{Binding Localization.TypedParameters}" />
                                 <TextBlock Grid.Column="1"
                                            Margin="8,0,0,0"
-                                           FontSize="10"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                            Text="{Binding SelectedStepAdapterStatus}" />
                             </Grid>
@@ -730,7 +742,7 @@
                                                                      SelectedObject="{Binding SelectedStepPropertyDraft}"
                                                                      PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}" />
                             <TextBlock Margin="0,7,0,0"
-                                       FontSize="10.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        TextWrapping="Wrap"
                                        Text="{Binding StepParameterEditStatus}" />
@@ -738,14 +750,14 @@
                                 <Button Margin="0,0,5,0"
                                         Content="{Binding Localization.Discard}"
                                         Command="{Binding DiscardSelectedStepParameterDraftCommand}"
-                                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Parameters.DiscardDraftAccessibleName, Korean='선택 단계 파라미터 변경 폐기', English='Discard selected step parameter changes'}" />
+                                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Parameters.DiscardDraftAccessibleName, Korean='선택 도구 설정값 변경 취소', English='Discard selected step parameter changes'}" />
                                 <Button Content="{Binding Localization.ApplyParameters}"
                                         IsEnabled="{Binding HasPendingStepParameterChanges}"
                                         behaviors:CommitPropertyGridCommandBehavior.IsEnabled="True"
                                         behaviors:CommitPropertyGridCommandBehavior.PropertyGrid="{Binding ElementName=StepPropertyGrid}"
                                         behaviors:CommitPropertyGridCommandBehavior.Command="{Binding ApplySelectedStepParameterDraftCommand}"
                                         behaviors:CommitPropertyGridCommandBehavior.ErrorCommand="{Binding ReportParameterDraftCommitErrorCommand}"
-                                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Parameters.ApplyDraftAccessibleName, Korean='검사 실행 없이 선택 단계 파라미터 적용', English='Apply selected step parameters without running inspection'}" />
+                                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Parameters.ApplyDraftAccessibleName, Korean='검사 실행 없이 선택 도구 설정값 적용', English='Apply selected step parameters without running inspection'}" />
                             </WrapPanel>
                         </StackPanel>
                     </Border>
@@ -759,19 +771,36 @@
                             Visibility="{Binding IsSelectedStepLineFit, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.FitEvidence, Korean='피팅 증거', English='Fit evidence'}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineFitExecutionSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.FitEvidence, Korean='피팅 정보', English='Fit evidence'}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding LineFitExecutionSummary}" />
                             <TextBlock Margin="0,5,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.PublishedInput, Korean='게시된 입력', English='Published input'}" />
-                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineFitUpstreamSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.PublishedInput, Korean='적용된 입력', English='Applied input'}" />
+                            <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding LineFitUpstreamSummary}" />
                             <TextBlock Margin="0,5,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.SelectedDiagnostic, Korean='선택한 진단', English='Selected diagnostic'}" />
-                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineFitSelectedDiagnosticSummary}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LineFitOutputHashSummary}" />
+                            <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding LineFitSelectedDiagnosticSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LineFitOutputHashSummary}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Margin="0,7,0,0"
+                            Padding="9"
+                            Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Visibility="{Binding IsSelectedStepHeightThresholdBackgroundRemoval, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.HeightThresholdEvidence, Korean='높이 임계값 실행 정보', English='Height-threshold execution evidence'}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding HeightThresholdRuleSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding HeightThresholdExecutionSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding HeightThresholdOutputSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding HeightThresholdEvidenceSummary}" />
                         </StackPanel>
                     </Border>
 
@@ -784,19 +813,19 @@
                             Visibility="{Binding IsSelectedStepLineIntersection, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.CornerEvidence, Korean='코너 증거', English='Corner evidence'}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionExecutionSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.CornerEvidence, Korean='코너 정보', English='Corner evidence'}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding LineIntersectionExecutionSummary}" />
                             <TextBlock Margin="0,5,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.PublishedInputs, Korean='게시된 입력', English='Published inputs'}" />
-                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionUpstreamSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.PublishedInputs, Korean='적용된 입력', English='Applied inputs'}" />
+                            <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding LineIntersectionUpstreamSummary}" />
                             <TextBlock Margin="0,5,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ClosestApproachEvidence, Korean='최근접 접근 증거', English='Closest-approach evidence'}" />
-                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionEvidenceSummary}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LineIntersectionOutputHashSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ClosestApproachEvidence, Korean='최근접 접근 정보', English='Closest-approach evidence'}" />
+                            <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding LineIntersectionEvidenceSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LineIntersectionOutputHashSummary}" />
                         </StackPanel>
                     </Border>
 
@@ -809,14 +838,14 @@
                             Visibility="{Binding IsSelectedStepFilter, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ExecutionEvidence, Korean='실행 증거', English='Execution evidence'}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="10.5" TextWrapping="Wrap" Text="{Binding FilterExecutionSummary}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding FilterOutputHashSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ExecutionEvidence, Korean='실행 정보', English='Execution evidence'}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding FilterExecutionSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding FilterOutputHashSummary}" />
                             <Button Margin="0,7,0,0"
                                     HorizontalAlignment="Left"
-                                    Content="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ShowSource, Korean='소스 표시', English='Show source'}"
+                                    Content="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ShowSource, Korean='입력 데이터 표시', English='Show source'}"
                                     Command="{Binding ShowFilterSourceCommand}"
-                                    AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Filter.ShowOriginalSourceAccessible, Korean='원본 Filter 소스 표시', English='Show original Filter source'}" />
+                                    AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.Filter.ShowOriginalSourceAccessible, Korean='원본 Filter 입력 데이터 표시', English='Show original Filter source'}" />
                         </StackPanel>
                     </Border>
 
@@ -829,24 +858,24 @@
                             Visibility="{Binding IsSelectedStepHeightDifferenceEdge, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ExecutionEvidence, Korean='실행 증거', English='Execution evidence'}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="10.5" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeExecutionSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.ExecutionEvidence, Korean='실행 정보', English='Execution evidence'}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeExecutionSummary}" />
                             <TextBlock Margin="0,5,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.PublishedInput, Korean='게시된 입력', English='Published input'}" />
-                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeUpstreamSummary}" />
+                                       Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.PublishedInput, Korean='적용된 입력', English='Applied input'}" />
+                            <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeUpstreamSummary}" />
                             <TextBlock Margin="0,5,0,0"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.SearchBand, Korean='검색 밴드', English='Search band'}" />
-                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeBandSummary}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeOutputHashSummary}" />
+                            <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeBandSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding HeightDifferenceEdgeOutputHashSummary}" />
                         </StackPanel>
                     </Border>
 
                     <Expander Margin="0,7,0,0"
-                              Header="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.UnadaptedParameters, Korean='미적용 파라미터 (읽기 전용)', English='Unadapted parameters (read-only)'}"
+                              Header="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.UnadaptedParameters, Korean='미적용 설정값 (읽기 전용)', English='Unadapted parameters (read-only)'}"
                               IsExpanded="True">
                         <Expander.Style>
                             <Style TargetType="Expander">
@@ -872,7 +901,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="0,0,0,7">
-                                        <TextBlock FontSize="10.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding Name}" />
                                         <TextBox IsReadOnly="True" Text="{Binding Value}" />
@@ -899,7 +928,7 @@
                     </Expander>
 
                     <Expander Margin="0,7,0,0"
-                              Header="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.Evidence, Korean='증거', English='Evidence'}"
+                              Header="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.Evidence, Korean='정보', English='Evidence'}"
                               IsExpanded="True">
                         <Expander.Style>
                             <Style TargetType="Expander">
@@ -931,15 +960,15 @@
                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding SelectedPipelineStep.State}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding ValidationSummary}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
-                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.NoEvidence, Korean='이 일반 티칭 단계에는 Preview, Run 또는 결과 증거가 없습니다.', English='No Preview, Run, or result evidence exists for this generic teaching step.'}" />
+                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.ToolInspector.NoEvidence, Korean='이 일반 티칭 단계에는 미리보기, 검사 또는 결과 정보가 없습니다.', English='No Preview, Run, or result evidence exists for this generic teaching step.'}" />
                             </StackPanel>
                         </Border>
                     </Expander>

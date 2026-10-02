@@ -22,6 +22,7 @@ internal sealed class ToolWorkbenchLocalizationSubscriptionOwner : IDisposable
     private readonly PropertyChangedEventHandler outputCompareChangedHandler;
     private readonly PropertyChangedEventHandler thicknessRepeatGridChangedHandler;
     private readonly PropertyChangedEventHandler viewerWorkspaceChangedHandler;
+    private readonly PropertyChangedEventHandler recipeBrowserChangedHandler;
     private readonly EventHandler firstRecipeLanguageChangedHandler;
     private int disposalState;
 
@@ -36,6 +37,7 @@ internal sealed class ToolWorkbenchLocalizationSubscriptionOwner : IDisposable
         PropertyChangedEventHandler outputCompareChangedHandler,
         PropertyChangedEventHandler thicknessRepeatGridChangedHandler,
         PropertyChangedEventHandler viewerWorkspaceChangedHandler,
+        PropertyChangedEventHandler recipeBrowserChangedHandler,
         EventHandler firstRecipeLanguageChangedHandler)
     {
         this.localization = localization ?? throw new ArgumentNullException(nameof(localization));
@@ -57,6 +59,8 @@ internal sealed class ToolWorkbenchLocalizationSubscriptionOwner : IDisposable
             ?? throw new ArgumentNullException(nameof(thicknessRepeatGridChangedHandler));
         this.viewerWorkspaceChangedHandler = viewerWorkspaceChangedHandler
             ?? throw new ArgumentNullException(nameof(viewerWorkspaceChangedHandler));
+        this.recipeBrowserChangedHandler = recipeBrowserChangedHandler
+            ?? throw new ArgumentNullException(nameof(recipeBrowserChangedHandler));
         this.firstRecipeLanguageChangedHandler = firstRecipeLanguageChangedHandler
             ?? throw new ArgumentNullException(nameof(firstRecipeLanguageChangedHandler));
 
@@ -69,6 +73,7 @@ internal sealed class ToolWorkbenchLocalizationSubscriptionOwner : IDisposable
         localization.PropertyChanged += this.outputCompareChangedHandler;
         localization.PropertyChanged += this.thicknessRepeatGridChangedHandler;
         localization.PropertyChanged += this.viewerWorkspaceChangedHandler;
+        localization.PropertyChanged += this.recipeBrowserChangedHandler;
         OpenVisionLanguageService.LanguageChanged += this.firstRecipeLanguageChangedHandler;
     }
 
@@ -88,6 +93,7 @@ internal sealed class ToolWorkbenchLocalizationSubscriptionOwner : IDisposable
         localization.PropertyChanged -= outputCompareChangedHandler;
         localization.PropertyChanged -= thicknessRepeatGridChangedHandler;
         localization.PropertyChanged -= viewerWorkspaceChangedHandler;
+        localization.PropertyChanged -= recipeBrowserChangedHandler;
         OpenVisionLanguageService.LanguageChanged -= firstRecipeLanguageChangedHandler;
     }
 }

@@ -117,6 +117,14 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
                 FilterStepProperties.MappedNames,
                 FilterStepProperties.From,
                 TryCreateFilterParameters),
+            ["height-threshold-background-removal"] = Create<HeightThresholdBackgroundRemovalStepProperties>(
+                HeightThresholdBackgroundRemovalStepProperties.MappedNames,
+                HeightThresholdBackgroundRemovalStepProperties.From,
+                TryCreateHeightThresholdBackgroundRemovalParameters),
+            ["signed-delta-background-subtraction"] = Create<SignedDeltaBackgroundSubtractionStepProperties>(
+                SignedDeltaBackgroundSubtractionStepProperties.MappedNames,
+                SignedDeltaBackgroundSubtractionStepProperties.From,
+                TryCreateSignedDeltaBackgroundSubtractionParameters),
             ["remove-outlier-pixels"] = Create<RemoveOutlierPixelsStepProperties>(
                 RemoveOutlierPixelsStepProperties.MappedNames,
                 RemoveOutlierPixelsStepProperties.From,
@@ -157,6 +165,10 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
                 LineFitStepProperties.MappedNames,
                 LineFitStepProperties.From,
                 TryCreateLineFitParameters),
+            ["physical-edge-gap-flush"] = Create<PhysicalEdgeGapFlushStepProperties>(
+                PhysicalEdgeGapFlushStepProperties.MappedNames,
+                PhysicalEdgeGapFlushStepProperties.From,
+                TryCreatePhysicalEdgeGapFlushParameters),
             ["line-intersection"] = Create<LineIntersectionStepProperties>(
                 LineIntersectionStepProperties.MappedNames,
                 LineIntersectionStepProperties.From,
@@ -212,7 +224,11 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
             ["completeness-grid"] = Create<CompletenessGridStepProperties>(
                 CompletenessGridStepProperties.MappedNames,
                 CompletenessGridStepProperties.From,
-                TryCreateCompletenessGridParameters)
+                TryCreateCompletenessGridParameters),
+            ["connected-region-gate"] = Create<ConnectedRegionGateStepProperties>(
+                ConnectedRegionGateStepProperties.MappedNames,
+                ConnectedRegionGateStepProperties.From,
+                TryCreateConnectedRegionGateParameters)
         };
 
     private static Adapter Create<T>(
@@ -296,6 +312,64 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
         return true;
     }
 
+    private static bool TryCreateHeightThresholdBackgroundRemovalParameters(
+        object draft,
+        out IReadOnlyDictionary<string, string> values,
+        out string message)
+    {
+        if (!TryGetDraft<HeightThresholdBackgroundRemovalStepProperties>(
+                draft,
+                out var threshold,
+                out values,
+                out message)
+            || !threshold.TryValidate(out message))
+        {
+            return false;
+        }
+
+        values = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Threshold"] = threshold.Threshold.ToString("G17", CultureInfo.InvariantCulture),
+            ["Mode"] = threshold.Mode.ToString(),
+            ["ComparisonPolicy"] = C3DHeightThresholdBackgroundRemovalEvidence.ComparisonPolicyName,
+            ["MissingValuePolicy"] = C3DHeightThresholdBackgroundRemovalEvidence.MissingValuePolicyName,
+            ["BackgroundPolicy"] = C3DHeightThresholdBackgroundRemovalEvidence.BackgroundPolicyName
+        };
+        return true;
+    }
+
+    private static bool TryCreateSignedDeltaBackgroundSubtractionParameters(
+        object draft,
+        out IReadOnlyDictionary<string, string> values,
+        out string message)
+    {
+        if (!TryGetDraft<SignedDeltaBackgroundSubtractionStepProperties>(
+                draft,
+                out var signedDelta,
+                out values,
+                out message)
+            || !signedDelta.TryValidate(out message))
+        {
+            return false;
+        }
+
+        values = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundPathParameterName] = signedDelta.BackgroundPath,
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundEntityIdParameterName] = signedDelta.BackgroundEntityId,
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundByteLengthParameterName] = signedDelta.BackgroundByteLength.ToString(CultureInfo.InvariantCulture),
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundContentSha256ParameterName] = signedDelta.BackgroundContentSha256.ToUpperInvariant(),
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundWidthParameterName] = signedDelta.BackgroundWidth.ToString(CultureInfo.InvariantCulture),
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundHeightParameterName] = signedDelta.BackgroundHeight.ToString(CultureInfo.InvariantCulture),
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundUnitParameterName] = signedDelta.BackgroundUnit,
+            [C3DSignedHeightDeltaRecipePolicy.BackgroundFrameIdParameterName] = signedDelta.BackgroundFrameId,
+            [C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyParameterName] = C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyName,
+            [C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyParameterName] = C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyName,
+            [C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyParameterName] = C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyName
+        };
+        return true;
+    }
+
     private static bool TryCreateConnectedRegionParameters(
         object draft,
         out IReadOnlyDictionary<string, string> values,
@@ -328,12 +402,18 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
         out IReadOnlyDictionary<string, string> values,
         out string message)
     {
-        if (!TryGetDraft<DomainMaskStepProperties>(draft, out _, out values, out message))
+        if (!TryGetDraft<DomainMaskStepProperties>(draft, out var domainMask, out values, out message)
+            || !domainMask.TryValidate(out message))
         {
             return false;
         }
 
-        values = EmptyParameters;
+        values = domainMask.UsesDetectedRegion
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["SelectedRegionIndex"] = domainMask.SelectedRegionIndex.ToString(CultureInfo.InvariantCulture)
+            }
+            : EmptyParameters;
         return true;
     }
 
@@ -783,6 +863,26 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
         return true;
     }
 
+    private static bool TryCreatePhysicalEdgeGapFlushParameters(
+        object draft,
+        out IReadOnlyDictionary<string, string> values,
+        out string message)
+    {
+        if (!TryGetDraft<PhysicalEdgeGapFlushStepProperties>(
+                draft,
+                out var physicalEdgeGapFlush,
+                out values,
+                out message)
+            || !physicalEdgeGapFlush.TryValidate(out message))
+        {
+            return false;
+        }
+
+        values = physicalEdgeGapFlush.ToRecipeParameters()
+            .ToDictionary(parameter => parameter.Name, parameter => parameter.Value, StringComparer.Ordinal);
+        return true;
+    }
+
     private static bool TryCreateVolumeParameters(
         object draft,
         out IReadOnlyDictionary<string, string> values,
@@ -853,6 +953,30 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
 
         values = completenessProfile.ToRecipeParameters()
             .Concat(completenessPolicy.ToRecipeParameters())
+            .ToDictionary(
+                parameter => parameter.Name,
+                parameter => parameter.Value,
+                StringComparer.Ordinal);
+        return true;
+    }
+
+    private static bool TryCreateConnectedRegionGateParameters(
+        object draft,
+        out IReadOnlyDictionary<string, string> values,
+        out string message)
+    {
+        if (!TryGetDraft<ConnectedRegionGateStepProperties>(
+                draft,
+                out var gate,
+                out values,
+                out message)
+            || !gate.TryCreatePolicy(out var policy, out message)
+            || policy is null)
+        {
+            return false;
+        }
+
+        values = policy.ToRecipeParameters()
             .ToDictionary(
                 parameter => parameter.Name,
                 parameter => parameter.Value,

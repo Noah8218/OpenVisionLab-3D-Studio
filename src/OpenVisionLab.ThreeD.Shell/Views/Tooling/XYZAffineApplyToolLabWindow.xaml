@@ -5,9 +5,9 @@
         xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.WindowTitle, Korean='XYZ 어파인 적용 툴 랩 | OpenVisionLab 3D Studio', English='Apply XYZ Affine Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.WindowTitle, Korean='XYZ 어파인 적용 도구 실험실 | OpenVisionLab 3D Studio', English='Apply XYZ Affine Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1760" Height="980" MinWidth="1280" MinHeight="760"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -23,76 +23,85 @@
             <RowDefinition Height="260" />
         </Grid.RowDefinitions>
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Subtitle, Korean='XYZ 어파인 적용 툴 랩', English='Apply XYZ Affine Tool Lab'}"
-                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Status, Korean='A1 게시됨 | A2 클라우드', English='A1 Published | A2 Cloud'}" />
+                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Subtitle, Korean='XYZ 어파인 적용 도구 실험실', English='Apply XYZ Affine Tool Lab'}"
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Status, Korean='A1 적용됨 | A2 점군', English='A1 Applied | A2 Cloud'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
             <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
+                <Grid Grid.ColumnSpan="2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Symbol="ArrowSync24" />
-                    <StackPanel>
-                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Title, Korean='A2 | raw C3D에 전체 XYZ 어파인 적용', English='A2 | Apply full-XYZ affine to raw C3D'}" />
-                        <TextBlock MaxWidth="740" TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Detail, Korean='변경 불가능한 raw C3D와 순서가 유지된 TransformedPointCloud를 비교합니다. 출력 보기는 표시만 자동 맞춤하며 재그리드나 물리 스케일을 추론하지 않습니다.', English='Compare the immutable raw C3D with an ordered TransformedPointCloud. The output viewer auto-fits reference coordinates for display only; it does not re-grid or infer physical scale.'}" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Title, Korean='A2 | 원본 높이 데이터에 전체 XYZ 어파인 적용', English='A2 | Apply full-XYZ affine to raw C3D'}" />
+                        <TextBlock MaxWidth="740" HorizontalAlignment="Left" TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Detail, Korean='변경 불가능한 원본 높이 데이터와 순서가 유지된 변환 점군을 비교합니다. 출력 보기는 표시만 자동 맞춤하며 재그리드나 물리 스케일을 추론하지 않습니다.', English='Compare the immutable raw C3D with an ordered TransformedPointCloud. The output viewer auto-fits reference coordinates for display only; it does not re-grid or infer physical scale.'}" />
                     </StackPanel>
-                </StackPanel>
-                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewPointCloud, Korean='포인트 클라우드 미리보기', English='Preview point cloud'}" Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewTip, Korean='raw C3D를 한 번 검증하고 현재 게시된 AffineTransform3D를 재그리드 없이 적용합니다.', English='Verify the raw C3D once and apply the current Published AffineTransform3D without re-gridding'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewAction, Korean='XYZ 어파인 적용 미리보기', English='Preview Apply XYZ Affine'}" />
+                </Grid>
+                <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewPointCloud, Korean='점군 미리보기', English='Preview point cloud'}" Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewTip, Korean='원본 높이 데이터를 한 번 검증하고 현재 적용된 3D 변환 행렬을 재그리드 없이 적용합니다.', English='Verify the raw C3D once and apply the current Applied AffineTransform3D without re-gridding'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewAction, Korean='XYZ 어파인 적용 미리보기', English='Preview Apply XYZ Affine'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshViews, Korean='보기 새로고침', English='Refresh views'}" Icon="{ui:SymbolIcon ArrowSync24}"
-                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ShowInputTip, Korean='계산 없이 두 Viewer를 새로 고칩니다.', English='Reload the two viewers without calculation'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ShowInputAction, Korean='XYZ 어파인 적용 보기 새로 고침', English='Refresh Apply XYZ Affine views'}" />
-                    <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishPointCloud, Korean='포인트 클라우드 게시', English='Publish point cloud'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
-                               Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PublishTip, Korean='다시 실행하지 않고 현재 변환 포인트 클라우드 미리보기를 그대로 게시합니다.', English='Publish the exact current transformed point-cloud Preview without rerunning'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PublishAction, Korean='XYZ 어파인 적용 출력 게시', English='Publish Apply XYZ Affine output'}" />
+                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ShowInputTip, Korean='계산 없이 두 뷰어를 새로 고칩니다.', English='Reload the two viewers without calculation'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ShowInputAction, Korean='XYZ 어파인 적용 보기 새로 고침', English='Refresh Apply XYZ Affine views'}" />
+                    <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishPointCloud, Korean='점군 적용', English='Apply point cloud'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PublishTip, Korean='다시 실행하지 않고 현재 변환 점군 미리보기를 그대로 적용합니다.', English='Apply the exact current transformed point-cloud Preview without rerunning'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PublishAction, Korean='좌표 변환 결과 적용', English='Apply XYZ affine output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
-        <Grid Grid.Row="2" Margin="16,12">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="330" /></Grid.ColumnDefinitions>
-            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+        <Grid Grid.Row="2" Grid.RowSpan="2" Margin="16,12,16,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="344" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+        <tooling:ToolLabReviewView Grid.Column="0" />
+            <Grid Grid.Column="2">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="330" /></Grid.ColumnDefinitions>
+                <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                            <StackPanel>
+                                <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Database24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Input, Korean='입력 | 변경 불가능한 원본 높이 데이터', English='Input | immutable raw C3D'}" /></DockPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.SourceRule, Korean='원본은 열 / 원시 높이 / 행 좌표를 유지합니다.', English='Raw source stays in column / raw-height / row coordinates.'}" />
+                            </StackPanel>
+                        </Border>
+                        <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                            <StackPanel>
+                                <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Output, Korean='출력 | 기준 좌표계 라인 점군', English='Output | reference-frame line cloud'}" /></DockPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.OutputRule, Korean='샘플 원본 그리드의 라인 연결을 표시합니다. 자동 맞춤은 표시 전용이며 전체 XYZ 수치 출력은 변경하지 않습니다.', English='Line-based sampled source-grid adjacency; auto-fit is display-only and keeps the full XYZ numeric output unchanged.'}" />
+                            </StackPanel>
+                        </Border>
+                        <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="4" Padding="14" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Database24" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Input, Korean='입력 | 변경 불가능한 raw C3D', English='Input | immutable raw C3D'}" /></StackPanel>
-                <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.SourceRule, Korean='원본은 열 / 원시 높이 / 행 좌표를 유지합니다.', English='Raw source stays in column / raw-height / row coordinates.'}" />
+                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DocumentCheckmark24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.A2Evidence, Korean='A2 정보', English='A2 evidence'}" /></DockPanel>
+                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyUpstreamSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                            <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
                         </StackPanel>
-                    </Border>
-                    <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
-                </Grid>
-            </Border>
-            <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Output, Korean='출력 | 기준 프레임 라인 클라우드', English='Output | reference-frame line cloud'}" /></StackPanel>
-                <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.OutputRule, Korean='샘플 원본 그리드의 라인 연결을 표시합니다. 자동 맞춤은 표시 전용이며 전체 XYZ 수치 출력은 변경하지 않습니다.', English='Line-based sampled source-grid adjacency; auto-fit is display-only and keeps the full XYZ numeric output unchanged.'}" />
-                        </StackPanel>
-                    </Border>
-                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
-                </Grid>
-            </Border>
-            <Border Grid.Column="4" Padding="14" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DocumentCheckmark24" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.A2Evidence, Korean='A2 증거', English='A2 evidence'}" /></StackPanel>
-                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineApplyUpstreamSummary}" />
-                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineApplyExecutionSummary}" />
-                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineApplyEvidenceSummary}" />
-                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineApplyOutputHashSummary}" />
-                    </StackPanel>
-                    <Border Grid.Row="1" Margin="0,12,0,12" Padding="10" Background="{DynamicResource ThreeD.InfoSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                        <StackPanel>
-                            <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.FixedTypedContract, Korean='고정 정식 계약', English='Fixed typed contract'}" />
-                            <TextBlock Margin="0,5,0,0" FontSize="10" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ContractDetail, Korean='작성 가능한 A2 파라미터는 없습니다. 입력 식별자·단위·프레임·column/raw-height/row 규칙이 현재 게시된 A1 증거와 일치해야 합니다.', English='No authored A2 parameters. Input identity, units, frame, and column/raw-height/row convention must equal the current Published A1 evidence.'}" />
-                        </StackPanel>
-                    </Border>
-                    <propertyGrid:RecipeStepPropertyGridHost x:Name="ApplyStepPropertyGrid" Grid.Row="2" SelectedObject="{Binding SelectedStepPropertyDraft}" PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}" />
-                </Grid>
-            </Border>
+                        <Border Grid.Row="1" Margin="0,12,0,12" Padding="10" Background="{DynamicResource ThreeD.InfoSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.FixedTypedContract, Korean='처리 범위', English='Processing scope'}" />
+                                <TextBlock Margin="0,5,0,0" FontSize="12" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.ContractDetail, Korean='이 도구의 처리 방법은 변경할 수 없습니다. 입력 데이터의 식별자·단위·좌표계와 격자 축 순서(열/원시 높이/행)가 적용된 변환 행렬과 일치해야 합니다.', English='No authored A2 parameters. Input identity, units, frame, and column/raw-height/row convention must equal the current Applied A1 evidence.'}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
         </Grid>
-        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </tooling:ToolLabWindowBase>

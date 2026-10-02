@@ -29,7 +29,8 @@ internal static class RunRecordWriter
         InspectionRunStep? step,
         ToolResult result,
         string runnerReportPath,
-        string? viewerContractPath)
+        string? viewerContractPath,
+        NominalActualAlignmentEvidence? nominalActualAlignmentEvidence = null)
     {
         if (!options.Requested) return;
 
@@ -37,7 +38,9 @@ internal static class RunRecordWriter
         var recipeHash = HashFile(recipePath);
         var sourceHash = HashFile(sourcePath);
         var record = new InspectionRunRecord(
-            "1.2",
+            nominalActualAlignmentEvidence is null
+                ? "1.2"
+                : InspectionRunRecord.CurrentSchemaVersion,
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe(recipeType, recipeVersion, Path.GetFullPath(recipePath), recipeHash),
@@ -53,7 +56,8 @@ internal static class RunRecordWriter
         {
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
             Step = step,
-            Timing = CreateToolTiming(result.Elapsed.TotalMilliseconds)
+            Timing = CreateToolTiming(result.Elapsed.TotalMilliseconds),
+            NominalActualAlignmentEvidence = nominalActualAlignmentEvidence
         };
 
         WriteOutputs(options, record);

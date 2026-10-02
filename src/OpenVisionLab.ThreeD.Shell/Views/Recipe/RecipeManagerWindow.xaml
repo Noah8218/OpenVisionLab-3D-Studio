@@ -3,32 +3,30 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:recipe="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Recipe"
-        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.WindowTitle, Korean='레시피 관리자 | OpenVisionLab 3D Studio', English='Recipe Manager | OpenVisionLab 3D Studio'}"
-        Width="900"
-        Height="620"
-        MinWidth="760"
-        MinHeight="540"
+        Width="1520"
+        Height="890"
+        MinWidth="860"
+        MinHeight="520"
+        MaxWidth="1520"
+        MaxHeight="890"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
         AutomationProperties.AutomationId="RecipeManagerWindow">
     <shellChrome:WindowChrome.WindowChrome>
-        <shellChrome:WindowChrome CaptionHeight="56"
+        <shellChrome:WindowChrome CaptionHeight="50"
                                   ResizeBorderThickness="6"
                                   GlassFrameThickness="0"
                                   UseAeroCaptionButtons="False" />
     </shellChrome:WindowChrome.WindowChrome>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="56" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="{Binding Localization.RecipeCenter}"
-                                  StatusText="{Binding Localization.CurrentRecipe}" />
-        <recipe:RecipeManagerView Grid.Row="1" />
-    </Grid>
+    <Window.InputBindings>
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewTeachingRecipeCommand}" />
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenTeachingRecipeCommand}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveTeachingRecipeCommand}" />
+        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{Binding SaveTeachingRecipeAsCommand}" />
+    </Window.InputBindings>
+    <recipe:RecipeManagerView />
 </Window>

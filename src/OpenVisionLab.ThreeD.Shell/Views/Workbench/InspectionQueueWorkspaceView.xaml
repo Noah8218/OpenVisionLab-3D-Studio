@@ -1,0 +1,450 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.InspectionQueueWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.ViewModels.Workbench"
+             KeyboardNavigation.TabNavigation="Local"
+             Foreground="{DynamicResource ThreeD.TextBrush}"
+             AutomationProperties.AutomationId="InspectionQueueWorkspace">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <Style x:Key="QueueActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Margin" Value="0,0,5,5" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="MinHeight" Value="30" />
+        </Style>
+        <Style x:Key="QueueQuietButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Margin" Value="0,0,5,5" />
+            <Setter Property="Padding" Value="7,4" />
+            <Setter Property="MinHeight" Value="28" />
+        </Style>
+        <DataTemplate x:Key="QueueFilterCaption">
+            <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="100" />
+        </DataTemplate>
+        <Style x:Key="QueueNormalFeedback" TargetType="TextBlock">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasPendingRecordSave}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Border Background="{DynamicResource ThreeD.PanelBrush}"
+            Padding="8"
+            AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.Queue, Korean='반복 검사 목록', English='Inspection queue'}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Margin="0,0,0,7">
+                <TextBlock FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
+                           Text="{shell:ThreeDText Key=ThreeD.Inspection.QueueTitle, Korean='검사 파일', English='Inspection files'}" />
+                <TextBlock Margin="0,3,0,0"
+                           FontSize="12"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="{Binding RecipeReadinessText}"
+                           Style="{StaticResource QueueNormalFeedback}"
+                           AutomationProperties.AutomationId="InspectionRecipeReadiness" />
+                <TextBlock Margin="0,3,0,0"
+                           FontSize="12"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="{shell:ThreeDText Key=ThreeD.Inspection.CheckAndViewContract, Korean='체크는 검사 대상, 파일 선택은 현재 보기입니다. 검사는 실행 버튼을 눌러 시작합니다.', English='Check files for inspection; select a file to view it. Use an inspection command to start.'}" />
+            </StackPanel>
+
+            <WrapPanel Grid.Row="1" Margin="0,0,0,4">
+                <Button Style="{StaticResource QueueActionButton}"
+                        Content="{shell:ThreeDText Key=ThreeD.Inspection.AddFiles, Korean='파일 추가', English='Add files'}"
+                        Command="{Binding AddFilesCommand}"
+                        AutomationProperties.AutomationId="InspectionAddFiles" />
+                <Button Style="{StaticResource QueueActionButton}"
+                        Content="{shell:ThreeDText Key=ThreeD.Inspection.AddFolder, Korean='폴더 추가', English='Add folder'}"
+                        Command="{Binding AddFolderCommand}"
+                        AutomationProperties.AutomationId="InspectionAddFolder" />
+                <Button Style="{StaticResource QueueActionButton}"
+                        Content="{shell:ThreeDText Key=ThreeD.Inspection.UseTeachingInput, Korean='티칭 입력으로 사용', English='Use as teaching input'}"
+                        Command="{Binding UseSelectedInputForTeachingCommand}"
+                        ToolTip="{shell:ThreeDText Key=ThreeD.Inspection.UseTeachingInputHint, Korean='선택 파일을 티칭 입력으로 불러옵니다. ROI 확인·저장·실행은 별도입니다.', English='Loads the selected file as teaching input. ROI review, save and Run are separate.'}"
+                        AutomationProperties.AutomationId="InspectionUseTeachingInput" />
+            </WrapPanel>
+
+            <Grid Grid.Row="2" Margin="0,0,0,6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="128" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,5,4" FontSize="12"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="{shell:ThreeDText Key=ThreeD.Inspection.SearchFiles, Korean='검사 파일 검색', English='Search inspection files'}" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,4" FontSize="12"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="{shell:ThreeDText Key=ThreeD.Inspection.StatusFilter, Korean='검사 상태', English='Inspection status'}" />
+                <TextBox Grid.Row="1" Grid.Column="0"
+                         Margin="0,0,5,0"
+                         MinHeight="30"
+                         VerticalContentAlignment="Center"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="{shell:ThreeDText Key=ThreeD.Inspection.SearchFiles, Korean='파일명 또는 경로 검색', English='Search file name or path'}"
+                         AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.SearchFiles, Korean='검사 파일 검색', English='Search inspection files'}"
+                         AutomationProperties.AutomationId="InspectionSearch" />
+                <ComboBox Grid.Row="1" Grid.Column="1"
+                          MinHeight="30"
+                          VerticalContentAlignment="Center"
+                          SelectedValue="{Binding StatusFilter, Mode=TwoWay}"
+                          SelectedValuePath="Tag"
+                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.StatusFilter, Korean='검사 상태 필터', English='Inspection status filter'}"
+                          AutomationProperties.AutomationId="InspectionStatusFilter">
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.All}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterAll, Korean='전체', English='All'}" />
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.Untested}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterUntested, Korean='미검사', English='Untested'}" />
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.Pass}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterPass, Korean='통과', English='Pass'}" />
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.Fail}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterFail, Korean='NG', English='Fail'}" />
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.Warning}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterWarning, Korean='주의', English='Warning'}" />
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.Error}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterError, Korean='오류', English='Error'}" />
+                    <ComboBoxItem Tag="{x:Static workbench:InspectionQueueStatusFilter.Cancelled}" ContentTemplate="{StaticResource QueueFilterCaption}" Content="{shell:ThreeDText Key=ThreeD.Inspection.FilterCancelled, Korean='취소', English='Cancelled'}" />
+                </ComboBox>
+                <Button Grid.Row="1" Grid.Column="2"
+                        Margin="5,0,0,0"
+                        Padding="7,4"
+                        MinHeight="30"
+                        Content="{shell:ThreeDText Key=ThreeD.Inspection.ClearSearch, Korean='초기화', English='Clear'}"
+                        Command="{Binding ClearSearchCommand}"
+                        AutomationProperties.AutomationId="InspectionClearSearch" />
+                <ScrollViewer Grid.Row="2" Grid.ColumnSpan="3" Margin="0,5,0,0" MaxHeight="64"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer.Style>
+                        <Style TargetType="ScrollViewer">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasPendingRecordSave}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ScrollViewer.Style>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               TextWrapping="Wrap" Text="{Binding SummaryText}"
+                               AutomationProperties.AutomationId="InspectionQueueSummary" />
+                </ScrollViewer>
+            </Grid>
+
+            <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Margin="0,0,0,5"
+                           FontSize="12"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="{Binding CountsText}"
+                           AutomationProperties.AutomationId="InspectionQueueCounts" />
+                <Grid Grid.Row="1">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Visibility="{Binding HasVisibleSamples, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  AutomationProperties.AutomationId="InspectionQueueScrollViewer">
+                        <ItemsControl ItemsSource="{Binding VisibleSamples}"
+                                      AutomationProperties.AutomationId="InspectionQueueItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6" Padding="8" BorderThickness="1" CornerRadius="6">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Grid.Column="0"
+                                                      Margin="0,0,6,0"
+                                                      VerticalAlignment="Top"
+                                                      IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                      AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.IncludeInRun, Korean='검사 목록에 포함', English='Include in inspection run'}"
+                                                      AutomationProperties.HelpText="{Binding FileName}"
+                                                      AutomationProperties.AutomationId="InspectionQueueInclude">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DataContext.IsRunning, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                                                <Setter Property="IsEnabled" Value="False" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding DataContext.HasPendingRecordSave, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                                                <Setter Property="IsEnabled" Value="False" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
+                                            <Button Grid.Column="1"
+                                                    Padding="0"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    Background="Transparent"
+                                                    BorderBrush="Transparent"
+                                                    Command="{Binding DataContext.SelectSampleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding FileName}"
+                                                    AutomationProperties.AutomationId="InspectionQueueSelectSample">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                        <Setter Property="Background" Value="Transparent" />
+                                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                                <StackPanel HorizontalAlignment="Stretch">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                                   FontSize="12"
+                                                                   Text="{Binding Order, StringFormat={}{0}.}" />
+                                                        <TextBlock Grid.Column="1"
+                                                                   Margin="5,0,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   ToolTip="{Binding SourcePath}"
+                                                                   Text="{Binding FileName}" />
+                                                    </Grid>
+                                                    <TextBlock Margin="0,4,0,0" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                                               Text="{shell:ThreeDText Key=ThreeD.Inspection.CurrentlyViewed, Korean='현재 보기', English='Currently viewed'}"
+                                                               AutomationProperties.AutomationId="InspectionCurrentlyViewed">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Margin="0,3,0,0" FontSize="12"
+                                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                               TextWrapping="Wrap" Text="{Binding SourcePath}"
+                                                               AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.InputPath, Korean='검사 입력 경로', English='Inspection input path'}"
+                                                               AutomationProperties.AutomationId="InspectionSelectedSourcePath">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Margin="0,3,0,0"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                               TextWrapping="Wrap"
+                                                               Text="{Binding StatusSummary}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Expander Grid.Row="1" Grid.ColumnSpan="2" Margin="0,5,0,0"
+                                                      Header="{shell:ThreeDText Key=ThreeD.Inspection.FileResults, Korean='파일 검사 결과', English='File inspection results'}"
+                                                      IsExpanded="False" AutomationProperties.AutomationId="InspectionFileResults">
+                                                <Expander.Style>
+                                                    <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Steps.Count}" Value="0">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Expander.Style>
+                                                <ItemsControl ItemsSource="{Binding Steps}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,5,0,5" TextElement.Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="64" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.ColumnSpan="2" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding ToolName}" />
+                                                                <TextBlock Grid.Row="1" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Inspection.Judgement, Korean='판정', English='Result'}" />
+                                                                <TextBlock Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" Text="{Binding StatusLabel}" />
+                                                                <TextBlock Grid.Row="2" Margin="0,3,0,0" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Inspection.MeasuredValue, Korean='측정값', English='Value'}" />
+                                                                <Grid Grid.Row="2" Grid.Column="1" Margin="0,3,0,0">
+                                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                                    <TextBlock TextWrapping="Wrap" Text="{Binding Value}" AutomationProperties.AutomationId="InspectionFileResultValue" />
+                                                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" TextWrapping="Wrap" MaxWidth="80" Text="{Binding Unit}" AutomationProperties.AutomationId="InspectionFileResultUnit" />
+                                                                </Grid>
+                                                                <TextBlock Grid.Row="3" Margin="0,3,0,0" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Inspection.ResultLocation, Korean='검사 위치', English='Location'}" />
+                                                                <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,3,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="InspectionFileResultPosition">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Text" Value="{Binding Overlays}" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding Overlays}" Value="">
+                                                                                    <Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Inspection.NoRecordedLocation, Korean='기록된 위치 없음', English='No recorded location'}" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Text="{shell:ThreeDText Key=ThreeD.Inspection.EmptyQueue, Korean='검사할 파일이나 폴더를 추가하세요.', English='Add files or a folder to inspect.'}"
+                               AutomationProperties.AutomationId="InspectionQueueEmpty">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasVisibleSamples}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+                <WrapPanel Grid.Row="2" Margin="0,5,0,0">
+                    <Button Style="{StaticResource QueueQuietButton}"
+                            Content="{shell:ThreeDText Key=ThreeD.Inspection.CheckDisplayedFiles, Korean='표시 파일 체크', English='Check displayed files'}"
+                            Command="{Binding CheckVisibleCommand}"
+                            AutomationProperties.AutomationId="InspectionCheckVisible" />
+                    <Button Style="{StaticResource QueueQuietButton}"
+                            Content="{shell:ThreeDText Key=ThreeD.Inspection.UncheckVisible, Korean='체크 해제', English='Uncheck visible'}"
+                            Command="{Binding UncheckVisibleCommand}"
+                            AutomationProperties.AutomationId="InspectionUncheckVisible" />
+                    <Button Style="{StaticResource QueueQuietButton}"
+                            Content="{shell:ThreeDText Key=ThreeD.Inspection.RemoveSelectedFromList, Korean='선택 파일 목록에서 제거', English='Remove selected from list'}"
+                            Command="{Binding RemoveSelectedCommand}"
+                            AutomationProperties.AutomationId="InspectionRemoveSelected" />
+                    <Button Style="{StaticResource QueueQuietButton}"
+                            Content="{shell:ThreeDText Key=ThreeD.Inspection.ClearQueue, Korean='목록 비우기', English='Clear queue'}"
+                            Command="{Binding ClearQueueCommand}"
+                            AutomationProperties.AutomationId="InspectionClearQueue" />
+                </WrapPanel>
+            </Grid>
+
+            <Border Grid.Row="4" Margin="0,6,0,0" Padding="8" CornerRadius="4"
+                    Background="{DynamicResource ThreeD.FailSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.FailBrush}" BorderThickness="1"
+                    Visibility="{Binding HasPendingRecordSave, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    AutomationProperties.AutomationId="InspectionRecordSaveFailure">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.FailBrush}" TextWrapping="Wrap"
+                               Text="{shell:ThreeDText Key=ThreeD.Inspection.RecordSaveStopped, Korean='검사 중단 · 기록 저장 실패', English='Inspection stopped · record save failed'}" />
+                    <ScrollViewer Margin="0,4,0,0" MaxHeight="48" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  AutomationProperties.AutomationId="InspectionRecordSaveMessageScroll">
+                        <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding SummaryText}" />
+                    </ScrollViewer>
+                    <TextBlock Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap"
+                               Text="{shell:ThreeDText Key=ThreeD.Inspection.SaveOnlyRecovery, Korean='계산 결과는 유지됩니다. 저장만 다시 시도하며, 남은 파일 검사는 직접 시작하세요.', English='Calculated results are kept. Retry saving only; start remaining inspections separately.'}" />
+                    <Button HorizontalAlignment="Left" Margin="0,6,0,0" Style="{StaticResource QueueActionButton}"
+                            Content="{shell:ThreeDText Key=ThreeD.Inspection.RetryRecordSaveOnly, Korean='기록 저장만 다시 시도', English='Retry saving record only'}"
+                            Command="{Binding RetryRecordSaveCommand}" AutomationProperties.AutomationId="InspectionRetryRecordSave" />
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="5" Margin="0,7,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Menu Grid.Row="0" IsMainMenu="False" Background="Transparent" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Margin="0,0,0,6">
+                    <Menu.Style>
+                        <Style TargetType="Menu" BasedOn="{StaticResource {x:Type Menu}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasPendingRecordSave}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Menu.Style>
+                    <MenuItem Header="{shell:ThreeDText Key=ThreeD.Inspection.MoreActions, Korean='검사 작업', English='Inspection actions'}">
+                        <MenuItem Header="{shell:ThreeDText Key=ThreeD.Inspection.RunSelected, Korean='선택한 파일 검사', English='Inspect selected file'}" Command="{Binding RunSelectedCommand}" AutomationProperties.AutomationId="InspectionRunSelected" />
+                        <MenuItem Header="{shell:ThreeDText Key=ThreeD.Inspection.RunAll, Korean='전체 파일 다시 검사', English='Inspect all files again'}" Command="{Binding RunAllCommand}" AutomationProperties.AutomationId="InspectionRunAll" />
+                        <MenuItem Header="{shell:ThreeDText Key=ThreeD.Inspection.RunRemaining, Korean='남은 파일 검사', English='Inspect remaining files'}" Command="{Binding RunRemainingCommand}" AutomationProperties.AutomationId="InspectionRunRemaining" />
+                        <Separator />
+                        <MenuItem Header="{shell:ThreeDText Key=ThreeD.Inspection.NewContext, Korean='새 검사 목록 준비', English='Prepare new inspection queue'}" Command="{Binding NewInspectionContextCommand}" AutomationProperties.AutomationId="InspectionNewContext" />
+                    </MenuItem>
+                </Menu>
+
+                <ProgressBar Grid.Row="1"
+                             Height="6"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="{Binding ProgressPercent, Mode=OneWay}"
+                             AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.Progress, Korean='파일 검사 진행', English='Inspection progress'}"
+                             AutomationProperties.AutomationId="InspectionProgress" />
+                <Grid Grid.Row="2" Margin="0,3,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding ProgressText}" />
+                    <WrapPanel Grid.Column="1">
+                        <Button Style="{StaticResource QueueQuietButton}"
+                                Content="{shell:ThreeDText Key=ThreeD.Inspection.ExportCsv, Korean='CSV', English='CSV'}"
+                                Command="{Binding ExportCsvCommand}"
+                                AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.ExportCsv, Korean='CSV 내보내기', English='Export CSV'}"
+                                AutomationProperties.AutomationId="InspectionExportCsv" />
+                        <Button Style="{StaticResource QueueQuietButton}"
+                                Content="{shell:ThreeDText Key=ThreeD.Inspection.ReturnToTeaching, Korean='티칭', English='Teaching'}"
+                                Command="{Binding ReturnToTeachingCommand}"
+                                AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Inspection.ReturnToTeaching, Korean='티칭으로 돌아가기', English='Return to teaching'}"
+                                AutomationProperties.AutomationId="InspectionReturnToTeaching" />
+                    </WrapPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

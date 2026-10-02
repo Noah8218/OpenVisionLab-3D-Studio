@@ -5,8 +5,9 @@
         xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.WindowTitle, Korean='높이차 엣지 툴 랩 | OpenVisionLab 3D Studio', English='Height Difference Edge Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.WindowTitle, Korean='높이차 엣지 도구 실험실 | OpenVisionLab 3D Studio', English='Height Difference Edge Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1600"
         Height="920"
         MinWidth="1120"
@@ -30,7 +31,7 @@
         </Grid.RowDefinitions>
 
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Subtitle, Korean='높이차 엣지 툴 랩', English='Edge Tool Lab'}"
+                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Subtitle, Korean='높이차 엣지 도구 실험실', English='Edge Tool Lab'}"
                                   StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Status, Korean='입력 / 오버레이 비교', English='Input / overlay comparison'}" />
 
         <Border Grid.Row="1"
@@ -41,110 +42,114 @@
                 BorderThickness="1"
                 CornerRadius="3">
             <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
+                <Grid Grid.ColumnSpan="2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <ui:SymbolIcon Width="24"
                                    Height="24"
                                    Margin="0,0,9,0"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Symbol="PointScan24" />
-                    <StackPanel>
-                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
-                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Title, Korean='높이차 엣지 툴 랩', English='Height Difference Edge Tool Lab'}" />
-                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
-                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Detail, Korean='입력은 게시된 정확한 FilteredHeightField입니다. 출력은 두 번째 표면이 아니라 EdgePointSet 오버레이입니다.', English='The input is the exact Published FilteredHeightField. The output is an EdgePointSet overlay, not a second surface.'}" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
+                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Title, Korean='높이차 엣지 도구 실험실', English='Height Difference Edge Tool Lab'}" />
+                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
+                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Detail, Korean='입력은 적용된 필터 높이 데이터입니다. 검출된 에지 점은 표면 위에 표시합니다.', English='The input is the exact Applied FilteredHeightField. The output is an EdgePointSet overlay, not a second surface.'}" />
                     </StackPanel>
-                </StackPanel>
-                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <ui:Button Margin="0,0,6,0"
+                </Grid>
+                <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <ui:Button Appearance="Primary" Margin="0,0,6,0"
                                Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
-                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PreviewTip, Korean='게시된 필터 출력에서 EdgePointSet을 명시적으로 생성합니다.', English='Explicitly create an EdgePointSet from the published Filter output'}"
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PreviewTip, Korean='적용된 필터 출력에서 에지 점 집합을 직접 생성합니다.', English='Explicitly create an EdgePointSet from the applied Filter output'}"
                                AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PreviewAction, Korean='높이차 엣지 미리보기', English='Preview Height Difference Edge'}" />
                     <ui:Button Margin="0,0,6,0"
                                Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon DataFunnel24}"
                                Click="ShowFilterInputButton_Click"
-                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.ShowInputTip, Korean='게시된 FilteredHeightField 입력 보기를 새로 고칩니다.', English='Refresh the exact published FilteredHeightField input view'}"
-                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.ShowInputAction, Korean='FilteredHeightField 입력 보기', English='Show FilteredHeightField input'}" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.ShowInputTip, Korean='적용된 필터 높이 데이터 입력 보기를 새로 고칩니다.', English='Refresh the exact applied FilteredHeightField input view'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.ShowInputAction, Korean='필터 높이 데이터 입력 보기', English='Show FilteredHeightField input'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PublishTip, Korean='다시 실행하지 않고 현재 EdgePointSet 미리보기를 게시합니다.', English='Publish the current EdgePointSet Preview without running again'}"
-                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PublishAction, Korean='높이차 엣지 출력 게시', English='Publish Height Difference Edge output'}" />
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PublishTip, Korean='다시 실행하지 않고 현재 에지 점 집합 미리보기를 적용합니다.', English='Apply the current EdgePointSet Preview without running again'}"
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.PublishAction, Korean='높이차 엣지 출력 적용', English='Apply Height Difference Edge output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="2" Margin="16,12">
+        <Grid Grid.Row="2" Grid.RowSpan="2" Margin="16,12,16,16">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="344" />
                 <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Border Padding="1"
-                    Background="{DynamicResource ThreeD.PanelBrush}"
-                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                    BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Padding="10,6"
-                            Background="{DynamicResource ThreeD.CommandBarBrush}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataFunnel24" />
-                                <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" />
-                                <TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Input, Korean=' | 게시된 FilteredHeightField', English=' | Published FilteredHeightField'}" />
+        <tooling:ToolLabReviewView Grid.Column="0" />
+            <Grid Grid.Column="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Padding="1"
+                        Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Padding="10,6"
+                                Background="{DynamicResource ThreeD.CommandBarBrush}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataFunnel24" />
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding Localization.Input}" />
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Input, Korean=' | 적용된 필터 높이 데이터', English=' | Applied FilteredHeightField'}" />
+                                </DockPanel>
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="HeightDifferenceEdgeUpstreamSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
                             </StackPanel>
-                            <TextBlock Margin="0,2,0,0"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding HeightDifferenceEdgeUpstreamSummary}" />
-                        </StackPanel>
-                    </Border>
-                    <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
-                </Grid>
-            </Border>
-            <Border Grid.Column="2"
-                    Padding="1"
-                    Background="{DynamicResource ThreeD.PanelBrush}"
-                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                    BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Padding="10,6"
-                            Background="{DynamicResource ThreeD.CommandBarBrush}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" />
-                                <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" />
-                                        <TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Overlay, Korean=' | EdgePointSet 오버레이', English=' | EdgePointSet Overlay'}" />
+                        </Border>
+                        <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="2"
+                        Padding="1"
+                        Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Padding="10,6"
+                                Background="{DynamicResource ThreeD.CommandBarBrush}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" />
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding Localization.Output}" />
+                                            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Overlay, Korean=' | 에지 점 집합 오버레이', English=' | EdgePointSet Overlay'}" />
+                                </DockPanel>
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="HeightDifferenceEdgeExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                                <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="HeightDifferenceEdgeOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
                             </StackPanel>
-                            <TextBlock Margin="0,2,0,0"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding HeightDifferenceEdgeExecutionSummary}" />
-                            <TextBlock Margin="0,2,0,0"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding HeightDifferenceEdgeOutputHashSummary}" />
-                        </StackPanel>
-                    </Border>
-                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
-                </Grid>
-            </Border>
+                        </Border>
+                        <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
-
-        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </tooling:ToolLabWindowBase>

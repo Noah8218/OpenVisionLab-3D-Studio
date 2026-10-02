@@ -34,7 +34,7 @@ internal static class ToolThreePointPlaneWorkbenchVerification
                 "3-Point Plane Workbench",
                 new ToolRecipeSource(source.EntityId, "Synthetic", "C3D", source.Unit, source.FrameId, sourcePath, source.ByteLength, source.ContentSha256, source.Width, source.Height),
                 [],
-                [ThreePointPlaneStep("step.plane.a", selection.Id, "derived.plane.a", "FixtureDatum")],
+                [ThreePointPlaneStep("step.plane.a", selection.Id, "derived.plane.a", "FixtureDatum"), ThreePointPlaneStep("step.plane.b", selection.Id, "derived.plane.b", "OtherDatum")],
                 [selection]);
             var recipePath = Path.Combine(root, "three-point-plane.ov3d-teach.json");
             ToolRecipeDocumentStore.Save(recipePath, document);
@@ -66,6 +66,68 @@ internal static class ToolThreePointPlaneWorkbenchVerification
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Publish reuses exact 3-Point Plane Preview", workbench.IsThreePointPlanePreviewPublished && ReferenceEquals(preview, published) && workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.a", out var stored) && ReferenceEquals(stored, published), workbench.ThreePointPlaneExecutionSummary);
             Check("published plane appears as a PlaneFeature artifact", workbench.ArtifactRegistry.Count(item => item.Contract == "PlaneFeature" && item.State == "Published") == 1, workbench.ArtifactRegistrySummary);
+
+
+            var displayCount = 0;
+            workbench.ThreePointPlaneDisplayRequested += (_, _) => displayCount++;
+            workbench.SelectPipelineStep("step.plane.b");
+            Check("unexecuted sibling plane has no current output", workbench.CurrentThreePointPlaneOutput is null
+                && !workbench.HasCurrentThreePointPlanePreview && !workbench.PublishSelectedStepCommand.CanExecute(null), workbench.ThreePointPlaneExecutionSummary);
+            var secondPreview = workbench.PreviewSelectedThreePointPlaneAsync().GetAwaiter().GetResult();
+            var secondOutput = workbench.CurrentThreePointPlaneOutput;
+            workbench.PublishSelectedStepCommand.Execute(null);
+            Check("independent planes remain published", secondPreview && secondOutput is not null
+                && workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.a", out var firstRetained) && ReferenceEquals(firstRetained, published)
+                && workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.b", out var secondRetained) && ReferenceEquals(secondRetained, secondOutput), workbench.ArtifactRegistrySummary);
+            var displaysBeforeSelection = displayCount;
+            workbench.SelectPipelineStep("step.plane.a");
+            Check("plane selection restores exact published output without execution", ReferenceEquals(workbench.CurrentThreePointPlaneOutput, published)
+                && workbench.IsThreePointPlanePreviewPublished && displayCount == displaysBeforeSelection, workbench.ThreePointPlaneExecutionSummary);
+            workbench.SelectedPipelineStep!.ToolName = "Renamed datum";
+            workbench.RecipeName = "Renamed recipe";
+            Check("descriptive rename preserves both planes", workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.a", out _)
+                && workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.b", out _) && displayCount == displaysBeforeSelection, workbench.ThreePointPlaneExecutionSummary);
+            workbench.PipelineSteps.Single(step => step.Id == "step.plane.b").Parameters.Single(parameter => parameter.Name == "OutputRole").Value = "OtherDatumRevised";
+            Check("inactive plane edit invalidates only its branch", workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.a", out var stillFirst)
+                && ReferenceEquals(stillFirst, published) && !workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.b", out _)
+                && ReferenceEquals(workbench.CurrentThreePointPlaneOutput, published) && displayCount == displaysBeforeSelection, workbench.ThreePointPlaneExecutionSummary);
+
+            var lateDocument = document;
+            var lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.plane.a");
+            var changeOnStart = 1;
+            var lateDisplays = 0;
+            using (var lateOwner = new ToolWorkbenchThreePointPlaneExecutionOwner(
+                () => true, () => lateSelected, () => true, () => false, () => selection,
+                id => workbench.PipelineSteps.FirstOrDefault(step => step.OutputEntityId == id), () => lateDocument, () => recipePath,
+                (_, message) =>
+                {
+                    if (!message.Contains("Preview started", StringComparison.Ordinal)) return;
+                    if (changeOnStart == 1)
+                        lateDocument = document with { Steps = document.Steps.Select(step => step.Id == "step.plane.a"
+                            ? step with { Parameters = step.Parameters.Select(parameter => parameter.Name == "OutputRole" ? parameter with { Value = "ChangedDuringRun" } : parameter).ToArray() }
+                            : step).ToArray() };
+                    else if (changeOnStart == 2)
+                        lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.plane.b");
+                }, _ => lateDisplays++, () => { }, _ => { }, () => { }, () => { }))
+            {
+                Check("late plane condition change rejects completion", !lateOwner.PreviewAsync().GetAwaiter().GetResult()
+                    && lateOwner.CurrentOutput is null && !lateOwner.IsPreviewRunning && lateDisplays == 0, lateOwner.ExecutionSummary);
+                lateDocument = document;
+                lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.plane.a");
+                changeOnStart = 2;
+                Check("late plane selection change rejects completion", !lateOwner.PreviewAsync().GetAwaiter().GetResult()
+                    && lateOwner.CurrentOutput is null && !lateOwner.IsPreviewRunning && lateDisplays == 0, lateOwner.ExecutionSummary);
+                lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.plane.a");
+                changeOnStart = 0;
+                var recovered = lateOwner.PreviewAsync().GetAwaiter().GetResult();
+                var recoveredOutput = lateOwner.CurrentOutput;
+                lateOwner.Publish();
+                Check("plane rejection recovers by explicit rerun", recovered && recoveredOutput?.ContentSha256 == expected.Output?.ContentSha256
+                    && lateOwner.TryGetPublishedOutput("derived.plane.a", out var recoveredPlane)
+                    && ReferenceEquals(recoveredOutput, recoveredPlane) && lateDisplays == 2, lateOwner.ExecutionSummary);
+                lateDocument = document with { Steps = document.Steps.Where(step => step.Id != "step.plane.a").ToArray() };
+                Check("published plane lookup rejects removed execution context", !lateOwner.TryGetPublishedOutput("derived.plane.a", out _), lateOwner.ExecutionSummary);
+            }
 
             workbench.SelectedPipelineStep!.Parameters.Single(parameter => parameter.Name == "OutputRole").Value = "FixtureDatumRevised";
             Check("parameter change stales and unpublishes plane", workbench.IsThreePointPlanePreviewStale && !workbench.TryGetPublishedThreePointPlaneOutput("derived.plane.a", out _), workbench.ThreePointPlaneExecutionSummary);

@@ -83,6 +83,243 @@ public sealed class FilterStepProperties
     }
 }
 
+public enum HeightThresholdBackgroundRemovalMode
+{
+    KeepAtOrAboveThreshold,
+    KeepAtOrBelowThreshold
+}
+
+[CategoryOrder("Threshold rule", 0)]
+[CategoryOrder("Evidence policy", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class HeightThresholdBackgroundRemovalStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "Threshold",
+        "Mode",
+        "ComparisonPolicy",
+        "MissingValuePolicy",
+        "BackgroundPolicy"
+    ];
+
+    [Category("Threshold rule")]
+    [DisplayName("Threshold")]
+    [Description("Inclusive raw-height threshold used to retain finite samples in the derived map.")]
+    [PropertyOrder(0)]
+    [NumberRange(double.MinValue, double.MaxValue, 0.001)]
+    public double Threshold { get; set; }
+
+    [Category("Threshold rule")]
+    [DisplayName("Keep mode")]
+    [Description("Retain finite raw-height samples at or above, or at or below, the threshold.")]
+    [PropertyOrder(1)]
+    public HeightThresholdBackgroundRemovalMode Mode { get; set; }
+
+    [Category("Evidence policy")]
+    [DisplayName("Comparison policy")]
+    [Description("Fixed v1 inclusive finite-sample predicate; this value is persisted as recipe evidence.")]
+    [PropertyOrder(2)]
+    [ReadOnly(true)]
+    public string ComparisonPolicy { get; init; } = C3DHeightThresholdBackgroundRemovalEvidence.ComparisonPolicyName;
+
+    [Category("Evidence policy")]
+    [DisplayName("Missing values")]
+    [Description("Existing missing source cells remain missing in the derived output.")]
+    [PropertyOrder(3)]
+    [ReadOnly(true)]
+    public string MissingValuePolicy { get; init; } = C3DHeightThresholdBackgroundRemovalEvidence.MissingValuePolicyName;
+
+    [Category("Evidence policy")]
+    [DisplayName("Background action")]
+    [Description("Samples rejected by the predicate become missing only in the derived output.")]
+    [PropertyOrder(4)]
+    [ReadOnly(true)]
+    public string BackgroundPolicy { get; init; } = C3DHeightThresholdBackgroundRemovalEvidence.BackgroundPolicyName;
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [Description("Unknown parameters are retained unchanged when known parameters are applied.")]
+    [PropertyOrder(10)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static HeightThresholdBackgroundRemovalStepProperties From(
+        ToolWorkbenchPipelineStepItem step) => new()
+    {
+        Threshold = double.TryParse(
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "Threshold"),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var threshold)
+            ? threshold
+            : double.NaN,
+        Mode = Enum.TryParse<HeightThresholdBackgroundRemovalMode>(
+            ToolWorkbenchStepParameterAccess.GetParameter(step, "Mode"),
+            out var mode)
+            ? mode
+            : HeightThresholdBackgroundRemovalMode.KeepAtOrAboveThreshold,
+        ComparisonPolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "ComparisonPolicy")
+            ?? C3DHeightThresholdBackgroundRemovalEvidence.ComparisonPolicyName,
+        MissingValuePolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "MissingValuePolicy")
+            ?? C3DHeightThresholdBackgroundRemovalEvidence.MissingValuePolicyName,
+        BackgroundPolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, "BackgroundPolicy")
+            ?? C3DHeightThresholdBackgroundRemovalEvidence.BackgroundPolicyName,
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(Threshold))
+        {
+            message = "Threshold must be finite.";
+            return false;
+        }
+
+        if (!Enum.IsDefined(Mode))
+        {
+            message = "Keep mode is invalid.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
+    }
+}
+
+[CategoryOrder("Saved background", 0)]
+[CategoryOrder("Evidence policy", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class SignedDeltaBackgroundSubtractionStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        C3DSignedHeightDeltaRecipePolicy.BackgroundPathParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundEntityIdParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundByteLengthParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundContentSha256ParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundWidthParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundHeightParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundUnitParameterName,
+        C3DSignedHeightDeltaRecipePolicy.BackgroundFrameIdParameterName,
+        C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyParameterName,
+        C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyParameterName,
+        C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyParameterName
+    ];
+
+    [Category("Saved background")]
+    [DisplayName("Background path")]
+    [Description("Recipe-relative or absolute C3D path for the saved background; bytes are verified before Preview.")]
+    [PropertyOrder(0)]
+    public string BackgroundPath { get; set; } = string.Empty;
+
+    [Category("Saved background")]
+    [DisplayName("Background entity ID")]
+    [Description("Stable identity of the saved background source; it must differ from the current source.")]
+    [PropertyOrder(1)]
+    public string BackgroundEntityId { get; set; } = string.Empty;
+
+    [Category("Saved background")]
+    [DisplayName("Background byte length")]
+    [Description("Recorded byte length used for fail-closed identity verification.")]
+    [PropertyOrder(2)]
+    public long BackgroundByteLength { get; set; }
+
+    [Category("Saved background")]
+    [DisplayName("Background SHA-256")]
+    [Description("Recorded C3D content SHA-256 used for fail-closed identity verification.")]
+    [PropertyOrder(3)]
+    public string BackgroundContentSha256 { get; set; } = string.Empty;
+
+    [Category("Saved background")]
+    [DisplayName("Background width")]
+    [PropertyOrder(4)]
+    public int BackgroundWidth { get; set; }
+
+    [Category("Saved background")]
+    [DisplayName("Background height")]
+    [PropertyOrder(5)]
+    public int BackgroundHeight { get; set; }
+
+    [Category("Saved background")]
+    [DisplayName("Background unit")]
+    [PropertyOrder(6)]
+    public string BackgroundUnit { get; set; } = "raw-height";
+
+    [Category("Saved background")]
+    [DisplayName("Background frame")]
+    [PropertyOrder(7)]
+    public string BackgroundFrameId { get; set; } = string.Empty;
+
+    [Category("Evidence policy")]
+    [DisplayName("Subtraction policy")]
+    [ReadOnly(true)]
+    [PropertyOrder(8)]
+    public string SubtractionPolicy { get; init; } = C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyName;
+
+    [Category("Evidence policy")]
+    [DisplayName("Missing value policy")]
+    [ReadOnly(true)]
+    [PropertyOrder(9)]
+    public string MissingValuePolicy { get; init; } = C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyName;
+
+    [Category("Evidence policy")]
+    [DisplayName("Zero delta policy")]
+    [ReadOnly(true)]
+    [PropertyOrder(10)]
+    public string ZeroDeltaPolicy { get; init; } = C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyName;
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    [PropertyOrder(20)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static SignedDeltaBackgroundSubtractionStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        BackgroundPath = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundPathParameterName) ?? string.Empty,
+        BackgroundEntityId = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundEntityIdParameterName) ?? string.Empty,
+        BackgroundByteLength = long.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundByteLengthParameterName), NumberStyles.Integer, CultureInfo.InvariantCulture, out var byteLength) ? byteLength : 0,
+        BackgroundContentSha256 = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundContentSha256ParameterName) ?? string.Empty,
+        BackgroundWidth = int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundWidthParameterName), NumberStyles.Integer, CultureInfo.InvariantCulture, out var width) ? width : 0,
+        BackgroundHeight = int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundHeightParameterName), NumberStyles.Integer, CultureInfo.InvariantCulture, out var height) ? height : 0,
+        BackgroundUnit = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundUnitParameterName) ?? string.Empty,
+        BackgroundFrameId = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.BackgroundFrameIdParameterName) ?? string.Empty,
+        SubtractionPolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyParameterName) ?? C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyName,
+        MissingValuePolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyParameterName) ?? C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyName,
+        ZeroDeltaPolicy = ToolWorkbenchStepParameterAccess.GetParameter(step, C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyParameterName) ?? C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyName,
+        UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (string.IsNullOrWhiteSpace(BackgroundPath)
+            || string.IsNullOrWhiteSpace(BackgroundEntityId)
+            || BackgroundByteLength <= 0
+            || BackgroundWidth <= 0
+            || BackgroundHeight <= 0
+            || BackgroundContentSha256.Length != 64
+            || !BackgroundContentSha256.All(Uri.IsHexDigit)
+            || string.IsNullOrWhiteSpace(BackgroundUnit)
+            || string.IsNullOrWhiteSpace(BackgroundFrameId))
+        {
+            message = "Saved background path, identity, dimensions, unit, frame, and SHA-256 are required.";
+            return false;
+        }
+
+        if (SubtractionPolicy != C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyName
+            || MissingValuePolicy != C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyName
+            || ZeroDeltaPolicy != C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyName)
+        {
+            message = "Signed delta evidence policies are fixed and cannot be changed.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
+    }
+}
+
 public enum RemoveOutlierPixelsRule
 {
     LocalMedianAbsoluteDeviation

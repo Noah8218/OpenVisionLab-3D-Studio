@@ -9,6 +9,7 @@ internal static class ViewerHostStatePropertyMap
 {
     public static string? Map(string? viewModelPropertyName) => viewModelPropertyName switch
     {
+        "IsTeachingCaptureActive" => nameof(ViewerHostState.IsTeachingCaptureActive),
         "C3DSampleVisible" => nameof(ViewerHostState.C3DSampleVisible),
         "GlbSampleVisible" => nameof(ViewerHostState.GlbSampleVisible),
         "LazSampleVisible" => nameof(ViewerHostState.LazSampleVisible),
@@ -36,6 +37,7 @@ internal static class ViewerHostStatePropertyMap
         "ThicknessMaximumMeasured" => nameof(ViewerHostState.ThicknessEvidence),
         "ThicknessRange" => nameof(ViewerHostState.ThicknessEvidence),
         "ThicknessValidSampleCount" => nameof(ViewerHostState.ThicknessEvidence),
+        "ProfileIsCollapsed" or "ProfileHasEndpoints" or "ProfileIsPicking" or "ProfileGridDistance" or "ProfileHeightDelta" => nameof(ViewerHostState.Profile),
         "ProfileVisible" => nameof(ViewerHostState.Profile),
         "ProfileSummary" => nameof(ViewerHostState.Profile),
         "ProfileEndpointSummary" => nameof(ViewerHostState.Profile),
@@ -76,6 +78,7 @@ internal static class ViewerHostStatePropertyMap
         "C3DHeightColorMinimumRaw" => nameof(ViewerHostState.Presentation),
         "C3DHeightColorMaximumRaw" => nameof(ViewerHostState.Presentation),
         "C3DHeightColorRangeAuto" => nameof(ViewerHostState.Presentation),
+        "C3DHeightEmphasis" => nameof(ViewerHostState.Presentation),
         "C3DHeightColorRangeRevision" => nameof(ViewerHostState.Presentation),
         "C3DHeightColorRangeSummary" => nameof(ViewerHostState.Presentation),
         "PreviewToolResult" => nameof(ViewerHostState.Inspection),

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 
@@ -13,6 +14,13 @@ public partial class ViewerPresentationBar : UserControl
             typeof(IOpenVisionThreeDViewerHost),
             typeof(ViewerPresentationBar),
             new PropertyMetadata(null, OnViewerHostChanged));
+
+    public static readonly DependencyProperty DialogPlacementTargetProperty =
+        DependencyProperty.Register(
+            nameof(DialogPlacementTarget),
+            typeof(FrameworkElement),
+            typeof(ViewerPresentationBar),
+            new PropertyMetadata(null));
 
     public static readonly DependencyProperty PresentationProperty =
         DependencyProperty.Register(
@@ -38,6 +46,12 @@ public partial class ViewerPresentationBar : UserControl
     {
         get => (IOpenVisionThreeDViewerHost?)GetValue(ViewerHostProperty);
         set => SetValue(ViewerHostProperty, value);
+    }
+
+    public FrameworkElement? DialogPlacementTarget
+    {
+        get => (FrameworkElement?)GetValue(DialogPlacementTargetProperty);
+        set => SetValue(DialogPlacementTargetProperty, value);
     }
 
     public ViewerPresentationBarViewModel? Presentation
@@ -68,4 +82,15 @@ public partial class ViewerPresentationBar : UserControl
         Visibility = Presentation is null
             ? Visibility.Collapsed
             : Visibility.Visible;
+
+    private void OnViewerDisplaySettingsPopupOpened(object? sender, EventArgs args) =>
+        Keyboard.Focus(ViewerHeightRangeMode);
+
+    private void OnViewerDisplaySettingsPopupClosed(object? sender, EventArgs args)
+    {
+        if (ViewerDisplaySettingsButton.IsLoaded)
+        {
+            Keyboard.Focus(ViewerDisplaySettingsButton);
+        }
+    }
 }

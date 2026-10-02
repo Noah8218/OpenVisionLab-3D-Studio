@@ -20,6 +20,7 @@ internal sealed class ShellSmokeCommandLineOptions
 
     public string? ShellScreenshotPath => GetValue("--shell-smoke-screenshot");
     public string? ScreenshotQualityReportPath => GetValue("--shell-screenshot-quality-report");
+    public string? RunRecordComparisonPath => GetValue("--smoke-compare-run-record");
     public string? ViewerLayoutSmoke => GetValue("--smoke-viewer-layout");
     public bool ViewerPresentationSmoke => HasFlag("--smoke-viewer-presentation");
     public bool ViewerPresentationPressedSmoke => HasFlag("--smoke-viewer-presentation-pressed");
@@ -101,6 +102,7 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? OrientedBoxPointerSmokeReportPath =>
         GetValue("--smoke-oriented-box-pointer-report");
     public string? SmokeSelectToolId => GetValue("--smoke-select-tool");
+    public bool OpenToolLibrarySmoke => HasFlag("--smoke-open-tool-library");
     public string? PreparationPresetAssistantSmoke =>
         GetValue("--smoke-preparation-preset-assistant");
     public string? WorkbenchInteractionReportPath => GetValue("--smoke-workbench-interaction-report");
@@ -258,6 +260,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || AsyncC3DLoadSmokePath is not null
         || ViewerOnlyImportSmokePath is not null
         || SourceQualitySmoke
+        || RunRecordComparisonPath is not null
         || SourceAcquisitionProvenanceSmokeState is not null
         || SourceAcquisitionProvenancePopupScreenshotPath is not null
         || HeightImageDisplayRangeSmoke

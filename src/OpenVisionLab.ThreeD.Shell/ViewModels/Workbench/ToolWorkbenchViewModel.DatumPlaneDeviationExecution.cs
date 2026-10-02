@@ -19,6 +19,7 @@ public sealed partial class ToolWorkbenchViewModel
         datumPlaneDeviationExecutionOwner.IsPreviewPublished;
     internal C3DDatumPlaneDeviationFeature? CurrentDatumPlaneDeviationOutput =>
         datumPlaneDeviationExecutionOwner.CurrentOutput;
+    internal ToolResult? CurrentDatumPlaneDeviationResult => datumPlaneDeviationExecutionOwner.CurrentResult;
     public string DatumPlaneDeviationExecutionSummary =>
         datumPlaneDeviationExecutionOwner.ExecutionSummary;
     public string DatumPlaneDeviationOutputHashSummary =>

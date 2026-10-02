@@ -17,6 +17,7 @@ internal sealed class ToolWorkbenchRenderableC3DCatalogOwner
     private static readonly string[] PreparationToolOrder =
     [
         "filter",
+        "height-threshold-background-removal",
         "remove-outlier-pixels",
         "domain-mask",
         "level-surface",
@@ -61,15 +62,14 @@ internal sealed class ToolWorkbenchRenderableC3DCatalogOwner
 
         foreach (var toolId in PreparationToolOrder)
         {
-            var matches = snapshot.PreparationOutputs
+            var outputs = snapshot.PreparationOutputs
                 .Where(output => string.Equals(output.ToolId, toolId, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-            if (matches.Length != 1 || TryProjectPreparation(snapshot, matches[0]) is not { } preparation)
+                .GroupBy(output => output.Output?.EntityId, StringComparer.OrdinalIgnoreCase);
+            foreach (var matches in outputs)
             {
-                continue;
+                if (matches.Count() == 1 && TryProjectPreparation(snapshot, matches.Single()) is { } preparation)
+                    targets.Add(preparation);
             }
-
-            targets.Add(preparation);
         }
 
         Targets = targets;
@@ -78,6 +78,35 @@ internal sealed class ToolWorkbenchRenderableC3DCatalogOwner
     public ToolWorkbenchRenderableC3DTarget? GetTarget(string? id) =>
         Targets.FirstOrDefault(target =>
             string.Equals(target.Id, id, StringComparison.OrdinalIgnoreCase));
+
+    public ToolWorkbenchRenderableC3DTarget? GetInputBackgroundTarget(string? inputId, IReadOnlyList<ToolWorkbenchArtifactItem> artifacts)
+    {
+        if (string.IsNullOrWhiteSpace(inputId)) return null;
+        var source = Targets.FirstOrDefault(target => target.IsSource);
+        var root = artifacts.FirstOrDefault(artifact => artifact.Id == source?.Id);
+        if (root is null) return null;
+        var pending = new Queue<string>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        pending.Enqueue(inputId);
+        while (pending.TryDequeue(out var id))
+        {
+            if (!visited.Add(id)) continue;
+            var matches = artifacts.Where(artifact => string.Equals(artifact.Id, id, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (matches.Length != 1) continue;
+            var artifact = matches[0];
+            if (IsUnavailableState(artifact.State) || !artifact.HasContentHash
+                || !string.Equals(artifact.RootSourceId, root.Id, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(artifact.Unit, root.Unit, StringComparison.Ordinal)
+                || !string.Equals(artifact.FrameId, root.FrameId, StringComparison.Ordinal)) continue;
+            if (GetTarget(id) is { } target) return target;
+            foreach (var parentId in artifact.PipelineStep?.InputEntityIds
+                ?? artifact.InputEntityIds.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                pending.Enqueue(parentId);
+            }
+        }
+        return null;
+    }
 
     private static ToolWorkbenchRenderableC3DTarget? TryProjectSource(
         ToolWorkbenchRenderableC3DCatalogSnapshot snapshot)

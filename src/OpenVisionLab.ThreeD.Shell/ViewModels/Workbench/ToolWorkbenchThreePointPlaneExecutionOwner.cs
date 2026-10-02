@@ -25,8 +25,9 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
 
     private CancellationTokenSource? previewCancellation;
     private C3DThreePointPlaneFeature? previewOutput;
-    private readonly Dictionary<string, C3DThreePointPlaneFeature> publishedOutputs =
-        new(StringComparer.OrdinalIgnoreCase);
+    private ToolWorkbenchPipelineStepItem? previewStep;
+    private string previewContext = string.Empty;
+    private readonly Dictionary<string, (C3DThreePointPlaneFeature Output, string StepId, string Context)> publishedOutputs = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> staleOutputIds = new(StringComparer.OrdinalIgnoreCase);
     private bool isPreviewRunning;
     private bool isPreviewStale;
@@ -67,18 +68,15 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
         this.onExecutionStateChanged = onExecutionStateChanged;
     }
 
-    private bool IsPreviewForSelectedStep => previewOutput is not null
-        && string.Equals(
-            getSelectedPipelineStep()?.OutputEntityId,
-            previewOutput.OutputEntityId,
-            StringComparison.OrdinalIgnoreCase);
+    private bool IsPreviewForSelectedStep => previewOutput is not null && ReferenceEquals(previewStep, getSelectedPipelineStep());
 
     public bool IsSelectedStepThreePointPlane => !IsDisposed && isSelectedStepThreePointPlane();
     public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
-    public bool HasCurrentPreview => !IsDisposed && IsPreviewForSelectedStep && !IsPreviewStale;
+    public bool HasCurrentPreview => !IsDisposed && IsPreviewForSelectedStep && !isPreviewStale
+        && string.Equals(previewContext, createDocument().CreateStepExecutionContext(previewStep!.Id), StringComparison.Ordinal);
     public bool IsPreviewStale => !IsDisposed && getSelectedPipelineStep() is { } step
         && staleOutputIds.Contains(step.OutputEntityId);
-    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished && IsPreviewForSelectedStep;
+    public bool IsPreviewPublished => isPreviewPublished && HasCurrentPreview;
     public C3DThreePointPlaneFeature? CurrentOutput => !IsDisposed && IsPreviewForSelectedStep
         ? previewOutput
         : null;
@@ -108,7 +106,13 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
             return false;
         }
 
-        return publishedOutputs.TryGetValue(outputEntityId, out output);
+        if (publishedOutputs.TryGetValue(outputEntityId, out var published) && string.Equals(published.Context, createDocument().CreateStepExecutionContext(published.StepId), StringComparison.Ordinal))
+        {
+            output = published.Output;
+            return true;
+        }
+        output = null;
+        return false;
     }
 
     public void Dispose()
@@ -123,6 +127,8 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
         publishedOutputs.Clear();
         staleOutputIds.Clear();
         isPreviewRunning = false;
@@ -158,6 +164,11 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
             return false;
         }
 
+        var document = createDocument();
+        var context = document.CreateStepExecutionContext(step.Id);
+        var recipeDirectory = GetRecipeDirectory();
+        publishedOutputs.Remove(step.OutputEntityId);
+        markDatumPlaneDeviationStale(step.OutputEntityId);
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -174,13 +185,22 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
         {
             var evaluation = await Task.Run(
                 () => ToolRecipeThreePointPlaneExecution.Execute(
-                    createDocument(),
+                    document,
                     step.Id,
-                    GetRecipeDirectory(),
+                    recipeDirectory,
                     cancellationToken),
                 cancellationToken);
             if (!IsCurrentPreview(currentCancellation))
             {
+                return false;
+            }
+
+            if (!ReferenceEquals(step, getSelectedPipelineStep())
+                || !string.Equals(context, createDocument().CreateStepExecutionContext(step.Id), StringComparison.Ordinal))
+            {
+                isPreviewStale = previewOutput is not null;
+                step.State = "Preview stale";
+                SetSummary("Input or conditions changed. Run again for the current result.");
                 return false;
             }
 
@@ -203,6 +223,8 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
             }
 
             previewOutput = evaluation.Output;
+            previewStep = step;
+            previewContext = context;
             if (!IsCurrentPreview(currentCancellation))
             {
                 return false;
@@ -283,7 +305,7 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
         }
 
         isPreviewPublished = true;
-        publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
+        publishedOutputs[previewOutput!.OutputEntityId] = (previewOutput, step.Id, previewContext);
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | datum construction evidence only, no fit or OK/NG");
         appendLog("Publish", $"3-Point Plane output published without re-running: {step.OutputEntityId}.");
@@ -309,68 +331,47 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (IsDisposed)
+        if (IsDisposed || isPreviewRunning || previewOutput is null && publishedOutputs.Count == 0) return;
+        var document = createDocument();
+        var changed = false;
+        foreach (var (id, published) in publishedOutputs.ToArray())
         {
-            return;
+            if (string.Equals(published.Context, document.CreateStepExecutionContext(published.StepId), StringComparison.Ordinal)) continue;
+            publishedOutputs.Remove(id);
+            staleOutputIds.Add(id);
+            if (findStepByOutputEntityId(id) is { } step) step.State = "Preview stale";
+            markDatumPlaneDeviationStale(id);
+            changed = true;
         }
-
-        var preview = previewOutput;
-        if (isPreviewRunning)
-        {
-            return;
-        }
-
-        ToolWorkbenchPipelineStepItem? affectedStep = null;
-        if (sender is not null)
-        {
-            var step = getSelectedPipelineStep();
-            var selectedIsThreePointPlane = string.Equals(
-                step?.ToolId,
-                "three-point-plane",
-                StringComparison.Ordinal);
-            var parameterChanged = sender is ToolWorkbenchParameterItem parameter
-                && (step?.Parameters.Contains(parameter) ?? false);
-            if (!selectedIsThreePointPlane
-                || (!ReferenceEquals(sender, step) && !parameterChanged))
-            {
-                return;
-            }
-
-            affectedStep = step;
-        }
-        else if (preview is not null)
-        {
-            affectedStep = findStepByOutputEntityId(preview.OutputEntityId);
-        }
-
-        if (affectedStep is null)
-        {
-            return;
-        }
-
-        var affectedOutputId = affectedStep.OutputEntityId;
-        var currentPreviewIsAffected = preview is not null
-            && string.Equals(
-                preview.OutputEntityId,
-                affectedOutputId,
-                StringComparison.OrdinalIgnoreCase);
-        var hadPublishedOutput = publishedOutputs.Remove(affectedOutputId);
-        if (!currentPreviewIsAffected && !hadPublishedOutput)
-        {
-            return;
-        }
-
-        staleOutputIds.Add(affectedOutputId);
-        if (currentPreviewIsAffected)
+        if (previewOutput is not null && !isPreviewStale && previewStep is not null
+            && !string.Equals(previewContext, document.CreateStepExecutionContext(previewStep.Id), StringComparison.Ordinal))
         {
             isPreviewStale = true;
             isPreviewPublished = false;
+            staleOutputIds.Add(previewStep.OutputEntityId);
+            previewStep.State = "Preview stale";
+            markDatumPlaneDeviationStale(previewOutput.OutputEntityId);
+            clearDisplay();
+            changed = true;
         }
+        if (!changed || IsDisposed) return;
+        if (isPreviewStale) SetSummary("Input, ordered picks, 3-Point Plane parameters, route, or output changed. Preview again before Publish.");
+        else onExecutionStateChanged();
+    }
 
-        affectedStep.State = "Preview stale";
-        markDatumPlaneDeviationStale(affectedOutputId);
+    public void ForgetOutput(string outputEntityId)
+    {
+        if (IsDisposed) return;
+        publishedOutputs.Remove(outputEntityId);
+        staleOutputIds.Remove(outputEntityId);
+        markDatumPlaneDeviationStale(outputEntityId);
+        if (!string.Equals(previewOutput?.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)) return;
+        previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
+        isPreviewStale = false;
+        isPreviewPublished = false;
         clearDisplay();
-        SetSummary("Input, ordered picks, 3-Point Plane parameters, route, or output changed. Preview again before Publish.");
     }
 
     public void Clear(string summary)
@@ -385,6 +386,8 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
         publishedOutputs.Clear();
         staleOutputIds.Clear();
         isPreviewRunning = false;
@@ -400,6 +403,27 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
         if (IsDisposed)
         {
             return;
+        }
+
+        MarkStaleIfNeeded();
+        if (!isPreviewRunning && IsSelectedStepThreePointPlane && getSelectedPipelineStep() is { } selected)
+        {
+            if (TryGetPublishedOutput(selected.OutputEntityId, out _) && publishedOutputs.TryGetValue(selected.OutputEntityId, out var published))
+            {
+                previewOutput = published.Output;
+                previewStep = selected;
+                previewContext = published.Context;
+                isPreviewStale = false;
+                isPreviewPublished = true;
+            }
+            else if (!ReferenceEquals(previewStep, selected))
+            {
+                previewOutput = null;
+                previewStep = null;
+                previewContext = string.Empty;
+                isPreviewStale = false;
+                isPreviewPublished = false;
+            }
         }
 
         if (getSelectedPipelineStep() is { } step && IsSelectedStepThreePointPlane

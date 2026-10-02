@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>OpenVisionLab.ThreeD.Shell</RootNamespace>
     <AssemblyName>OpenVisionLab.ThreeD.Shell</AssemblyName>
   </PropertyGroup>
@@ -81,6 +82,8 @@
       Lines="{&quot;schemaVersion&quot;:&quot;1.0&quot;,&quot;identity&quot;:{&quot;applicationId&quot;:&quot;$(_OpenVisionIntegrationApplicationId)&quot;,&quot;applicationVersion&quot;:&quot;$(_OpenVisionApplicationVersion)&quot;,&quot;sourceCommit&quot;:&quot;$(_OpenVisionSourceCommit)&quot;,&quot;sourceState&quot;:&quot;$(_OpenVisionSourceState)&quot;},&quot;entryAssembly&quot;:{&quot;relativePath&quot;:&quot;$(TargetFileName)&quot;,&quot;byteLength&quot;:$(_OpenVisionRuntimeEntryAssemblyLengthValue),&quot;sha256&quot;:&quot;$(_OpenVisionRuntimeEntryAssemblyHash)&quot;}}"
       Overwrite="true"
       Encoding="UTF-8" />
+    <Exec
+      Command="powershell -NoProfile -NonInteractive -Command &quot;$path = [IO.Path]::GetFullPath('$(_OpenVisionRuntimeManifestPath)'); $text = [IO.File]::ReadAllText($path); [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($false))&quot;" />
     <ItemGroup>
       <FileWrites Include="$(_OpenVisionRuntimeManifestPath)" />
     </ItemGroup>

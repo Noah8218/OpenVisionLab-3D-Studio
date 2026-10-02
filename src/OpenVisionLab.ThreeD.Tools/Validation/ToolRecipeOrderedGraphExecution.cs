@@ -18,7 +18,9 @@ public sealed record ToolRecipeOrderedGraphStepResult(
     string? LevelFrameContentSha256 = null,
     string? LevelFrameQualityContentSha256 = null,
     string? FrameChainContentSha256 = null,
-    string? OutputSemanticFingerprint = null)
+    string? OutputSemanticFingerprint = null,
+    C3DConnectedRegionGateOutput? ConnectedRegionGate = null,
+    C3DSignedHeightDeltaArtifact? SignedDeltaBackgroundSubtraction = null)
 {
     public ToolRecipeSemanticIdentityEvidence? SemanticIdentityEvidence { get; init; }
 }
@@ -52,6 +54,11 @@ public static class ToolRecipeOrderedGraphExecution
         if (!validation.IsValid)
         {
             message = string.Join(" ", validation.Errors);
+            return false;
+        }
+        if (document.Steps.FirstOrDefault(step => step.OutputEnabled && step.AcceptanceLimitsConfigured == false) is { } unconfigured)
+        {
+            message = $"Step '{unconfigured.ToolName}': Configure acceptance limits before ordered inspection.";
             return false;
         }
         if (!string.Equals(document.Source.Format, "C3D", StringComparison.OrdinalIgnoreCase))
@@ -173,7 +180,11 @@ public static class ToolRecipeOrderedGraphExecution
                     execution.FrameChain?.ContentSha256,
                     execution.Output is ToolRecipeHeightMeasurementOutput measurementOutput
                         ? measurementOutput.SemanticFingerprint
-                        : null)
+                        : null,
+                    execution.Output is ToolRecipeHeightMeasurementOutput gateMeasurement
+                        ? gateMeasurement.ConnectedRegionGate
+                        : null,
+                    execution.SignedDeltaBackgroundSubtraction)
                 {
                     SemanticIdentityEvidence = execution.Output is ToolRecipeHeightMeasurementOutput
                     {
@@ -465,6 +476,10 @@ public static class ToolRecipeOrderedGraphExecution
 
     private static string Evidence(ToolResult result, object? output)
     {
+        if (output is C3DPhysicalEdgeGapFlushResult physicalEdgeGapFlush)
+        {
+            return physicalEdgeGapFlush.EvidenceSummary;
+        }
         if (output is ToolRecipeHeightMeasurementOutput measurement)
         {
             return measurement.EvidenceSummary;
@@ -481,8 +496,11 @@ public static class ToolRecipeOrderedGraphExecution
     {
         C3DHeightFieldSnapshot value => value.ContentSha256,
         C3DConnectedRegionArtifact value => value.ContentSha256,
+        C3DSignedHeightDeltaArtifact value => value.ContentSha256,
+        C3DGridDomainArtifact value => value.ContentSha256,
         C3DEditableRegionArtifact value => value.ContentSha256,
         C3DHeightDifferenceEdgePointSet value => value.ContentSha256,
+        C3DPhysicalEdgeGapFlushResult value => value.ContentSha256,
         C3DTwoPointLineFeature value => value.ContentSha256,
         C3DThreePointPlaneFeature value => value.ContentSha256,
         C3DDatumPlaneDeviationFeature value => value.ContentSha256,

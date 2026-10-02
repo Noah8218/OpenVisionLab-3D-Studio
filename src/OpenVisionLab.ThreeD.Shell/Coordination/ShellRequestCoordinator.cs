@@ -40,6 +40,7 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.SourceQualityWorkspaceRequested += callbacks.SourceQualityWorkspace;
         viewModel.Workbench.OpenTeachingRecipeRequested += callbacks.OpenTeachingRecipe;
         viewModel.Workbench.RemoveSelectedStepRequested += callbacks.RemoveSelectedStep;
+        viewModel.Workbench.RemoveSelectedTeachingSelectionRequested += callbacks.RemoveSelectedTeachingSelection;
         viewModel.Workbench.OpenRecentTeachingRecipeRequested += callbacks.OpenRecentTeachingRecipe;
         viewModel.Workbench.LoadC3DSourceRequested += callbacks.LoadC3DSource;
         viewModel.Workbench.Import3DDataRequested += callbacks.Import3DData;
@@ -47,6 +48,12 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.ToolLabRequested += callbacks.ToolLab;
         viewModel.Workbench.SelectValidationSetSourcesRequested += callbacks.SelectValidationSetSources;
         viewModel.Workbench.ValidationSetComparisonRequested += callbacks.ValidationSetComparison;
+        viewModel.Workbench.InspectionQueue.SelectFilesRequested += callbacks.SelectInspectionInputFiles;
+        viewModel.Workbench.InspectionQueue.SelectFolderRequested += callbacks.SelectInspectionInputFolder;
+        viewModel.Workbench.InspectionQueue.ExportCsvRequested += callbacks.ExportInspectionQueueCsv;
+        viewModel.Workbench.InspectionQueue.OpenRunRecordRequested += callbacks.OpenInspectionQueueRunRecord;
+        viewModel.Workbench.InspectionQueue.ReturnToTeachingRequested += callbacks.ReturnToTeachingFromInspectionQueue;
+        viewModel.Workbench.InspectionQueue.UseSelectedInputForTeachingRequested += callbacks.UseInspectionInputForTeaching;
     }
 
     public void Dispose()
@@ -78,6 +85,7 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.SourceQualityWorkspaceRequested -= callbacks.SourceQualityWorkspace;
         viewModel.Workbench.OpenTeachingRecipeRequested -= callbacks.OpenTeachingRecipe;
         viewModel.Workbench.RemoveSelectedStepRequested -= callbacks.RemoveSelectedStep;
+        viewModel.Workbench.RemoveSelectedTeachingSelectionRequested -= callbacks.RemoveSelectedTeachingSelection;
         viewModel.Workbench.OpenRecentTeachingRecipeRequested -= callbacks.OpenRecentTeachingRecipe;
         viewModel.Workbench.LoadC3DSourceRequested -= callbacks.LoadC3DSource;
         viewModel.Workbench.Import3DDataRequested -= callbacks.Import3DData;
@@ -85,6 +93,12 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.ToolLabRequested -= callbacks.ToolLab;
         viewModel.Workbench.SelectValidationSetSourcesRequested -= callbacks.SelectValidationSetSources;
         viewModel.Workbench.ValidationSetComparisonRequested -= callbacks.ValidationSetComparison;
+        viewModel.Workbench.InspectionQueue.SelectFilesRequested -= callbacks.SelectInspectionInputFiles;
+        viewModel.Workbench.InspectionQueue.SelectFolderRequested -= callbacks.SelectInspectionInputFolder;
+        viewModel.Workbench.InspectionQueue.ExportCsvRequested -= callbacks.ExportInspectionQueueCsv;
+        viewModel.Workbench.InspectionQueue.OpenRunRecordRequested -= callbacks.OpenInspectionQueueRunRecord;
+        viewModel.Workbench.InspectionQueue.ReturnToTeachingRequested -= callbacks.ReturnToTeachingFromInspectionQueue;
+        viewModel.Workbench.InspectionQueue.UseSelectedInputForTeachingRequested -= callbacks.UseInspectionInputForTeaching;
     }
 }
 
@@ -113,6 +127,7 @@ internal sealed record ShellRequestCallbacks
     public required EventHandler SourceQualityWorkspace { get; init; }
     public required EventHandler OpenTeachingRecipe { get; init; }
     public required EventHandler<ToolWorkbenchStepRemovalRequestEventArgs> RemoveSelectedStep { get; init; }
+    public required EventHandler<ToolWorkbenchTeachingSelectionRemovalRequestEventArgs> RemoveSelectedTeachingSelection { get; init; }
     public required EventHandler<ToolWorkbenchRecipePathRequestEventArgs> OpenRecentTeachingRecipe { get; init; }
     public required EventHandler LoadC3DSource { get; init; }
     public required EventHandler Import3DData { get; init; }
@@ -120,4 +135,10 @@ internal sealed record ShellRequestCallbacks
     public required EventHandler<ToolWorkbenchToolLabRequestEventArgs> ToolLab { get; init; }
     public required EventHandler SelectValidationSetSources { get; init; }
     public required EventHandler ValidationSetComparison { get; init; }
+    public required EventHandler SelectInspectionInputFiles { get; init; }
+    public required EventHandler SelectInspectionInputFolder { get; init; }
+    public required EventHandler ExportInspectionQueueCsv { get; init; }
+    public required EventHandler<InspectionQueueRunRecordRequestEventArgs> OpenInspectionQueueRunRecord { get; init; }
+    public required EventHandler ReturnToTeachingFromInspectionQueue { get; init; }
+    public required EventHandler<InspectionQueueSelectionChangedEventArgs> UseInspectionInputForTeaching { get; init; }
 }

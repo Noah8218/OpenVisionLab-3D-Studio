@@ -165,7 +165,7 @@ public sealed class C3DDatumPlaneDeviationFeature
             || minimumAbsoluteNormalY <= 0d || minimumAbsoluteNormalY > 1d
             || peakToValleyRawHeight < 0d || rmsRawHeightResidual < 0d
             || validSampleCount < minimumValidSampleCount || minimumValidSampleCount < 3 || missingSampleCount < 0
-            || status is not (ResultStatus.Pass or ResultStatus.Fail))
+            || status is not (ResultStatus.NotRun or ResultStatus.Pass or ResultStatus.Fail))
         {
             throw new ArgumentException("Datum-plane deviation result values are invalid.");
         }

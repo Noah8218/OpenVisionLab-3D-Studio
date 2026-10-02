@@ -278,7 +278,8 @@ internal static class RunnerApplication
             runStep,
             toolResult,
             reportPath,
-            compareContractPath);
+            compareContractPath,
+            result.AlignmentEvidence);
 
         if (expectedStatus is not null
             && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status)
@@ -1347,6 +1348,11 @@ internal static class RunnerApplication
         $"ViewerRunnerComparison|{viewerRunnerState}|contract={(viewerRunnerState == "NotCompared" ? InspectionContractText.Missing : "provided")}",
         InspectionContractText.MetricsMarker
     };
+        if (result.AlignmentEvidence is { } alignment)
+        {
+            lines.Insert(7,
+                $"NominalActualAlignmentEvidence|semantics={alignment.Semantics}|modelId={alignment.ModelArtifactId}|modelSha256={alignment.ModelContentSha256}|sceneId={alignment.SceneArtifactId}|sceneSha256={alignment.SceneContentSha256}|executionSha256={alignment.ExecutionContentSha256}|poseSha256={alignment.PoseResultContentSha256}|assessmentSha256={alignment.AssessmentContentSha256}|policySha256={alignment.PolicyContentSha256}|coverageSemantics={alignment.CoverageSemantics}|coverage={FormatPreciseNumber(alignment.CoverageRatio)}|minimumCoverage={FormatPreciseNumber(alignment.MinimumCoverageRatio)}|inlierRmse={FormatPreciseNumber(alignment.InlierRmse)}|maximumInlierRmse={FormatPreciseNumber(alignment.MaximumInlierRmse)}|unit={alignment.Unit}|sourceFrame={alignment.SourceFrameId}|targetFrame={alignment.TargetFrameId}");
+        }
         lines.AddRange(toolResult.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
         lines.Add(InspectionContractText.OverlaysMarker);
         lines.AddRange(toolResult.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));

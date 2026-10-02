@@ -51,7 +51,7 @@ public sealed partial class ToolWorkbenchViewModel
         FormatExperimentEvidence(
             surfaceMatchExperiment.Published,
             LocalizeSurfaceMatchExperiment(
-                "게시 기준선 없음",
+                "적용 기준선 없음",
                 "No published baseline"));
 
     public string SurfaceMatchCandidateSummary =>
@@ -72,10 +72,10 @@ public sealed partial class ToolWorkbenchViewModel
     public string SurfaceMatchExperimentViewSummary =>
         surfaceMatchExperiment.IsCandidateDisplayed
             ? LocalizeSurfaceMatchExperiment(
-                "뷰어: 후보 Preview(임시)",
+                "뷰어: 후보 미리보기(임시)",
                 "Viewer: Candidate Preview (temporary)")
             : LocalizeSurfaceMatchExperiment(
-                "뷰어: 게시 기준선",
+                "뷰어: 적용 기준선",
                 "Viewer: Published baseline");
 
     public ICommand ShowPublishedSurfaceMatchExperimentCommand =>
@@ -215,7 +215,7 @@ public sealed partial class ToolWorkbenchViewModel
         if (published is null || candidate is null)
         {
             return LocalizeSurfaceMatchExperiment(
-                "Preview는 임시 후보 하나를 만들며, 게시는 후보를 다시 실행하지 않습니다.",
+                "미리보기는 임시 후보 하나를 만들며, 적용은 후보를 다시 실행하지 않습니다.",
                 "Preview creates one temporary candidate; Publish never reruns it.");
         }
 
@@ -235,7 +235,7 @@ public sealed partial class ToolWorkbenchViewModel
         return LocalizeSurfaceMatchExperiment(
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"후보 - 게시 결과: 커버리지 {coverageDelta:+0.0;-0.0;0.0} pp · RMSE {rmseDelta}"),
+                $"후보 - 적용 결과: 커버리지 {coverageDelta:+0.0;-0.0;0.0} pp · RMSE {rmseDelta}"),
             string.Create(
                 CultureInfo.InvariantCulture,
                 $"Candidate - Published: coverage {coverageDelta:+0.0;-0.0;0.0} pp · RMSE {rmseDelta}"));

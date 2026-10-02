@@ -14,18 +14,29 @@
         Title="OpenVisionLab 3D Studio"
         Width="1600"
         Height="900"
-        MinWidth="1180"
-        MinHeight="720"
+        MinWidth="1000"
+        MinHeight="560"
         WindowState="Maximized"
         WindowStyle="None"
         ResizeMode="CanResize"
+        Foreground="{DynamicResource ThreeD.TextBrush}"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}">
     <shellChrome:WindowChrome.WindowChrome>
-        <shellChrome:WindowChrome CaptionHeight="56"
+        <shellChrome:WindowChrome CaptionHeight="40"
                                   ResizeBorderThickness="6"
                                   GlassFrameThickness="0"
                                   UseAeroCaptionButtons="False" />
     </shellChrome:WindowChrome.WindowChrome>
+    <Window.InputBindings>
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding Workbench.NewTeachingRecipeCommand}" />
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding Workbench.OpenTeachingRecipeCommand}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding Workbench.SaveTeachingRecipeCommand}" />
+        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{Binding Workbench.SaveTeachingRecipeAsCommand}" />
+        <KeyBinding Key="O" Modifiers="Control+Shift" Command="{Binding Workbench.LoadC3DSourceCommand}" />
+        <KeyBinding Key="F5" Command="{Binding Workbench.RunSelectedStepCommand}" />
+        <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding Workbench.RunSelectedStepCommand}" />
+        <KeyBinding Key="F5" Modifiers="Control" Command="{Binding Workbench.RunTeachingRecipeCommand}" />
+    </Window.InputBindings>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
@@ -51,7 +62,9 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <shellViews:StudioHeaderView Grid.Row="0" />
+        <shellViews:StudioHeaderView Grid.Row="0"
+                                    RecipeManagerRequested="OpenRecipeManagerRequested"
+                                    LayoutResetRequested="ResetStudioLayoutRequested" />
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -63,7 +76,8 @@
                 Grid.Column="0"
                 RecipeManagerRequested="OpenRecipeManagerRequested"
                 LayoutResetRequested="ResetStudioLayoutRequested"
-                ToolLabRequested="OpenToolLabRequested" />
+                ToolLabRequested="OpenToolLabRequested"
+                Visibility="{Binding IsNavigationRailVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
 
             <Grid Grid.Column="1">
         <workbench:ToolRecipeWorkbenchView x:Name="ToolWorkbench"
@@ -73,13 +87,13 @@
         <dock:OpenVisionDockWorkspaceView x:Name="Workspace"
                                            TextElement.Foreground="{DynamicResource ThreeD.TextBrush}"
                                            ToolLibraryTitle="{Binding Localization.ToolLibrary}"
-                                           ViewerTitle="{views:ThreeDText Key=ThreeD.Expert.ViewerPane, Korean='3D 검사 보기', English='3D Inspection View'}"
-                                           DataLayersTitle="{views:ThreeDText Key=ThreeD.Expert.DataLayersPane, Korean='데이터 및 레이어', English='Data &amp; Layers'}"
-                                           ToolInspectorTitle="{views:ThreeDText Key=ThreeD.Expert.ToolInspectorPane, Korean='도구 / 속성', English='Tool / Inspector'}"
-                                           EvidenceTitle="{views:ThreeDText Key=ThreeD.Expert.EvidencePane, Korean='검사 증거', English='Evidence Workbench'}"
+                                           ViewerTitle="{views:ThreeDText Key=ThreeD.Expert.ViewerPane, Korean='3D 검사 화면', English='3D inspection view'}"
+                                           DataLayersTitle="{views:ThreeDText Key=ThreeD.Expert.DataLayersPane, Korean='데이터와 레이어', English='Data and layers'}"
+                                           ToolInspectorTitle="{views:ThreeDText Key=ThreeD.Expert.ToolInspectorPane, Korean='선택한 도구', English='Selected tool'}"
+                                           EvidenceTitle="{views:ThreeDText Key=ThreeD.Expert.EvidencePane, Korean='검사 결과', English='Inspection evidence'}"
                                            OutputCompareTitle="{Binding Localization.OutputCompare}"
                                            DisplayedOutputsTitle="{Binding Localization.DisplayedOutputs}"
-                                           LinkedViewTitle="{views:ThreeDText Key=ThreeD.Expert.LinkedView, Korean='연결 보기', English='Linked View'}"
+                                           LinkedViewTitle="{views:ThreeDText Key=ThreeD.Expert.LinkedView, Korean='연결된 보기', English='Linked view'}"
                                            ProfileTitle="{Binding Localization.HeightProfile}"
                                            FitDiagnosticsTitle="{Binding Localization.FitDiagnostics}"
                                            IntersectionEvidenceTitle="{Binding Localization.IntersectionEvidence}"
@@ -155,7 +169,7 @@
                                 <TextBlock Margin="0,3,0,0"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
-                                           Text="{Binding FrameSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={views:ThreeDText Key=ThreeD.Expert.FrameNotSet, Korean='프레임: 미설정 | 단위: 미설정', English='Frame: not set | Units: not set'}}" />
+                                           Text="{Binding FrameSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={views:ThreeDText Key=ThreeD.Expert.FrameNotSet, Korean='좌표계: 미설정 | 단위: 미설정', English='Frame: not set | Units: not set'}}" />
                                 <WrapPanel Margin="0,6,0,0">
                                     <CheckBox Margin="0,0,12,0"
                                               Content="{views:ThreeDText Key=ThreeD.Expert.Actual, Korean='실제', English='Actual'}"
@@ -297,7 +311,13 @@
                             </StackPanel>
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.DisplayState, Korean='표시 상태', English='Display State'}" />
+                            <Expander Margin="0,14,0,0"
+                                      Header="{views:ThreeDText Key=ThreeD.Expert.TechnicalDetails, Korean='기술 정보', English='Technical details'}"
+                                      IsExpanded="False"
+                                      AutomationProperties.AutomationId="AdvancedTechnicalDetails"
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Expert.TechnicalDetails, Korean='기술 정보', English='Technical details'}">
+                                <StackPanel Margin="0,6,0,0">
+                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.DisplayState, Korean='표시 상태', English='Display state'}" />
                             <StackPanel DataContext="{Binding ViewerContent.HostState, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                                 <TextBlock Text="{Binding ActiveEntity, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Active}" />
                                 <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateFrameSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
@@ -320,7 +340,7 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.EntityLayers, Korean='엔티티 레이어', English='Entity Layers'}" />
+                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.EntityLayers, Korean='데이터 목록', English='Entity Layers'}" />
                             <ItemsControl ItemsSource="{Binding ViewerContent.HostState.EntityLayers, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -340,6 +360,8 @@
                             <TextBlock Margin="0,16,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.Contracts, Korean='계약', English='Contracts'}" />
                             <TextBlock Text="{views:ThreeDText Key=ThreeD.Expert.SourceResultContract, Korean='원본/결과 분리: 적용', English='Source/result separation: active'}" />
                             <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Expert.UnitMetadataContract, Korean='단위 메타데이터: 표시', English='Unit metadata: visible'}" />
+                                </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
@@ -405,17 +427,25 @@
                                                 Command="{Binding CancelCommand}"
                                                 IsEnabled="{Binding CanCancel, FallbackValue=False}" />
                                         <Button Margin="0,0,0,4"
-                                                Content="{views:ThreeDText Key=ThreeD.Command.Publish, Korean='게시', English='Publish'}"
+                                                Content="{views:ThreeDText Key=ThreeD.Command.Publish, Korean='결과 적용', English='Publish'}"
                                                 Command="{Binding PublishCommand}"
                                                 IsEnabled="{Binding CanPublish, FallbackValue=False}" />
                                     </WrapPanel>
                                 </StackPanel>
                             </StackPanel>
 
-                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveTool, Korean='현재 도구', English='Active Tool'}" />
+                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveTool, Korean='선택한 도구', English='Selected tool'}" />
                             <StackPanel DataContext="{Binding ViewerContent.Editor, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                                 <StackPanel DataContext="{Binding ViewerContent.HostState, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding ActiveEntity, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                                    <Expander Header="{views:ThreeDText Key=ThreeD.Expert.TechnicalIdentity, Korean='기술 식별자', English='Technical identity'}"
+                                              IsExpanded="False"
+                                              AutomationProperties.AutomationId="AdvancedTechnicalIdentity"
+                                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Expert.TechnicalIdentity, Korean='기술 식별자', English='Technical identity'}">
+                                        <TextBlock Margin="0,4,0,0"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding ActiveEntity, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                                    </Expander>
                                     <TextBlock Margin="0,4,0,0"
                                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                Text="{Binding Selection.SelectionMode, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Mode}" />
@@ -473,7 +503,7 @@
                                         <Button Margin="0,0,6,0"
                                                 Content="{views:ThreeDText Key=ThreeD.Command.PreviewThickness, Korean='두께 미리보기', English='Preview Thickness'}"
                                                 Command="{Binding PreviewThicknessCommand}" />
-                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 게시', English='Publish Result'}"
+                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 적용', English='Publish Result'}"
                                                 Command="{Binding PublishResultCommand}" />
                                     </WrapPanel>
                                     <TextBlock Margin="0,6,0,0"
@@ -516,7 +546,7 @@
                                         <Button Margin="0,0,6,0"
                                                 Content="{views:ThreeDText Key=ThreeD.Command.PreviewDimensions, Korean='치수 미리보기', English='Preview Dimensions'}"
                                                 Command="{Binding PreviewPointPairDimensionsCommand}" />
-                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 게시', English='Publish Result'}"
+                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 적용', English='Publish Result'}"
                                                 Command="{Binding PublishResultCommand}" />
                                     </WrapPanel>
                                     <TextBlock Margin="0,6,0,0"
@@ -553,7 +583,7 @@
                                         <Button Margin="0,0,6,0"
                                                 Content="{views:ThreeDText Key=ThreeD.Command.PreviewGapFlush, Korean='갭 / 단차 미리보기', English='Preview Gap / Flush'}"
                                                 Command="{Binding PreviewGapFlushCommand}" />
-                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 게시', English='Publish Result'}"
+                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 적용', English='Publish Result'}"
                                                 Command="{Binding PublishResultCommand}" />
                                     </WrapPanel>
                                     <TextBlock Margin="0,6,0,0"
@@ -578,7 +608,7 @@
                                     </WrapPanel>
                                     <WrapPanel>
                                         <Button Margin="0,0,6,0" Content="{views:ThreeDText Key=ThreeD.Command.PreviewVolume, Korean='체적 미리보기', English='Preview Volume'}" Command="{Binding PreviewVolumeCommand}" />
-                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 게시', English='Publish Result'}" Command="{Binding PublishResultCommand}" />
+                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 적용', English='Publish Result'}" Command="{Binding PublishResultCommand}" />
                                     </WrapPanel>
                                     <TextBlock Margin="0,6,0,0"
                                                TextWrapping="Wrap"
@@ -624,7 +654,7 @@
                                     </WrapPanel>
                                     <WrapPanel>
                                         <Button Margin="0,0,6,0" Content="{views:ThreeDText Key=ThreeD.Command.PreviewCrossSection, Korean='단면 미리보기', English='Preview Cross-section'}" Command="{Binding PreviewCrossSectionCommand}" />
-                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 게시', English='Publish Result'}" Command="{Binding PublishResultCommand}" />
+                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 적용', English='Publish Result'}" Command="{Binding PublishResultCommand}" />
                                     </WrapPanel>
                                     <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                                Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -661,7 +691,7 @@
                                         <Button Margin="0,0,6,0"
                                                 Content="{views:ThreeDText Key=ThreeD.Command.PreviewFlatness, Korean='평탄도 미리보기', English='Preview Flatness'}"
                                                 Command="{Binding PreviewPlaneFlatnessCommand}" />
-                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 게시', English='Publish Result'}"
+                                        <Button Content="{views:ThreeDText Key=ThreeD.Command.PublishResult, Korean='결과 적용', English='Publish Result'}"
                                                 Command="{Binding PublishResultCommand}" />
                                     </WrapPanel>
                                     <TextBlock Margin="0,6,0,0"
@@ -829,7 +859,7 @@
                             </StackPanel>
 
                             <StackPanel Margin="0,14,0,0">
-                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ViewerEvidence, Korean='뷰어 증거', English='Viewer Evidence'}" />
+                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ViewerEvidence, Korean='뷰어 결과', English='Viewer Evidence'}" />
                                 <TextBlock Margin="0,4,0,0"
                                            TextWrapping="Wrap"
                                            Text="{Binding ViewerContent.HostState.Selection.Summary, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, Converter={StaticResource ViewerRuntimeTextConverter}}" />
@@ -845,7 +875,7 @@
 
                             <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.InspectionTarget, Korean='검사 대상', English='Inspection Target'}" />
                             <TextBlock Text="{views:ThreeDText Key=ThreeD.Expert.CurrentViewportSelection, Korean='선택: 현재 뷰포트 선택점', English='Selection: current viewport pick'}" />
-                            <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Expert.ResultMeasurementOverlay, Korean='오버레이: 결과 및 측정 증거', English='Overlay: result and measurement evidence'}" />
+                            <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Expert.ResultMeasurementOverlay, Korean='오버레이: 결과 및 측정 정보', English='Overlay: result and measurement evidence'}" />
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
@@ -871,7 +901,7 @@
                                        FontSize="15"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
-                                       Text="{views:ThreeDText Key=ThreeD.Expert.EvidenceWorkbench, Korean='검사 증거', English='Evidence Workbench'}" />
+                                       Text="{views:ThreeDText Key=ThreeD.Expert.EvidenceWorkbench, Korean='검사 결과', English='Evidence Workbench'}" />
                             <Button Grid.Column="1"
                                     MinWidth="78"
                                     Padding="10,4"
@@ -897,12 +927,12 @@
                                                         Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                                                 <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                            TextWrapping="Wrap"
-                                                           Text="{Binding EvidenceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={views:ThreeDText Key=ThreeD.Expert.NoComparisonEvidence, Korean='비교 증거가 없습니다.', English='No comparison evidence.'}, TargetNullValue={views:ThreeDText Key=ThreeD.Expert.NoComparisonEvidence, Korean='비교 증거가 없습니다.', English='No comparison evidence.'}}" />
+                                                           Text="{Binding EvidenceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={views:ThreeDText Key=ThreeD.Expert.NoComparisonEvidence, Korean='비교할 기록이 없습니다.', English='No comparison evidence.'}, TargetNullValue={views:ThreeDText Key=ThreeD.Expert.NoComparisonEvidence, Korean='비교할 기록이 없습니다.', English='No comparison evidence.'}}" />
                                             </StackPanel>
                                             <StackPanel Margin="0,0,0,12"
                                                         DataContext="{Binding ViewerContent.HostState.ThicknessEvidence, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
                                                         Visibility="{Binding ViewerContent.HostState.C3DSampleVisible, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.C3DThicknessEvidence, Korean='C3D 두께 증거', English='C3D Thickness Evidence'}" />
+                                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.C3DThicknessEvidence, Korean='C3D 두께 결과', English='C3D Thickness Evidence'}" />
                                                 <TextBlock Margin="0,4,0,0"
                                                            FontWeight="SemiBold"
                                                            TextWrapping="Wrap"
@@ -943,7 +973,7 @@
                                                        Text="{Binding RecipeComparisonSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                             <TextBlock Margin="0,12,0,0"
                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                       Text="{views:ThreeDText Key=ThreeD.Expert.PersistedEvidence, Korean='저장된 증거', English='Persisted Evidence'}" />
+                                                       Text="{views:ThreeDText Key=ThreeD.Expert.PersistedEvidence, Korean='저장된 결과', English='Persisted Evidence'}" />
                                             <TextBlock Margin="0,4,0,0"
                                                        TextWrapping="Wrap"
                                                        Text="{Binding RecipeComparisonHistory, Converter={StaticResource ViewerRuntimeTextConverter}}" />
@@ -970,7 +1000,7 @@
                                                Text="{Binding RecipeComparisonDetails, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 </ScrollViewer>
                             </TabItem>
-                            <TabItem Header="{views:ThreeDText Key=ThreeD.Expert.RunSnapshot, Korean='실행 스냅샷', English='Run Snapshot'}">
+                            <TabItem Header="{views:ThreeDText Key=ThreeD.Expert.RunSnapshot, Korean='실행 기록', English='Run Snapshot'}">
                                 <ScrollViewer Margin="10"
                                               HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
@@ -1222,7 +1252,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.LinkedPointCloudSample, Korean='포인트 클라우드 샘플', English='Point Cloud Sample'}" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.LinkedPointCloudSample, Korean='포인트 점군 샘플', English='Point Cloud Sample'}" />
                                     <StackPanel DataContext="{Binding ViewerContent.HostState.SourceSamples, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                                         <TextBlock Margin="0,4,0,0"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
@@ -1354,13 +1384,153 @@
                                      Visibility="{Binding DataContext.IsCalibrationWorkspaceSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />
         <integration:ThreeDIntegrationExchangeView
             Visibility="{Binding DataContext.IsIntegrationExchangeSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <Border Panel.ZIndex="10"
+                Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+                Padding="44"
+                Visibility="{Binding IsStartPageSelected, Converter={StaticResource BoolToVisibilityConverter}}"
+                AutomationProperties.AutomationId="RecipeStartPage">
+            <Grid MaxWidth="930"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Top">
+                    <TextBlock FontSize="26"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
+                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageHeading, Korean='레시피 열기', English='Open a recipe'}" />
+                    <TextBlock Margin="0,8,0,25"
+                               MaxWidth="390"
+                               FontSize="13"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               TextWrapping="Wrap"
+                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageDescription, Korean='작업할 레시피를 선택하세요.', English='Choose a recipe to work on.'}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button MinHeight="40"
+                                Padding="12,8"
+                                FontWeight="SemiBold"
+                                Background="{DynamicResource ThreeD.AccentBrush}"
+                                BorderBrush="{DynamicResource ThreeD.AccentBrush}"
+                                Foreground="{DynamicResource ThreeD.AppBackgroundBrush}"
+                                Content="{views:ThreeDText Key=ThreeD.R19.StartPageOpen, Korean='레시피 열기', English='Open recipe'}"
+                                Command="{Binding Workbench.OpenTeachingRecipeCommand}"
+                                AutomationProperties.AutomationId="StartOpenRecipe" />
+                        <Button Margin="9,0,0,0"
+                                MinHeight="40"
+                                Padding="12,8"
+                                Content="{Binding Localization.NewRecipe}"
+                                Command="{Binding Workbench.NewTeachingRecipeCommand}"
+                                AutomationProperties.AutomationId="StartNewRecipe" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="2"
+                            AutomationProperties.AutomationId="StartRecentRecipes">
+                    <StackPanel>
+                        <TextBlock Margin="0,0,0,13"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.R19.StartRecentModified, Korean='최근 수정한 레시피', English='Recently modified recipes'}" />
+                        <ScrollViewer MaxHeight="360"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding Workbench.RecentRecipes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Padding="10,15"
+                                                Background="Transparent"
+                                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                BorderThickness="0,0,0,1"
+                                                HorizontalContentAlignment="Stretch"
+                                                Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                                                IsEnabled="{Binding IsAvailable}"
+                                                Command="{Binding DataContext.Workbench.OpenRecentTeachingRecipeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                AutomationProperties.AutomationId="StartRecentRecipeItem">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="22" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <ui:SymbolIcon Width="16"
+                                                               Height="16"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                                               Symbol="Document24" />
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock FontSize="14"
+                                                               FontWeight="Medium"
+                                                               Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
+                                                               Text="{Binding Name}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Margin="0,3,0,0"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                               Text="{Binding Description}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2"
+                                                           Margin="12,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                           Text="›" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <Border Padding="12"
+                                Background="{DynamicResource ThreeD.SurfaceBrush}"
+                                CornerRadius="4">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Workbench.RecentRecipes.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="{views:ThreeDText Key=ThreeD.R19.StartPageNoRecentRecipes, Korean='최근 레시피가 없습니다. 저장된 레시피를 열거나 새로 시작하세요.', English='No recent recipes. Open a saved recipe or start a new one.'}" />
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Row="1"
+                            Grid.ColumnSpan="3"
+                            Margin="0,80,0,0">
+                    <TextBlock FontSize="12"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               TextWrapping="Wrap"
+                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageTeachFlow, Korean='티칭: 레시피 열기  →  3D 입력 불러오기  →  도구 티칭  →  확인·저장', English='Teach: Open a recipe  →  Load 3D input  →  Teach tools  →  Review and save'}" />
+                    <TextBlock Margin="0,5,0,0"
+                               FontSize="12"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               TextWrapping="Wrap"
+                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageInspectFlow, Korean='검사: 저장된 레시피 열기  →  다른 3D 입력 선택  →  검사  →  결과 확인', English='Inspect: Open a saved recipe  →  Select another 3D input  →  Inspect  →  Review results'}" />
+                </StackPanel>
+            </Grid>
+        </Border>
             </Grid>
         </Grid>
 
         <Border x:Name="StudioBottomStatus"
                 Grid.Row="2"
-                Height="30"
-                Padding="10,0"
+                MinHeight="30"
+                Padding="10,4"
                 Background="{DynamicResource ThreeD.CommandBarBrush}"
                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                 BorderThickness="0,1,0,0"
@@ -1377,7 +1547,8 @@
                            FontSize="10.5"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                            Text="{Binding InspectionStageNavigationStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="Wrap"
+                           ToolTip="{Binding InspectionStageNavigationStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
                            AutomationProperties.LiveSetting="Polite" />
                 <Border Grid.Column="1"
                         Margin="0,5"
@@ -1389,7 +1560,8 @@
                            FontSize="10.5"
                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                            Text="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="Wrap"
+                           ToolTip="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}"
                            AutomationProperties.LiveSetting="Polite" />
             </Grid>
         </Border>

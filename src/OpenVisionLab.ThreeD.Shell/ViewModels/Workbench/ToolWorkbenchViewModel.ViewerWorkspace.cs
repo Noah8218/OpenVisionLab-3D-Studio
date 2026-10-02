@@ -14,6 +14,28 @@ public sealed partial class ToolWorkbenchViewModel
     public const string HeightImageViewerContentId = ViewerWorkspaceViewModel.HeightImageViewerContentId;
 
     private bool isSurfaceEdgeAcquisitionDirectionStale;
+    private bool isInspectionFileView;
+
+    public bool IsInspectionFileView => isInspectionFileView;
+    public ICommand RunCurrentWorkspaceCommand => IsInspectionFileView ? InspectionQueue.RunCheckedCommand : RunSelectedStepCommand;
+    public ICommand RunCurrentRecipeCommand => IsInspectionFileView ? InspectionQueue.RunCheckedCommand : RunTeachingRecipeCommand;
+    public ICommand RunCurrentValidationSetCommand => IsInspectionFileView ? InspectionQueue.RunCheckedCommand : RunValidationSetCommand;
+    public ICommand CancelCurrentWorkspaceCommand => IsInspectionFileView ? InspectionQueue.StopCommand : CancelActiveWorkbenchEditCommand;
+
+    internal void SetInspectionFileView(bool value)
+    {
+        if (isInspectionFileView == value) return;
+        isInspectionFileView = value;
+        OnPropertyChanged(nameof(IsInspectionFileView));
+        OnPropertyChanged(nameof(IsCurrentSourceHeaderStatusVisible));
+        OnPropertyChanged(nameof(RunCurrentWorkspaceCommand));
+        OnPropertyChanged(nameof(RunCurrentRecipeCommand));
+        OnPropertyChanged(nameof(RunCurrentValidationSetCommand));
+        OnPropertyChanged(nameof(CancelCurrentWorkspaceCommand));
+        selectedStepExecutionOwner.RefreshSelectedStepState();
+        RefreshHeightImageRoiProjection();
+        viewerWorkspaceViewModel.RefreshInspectionFileContext();
+    }
 
     public ViewerWorkspaceSession ViewerWorkspace { get; }
     public ICommand SetSingleViewerLayoutCommand => viewerWorkspaceViewModel.SetSingleViewerLayoutCommand;
@@ -22,9 +44,12 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand PopOutViewerCommand => viewerWorkspaceViewModel.PopOutViewerCommand;
     public ICommand FocusViewerWorkspaceSlotCommand => viewerWorkspaceViewModel.FocusViewerWorkspaceSlotCommand;
     public ICommand OpenHeightImageCommand => viewerWorkspaceViewModel.OpenHeightImageCommand;
+    public ICommand ShowHeightImageOnlyCommand => viewerWorkspaceViewModel.ShowHeightImageOnlyCommand;
     public ICommand ClearMainViewerPinCommand => viewerWorkspaceViewModel.ClearMainViewerPinCommand;
     public ICommand ClearAuxiliaryViewerPinCommand => viewerWorkspaceViewModel.ClearAuxiliaryViewerPinCommand;
     public ICommand ToggleViewerCameraLinkCommand => viewerWorkspaceViewModel.ToggleViewerCameraLinkCommand;
+    public ICommand SetInspectionDataViewCommand => viewerWorkspaceViewModel.SetInspectionDataViewCommand;
+    public ICommand ShowOutputCompareViewerCommand => viewerWorkspaceViewModel.ShowOutputCompareViewerCommand;
     public SurfaceMatchExecutionArtifact? SurfaceMatchEvidence =>
         surfaceMatchExperiment.Published?.Execution;
     public bool HasSurfaceMatchEvidence =>
@@ -49,6 +74,11 @@ public sealed partial class ToolWorkbenchViewModel
         SurfaceMatchDisplayRequested;
     public event EventHandler?
         SurfaceMatchDisplayCleared;
+    public event EventHandler? OutputCompareViewerRequested
+    {
+        add => viewerWorkspaceViewModel.OutputCompareViewerRequested += value;
+        remove => viewerWorkspaceViewModel.OutputCompareViewerRequested -= value;
+    }
     public IReadOnlyList<ViewerWorkspaceCandidateItem> ViewerWorkspaceCandidates => viewerWorkspaceViewModel.ViewerWorkspaceCandidates;
     public IReadOnlyList<ViewerWorkspaceCandidateItem> MainViewerCandidates => viewerWorkspaceViewModel.MainViewerCandidates;
     public bool IsViewerCameraLinked => viewerWorkspaceViewModel.IsViewerCameraLinked;
@@ -70,11 +100,30 @@ public sealed partial class ToolWorkbenchViewModel
 
     public string ViewerWorkspaceLayoutSummary => viewerWorkspaceViewModel.ViewerWorkspaceLayoutSummary;
     public bool IsSingleViewerLayout => viewerWorkspaceViewModel.IsSingleViewerLayout;
+    public bool IsHeightImageOnlyViewerLayout => viewerWorkspaceViewModel.IsHeightImageOnlyViewerLayout;
     public bool IsSplitVerticalViewerLayout => viewerWorkspaceViewModel.IsSplitVerticalViewerLayout;
     public bool IsSplitHorizontalViewerLayout => viewerWorkspaceViewModel.IsSplitHorizontalViewerLayout;
     public bool IsPopOutViewerLayout => viewerWorkspaceViewModel.IsPopOutViewerLayout;
     public string AuxiliaryViewerSummary => viewerWorkspaceViewModel.AuxiliaryViewerSummary;
     public string MainViewerSummary => viewerWorkspaceViewModel.MainViewerSummary;
+    public bool IsInspectionInputView => viewerWorkspaceViewModel.IsInspectionInputView;
+    public bool IsInspectionOutputView => viewerWorkspaceViewModel.IsInspectionOutputView;
+    public bool IsInspectionInputOutputView => viewerWorkspaceViewModel.IsInspectionInputOutputView;
+    public bool IsOutputCompareViewerActive => viewerWorkspaceViewModel.IsOutputCompareViewerActive;
+    public bool CanShowOutputCompareViewer => viewerWorkspaceViewModel.CanShowOutputCompareViewer;
+    public string MainViewerSlotLabel => viewerWorkspaceViewModel.MainViewerSlotLabel;
+    public string AuxiliaryViewerSlotLabel => viewerWorkspaceViewModel.AuxiliaryViewerSlotLabel;
+    public bool HasInspectionStep => viewerWorkspaceViewModel.HasInspectionStep;
+    public bool CanEditMainViewerPin => viewerWorkspaceViewModel.CanEditMainViewerPin;
+    public bool CanEditAuxiliaryViewerPin => viewerWorkspaceViewModel.CanEditAuxiliaryViewerPin;
+    public bool HasEffectiveMainGeometry => viewerWorkspaceViewModel.HasEffectiveMainGeometry;
+    public bool HasEffectiveOutputGeometry => viewerWorkspaceViewModel.HasEffectiveOutputGeometry;
+    public bool HasEffectiveSignedDeltaOutput => viewerWorkspaceViewModel.HasEffectiveSignedDeltaOutput;
+    public ViewerWorkspaceLayout EffectiveViewerLayout => viewerWorkspaceViewModel.EffectiveViewerLayout;
+    public string EffectiveMainViewerContentId => viewerWorkspaceViewModel.EffectiveMainViewerContentId;
+    public string EffectiveAuxiliaryViewerContentId => viewerWorkspaceViewModel.EffectiveAuxiliaryViewerContentId;
+    public string EffectiveMainViewerSummary => viewerWorkspaceViewModel.EffectiveMainViewerSummary;
+    public string EffectiveAuxiliaryViewerSummary => viewerWorkspaceViewModel.EffectiveAuxiliaryViewerSummary;
 
     public ViewerWorkspaceCandidateItem? GetViewerWorkspaceCandidate(string? contentId) =>
         viewerWorkspaceViewModel.GetViewerWorkspaceCandidate(contentId);
@@ -82,13 +131,24 @@ public sealed partial class ToolWorkbenchViewModel
     public ViewerWorkspaceCandidateItem? GetMainViewerCandidate(string? contentId) =>
         viewerWorkspaceViewModel.GetMainViewerCandidate(contentId);
 
-    public Task EnsureHeightImageSourceAsync() =>
-        HeightImageViewer.EnsureSourceAsync(
+    public Task EnsureHeightImageSourceAsync()
+    {
+        if (IsInspectionFileView)
+        {
+            if (InspectionQueue.SelectedSample is not { } sample)
+            {
+                HeightImageViewer.ClearSource();
+                return Task.CompletedTask;
+            }
+            return HeightImageViewer.EnsureSourceAsync(sample.SourcePath, Source.Id, Source.Unit, Source.FrameId);
+        }
+        return HeightImageViewer.EnsureSourceAsync(
             Source.Path,
             Source.Id,
             Source.Unit,
             Source.FrameId,
             GetOrLoadDecodedC3DSourceAsync);
+    }
 
     internal void BeginHeightImageSourceLoad()
     {
@@ -161,7 +221,12 @@ public sealed partial class ToolWorkbenchViewModel
             Localization,
             () => (IsSourceReadyForRecipe, Source.Path),
             () => RenderableC3DCatalog,
-            () => (CompareSlotAArtifactId, CompareSlotBArtifactId, CompareSlotCArtifactId));
+            () => (CompareSlotAArtifactId, CompareSlotBArtifactId, CompareSlotCArtifactId),
+            GetRenderableSignedDeltaArtifact,
+            output => HeightImageViewer.ShowSignedDeltaArtifactIfChanged(output),
+            () => HeightImageViewer.ClearSignedDeltaArtifact(),
+            () => (IsInspectionFileView, InspectionQueue.SelectedSample?.SourcePath),
+            id => renderableC3DCatalogOwner.GetInputBackgroundTarget(id, ArtifactRegistry)?.Id);
         viewerWorkspaceEventCoordinator = new ToolWorkbenchViewerWorkspaceEventCoordinator(
             viewerWorkspaceViewModel,
             args => OnPropertyChanged(args.PropertyName));

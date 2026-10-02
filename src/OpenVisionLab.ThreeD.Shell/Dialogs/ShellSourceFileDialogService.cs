@@ -45,7 +45,7 @@ internal sealed class ShellSourceFileDialogService
                 "Import 3D Data"),
             Filter = DialogText(
                 "ThreeD.FileDialog.Import3D.Filter",
-                "3D: C3D/GLB/STL/LAS/LAZ|*.C3D;*.GLB;*.STL;*.LAS;*.LAZ|C3D 높이 맵|*.C3D|GLB 메시|*.GLB|STL 메시|*.STL|LAS/LAZ 포인트 클라우드|*.LAS;*.LAZ",
+                "3D: C3D/GLB/STL/LAS/LAZ|*.C3D;*.GLB;*.STL;*.LAS;*.LAZ|C3D 높이 맵|*.C3D|GLB 메시|*.GLB|STL 메시|*.STL|LAS/LAZ 포인트 점군|*.LAS;*.LAZ",
                 "3D: C3D/GLB/STL/LAS/LAZ|*.C3D;*.GLB;*.STL;*.LAS;*.LAZ|C3D height map|*.C3D|GLB mesh|*.GLB|STL mesh|*.STL|LAS/LAZ point cloud|*.LAS;*.LAZ"),
             CheckFileExists = true,
             Multiselect = false
@@ -115,6 +115,84 @@ internal sealed class ShellSourceFileDialogService
         }
 
         paths = dialog.FileNames;
+        return true;
+    }
+
+    public bool TrySelectInspectionInputFiles(out IReadOnlyList<string> paths)
+    {
+        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
+        var dialog = new OpenFileDialog
+        {
+            Title = english ? "Add Inspection C3D Inputs" : "검사할 C3D 입력 파일 추가",
+            Filter = english
+                ? "C3D height maps (*.c3d)|*.c3d|All files (*.*)|*.*"
+                : "C3D 높이 맵 (*.c3d)|*.c3d|모든 파일 (*.*)|*.*",
+            Multiselect = true,
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(getOwner()) != true)
+        {
+            paths = Array.Empty<string>();
+            return false;
+        }
+
+        paths = dialog.FileNames;
+        return true;
+    }
+
+    public bool TrySelectInspectionInputFolder(out IReadOnlyList<string> paths, out string error)
+    {
+        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
+        var dialog = new OpenFolderDialog
+        {
+            Title = english ? "Add C3D Inputs from Folder" : "폴더에서 C3D 입력 추가",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(getOwner()) != true)
+        {
+            paths = Array.Empty<string>();
+            error = string.Empty;
+            return false;
+        }
+
+        try
+        {
+            paths = Directory.EnumerateFiles(dialog.FolderName, "*", SearchOption.TopDirectoryOnly)
+                .Where(path => string.Equals(Path.GetExtension(path), ".c3d", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            error = paths.Count == 0
+                ? (english ? "The selected folder has no C3D files at its top level." : "선택한 폴더의 최입력에 C3D 파일이 없습니다.")
+                : string.Empty;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            paths = Array.Empty<string>();
+            error = exception.Message;
+            return true;
+        }
+    }
+
+    public bool TrySelectInspectionQueueCsvPath(out string path)
+    {
+        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
+        var dialog = new SaveFileDialog
+        {
+            Title = english ? "Export Inspection Queue CSV" : "검사 목록 CSV 내보내기",
+            Filter = english ? "CSV file (*.csv)|*.csv|All files (*.*)|*.*" : "CSV 파일 (*.csv)|*.csv|모든 파일 (*.*)|*.*",
+            FileName = "inspection-results.csv",
+            DefaultExt = ".csv",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(getOwner()) != true)
+        {
+            path = string.Empty;
+            return false;
+        }
+
+        path = dialog.FileName;
         return true;
     }
 

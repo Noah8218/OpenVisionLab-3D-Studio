@@ -1,4 +1,5 @@
 using System.IO;
+using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Verification.Workbench;
@@ -28,6 +29,27 @@ internal static class ImportSurfaceViewModelVerification
         }
 
         var workbench = new ToolWorkbenchViewModel();
+        var recipeMutationBlocked = false;
+        using var sourceLoadCommandOwner = new ToolWorkbenchSourceLoadOwner(
+            ThreeDLocalization.Shared,
+            () => recipeMutationBlocked,
+            _ => { },
+            (_, _) => { });
+        recipeMutationBlocked = true;
+        sourceLoadCommandOwner.RefreshCommandStates();
+        Check(
+            "recipe mutation blocks both 3D source entry commands",
+            !sourceLoadCommandOwner.LoadC3DSourceCommand.CanExecute(null)
+            && !sourceLoadCommandOwner.Import3DDataCommand.CanExecute(null),
+            $"load={sourceLoadCommandOwner.LoadC3DSourceCommand.CanExecute(null)};import={sourceLoadCommandOwner.Import3DDataCommand.CanExecute(null)}");
+        recipeMutationBlocked = false;
+        sourceLoadCommandOwner.RefreshCommandStates();
+        Check(
+            "3D source entry commands recover after recipe mutation ends",
+            sourceLoadCommandOwner.LoadC3DSourceCommand.CanExecute(null)
+            && sourceLoadCommandOwner.Import3DDataCommand.CanExecute(null),
+            $"load={sourceLoadCommandOwner.LoadC3DSourceCommand.CanExecute(null)};import={sourceLoadCommandOwner.Import3DDataCommand.CanExecute(null)}");
+
         var c3dRequests = 0;
         var importRequests = 0;
         workbench.LoadC3DSourceRequested += (_, _) => c3dRequests++;
@@ -42,19 +64,24 @@ internal static class ImportSurfaceViewModelVerification
         var sourceBefore = workbench.Source.Path;
         var stepsBefore = workbench.PipelineSteps.Count;
         var dirtyBefore = workbench.IsDirty;
+        var sourceLoadPropertyChanges = new List<string?>();
+        workbench.PropertyChanged += (_, args) => sourceLoadPropertyChanges.Add(args.PropertyName);
         workbench.Begin3DDataImport("viewer-mesh.glb", "GLB");
         Check(
             "active-import-disables-open-and-enables-cancel",
             !workbench.Import3DDataCommand.CanExecute(null)
             && !workbench.LoadC3DSourceCommand.CanExecute(null)
-            && workbench.CancelC3DSourceLoadCommand.CanExecute(null),
+            && workbench.CancelC3DSourceLoadCommand.CanExecute(null)
+            && sourceLoadPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.IsC3DSourceLoading)),
             $"importing={workbench.IsC3DSourceLoading}");
 
         workbench.ReportC3DSourceLoadProgress(42.0);
         Check(
             "import-progress-identifies-file-and-percent",
             workbench.C3DSourceLoadStatus.Contains("viewer-mesh.glb", StringComparison.Ordinal)
-            && workbench.C3DSourceLoadStatus.Contains("42", StringComparison.Ordinal),
+            && workbench.C3DSourceLoadStatus.Contains("42", StringComparison.Ordinal)
+            && sourceLoadPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.C3DSourceLoadProgressPercent))
+            && sourceLoadPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.C3DSourceLoadStatus)),
             workbench.C3DSourceLoadStatus);
 
         workbench.CompleteViewerOnlyImport("viewer-mesh.glb", "GLB", 17);

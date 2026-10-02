@@ -150,10 +150,10 @@ internal sealed class ShellMessageDialogController
             WpfMessageDialogKind.Question,
             WpfMessageDialogButtons.YesNoCancel,
             "ThreeD.Dialog.PendingParameters.Title",
-            "적용하지 않은 단계 파라미터",
+            "적용하지 않은 도구 설정값",
             "Unapplied Step Parameters",
             "ThreeD.Dialog.PendingParameters.Message",
-            "선택한 단계의 파라미터 변경을 적용하시겠습니까? ‘아니오’를 선택하면 아직 적용하지 않은 PropertyGrid 변경만 취소됩니다.",
+            "선택한 도구의 설정 변경을 적용하시겠습니까? ‘아니오’를 선택하면 아직 적용하지 않은 변경만 취소됩니다.",
             "Apply the selected step's parameter changes? Choosing No discards only the unapplied PropertyGrid draft.");
 
     public void OnWorkbenchRemoveSelectedStepRequested(
@@ -166,6 +166,54 @@ internal sealed class ShellMessageDialogController
         {
             viewModel.Workbench.ConfirmSelectedStepRemoval(args.StepId);
         }
+    }
+
+    public void OnWorkbenchRemoveSelectedTeachingSelectionRequested(
+        object? sender,
+        ToolWorkbenchTeachingSelectionRemovalRequestEventArgs args)
+    {
+        if (WpfMessageDialog.Show(
+                getOwner(),
+                CreateTeachingSelectionRemovalDialogOptions(args)) == WpfMessageDialogResult.Yes)
+        {
+            viewModel.Workbench.ConfirmSelectedTeachingSelectionRemoval(args);
+        }
+    }
+
+    public WpfMessageDialogOptions CreateTeachingSelectionRemovalDialogOptions(
+        ToolWorkbenchTeachingSelectionRemovalRequestEventArgs args)
+    {
+        var selectionImpact = args.AffectedStepNames.Count == 0
+            ? dialogText(
+                "ThreeD.Dialog.RemoveSelection.NoConsumers",
+                "이 ROI를 사용하는 검사 단계가 없습니다.",
+                "No inspection step currently uses this ROI.")
+            : dialogText(
+                "ThreeD.Dialog.RemoveSelection.Consumers",
+                $"영향받는 검사 단계 {args.AffectedStepNames.Count}개: {string.Join(", ", args.AffectedStepNames)}",
+                $"{args.AffectedStepNames.Count} affected inspection step(s): {string.Join(", ", args.AffectedStepNames)}");
+        return new WpfMessageDialogOptions
+        {
+            Title = dialogText(
+                "ThreeD.Dialog.RemoveSelection.Title",
+                "적용된 ROI 삭제",
+                "Remove Applied ROI"),
+            Message = dialogText(
+                "ThreeD.Dialog.RemoveSelection.Message",
+                $"적용된 ROI를 삭제하시겠습니까?{Environment.NewLine}{Environment.NewLine}{args.SelectionSummary}{Environment.NewLine}{Environment.NewLine}{selectionImpact}{Environment.NewLine}{Environment.NewLine}삭제 후 해당 단계는 다시 티칭해야 합니다.",
+                $"Remove this applied ROI?{Environment.NewLine}{Environment.NewLine}{args.SelectionSummary}{Environment.NewLine}{Environment.NewLine}{selectionImpact}{Environment.NewLine}{Environment.NewLine}The affected step(s) will need to be taught again."),
+            Kind = WpfMessageDialogKind.Warning,
+            Buttons = WpfMessageDialogButtons.YesNo,
+            DefaultResult = WpfMessageDialogResult.No,
+            PrimaryButtonText = dialogText(
+                "ThreeD.Dialog.RemoveSelection.Remove",
+                "삭제",
+                "Remove"),
+            SecondaryButtonText = dialogText(
+                "ThreeD.Dialog.RemoveSelection.Cancel",
+                "취소",
+                "Cancel")
+        };
     }
 
     public WpfMessageDialogOptions CreateRecipeStepRemovalDialogOptions(
@@ -208,10 +256,10 @@ internal sealed class ShellMessageDialogController
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.Parameters.Failed.Title",
-            "단계 파라미터",
+            "도구 설정값",
             "Step Parameters",
             "ThreeD.Dialog.Parameters.Failed.Message",
-            "단계 파라미터를 적용하지 못했습니다. 입력값을 확인하세요.",
+            "도구 설정값을 적용하지 못했습니다. 입력값을 확인하세요.",
             "The step parameters could not be applied. Check the entered values.",
             details);
 
@@ -219,7 +267,7 @@ internal sealed class ShellMessageDialogController
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.Evidence.Missing.Title",
-            "증거 파일 열기",
+            "결과 파일 열기",
             "Open Evidence File",
             "ThreeD.Dialog.Evidence.Missing.Message",
             $"{label} 파일을 찾을 수 없습니다.{Environment.NewLine}{Environment.NewLine}{path}",
@@ -229,7 +277,7 @@ internal sealed class ShellMessageDialogController
         ShowStudioDialog(
             WpfMessageDialogKind.Warning,
             "ThreeD.Dialog.Evidence.OpenFailed.Title",
-            "증거 파일 열기 실패",
+            "결과 파일 열기 실패",
             "Open Evidence File Failed",
             "ThreeD.Dialog.Evidence.OpenFailed.Message",
             $"{label} 파일을 열지 못했습니다.{Environment.NewLine}{Environment.NewLine}{path}",

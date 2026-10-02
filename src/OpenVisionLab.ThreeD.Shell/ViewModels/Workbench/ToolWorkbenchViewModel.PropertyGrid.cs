@@ -13,15 +13,236 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 public sealed partial class ToolWorkbenchViewModel
 {
     private RelayCommand applySelectedStepParameterDraftCommand = null!;
+    private RelayCommand configureSelectedStepAcceptanceLimitsCommand = null!;
+    private RelayCommand clearRecentRecipeSearchCommand = null!;
     private RelayCommand discardSelectedStepParameterDraftCommand = null!;
     private RelayCommand markSelectedStepParameterDraftDirtyCommand = null!;
+    private RelayCommand openRecentInspectionRecipeCommand = null!;
     private RelayCommand reportParameterDraftCommitErrorCommand = null!;
     private readonly ToolWorkbenchStepPropertySession stepPropertySession = new(ThreeDLocalization.Shared);
     private readonly string recentRecipesPath;
+    private ToolWorkbenchRecentRecipeItem? selectedRecentRecipe;
+    private ToolRecipeDocument? browsedRecipe;
+    private ToolRecipeStep? selectedBrowsedStep;
+    private string selectedRecipeBrowserSection = "overview";
+    private string recipeSearchText = string.Empty;
+    private string recipeCategoryFilter = string.Empty;
+    private string recipeStatusFilter = string.Empty;
+    private string recipeSortMode = "modified";
+    private string recipeBrowseError = string.Empty;
+    private RecipePreviewIdentityState recipePreviewIdentityState;
+    private int recipePreviewRequestVersion;
 
     public event EventHandler<ToolWorkbenchRecipePathRequestEventArgs>? OpenRecentTeachingRecipeRequested;
 
     public ObservableCollection<ToolWorkbenchRecentRecipeItem> RecentRecipes { get; } = [];
+
+    public string RecipeSearchText
+    {
+        get => recipeSearchText;
+        set
+        {
+            recipeSearchText = value ?? string.Empty;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FilteredRecentRecipes));
+            OnPropertyChanged(nameof(HasRecentRecipeSearchText));
+            OnPropertyChanged(nameof(HasRecentRecipeFilter));
+            clearRecentRecipeSearchCommand?.RaiseCanExecuteChanged();
+        }
+    }
+
+    public string RecipeCategoryFilter
+    {
+        get => recipeCategoryFilter;
+        set
+        {
+            var next = value ?? string.Empty;
+            if (string.Equals(recipeCategoryFilter, next, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            recipeCategoryFilter = next;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FilteredRecentRecipes));
+            OnPropertyChanged(nameof(HasRecentRecipeFilter));
+            clearRecentRecipeSearchCommand?.RaiseCanExecuteChanged();
+        }
+    }
+
+    public string RecipeStatusFilter
+    {
+        get => recipeStatusFilter;
+        set
+        {
+            var next = value is "ready" or "draft" or "missing" ? value : string.Empty;
+            if (string.Equals(recipeStatusFilter, next, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            recipeStatusFilter = next;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FilteredRecentRecipes));
+            OnPropertyChanged(nameof(HasRecentRecipeFilter));
+            clearRecentRecipeSearchCommand?.RaiseCanExecuteChanged();
+        }
+    }
+
+    public string RecipeSortMode
+    {
+        get => recipeSortMode;
+        set
+        {
+            var next = string.Equals(value, "name", StringComparison.Ordinal) ? "name" : "modified";
+            if (recipeSortMode == next)
+            {
+                return;
+            }
+
+            recipeSortMode = next;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FilteredRecentRecipes));
+        }
+    }
+
+    public bool HasRecentRecipeSearchText => !string.IsNullOrEmpty(RecipeSearchText);
+
+    public bool HasRecentRecipeFilter => HasRecentRecipeSearchText
+        || !string.IsNullOrWhiteSpace(RecipeCategoryFilter)
+        || !string.IsNullOrWhiteSpace(RecipeStatusFilter);
+
+    public IReadOnlyList<KeyValuePair<string, string>> RecipeCategoryOptions =>
+        [new(string.Empty, Localization.AllRecipeCategories), .. RecentRecipes
+            .Select(item => item.Category)
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(category => category, StringComparer.OrdinalIgnoreCase)
+            .Select(category => new KeyValuePair<string, string>(category, category))];
+
+    private void OnRecipeBrowserLocalizationChanged(object? sender, PropertyChangedEventArgs args) =>
+        OnPropertyChanged(nameof(RecipeCategoryOptions));
+
+    public IReadOnlyList<ToolWorkbenchRecentRecipeItem> FilteredRecentRecipes
+    {
+        get
+        {
+            var searchText = RecipeSearchText.Trim();
+            var filtered = RecentRecipes.Where(item =>
+                (searchText.Length == 0 || item.SearchContent.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                && (RecipeCategoryFilter.Length == 0
+                    || string.Equals(item.Category, RecipeCategoryFilter, StringComparison.OrdinalIgnoreCase))
+                && (RecipeStatusFilter.Length == 0
+                    || RecipeStatusFilter switch
+                    {
+                        "ready" => item.IsAvailable && item.IsInspectionReady,
+                        "draft" => item.IsAvailable && !item.IsInspectionReady,
+                        "missing" => !item.IsAvailable,
+                        _ => true
+                    }));
+            return RecipeSortMode == "name"
+                ? filtered.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.Path, StringComparer.OrdinalIgnoreCase).ToArray()
+                : filtered.OrderByDescending(item => item.LastModifiedUtc)
+                    .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+    }
+
+    public ToolWorkbenchRecentRecipeItem? SelectedRecentRecipe
+    {
+        get => selectedRecentRecipe;
+        set
+        {
+            selectedRecentRecipe = value;
+            browsedRecipe = null;
+            recipeBrowseError = string.Empty;
+            if (value is not null)
+            {
+                try
+                {
+                    browsedRecipe = ResolveRelativeSourcePath(ToolRecipeDocumentStore.Load(value.Path), value.Path);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                    or ArgumentException or NotSupportedException or System.Text.Json.JsonException)
+                {
+                    recipeBrowseError = exception.Message;
+                }
+            }
+
+            SelectedBrowsedStep = null;
+            SelectedRecipeBrowserSection = "overview";
+            StartBrowsedRecipeInputPreview();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedRecentRecipe));
+            OnPropertyChanged(nameof(BrowsedRecipe));
+            OnPropertyChanged(nameof(RecipeBrowseError));
+            OnPropertyChanged(nameof(IsRecipePreviewVisible));
+            OnPropertyChanged(nameof(RecipePreviewIdentitySummary));
+        }
+    }
+
+    public ToolRecipeDocument? BrowsedRecipe => browsedRecipe;
+
+    public bool HasSelectedRecentRecipe => SelectedRecentRecipe is not null;
+
+    internal bool SelectDefaultRecentRecipeIfNeeded()
+    {
+        if (SelectedRecentRecipe is not null)
+        {
+            return false;
+        }
+
+        var recipe = FilteredRecentRecipes.FirstOrDefault(item => item.IsAvailable);
+        if (recipe is null)
+        {
+            return false;
+        }
+
+        SelectedRecentRecipe = recipe;
+        return true;
+    }
+
+    public string SelectedRecipeBrowserSection
+    {
+        get => selectedRecipeBrowserSection;
+        set
+        {
+            var next = value is "input" or "tools" or "regions" or "criteria" ? value : "overview";
+            if (selectedRecipeBrowserSection == next)
+            {
+                return;
+            }
+
+            selectedRecipeBrowserSection = next;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsRecipePreviewVisible => BrowsedRecipe is not null;
+
+    public string RecipeBrowseError => recipeBrowseError;
+
+    public string RecipePreviewIdentitySummary => recipePreviewIdentityState switch
+    {
+        RecipePreviewIdentityState.LoadingVerified => Localize("레시피 입력과 현재 C3D 파일을 확인하고 있습니다.", "Verifying the recipe input against the current C3D file."),
+        RecipePreviewIdentityState.LoadingUnverified => Localize("저장된 입력 식별 정보가 없어 현재 파일을 미리 봅니다.", "Previewing the current file; the recipe has no complete input identity."),
+        RecipePreviewIdentityState.Verified => Localize("현재 C3D 파일이 레시피의 저장 입력과 일치합니다.", "The current C3D file matches the recipe's saved input."),
+        RecipePreviewIdentityState.Unverified => Localize("미리보기 전용 · 저장 입력과의 동일성은 확인되지 않았습니다.", "Preview only · the saved input identity could not be confirmed."),
+        RecipePreviewIdentityState.Missing => Localize("저장된 입력 파일을 찾을 수 없습니다.", "The saved input file is unavailable."),
+        RecipePreviewIdentityState.Unsupported => Localize("C3D 입력만 미리 볼 수 있습니다.", "Only C3D inputs can be previewed."),
+        RecipePreviewIdentityState.Failed => Localize("입력 미리보기를 사용할 수 없습니다. 뷰어 오류를 확인하세요.", "Input preview is unavailable. Check the Viewer error."),
+        _ => Localize("레시피를 선택하면 저장된 입력을 미리 봅니다.", "Select a recipe to preview its saved input.")
+    };
+
+    public ToolRecipeStep? SelectedBrowsedStep
+    {
+        get => selectedBrowsedStep;
+        set
+        {
+            selectedBrowsedStep = value;
+            OnPropertyChanged();
+        }
+    }
 
     public string? MostRecentAvailableRecipePath =>
         RecentRecipes.FirstOrDefault(recipe => recipe.IsAvailable)?.Path;
@@ -48,6 +269,8 @@ public sealed partial class ToolWorkbenchViewModel
             : $"{SupportedStepCount}/{PipelineSteps.Count} typed adapters ready | {UnsupportedStepCount} preserved read-only";
 
     public ICommand ApplySelectedStepParameterDraftCommand => applySelectedStepParameterDraftCommand;
+    public ICommand ConfigureSelectedStepAcceptanceLimitsCommand => configureSelectedStepAcceptanceLimitsCommand;
+    public bool IsSelectedStepAcceptanceLimitsUnconfigured => SelectedPipelineStep?.AcceptanceLimitsConfigured == false;
 
     public ICommand DiscardSelectedStepParameterDraftCommand => discardSelectedStepParameterDraftCommand;
 
@@ -57,7 +280,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand OpenRecentTeachingRecipeCommand { get; private set; } = null!;
 
+    public ICommand OpenRecentInspectionRecipeCommand => openRecentInspectionRecipeCommand;
+
     public ICommand RemoveRecentTeachingRecipeCommand { get; private set; } = null!;
+
+    public ICommand ClearRecentRecipeSearchCommand => clearRecentRecipeSearchCommand;
 
     public bool HasUncommittedRecipeChanges =>
         IsDirty
@@ -85,8 +312,105 @@ public sealed partial class ToolWorkbenchViewModel
         ? $"Source: {Source.Name}"
         : SourceReadinessSummary;
 
+    private void StartBrowsedRecipeInputPreview()
+    {
+        var requestVersion = unchecked(++recipePreviewRequestVersion);
+        RecipePreviewViewer.ClearSource();
+        recipePreviewIdentityState = RecipePreviewIdentityState.None;
+
+        if (browsedRecipe is not { } recipe)
+        {
+            return;
+        }
+
+        var source = recipe.Source;
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase))
+        {
+            recipePreviewIdentityState = RecipePreviewIdentityState.Unsupported;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(source.Path) || !File.Exists(source.Path))
+        {
+            recipePreviewIdentityState = RecipePreviewIdentityState.Missing;
+            return;
+        }
+
+        var hasCompleteIdentity = source.ByteLength.HasValue
+            && !string.IsNullOrWhiteSpace(source.ContentSha256)
+            && source.GridWidth.HasValue
+            && source.GridHeight.HasValue;
+        recipePreviewIdentityState = hasCompleteIdentity
+            ? RecipePreviewIdentityState.LoadingVerified
+            : RecipePreviewIdentityState.LoadingUnverified;
+        OnPropertyChanged(nameof(RecipePreviewIdentitySummary));
+
+        RecipePreviewViewer.StartObservedLoad(
+            async () =>
+            {
+                await RecipePreviewViewer.EnsureSourceAsync(
+                    source.Path,
+                    source.Id,
+                    source.Unit,
+                    source.FrameId,
+                    cancellationToken => Task.Run(
+                        () => hasCompleteIdentity
+                            ? C3DHeightFieldSnapshot.LoadVerified(
+                                source.Path,
+                                source.Id,
+                                source.Unit,
+                                source.FrameId,
+                                source.ByteLength!.Value,
+                                source.ContentSha256!,
+                                source.GridWidth!.Value,
+                                source.GridHeight!.Value,
+                                cancellationToken)
+                            : C3DHeightFieldSnapshot.LoadIdentified(
+                                source.Path,
+                                source.Id,
+                                source.Unit,
+                                source.FrameId,
+                                cancellationToken),
+                        cancellationToken));
+
+                if (requestVersion != recipePreviewRequestVersion || IsDisposed)
+                {
+                    return;
+                }
+
+                recipePreviewIdentityState = RecipePreviewViewer.Frame is null
+                    ? RecipePreviewIdentityState.Failed
+                    : hasCompleteIdentity
+                        ? RecipePreviewIdentityState.Verified
+                        : RecipePreviewIdentityState.Unverified;
+                OnPropertyChanged(nameof(RecipePreviewIdentitySummary));
+            },
+            _ =>
+            {
+                if (requestVersion == recipePreviewRequestVersion && !IsDisposed)
+                {
+                    recipePreviewIdentityState = RecipePreviewIdentityState.Failed;
+                    OnPropertyChanged(nameof(RecipePreviewIdentitySummary));
+                }
+            });
+    }
+
     private void InitializePropertyGridEditing()
     {
+        clearRecentRecipeSearchCommand = new RelayCommand(
+            _ =>
+            {
+                RecipeSearchText = string.Empty;
+                RecipeCategoryFilter = string.Empty;
+                RecipeStatusFilter = string.Empty;
+            },
+            _ => HasRecentRecipeFilter);
+        configureSelectedStepAcceptanceLimitsCommand = new RelayCommand(_ =>
+        {
+            if (!TryApplySelectedStepParameterDraft(out var message) || SelectedPipelineStep is not { } step) return;
+            step.AcceptanceLimitsConfigured = true;
+            RefreshSelectedToolWorkspaceProjection();
+        }, _ => IsSelectedStepAcceptanceLimitsUnconfigured && CanEditRecipe && IsSelectedStepPropertyGridSupported && !IsSelectedStepPreviewRunning);
         applySelectedStepParameterDraftCommand = new RelayCommand(
             _ => TryApplySelectedStepParameterDraft(out var _),
             _ => IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
@@ -111,16 +435,33 @@ public sealed partial class ToolWorkbenchViewModel
                 {
                     OpenRecentTeachingRecipeRequested?.Invoke(this, new ToolWorkbenchRecipePathRequestEventArgs(item.Path));
                 }
-            });
+            }, parameter => parameter is ToolWorkbenchRecentRecipeItem item && item.IsAvailable && File.Exists(item.Path) && CanEditRecipe);
+        openRecentInspectionRecipeCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is ToolWorkbenchRecentRecipeItem item)
+                {
+                    OpenRecentTeachingRecipeRequested?.Invoke(this, new ToolWorkbenchRecipePathRequestEventArgs(item.Path, openForInspection: true));
+                }
+            }, parameter => parameter is ToolWorkbenchRecentRecipeItem item && item.IsInspectionReady && File.Exists(item.Path) && CanEditRecipe);
         RemoveRecentTeachingRecipeCommand = new RelayCommand(
             parameter =>
             {
                 if (parameter is ToolWorkbenchRecentRecipeItem item)
                 {
                     RecentRecipes.Remove(item);
+                    if (SelectedRecentRecipe == item)
+                    {
+                        SelectedRecentRecipe = null;
+                    }
                     SaveRecentRecipes();
                 }
             });
+        RecentRecipes.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(FilteredRecentRecipes));
+            OnPropertyChanged(nameof(RecipeCategoryOptions));
+        };
         LoadRecentRecipes();
     }
 
@@ -357,7 +698,7 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         RecentRecipes.Insert(0, ToolWorkbenchRecentRecipeItem.From(fullPath));
-        while (RecentRecipes.Count > RecipeRecentFileStore.MaximumEntries)
+        while (RecentRecipes.Count > RecipeRecentFileStore.MaximumRecipeEntries)
         {
             RecentRecipes.RemoveAt(RecentRecipes.Count - 1);
         }
@@ -369,7 +710,7 @@ public sealed partial class ToolWorkbenchViewModel
     {
         try
         {
-            foreach (var path in RecipeRecentFileStore.Load(recentRecipesPath))
+            foreach (var path in RecipeRecentFileStore.Load(recentRecipesPath, RecipeRecentFileStore.MaximumRecipeEntries))
             {
                 RecentRecipes.Add(ToolWorkbenchRecentRecipeItem.From(path));
             }
@@ -384,7 +725,7 @@ public sealed partial class ToolWorkbenchViewModel
     {
         try
         {
-            RecipeRecentFileStore.Save(recentRecipesPath, RecentRecipes.Select(item => item.Path));
+            RecipeRecentFileStore.Save(recentRecipesPath, RecentRecipes.Select(item => item.Path), RecipeRecentFileStore.MaximumRecipeEntries);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -392,20 +733,141 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
+    private enum RecipePreviewIdentityState
+    {
+        None,
+        LoadingVerified,
+        LoadingUnverified,
+        Verified,
+        Unverified,
+        Missing,
+        Unsupported,
+        Failed
+    }
+
 }
 
 
-public sealed class ToolWorkbenchRecipePathRequestEventArgs(string path) : EventArgs
+public sealed class ToolWorkbenchRecipePathRequestEventArgs(string path, bool openForInspection = false) : EventArgs
 {
     public string Path { get; } = path;
+    public bool OpenForInspection { get; } = openForInspection;
 }
 
 public sealed record ToolWorkbenchRecentRecipeItem(string Path, string Name, bool IsAvailable)
 {
+    public string Category { get; init; } = string.Empty;
+
+    public string InspectionTarget { get; init; } = string.Empty;
+
+    public string Description { get; init; } = string.Empty;
+
+    public bool IsInspectionReady { get; init; }
+
+    public string SearchContent { get; init; } = string.Empty;
+
+    public bool HasCategory => !string.IsNullOrWhiteSpace(Category);
+
+    public bool HasInspectionTarget => !string.IsNullOrWhiteSpace(InspectionTarget);
+
     public string Availability => IsAvailable ? "Available" : "Unavailable";
 
-    public static ToolWorkbenchRecentRecipeItem From(string path) => new(
-        path,
-        System.IO.Path.GetFileNameWithoutExtension(path),
-        File.Exists(path));
+    public DateTime LastModifiedUtc
+    {
+        get
+        {
+            try
+            {
+                return File.Exists(Path) ? File.GetLastWriteTimeUtc(Path) : DateTime.MinValue;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                or ArgumentException or NotSupportedException)
+            {
+                return DateTime.MinValue;
+            }
+        }
+    }
+
+    public bool HasModifiedDate => LastModifiedUtc != DateTime.MinValue;
+
+    public static ToolWorkbenchRecentRecipeItem From(string path)
+    {
+        var fileName = System.IO.Path.GetFileNameWithoutExtension(path);
+        if (!File.Exists(path))
+        {
+            return new ToolWorkbenchRecentRecipeItem(path, fileName, false)
+            {
+                SearchContent = BuildSearchContent(path, fileName, null)
+            };
+        }
+
+        try
+        {
+            var document = ToolRecipeDocumentStore.Load(path);
+            return new ToolWorkbenchRecentRecipeItem(
+                path,
+                string.IsNullOrWhiteSpace(document.Name) ? fileName : document.Name,
+                true)
+            {
+                Category = document.Category ?? string.Empty,
+                InspectionTarget = document.InspectionTarget ?? string.Empty,
+                Description = document.Description ?? string.Empty,
+                IsInspectionReady = ToolRecipeValidator.Validate(document).IsValid,
+                SearchContent = BuildSearchContent(path, fileName, document)
+            };
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+            or ArgumentException or NotSupportedException or System.Text.Json.JsonException or InvalidDataException)
+        {
+            return new ToolWorkbenchRecentRecipeItem(path, fileName, true)
+            {
+                SearchContent = BuildSearchContent(path, fileName, null)
+            };
+        }
+    }
+
+    private static string BuildSearchContent(string path, string fileName, ToolRecipeDocument? document)
+    {
+        IEnumerable<string?> Terms()
+        {
+            yield return fileName;
+            yield return path;
+            if (document is null)
+            {
+                yield break;
+            }
+
+            yield return document.Name;
+            yield return document.Category;
+            yield return document.InspectionTarget;
+            yield return document.Description;
+            yield return document.Source.Path;
+            foreach (var reference in document.References ?? [])
+            {
+                yield return reference.Id;
+                yield return reference.Name;
+                yield return reference.Kind;
+            }
+
+            foreach (var step in document.Steps ?? [])
+            {
+                yield return step.Id;
+                yield return step.ToolId;
+                yield return step.ToolName;
+                yield return step.OutputEntityId;
+                foreach (var inputEntityId in step.InputEntityIds ?? [])
+                {
+                    yield return inputEntityId;
+                }
+
+                foreach (var parameter in step.Parameters ?? [])
+                {
+                    yield return parameter.Name;
+                    yield return parameter.Value;
+                }
+            }
+        }
+
+        return string.Join(' ', Terms().Where(term => !string.IsNullOrWhiteSpace(term)));
+    }
 }

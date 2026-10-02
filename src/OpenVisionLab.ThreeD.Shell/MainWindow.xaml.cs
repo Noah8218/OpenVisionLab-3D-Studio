@@ -99,9 +99,10 @@ public partial class MainWindow : Window
             _commandLineArguments.GetValue("--run-record"),
             _commandLineArguments.GetValue("--html-report"),
             _commandLineArguments.GetValue("--csv-report"),
-            recentRecipesPath: _startupConfiguration.IsAutomatedShellRun
-                ? null
-                : GetPersistentRecentRecipesPath(),
+            recentRecipesPath: _commandLineArguments.GetValue("--smoke-recent-recipes-path")
+                ?? (_startupConfiguration.IsAutomatedShellRun ? null : GetPersistentRecentRecipesPath()),
+            recentRunRecordsPath: _commandLineArguments.GetValue("--smoke-recent-run-records-path"),
+            orderedRunRecordRoot: _commandLineArguments.GetValue("--smoke-ordered-run-record-root"),
             integrationSettingsPath: _commandLineArguments.GetValue("--smoke-integration-settings"));
         _viewModel.SetIntegrationDialogHost(new ThreeDIntegrationDialogHost(() => this));
         _viewModel.SelectedEvidenceTabIndex = _startupConfiguration.EvidenceTabIndex;
@@ -237,6 +238,7 @@ public partial class MainWindow : Window
                     ShellTeachingSelectionSmoke.RunAsync(
                         _viewModel,
                         _viewer,
+                        this,
                         mode,
                         reportPath),
                 RunPlaneFlatnessLiveA3 = (reportPath, savePath) =>
@@ -396,13 +398,26 @@ public partial class MainWindow : Window
                 SourceQualityWorkspace = OnWorkbenchSourceQualityWorkspaceRequested,
                 OpenTeachingRecipe = _workbenchLifecycle.OpenTeachingRecipeRequested,
                 RemoveSelectedStep = _messageDialogs.OnWorkbenchRemoveSelectedStepRequested,
+                RemoveSelectedTeachingSelection = _messageDialogs.OnWorkbenchRemoveSelectedTeachingSelectionRequested,
                 OpenRecentTeachingRecipe = _workbenchLifecycle.OpenRecentTeachingRecipeRequested,
                 LoadC3DSource = _workbenchLifecycle.LoadC3DSourceRequested,
                 Import3DData = _workbenchLifecycle.Import3DDataRequested,
                 CancelC3DSourceLoad = (_, _) => _workbenchLifecycle.CancelC3DSourceLoad(),
                 ToolLab = OnWorkbenchToolLabRequested,
                 SelectValidationSetSources = OnWorkbenchSelectValidationSetSourcesRequested,
-                ValidationSetComparison = OnWorkbenchValidationSetComparisonRequested
+                ValidationSetComparison = OnWorkbenchValidationSetComparisonRequested,
+                SelectInspectionInputFiles = OnInspectionQueueSelectInputFilesRequested,
+                SelectInspectionInputFolder = OnInspectionQueueSelectInputFolderRequested,
+                ExportInspectionQueueCsv = OnInspectionQueueExportCsvRequested,
+                OpenInspectionQueueRunRecord = OnInspectionQueueOpenRunRecordRequested,
+                ReturnToTeachingFromInspectionQueue = (_, _) =>
+                {
+                    if (_viewModel.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Teach))
+                    {
+                        _viewModel.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+                    }
+                },
+                UseInspectionInputForTeaching = _workbenchLifecycle.UseSelectedInspectionInputForTeachingRequested
             });
         _workbenchViewerDisplay = new WorkbenchViewerDisplayCoordinator(
             _viewModel,
@@ -415,7 +430,9 @@ public partial class MainWindow : Window
         _startupCoordinator.ApplyCalibration(_commandLineArguments);
         _startupCoordinator.ApplyToolTeaching(_commandLineArguments);
         _startupCoordinator.RestoreRunRecord(_commandLineArguments);
-        if (!_startupConfiguration.IsAutomatedShellRun)
+        var showR19StartPage = _commandLineArguments.HasFlag("--smoke-start-page")
+            || (!_startupConfiguration.IsAutomatedShellRun && _startupConfiguration.Workspace is null);
+        if (!showR19StartPage && !_startupConfiguration.IsAutomatedShellRun)
         {
             _workbenchLifecycle.RestoreMostRecentWorkbenchRecipe();
         }
@@ -466,6 +483,10 @@ public partial class MainWindow : Window
                 ShutdownApplication = exitCode => Application.Current.Shutdown(exitCode)
             });
         _shellSmokeScenario.Attach();
+        if (showR19StartPage)
+        {
+            _viewModel.ShowStartPage();
+        }
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -727,6 +748,45 @@ public partial class MainWindow : Window
     private void OnWorkbenchValidationSetComparisonRequested(object? sender, EventArgs args) =>
         ToolWorkbench.ActivateOutputComparePane();
 
+    private void OnInspectionQueueSelectInputFilesRequested(object? sender, EventArgs args)
+    {
+        if (_sourceFileDialogs.TrySelectInspectionInputFiles(out var paths))
+        {
+            _viewModel.Workbench.InspectionQueue.AddSources(paths);
+        }
+    }
+
+    private void OnInspectionQueueSelectInputFolderRequested(object? sender, EventArgs args)
+    {
+        if (!_sourceFileDialogs.TrySelectInspectionInputFolder(out var paths, out var error)) return;
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            _viewModel.Workbench.InspectionQueue.ReportImportError(error);
+            return;
+        }
+
+        _viewModel.Workbench.InspectionQueue.AddSources(paths);
+    }
+
+    private void OnInspectionQueueExportCsvRequested(object? sender, EventArgs args)
+    {
+        if (!_sourceFileDialogs.TrySelectInspectionQueueCsvPath(out var path)) return;
+        if (!_viewModel.ExportInspectionQueueCsv(path, out var message))
+        {
+            _messageDialogs.ShowRunRecordExportFailure(message);
+        }
+    }
+
+    private void OnInspectionQueueOpenRunRecordRequested(
+        object? sender,
+        InspectionQueueRunRecordRequestEventArgs args)
+    {
+        if (!_viewModel.LoadRunRecord(args.Path, out var message))
+        {
+            _messageDialogs.ShowRunRecordOpenFailure(message);
+        }
+    }
+
     private void OnWorkbenchToolLabRequested(object? sender, ToolWorkbenchToolLabRequestEventArgs args)
     {
         _toolLabWindows.ShowForTool(
@@ -829,7 +889,7 @@ public partial class MainWindow : Window
             _viewModel.IsWorkbenchWorkspaceSelected = true;
         }
 
-        ToolWorkbench.ActivateProfilePane();
+        // Workbench A/B profiles are shown inside the Viewer; the Expert dock remains separate.
     }
 
     private void OnPublishInspectionResultRequested()

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Viewer.Loading;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 
@@ -104,12 +105,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                     $"Viewport is not ready for profile pointer input ({Viewport.ActualWidth:F0}x{Viewport.ActualHeight:F0}).");
             }
 
-            profileFirst = null;
-            profileSecond = null;
-            profileSamples = [];
             profileDraggedEndpoint = 0;
-            profileSourceSha256 = c3dSample.ContentSha256;
-            viewModel.ClearProfile();
+            viewModel.ProfileSourceCommand.Execute(c3dSample);
+            viewModel.ProfileActionCommand.Execute(ViewerHeightProfileAction.Clear);
+            viewModel.ProfileActionCommand.Execute(ViewerHeightProfileAction.Begin);
             hasOriginalPointer = WindowsPointerInput.TryGetPosition(out originalPointer);
 
             if (!TryFindTeachingCapturePickPoint(
@@ -126,8 +125,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return false;
             }
 
-            firstClickPassed = profileFirst is not null
-                && profileSecond is null
+            firstClickPassed = viewModel.HeightProfile.First is not null
+                && viewModel.HeightProfile.Second is null
                 && viewModel.ProfileVisible
                 && viewModel.ProfileValidSampleCount == 1;
 
@@ -143,8 +142,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return false;
             }
 
-            secondClickPassed = profileFirst is { } selectedP1
-                && profileSecond is { } selectedP2
+            secondClickPassed = viewModel.HeightProfile.First is { } selectedP1
+                && viewModel.HeightProfile.Second is { } selectedP2
                 && !SameGridCell(selectedP1, selectedP2)
                 && viewModel.ProfileVisible
                 && viewModel.ProfileValidSampleCount >= 2
@@ -163,16 +162,16 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return false;
             }
 
-            endpointDragPassed = profileFirst is { } movedFirst
+            endpointDragPassed = viewModel.HeightProfile.First is { } movedFirst
                 && SameGridCell(movedFirst, thirdPoint)
-                && profileSecond is { } retainedSecond
+                && viewModel.HeightProfile.Second is { } retainedSecond
                 && SameGridCell(retainedSecond, secondPoint)
                 && !string.Equals(profileBeforeDrag, viewModel.ProfileEndpointSummary, StringComparison.Ordinal)
                 && viewModel.ProfileValidSampleCount >= 2;
 
-            if (profileFirst is not { } currentFirst
-                || profileSecond is not { } currentSecond
-                || profileSamples.Length < 2)
+            if (viewModel.HeightProfile.First is not { } currentFirst
+                || viewModel.HeightProfile.Second is not { } currentSecond
+                || viewModel.HeightProfile.Samples.Length < 2)
             {
                 throw new InvalidOperationException("Profile pointer smoke did not retain an exact P1-P2 sample trace.");
             }
@@ -189,7 +188,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                     $"({currentFirst.Row},{currentFirst.Column})",
                     StringComparison.Ordinal)
                 && viewModel.ProfileLinkedCursorSummary.Contains(
-                    $"1/{profileSamples.Length}",
+                    $"1/{viewModel.HeightProfile.Samples.Length}",
                     StringComparison.Ordinal);
 
             SetLinkedHeightCursor(new C3DGridCursor(
@@ -204,11 +203,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                     $"({currentSecond.Row},{currentSecond.Column})",
                     StringComparison.Ordinal)
                 && viewModel.ProfileLinkedCursorSummary.Contains(
-                    $"{profileSamples.Length}/{profileSamples.Length}",
+                    $"{viewModel.HeightProfile.Samples.Length}/{viewModel.HeightProfile.Samples.Length}",
                     StringComparison.Ordinal);
 
             var offTraceCandidates = c3dSample.Points
-                .Where(point => !profileSamples.Any(sample => SameGridCell(sample, point)))
+                .Where(point => !viewModel.HeightProfile.Samples.Any(sample => SameGridCell(sample, point)))
                 .ToArray();
             if (offTraceCandidates.Length > 0)
             {
@@ -256,8 +255,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             previewUnchanged = ReferenceEquals(initialPreview, viewModel.PreviewToolResult)
                 && ReferenceEquals(initialResults, viewModel.ResultEntities)
                 && Equals(initialPointPairStep, viewModel.CreatePointPairDimensionsRecipeStep());
-            sourceBindingPassed = profileSourceSha256 is not null
-                && profileSourceSha256.Equals(c3dSample.ContentSha256, StringComparison.OrdinalIgnoreCase);
+            sourceBindingPassed = viewModel.HeightProfile.SourceSha256 is not null
+                && viewModel.HeightProfile.SourceSha256.Equals(c3dSample.ContentSha256, StringComparison.OrdinalIgnoreCase);
         }
         catch (OperationCanceledException) when (IsDisposed || viewerLifetimeToken.IsCancellationRequested)
         {
@@ -389,7 +388,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add($"LinkedCursorFinalMarker|pass={finalMarkerRestoredPassed}|summary={finalMarkerSummary}");
         lines.Add($"SourceBootstrap|value={profileSourceBootstrap}");
         lines.Add($"DisplayOnlyBoundary|pass={previewUnchanged}|previewStatus={viewModel.PreviewToolResult.Status}|results={viewModel.ResultEntities.Count}|pointPairUnchanged={Equals(initialPointPairStep, viewModel.CreatePointPairDimensionsRecipeStep())}");
-        lines.Add($"SourceBinding|pass={sourceBindingPassed}|sha256={profileSourceSha256 ?? "(none)"}");
+        lines.Add($"SourceBinding|pass={sourceBindingPassed}|sha256={viewModel.HeightProfile.SourceSha256 ?? "(none)"}");
         lines.Add($"Profile|visible={viewModel.ProfileVisible}|valid={viewModel.ProfileValidSampleCount}|missing={viewModel.ProfileMissingSampleCount}|summary={viewModel.ProfileSummary}|range={viewModel.ProfileRange}");
         lines.Add($"Result: {(passed ? "Pass" : "Fail")}|failure={failure}");
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);

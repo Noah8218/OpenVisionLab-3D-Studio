@@ -2,9 +2,11 @@ using System.Security.Cryptography;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using OpenVisionLab.Integration.Contracts;
 using OpenVisionLab.Integration.Transport.Tcp;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.Integration;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Shell;
@@ -15,6 +17,69 @@ namespace OpenVisionLab.ThreeD.Verification.Integration;
 
 internal static class ThreeDIntegrationViewModelVerification
 {
+    public static bool VerifyTcpOperationLifecycle(string reportPath, out string summary)
+    {
+        var lines = new List<string>
+        {
+            "OpenVisionLab 3D Integration TCP operation lifecycle verification",
+            $"Generated: {DateTimeOffset.UtcNow:O}"
+        };
+        var fixtureRoot = Path.Combine(
+            Path.GetTempPath(),
+            "OpenVisionLab-3D-Integration-TCP-Lifecycle",
+            Guid.NewGuid().ToString("N"));
+        var passed = 0;
+
+        try
+        {
+            Directory.CreateDirectory(fixtureRoot);
+            Task.Run(() => VerifyTcpExchangeAsync(fixtureRoot, Check))
+                .GetAwaiter()
+                .GetResult();
+            Task.Run(() => VerifyTcpOperationLifecycleAsync(fixtureRoot, Check))
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (Exception exception)
+        {
+            lines.Add($"FAIL|unhandled|{exception.GetType().Name}: {exception.Message}");
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(fixtureRoot))
+                {
+                    Directory.Delete(fixtureRoot, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        var failed = lines.Count(line => line.StartsWith("FAIL|", StringComparison.Ordinal));
+        var directory = Path.GetDirectoryName(Path.GetFullPath(reportPath));
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+        File.WriteAllLines(reportPath, lines);
+        summary = failed == 0
+            ? $"3D integration TCP lifecycle verification PASS ({passed} checks)"
+            : $"3D integration TCP lifecycle verification FAIL ({passed} passed, {failed} failed)";
+        return failed == 0;
+
+        void Check(string name, bool condition, string detail)
+        {
+            lines.Add($"{(condition ? "PASS" : "FAIL")}|{name}|{detail}");
+            if (condition)
+            {
+                passed++;
+            }
+        }
+    }
+
     public static bool Verify(string reportPath, out string summary)
     {
         var lines = new List<string>
@@ -203,6 +268,144 @@ internal static class ThreeDIntegrationViewModelVerification
                 && workflowLegacyPublished.RunId == "run-1",
                 $"items={workflowLegacyItems.Count}; ack={workflowLegacyStatus}; outcome={workflowLegacyPublished.Outcome}; run={workflowLegacyPublished.RunId}");
 
+            var recipeRunRoot = Path.Combine(fixtureRoot, "workflow-recipe-run");
+            var recipeRunSettingsPath = Path.Combine(fixtureRoot, "workflow-recipe-run-settings.json");
+            var recipeRunRecordPath = Path.Combine(fixtureRoot, "workflow-recipe-run-record.json");
+            Directory.CreateDirectory(recipeRunRoot);
+            var recipeRunHandoff = WriteValidHeightMapHandoff(recipeRunRoot);
+            var recipeRunViewModel = CreateViewModel(recipeRunSettingsPath, recipeRunRecordPath);
+            try
+            {
+                recipeRunViewModel.ExchangeRoot = recipeRunRoot;
+                recipeRunViewModel.SaveSetupCommand.Execute(null);
+                recipeRunViewModel.RefreshHandoffsCommand.Execute(null);
+                Check(
+                    "recipe execution command discovers an actionable 3D handoff",
+                    recipeRunViewModel.Transactions.Count == 1
+                    && recipeRunViewModel.SelectedTransaction?.TransactionId == recipeRunHandoff.TransactionId
+                    && recipeRunViewModel.SelectedTransaction.CanInspectInThreeD
+                    && !recipeRunViewModel.SelectedTransaction.HasAcknowledgement,
+                    recipeRunViewModel.StatusText);
+
+                recipeRunViewModel.AcceptCommand.Execute(null);
+                recipeRunViewModel.RefreshHandoffsCommand.Execute(null);
+                Check(
+                    "recipe execution command becomes available after explicit review",
+                    recipeRunViewModel.SelectedTransaction?.AcknowledgementStatus == IntegrationAcknowledgementStatus.Accepted
+                    && recipeRunViewModel.RunInspectionCommand.CanExecute(null),
+                    recipeRunViewModel.SelectedTransaction?.Detail ?? "no selection");
+
+                recipeRunViewModel.RunInspectionCommand.Execute(null);
+                recipeRunViewModel.RefreshHandoffsCommand.Execute(null);
+                var recipeRunResult = ThreeDIntegrationV2Exchange.ReadResult(
+                    recipeRunRoot,
+                    recipeRunHandoff.TransactionId);
+                var publishedRecordPath = Path.Combine(
+                    recipeRunRoot,
+                    IntegrationTransactionLayout.TransactionsDirectoryName,
+                    recipeRunHandoff.TransactionId.ToString("D"),
+                    IntegrationTransactionLayout.ArtifactsDirectoryName,
+                    "3d-run-record.json");
+                Check(
+                    "RunInspectionCommand executes the copied recipe and publishes a real Run Record",
+                    recipeRunResult.Status == IntegrationResultStatus.Completed
+                    && recipeRunResult.Outcome == IntegrationInspectionOutcome.Pass
+                    && !string.IsNullOrWhiteSpace(recipeRunResult.RunId)
+                    && File.Exists(publishedRecordPath)
+                    && recipeRunResult.Correlation.InputSha256 == recipeRunHandoff.Context.InputSha256
+                    && recipeRunResult.Correlation.RecipeSha256 == recipeRunHandoff.Context.RecipeSha256,
+                    $"status={recipeRunResult.Status}; outcome={recipeRunResult.Outcome}; run={recipeRunResult.RunId}; record={File.Exists(publishedRecordPath)}");
+                Check(
+                    "RunInspectionCommand is disabled after the result is published",
+                    !recipeRunViewModel.RunInspectionCommand.CanExecute(null)
+                    && recipeRunViewModel.SelectedTransaction?.HasResult == true,
+                    recipeRunViewModel.SelectedTransaction?.Detail ?? "no selection");
+            }
+            finally
+            {
+                recipeRunViewModel.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+
+            var failedRecipeRoot = Path.Combine(fixtureRoot, "workflow-failed-recipe");
+            var failedRecipeSettingsPath = Path.Combine(fixtureRoot, "workflow-failed-recipe-settings.json");
+            Directory.CreateDirectory(failedRecipeRoot);
+            var failedRecipeHandoff = WriteValidHeightMapHandoff(failedRecipeRoot);
+            var failedRecipePath = Path.Combine(
+                TransactionDirectory(failedRecipeRoot, failedRecipeHandoff.TransactionId),
+                IntegrationTransactionLayout.ArtifactsDirectoryName,
+                "inspection-recipe.json");
+            File.WriteAllText(failedRecipePath, "{", new UTF8Encoding(false));
+            var failedRecipeArtifact = Artifact(
+                IntegrationArtifactRoles.InspectionRecipe,
+                "recipe-recipe-run",
+                failedRecipePath,
+                "artifacts/inspection-recipe.json");
+            var failedRecipeContext = new IntegrationInspectionContextV2(
+                failedRecipeHandoff.Context.ProjectId,
+                failedRecipeHandoff.Context.ProjectSchema,
+                failedRecipeHandoff.Context.SequenceId,
+                failedRecipeHandoff.Context.StepId,
+                failedRecipeHandoff.Context.CameraId,
+                failedRecipeHandoff.Context.AcquisitionId,
+                failedRecipeHandoff.Context.FrameId,
+                failedRecipeHandoff.Context.Unit,
+                failedRecipeHandoff.Context.Modality,
+                failedRecipeHandoff.Context.InputKind,
+                failedRecipeHandoff.Context.InputSha256,
+                failedRecipeArtifact.Sha256,
+                failedRecipeHandoff.Context.ConsumerBuild,
+                failedRecipeHandoff.Context.Artifacts
+                    .Select(artifact => string.Equals(
+                            artifact.Role,
+                            IntegrationArtifactRoles.InspectionRecipe,
+                            StringComparison.Ordinal)
+                        ? failedRecipeArtifact
+                        : artifact)
+                    .ToArray());
+            var failedRecipePersistedHandoff = failedRecipeHandoff with
+            {
+                Context = failedRecipeContext
+            };
+            File.WriteAllBytes(
+                Path.Combine(
+                    TransactionDirectory(failedRecipeRoot, failedRecipeHandoff.TransactionId),
+                    IntegrationTransactionLayout.HandoffFileName),
+                IntegrationContractJson.SerializeCanonical(failedRecipePersistedHandoff));
+            var failedRecipeViewModel = CreateViewModel(
+                failedRecipeSettingsPath,
+                workflowRunRecordPath);
+            try
+            {
+                failedRecipeViewModel.ExchangeRoot = failedRecipeRoot;
+                failedRecipeViewModel.SaveSetupCommand.Execute(null);
+                failedRecipeViewModel.RefreshHandoffsCommand.Execute(null);
+                failedRecipeViewModel.AcceptCommand.Execute(null);
+                failedRecipeViewModel.RefreshHandoffsCommand.Execute(null);
+                failedRecipeViewModel.RunInspectionCommand.Execute(null);
+                var failedRecipeResult = ThreeDIntegrationV2Exchange.ReadResult(
+                    failedRecipeRoot,
+                    failedRecipeHandoff.TransactionId);
+                Check(
+                    "RunInspectionCommand publishes a terminal execution-error Result without a Run Record",
+                    failedRecipeResult.Status == IntegrationResultStatus.Failed
+                    && failedRecipeResult.Outcome == IntegrationInspectionOutcome.ExecutionError
+                    && failedRecipeResult.RunId is null
+                    && failedRecipeResult.RunRecord is null
+                    && failedRecipeResult.Error?.Code == IntegrationErrorCode.ExecutionFailed
+                    && failedRecipeViewModel.SelectedTransaction?.HasResult == true
+                    && !failedRecipeViewModel.RunInspectionCommand.CanExecute(null),
+                    $"status={failedRecipeResult.Status}; outcome={failedRecipeResult.Outcome}; error={failedRecipeResult.Error?.Code}; run={failedRecipeResult.RunId}");
+                Check(
+                    "execution-error status keeps the explicit push boundary visible",
+                    failedRecipeViewModel.StatusText.Contains("오류", StringComparison.Ordinal)
+                    || failedRecipeViewModel.StatusText.Contains("error", StringComparison.OrdinalIgnoreCase),
+                    failedRecipeViewModel.StatusText);
+            }
+            finally
+            {
+                failedRecipeViewModel.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+
             var setup = CreateViewModel(settingsPath, runRecordPath);
             Check(
                 "3D default endpoints align with local 2D peer",
@@ -351,6 +554,9 @@ internal static class ThreeDIntegrationViewModelVerification
             Task.Run(() => VerifyTcpViewModelAsync(fixtureRoot, Check))
                 .GetAwaiter()
                 .GetResult();
+            Task.Run(() => VerifyTcpOperationLifecycleAsync(fixtureRoot, Check))
+                .GetAwaiter()
+                .GetResult();
 
             restored.ResetSetupCommand.Execute(null);
             var reset = CreateViewModel(settingsPath, runRecordPath);
@@ -466,11 +672,15 @@ internal static class ThreeDIntegrationViewModelVerification
             "mismatched target application rejected");
     }
 
-    private static ThreeDIntegrationViewModel CreateViewModel(string settingsPath, string runRecordPath) =>
+    private static ThreeDIntegrationViewModel CreateViewModel(
+        string settingsPath,
+        string runRecordPath,
+        TcpIntegrationOptions? tcpOptions = null) =>
         new(
             () => runRecordPath,
             settingsPath,
-            CreateConsumerIdentity);
+            CreateConsumerIdentity,
+            tcpOptions);
 
     private static IntegrationApplicationIdentity CreateConsumerIdentity() =>
         new(
@@ -539,6 +749,13 @@ internal static class ThreeDIntegrationViewModelVerification
                 && pushed.TransactionId == handoff.TransactionId
                 && pushed.FilesTransferred == 4,
                 $"operation={pushed.Operation}; files={pushed.FilesTransferred}");
+            var repeatedPush = await sender.PushTransactionAsync(peer, handoff.TransactionId);
+            check(
+                "tcp repeated push is idempotent",
+                repeatedPush.Idempotent
+                && repeatedPush.TransactionId == handoff.TransactionId
+                && ThreeDIntegrationV2Exchange.DiscoverHandoffs(receiverRoot).Count == 1,
+                $"idempotent={repeatedPush.Idempotent}; transaction={repeatedPush.TransactionId}");
             var discovered = ThreeDIntegrationV2Exchange.DiscoverHandoffs(receiverRoot);
             check(
                 "tcp receive is discoverable through existing v2 adapter",
@@ -749,6 +966,12 @@ internal static class ThreeDIntegrationViewModelVerification
                 && !restored.StatusText.Contains("complete", StringComparison.OrdinalIgnoreCase)
                 && !restored.StatusText.Contains("완료", StringComparison.Ordinal),
                 restored.StatusText);
+            check(
+                "invalid pulled result records a failed operation state",
+                restored.TcpOperationState == ThreeDIntegrationTcpOperationState.Failed
+                && !restored.IsTcpBusy
+                && restored.PullSelectedTransactionCommand.CanExecute(null),
+                $"state={restored.TcpOperationState}; busy={restored.IsTcpBusy}");
 
             await restored.StopTcpListenerAsync();
             check(
@@ -764,6 +987,284 @@ internal static class ThreeDIntegrationViewModelVerification
         }
     }
 
+    private static async Task VerifyTcpOperationLifecycleAsync(
+        string fixtureRoot,
+        Action<string, bool, string> check)
+    {
+        var localRoot = Path.Combine(fixtureRoot, "tcp-operation-lifecycle-local");
+        var peerRoot = Path.Combine(fixtureRoot, "tcp-operation-lifecycle-peer");
+        var settingsPath = Path.Combine(fixtureRoot, "tcp-operation-lifecycle-settings.json");
+        var unusedRunRecordPath = Path.Combine(fixtureRoot, "tcp-operation-lifecycle-unused-run.json");
+        Directory.CreateDirectory(localRoot);
+        Directory.CreateDirectory(peerRoot);
+        var sharedKey = RandomNumberGenerator.GetBytes(32);
+        var encodedKey = Convert.ToBase64String(sharedKey);
+        var options = new TcpIntegrationOptions
+        {
+            MaxAttempts = 1,
+            ConnectTimeout = TimeSpan.FromSeconds(1),
+            IdleTimeout = TimeSpan.FromMilliseconds(250)
+        };
+
+        try
+        {
+            using (var cancelListener = new TcpListener(IPAddress.Loopback, 0))
+            {
+                cancelListener.Start();
+                var cancelPort = ((IPEndPoint)cancelListener.LocalEndpoint).Port;
+                await using var cancellable = CreateViewModel(settingsPath, unusedRunRecordPath, options);
+                ConfigureTcpViewModel(cancellable, localRoot, cancelPort, encodedKey);
+
+                var cancelOperation = cancellable.PingTcpPeerAsync();
+                using var accepted = await cancelListener.AcceptTcpClientAsync()
+                    .WaitAsync(TimeSpan.FromSeconds(3));
+                await Task.Delay(50);
+                check(
+                    "active TCP operation exposes running state and cancel command",
+                    cancellable.TcpOperationState == ThreeDIntegrationTcpOperationState.Running
+                    && cancellable.IsTcpBusy
+                    && cancellable.CancelTcpOperationCommand.CanExecute(null)
+                    && !cancellable.PingTcpPeerCommand.CanExecute(null),
+                    $"state={cancellable.TcpOperationState}; busy={cancellable.IsTcpBusy}; cancel={cancellable.CancelTcpOperationCommand.CanExecute(null)}");
+                await cancellable.PingTcpPeerAsync();
+                check(
+                    "duplicate TCP operation is rejected without replacing active state",
+                    cancellable.TcpOperationState == ThreeDIntegrationTcpOperationState.Running
+                    && cancellable.IsTcpBusy
+                    && cancellable.CancelTcpOperationCommand.CanExecute(null),
+                    $"state={cancellable.TcpOperationState}; busy={cancellable.IsTcpBusy}");
+
+                cancellable.CancelTcpOperationCommand.Execute(null);
+                await cancelOperation.WaitAsync(TimeSpan.FromSeconds(3));
+                check(
+                    "operator cancel reaches a recoverable terminal state",
+                    cancellable.TcpOperationState == ThreeDIntegrationTcpOperationState.Cancelled
+                    && !cancellable.IsTcpBusy
+                    && !cancellable.CancelTcpOperationCommand.CanExecute(null)
+                    && cancellable.PingTcpPeerCommand.CanExecute(null),
+                    $"state={cancellable.TcpOperationState}; busy={cancellable.IsTcpBusy}; status={cancellable.StatusText}");
+            }
+
+            using (var timeoutListener = new TcpListener(IPAddress.Loopback, 0))
+            {
+                timeoutListener.Start();
+                var timeoutPort = ((IPEndPoint)timeoutListener.LocalEndpoint).Port;
+                await using var recoverable = CreateViewModel(settingsPath, unusedRunRecordPath, options);
+                ConfigureTcpViewModel(recoverable, localRoot, timeoutPort, encodedKey);
+
+                var timeoutOperation = recoverable.PingTcpPeerAsync();
+                using var accepted = await timeoutListener.AcceptTcpClientAsync()
+                    .WaitAsync(TimeSpan.FromSeconds(3));
+                await timeoutOperation.WaitAsync(TimeSpan.FromSeconds(3));
+                check(
+                    "transport idle timeout is classified without leaving a busy action",
+                    recoverable.TcpOperationState == ThreeDIntegrationTcpOperationState.TimedOut
+                    && !recoverable.IsTcpBusy
+                    && recoverable.PingTcpPeerCommand.CanExecute(null),
+                    $"state={recoverable.TcpOperationState}; busy={recoverable.IsTcpBusy}; status={recoverable.StatusText}");
+
+                recoverable.TcpPeerPortText = "0";
+                await recoverable.PingTcpPeerAsync();
+                check(
+                    "invalid endpoint records failure and keeps explicit retry available",
+                    recoverable.TcpOperationState == ThreeDIntegrationTcpOperationState.Failed
+                    && !recoverable.IsTcpBusy
+                    && recoverable.PingTcpPeerCommand.CanExecute(null),
+                    $"state={recoverable.TcpOperationState}; busy={recoverable.IsTcpBusy}; status={recoverable.StatusText}");
+
+                await using var peer = new TcpIntegrationServer(
+                    IntegrationApplicationIds.TwoDStudio,
+                    peerRoot,
+                    IPAddress.Loopback,
+                    0,
+                    sharedKey,
+                    options);
+                await peer.StartAsync();
+                var peerEndpoint = peer.LocalEndpoint
+                    ?? throw new InvalidOperationException("The retry verification listener has no endpoint.");
+                ConfigureTcpViewModel(recoverable, localRoot, peerEndpoint.Port, encodedKey);
+                await recoverable.PingTcpPeerAsync();
+                check(
+                    "explicit retry succeeds after timeout",
+                    recoverable.TcpOperationState == ThreeDIntegrationTcpOperationState.Succeeded
+                    && !recoverable.IsTcpBusy
+                    && recoverable.LastTcpTransferText.Contains(
+                        IntegrationApplicationIds.TwoDStudio,
+                        StringComparison.Ordinal),
+                    $"state={recoverable.TcpOperationState}; transfer={recoverable.LastTcpTransferText}");
+            }
+
+            await using var reopened = CreateViewModel(settingsPath, unusedRunRecordPath, options);
+            reopened.SetSessionSharedKey(encodedKey);
+            check(
+                "saved endpoint reopen remains passive and starts idle",
+                reopened.TcpOperationState == ThreeDIntegrationTcpOperationState.Idle
+                && !reopened.IsTcpBusy
+                && !reopened.IsTcpListening
+                && reopened.Transactions.Count == 0
+                && !reopened.CancelTcpOperationCommand.CanExecute(null),
+                $"state={reopened.TcpOperationState}; busy={reopened.IsTcpBusy}; listening={reopened.IsTcpListening}; transactions={reopened.Transactions.Count}");
+
+            using var disposeListener = new TcpListener(IPAddress.Loopback, 0);
+            disposeListener.Start();
+            var disposePort = ((IPEndPoint)disposeListener.LocalEndpoint).Port;
+            await using var disposing = CreateViewModel(
+                Path.Combine(fixtureRoot, "tcp-operation-dispose-settings.json"),
+                unusedRunRecordPath,
+                options);
+            ConfigureTcpViewModel(disposing, localRoot, disposePort, encodedKey);
+            var disposeOperation = disposing.PingTcpPeerAsync();
+            using var disposeAccepted = await disposeListener.AcceptTcpClientAsync()
+                .WaitAsync(TimeSpan.FromSeconds(3));
+            var disposeTask = disposing.DisposeAsync().AsTask();
+            await Task.WhenAll(disposeOperation, disposeTask).WaitAsync(TimeSpan.FromSeconds(3));
+            check(
+                "dispose cancels and awaits the admitted operation without stale busy state",
+                disposing.IsDisposed
+                && disposing.TcpOperationState == ThreeDIntegrationTcpOperationState.Cancelled
+                && !disposing.IsTcpBusy
+                && !disposing.IsTcpListening
+                && !disposing.CancelTcpOperationCommand.CanExecute(null),
+                $"disposed={disposing.IsDisposed}; state={disposing.TcpOperationState}; busy={disposing.IsTcpBusy}; listening={disposing.IsTcpListening}");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(sharedKey);
+        }
+    }
+
+    private static void ConfigureTcpViewModel(
+        ThreeDIntegrationViewModel viewModel,
+        string exchangeRoot,
+        int peerPort,
+        string encodedKey)
+    {
+        viewModel.ExchangeRoot = exchangeRoot;
+        viewModel.TcpListenAddress = IPAddress.Loopback.ToString();
+        viewModel.TcpListenPortText = ReserveLoopbackPort().ToString();
+        viewModel.TcpPeerHost = IPAddress.Loopback.ToString();
+        viewModel.TcpPeerPortText = peerPort.ToString();
+        viewModel.SetSessionSharedKey(encodedKey);
+        viewModel.SaveSetupCommand.Execute(null);
+    }
+
+    private static IntegrationHandoffV2 WriteValidHeightMapHandoff(string exchangeRoot)
+    {
+        var transactionId = Guid.NewGuid();
+        var transactionDirectory = Path.Combine(
+            exchangeRoot,
+            IntegrationTransactionLayout.TransactionsDirectoryName,
+            transactionId.ToString("D"));
+        var artifactsDirectory = Path.Combine(
+            transactionDirectory,
+            IntegrationTransactionLayout.ArtifactsDirectoryName);
+        Directory.CreateDirectory(artifactsDirectory);
+
+        var frameId = "frame-recipe-run";
+        var sourcePath = Path.Combine(artifactsDirectory, "inspection-source.c3d");
+        C3DHeightFieldSnapshot.CreateForVerification(
+                "source-recipe-run",
+                3,
+                3,
+                [
+                    1.00, 1.05, 1.02,
+                    1.04, 1.01, 1.03,
+                    1.02, 1.06, 1.01
+                ],
+                "mm",
+                frameId)
+            .SaveC3D(sourcePath);
+
+        var recipePath = Path.Combine(artifactsDirectory, "inspection-recipe.json");
+        File.WriteAllText(
+            recipePath,
+            $$"""
+            {
+              "recipeType": "c3d-warpage",
+              "version": "1.0",
+              "source": {
+                "entityId": "source.recipe-run",
+                "name": "Verification source",
+                "path": "inspection-source.c3d",
+                "unit": "mm"
+              },
+              "step": {
+                "id": "step.recipe-run",
+                "sourceEntityId": "source.recipe-run",
+                "referenceId": "reference.recipe-run",
+                "referenceMode": "BestFitInspectionRoi",
+                "roi": {
+                  "row": 0,
+                  "column": 0,
+                  "rowCount": 3,
+                  "columnCount": 3
+                },
+                "acceptance": {
+                  "maximumPeakToValley": 0.5,
+                  "maximumRms": null
+                },
+                "unit": "mm",
+                "frameId": "{{frameId}}",
+                "minimumValidSamples": 3,
+                "enabled": true
+              }
+            }
+            """,
+            new UTF8Encoding(false));
+
+        var projectPath = Path.Combine(artifactsDirectory, "machine-project.ovmachine");
+        File.WriteAllText(
+            projectPath,
+            "{\"schema\":\"machine-project/1.0\"}",
+            new UTF8Encoding(false));
+
+        var source = Artifact(
+            IntegrationArtifactRoles.InspectionSource,
+            "source-recipe-run",
+            sourcePath,
+            "artifacts/inspection-source.c3d");
+        var recipe = Artifact(
+            IntegrationArtifactRoles.InspectionRecipe,
+            "recipe-recipe-run",
+            recipePath,
+            "artifacts/inspection-recipe.json");
+        var project = Artifact(
+            IntegrationArtifactRoles.MachineProject,
+            "project-recipe-run",
+            projectPath,
+            "artifacts/machine-project.ovmachine");
+        var handoff = new IntegrationHandoffV2(
+            IntegrationContractSchema.V2,
+            IntegrationMessageKind.Handoff,
+            Guid.NewGuid(),
+            transactionId,
+            DateTimeOffset.UtcNow,
+            new IntegrationApplicationIdentity(
+                IntegrationApplicationIds.MachineStudio,
+                "1.4.0",
+                new string('4', 40),
+                IntegrationSourceState.Clean),
+            new IntegrationInspectionContextV2(
+                "machine-project",
+                "machine-project/1.0",
+                "sequence-recipe-run",
+                "inspect-heightmap",
+                "camera-virtual",
+                "acquisition-recipe-run",
+                frameId,
+                "mm",
+                IntegrationInspectionModality.ThreeD,
+                IntegrationInspectionInputKind.HeightMap,
+                source.Sha256,
+                recipe.Sha256,
+                CreateConsumerIdentity(),
+                [project, source, recipe]));
+        File.WriteAllBytes(
+            Path.Combine(transactionDirectory, IntegrationTransactionLayout.HandoffFileName),
+            IntegrationContractJson.SerializeCanonical(handoff));
+        return handoff;
+    }
+
     private static IntegrationHandoffV2 WriteV2Handoff(string exchangeRoot)
     {
         var transactionId = Guid.NewGuid();
@@ -774,7 +1275,14 @@ internal static class ThreeDIntegrationViewModelVerification
         var sourcePath = Path.Combine(artifactsDirectory, "inspection-source.c3d");
         var recipePath = Path.Combine(artifactsDirectory, "inspection-recipe.json");
         File.WriteAllText(projectPath, "{}");
-        File.WriteAllBytes(sourcePath, [1, 2, 3, 4]);
+        C3DHeightFieldSnapshot.CreateForVerification(
+                "source-1",
+                2,
+                2,
+                [1.00, 1.01, 1.02, 1.03],
+                "mm",
+                "camera-1-frame")
+            .SaveC3D(sourcePath);
         File.WriteAllText(recipePath, "{}");
         var project = Artifact(
             IntegrationArtifactRoles.MachineProject,
@@ -1022,7 +1530,10 @@ internal static class ThreeDIntegrationViewModelVerification
             [new InspectionRunMetric("height", MetricKind.Length, 1.25, "mm", ResultStatus.Pass)],
             [],
             "matched",
-            new InspectionRunArtifacts("report.txt", null, null, path, null, null)));
+            new InspectionRunArtifacts("report.txt", null, null, path, null, null))
+        {
+            Step = new InspectionRunStep("step-1", "source-1", [], [])
+        });
 
     private sealed class RecordingIntegrationDialogHost(string selectedPath) : IThreeDIntegrationDialogHost
     {

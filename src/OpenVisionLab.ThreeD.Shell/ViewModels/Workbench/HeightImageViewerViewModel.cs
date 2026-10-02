@@ -17,6 +17,8 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDisposable
 {
+    private const string SignedDeltaSourceKeyPrefix = "signed-delta|";
+
     private readonly object loadGate = new();
     private readonly ThreeDLocalization localization;
     private readonly SharedHeightCursorSession sharedCursor;
@@ -311,6 +313,18 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         private set => SetField(ref paletteChoices, value);
     }
 
+    public HeightImagePaletteChoice? SelectedPaletteChoice
+    {
+        get => PaletteChoices.FirstOrDefault(choice => choice.Value == SelectedPalette);
+        set
+        {
+            if (value is not null)
+            {
+                SelectedPalette = value.Value;
+            }
+        }
+    }
+
     public C3DHeightImagePalette SelectedPalette
     {
         get => selectedPalette;
@@ -321,6 +335,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
                 return;
             }
 
+            OnPropertyChanged(nameof(SelectedPaletteChoice));
             OnPropertyChanged(nameof(LegendColor0));
             OnPropertyChanged(nameof(LegendColor1));
             OnPropertyChanged(nameof(LegendColor2));
@@ -429,6 +444,48 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
                     frameId),
                 cancellationToken));
 
+    public bool ShowSignedDeltaArtifact(C3DSignedHeightDeltaArtifact artifact)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        if (IsDisposed)
+        {
+            return false;
+        }
+
+        try
+        {
+            Clear(localization.HeightImageUnavailable);
+            var nextFrame = C3DHeightImageFrame.Create(artifact);
+            loadedSourceKey = $"{SignedDeltaSourceKeyPrefix}{artifact.ContentSha256}";
+            Frame = nextFrame;
+            Error = string.Empty;
+            Status = ImageSummary;
+            DisplayRequest?.Invoke(this, HeightImageDisplayRequest.Fit);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            loadedSourceKey = string.Empty;
+            Frame = null;
+            Error = exception.Message;
+            Status = localization.HeightImageUnavailable;
+            return false;
+        }
+    }
+
+    internal bool ShowSignedDeltaArtifactIfChanged(C3DSignedHeightDeltaArtifact artifact) =>
+        Frame is not null
+        && string.Equals(loadedSourceKey, $"{SignedDeltaSourceKeyPrefix}{artifact.ContentSha256}", StringComparison.OrdinalIgnoreCase)
+            || ShowSignedDeltaArtifact(artifact);
+
+    internal void ClearSignedDeltaArtifact()
+    {
+        if (loadedSourceKey.StartsWith(SignedDeltaSourceKeyPrefix, StringComparison.Ordinal))
+        {
+            Clear(localization.HeightImageUnavailable);
+        }
+    }
+
     internal Task EnsureSourceAsync(
         string path,
         string entityId,
@@ -440,6 +497,12 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             Clear(localization.HeightImageUnavailable);
+            return Task.CompletedTask;
+        }
+
+        if (Frame is not null
+            && loadedSourceKey.StartsWith(SignedDeltaSourceKeyPrefix, StringComparison.Ordinal))
+        {
             return Task.CompletedTask;
         }
 
@@ -651,8 +714,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         }
 
         IsAutoRange = true;
-        activeRangeMinimum = Frame.Minimum;
-        activeRangeMaximum = Frame.Maximum;
+        activeRangeMinimum = Frame.DefaultDisplayMinimum;
+        activeRangeMaximum = Frame.DefaultDisplayMaximum;
         RangeMinimumText = FormatRangeValue(activeRangeMinimum);
         RangeMaximumText = FormatRangeValue(activeRangeMaximum);
         RangeError = string.Empty;
@@ -708,8 +771,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         }
 
         isAutoRange = true;
-        activeRangeMinimum = Frame.Minimum;
-        activeRangeMaximum = Frame.Maximum;
+        activeRangeMinimum = Frame.DefaultDisplayMinimum;
+        activeRangeMaximum = Frame.DefaultDisplayMaximum;
         rangeMinimumText = FormatRangeValue(activeRangeMinimum);
         rangeMaximumText = FormatRangeValue(activeRangeMaximum);
         RangeError = string.Empty;
@@ -751,8 +814,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
 
         DisplayFrame = IsAutoRange
                        && SelectedPalette == C3DHeightImagePalette.Height
-                       && activeRangeMinimum == Frame.Minimum
-                       && activeRangeMaximum == Frame.Maximum
+                       && activeRangeMinimum == Frame.DefaultDisplayMinimum
+                       && activeRangeMaximum == Frame.DefaultDisplayMaximum
                        && !ShowInvalidCells
             ? Frame.DefaultDisplayFrame
             : Frame.CreateDisplayFrame(
@@ -796,14 +859,25 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
 
     private IReadOnlyList<HeightImagePaletteChoice> CreatePaletteChoices() =>
     [
-        new(C3DHeightImagePalette.Height, localization.HeightImagePaletteHeight),
-        new(C3DHeightImagePalette.Grayscale, localization.HeightImagePaletteGrayscale),
-        new(C3DHeightImagePalette.Thermal, localization.HeightImagePaletteThermal)
+        new(C3DHeightImagePalette.Height, GetPaletteDisplayName(C3DHeightImagePalette.Height)),
+        new(C3DHeightImagePalette.Grayscale, GetPaletteDisplayName(C3DHeightImagePalette.Grayscale)),
+        new(C3DHeightImagePalette.Thermal, GetPaletteDisplayName(C3DHeightImagePalette.Thermal))
     ];
+
+    private string GetPaletteDisplayName(C3DHeightImagePalette palette) => palette switch
+    {
+        C3DHeightImagePalette.Height => localization.HeightImagePaletteHeight,
+        C3DHeightImagePalette.Grayscale => localization.HeightImagePaletteGrayscale,
+        C3DHeightImagePalette.Thermal => localization.HeightImagePaletteThermal,
+        _ => throw new ArgumentOutOfRangeException(nameof(palette), palette, null)
+    };
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs args)
     {
-        PaletteChoices = CreatePaletteChoices();
+        foreach (var choice in PaletteChoices)
+        {
+            choice.UpdateDisplayName(GetPaletteDisplayName(choice.Value));
+        }
         OnPropertyChanged(nameof(DisplayRangeMode));
         OnPropertyChanged(nameof(DisplayRangeSummary));
         OnPropertyChanged(nameof(InvalidOverlaySummary));
@@ -921,6 +995,30 @@ public enum HeightImageDisplayRequest
     ZoomOut
 }
 
-public sealed record HeightImagePaletteChoice(
-    C3DHeightImagePalette Value,
-    string DisplayName);
+public sealed class HeightImagePaletteChoice : INotifyPropertyChanged
+{
+    private string displayName;
+
+    public HeightImagePaletteChoice(C3DHeightImagePalette value, string displayName)
+    {
+        Value = value;
+        this.displayName = displayName;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public C3DHeightImagePalette Value { get; }
+
+    public string DisplayName => displayName;
+
+    internal void UpdateDisplayName(string value)
+    {
+        if (string.Equals(displayName, value, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        displayName = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayName)));
+    }
+}

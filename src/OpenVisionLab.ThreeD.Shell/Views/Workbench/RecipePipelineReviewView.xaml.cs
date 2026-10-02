@@ -12,6 +12,7 @@ public enum RecipeReviewPresentationMode
 {
     Standard,
     Validation,
+    Inspection,
     Results
 }
 
@@ -20,6 +21,7 @@ public partial class RecipePipelineReviewView : UserControl
     private readonly ControlTemplate standardReviewTabsTemplate;
     private RecipeReviewPresentationMode presentationMode;
     private RecipePipelineReviewValidationViewModel? validationWorkspace;
+    private int inspectionReturnTabIndex;
 
     public event EventHandler? ActiveReviewChanged;
 
@@ -110,6 +112,12 @@ public partial class RecipePipelineReviewView : UserControl
 
     public void SetPresentationMode(RecipeReviewPresentationMode mode)
     {
+        var previousMode = presentationMode;
+        if (mode == RecipeReviewPresentationMode.Inspection
+            && previousMode != RecipeReviewPresentationMode.Inspection)
+        {
+            inspectionReturnTabIndex = Math.Min(ReviewTabs.SelectedIndex, 4);
+        }
         presentationMode = mode;
         ValidationSetHeaderSummary.Visibility =
             mode == RecipeReviewPresentationMode.Validation
@@ -124,6 +132,7 @@ public partial class RecipePipelineReviewView : UserControl
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         ReviewTabs.Template = mode is RecipeReviewPresentationMode.Validation
+            or RecipeReviewPresentationMode.Inspection
             or RecipeReviewPresentationMode.Results
             ? (ControlTemplate)FindResource("ContentOnlyTabControlTemplate")
             : standardReviewTabsTemplate;
@@ -138,12 +147,20 @@ public partial class RecipePipelineReviewView : UserControl
                 RestoreStandardValidationLayout();
                 SelectReviewTab(3);
                 break;
+            case RecipeReviewPresentationMode.Inspection:
+                RestoreStandardValidationLayout();
+                SelectReviewTab(5);
+                break;
             default:
                 RestoreStandardValidationLayout();
+                if (previousMode == RecipeReviewPresentationMode.Inspection)
+                {
+                    SelectReviewTab(inspectionReturnTabIndex);
+                }
                 break;
         }
 
-        ApplyRunRecordLayout();
+        ApplyResponsiveLayout(ActualHeight);
     }
 
     public void ActivateFlowMap() => SelectReviewTab(1);
@@ -182,11 +199,33 @@ public partial class RecipePipelineReviewView : UserControl
         && RunRecordExportButton is not null
         && RecentRunRecordCombo is not null
         && RunRecordOpenRecentButton is not null
+        && RunRecordCompareRecentButton is not null
+        && RunRecordScrollViewer is not null
+        && RunRecordComparisonPanel is not null
+        && RunRecordComparisonDetailsViewer is not null
         && RunRecordEvidenceSummary is not null
         && string.Equals(
             AutomationProperties.GetAutomationId(RunRecordEvidenceSummary),
             "RunRecordEvidenceSummary",
+            StringComparison.Ordinal)
+        && string.Equals(
+            AutomationProperties.GetAutomationId(RunRecordCompareRecentButton),
+            "RunRecordCompareRecentButton",
+            StringComparison.Ordinal)
+        && string.Equals(
+            AutomationProperties.GetAutomationId(RunRecordComparisonPanel),
+            "RunRecordComparisonPanel",
             StringComparison.Ordinal);
+
+    private void RunRecordComparisonPanel_IsVisibleChanged(
+        object sender,
+        DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { IsVisible: true } comparisonPanel)
+        {
+            _ = Dispatcher.BeginInvoke(() => comparisonPanel.BringIntoView());
+        }
+    }
 
     public bool HasPrivacySafeSupportBundleControls =>
         SupportBundleButton is not null
@@ -203,6 +242,10 @@ public partial class RecipePipelineReviewView : UserControl
     public void ActivateValidationSet() => SelectReviewTab(4);
 
     public bool IsValidationSetSelected => ReviewTabs.SelectedIndex == 4;
+
+    public void ActivateInspectionQueue() => SelectReviewTab(5);
+
+    public bool IsInspectionQueueSelected => ReviewTabs.SelectedIndex == 5;
 
     private void ReviewTabs_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
@@ -395,14 +438,15 @@ public partial class RecipePipelineReviewView : UserControl
         SizeChangedEventArgs e)
     {
         ApplyValidationPrimaryLayout();
-        ApplyRunRecordLayout();
+        ApplyResponsiveLayout(e.NewSize.Height);
     }
 
-    private void ApplyRunRecordLayout()
+    internal void ApplyResponsiveLayout(double availableHeight)
     {
         var compactResults = presentationMode == RecipeReviewPresentationMode.Results
-            && ActualHeight > 0
-            && ActualHeight < 360;
+            && availableHeight > 0
+            && availableHeight < 360;
+        RunRecordHeader.Visibility = compactResults ? Visibility.Collapsed : Visibility.Visible;
         RunRecordDetailText.Visibility = compactResults
             ? Visibility.Collapsed
             : Visibility.Visible;
@@ -412,6 +456,9 @@ public partial class RecipePipelineReviewView : UserControl
         RunRecordEvidenceSummary.Margin = compactResults
             ? new Thickness(4, 0, 4, 3)
             : new Thickness(4, 0, 4, 7);
+        RunRecordEvidenceSummary.Visibility = compactResults
+            ? Visibility.Collapsed
+            : Visibility.Visible;
         RunRecordEvidenceSummary.Padding = compactResults
             ? new Thickness(6, 3, 6, 3)
             : new Thickness(8, 6, 8, 6);
@@ -422,6 +469,13 @@ public partial class RecipePipelineReviewView : UserControl
         RunRecordActions.Margin = compactResults
             ? new Thickness(4, 1, 4, 3)
             : new Thickness(4, 1, 4, 7);
+        RunRecordActionPanel.Visibility = compactResults
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        RunRecordComparisonPanel.Margin = compactResults
+            ? new Thickness(4, 0, 4, 3)
+            : new Thickness(4, 0, 4, 7);
+        RunRecordComparisonDetailsViewer.MaxHeight = compactResults ? 44 : 92;
     }
 
     private void ApplyValidationPrimaryLayout()

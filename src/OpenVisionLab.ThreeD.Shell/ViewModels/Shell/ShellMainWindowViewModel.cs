@@ -14,6 +14,7 @@ using OpenVisionLab.ThreeD.Shell.Services;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
 using OpenVisionLab.ThreeD.Viewer;
+using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -34,11 +35,21 @@ public enum ShellInspectionTask
     Warpage
 }
 
+public enum RunRecordComparisonState
+{
+    Unavailable,
+    DirectlyComparable,
+    ConditionsChanged,
+    NotDirectlyComparable,
+    Error
+}
+
 public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposable, IAsyncDisposable
 {
     private readonly RelayCommand selectWorkspaceCommand;
     private readonly RelayCommand openSelectedValidationIssueInTeachCommand;
     private bool c3DSampleVisible;
+    private bool isStartPageSelected;
     private readonly string? comparisonContractPath;
     private readonly string? comparisonReportPath;
     private readonly string? shellScreenshotPath;
@@ -49,6 +60,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private readonly string? orderedRunRecordRoot;
     private readonly bool hasStartupEvidenceOverrides;
     private readonly ShellMainWindowEventCoordinator shellEventCoordinator;
+    private readonly SynchronizationContext? uiSynchronizationContext;
     private bool startupEvidenceActive;
     private string? currentContractPath;
     private string? currentReportPath;
@@ -56,6 +68,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private string? currentRunRecordPath;
     private string? currentHtmlReportPath;
     private string? currentCsvReportPath;
+    private InspectionRunRecord? currentResultsRecord;
+    private ShellOrderedRunRecordArtifact? pendingOrderedRunArtifact;
+    private ToolRecipeOrderedGraphExecutionResult? pendingOrderedRunExecution;
     private string statusText = "Viewer hosted";
     private string recipeComparisonSummary = "No recipe comparison evidence loaded.";
     private string recipeComparisonHistory = "(pending)";
@@ -63,8 +78,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private string runSnapshotSummary = "No run snapshot evidence loaded.";
     private string runSnapshotEvidence = "(pending)";
     private string inspectionStepSummary = "No inspection steps loaded.";
+    private string resultsOperatorDecisionSummary =
+        "Decision: NotRun\nPrimary measurement: Not recorded\nLimits: Not recorded\nReference-fit RMS: Not recorded\nReason: No inspection result is available for the current recipe.";
     private string resultsValueValiditySummary =
-        "Definition: Unknown\nUnit: Unknown\nSource / ROI: Unknown\nValid samples: Unknown\nFit residual: Unknown\nInvalid reason: No current recipe Run Record is loaded.";
+        "Definition: Unknown\nUnit: Unknown\nSource / ROI: Unknown\nValid samples: Unknown\nFit residual: Unknown\nInvalid reason: No inspection result is available for the current recipe.";
     private string thresholdCorrectionState = "Unavailable";
     private string thresholdCorrectionSummary =
         "No threshold-correction evidence was recorded.";
@@ -73,6 +90,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         "No Source Quality evidence was recorded.";
     private string sourceQualityDetail =
         "No Source Quality evidence was recorded.";
+    private RunRecordComparisonState runRecordComparisonState;
+    private string runRecordComparisonSummary = string.Empty;
+    private string runRecordComparisonDetails = string.Empty;
     private int selectedEvidenceTabIndex;
     private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Workbench;
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
@@ -110,6 +130,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         string? orderedRunRecordRoot = null,
         string? integrationSettingsPath = null)
     {
+        uiSynchronizationContext = SynchronizationContext.Current;
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
         this.shellScreenshotPath = shellScreenshotPath;
@@ -139,6 +160,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         IntegrationExchange = new ThreeDIntegrationViewModel(
             () => currentRunRecordPath,
             integrationSettingsPath);
+        IntegrationExchange.PropertyChanged += OnIntegrationExchangePropertyChanged;
         Calibration = new CalibrationCenterViewModel();
         selectWorkspaceCommand = new RelayCommand(
             parameter => SelectWorkspace(parameter),
@@ -173,6 +195,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 }
             },
             parameter => parameter is RunRecordRecentItem { IsAvailable: true });
+        CompareRecentRunRecordCommand = new RelayCommand(
+            _ =>
+            {
+                CompareSelectedRunRecord(out var ignoredMessage);
+            },
+            _ => CanCompareSelectedRunRecord());
         ExportRunRecordCommand = new RelayCommand(
             _ => ExportRunRecordRequested?.Invoke(this, EventArgs.Empty),
             _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
@@ -209,12 +237,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private async Task DisposeChildrenAsync()
     {
         Interlocked.Exchange(ref disposalState, 1);
+        pendingOrderedRunArtifact = null;
+        pendingOrderedRunExecution = null;
         try
         {
             await IntegrationExchange.DisposeAsync().ConfigureAwait(false);
         }
         finally
         {
+            IntegrationExchange.PropertyChanged -= OnIntegrationExchangePropertyChanged;
             shellEventCoordinator.Dispose();
             Calibration.Dispose();
             Workbench.Dispose();
@@ -230,6 +261,63 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             args => OnWorkbenchOrderedRunCompleted(this, args),
             () => OnWorkbenchOrderedRunInvalidated(this, EventArgs.Empty),
             RefreshLocalizedPresentation);
+
+    private void OnIntegrationExchangePropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is not (
+            nameof(ThreeDIntegrationViewModel.SelectedInputArtifactPath)
+            or nameof(ThreeDIntegrationViewModel.SelectedInputArtifactId)
+            or nameof(ThreeDIntegrationViewModel.SelectedInputUnit)
+            or nameof(ThreeDIntegrationViewModel.SelectedInputFrameId)))
+        {
+            return;
+        }
+
+        if (uiSynchronizationContext is not null
+            && !ReferenceEquals(SynchronizationContext.Current, uiSynchronizationContext))
+        {
+            uiSynchronizationContext.Post(_ => LoadSelectedIntegrationHeightImage(), null);
+            return;
+        }
+
+        LoadSelectedIntegrationHeightImage();
+    }
+
+    private void LoadSelectedIntegrationHeightImage()
+    {
+        _ = LoadSelectedIntegrationHeightImageAsync();
+    }
+
+    private async Task LoadSelectedIntegrationHeightImageAsync()
+    {
+        try
+        {
+            var path = IntegrationExchange.SelectedInputArtifactPath;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                Workbench.HeightImageViewer.ClearSource();
+                return;
+            }
+
+            await Workbench.HeightImageViewer.EnsureSourceAsync(
+                path,
+                IntegrationExchange.SelectedInputArtifactId,
+                IntegrationExchange.SelectedInputUnit,
+                IntegrationExchange.SelectedInputFrameId);
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or InvalidOperationException)
+        {
+            if (!IsDisposed)
+            {
+                Workbench.AppendLog("Integration viewer", $"Height Image load failed: {exception.Message}");
+            }
+        }
+    }
 
     public ICommand ApplyRoiAlignmentCommand { get; }
     public ICommand SelectWorkspaceCommand { get; }
@@ -247,6 +335,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public ICommand OpenRunRecordFolderCommand { get; }
     public ICommand SelectRunRecordCommand { get; }
     public ICommand OpenRecentRunRecordCommand { get; }
+    public ICommand CompareRecentRunRecordCommand { get; }
     public ICommand ExportRunRecordCommand { get; }
     public ICommand ExportPrivacySafeSupportBundleCommand { get; }
     public ToolWorkbenchViewModel Workbench { get; }
@@ -292,6 +381,11 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     private void RefreshLocalizedPresentation()
     {
+        if (currentResultsRecord is not null)
+        {
+            ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(currentResultsRecord);
+        }
+
         string[] propertyNames =
         [
             nameof(WorkspaceSummary),
@@ -301,8 +395,17 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             nameof(RecipeComparisonDetails),
             nameof(RunSnapshotSummary),
             nameof(RunSnapshotEvidence),
+            nameof(RunRecordComparisonStateText),
+            nameof(RunRecordComparisonSummary),
+            nameof(RunRecordComparisonDetails),
             nameof(InspectionStepSummary),
+            nameof(ResultsOperatorDecisionSummary),
+            nameof(ResultsOperatorDecisionDisplaySummary),
+            nameof(ResultsOperatorCompactDecision),
             nameof(ResultsValueValiditySummary),
+            nameof(ResultsValueValidityDisplaySummary),
+            nameof(ThresholdCorrectionStateText),
+            nameof(SourceQualityStateText),
             nameof(InspectionSteps),
             nameof(RecipeRunHistory),
             nameof(InspectionStageNavigationStatus)
@@ -345,7 +448,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     public bool IsSetupWorkspaceSelected
     {
-        get => SelectedWorkspaceMode == ShellWorkspaceMode.Workbench;
+        get => !IsStartPageSelected && SelectedWorkspaceMode == ShellWorkspaceMode.Workbench;
         set
         {
             if (value)
@@ -367,15 +470,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
-    public bool IsAuthoringWorkspaceSelected =>
-        SelectedWorkspaceMode is ShellWorkspaceMode.Workbench or ShellWorkspaceMode.Teach;
+    public bool IsAuthoringWorkspaceSelected => !IsStartPageSelected
+        && (SelectedWorkspaceMode is ShellWorkspaceMode.Workbench or ShellWorkspaceMode.Teach);
 
     public bool IsWorkbenchWorkspaceSelected
     {
-        get => SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
+        get => !IsStartPageSelected && (SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
             or ShellWorkspaceMode.Teach
             or ShellWorkspaceMode.Inspect
-            or ShellWorkspaceMode.Review;
+            or ShellWorkspaceMode.Review);
         set
         {
             if (value)
@@ -385,11 +488,17 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
-    public bool IsInspectionWorkspaceSelected =>
-        SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
+    public bool IsInspectionWorkspaceSelected => !IsStartPageSelected
+        && (SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
             or ShellWorkspaceMode.Teach
             or ShellWorkspaceMode.Inspect
-            or ShellWorkspaceMode.Review;
+            or ShellWorkspaceMode.Review);
+
+    public bool IsStartPageSelected => isStartPageSelected;
+
+    public bool IsNavigationRailVisible => !IsStartPageSelected;
+
+    public bool IsRecipeActionsVisible => !IsStartPageSelected;
 
     public bool IsInspectWorkspaceSelected
     {
@@ -516,12 +625,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public string WorkspaceSummary => SelectedWorkspaceMode switch
     {
         ShellWorkspaceMode.Workbench => L("검사 구성 | 도구와 검사 순서를 구성합니다", "Inspection Setup | Compose tools and inspection order"),
-        ShellWorkspaceMode.Teach => L("티칭 | 데이터, 영역, 파라미터와 검출 결과를 확인합니다", "Teach | Configure data, regions, parameters, and detection"),
-        ShellWorkspaceMode.Inspect => L("검증 | 샘플 실행과 실패 근거를 검토합니다", "Validate | Replay samples and inspect failures"),
-        ShellWorkspaceMode.Review => L("결과 | 실행 기록과 출력 증거를 검토합니다", "Results | Review run records and output evidence"),
+        ShellWorkspaceMode.Teach => L("티칭 | 데이터, 영역, 설정값과 검출 결과를 확인합니다", "Teach | Configure data, regions, parameters, and detection"),
+        ShellWorkspaceMode.Inspect => L("파일을 추가하고 체크한 파일을 검사하세요.", "Add files, then inspect the checked files."),
+        ShellWorkspaceMode.Review => L("결과 | 실행 기록과 출력 정보를 검토합니다", "Results | Review run records and output evidence"),
         ShellWorkspaceMode.Calibrate => L("교정 작업공간 | 오프라인 데이터셋", "Calibration workspace | Offline datasets"),
         ShellWorkspaceMode.Expert => L("고급 작업공간 | 전체 검사 레이아웃", "Expert workspace | Full inspection layout"),
-        ShellWorkspaceMode.Exchange => L("Machine Studio 연동 | 명시적 Handoff 검토와 결과 게시", "Machine Studio exchange | Explicit handoff review and result publishing"),
+        ShellWorkspaceMode.Exchange => L("Machine Studio 연동 | 검사 요청 검토와 결과 전송 준비", "Machine Studio exchange | Explicit handoff review and result publishing"),
         _ => L("검사 작업공간", "Inspection workspace")
     };
 
@@ -529,7 +638,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         Workbench.IsSelectionCandidateActive
             ? L("ROI 검토를 적용하거나 취소한 후 화면을 이동하세요.", "Apply or cancel the ROI review before changing stages.")
             : Workbench.HasPendingStepParameterChanges
-                ? L("파라미터 초안을 적용하거나 취소한 후 화면을 이동하세요.", "Apply or discard the parameter draft before changing stages.")
+                ? L("편집한 설정값을 적용하거나 변경을 취소한 후 화면을 이동하세요.", "Apply or discard the parameter draft before changing stages.")
                 : Workbench.IsOrderedRunRunning
                     ? L("현재 레시피 실행이 끝난 후 화면을 이동하세요.", "Wait for the current recipe Run to finish before changing stages.")
                 : Workbench.IsSelectedStepPreviewRunning
@@ -585,16 +694,25 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public string InspectionStepSummary
     {
         get => inspectionStepSummary;
+        private set => SetField(ref inspectionStepSummary, value);
+    }
+
+    public string ResultsOperatorDecisionSummary
+    {
+        get => resultsOperatorDecisionSummary;
         private set
         {
-            if (SetField(ref inspectionStepSummary, value))
+            if (SetField(ref resultsOperatorDecisionSummary, value))
             {
-                RaisePropertyChanged(nameof(ResultsOperatorDecisionSummary));
+                RaisePropertyChanged(nameof(ResultsOperatorDecisionDisplaySummary));
+                RaisePropertyChanged(nameof(ResultsOperatorCompactDecision));
             }
         }
     }
 
-    public string ResultsOperatorDecisionSummary => InspectionStepSummary;
+    public string ResultsOperatorDecisionDisplaySummary => LocalizeResultSummaryForDisplay(ResultsOperatorDecisionSummary);
+
+    public string ResultsOperatorCompactDecision => ResultsOperatorDecisionDisplaySummary.Split('\n')[0].TrimEnd('\r');
 
     public string ResultsOperatorAffectedStepsSummary
     {
@@ -614,17 +732,70 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
+    public RunRecordComparisonState RunRecordComparisonStatus
+    {
+        get => runRecordComparisonState;
+        private set
+        {
+            if (SetField(ref runRecordComparisonState, value))
+            {
+                RaisePropertyChanged(nameof(HasRunRecordComparison));
+                RaisePropertyChanged(nameof(RunRecordComparisonStateText));
+            }
+        }
+    }
+
+    public bool HasRunRecordComparison =>
+        RunRecordComparisonStatus != RunRecordComparisonState.Unavailable;
+
+    public string RunRecordComparisonStateText => RunRecordComparisonStatus switch
+    {
+        RunRecordComparisonState.DirectlyComparable => L("직접 비교 가능", "Directly comparable"),
+        RunRecordComparisonState.ConditionsChanged => L("검사 조건 변경", "Inspection conditions changed"),
+        RunRecordComparisonState.NotDirectlyComparable => L("직접 비교 불가", "Not directly comparable"),
+        RunRecordComparisonState.Error => L("비교 실패", "Comparison failed"),
+        _ => L("비교 대기", "Comparison pending")
+    };
+
+    public string RunRecordComparisonSummary
+    {
+        get => runRecordComparisonSummary;
+        private set => SetField(ref runRecordComparisonSummary, value);
+    }
+
+    public string RunRecordComparisonDetails
+    {
+        get => runRecordComparisonDetails;
+        private set => SetField(ref runRecordComparisonDetails, value);
+    }
+
     public string ResultsValueValiditySummary
     {
         get => resultsValueValiditySummary;
-        private set => SetField(ref resultsValueValiditySummary, value);
+        private set
+        {
+            if (SetField(ref resultsValueValiditySummary, value))
+            {
+                RaisePropertyChanged(nameof(ResultsValueValidityDisplaySummary));
+            }
+        }
     }
+
+    public string ResultsValueValidityDisplaySummary => LocalizeResultSummaryForDisplay(ResultsValueValiditySummary);
 
     public string ThresholdCorrectionState
     {
         get => thresholdCorrectionState;
-        private set => SetField(ref thresholdCorrectionState, value);
+        private set
+        {
+            if (SetField(ref thresholdCorrectionState, value))
+            {
+                RaisePropertyChanged(nameof(ThresholdCorrectionStateText));
+            }
+        }
     }
+
+    public string ThresholdCorrectionStateText => LocalizeStateForDisplay(ThresholdCorrectionState);
 
     public string ThresholdCorrectionSummary
     {
@@ -650,7 +821,52 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public RunRecordRecentItem? SelectedRecentRunRecord
     {
         get => selectedRecentRunRecord;
-        set => SetField(ref selectedRecentRunRecord, value);
+        set
+        {
+            if (!SetField(ref selectedRecentRunRecord, value))
+            {
+                return;
+            }
+
+            ResetRunRecordComparison();
+            ((RelayCommand)CompareRecentRunRecordCommand).RaiseCanExecuteChanged();
+        }
+    }
+
+    internal void ShowStartPage()
+    {
+        if (isStartPageSelected)
+        {
+            return;
+        }
+
+        isStartPageSelected = true;
+        RaisePropertyChanged(nameof(IsStartPageSelected));
+        RaisePropertyChanged(nameof(IsNavigationRailVisible));
+        RaisePropertyChanged(nameof(IsRecipeActionsVisible));
+        RaisePropertyChanged(nameof(IsSetupWorkspaceSelected));
+        RaisePropertyChanged(nameof(IsAuthoringWorkspaceSelected));
+        RaisePropertyChanged(nameof(IsWorkbenchWorkspaceSelected));
+        RaisePropertyChanged(nameof(IsInspectionWorkspaceSelected));
+        selectWorkspaceCommand.RaiseCanExecuteChanged();
+    }
+
+    private void HideStartPage()
+    {
+        if (!isStartPageSelected)
+        {
+            return;
+        }
+
+        isStartPageSelected = false;
+        RaisePropertyChanged(nameof(IsStartPageSelected));
+        RaisePropertyChanged(nameof(IsNavigationRailVisible));
+        RaisePropertyChanged(nameof(IsRecipeActionsVisible));
+        RaisePropertyChanged(nameof(IsSetupWorkspaceSelected));
+        RaisePropertyChanged(nameof(IsAuthoringWorkspaceSelected));
+        RaisePropertyChanged(nameof(IsWorkbenchWorkspaceSelected));
+        RaisePropertyChanged(nameof(IsInspectionWorkspaceSelected));
+        selectWorkspaceCommand.RaiseCanExecuteChanged();
     }
 
     public void ShowReviewWorkspace() => TrySelectWorkspace(ShellWorkspaceMode.Review);
@@ -697,6 +913,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             return;
         }
 
+        HideStartPage();
         SelectedWorkspaceMode = mode;
         if (mode == ShellWorkspaceMode.Exchange)
         {
@@ -766,8 +983,16 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public string SourceQualityState
     {
         get => sourceQualityState;
-        private set => SetField(ref sourceQualityState, value);
+        private set
+        {
+            if (SetField(ref sourceQualityState, value))
+            {
+                RaisePropertyChanged(nameof(SourceQualityStateText));
+            }
+        }
     }
+
+    public string SourceQualityStateText => LocalizeStateForDisplay(SourceQualityState);
 
     public string SourceQualitySummary
     {
@@ -785,19 +1010,22 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         object? sender,
         ToolWorkbenchOrderedRunCompletedEventArgs args)
     {
+        ShellOrderedRunRecordArtifact artifact;
         try
         {
-            var artifact = ShellOrderedRunRecordWriter.Write(
-                args.RecipePath,
-                args.Document,
-                args.SourcePath,
-                args.Execution,
-                orderedRunRecordRoot);
-            Workbench.AttachOrderedRunRecord(artifact.JsonPath);
-            startupEvidenceActive = false;
-            RefreshRecipeComparison(
-                artifact.JsonPath,
-                useStartupOverrides: false);
+            if (!ReferenceEquals(pendingOrderedRunExecution, args.Execution))
+            {
+                pendingOrderedRunArtifact = ShellOrderedRunRecordWriter.Prepare(
+                    args.RecipePath,
+                    args.Document,
+                    args.SourcePath,
+                    args.Execution,
+                    orderedRunRecordRoot,
+                    args.RecordIdentity);
+                pendingOrderedRunExecution = args.Execution;
+            }
+            artifact = pendingOrderedRunArtifact!;
+            ShellOrderedRunRecordWriter.Save(artifact, args.Execution);
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException
@@ -806,19 +1034,26 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             or NotSupportedException
             or JsonException)
         {
-            Workbench.ReportOrderedRunRecordFailure(exception.Message);
+            Workbench.ReportOrderedRunRecordFailure(exception.Message, pendingOrderedRunArtifact?.Record);
+            currentResultsRecord = null;
             StatusText = L(
-                $"현재 레시피 실행은 완료되었지만 Run Record 저장에 실패했습니다: {exception.Message}",
+                $"현재 레시피 실행은 완료되었지만 검사 기록 저장에 실패했습니다: {exception.Message}",
                 $"The current recipe Run completed, but its Run Record could not be saved: {exception.Message}");
             RunSnapshotSummary = L(
-                $"실행 완료 · 상태를 확정할 Run Record 저장 실패: {exception.Message}",
+                $"실행 완료 · 상태를 확정할 검사 기록 저장 실패: {exception.Message}",
                 $"Run completed · Run Record save failed before the result could be confirmed: {exception.Message}");
             RunSnapshotEvidence = L(
-                "Run Record가 생성되지 않았습니다. 결과를 Pass로 해석하지 마세요.",
+                "검사 기록이 생성되지 않았습니다. 정상으로 판정하지 마세요.",
                 "No Run Record was created. Do not interpret the result as Pass.");
             InspectionStepSummary = L(
-                "실행은 완료되었지만 Run Record 저장 실패로 판정 증거를 확정할 수 없습니다.",
+                "실행은 완료되었지만 검사 기록 저장 실패로 판정 정보를 확정할 수 없습니다.",
                 "Execution completed, but Run Record save failure prevents confirming the decision evidence.");
+            ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(
+                null,
+                L(
+                    $"검사 기록 저장 실패: {exception.Message}",
+                    $"Run Record save failed: {exception.Message}"),
+                ResultStatus.Error);
             InspectionSteps.Clear();
             InspectionSteps.Add(new InspectionStepItem(
                 "1",
@@ -830,11 +1065,18 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             RefreshResultsValueValiditySummary(
                 null,
                 L(
-                    $"Run Record 저장 실패: {exception.Message}",
+                    $"검사 기록 저장 실패: {exception.Message}",
                     $"Run Record save failed: {exception.Message}"),
                 ResultStatus.Error);
             RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
+            return;
         }
+
+        pendingOrderedRunArtifact = null;
+        pendingOrderedRunExecution = null;
+        Workbench.AttachOrderedRunRecord(artifact.JsonPath, artifact.Record);
+        startupEvidenceActive = false;
+        RefreshRecipeComparison(artifact.JsonPath, useStartupOverrides: false);
     }
 
     private void OnWorkbenchOrderedRunInvalidated(object? sender, EventArgs args) =>
@@ -849,6 +1091,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         currentRunRecordPath = ShellEvidencePathResolver.ResolveOptionalPath(root, runRecordPath);
         currentHtmlReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, htmlReportPath);
         currentCsvReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, csvReportPath);
+        currentResultsRecord = null;
         RefreshCommandCanExecute();
 
         StatusText = "Viewer hosted | viewer smoke failed";
@@ -860,6 +1103,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         RunSnapshotSummary = "Viewer smoke failed | Status: ViewerFailed | Key metric: No recipe metric | Evidence: Blocked";
         RunSnapshotEvidence = $"Shell: {ShellEvidenceTextParser.FormatScreenshotTarget(root, shellScreenshotPath)} | Runner: not created | UI: viewer smoke output";
         InspectionStepSummary = "Viewer smoke: Failed";
+        ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(
+            null,
+            viewerStatus,
+            ResultStatus.Error);
         RefreshSourceQuality(null);
         RefreshThresholdCorrection(null);
         RefreshResultsValueValiditySummary(null, viewerStatus);
@@ -904,40 +1151,47 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         currentRunRecordPath = null;
         currentHtmlReportPath = null;
         currentCsvReportPath = null;
+        currentResultsRecord = null;
         SelectedRecentRunRecord = null;
+        ResetRunRecordComparison();
         RefreshCommandCanExecute();
 
         RecipeComparisonSummary = L(
-            "현재 레시피와 소스의 Run Record가 없습니다.",
-            "No Run Record is loaded for the current recipe and source.");
+            "현재 레시피의 실행 결과가 없습니다.",
+            "No run result is available for the current recipe and source.");
         RecipeComparisonHistory = L(
-            "현재 레시피를 실행하거나 호환되는 최근 Run Record를 명시적으로 여세요.",
-            "Run the current recipe or explicitly open a compatible recent Run Record.");
+            "현재 레시피를 실행하거나 호환되는 최근 실행 결과를 직접 여세요.",
+            "Run the current recipe or explicitly open a compatible recent result.");
         RecipeComparisonDetails = L(
-            "최근 Run Record 목록은 유지되지만 자동으로 선택되지 않습니다.",
-            "Recent Run Records remain available but are never selected automatically.");
+            "최근 실행 결과는 유지되지만 자동으로 선택되지 않습니다.",
+            "Recent run results remain available but are not selected automatically.");
         RunSnapshotSummary = L(
-            "현재 레시피의 실행 스냅샷이 없습니다.",
+            "현재 레시피의 실행 기록이 없습니다.",
             "No current recipe run snapshot is loaded.");
         RunSnapshotEvidence = L(
-            "명시적으로 실행하거나 기록을 열기 전에는 현재 레시피/소스 증거가 없습니다.",
-            "Current recipe/source evidence is unavailable until an explicit run or record open.");
+            "레시피를 실행하거나 기록을 직접 열기 전에는 현재 레시피·입력 데이터 결과를 확인할 수 없습니다.",
+            "Run the recipe or explicitly open a record to view the current recipe/source result.");
         InspectionStepSummary = L(
-            "현재 레시피의 Run Record가 없습니다.",
-            "No current recipe Run Record is loaded.");
+            "현재 레시피의 검사 결과가 없습니다.",
+            "No inspection result is available for the current recipe.");
+        ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(null);
         RefreshResultsValueValiditySummary(null);
         InspectionSteps.Clear();
         RecipeRunHistory.Clear();
         RefreshSourceQuality(null);
         RefreshThresholdCorrection(null);
-        StatusText = "Viewer hosted | current recipe evidence cleared";
+        StatusText = L(
+            "현재 레시피 결과 없음",
+            "Current recipe result unavailable");
     }
 
     private void RefreshRecipeComparison(string? selectedRunRecordPath, bool useStartupOverrides)
     {
         var root = ShellEvidencePathResolver.ResolveWorkspaceRoot();
         currentRunRecordPath = ShellEvidencePathResolver.ResolveOptionalPath(root, selectedRunRecordPath);
+        ResetRunRecordComparison();
         var runRecord = runRecordPersistence.Read(currentRunRecordPath);
+        currentResultsRecord = runRecord;
         var contractPath = ShellEvidencePathResolver.ResolvePath(
             root,
             (useStartupOverrides ? comparisonContractPath : null) ?? runRecord?.Artifacts.ViewerContract,
@@ -997,10 +1251,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             ? L("유한 측정값 없음", "No finite metric")
             : $"{metric.Name} {metric.Value:G6} {metric.Unit}".TrimEnd();
         RecipeComparisonSummary = L(
-            $"Studio 명시적 순차 실행 · {record.Status} · {steps.Count}개 단계\n동일 ordered graph 엔진으로 실행했으며 Preview/Publish 상태는 변경하지 않았습니다.",
+            $"레시피 순차 검사 · {record.Status} · {steps.Count}개 단계\n레시피에 연결된 순서대로 실행했으며 미리보기와 결과 적용 상태는 변경하지 않았습니다.",
             $"Explicit Studio ordered Run · {record.Status} · {steps.Count} step(s)\nExecuted by the same ordered graph engine without changing Preview or Publish state.");
         RecipeComparisonHistory = L(
-            $"레시피: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Recipe.Path)}\n소스: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Source.Path)}\nRun Record: {ShellEvidenceTextParser.FormatEvidencePath(root, currentRunRecordPath ?? string.Empty)}",
+            $"레시피: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Recipe.Path)}\n입력 데이터: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Source.Path)}\n검사 기록: {ShellEvidenceTextParser.FormatEvidencePath(root, currentRunRecordPath ?? string.Empty)}",
             $"Recipe: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Recipe.Path)}\nSource: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Source.Path)}\nRun Record: {ShellEvidenceTextParser.FormatEvidencePath(root, currentRunRecordPath ?? string.Empty)}");
         RecipeComparisonDetails = string.Join(
             Environment.NewLine,
@@ -1024,7 +1278,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             RecordRecentRunRecord(currentRunRecordPath, record);
         }
         StatusText = L(
-            $"Viewer hosted | 현재 레시피 실행 {record.Status}",
+            $"3D 뷰어 | 현재 레시피 실행 {record.Status}",
             $"Viewer hosted | current recipe Run {record.Status}");
     }
 
@@ -1104,6 +1358,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         InspectionStepSummary = recipeSteps.Length == 0
             ? $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}"
             : $"Recipe steps: {recipeSteps.Length} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}";
+        ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(runRecord);
         RefreshResultsValueValiditySummary(runRecord);
     }
 
@@ -1116,9 +1371,11 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         foreach (var step in orderedRunSteps)
         {
             var metric = step.Metrics.FirstOrDefault();
-            var metricSummary = metric is null
-                ? "no metrics"
-                : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
+            var metricSummary = step.SignedDeltaBackgroundSubtraction is { } signedDelta
+                ? FormatSignedDeltaStepSummary(signedDelta)
+                : metric is null
+                    ? "no metrics"
+                    : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
             var outputHash = string.IsNullOrWhiteSpace(step.OutputContentSha256)
                 ? string.Empty
                 : $" | SHA-256 {step.OutputContentSha256[..Math.Min(12, step.OutputContentSha256.Length)]}";
@@ -1145,8 +1402,189 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             record.SchemaVersion,
             orderedRunSteps.Count,
             record.Status);
+        ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(record);
         RefreshResultsValueValiditySummary(record);
     }
+
+    private static string FormatSignedDeltaStepSummary(
+        C3DSignedHeightDeltaArtifact artifact) =>
+        string.Create(
+            CultureInfo.CurrentCulture,
+            $"signed delta | paired {artifact.PairedValidSampleCount:N0} | missing {artifact.MissingEitherSampleCount:N0} | zero {artifact.ZeroDeltaSampleCount:N0} | +{artifact.PositiveDeltaSampleCount:N0} / -{artifact.NegativeDeltaSampleCount:N0} | background {artifact.BackgroundEntityId}");
+
+    private static string FormatResultsOperatorDecisionSummary(
+        InspectionRunRecord? record,
+        string? overrideReason = null,
+        ResultStatus? statusOverride = null)
+    {
+        if (record is null)
+        {
+            var reason = string.IsNullOrWhiteSpace(overrideReason)
+                ? L(
+                    "현재 레시피의 검사 결과가 없습니다.",
+                    "No inspection result is available for the current recipe.")
+                : overrideReason;
+            return string.Join(
+                Environment.NewLine,
+                [
+                    $"{L("판정", "Decision")}: {FormatResultStatus(statusOverride ?? ResultStatus.NotRun)}",
+                    $"{L("대표 측정값", "Primary measurement")}: {L("기록되지 않음", "Not recorded")}",
+                    $"{L("허용범위", "Limits")}: {L("기록되지 않음", "Not recorded")}",
+                    $"{L("기준면 Fit RMS", "Reference-fit RMS")}: {L("기록되지 않음", "Not recorded")}",
+                    $"{L("사유", "Reason")}: {reason}"
+                ]);
+        }
+
+        var step = SelectResultsExplanationStep(record);
+        if (step?.SignedDeltaBackgroundSubtraction is { } signedDelta)
+        {
+            return FormatSignedDeltaOperatorDecisionSummary(
+                record,
+                step,
+                signedDelta,
+                overrideReason,
+                statusOverride);
+        }
+
+        var metrics = (step?.Metrics ?? record.Metrics ?? []).ToArray();
+        var toolName = step?.ToolName ?? record.ToolName;
+        var toolId = step?.ToolId ?? string.Empty;
+
+        var isThickness = toolId.Equals("thickness", StringComparison.OrdinalIgnoreCase)
+            || toolName.Contains("thickness", StringComparison.OrdinalIgnoreCase);
+        var isWarpage = toolId.Equals("warpage", StringComparison.OrdinalIgnoreCase)
+            || toolName.Contains("warpage", StringComparison.OrdinalIgnoreCase);
+        string[]? primaryMetricNames = toolId.ToLowerInvariant() switch
+        {
+            "plane-flatness" => ["Reference-plane deviation range", "Reference-plane absolute peak"],
+            "gap-flush" => ["Signed gap", "Signed flush"],
+            "volume" => ["Signed net volume", "Above-plane volume", "Below-plane volume"],
+            "cross-section-dimensions" => ["Section width", "H range"],
+            _ => null
+        };
+        var primaryMetrics = primaryMetricNames is not null
+            ? primaryMetricNames.Select(name => metrics.FirstOrDefault(metric => metric.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                .OfType<InspectionRunMetric>().ToArray()
+            : isWarpage
+            ? metrics.Where(metric =>
+                metric.Name.Equals("PeakToValley", StringComparison.OrdinalIgnoreCase)
+                || metric.Name.Equals("P2V", StringComparison.OrdinalIgnoreCase)
+                || metric.Name.Equals("Rms", StringComparison.OrdinalIgnoreCase)).ToArray()
+            : isThickness
+                ? metrics.Where(metric => metric.Name.Equals("Mean", StringComparison.OrdinalIgnoreCase)).Take(1).ToArray()
+                : metrics.Where(metric =>
+                    metric.Name.Equals("Mean", StringComparison.OrdinalIgnoreCase)
+                    || metric.Name.Equals("PeakToValley", StringComparison.OrdinalIgnoreCase)
+                    || metric.Name.Equals("P2V", StringComparison.OrdinalIgnoreCase)
+                    || metric.Name.Equals("Rms", StringComparison.OrdinalIgnoreCase)).Take(3).ToArray();
+        var primarySummary = primaryMetrics.Length == 0
+            ? L("기록되지 않음", "Not recorded")
+            : string.Join("; ", primaryMetrics.Select(FormatMetric));
+
+        string[] limitMetricNames = toolId.ToLowerInvariant() switch
+        {
+            "plane-flatness" => ["Flatness tolerance"],
+            "gap-flush" => ["Expected gap", "Gap tolerance", "Expected flush", "Flush tolerance"],
+            "volume" => ["Expected net volume", "Volume tolerance"],
+            _ => ["LowerLimit", "UpperLimit"]
+        };
+        var limitMetrics = limitMetricNames.Select(name => metrics.FirstOrDefault(metric => metric.Name.Equals(name, StringComparison.OrdinalIgnoreCase))).ToArray();
+        var limitsSummary = limitMetrics.All(metric => metric is null)
+            ? L("기록되지 않음", "Not recorded")
+            : string.Join("; ", limitMetrics.Select((metric, index) => metric is null
+                ? limitMetricNames[index] + "=" + L("기록되지 않음", "Not recorded")
+                : FormatMetric(metric)));
+
+        var referenceFitRms = metrics.FirstOrDefault(metric =>
+            metric.Name.Contains("fit", StringComparison.OrdinalIgnoreCase)
+            && metric.Name.Contains("rms", StringComparison.OrdinalIgnoreCase));
+        var referenceFitSummary = referenceFitRms is null
+            ? L("기록되지 않음", "Not recorded")
+            : FormatMetric(referenceFitRms);
+        var status = statusOverride ?? (metrics.Any(metric => !double.IsFinite(metric.Value)) ? ResultStatus.Error : record.Status);
+        var reasons = new List<string>();
+        AddReason(reasons, overrideReason);
+        if (record.Status != ResultStatus.Pass)
+        {
+            AddReason(reasons, record.Message);
+        }
+
+        if (step is not null && step.Status != ResultStatus.Pass)
+        {
+            AddReason(reasons, step.Message);
+        }
+
+        foreach (var metric in metrics.Where(metric => metric.Status is not null and not ResultStatus.Pass))
+        {
+            AddReason(reasons, $"{metric.Name}: {FormatResultStatus(metric.Status!.Value)}");
+        }
+        foreach (var metric in metrics.Where(metric => !double.IsFinite(metric.Value)))
+        {
+            AddReason(reasons, $"{metric.Name}: {L("계산 불가", "Unavailable")} · {L("기록된 판정", "Recorded decision")}={FormatResultStatus(metric.Status ?? step?.Status ?? record.Status)}");
+        }
+
+        var reasonSummary = reasons.Count == 0
+            ? L("기록된 무효 사유 없음", "None recorded")
+            : string.Join("; ", reasons);
+        return string.Join(
+            Environment.NewLine,
+            [
+                $"{L("검사 도구", "Tool")}: {toolName}",
+                $"{L("기록 단계", "Recorded step")}: {step?.Id ?? L("기록되지 않음", "Not recorded")}",
+                $"{L("대표 측정값", "Primary measurement")}: {primarySummary}",
+                $"{L("허용범위", "Limits")}: {limitsSummary}",
+                $"{L("기준면 Fit RMS", "Reference-fit RMS")}: {referenceFitSummary}",
+                $"{L("판정", "Decision")}: {FormatResultStatus(status)}",
+                $"{L("사유", "Reason")}: {reasonSummary}"
+            ]);
+    }
+
+    private static string FormatSignedDeltaOperatorDecisionSummary(
+        InspectionRunRecord record,
+        InspectionRunStepResult step,
+        C3DSignedHeightDeltaArtifact artifact,
+        string? overrideReason,
+        ResultStatus? statusOverride)
+    {
+        var status = statusOverride ?? step.Status;
+        var reasons = new List<string>();
+        AddReason(reasons, overrideReason);
+        if (record.Status != ResultStatus.Pass)
+        {
+            AddReason(reasons, record.Message);
+        }
+
+        if (step.Status != ResultStatus.Pass)
+        {
+            AddReason(reasons, step.Message);
+        }
+
+        if (!artifact.TryValidate(out var validationMessage))
+        {
+            AddReason(reasons, validationMessage);
+        }
+
+        var reasonSummary = reasons.Count == 0
+            ? L("기록된 무효 사유 없음", "None recorded")
+            : string.Join("; ", reasons);
+        return string.Join(
+            Environment.NewLine,
+            [
+                $"{L("검사 도구", "Tool")}: {step.ToolName}",
+                $"{L("대표 측정값", "Primary measurement")}: {FormatSignedDeltaCounts(artifact)}",
+                $"{L("허용범위", "Limits")}: {L("이 signed delta 결과에는 기록되지 않음", "Not recorded for this signed-delta field")}",
+                $"{L("기준면 Fit RMS", "Reference-fit RMS")}: {L("해당 없음", "Not applicable")}",
+                $"{L("판정", "Decision")}: {FormatResultStatus(status)}",
+                $"{L("표시", "Display")}: {L("검토용 evidence-only · C3D finite-zero wire 변환 없음", "Evidence-only review · no C3D finite-zero wire conversion")}",
+                $"{L("사유", "Reason")}: {reasonSummary}"
+            ]);
+    }
+
+    private static string FormatSignedDeltaCounts(
+        C3DSignedHeightDeltaArtifact artifact) =>
+        string.Create(
+            CultureInfo.CurrentCulture,
+            $"paired={artifact.PairedValidSampleCount:N0}; missing={artifact.MissingEitherSampleCount:N0}; zero={artifact.ZeroDeltaSampleCount:N0}; +={artifact.PositiveDeltaSampleCount:N0}; -={artifact.NegativeDeltaSampleCount:N0}");
 
     private void RefreshResultsValueValiditySummary(
         InspectionRunRecord? record,
@@ -1167,8 +1605,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         {
             var reason = string.IsNullOrWhiteSpace(overrideInvalidReason)
                 ? L(
-                    "현재 레시피의 Run Record가 없습니다.",
-                    "No current recipe Run Record is loaded.")
+                    "현재 레시피의 검사 결과가 없습니다.",
+                    "No inspection result is available for the current recipe.")
                 : overrideInvalidReason;
             return string.Join(
                 Environment.NewLine,
@@ -1184,12 +1622,20 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
 
         var step = SelectResultsExplanationStep(record);
+        if (step?.SignedDeltaBackgroundSubtraction is { } signedDelta)
+        {
+            return FormatSignedDeltaValueValiditySummary(
+                record,
+                step,
+                signedDelta,
+                overrideInvalidReason,
+                statusOverride);
+        }
+
         var metrics = (step?.Metrics ?? record.Metrics ?? [])
             .Where(metric => double.IsFinite(metric.Value))
             .ToArray();
-        var definition = step is null
-            ? record.ToolName
-            : step.ToolName;
+        var definition = step?.ToolName ?? record.ToolName;
         if (step?.AlgorithmEvidence is { } algorithmEvidence)
         {
             definition = string.Join(
@@ -1198,35 +1644,39 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 algorithmEvidence.AlgorithmDefinitionVersion);
         }
 
-        var metricUnit = metrics
-            .Where(metric => metric.Kind != MetricKind.Count)
-            .Select(metric => metric.Unit)
-            .FirstOrDefault(unit => !string.IsNullOrWhiteSpace(unit));
-        var sourceUnit = string.IsNullOrWhiteSpace(record.Source.Unit)
-            ? null
-            : record.Source.Unit;
-        var unit = metricUnit ?? sourceUnit ?? unknown;
-        var usesRawHeight = step?.ToolId.Contains("thickness", StringComparison.OrdinalIgnoreCase) == true
-            || step?.ToolId.Contains("warpage", StringComparison.OrdinalIgnoreCase) == true
-            || step?.ToolName.Contains("height", StringComparison.OrdinalIgnoreCase) == true;
-        var unitBasis = unit == unknown
-            ? L(
-                "Unknown (선언된 측정 단위가 없습니다.)",
-                "Unknown (no declared measurement unit was recorded).")
-            : usesRawHeight
-                ? L(
-                    $"선언된 원시 높이 scalar · {unit}; 물리 보정은 추론하지 않습니다.",
-                    $"Declared raw-height scalar · {unit}; physical calibration is not inferred.")
-                : L(
-                    $"저장된 측정 단위 · {unit}",
-                    $"Stored measurement unit · {unit}");
+        if (step?.ToolId.ToLowerInvariant() is "thickness" or "plane-flatness" or "gap-flush" or "volume" or "cross-section-dimensions")
+        {
+            // Pin the description to the recorded definition; a future producer version needs review.
+            var meaning = step.AlgorithmEvidence?.AlgorithmDefinitionVersion == "height-measurement-execution-v1"
+                ? step.ToolId.ToLowerInvariant() switch
+                {
+                    "thickness" => L("같은 위치의 측정 높이 − 최소제곱 기준면 높이인 H축 높이차. 기준면 수직거리가 아닙니다.",
+                        "Signed H-axis height difference: measured height minus least-squares reference height at the same position; not orthogonal distance."),
+                    "plane-flatness" => L("별도 기준 ROI의 최소제곱 평면에 대한 부호 있는 수직거리의 최대 − 최소. GD&T 최소영역 평면도가 아닙니다.",
+                        "Range of signed orthogonal distances (maximum minus minimum) to the least-squares plane of the reference ROI; not GD&T minimum-zone flatness."),
+                    "gap-flush" => L("간격은 마주 보는 ROI 가장자리의 부호 있는 U축 거리, 단차는 두 ROI 평균 높이의 H축 차이입니다. ROI 순서에 따라 부호가 달라집니다.",
+                        "Gap is signed U-axis separation between facing ROI edges; flush is the H-axis difference of ROI mean heights. ROI order determines the sign."),
+                    "volume" => L("기준면에 대한 H축 높이차에 U·V 셀 면적을 곱해 합산합니다. 순체적과 기준면 위·아래 체적을 구분합니다.",
+                        "Sum of H-axis residuals from the reference plane times U/V cell area. Net, above-plane, and below-plane volumes are recorded separately."),
+                    _ => L("단면의 U축 너비와 H축 최대·최소 높이차입니다. 경사진 표면을 따라 잰 길이가 아닙니다.",
+                        "U-axis section width and H-axis maximum-minus-minimum height range; not length along the sloped surface.")
+                }
+                : L("측정 방식 확인 불가: 정의 버전이 없거나 지원되지 않습니다.",
+                    "Measurement definition unavailable: the recorded definition version is missing or unsupported.");
+            definition += $" — {meaning}";
+        }
 
-        var roiOverlay = step?.Overlays?
-            .FirstOrDefault(overlay => overlay.Label.Contains("ROI", StringComparison.OrdinalIgnoreCase));
+        var unitBasis = FormatResultsUnitBasis(record.Source, step?.Metrics ?? record.Metrics ?? []);
+
+        var roiEvidence = step?.Overlays?
+            .Where(overlay => overlay.Label.Contains("ROI", StringComparison.OrdinalIgnoreCase)
+                || overlay.Label.Contains("region", StringComparison.OrdinalIgnoreCase)
+                || overlay.Label.Contains("row segment", StringComparison.OrdinalIgnoreCase))
+            .Select(overlay => overlay.Label).Distinct(StringComparer.Ordinal).ToArray() ?? [];
         var roi = step?.CompletenessGrid is { } completeness
             ? FormatGridRegion(completeness.InspectionGridRegion)
-            : roiOverlay?.Label ?? L(
-                "ROI 형상은 Run Record에 기록되지 않았습니다.",
+            : roiEvidence.Length > 0 ? string.Join("; ", roiEvidence) : L(
+                "ROI 형상은 검사 기록에 기록되지 않았습니다.",
                 "ROI geometry was not recorded in the Run Record.");
         var inputIds = step?.InputEntityIds is { Count: > 0 } ids
             ? string.Join(", ", ids)
@@ -1247,7 +1697,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         var residualSummary = residuals.Length == 0
             ? unknown
             : string.Join("; ", residuals);
-        var status = statusOverride ?? step?.Status ?? record.Status;
+        var status = statusOverride ?? ((step?.Metrics ?? record.Metrics ?? []).Any(metric => !double.IsFinite(metric.Value)) ? ResultStatus.Error : record.Status);
         var invalidReasons = new List<string>();
         AddReason(invalidReasons, overrideInvalidReason);
         if (record.Status != ResultStatus.Pass)
@@ -1266,6 +1716,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 invalidReasons,
                 $"{metric.Name}: {FormatResultStatus(metric.Status!.Value)}");
         }
+        foreach (var metric in (step?.Metrics ?? record.Metrics ?? []).Where(metric => !double.IsFinite(metric.Value)))
+        {
+            AddReason(invalidReasons, $"{metric.Name}: {L("계산 불가", "Unavailable")} ({FormatResultStatus(metric.Status ?? ResultStatus.NotRun)})");
+        }
 
         var invalidReason = invalidReasons.Count == 0
             ? L("기록된 무효 사유 없음", "None recorded")
@@ -1275,6 +1729,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             [
                 $"{L("정의", "Definition")}: {definition}",
                 $"{L("단위 근거", "Unit basis")}: {unitBasis}",
+                $"{L("기록 단계", "Recorded step")}: {step?.Id ?? unknown}",
                 $"{L("소스 / ROI", "Source / ROI")}: {source} · input={inputIds} · ROI={roi}",
                 $"{L("유효 샘플 수", "Valid samples")}: {validCount}",
                 $"{L("Fit residual", "Fit residual")}: {residualSummary}",
@@ -1283,12 +1738,97 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             ]);
     }
 
+    private static string FormatResultsUnitBasis(InspectionRunSource source, IReadOnlyList<InspectionRunMetric> metrics)
+    {
+        // Units are recorded metadata even for unavailable (NaN) values; source units cannot fill metric gaps.
+        var units = metrics.Where(metric => metric.Kind != MetricKind.Count)
+            .Select(metric => string.IsNullOrWhiteSpace(metric.Unit) ? "Unknown" : metric.Unit)
+            .Distinct(StringComparer.Ordinal).ToArray();
+        var measurementUnits = units.Length == 0 ? "Unknown" : string.Join(", ", units);
+        var sourceUnit = string.IsNullOrWhiteSpace(source.Unit) ? "Unknown" : source.Unit;
+        var evidence = source.EffectiveMeasurementEvidence;
+        var basis = evidence.State switch
+        {
+            HeightMeasurementEvidenceState.RawHeight => L("원시 높이 입력. 물리 교정 기록 없음.", "Raw-height input; no physical calibration recorded."),
+            HeightMeasurementEvidenceState.DeclaredUnit => L("입력 단위만 선언됨. 물리 교정 기록 없음.", "Declared input unit only; no physical calibration recorded."),
+            HeightMeasurementEvidenceState.CalibratedPhysical => L($"기록된 입력 교정: {evidence.CalibrationId}. 측정값별 교정 확인과는 별개입니다.", $"Recorded input calibration: {evidence.CalibrationId}; this does not establish calibration of each metric."),
+            _ => L("입력 단위 근거 없음. 물리 교정 여부 확인 불가.", "Input unit evidence unavailable; physical calibration is unknown.")
+        };
+        return L($"측정 단위: {measurementUnits}; 입력 단위: {sourceUnit}. {basis}",
+            $"Measurement units: {measurementUnits}; input unit: {sourceUnit}. {basis}");
+    }
+
+    private static string FormatSignedDeltaValueValiditySummary(
+        InspectionRunRecord record,
+        InspectionRunStepResult step,
+        C3DSignedHeightDeltaArtifact artifact,
+        string? overrideInvalidReason,
+        ResultStatus? statusOverride)
+    {
+        var invalidReasons = new List<string>();
+        AddReason(invalidReasons, overrideInvalidReason);
+        if (record.Status != ResultStatus.Pass)
+        {
+            AddReason(invalidReasons, record.Message);
+        }
+
+        if (step.Status != ResultStatus.Pass)
+        {
+            AddReason(invalidReasons, step.Message);
+        }
+
+        if (!artifact.TryValidate(out var validationMessage))
+        {
+            AddReason(invalidReasons, validationMessage);
+        }
+
+        var invalidReason = invalidReasons.Count == 0
+            ? L("기록된 무효 사유 없음", "None recorded")
+            : string.Join("; ", invalidReasons);
+        var status = statusOverride ?? step.Status;
+        var source = string.IsNullOrWhiteSpace(record.Source.Path)
+            ? record.Source.EntityId
+            : $"{record.Source.EntityId} · {Path.GetFileName(record.Source.Path)}";
+        var provenance = string.Join(
+            "; ",
+            [
+                $"current={artifact.CurrentSourceEntityId}",
+                $"background={artifact.BackgroundEntityId}",
+                $"grid={artifact.Width} × {artifact.Height}",
+                $"origin={artifact.GridOriginColumn},{artifact.GridOriginRow}",
+                $"currentSha={artifact.CurrentSourceContentSha256}",
+                $"backgroundSha={artifact.BackgroundContentSha256}",
+                $"outputValuesSha={artifact.OutputContentSha256}",
+                $"artifactSha={artifact.ContentSha256}"
+            ]);
+        return string.Join(
+            Environment.NewLine,
+            [
+                $"{L("정의", "Definition")}: SignedDeltaHeightField · {artifact.SubtractionPolicy} · {artifact.MissingValuePolicy}",
+                $"{L("단위 근거", "Unit basis")}: {L($"signed delta scalar · {artifact.Unit}; finite zero는 유효하며 C3D 누락으로 변환하지 않습니다.", $"Signed-delta scalar · {artifact.Unit}; finite zero is valid and is not converted to C3D missing.")}",
+                $"{L("소스 / ROI", "Source / ROI")}: {source} · {provenance}",
+                $"{L("유효 샘플 수", "Valid samples")}: {FormatSignedDeltaCounts(artifact)}",
+                $"{L("Fit residual", "Fit residual")}: {L("해당 없음 — signed delta 셀 분포를 기록합니다.", "Not applicable — the signed-delta cell distribution is recorded.")}",
+                $"{L("상태 / 판정", "Status / decision")}: {FormatResultStatus(status)}",
+                $"{L("무효 사유", "Invalid reason")}: {invalidReason}"
+            ]);
+    }
+
     private static InspectionRunStepResult? SelectResultsExplanationStep(
-        InspectionRunRecord record) =>
-        record.Steps?.FirstOrDefault(step =>
-            step.ToolId.Equals("thickness", StringComparison.OrdinalIgnoreCase)
-            || step.ToolId.Equals("warpage", StringComparison.OrdinalIgnoreCase))
-        ?? record.Steps?.FirstOrDefault();
+        InspectionRunRecord record)
+    {
+        var measurements = record.Steps?.Where(step => step.ToolId.ToLowerInvariant() is
+            "thickness" or "warpage" or "plane-flatness" or "gap-flush" or "volume"
+            or "cross-section-dimensions" or "point-pair-dimensions" or "completeness-grid"
+            or "physical-edge-gap-flush" or "connected-region-gate").ToArray() ?? [];
+        return measurements.FirstOrDefault(step => step.Status == ResultStatus.Error)
+            ?? measurements.FirstOrDefault(step => step.Metrics.Any(metric => !double.IsFinite(metric.Value)))
+            ?? measurements.FirstOrDefault(step => step.Status == ResultStatus.Fail)
+            ?? measurements.FirstOrDefault(step => step.Status != ResultStatus.Pass)
+            ?? measurements.FirstOrDefault()
+            ?? record.Steps?.FirstOrDefault(step => step.ToolId.Equals(C3DSignedHeightDeltaRecipePolicy.ToolId, StringComparison.OrdinalIgnoreCase))
+            ?? record.Steps?.FirstOrDefault();
+    }
 
     private static bool IsValidCountMetric(InspectionRunMetric metric) =>
         metric.Kind == MetricKind.Count
@@ -1299,11 +1839,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     private static bool IsFitResidualMetric(InspectionRunMetric metric) =>
         metric.Name.Contains("residual", StringComparison.OrdinalIgnoreCase)
+        || (metric.Name.Contains("fit", StringComparison.OrdinalIgnoreCase)
+            && metric.Name.Contains("rms", StringComparison.OrdinalIgnoreCase))
         || metric.Name.Equals("PeakToValley", StringComparison.OrdinalIgnoreCase)
         || metric.Name.Equals("Rms", StringComparison.OrdinalIgnoreCase);
 
     private static string FormatMetric(InspectionRunMetric metric) =>
-        string.IsNullOrWhiteSpace(metric.Unit)
+        !double.IsFinite(metric.Value)
+            ? $"{metric.Name}={L("계산 불가", "Unavailable")}{(string.IsNullOrWhiteSpace(metric.Unit) ? string.Empty : " " + metric.Unit)}"
+            : string.IsNullOrWhiteSpace(metric.Unit)
             ? $"{metric.Name}={metric.Value:G6}"
             : $"{metric.Name}={metric.Value:G6} {metric.Unit}";
 
@@ -1345,10 +1889,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             SourceQualityState = "Unavailable";
             SourceQualitySummary = runRecord is null
                 ? L(
-                    "Run Record가 로드되지 않았습니다.",
+                    "실행 기록이 로드되지 않았습니다.",
                     "No Run Record is loaded.")
                 : L(
-                    "이전 Run Record에는 소스 품질 증거가 없습니다.",
+                    "이전 실행 기록에는 입력 상태 확인 결과가 없습니다.",
                     "This legacy Run Record did not record Source Quality evidence.");
             SourceQualityDetail = SourceQualitySummary;
             return;
@@ -1476,8 +2020,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             ThresholdCorrectionState = "Unavailable";
             ThresholdCorrectionSummary =
                 runRecord is null
-                    ? "No Run Record is loaded."
-                    : "This legacy Run Record did not record threshold-correction evidence.";
+                    ? L(
+                        "실행 기록이 로드되지 않았습니다.",
+                        "No Run Record is loaded.")
+                    : L(
+                        "이전 실행 기록에는 임계값 보정 정보가 없습니다.",
+                        "This legacy Run Record did not record threshold-correction evidence.");
             return;
         }
 
@@ -1599,6 +2147,264 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
+    public bool CompareSelectedRunRecord(out string message)
+    {
+        if (!CanCompareSelectedRunRecord())
+        {
+            message = L(
+                "현재 기록과 다른 사용 가능한 최근 기록을 선택하세요.",
+                "Select an available recent record that is different from the current record.");
+            return false;
+        }
+
+        var selected = SelectedRecentRunRecord!;
+        var current = runRecordPersistence.Read(currentRunRecordPath);
+        var comparison = runRecordPersistence.Read(selected.Path);
+        if (current is null
+            || comparison is null
+            || !HasRequiredRunRecordComparisonShape(current)
+            || !HasRequiredRunRecordComparisonShape(comparison))
+        {
+            RunRecordComparisonStatus = RunRecordComparisonState.Error;
+            RunRecordComparisonSummary = L(
+                "현재 기록 또는 선택 기록을 읽을 수 없습니다. 파일과 JSON 스키마를 확인하세요.",
+                "The current or selected record could not be read. Check the file and JSON schema.");
+            RunRecordComparisonDetails = L(
+                $"현재: {Path.GetFileName(currentRunRecordPath)}\n선택: {Path.GetFileName(selected.Path)}\n현재 결과와 레시피 상태는 변경되지 않았습니다.",
+                $"Current: {Path.GetFileName(currentRunRecordPath)}\nSelected: {Path.GetFileName(selected.Path)}\nThe current result and recipe state were not changed.");
+            StatusText = L(
+                "3D 뷰어 | 검사 기록 비교 실패",
+                "Viewer hosted | Run Record comparison failed");
+            message = RunRecordComparisonSummary;
+            return false;
+        }
+
+        var projection = CompareRunRecords(current, comparison);
+        RunRecordComparisonStatus = projection.State;
+        RunRecordComparisonSummary = projection.Summary;
+        RunRecordComparisonDetails = projection.Details;
+        StatusText = L(
+            $"3D 뷰어 | 검사 기록 비교 {RunRecordComparisonStateText}",
+            $"Viewer hosted | Run Record comparison {RunRecordComparisonStateText}");
+        message = projection.Summary;
+        return true;
+    }
+
+    private bool CanCompareSelectedRunRecord()
+    {
+        if (string.IsNullOrWhiteSpace(currentRunRecordPath)
+            || !File.Exists(currentRunRecordPath)
+            || SelectedRecentRunRecord is not { IsAvailable: true } selected
+            || !File.Exists(selected.Path))
+        {
+            return false;
+        }
+
+        try
+        {
+            return !string.Equals(
+                Path.GetFullPath(currentRunRecordPath),
+                Path.GetFullPath(selected.Path),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static bool HasRequiredRunRecordComparisonShape(InspectionRunRecord record) =>
+        record.Source is not null
+        && record.Recipe is not null
+        && (record.Steps is null
+            || record.Steps.All(step =>
+                step is not null
+                && step.InputEntityIds is not null
+                && step.Metrics is not null));
+
+    private static RunRecordComparisonProjection CompareRunRecords(
+        InspectionRunRecord current,
+        InspectionRunRecord comparison)
+    {
+        var currentSteps = current.Steps ?? [];
+        var comparisonSteps = comparison.Steps ?? [];
+        var schemaSupported = InspectionRunRecord.SupportsSchemaVersion(current.SchemaVersion)
+            && InspectionRunRecord.SupportsSchemaVersion(comparison.SchemaVersion);
+        var sourceContentSame = !string.IsNullOrWhiteSpace(current.Source.Sha256)
+            && string.Equals(current.Source.Sha256, comparison.Source.Sha256, StringComparison.OrdinalIgnoreCase)
+            && current.Source.ByteLength == comparison.Source.ByteLength;
+        var unitSame = string.Equals(current.Source.Unit, comparison.Source.Unit, StringComparison.Ordinal);
+        var frameSame = string.Equals(
+            current.Source.FrameId ?? string.Empty,
+            comparison.Source.FrameId ?? string.Empty,
+            StringComparison.Ordinal);
+        var topologySame = currentSteps.Count > 0
+            && currentSteps.Count == comparisonSteps.Count
+            && currentSteps.Zip(comparisonSteps).All(pair =>
+                pair.First.RecipeIndex == pair.Second.RecipeIndex
+                && string.Equals(pair.First.Id, pair.Second.Id, StringComparison.Ordinal)
+                && string.Equals(pair.First.ToolId, pair.Second.ToolId, StringComparison.Ordinal)
+                && pair.First.InputEntityIds.SequenceEqual(pair.Second.InputEntityIds, StringComparer.Ordinal)
+                && string.Equals(pair.First.OutputEntityId, pair.Second.OutputEntityId, StringComparison.Ordinal));
+        var alignedSteps = topologySame
+            ? currentSteps.Zip(comparisonSteps).ToArray()
+            : [];
+        var semanticEvidenceAvailable = topologySame
+            && alignedSteps.All(pair =>
+                !string.IsNullOrWhiteSpace(pair.First.SemanticFingerprint)
+                && !string.IsNullOrWhiteSpace(pair.Second.SemanticFingerprint));
+        var semanticSame = semanticEvidenceAvailable
+            && alignedSteps.All(pair => string.Equals(
+                pair.First.SemanticFingerprint,
+                pair.Second.SemanticFingerprint,
+                StringComparison.OrdinalIgnoreCase));
+        var algorithmEvidenceAvailable = topologySame
+            && alignedSteps.All(pair =>
+                pair.First.AlgorithmEvidence is { } currentAlgorithm
+                && pair.Second.AlgorithmEvidence is { } comparisonAlgorithm
+                && currentAlgorithm.TryValidate(out _)
+                && comparisonAlgorithm.TryValidate(out _));
+        var algorithmSame = algorithmEvidenceAvailable
+            && alignedSteps.All(pair => pair.First.AlgorithmEvidence == pair.Second.AlgorithmEvidence);
+        var recipeSame = string.Equals(current.Recipe.RecipeType, comparison.Recipe.RecipeType, StringComparison.Ordinal)
+            && string.Equals(current.Recipe.Version, comparison.Recipe.Version, StringComparison.Ordinal)
+            && string.Equals(current.Recipe.Sha256, comparison.Recipe.Sha256, StringComparison.OrdinalIgnoreCase);
+
+        var state = !schemaSupported
+            || !sourceContentSame
+            || !unitSame
+            || !frameSame
+            || !topologySame
+            || !semanticEvidenceAvailable
+            || !algorithmEvidenceAvailable
+                ? RunRecordComparisonState.NotDirectlyComparable
+                : !recipeSame || !semanticSame || !algorithmSame
+                    ? RunRecordComparisonState.ConditionsChanged
+                    : RunRecordComparisonState.DirectlyComparable;
+
+        var conditionLines = new List<string>
+        {
+            L(
+                $"입력 데이터 바이트: {SameText(sourceContentSame)} · 단위: {SameText(unitSame)} · 좌표계: {SameText(frameSame)}",
+                $"Source bytes: {SameText(sourceContentSame)} · unit: {SameText(unitSame)} · coordinate frame: {SameText(frameSame)}"),
+            L(
+                $"레시피 내용: {SameText(recipeSame)} · 단계 구조: {SameText(topologySame)}",
+                $"Recipe content: {SameText(recipeSame)} · step topology: {SameText(topologySame)}"),
+            L(
+                $"검사 정의 fingerprint: {EvidenceText(semanticEvidenceAvailable, semanticSame)} · 알고리즘/SDK: {EvidenceText(algorithmEvidenceAvailable, algorithmSame)}",
+                $"Inspection-definition fingerprint: {EvidenceText(semanticEvidenceAvailable, semanticSame)} · algorithm/SDK: {EvidenceText(algorithmEvidenceAvailable, algorithmSame)}")
+        };
+        if (semanticEvidenceAvailable && !semanticSame)
+        {
+            conditionLines.Add(L(
+                "레시피 식별 정보가 달라 ROI·설정값·검사 조건 중 하나 이상이 변경되었습니다. 식별 정보만으로 변경 항목을 알 수는 없습니다.",
+                "The fingerprint changed, so at least one authored ROI, parameter, or inspection-definition input changed. The hash does not identify a specific field."));
+        }
+        if (!semanticEvidenceAvailable || !algorithmEvidenceAvailable)
+        {
+            conditionLines.Add(L(
+                "저장된 검사 조건 또는 알고리즘 정보가 부족해 동일한 조건인지 확인할 수 없습니다.",
+                "Stored semantic or algorithm evidence is insufficient to prove equal conditions."));
+        }
+
+        var resultLines = new List<string>
+        {
+            L(
+                $"전체 판정: {current.Status} → {comparison.Status}",
+                $"Overall decision: {current.Status} → {comparison.Status}")
+        };
+        if (topologySame)
+        {
+            foreach (var pair in alignedSteps)
+            {
+                var metricChanges = CountMetricChanges(pair.First.Metrics, pair.Second.Metrics);
+                var outputSame = string.Equals(
+                    pair.First.OutputContentSha256 ?? string.Empty,
+                    pair.Second.OutputContentSha256 ?? string.Empty,
+                    StringComparison.OrdinalIgnoreCase);
+                if (pair.First.Status != pair.Second.Status || metricChanges > 0 || !outputSame)
+                {
+                    resultLines.Add(L(
+                        $"{pair.First.Id}: 상태 {pair.First.Status} → {pair.Second.Status} · 측정값 변경 {metricChanges}개 · 출력 {SameText(outputSame)}",
+                        $"{pair.First.Id}: status {pair.First.Status} → {pair.Second.Status} · metric changes {metricChanges} · output {SameText(outputSame)}"));
+                }
+            }
+        }
+        if (resultLines.Count == 1 && current.Status == comparison.Status)
+        {
+            resultLines.Add(L(
+                "저장된 단계 상태·측정값·출력 해시 차이가 없습니다.",
+                "No stored step-status, metric, or output-hash differences were found."));
+        }
+
+        var summary = state switch
+        {
+            RunRecordComparisonState.DirectlyComparable => L(
+                "동일한 저장 조건 정보가 확인되었습니다. 아래 결과 차이를 직접 검토할 수 있습니다.",
+                "The stored condition evidence matches. The result differences below can be reviewed directly."),
+            RunRecordComparisonState.ConditionsChanged => L(
+                "입력 형식은 비교 가능하지만 검사 조건이 변경되었습니다. 결과 차이를 시간 변화로 해석하지 마세요.",
+                "The input basis is comparable, but inspection conditions changed. Do not attribute result differences to time."),
+            _ => L(
+                "입력 데이터·단위·좌표계·단계 구조 또는 필수 정보가 달라 직접 비교할 수 없습니다.",
+                "The source, unit, frame, step topology, or required evidence differs, so the runs are not directly comparable.")
+        };
+        var timingLines = new[]
+        {
+            L(
+                $"관찰 시각: {current.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} → {comparison.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}",
+                $"Observed time: {current.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} → {comparison.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}"),
+            L(
+                $"관찰 수행 시간: {current.ElapsedMilliseconds:F3} ms → {comparison.ElapsedMilliseconds:F3} ms · 판정/동일성 근거에 사용하지 않음",
+                $"Observed duration: {current.ElapsedMilliseconds:F3} ms → {comparison.ElapsedMilliseconds:F3} ms · excluded from condition identity and decisions")
+        };
+        var details = string.Join(
+            Environment.NewLine,
+            conditionLines
+                .Concat(new[] { string.Empty })
+                .Concat(resultLines)
+                .Concat(new[] { string.Empty })
+                .Concat(timingLines));
+        return new RunRecordComparisonProjection(state, summary, details);
+    }
+
+    private static int CountMetricChanges(
+        IReadOnlyList<InspectionRunMetric> current,
+        IReadOnlyList<InspectionRunMetric> comparison)
+    {
+        static string Key(InspectionRunMetric metric) =>
+            $"{metric.Name}\u001f{metric.Kind}\u001f{metric.Unit}";
+
+        var currentByKey = current.GroupBy(Key, StringComparer.Ordinal).ToDictionary(
+            group => group.Key,
+            group => group.First(),
+            StringComparer.Ordinal);
+        var comparisonByKey = comparison.GroupBy(Key, StringComparer.Ordinal).ToDictionary(
+            group => group.Key,
+            group => group.First(),
+            StringComparer.Ordinal);
+        return currentByKey.Keys.Union(comparisonByKey.Keys, StringComparer.Ordinal).Count(key =>
+            !currentByKey.TryGetValue(key, out var currentMetric)
+            || !comparisonByKey.TryGetValue(key, out var comparisonMetric)
+            || !currentMetric.Value.Equals(comparisonMetric.Value)
+            || currentMetric.Status != comparisonMetric.Status);
+    }
+
+    private static string SameText(bool same) => L(
+        same ? "동일" : "다름",
+        same ? "same" : "different");
+
+    private static string EvidenceText(bool available, bool same) => available
+        ? SameText(same)
+        : L("정보 없음", "evidence unavailable");
+
+    private void ResetRunRecordComparison()
+    {
+        RunRecordComparisonStatus = RunRecordComparisonState.Unavailable;
+        RunRecordComparisonSummary = string.Empty;
+        RunRecordComparisonDetails = string.Empty;
+    }
+
     public bool ExportCurrentRunRecordBundle(string targetRoot, out string message)
     {
         try
@@ -1628,6 +2434,27 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    public bool ExportInspectionQueueCsv(string targetPath, out string message)
+    {
+        try
+        {
+            runRecordPersistence.ExportInspectionQueueCsv(
+                Workbench.InspectionQueue.CreateExportRows(),
+                targetPath);
+            message = Path.GetFullPath(targetPath);
+            StatusText = L("검사 목록 CSV를 저장했습니다.", "Inspection queue CSV was exported.");
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or NotSupportedException)
         {
             message = exception.Message;
             return false;
@@ -1750,6 +2577,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         ((RelayCommand)OpenRunRecordFolderCommand).RaiseCanExecuteChanged();
         ((RelayCommand)ExportRunRecordCommand).RaiseCanExecuteChanged();
         ((RelayCommand)ExportPrivacySafeSupportBundleCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)CompareRecentRunRecordCommand).RaiseCanExecuteChanged();
     }
 
     private void RequestEvidenceArtifact(string label, string? path)
@@ -1762,6 +2590,33 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
         OpenEvidenceArtifactRequested?.Invoke(this, new EvidenceArtifactOpenRequestEventArgs(label, path));
     }
+
+    private static string LocalizeResultSummaryForDisplay(string summary)
+    {
+        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
+        return summary
+            .Replace("NotRun", english ? "Not run" : "미실행", StringComparison.Ordinal)
+            .Replace("Fail (NG)", english ? "Fail (NG)" : "실패", StringComparison.Ordinal)
+            .Replace("Pass", english ? "Pass" : "통과", StringComparison.Ordinal)
+            .Replace("Fail", english ? "Fail" : "실패", StringComparison.Ordinal)
+            .Replace("Warning", english ? "Warning" : "경고", StringComparison.Ordinal)
+            .Replace("Error", english ? "Error" : "오류", StringComparison.Ordinal)
+            .Replace("Unknown", english ? "Unknown" : "알 수 없음", StringComparison.Ordinal)
+            .Replace("Unavailable", english ? "Unavailable" : "사용할 수 없음", StringComparison.Ordinal);
+    }
+
+    private static string LocalizeStateForDisplay(string state) => state switch
+    {
+        "Pass" => L("통과", "Pass"),
+        "Warning" => L("경고", "Warning"),
+        "Error" => L("오류", "Error"),
+        "Mismatch" => L("불일치", "Mismatch"),
+        "Unavailable" => L("사용할 수 없음", "Unavailable"),
+        "Available" => L("사용 가능", "Available"),
+        "Stale" => L("오래됨", "Stale"),
+        "Invalid" => L("유효하지 않음", "Invalid"),
+        _ => state
+    };
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
@@ -1781,6 +2636,11 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private static string L(string korean, string english) =>
         OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English ? english : korean;
 }
+
+internal sealed record RunRecordComparisonProjection(
+    RunRecordComparisonState State,
+    string Summary,
+    string Details);
 
 public sealed class RecipeRunHistoryItem
 {

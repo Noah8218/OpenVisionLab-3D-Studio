@@ -27,6 +27,7 @@ internal static class ViewerHostStateProjection
             viewModel.ViewerStatus,
             viewModel.CoordinateFrameSummary)
         {
+            IsTeachingCaptureActive = viewModel.IsTeachingCaptureActive,
             GlbSampleVisible = viewModel.GlbSampleVisible,
             LazSampleVisible = viewModel.LazSampleVisible,
             SelectionOverlayVisible = viewModel.SelectionOverlayVisible,
@@ -68,7 +69,21 @@ internal static class ViewerHostStateProjection
                 viewModel.ProfileLinkedCursorY,
                 viewModel.ProfileLinkedCursorMarkerLeft,
                 viewModel.ProfileLinkedCursorMarkerTop,
-                viewModel.ProfileLinkedCursorSummary),
+                viewModel.ProfileLinkedCursorSummary)
+            {
+                SourceSha256 = viewModel.HeightProfile.SourceSha256 ?? string.Empty,
+                IsActive = viewModel.SelectedSelectionMode == MainWindowViewModel.ProfileSelectionMode,
+                FirstRow = viewModel.HeightProfile.First?.Row,
+                FirstColumn = viewModel.HeightProfile.First?.Column,
+                SecondRow = viewModel.HeightProfile.Second?.Row,
+                SecondColumn = viewModel.HeightProfile.Second?.Column,
+                Trace = viewModel.ProfileTrace,
+                IsCollapsed = viewModel.ProfileIsCollapsed,
+                HasEndpoints = viewModel.ProfileHasEndpoints,
+                IsPicking = viewModel.ProfileIsPicking,
+                GridDistance = viewModel.ProfileGridDistance,
+                HeightDelta = viewModel.ProfileHeightDelta
+            },
             SectionProfile = new ViewerHostSectionProfileState(
                 viewModel.SectionProfileVisible,
                 viewModel.SectionProfileSampleCount,
@@ -95,6 +110,7 @@ internal static class ViewerHostStateProjection
                 viewModel.C3DHeightColorMinimumRaw,
                 viewModel.C3DHeightColorMaximumRaw,
                 viewModel.C3DHeightColorRangeAuto,
+                viewModel.C3DHeightEmphasis,
                 viewModel.C3DHeightColorRangeRevision,
                 viewModel.C3DHeightColorRangeSummary)
             {

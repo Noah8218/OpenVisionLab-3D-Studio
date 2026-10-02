@@ -24,7 +24,7 @@
                 <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                            Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Title, Korean='피팅 진단 / 직교 잔차', English='Fit Diagnostics / Orthogonal residual'}" />
                 <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
-                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Caption, Korean='잔차는 전체 XYZ 소스 좌표값입니다. 마커나 행을 선택하면 3D 점이 연결됩니다.', English='Residuals are full-XYZ source-coordinate values. Select a marker or row to link the 3D point.'}" />
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Caption, Korean='잔차는 전체 XYZ 입력 데이터 좌표값입니다. 마커나 행을 선택하면 3D 점이 연결됩니다.', English='Residuals are full-XYZ source-coordinate values. Select a marker or row to link the 3D point.'}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Ellipse Width="9" Height="9" Fill="{DynamicResource ThreeD.AccentBrush}" />
@@ -84,15 +84,15 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="48" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock FontSize="9.5"
+                    <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Scanline, Korean='스캔라인', English='Scanline'}" />
                     <TextBlock Grid.Column="1"
-                               FontSize="9.5"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.Residual, Korean='잔차', English='Residual'}" />
                     <TextBlock Grid.Column="2"
-                               FontSize="9.5"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.State, Korean='상태', English='State'}" />
                 </Grid>
@@ -106,10 +106,10 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="48" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock FontFamily="Consolas" FontSize="10" Text="{Binding ScanlineIndex}" />
-                                <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="10" Text="{Binding OrthogonalResidual, StringFormat=F6}" />
+                                <TextBlock FontFamily="Consolas" FontSize="12" Text="{Binding ScanlineIndex}" />
+                                <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="12" Text="{Binding OrthogonalResidual, StringFormat=F6}" />
                                 <TextBlock Grid.Column="2"
-                                           FontSize="10"
+                                           FontSize="12"
                                            Text="{Binding IsInlier, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=LineFitPointState}" />
                             </Grid>
                         </Button>
@@ -118,6 +118,6 @@
                 </ListBox>
             </Grid>
         </Grid>
-        <TextBlock Grid.Row="2" FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding LineFitSelectedDiagnosticSummary}" />
+        <TextBlock Grid.Row="2" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding LineFitSelectedDiagnosticSummary}" />
     </Grid>
 </UserControl>

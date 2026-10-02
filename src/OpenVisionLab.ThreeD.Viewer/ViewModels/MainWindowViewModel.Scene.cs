@@ -205,6 +205,7 @@ public sealed partial class MainWindowViewModel
     public void UsePointCloudSmokeScene()
     {
         HudDetailsVisible = true;
+        SampleResultOverlayVisible = false;
         ClearC3DLinkedViews();
         CubeVisible = false;
         MeasurementVisible = false;
@@ -224,6 +225,7 @@ public sealed partial class MainWindowViewModel
 
     public void UseSelectionSmokeScene(string mode)
     {
+        SampleResultOverlayVisible = false;
         var keepCurrentC3DScene = (mode == "Section Plane" || mode == ThicknessRoiSelectionMode || mode == WarpageRoiSelectionMode || mode == "ROI Step Compare" || mode == "Gap / Flush" || mode == "Cross-section Dimensions") && C3DSampleVisible;
         if (!keepCurrentC3DScene)
         {
@@ -262,6 +264,7 @@ public sealed partial class MainWindowViewModel
 
     public void UseC3DSmokeScene()
     {
+        SampleResultOverlayVisible = false;
         ClearC3DHeightDeviationPreview();
         HudDetailsVisible = true;
         CubeVisible = false;
@@ -289,6 +292,7 @@ public sealed partial class MainWindowViewModel
     public void UseEmptyTeachingScene(string status)
     {
         HudDetailsVisible = true;
+        SampleResultOverlayVisible = false;
         ClearC3DLinkedViews();
         CubeVisible = false;
         PointCloudVisible = false;
@@ -317,6 +321,7 @@ public sealed partial class MainWindowViewModel
     public void UseGlbSmokeScene()
     {
         HudDetailsVisible = false;
+        SampleResultOverlayVisible = false;
         var meshLabel = ImportedMeshDisplayName();
         ClearC3DLinkedViews();
         CubeVisible = false;
@@ -342,6 +347,7 @@ public sealed partial class MainWindowViewModel
     public void UseGlbFailureScene(string summary)
     {
         HudDetailsVisible = true;
+        SampleResultOverlayVisible = false;
         var meshLabel = ImportedMeshDisplayName();
         ClearC3DLinkedViews();
         CubeVisible = false;
@@ -362,6 +368,7 @@ public sealed partial class MainWindowViewModel
     public void UseLazSmokeScene()
     {
         HudDetailsVisible = false;
+        SampleResultOverlayVisible = false;
         ClearC3DLinkedViews();
         CubeVisible = false;
         PointCloudVisible = false;
@@ -386,6 +393,7 @@ public sealed partial class MainWindowViewModel
     public void UseLazFailureScene(string summary)
     {
         HudDetailsVisible = true;
+        SampleResultOverlayVisible = false;
         ClearC3DLinkedViews();
         CubeVisible = false;
         PointCloudVisible = false;
@@ -431,6 +439,7 @@ public sealed partial class MainWindowViewModel
     public void UseResultSmokeScene()
     {
         UsePointCloudSmokeScene();
+        SampleResultOverlayVisible = true;
         MeasurementVisible = true;
         SelectionOverlayVisible = true;
         ResultOverlayVisible = true;

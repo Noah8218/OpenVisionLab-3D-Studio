@@ -235,7 +235,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                 sample.Order,
                 sample.SourcePath,
                 sample.Role,
-                "저장된 역할을 불러왔습니다. 명시적 전체 실행을 기다립니다.",
+                "저장된 역할을 불러왔습니다. 전체 실행을 기다립니다.",
                 "Saved role loaded; waiting for explicit Run All.")));
         SetDefinitionDirtyCore(false);
         onDefinitionChanged(true);

@@ -60,6 +60,12 @@ public sealed partial class ToolWorkbenchViewModel
             return outlier.Output;
         }
 
+        if (TryGetPublishedHeightThresholdOutput(entityId, out var threshold)
+            && threshold is not null)
+        {
+            return threshold;
+        }
+
         if (string.Equals(
                 filterPreviewOutput?.EntityId,
                 entityId,

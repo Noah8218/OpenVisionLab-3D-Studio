@@ -41,6 +41,11 @@ internal static class ToolLineFitWorkbenchVerification
                     new ToolRecipeStep("step.line.01", "three-d-line-fit", "3D Line Fit", 1, ["derived.edgepoints.01"], "derived.line.01", [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "0.01"), new("MinimumInlierCount", "3"), new("MinimumInlierRatio", "0.75"), new("MinimumInlierScanlineSpan", "2"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")])
                 ],
                 [selection]);
+            var firstLine = document.Steps.Single(step => step.Id == "step.line.01");
+            var firstFilter = document.Steps.Single(step => step.Id == "step.filter.01");
+            document = document with { Steps = [.. document.Steps,
+                firstLine with { Id = "step.line.02", ToolName = "Second Line Fit", OutputEntityId = "derived.line.02" },
+                firstFilter with { Id = "step.filter.02", ToolName = "Independent Filter", OutputEntityId = "derived.filtered.02" }] };
             var recipePath = Path.Combine(root, "line-fit.ov3d-teach.json");
             ToolRecipeDocumentStore.Save(recipePath, document);
             workbench = new ToolWorkbenchViewModel();
@@ -71,13 +76,56 @@ internal static class ToolLineFitWorkbenchVerification
             var headless = ToolRecipeLineFitExecution.Execute(document, "step.line.01", publishedEdge!);
             Check("Workbench and headless share exact output hash", preview?.ContentSha256 == headless.Output?.ContentSha256, $"workbench={preview?.ContentSha256};headless={headless.Output?.ContentSha256}");
             Check("Line Fit does not rerun Edge", ReferenceEquals(publishedEdge, workbench.CurrentHeightDifferenceEdgeOutput), $"edge={publishedEdge?.ContentSha256}");
+            workbench.SelectPipelineStep("step.line.02");
+            Check("unexecuted Line Fit cannot publish another Line Fit preview", !workbench.PublishSelectedStepCommand.CanExecute(null), workbench.SelectedPipelineStep!.State);
+            workbench.SelectPipelineStep("step.line.01");
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Publish reuses exact Preview", workbench.IsLineFitPreviewPublished && ReferenceEquals(preview, published), $"preview={preview?.ContentSha256};published={published?.ContentSha256}");
+            var firstPublishedLine = published;
+            workbench.SelectedPipelineStep!.ToolName = "Renamed Line Fit";
+            Check("Line Fit display name preserves result and diagnostics", workbench.IsLineFitPreviewPublished
+                && workbench.LineFitResidualPlotPoints.Count == 4
+                && workbench.TryGetPublishedLineFitOutput("derived.line.01", out var namedLine)
+                && ReferenceEquals(namedLine, firstPublishedLine), workbench.LineFitExecutionSummary);
+            workbench.SelectPipelineStep("step.filter.02");
+            workbench.SetFilterKernel5Command.Execute(null);
+            Check("independent Filter edit preserves downstream Line Fit", workbench.TryGetPublishedLineFitOutput("derived.line.01", out var independentLine)
+                && ReferenceEquals(independentLine, firstPublishedLine), workbench.LineFitExecutionSummary);
+            workbench.SelectPipelineStep("step.line.02");
+            Check("second Line Fit explicit Preview", workbench.PreviewSelectedLineFitAsync().GetAwaiter().GetResult(), workbench.LineFitExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            workbench.SelectedPipelineStep!.Parameters.Single(parameter => parameter.Name == "MaximumOrthogonalResidual").Value = "0.02";
+            Check("Line Fit edit invalidates only affected published output", !workbench.TryGetPublishedLineFitOutput("derived.line.02", out _)
+                && workbench.TryGetPublishedLineFitOutput("derived.line.01", out var retainedLine)
+                && ReferenceEquals(retainedLine, firstPublishedLine), workbench.LineFitExecutionSummary);
+            Check("second Line Fit explicit recovery", workbench.PreviewSelectedLineFitAsync().GetAwaiter().GetResult(), workbench.LineFitExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            Check("published recovery preserves first output", workbench.TryGetPublishedLineFitOutput("derived.line.01", out var recoveredFirstLine)
+                && ReferenceEquals(recoveredFirstLine, firstPublishedLine)
+                && workbench.TryGetPublishedLineFitOutput("derived.line.02", out _), workbench.LineFitExecutionSummary);
+            Check("remove current Line Fit preserves independent output", workbench.ConfirmSelectedStepRemoval("step.line.02")
+                && workbench.TryGetPublishedLineFitOutput("derived.line.01", out var afterRemoval)
+                && ReferenceEquals(afterRemoval, firstPublishedLine)
+                && !workbench.TryGetPublishedLineFitOutput("derived.line.02", out _), "isolated generated recipe only");
+            Check("restore Line Fit settings keeps output unexecuted", workbench.TryRestoreLastRemovedStep(out var restoredLine)
+                && !workbench.TryGetPublishedLineFitOutput("derived.line.02", out _), restoredLine);
+            Check("restored Line Fit explicit recovery", workbench.PreviewSelectedLineFitAsync().GetAwaiter().GetResult(), workbench.LineFitExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            workbench.SelectPipelineStep("step.line.01");
+            Check("first Line Fit explicit reselect recovery", workbench.PreviewSelectedLineFitAsync().GetAwaiter().GetResult(), workbench.LineFitExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
             workbench.SelectLineFitDiagnostic(2);
             Check("diagnostic selection is presentation only", workbench.SelectedLineFitDiagnostic?.InputPointIndex == 2 && ReferenceEquals(preview, workbench.CurrentLineFitOutput), workbench.LineFitSelectedDiagnosticSummary);
             var oldHash = preview?.ContentSha256;
             workbench.SelectedPipelineStep!.Parameters.Single(parameter => parameter.Name == "MaximumOrthogonalResidual").Value = "0.02";
             Check("parameter change marks Line Fit stale without rerun", workbench.IsLineFitPreviewStale && !workbench.IsLineFitPreviewPublished && workbench.LineFitResidualPlotPoints.Count == 0 && oldHash == preview?.ContentSha256, $"hash={oldHash};state={workbench.SelectedPipelineStep.State}");
+            Check("second Line Fit remains current after first Line Fit edit", workbench.TryGetPublishedLineFitOutput("derived.line.02", out _)
+                && workbench.TryGetPublishedHeightDifferenceEdgeOutput("derived.edgepoints.01", out _), "second line and Edge are current before upstream edit");
+            workbench.SelectPipelineStep("step.filter.01");
+            workbench.SetFilterKernel5Command.Execute(null);
+            Check("changed upstream rejects both Line Fit outputs", !workbench.TryGetPublishedLineFitOutput("derived.line.01", out _)
+                && !workbench.TryGetPublishedLineFitOutput("derived.line.02", out _)
+                && !workbench.TryGetPublishedHeightDifferenceEdgeOutput("derived.edgepoints.01", out _), workbench.LineFitExecutionSummary);
             Check("whole recipe Run remains blocked", !workbench.RunTeachingRecipeCommand.CanExecute(null), "No partial Filter + Edge + Line Fit recipe success is reported.");
 
             workbench.Dispose();

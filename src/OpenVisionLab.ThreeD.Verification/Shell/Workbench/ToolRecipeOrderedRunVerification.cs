@@ -58,7 +58,10 @@ internal static class ToolRecipeOrderedRunVerification
                 [10, 10, 10, 10, 10, 10, 10, 10, 15, 15, 15, 15, 15, 15, 15, 15])
                 .SaveC3D(sourcePath);
             var passRecipePath = Path.Combine(root, "thickness-pass.ov3d-recipe.json");
-            var passDocument = CreateThicknessDocument(sourcePath, 4.5, 5.5);
+            var passDocument = CreateThicknessDocument(sourcePath, 4.5, 5.5) with
+            {
+                SchemaVersion = ToolRecipeDocument.OutputPolicySchemaVersion
+            };
             ToolRecipeDocumentStore.Save(passRecipePath, passDocument);
 
             var ownerLifecycle = VerifyOrderedRunOwnerLifecycle(
@@ -71,8 +74,18 @@ internal static class ToolRecipeOrderedRunVerification
                 ownerLifecycleDetail);
 
             var shell = CreateShell(root, "pass", runRoot);
+            var initialResultsSummary = shell.ResultsOperatorDecisionSummary;
+            Check(
+                "Results reports the missing current Run Record before any Run",
+                initialResultsSummary.Contains("NotRun", StringComparison.Ordinal)
+                && (initialResultsSummary.Contains("Not recorded", StringComparison.Ordinal)
+                    || initialResultsSummary.Contains("기록되지 않음", StringComparison.Ordinal)),
+                initialResultsSummary.Replace(Environment.NewLine, " | "));
             var fullRunCount = 0;
             shell.Workbench.OrderedRunCompleted += (_, _) => fullRunCount++;
+            var readinessPropertyChanges = new List<string?>();
+            shell.Workbench.PropertyChanged += (_, args) => readinessPropertyChanges.Add(args.PropertyName);
+            var initialReadinessStatus = shell.Workbench.OrderedRunStatus;
             var opened = shell.Workbench.TryOpenTeachingRecipe(
                 passRecipePath,
                 out var openMessage);
@@ -83,6 +96,17 @@ internal static class ToolRecipeOrderedRunVerification
                 && shell.Workbench.OrderedRunStatus == shell.Workbench.Localization.RecipeHealthReady
                 && shell.Workbench.OrderedRunCapabilitySummary.Contains("1", StringComparison.Ordinal),
                 opened ? shell.Workbench.OrderedRunCapabilitySummary : openMessage);
+            Check(
+                "opening a saved recipe refreshes the bound Run readiness projection",
+                opened
+                && shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
+                && !string.Equals(
+                    initialReadinessStatus,
+                    shell.Workbench.OrderedRunStatus,
+                    StringComparison.Ordinal)
+                && readinessPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.OrderedRunStatus))
+                && readinessPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.OrderedRunCapabilitySummary)),
+                $"initial={initialReadinessStatus};current={shell.Workbench.OrderedRunStatus};notifications={string.Join(',', readinessPropertyChanges.Where(name => name is not null))}");
             Check(
                 "open does not auto-run",
                 fullRunCount == 0
@@ -110,6 +134,33 @@ internal static class ToolRecipeOrderedRunVerification
                 && fullRunCount == 0
                 && ReferenceEquals(previewOutput, shell.Workbench.CurrentMeasurementOutput),
                 saved ? $"fullRuns={fullRunCount}" : saveMessage);
+            shell.Workbench.SelectPipelineStep(passDocument.Steps[0].Id);
+            readinessPropertyChanges.Clear();
+            shell.Workbench.MarkSelectedStepParameterDraftDirty();
+            var pendingDraftCanRun = shell.Workbench.RunTeachingRecipeCommand.CanExecute(null);
+            Check(
+                "pending parameter draft refreshes blocked readiness without running",
+                !pendingDraftCanRun
+                && !string.Equals(
+                    shell.Workbench.OrderedRunStatus,
+                    shell.Workbench.Localization.RecipeHealthReady,
+                    StringComparison.Ordinal)
+                && readinessPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.OrderedRunStatus))
+                && readinessPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.OrderedRunCapabilitySummary))
+                && fullRunCount == 0
+                && !shell.Workbench.HasOrderedRunResult,
+                $"canRun={pendingDraftCanRun};status={shell.Workbench.OrderedRunStatus};summary={shell.Workbench.OrderedRunCapabilitySummary};notifications={string.Join(',', readinessPropertyChanges.Where(name => name is not null))}");
+            readinessPropertyChanges.Clear();
+            shell.Workbench.DiscardSelectedStepParameterDraft();
+            Check(
+                "discarding the parameter draft restores readiness without mutation or Run",
+                shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
+                && shell.Workbench.OrderedRunStatus == shell.Workbench.Localization.RecipeHealthReady
+                && readinessPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.OrderedRunStatus))
+                && readinessPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.OrderedRunCapabilitySummary))
+                && !shell.Workbench.HasOrderedRunResult
+                && fullRunCount == 0,
+                $"canRun={shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)};status={shell.Workbench.OrderedRunStatus};notifications={string.Join(',', readinessPropertyChanges.Where(name => name is not null))}");
 
             var reopenedShell = CreateShell(root, "reopen", runRoot);
             var reopenRunCount = 0;
@@ -166,11 +217,108 @@ internal static class ToolRecipeOrderedRunVerification
                     StringComparison.Ordinal)
                 && reopenedShell.RunSnapshotSummary.Contains("Pass", StringComparison.OrdinalIgnoreCase),
                 $"completed={runCompleted}; fullRuns={reopenRunCount}; record={recordPath}; schema={record?.SchemaVersion}; status={record?.Status}; sourceQuality={record?.SourceQualityEvidence?.State}; timing={reopenedShell.InspectionSteps.FirstOrDefault()?.Timing}");
+            Check("ordered Run projects actual step metrics into teaching results",
+                reopenedShell.Workbench.TeachingResults.Count == reopenedExecution!.Steps.Count
+                && reopenedShell.Workbench.TeachingResults.All(row => row.IsCurrent && row.Metrics.Count > 0)
+                && reopenedShell.Workbench.TeachingResults.Single().Value.Contains("5", StringComparison.Ordinal),
+                string.Join(";", reopenedShell.Workbench.TeachingResults.Select(row => $"{row.Step.Id}:{row.Value}:{row.Status}")));
+            reopenedShell.Workbench.SelectedTeachingResult = reopenedShell.Workbench.TeachingResults.Single();
+            Check("selecting an ordered teaching result preserves execution identity without running",
+                reopenRunCount == 1 && ReferenceEquals(reopenedExecution, reopenedShell.Workbench.CurrentOrderedRunResult)
+                && reopenedShell.Workbench.SelectedPipelineStep == reopenedShell.Workbench.SelectedTeachingResult.Step,
+                $"runs={reopenRunCount};step={reopenedShell.Workbench.SelectedPipelineStep?.Id}");
+            Check("teaching limits show acceptance bounds without violation counters",
+                !reopenedShell.Workbench.TeachingResults.Single().Limits.Contains("Count", StringComparison.Ordinal)
+                && reopenedShell.Workbench.TeachingResults.Single().Limits.Contains("4.5", StringComparison.Ordinal)
+                && reopenedShell.Workbench.TeachingResults.Single().Limits.Contains("5.5", StringComparison.Ordinal),
+                reopenedShell.Workbench.TeachingResults.Single().Limits);
+            Check("teaching metric projection does not dirty the saved recipe", !reopenedShell.Workbench.IsDirty, $"dirty={reopenedShell.Workbench.IsDirty}");
+            reopenedShell.Workbench.MarkSelectedStepParameterDraftDirty();
+            Check("pending draft distinguishes ordered teaching rows as previous without running",
+                reopenedShell.Workbench.TeachingResults.All(row => !row.IsCurrent)
+                && reopenRunCount == 1 && ReferenceEquals(reopenedExecution, reopenedShell.Workbench.CurrentOrderedRunResult),
+                string.Join(";", reopenedShell.Workbench.TeachingResults.Select(row => row.Status)));
+            reopenedShell.Workbench.DiscardSelectedStepParameterDraft();
+            Check("discarding draft restores current ordered rows without running",
+                reopenedShell.Workbench.TeachingResults.All(row => row.IsCurrent) && reopenRunCount == 1,
+                $"runs={reopenRunCount}");
+            var runResultBeforeRecipeInfo = reopenedShell.Workbench.CurrentOrderedRunResult;
+            var recipeBytesBeforeInfoEdit = File.ReadAllBytes(passRecipePath);
+            var recordBytesBeforeInfoEdit = File.ReadAllBytes(recordPath!);
+            var runLogCountBeforeInfoEdit = reopenedShell.Workbench.RunLog.Count;
+            reopenedShell.Workbench.OpenRecipeInfoEditorCommand.Execute(null);
+            Check(
+                "opening recipe information is a read-only draft and preserves Run evidence",
+                reopenedShell.Workbench.IsRecipeInfoEditorVisible
+                && !reopenedShell.Workbench.IsDirty
+                && ReferenceEquals(runResultBeforeRecipeInfo, reopenedShell.Workbench.CurrentOrderedRunResult)
+                && reopenedShell.Workbench.CurrentOrderedRunRecordPath == recordPath
+                && reopenedShell.Workbench.RunLog.Count == runLogCountBeforeInfoEdit
+                && recipeBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(passRecipePath)),
+                $"visible={reopenedShell.Workbench.IsRecipeInfoEditorVisible};dirty={reopenedShell.Workbench.IsDirty};runLog={reopenedShell.Workbench.RunLog.Count};result={reopenedShell.Workbench.HasOrderedRunResult}");
+            reopenedShell.Workbench.RecipeInfoCategoryDraft = "Measurement";
+            reopenedShell.Workbench.RecipeInfoInspectionTargetDraft = "Power module A-01 pad";
+            reopenedShell.Workbench.RecipeInfoDescriptionDraft = "Measure the height difference between the reference and pad areas.";
+            reopenedShell.Workbench.CancelRecipeInfoEditorCommand.Execute(null);
+            Check(
+                "cancel discards recipe information edits without changing recipe, result, or Run Record",
+                !reopenedShell.Workbench.IsRecipeInfoEditorVisible
+                && !reopenedShell.Workbench.IsDirty
+                && ReferenceEquals(runResultBeforeRecipeInfo, reopenedShell.Workbench.CurrentOrderedRunResult)
+                && recipeBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(passRecipePath))
+                && recordBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(recordPath!))
+                && reopenedShell.Workbench.RunLog.Count == runLogCountBeforeInfoEdit,
+                $"visible={reopenedShell.Workbench.IsRecipeInfoEditorVisible};dirty={reopenedShell.Workbench.IsDirty};fullRuns={reopenRunCount}");
+            reopenedShell.Workbench.OpenRecipeInfoEditorCommand.Execute(null);
+            reopenedShell.Workbench.RecipeInfoCategoryDraft = "Measurement";
+            reopenedShell.Workbench.RecipeInfoInspectionTargetDraft = "Power module A-01 pad";
+            reopenedShell.Workbench.RecipeInfoDescriptionDraft = new string('x', ToolRecipeDocument.MaximumMetadataFieldLength + 1);
+            reopenedShell.Workbench.ApplyRecipeInfoCommand.Execute(null);
+            var overlengthMetadataRejected = reopenedShell.Workbench.IsRecipeInfoEditorVisible
+                && reopenedShell.Workbench.RecipeInfoEditError == reopenedShell.Workbench.Localization.RecipeInfoFieldTooLong
+                && !reopenedShell.Workbench.IsDirty
+                && ReferenceEquals(runResultBeforeRecipeInfo, reopenedShell.Workbench.CurrentOrderedRunResult)
+                && recipeBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(passRecipePath));
+            Check(
+                "recipe information rejects overlength values without closing or mutating the recipe",
+                overlengthMetadataRejected,
+                $"visible={reopenedShell.Workbench.IsRecipeInfoEditorVisible};dirty={reopenedShell.Workbench.IsDirty};error={reopenedShell.Workbench.RecipeInfoEditError}");
+            reopenedShell.Workbench.RecipeInfoDescriptionDraft = "Measure the height difference between the reference and pad areas.";
+            reopenedShell.Workbench.ApplyRecipeInfoCommand.Execute(null);
+            var metadataApplyPreservedRun = !reopenedShell.Workbench.IsRecipeInfoEditorVisible
+                && reopenedShell.Workbench.IsDirty
+                && ReferenceEquals(runResultBeforeRecipeInfo, reopenedShell.Workbench.CurrentOrderedRunResult)
+                && reopenedShell.Workbench.CurrentOrderedRunRecordPath == recordPath
+                && recordBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(recordPath!))
+                && reopenedShell.Workbench.RunLog.Count == runLogCountBeforeInfoEdit
+                && reopenRunCount == 1;
+            var metadataSaveMessage = string.Empty;
+            var metadataSaved = reopenedShell.Workbench.TrySaveTeachingRecipe(
+                passRecipePath,
+                out metadataSaveMessage);
+            var recipeAfterMetadataSave = ToolRecipeDocumentStore.Load(passRecipePath);
+            Check(
+                "applying and saving recipe information upgrades 1.8 to 1.9 without rerunning or clearing Results",
+                metadataSaved
+                && recipeAfterMetadataSave.SchemaVersion == ToolRecipeDocument.RecipeMetadataSchemaVersion
+                && recipeAfterMetadataSave.Category == "Measurement"
+                && recipeAfterMetadataSave.InspectionTarget == "Power module A-01 pad"
+                && recipeAfterMetadataSave.Description == "Measure the height difference between the reference and pad areas."
+                && reopenedShell.Workbench.IsDirty == false
+                && metadataApplyPreservedRun
+                && ReferenceEquals(runResultBeforeRecipeInfo, reopenedShell.Workbench.CurrentOrderedRunResult)
+                && reopenedShell.Workbench.CurrentOrderedRunRecordPath == recordPath
+                && recordBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(recordPath!))
+                && reopenRunCount == 1,
+                $"saved={metadataSaved};schema={recipeAfterMetadataSave.SchemaVersion};category={recipeAfterMetadataSave.Category};target={recipeAfterMetadataSave.InspectionTarget};description={recipeAfterMetadataSave.Description};applyPreservedRun={metadataApplyPreservedRun};sameResult={ReferenceEquals(runResultBeforeRecipeInfo, reopenedShell.Workbench.CurrentOrderedRunResult)};sameRecordPath={reopenedShell.Workbench.CurrentOrderedRunRecordPath == recordPath};sameRecordBytes={recordBytesBeforeInfoEdit.SequenceEqual(File.ReadAllBytes(recordPath!))};runCount={reopenRunCount};save={metadataSaveMessage}");
             var valueValiditySummary = reopenedShell.ResultsValueValiditySummary;
             var validSampleMetric = record?.Steps?.SingleOrDefault()?.Metrics.SingleOrDefault(metric =>
                 metric.Name.Equals("ValidSampleCount", StringComparison.OrdinalIgnoreCase));
+            var referenceFitRmsMetric = record?.Steps?.SingleOrDefault()?.Metrics.SingleOrDefault(metric =>
+                metric.Name.Contains("fit", StringComparison.OrdinalIgnoreCase)
+                && metric.Name.Contains("rms", StringComparison.OrdinalIgnoreCase));
             Check(
-                "Results explains stored definition, raw-height unit basis, ROI, valid count, and unavailable residual without recomputation",
+                "Results explains stored definition, raw-height unit basis, ROI, valid count, and recorded fit residual without recomputation",
                 (valueValiditySummary.Contains("Definition", StringComparison.Ordinal)
                     || valueValiditySummary.Contains("정의", StringComparison.Ordinal))
                 && (valueValiditySummary.Contains("Unit basis", StringComparison.Ordinal)
@@ -182,10 +330,32 @@ internal static class ToolRecipeOrderedRunVerification
                     validSampleMetric.Value.ToString("G6", System.Globalization.CultureInfo.CurrentCulture),
                     StringComparison.Ordinal)
                 && (valueValiditySummary.Contains("physical calibration", StringComparison.OrdinalIgnoreCase)
-                    || valueValiditySummary.Contains("물리 보정", StringComparison.Ordinal))
-                && (valueValiditySummary.Contains("Fit residual", StringComparison.Ordinal)
-                    || valueValiditySummary.Contains("Unknown", StringComparison.Ordinal)),
+                    || valueValiditySummary.Contains("물리 보정", StringComparison.Ordinal)
+                    || valueValiditySummary.Contains("물리 교정", StringComparison.Ordinal))
+                && referenceFitRmsMetric is not null
+                && valueValiditySummary.Contains(
+                    FormatRecordedMetric(referenceFitRmsMetric),
+                    StringComparison.Ordinal),
                 valueValiditySummary.Replace(Environment.NewLine, " | "));
+            var operatorDecisionSummary = reopenedShell.ResultsOperatorDecisionSummary;
+            var meanMetric = record?.Steps?.SingleOrDefault()?.Metrics.SingleOrDefault(metric =>
+                metric.Name.Equals("Mean", StringComparison.OrdinalIgnoreCase));
+            var lowerLimitMetric = record?.Steps?.SingleOrDefault()?.Metrics.SingleOrDefault(metric =>
+                metric.Name.Equals("LowerLimit", StringComparison.OrdinalIgnoreCase));
+            var upperLimitMetric = record?.Steps?.SingleOrDefault()?.Metrics.SingleOrDefault(metric =>
+                metric.Name.Equals("UpperLimit", StringComparison.OrdinalIgnoreCase));
+            Check(
+                "Results foregrounds the recorded primary measurement, authored limits, and reference-fit RMS",
+                meanMetric is not null
+                && lowerLimitMetric is not null
+                && upperLimitMetric is not null
+                && referenceFitRmsMetric is not null
+                && operatorDecisionSummary.Contains(FormatRecordedMetric(meanMetric), StringComparison.Ordinal)
+                && operatorDecisionSummary.Contains(FormatRecordedMetric(lowerLimitMetric), StringComparison.Ordinal)
+                && operatorDecisionSummary.Contains(FormatRecordedMetric(upperLimitMetric), StringComparison.Ordinal)
+                && operatorDecisionSummary.Contains(FormatRecordedMetric(referenceFitRmsMetric), StringComparison.Ordinal)
+                && operatorDecisionSummary.Contains("Pass", StringComparison.Ordinal),
+                operatorDecisionSummary.Replace(Environment.NewLine, " | "));
             var valueValidityScenarios = VerifyResultsValueValidityScenarios(
                 root,
                 runRoot,
@@ -195,6 +365,24 @@ internal static class ToolRecipeOrderedRunVerification
                 "Results keeps Warpage residuals, unknown units, and failure reasons distinguishable",
                 valueValidityScenarios,
                 valueValidityScenarioDetail);
+            var otherMeasurementScenarios = VerifyOtherRecordedMeasurements(root, runRoot, record, out var otherMeasurementDetail);
+            Check(
+                "Results preserves recorded flatness, gap/flush, volume and section metrics after preparation, including invalid values",
+                otherMeasurementScenarios,
+                otherMeasurementDetail);
+            var measurementMeaning = VerifyRecordedMeasurementMeaning(root, runRoot, record, out var measurementMeaningDetail);
+            Check("Results distinguishes measurement direction, version and recorded unit evidence", measurementMeaning, measurementMeaningDetail);
+            var multiMeasurement = VerifyMultipleMeasurementExplanation(root, runRoot, record, out var multiMeasurementDetail);
+            Check("Results prioritizes failed recorded measurements with step and ROI identity", multiMeasurement, multiMeasurementDetail);
+            var runComparisonVerified = VerifyRunRecordComparison(
+                root,
+                runRoot,
+                record,
+                out var runComparisonDetail);
+            Check(
+                "Results compares two saved Runs without replacing current evidence or treating time as a condition",
+                runComparisonVerified,
+                runComparisonDetail);
             var stagedRunDirectories = Directory.Exists(runRoot)
                 ? Directory.GetDirectories(runRoot, "*.staging.*")
                 : Array.Empty<string>();
@@ -409,6 +597,8 @@ internal static class ToolRecipeOrderedRunVerification
                 "Run completion remains distinct from Run Record save failure",
                 recordSaveFailure,
                 recordSaveFailureDetail);
+            VerifySavedRecipeContext(root, runRoot, passDocument, Check);
+            VerifyRealQueueRecordRecovery(root, passRecipePath, Check);
             Check(
                 "Thickness Pass metric remains exact",
                 recordStep?.Metrics.Single(metric => metric.Name == "Mean").Value is { } mean
@@ -443,6 +633,8 @@ internal static class ToolRecipeOrderedRunVerification
                 && !reopenedShell.Workbench.HasOrderedRunResult
                 && reopenedShell.Workbench.CurrentOrderedRunRecordPath is null
                 && reopenedShell.InspectionSteps.Count == 0
+                && (reopenedShell.ResultsOperatorDecisionSummary.Contains("Not recorded", StringComparison.Ordinal)
+                    || reopenedShell.ResultsOperatorDecisionSummary.Contains("기록되지 않음", StringComparison.Ordinal))
                 && reopenRunCount == 1
                 && !reopenedShell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
                 && reopenedShell.Workbench.OrderedRunCapabilitySummary.Contains("저장", StringComparison.Ordinal),
@@ -469,6 +661,16 @@ internal static class ToolRecipeOrderedRunVerification
                 && failRecord?.Status == ResultStatus.Fail
                 && failRecord.Steps?.Single().Status == ResultStatus.Fail,
                 $"completed={failRun}; status={failRecord?.Status}; fullRuns={reopenRunCount}");
+
+            var samePathSourceChange = VerifySamePathInputBindingChange(
+                root,
+                passRecipePath,
+                runRoot,
+                out var samePathSourceChangeDetail);
+            Check(
+                "same-path input content change marks the recipe dirty and invalidates prior evidence",
+                samePathSourceChange,
+                samePathSourceChangeDetail);
 
             var corruptSourcePath = Path.Combine(root, "corrupt.C3D");
             File.Copy(sourcePath, corruptSourcePath);
@@ -636,12 +838,55 @@ internal static class ToolRecipeOrderedRunVerification
             && cancellationOwner.Summary.Contains("canceled", StringComparison.OrdinalIgnoreCase)
             && cancelCommandWasEnabled;
 
+        using var delayedSourceEntered = new ManualResetEventSlim();
+        using var releaseDelayedSource = new ManualResetEventSlim();
+        var delayedSourcePath = document.Source.Path;
+        var delayedCompletionCount = 0;
+        var delayedOwner = new ToolWorkbenchOrderedRunExecutionOwner(
+            () => document,
+            _ => (true, "ready"),
+            () => recipePath,
+            () => delayedSourcePath,
+            () =>
+            {
+                delayedSourceEntered.Set();
+                releaseDelayedSource.Wait();
+                return null;
+            },
+            () => Array.Empty<ToolWorkbenchPipelineStepItem>(),
+            _ => "completed",
+            (_, english) => english,
+            (_, _) => { },
+            () => { },
+            _ => Interlocked.Increment(ref delayedCompletionCount),
+            () => { });
+        var delayedRun = Task.Run(() => delayedOwner.RunAsync());
+        if (!delayedSourceEntered.Wait(TimeSpan.FromSeconds(5)))
+        {
+            detail = "delayed Run source gate was not entered within 5 seconds";
+            releaseDelayedSource.Set();
+            delayedRun.GetAwaiter().GetResult();
+            return false;
+        }
+
+        delayedSourcePath += ".changed";
+        delayedOwner.Invalidate("The input changed while the saved recipe was running.");
+        releaseDelayedSource.Set();
+        var delayedRunResult = delayedRun.GetAwaiter().GetResult();
+        var staleCompletionRejected = !delayedRunResult
+            && delayedCompletionCount == 0
+            && delayedOwner.Result is null
+            && delayedOwner.RecordPath is null
+            && !delayedOwner.IsRunning
+            && delayedOwner.Summary.Contains("canceled", StringComparison.OrdinalIgnoreCase);
+        delayedOwner.Dispose();
+
         using var commandFailureObserved = new ManualResetEventSlim();
         var commandFailureOwner = new ToolWorkbenchOrderedRunExecutionOwner(
             () => document,
             _ => (true, "ready"),
             () => recipePath,
-            () => string.Empty,
+            () => document.Source.Path,
             () => null,
             () => throw new InvalidOperationException("pipeline callback failure"),
             _ => "completed",
@@ -665,9 +910,56 @@ internal static class ToolRecipeOrderedRunVerification
 
         detail = $"singleFlight={singleFlight};capabilityCalls={capabilityCalls};"
             + $"cancellation={cancellationWorked};commandEnabled={commandWasEnabled};"
+            + $"staleCompletionRejected={staleCompletionRejected};"
             + $"commandFailureObserved={commandFailureWasObserved};completionCount={completionCount};"
             + $"summary={cancellationOwner.Summary}";
-        return singleFlight && cancellationWorked && commandWasEnabled && commandFailureWasObserved;
+        return singleFlight && cancellationWorked && staleCompletionRejected
+            && commandWasEnabled && commandFailureWasObserved;
+    }
+
+    private static bool VerifySamePathInputBindingChange(
+        string root,
+        string recipePath,
+        string runRoot,
+        out string detail)
+    {
+        using var shell = CreateShell(root, "same-path-input-change", runRoot);
+        if (!shell.Workbench.TryOpenTeachingRecipe(recipePath, out var openMessage))
+        {
+            detail = $"recipe open failed: {openMessage}";
+            return false;
+        }
+
+        if (WaitForSourceQuality(shell.Workbench.SourceQuality) is null
+            || !shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult()
+            || shell.Workbench.SourceSession.SourceBinding is not { } sourceBinding)
+        {
+            detail = $"Run or source binding unavailable: {shell.Workbench.OrderedRunCapabilitySummary}";
+            return false;
+        }
+
+        var changedSourceBinding = sourceBinding with
+        {
+            ContentSha256 = new string(sourceBinding.ContentSha256[0] == 'A' ? 'B' : 'A', 64)
+        };
+        shell.Workbench.SetC3DSourceFromLoadedViewer(shell.Workbench.Source.Path, changedSourceBinding);
+        var staleEvidenceInvalidated = shell.Workbench.IsDirty
+            && !shell.Workbench.HasOrderedRunResult
+            && shell.Workbench.CurrentOrderedRunRecordPath is null;
+        shell.Workbench.SetC3DSourceFromLoadedViewer(shell.Workbench.Source.Path, sourceBinding);
+        var recoveredQuality = WaitForSourceQuality(shell.Workbench.SourceQuality);
+        var saved = recoveredQuality is not null
+            && shell.Workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage);
+        var rerunCompleted = saved
+            && shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult();
+        detail = $"invalidated={staleEvidenceInvalidated};dirtyAfterRecovery={shell.Workbench.IsDirty};"
+            + $"saved={saved};rerun={rerunCompleted};record={shell.Workbench.CurrentOrderedRunRecordPath ?? "(none)"}";
+        return staleEvidenceInvalidated
+            && saved
+            && rerunCompleted
+            && !shell.Workbench.IsDirty
+            && shell.Workbench.HasOrderedRunResult
+            && shell.Workbench.CurrentOrderedRunRecordPath is not null;
     }
 
     private static ShellMainWindowViewModel CreateShell(
@@ -678,6 +970,164 @@ internal static class ToolRecipeOrderedRunVerification
             recentRunRecordsPath: Path.Combine(root, $"recent-runs-{name}.json"),
             recentRecipesPath: Path.Combine(root, $"recent-recipes-{name}.json"),
             orderedRunRecordRoot: runRoot);
+
+    private static bool VerifyRunRecordComparison(
+        string root,
+        string runRoot,
+        InspectionRunRecord? sourceRecord,
+        out string detail)
+    {
+        if (sourceRecord?.Steps is not { Count: > 0 } sourceSteps
+            || sourceSteps.Any(step => string.IsNullOrWhiteSpace(step.SemanticFingerprint)
+                                       || step.AlgorithmEvidence is null))
+        {
+            detail = "generated Run Record does not contain semantic and algorithm evidence";
+            return false;
+        }
+
+        var comparisonRoot = Path.Combine(root, "run-record-comparison");
+        Directory.CreateDirectory(comparisonRoot);
+        var currentPath = Path.Combine(comparisonRoot, "current.json");
+        var timeOnlyPath = Path.Combine(comparisonRoot, "time-only.json");
+        var changedConditionPath = Path.Combine(comparisonRoot, "changed-condition.json");
+        var incompatiblePath = Path.Combine(comparisonRoot, "incompatible-unit.json");
+        var recoveryPath = Path.Combine(comparisonRoot, "malformed-then-recovered.json");
+        InspectionRunRecordJson.Write(currentPath, sourceRecord);
+        var timeOnlyRecord = sourceRecord with
+        {
+            RunId = "comparison-time-only",
+            RecordedAtUtc = sourceRecord.RecordedAtUtc.AddMinutes(5),
+            ElapsedMilliseconds = sourceRecord.ElapsedMilliseconds + 321.0,
+            Timing = sourceRecord.Timing is { } timing
+                ? timing with
+                {
+                    TotalElapsedMilliseconds = timing.TotalElapsedMilliseconds + 321.0,
+                    Stages = timing.Stages.Select((stage, index) => index == 0
+                        ? stage with { ElapsedMilliseconds = stage.ElapsedMilliseconds + 321.0 }
+                        : stage).ToArray()
+                }
+                : null,
+            Steps = sourceSteps.Select(step => step with
+            {
+                ElapsedMilliseconds = step.ElapsedMilliseconds + 10.0
+            }).ToArray()
+        };
+        InspectionRunRecordJson.Write(timeOnlyPath, timeOnlyRecord);
+        var changedSteps = sourceSteps.Select((step, index) => index == 0
+            ? step with
+            {
+                SemanticFingerprint = ChangeSha256(step.SemanticFingerprint!),
+                AlgorithmEvidence = step.AlgorithmEvidence! with
+                {
+                    AlgorithmDefinitionVersion = step.AlgorithmEvidence.AlgorithmDefinitionVersion + ".changed"
+                }
+            }
+            : step).ToArray();
+        var changedConditionRecord = sourceRecord with
+        {
+            RunId = "comparison-changed-condition",
+            Recipe = sourceRecord.Recipe with
+            {
+                Sha256 = ChangeSha256(sourceRecord.Recipe.Sha256)
+            },
+            Steps = changedSteps
+        };
+        InspectionRunRecordJson.Write(changedConditionPath, changedConditionRecord);
+        var incompatibleRecord = sourceRecord with
+        {
+            RunId = "comparison-incompatible-unit",
+            Source = sourceRecord.Source with { Unit = sourceRecord.Source.Unit + ".changed" }
+        };
+        InspectionRunRecordJson.Write(incompatiblePath, incompatibleRecord);
+        InspectionRunRecordJson.Write(recoveryPath, timeOnlyRecord with
+        {
+            RunId = "comparison-recovery"
+        });
+
+        var recentPath = Path.Combine(comparisonRoot, "recent-runs.json");
+        using var shell = new ShellMainWindowViewModel(
+            runRecordPath: currentPath,
+            recentRunRecordsPath: recentPath,
+            recentRecipesPath: Path.Combine(comparisonRoot, "recent-recipes.json"),
+            orderedRunRecordRoot: runRoot);
+        shell.LoadRunRecord(timeOnlyPath, out _);
+        shell.LoadRunRecord(changedConditionPath, out _);
+        shell.LoadRunRecord(incompatiblePath, out _);
+        shell.LoadRunRecord(recoveryPath, out _);
+        shell.LoadRunRecord(currentPath, out _);
+        var initialRunSummary = shell.RunSnapshotSummary;
+        var initialStepSummary = shell.InspectionStepSummary;
+
+        shell.SelectedRecentRunRecord = SelectRecent(shell, timeOnlyPath);
+        var timeCommandEnabled = shell.CompareRecentRunRecordCommand.CanExecute(null);
+        shell.CompareRecentRunRecordCommand.Execute(null);
+        var timeOnlyPassed = timeCommandEnabled
+            && shell.RunRecordComparisonStatus == RunRecordComparisonState.DirectlyComparable
+            && shell.RunRecordComparisonDetails.Contains("ms", StringComparison.Ordinal)
+            && (shell.RunRecordComparisonDetails.Contains("판정/동일성", StringComparison.Ordinal)
+                || shell.RunRecordComparisonDetails.Contains("excluded from condition identity", StringComparison.Ordinal));
+
+        shell.SelectedRecentRunRecord = SelectRecent(shell, changedConditionPath);
+        var changedCompared = shell.CompareSelectedRunRecord(out var changedMessage);
+        var changedPassed = changedCompared
+            && shell.RunRecordComparisonStatus == RunRecordComparisonState.ConditionsChanged
+            && (shell.RunRecordComparisonDetails.Contains("fingerprint", StringComparison.OrdinalIgnoreCase)
+                || changedMessage.Contains("조건", StringComparison.Ordinal));
+
+        shell.SelectedRecentRunRecord = SelectRecent(shell, incompatiblePath);
+        var incompatibleCompared = shell.CompareSelectedRunRecord(out _);
+        var incompatiblePassed = incompatibleCompared
+            && shell.RunRecordComparisonStatus == RunRecordComparisonState.NotDirectlyComparable;
+
+        shell.SelectedRecentRunRecord = SelectRecent(shell, currentPath);
+        var sameRecordDisabled = !shell.CompareRecentRunRecordCommand.CanExecute(null);
+
+        shell.SelectedRecentRunRecord = SelectRecent(shell, recoveryPath);
+        File.WriteAllText(recoveryPath, "{ malformed");
+        var malformedRejected = !shell.CompareSelectedRunRecord(out _)
+            && shell.RunRecordComparisonStatus == RunRecordComparisonState.Error;
+        File.WriteAllText(recoveryPath, "{}");
+        var missingShapeRejected = !shell.CompareSelectedRunRecord(out _)
+            && shell.RunRecordComparisonStatus == RunRecordComparisonState.Error;
+        InspectionRunRecordJson.Write(recoveryPath, timeOnlyRecord with
+        {
+            RunId = "comparison-recovered"
+        });
+        var recoveryAccepted = shell.CompareSelectedRunRecord(out _)
+            && shell.RunRecordComparisonStatus == RunRecordComparisonState.DirectlyComparable;
+        var currentEvidenceUnchanged = string.Equals(
+                initialRunSummary,
+                shell.RunSnapshotSummary,
+                StringComparison.Ordinal)
+            && string.Equals(
+                initialStepSummary,
+                shell.InspectionStepSummary,
+                StringComparison.Ordinal)
+            && !shell.Workbench.HasOrderedRunResult;
+
+        detail = $"timeOnly={timeOnlyPassed};changed={changedPassed};"
+            + $"incompatible={incompatiblePassed};sameDisabled={sameRecordDisabled};"
+            + $"malformed={malformedRejected};missingShape={missingShapeRejected};recovery={recoveryAccepted};"
+            + $"currentUnchanged={currentEvidenceUnchanged};state={shell.RunRecordComparisonStatus}";
+        return timeOnlyPassed
+            && changedPassed
+            && incompatiblePassed
+            && sameRecordDisabled
+            && malformedRejected
+            && missingShapeRejected
+            && recoveryAccepted
+            && currentEvidenceUnchanged;
+    }
+
+    private static RunRecordRecentItem SelectRecent(
+        ShellMainWindowViewModel shell,
+        string path) => shell.RecentRunRecords.Single(item => string.Equals(
+            item.Path,
+            Path.GetFullPath(path),
+            StringComparison.OrdinalIgnoreCase));
+
+    private static string ChangeSha256(string value) =>
+        (value.StartsWith('0') ? "1" : "0") + value[1..];
 
     private static SourceQualityReport? WaitForSourceQuality(
         SourceQualityWorkspaceViewModel workspace)
@@ -947,9 +1397,17 @@ internal static class ToolRecipeOrderedRunVerification
             headless,
             savedRecipePath,
             out var parityDetail);
+        var measuredStep = uiRecord?.Steps?.FirstOrDefault(step =>
+            step.ToolId.Equals("thickness", StringComparison.OrdinalIgnoreCase));
+        var operatorSummary = reopenedShell.ResultsOperatorDecisionSummary;
+        var multistepResultsProjection = measuredStep?.Metrics.SingleOrDefault(metric =>
+            metric.Name.Equals("Mean", StringComparison.OrdinalIgnoreCase)) is { } meanMetric
+            && operatorSummary.Contains(FormatRecordedMetric(meanMetric), StringComparison.Ordinal)
+            && operatorSummary.Contains("Pass", StringComparison.Ordinal);
         detail = $"opened=1;crop={cropOutput.Width}x{cropOutput.Height}@{cropOutput.GridOriginColumn},{cropOutput.GridOriginRow};"
-            + $"runCompleted={runCompleted};uiRecord={recordPath};headless={headless.Status};{parityDetail}";
-        return runCompleted && parity;
+            + $"runCompleted={runCompleted};uiRecord={recordPath};headless={headless.Status};"
+            + $"multistepResults={multistepResultsProjection};operator={operatorSummary.Replace(Environment.NewLine, " | ")};{parityDetail}";
+        return runCompleted && parity && multistepResultsProjection;
     }
 
     private static bool CompareSemanticRunRecord(
@@ -1033,16 +1491,32 @@ internal static class ToolRecipeOrderedRunVerification
             sourceQuality);
         var uiStep = record?.Steps?.SingleOrDefault();
         var headlessStep = headless.Steps.SingleOrDefault();
+        var noDataMeanMetric = uiStep?.Metrics.SingleOrDefault(metric =>
+            metric.Name.Equals("Mean", StringComparison.OrdinalIgnoreCase));
         var passed = runCompleted
             && headless.Status == ResultStatus.Fail
             && record?.Status == ResultStatus.Fail
             && headlessStep?.Result.Status == ResultStatus.Fail
             && uiStep?.Status == ResultStatus.Fail
             && headless.Status is not ResultStatus.Error
-            && record.Status is not ResultStatus.Error;
+            && record.Status is not ResultStatus.Error
+            && noDataMeanMetric is not null
+            && shell.ResultsOperatorDecisionSummary.Contains(
+                FormatRecordedMetric(noDataMeanMetric),
+                StringComparison.Ordinal)
+            && shell.ResultsOperatorDecisionSummary.Contains(
+                "Fail",
+                StringComparison.Ordinal)
+            && (shell.ResultsOperatorDecisionSummary.Contains(
+                    "Reason",
+                    StringComparison.Ordinal)
+                || shell.ResultsOperatorDecisionSummary.Contains(
+                    "사유",
+                    StringComparison.Ordinal));
         detail = $"quality={sourceQuality is not null};runCompleted={runCompleted};"
             + $"ui={record?.Status};headless={headless.Status};uiStep={uiStep?.Status};"
-            + $"headlessStep={headlessStep?.Result.Status};message={headless.Message}";
+            + $"headlessStep={headlessStep?.Result.Status};message={headless.Message};"
+            + $"operator={shell.ResultsOperatorDecisionSummary.Replace(Environment.NewLine, " | ")}";
         return passed;
     }
 
@@ -1072,10 +1546,144 @@ internal static class ToolRecipeOrderedRunVerification
                 "Run Record",
                 StringComparison.OrdinalIgnoreCase)
             && (shell.ResultsValueValiditySummary.Contains("Error", StringComparison.Ordinal)
-                || shell.ResultsValueValiditySummary.Contains("오류", StringComparison.Ordinal));
+                || shell.ResultsValueValiditySummary.Contains("오류", StringComparison.Ordinal))
+            && shell.ResultsOperatorDecisionSummary.Contains(
+                "Error",
+                StringComparison.Ordinal)
+            && shell.ResultsOperatorDecisionSummary.Contains(
+                "Run Record",
+                StringComparison.OrdinalIgnoreCase);
+        var calculated = shell.Workbench.CurrentOrderedRunResult;
+        var pendingRecord = shell.Workbench.CurrentOrderedRunRecord;
+        var recipeBeforeRetry = File.ReadAllBytes(recipePath);
+        var sourcePath = shell.Workbench.Source.Path;
+        if (!Path.GetFullPath(sourcePath).StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Fault injection source must stay inside the owned verification fixture.");
+        var sourceBeforeRetry = File.ReadAllBytes(sourcePath);
+        var blockedNewRun = !shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult()
+            && !shell.Workbench.RunTeachingRecipeCommand.CanExecute(null);
+        var blockedRecipeOpen = !shell.Workbench.TryOpenTeachingRecipe(recipePath, out _);
+        shell.Workbench.CreateNewTeachingRecipe("must remain unchanged");
+        var blockedReplacement = blockedNewRun && blockedRecipeOpen && shell.Workbench.IsRecipeMutationBlocked
+            && !shell.Workbench.CanSaveTeachingRecipe && ReferenceEquals(calculated, shell.Workbench.CurrentOrderedRunResult)
+            && shell.Workbench.RecipePath == recipePath;
+        shell.Workbench.RetryOrderedRunRecordSaveCommand.Execute(null);
+        var retryFailurePreserves = shell.Workbench.HasPendingOrderedRunRecordSave
+            && ReferenceEquals(calculated, shell.Workbench.CurrentOrderedRunResult)
+            && ReferenceEquals(pendingRecord, shell.Workbench.CurrentOrderedRunRecord);
+        File.Delete(blockedRoot);
+        InspectionRunRecord? recovered;
+        try
+        {
+            // Only isolated fixture bytes are changed; saving must use the original calculation identity.
+            File.AppendAllText(recipePath, " ");
+            File.Delete(sourcePath);
+            shell.Workbench.RetryOrderedRunRecordSaveCommand.Execute(null);
+            recovered = ReadRecord(shell.Workbench.CurrentOrderedRunRecordPath);
+        }
+        finally
+        {
+            File.WriteAllBytes(recipePath, recipeBeforeRetry);
+            File.WriteAllBytes(sourcePath, sourceBeforeRetry);
+        }
+        var retrySavedOriginal = recovered is not null && pendingRecord is not null
+            && recovered.RunId == pendingRecord.RunId && recovered.RecordedAtUtc == pendingRecord.RecordedAtUtc
+            && recovered.Recipe.Sha256 == pendingRecord.Recipe.Sha256 && recovered.Source.Sha256 == pendingRecord.Source.Sha256
+            && ReferenceEquals(calculated, shell.Workbench.CurrentOrderedRunResult) && !shell.Workbench.HasPendingOrderedRunRecordSave
+            && recovered.ElapsedMilliseconds == pendingRecord.ElapsedMilliseconds
+            && recovered.Steps![0].Metrics.SequenceEqual(pendingRecord.Steps![0].Metrics);
         detail = $"runCompleted={runCompleted};record={(shell.Workbench.CurrentOrderedRunRecordPath ?? "(none)")};"
-            + $"result={shell.Workbench.HasOrderedRunResult};status={shell.StatusText}";
-        return runCompleted && failedToPersist;
+            + $"result={shell.Workbench.HasOrderedRunResult};status={shell.StatusText};"
+            + $"operator={shell.ResultsOperatorDecisionSummary.Replace(Environment.NewLine, " | ")};"
+            + $"pending={pendingRecord?.RunId};replacementBlocked={blockedReplacement};retryFailurePreserves={retryFailurePreserves};savedOriginal={retrySavedOriginal}";
+        return runCompleted && failedToPersist && blockedReplacement && retryFailurePreserves && retrySavedOriginal;
+    }
+
+    private static void VerifySavedRecipeContext(string root, string runRoot, ToolRecipeDocument document, Action<string, bool, string> check)
+    {
+        var path = Path.Combine(root, "saved-context.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(path, document, out var writtenHash);
+        _ = ToolRecipeDocumentStore.Load(path, out var loadedHash);
+        check("recipe store identities describe the bytes written and loaded", writtenHash == loadedHash && loadedHash == ComputeHashBytes(File.ReadAllBytes(path)), loadedHash);
+        using var shell = CreateShell(root, "saved-context", runRoot);
+        shell.Workbench.TryOpenTeachingRecipe(path, out _);
+        _ = WaitForSourceQuality(shell.Workbench.SourceQuality);
+        var count = 0;
+        shell.Workbench.OrderedRunCompleted += (_, _) => count++;
+        var originalBytes = File.ReadAllBytes(path);
+        File.AppendAllText(path, " ");
+        check("external recipe edit before the first Run fails closed without a record", !shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
+            && !shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult() && count == 0 && !shell.Workbench.HasOrderedRunResult, shell.Workbench.OrderedRunCapabilitySummary);
+        File.WriteAllBytes(path, originalBytes);
+        check("restoring the accepted recipe bytes recovers readiness without execution", shell.Workbench.RunTeachingRecipeCommand.CanExecute(null) && count == 0, shell.Workbench.OrderedRunCapabilitySummary);
+        shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult();
+        var previousResult = shell.Workbench.CurrentOrderedRunResult;
+        var previousRecord = shell.Workbench.CurrentOrderedRunRecord;
+        File.AppendAllText(path, " ");
+        check("rejected external recipe edit retains the previous calculation and record", !shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult()
+            && count == 1 && ReferenceEquals(previousResult, shell.Workbench.CurrentOrderedRunResult) && ReferenceEquals(previousRecord, shell.Workbench.CurrentOrderedRunRecord), shell.Workbench.OrderedRunCapabilitySummary);
+        shell.Workbench.TrySaveTeachingRecipe(path, out var saveMessage);
+        check("explicit save accepts the current conditions without recalculation", count == 1 && shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
+            && ReferenceEquals(previousResult, shell.Workbench.CurrentOrderedRunResult), saveMessage);
+
+        var inject = false;
+        var completions = 0;
+        using var owner = new ToolWorkbenchOrderedRunExecutionOwner(() => document, _ =>
+        {
+            if (inject) File.AppendAllText(path, " ");
+            return (true, "ready");
+        }, () => path, () => document.Source.Path, () => null, () => [], _ => "complete", (_, english) => english,
+            (_, _) => { }, () => { }, _ => completions++, () => { }, getSavedRecipeSha256: () => ComputeHashBytes(originalBytes));
+        File.WriteAllBytes(path, originalBytes);
+        owner.RunAsync().GetAwaiter().GetResult();
+        var ownerPrevious = owner.Result;
+        inject = true;
+        check("recipe edit between admission and identity capture retains the old result", !owner.RunAsync().GetAwaiter().GetResult()
+            && completions == 1 && ReferenceEquals(ownerPrevious, owner.Result) && owner.Summary.Contains("changed", StringComparison.OrdinalIgnoreCase), owner.Summary);
+        inject = false;
+        File.WriteAllBytes(path, originalBytes);
+        check("identity race recovery executes only on a new explicit Run", owner.RunAsync().GetAwaiter().GetResult() && completions == 2, $"completions={completions}");
+    }
+
+    private static string ComputeHashBytes(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
+
+    private static void VerifyRealQueueRecordRecovery(string root, string recipePath, Action<string, bool, string> check)
+    {
+        var blockedRoot = Path.Combine(root, "queue-record-root-file");
+        File.WriteAllText(blockedRoot, "owned queue record-save fault");
+        using var shell = CreateShell(root, "queue-record-recovery", blockedRoot);
+        shell.Workbench.TryOpenTeachingRecipe(recipePath, out _);
+        _ = WaitForSourceQuality(shell.Workbench.SourceQuality);
+        var secondSource = Path.Combine(root, "queue-second.C3D");
+        File.Copy(shell.Workbench.Source.Path, secondSource, overwrite: true);
+        var queue = shell.Workbench.InspectionQueue;
+        queue.AddSources([shell.Workbench.Source.Path, secondSource]);
+        var runs = 0;
+        shell.Workbench.OrderedRunCompleted += (_, _) => runs++;
+        queue.RunAllCommand.Execute(null);
+        if (!SpinWait.SpinUntil(() => !queue.IsRunning, TimeSpan.FromSeconds(15))) throw new TimeoutException("Owned queue record-save fault did not finish.");
+        var first = queue.Samples[0];
+        var pending = first.Record;
+        var calculation = shell.Workbench.CurrentOrderedRunResult;
+        check("real queue stops at record-save failure with calculation retained", runs == 1 && queue.HasPendingRecordSave && pending is not null
+            && calculation?.Status == ResultStatus.Pass && first.Steps.Count == 1 && queue.Samples[1].State == InspectionQueueItemState.Untested,
+            $"runs={runs};pending={queue.HasPendingRecordSave};next={queue.Samples[1].State}");
+        check("pending real queue blocks teaching import and re-entry", !queue.UseSelectedInputForTeachingCommand.CanExecute(null)
+            && !queue.RunAllCommand.CanExecute(null) && shell.Workbench.IsRecipeMutationBlocked, $"import={queue.CanUseSelectedInputForTeaching}");
+        queue.RetryRecordSaveCommand.Execute(null);
+        check("failed real save retry does not calculate again", runs == 2 && queue.HasPendingRecordSave && ReferenceEquals(pending, first.Record)
+            && ReferenceEquals(calculation, shell.Workbench.CurrentOrderedRunResult), $"completionNotifications={runs};runId={first.Record?.RunId}");
+        File.Delete(blockedRoot);
+        queue.RetryRecordSaveCommand.Execute(null);
+        var record = ReadRecord(first.RunRecordPath);
+        check("successful real save retry retains original identity and leaves remainder idle", !queue.HasPendingRecordSave && record is not null && pending is not null && record.RunId == pending.RunId
+            && record?.RecordedAtUtc == pending?.RecordedAtUtc && record?.Recipe.Sha256 == pending?.Recipe.Sha256
+            && record?.Source.Sha256 == pending?.Source.Sha256 && ReferenceEquals(calculation, shell.Workbench.CurrentOrderedRunResult)
+            && queue.Samples[1].State == InspectionQueueItemState.Untested && !queue.IsRunning, first.RunRecordPath ?? "no record");
+        var firstRecordPath = first.RunRecordPath;
+        queue.RunRemainingCommand.Execute(null);
+        if (!SpinWait.SpinUntil(() => !queue.IsRunning, TimeSpan.FromSeconds(15))) throw new TimeoutException("Owned remaining-file Run did not finish.");
+        check("explicit real remainder Run preserves the saved first record", first.RunRecordPath == firstRecordPath && first.Record?.RunId == pending?.RunId
+            && queue.Samples[1].State == InspectionQueueItemState.Pass && queue.Samples[1].Record?.Source.Path == secondSource, $"first={first.Record?.RunId};second={queue.Samples[1].Record?.RunId}");
     }
 
     private static bool VerifyResultsValueValidityScenarios(
@@ -1130,12 +1738,16 @@ internal static class ToolRecipeOrderedRunVerification
         using var warpageShell = CreateShell(root, "results-value-validity-warpage", runRoot);
         var warpageLoaded = warpageShell.LoadRunRecord(warpagePath, out var warpageMessage);
         var warpageSummary = warpageShell.ResultsValueValiditySummary;
+        var warpageOperatorSummary = warpageShell.ResultsOperatorDecisionSummary;
         var warpagePass = warpageLoaded
             && warpageSummary.Contains("PeakToValley=0.3", StringComparison.Ordinal)
             && warpageSummary.Contains("Rms=0.1", StringComparison.Ordinal)
             && warpageSummary.Contains("ValidSampleCount=8", StringComparison.Ordinal)
             && warpageSummary.Contains("best-fit inspection ROI", StringComparison.OrdinalIgnoreCase)
-            && warpageSummary.Contains("Pass", StringComparison.Ordinal);
+            && warpageSummary.Contains("Pass", StringComparison.Ordinal)
+            && warpageOperatorSummary.Contains("PeakToValley=0.3", StringComparison.Ordinal)
+            && warpageOperatorSummary.Contains("Rms=0.1", StringComparison.Ordinal)
+            && warpageOperatorSummary.Contains("Pass", StringComparison.Ordinal);
 
         var invalidMetrics = warpageStep.Metrics
             .Select(metric => metric with { Unit = string.Empty })
@@ -1162,17 +1774,287 @@ internal static class ToolRecipeOrderedRunVerification
         using var invalidShell = CreateShell(root, "results-value-validity-invalid", runRoot);
         var invalidLoaded = invalidShell.LoadRunRecord(invalidPath, out var invalidMessage);
         var invalidSummary = invalidShell.ResultsValueValiditySummary;
+        var invalidOperatorSummary = invalidShell.ResultsOperatorDecisionSummary;
         var invalidPass = invalidLoaded
             && invalidSummary.Contains("Unknown", StringComparison.Ordinal)
             && invalidSummary.Contains("Fail (NG)", StringComparison.Ordinal)
             && invalidSummary.Contains("Bad reference plane", StringComparison.Ordinal)
-            && invalidSummary.Contains("Insufficient valid ROI samples", StringComparison.Ordinal);
+            && invalidSummary.Contains("Insufficient valid ROI samples", StringComparison.Ordinal)
+            && invalidOperatorSummary.Contains("PeakToValley=0.3", StringComparison.Ordinal)
+            && invalidOperatorSummary.Contains("Rms=0.1", StringComparison.Ordinal)
+            && invalidOperatorSummary.Contains("Fail (NG)", StringComparison.Ordinal)
+            && invalidOperatorSummary.Contains("Bad reference plane", StringComparison.Ordinal)
+            && invalidOperatorSummary.Contains("Insufficient valid ROI samples", StringComparison.Ordinal);
+
+        var warningRecord = warpageRecord with
+        {
+            Status = ResultStatus.Warning,
+            Message = "Reference-fit evidence is incomplete.",
+            Steps =
+            [
+                warpageStep with
+                {
+                    Status = ResultStatus.Warning,
+                    Message = "Reference fit RMS was not recorded.",
+                    Metrics = warpageStep.Metrics
+                        .Where(metric => !metric.Name.Equals("Rms", StringComparison.OrdinalIgnoreCase))
+                        .ToArray()
+                }
+            ]
+        };
+        var warningPath = Path.Combine(root, "results-value-validity-warning.json");
+        InspectionRunRecordJson.Write(warningPath, warningRecord);
+        using var warningShell = CreateShell(root, "results-value-validity-warning", runRoot);
+        var warningLoaded = warningShell.LoadRunRecord(warningPath, out var warningMessage);
+        var warningSummary = warningShell.ResultsOperatorDecisionSummary;
+        var warningPass = warningLoaded
+            && warningSummary.Contains("Warning", StringComparison.Ordinal)
+            && warningSummary.Contains("PeakToValley=0.3", StringComparison.Ordinal)
+            && (warningSummary.Contains("Reference-fit RMS", StringComparison.Ordinal)
+                || warningSummary.Contains("기준면 Fit RMS", StringComparison.Ordinal))
+            && (warningSummary.Contains("Not recorded", StringComparison.Ordinal)
+                || warningSummary.Contains("기록되지 않음", StringComparison.Ordinal))
+            && warningSummary.Contains("Reference fit RMS was not recorded", StringComparison.Ordinal);
+
+        var cancelledRecord = warpageRecord with
+        {
+            Status = ResultStatus.NotRun,
+            Message = "Run was cancelled before measurement evidence was recorded.",
+            Steps =
+            [
+                warpageStep with
+                {
+                    Status = ResultStatus.NotRun,
+                    Message = "Run was cancelled before measurement evidence was recorded.",
+                    Metrics = []
+                }
+            ]
+        };
+        var cancelledPath = Path.Combine(root, "results-value-validity-cancelled.json");
+        InspectionRunRecordJson.Write(cancelledPath, cancelledRecord);
+        using var cancelledShell = CreateShell(root, "results-value-validity-cancelled", runRoot);
+        var cancelledLoaded = cancelledShell.LoadRunRecord(cancelledPath, out var cancelledMessage);
+        var cancelledSummary = cancelledShell.ResultsOperatorDecisionSummary;
+        var cancelledPass = cancelledLoaded
+            && cancelledSummary.Contains("NotRun", StringComparison.Ordinal)
+            && (cancelledSummary.Contains("Not recorded", StringComparison.Ordinal)
+                || cancelledSummary.Contains("기록되지 않음", StringComparison.Ordinal))
+            && cancelledSummary.Contains("Run was cancelled before measurement evidence was recorded", StringComparison.Ordinal);
 
         detail = $"warpageLoaded={warpageLoaded};warpagePass={warpagePass};warpageMessage={warpageMessage};"
             + $"invalidLoaded={invalidLoaded};invalidPass={invalidPass};invalidMessage={invalidMessage};"
+            + $"warningLoaded={warningLoaded};warningPass={warningPass};warningMessage={warningMessage};"
+            + $"cancelledLoaded={cancelledLoaded};cancelledPass={cancelledPass};cancelledMessage={cancelledMessage};"
             + $"warpage={warpageSummary.Replace(Environment.NewLine, " | ")};"
-            + $"invalid={invalidSummary.Replace(Environment.NewLine, " | ")}";
-        return warpagePass && invalidPass;
+            + $"invalid={invalidSummary.Replace(Environment.NewLine, " | ")};"
+            + $"warning={warningSummary.Replace(Environment.NewLine, " | ")};"
+            + $"cancelled={cancelledSummary.Replace(Environment.NewLine, " | ")}";
+        return warpagePass && invalidPass && warningPass && cancelledPass;
+    }
+
+    private static bool VerifyOtherRecordedMeasurements(string root, string runRoot, InspectionRunRecord? sourceRecord, out string detail)
+    {
+        if (sourceRecord?.Steps?.SingleOrDefault() is not { } sourceStep)
+        {
+            detail = "source Run Record step is unavailable";
+            return false;
+        }
+
+        var cases = new[]
+        {
+            (ToolId: "plane-flatness", Primary: new[] { "Reference-plane deviation range", "Reference-plane absolute peak" }, Limits: new[] { "Flatness tolerance" }, Unit: "model"),
+            (ToolId: "gap-flush", Primary: new[] { "Signed gap", "Signed flush" }, Limits: new[] { "Expected gap", "Gap tolerance", "Expected flush", "Flush tolerance" }, Unit: "model"),
+            (ToolId: "volume", Primary: new[] { "Signed net volume", "Above-plane volume", "Below-plane volume" }, Limits: new[] { "Expected net volume", "Volume tolerance" }, Unit: "model^3"),
+            (ToolId: "cross-section-dimensions", Primary: new[] { "Section width", "H range" }, Limits: Array.Empty<string>(), Unit: "model")
+        };
+        var results = new List<string>();
+        var passed = true;
+        foreach (var test in cases)
+        {
+            var metrics = test.Primary.Concat(test.Limits)
+                .Select((name, index) => new InspectionRunMetric(name, MetricKind.Number, name.StartsWith("Signed", StringComparison.Ordinal) ? -1.25 : index + 0.25, test.Unit, ResultStatus.Pass)).ToArray();
+            var measurementStep = sourceStep with
+            {
+                Id = "measurement." + test.ToolId,
+                ToolId = test.ToolId,
+                ToolName = test.ToolId,
+                Metrics = metrics,
+                AlgorithmEvidence = null
+            };
+            var preparationStep = sourceStep with
+            {
+                Id = "preparation",
+                ToolId = "filter",
+                ToolName = "Filter",
+                Metrics = [new InspectionRunMetric("Mean", MetricKind.Number, 999, test.Unit, ResultStatus.Pass)]
+            };
+            var fixture = sourceRecord with { Steps = [preparationStep, measurementStep] };
+            var path = Path.Combine(root, "results-recorded-" + test.ToolId + ".json");
+            InspectionRunRecordJson.Write(path, fixture);
+            var originalBytes = File.ReadAllBytes(path);
+            using var shell = CreateShell(root, "results-recorded-" + test.ToolId, runRoot);
+            var loaded = shell.LoadRunRecord(path, out var message);
+            var summary = shell.ResultsOperatorDecisionSummary;
+            var normalPass = loaded
+                && metrics.All(metric => summary.Contains(FormatRecordedMetric(metric), StringComparison.Ordinal))
+                && !summary.Contains("Mean=999", StringComparison.Ordinal)
+                && originalBytes.SequenceEqual(File.ReadAllBytes(path));
+
+            var invalidFixture = fixture with
+            {
+                Status = ResultStatus.Error,
+                Message = "Measurement evidence is unavailable.",
+                Steps = [preparationStep, measurementStep with
+                {
+                    Status = ResultStatus.Error,
+                    Message = "Measurement evidence is unavailable.",
+                    Metrics = [metrics[0] with { Value = double.NaN, Status = ResultStatus.Error }]
+                }]
+            };
+            var invalidPath = Path.Combine(root, "results-recorded-" + test.ToolId + "-invalid.json");
+            InspectionRunRecordJson.Write(invalidPath, invalidFixture);
+            var invalidBytes = File.ReadAllBytes(invalidPath);
+            var invalidLoaded = shell.LoadRunRecord(invalidPath, out var invalidMessage);
+            var invalidSummary = shell.ResultsOperatorDecisionSummary;
+            var invalidPass = invalidLoaded
+                && invalidSummary.Contains("Error", StringComparison.Ordinal)
+                && invalidSummary.Contains("Measurement evidence is unavailable.", StringComparison.Ordinal)
+                && !invalidSummary.Contains("NaN", StringComparison.Ordinal)
+                && !invalidSummary.Contains("Mean=999", StringComparison.Ordinal)
+                && invalidSummary.Contains(test.Primary[0] + "=", StringComparison.Ordinal)
+                && (invalidSummary.Contains("Unavailable", StringComparison.Ordinal) || invalidSummary.Contains("계산 불가", StringComparison.Ordinal))
+                && invalidBytes.SequenceEqual(File.ReadAllBytes(invalidPath));
+            passed &= normalPass && invalidPass;
+            results.Add($"{test.ToolId}:normal={normalPass},invalid={invalidPass},load={message}/{invalidMessage}; summary={summary.Replace(Environment.NewLine, " | ")}; invalid={invalidSummary.Replace(Environment.NewLine, " | ")}");
+        }
+
+        detail = string.Join("; ", results);
+        return passed;
+    }
+
+    private static bool VerifyRecordedMeasurementMeaning(string root, string runRoot, InspectionRunRecord? sourceRecord, out string detail)
+    {
+        if (sourceRecord?.Steps?.SingleOrDefault() is not { } sourceStep)
+        {
+            detail = "source Run Record step is unavailable";
+            return false;
+        }
+
+        var results = new List<string>();
+        var passed = true;
+        var cases = new[]
+        {
+            (Id: "thickness", Tool: "thickness", Version: "height-measurement-execution-v1", Unit: "raw-height", Evidence: HeightMeasurementEvidence.RawHeight(), Token: "H-axis height difference", Korean: "H축 높이차"),
+            (Id: "flatness", Tool: "plane-flatness", Version: "height-measurement-execution-v1", Unit: "mm", Evidence: HeightMeasurementEvidence.DeclaredUnit("Declared mm only"), Token: "not GD&T minimum-zone", Korean: "GD&T 최소영역"),
+            (Id: "future", Tool: "thickness", Version: "future-definition-v2", Unit: "raw-height", Evidence: HeightMeasurementEvidence.RawHeight(), Token: "Measurement definition unavailable", Korean: "측정 방식 확인 불가"),
+            (Id: "legacy", Tool: "thickness", Version: (string?)null, Unit: "raw-height", Evidence: HeightMeasurementEvidence.Unavailable(), Token: "Measurement definition unavailable", Korean: "측정 방식 확인 불가"),
+            (Id: "declared", Tool: "thickness", Version: "height-measurement-execution-v1", Unit: "mm", Evidence: HeightMeasurementEvidence.DeclaredUnit("Declared mm only"), Token: "Declared input unit", Korean: "입력 단위만 선언됨"),
+            (Id: "calibrated", Tool: "thickness", Version: "height-measurement-execution-v1", Unit: "mm", Evidence: HeightMeasurementEvidence.CalibratedPhysical("sensor.test", "calibration.recorded", "frame.test", "Saved calibration evidence"), Token: "Recorded input calibration", Korean: "기록된 입력 교정"),
+            (Id: "unavailable", Tool: "thickness", Version: "height-measurement-execution-v1", Unit: "mm", Evidence: HeightMeasurementEvidence.Unavailable(), Token: "Input unit evidence unavailable", Korean: "입력 단위 근거 없음"),
+            (Id: "volume-missing-unit", Tool: "volume", Version: "height-measurement-execution-v1", Unit: "mm", Evidence: HeightMeasurementEvidence.DeclaredUnit("Declared mm only"), Token: "Measurement units: Unknown", Korean: "측정 단위: Unknown"),
+            (Id: "mixed-units", Tool: "gap-flush", Version: "height-measurement-execution-v1", Unit: "raw-height", Evidence: HeightMeasurementEvidence.RawHeight(), Token: "model, raw-height", Korean: "model, raw-height"),
+            (Id: "error-unit", Tool: "volume", Version: "height-measurement-execution-v1", Unit: "mm", Evidence: HeightMeasurementEvidence.DeclaredUnit("Declared mm only"), Token: "Measurement units: mm^3", Korean: "측정 단위: mm^3"),
+            (Id: "gap-definition", Tool: "gap-flush", Version: "height-measurement-execution-v1", Unit: "model", Evidence: HeightMeasurementEvidence.Unavailable(), Token: "ROI order", Korean: "ROI 순서"),
+            (Id: "volume-definition", Tool: "volume", Version: "height-measurement-execution-v1", Unit: "model^3", Evidence: HeightMeasurementEvidence.Unavailable(), Token: "cell area", Korean: "셀 면적"),
+            (Id: "section-definition", Tool: "cross-section-dimensions", Version: "height-measurement-execution-v1", Unit: "model", Evidence: HeightMeasurementEvidence.Unavailable(), Token: "not length along", Korean: "따라 잰 길이가 아닙니다"),
+            (Id: "future-gap", Tool: "gap-flush", Version: "future-definition-v2", Unit: "model", Evidence: HeightMeasurementEvidence.Unavailable(), Token: "Measurement definition unavailable", Korean: "측정 방식 확인 불가")
+        };
+        foreach (var test in cases)
+        {
+            var metrics = test.Id switch
+            {
+                "volume-missing-unit" => new[] { new InspectionRunMetric("Signed net volume", MetricKind.Number, 2.5, "", ResultStatus.Pass) },
+                "mixed-units" => [new InspectionRunMetric("Signed gap", MetricKind.Number, 2, "model", null), new InspectionRunMetric("Signed flush", MetricKind.Number, -1, "raw-height", null)],
+                "error-unit" => [new InspectionRunMetric("Signed net volume", MetricKind.Number, double.NaN, "mm^3", ResultStatus.Error)],
+                _ => [new InspectionRunMetric(test.Tool == "plane-flatness" ? "Reference-plane deviation range" : "Mean", MetricKind.Number, 2.5, test.Unit, ResultStatus.Pass)]
+            };
+            var fixture = sourceRecord with
+            {
+                Source = sourceRecord.Source with { Unit = test.Unit, FrameId = "frame.test", SensorId = "sensor.test", MeasurementEvidence = test.Evidence },
+                SourceQualityEvidence = InspectionRunSourceQualityEvidence.Unavailable("Isolated presentation fixture"),
+                Status = test.Id == "error-unit" ? ResultStatus.Error : ResultStatus.Pass,
+                Steps = [sourceStep with
+                {
+                    ToolId = test.Tool,
+                    ToolName = test.Tool,
+                    Status = test.Id == "error-unit" ? ResultStatus.Error : ResultStatus.Pass,
+                    Metrics = metrics,
+                    AlgorithmEvidence = test.Version is null ? null : new InspectionRunAlgorithmEvidence(test.Version, "OpenVisionLab.Vision3D", "verification")
+                }]
+            };
+            var path = Path.Combine(root, "measurement-meaning-" + test.Id + ".json");
+            InspectionRunRecordJson.Write(path, fixture);
+            var originalBytes = File.ReadAllBytes(path);
+            using var shell = CreateShell(root, "measurement-meaning-" + test.Id, runRoot);
+            var loaded = shell.LoadRunRecord(path, out var message);
+            var summary = shell.ResultsValueValiditySummary;
+            var definition = summary.Split(Environment.NewLine)[0];
+            var unitBasis = summary.Split(Environment.NewLine).ElementAtOrDefault(1) ?? string.Empty;
+            var correct = loaded
+                && (summary.Contains(test.Token, StringComparison.Ordinal) || summary.Contains(test.Korean, StringComparison.Ordinal))
+                && originalBytes.SequenceEqual(File.ReadAllBytes(path))
+                && !shell.Workbench.HasOrderedRunResult;
+            if (test.Id is "future" or "legacy")
+                correct &= !definition.Contains("H-axis", StringComparison.Ordinal) && !definition.Contains("H축", StringComparison.Ordinal);
+            if (test.Id == "flatness")
+                correct &= definition.Contains("signed orthogonal", StringComparison.Ordinal) || definition.Contains("부호 있는 수직거리", StringComparison.Ordinal);
+            if (test.Id is "declared" or "calibrated" or "unavailable")
+                correct &= !unitBasis.Contains("raw-height", StringComparison.OrdinalIgnoreCase) && !unitBasis.Contains("원시", StringComparison.Ordinal);
+            if (test.Id == "calibrated")
+                correct &= unitBasis.Contains("calibration.recorded", StringComparison.Ordinal);
+            if (test.Id == "error-unit")
+                correct &= summary.Contains("Error", StringComparison.Ordinal) && !shell.ResultsOperatorDecisionSummary.Contains("NaN", StringComparison.Ordinal);
+            passed &= correct;
+            results.Add($"{test.Id}={correct}; load={message}; {definition}; {unitBasis}");
+        }
+
+        detail = string.Join(" | ", results);
+        return passed;
+    }
+
+    private static bool VerifyMultipleMeasurementExplanation(string root, string runRoot, InspectionRunRecord? record, out string detail)
+    {
+        if (record?.Steps?.FirstOrDefault() is not { } template)
+        {
+            detail = "source record unavailable";
+            return false;
+        }
+        var results = new List<string>();
+        var passed = true;
+        foreach (var scenario in new[] { (ResultStatus.Pass, false), (ResultStatus.Fail, false), (ResultStatus.Error, true), (ResultStatus.Pass, true) })
+        {
+            var (status, invalid) = scenario;
+            var first = template with { Id = "recorded.first", Status = ResultStatus.Pass };
+            var second = template with
+            {
+                Id = "recorded.second", Status = status,
+                Metrics = [new InspectionRunMetric("Mean", MetricKind.Number, invalid ? double.PositiveInfinity : 12.5, "raw-height", status)],
+                Overlays = [new InspectionRunOverlay("roi.reference", OverlayKind.Box, "Recorded reference ROI A", status, "input.old"),
+                    new InspectionRunOverlay("roi.measurement", OverlayKind.Box, "Recorded measurement ROI B", status, "input.old")]
+            };
+            var fixture = record with { Status = status, Steps = [first, second] };
+            var path = Path.Combine(root, $"multiple-measurement-{status}-{invalid}.json");
+            InspectionRunRecordJson.Write(path, fixture);
+            var bytes = File.ReadAllBytes(path);
+            using var shell = CreateShell(root, "multiple-measurement-" + status, runRoot);
+            var loaded = shell.LoadRunRecord(path, out var message);
+            var summary = shell.ResultsOperatorDecisionSummary;
+            var validity = shell.ResultsValueValiditySummary;
+            var expectedId = status == ResultStatus.Pass && !invalid ? first.Id : second.Id;
+            var correct = loaded && summary.Contains(expectedId, StringComparison.Ordinal)
+                && validity.Contains(expectedId, StringComparison.Ordinal)
+                && bytes.SequenceEqual(File.ReadAllBytes(path)) && !shell.Workbench.HasOrderedRunResult;
+            if (status != ResultStatus.Pass || invalid)
+                correct &= validity.Contains("Recorded reference ROI A", StringComparison.Ordinal)
+                    && validity.Contains("Recorded measurement ROI B", StringComparison.Ordinal);
+            if (invalid)
+                correct &= summary.Contains("Error", StringComparison.Ordinal) && !summary.Contains("Infinity", StringComparison.Ordinal) && !summary.Contains("Mean=0", StringComparison.Ordinal)
+                    && (summary.Contains("Unavailable", StringComparison.Ordinal) || summary.Contains("계산 불가", StringComparison.Ordinal));
+            passed &= correct;
+            results.Add($"{status}={correct}; load={message}; {summary.Replace(Environment.NewLine, " | ")}");
+        }
+        detail = string.Join("; ", results);
+        return passed;
     }
 
     private static InspectionRunRecord? ReadRecord(string? path) =>
@@ -1181,4 +2063,9 @@ internal static class ToolRecipeOrderedRunVerification
             : JsonSerializer.Deserialize<InspectionRunRecord>(
                 File.ReadAllText(path),
                 JsonOptions);
+
+    private static string FormatRecordedMetric(InspectionRunMetric metric) =>
+        string.IsNullOrWhiteSpace(metric.Unit)
+            ? $"{metric.Name}={metric.Value:G6}"
+            : $"{metric.Name}={metric.Value:G6} {metric.Unit}";
 }

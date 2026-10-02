@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading;
 using System.Windows;
@@ -19,6 +20,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     private RecipePipelineReviewView? pipelineReview;
     private ShellMainWindowViewModel? shell;
     private DispatcherOperation? teachStageActivationOperation;
+    private IInputElement? toolLibraryReturnFocus;
+    private int toolLibraryStepCountAtOpen;
     private int disposalState;
 
     public static readonly DependencyProperty ViewerContentProperty =
@@ -44,7 +47,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         SetBinding(
             WorkspaceSelectionCommandProperty,
             new Binding("DataContext.SelectWorkspaceCommand") { Source = this });
-        BindStageHostedContext(DockWorkspace.ToolLibraryContent, "DataContext.Workbench");
+        BindStageHostedContext(ToolLibraryDialogContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.DataLayersContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.ViewerContent, "DataContext");
         BindStageHostedContext(DockWorkspace.ResultsContent, "DataContext");
@@ -159,7 +162,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     public bool HasStableStageHostedDataContexts =>
         DataContext is ShellMainWindowViewModel currentShell
-        && HasDataContext(DockWorkspace.ToolLibraryContent, currentShell.Workbench)
+        && HasDataContext(ToolLibraryDialogContent, currentShell.Workbench)
         && HasDataContext(DockWorkspace.DataLayersContent, currentShell.Workbench)
         && HasDataContext(DockWorkspace.ViewerContent, currentShell)
         && HasDataContext(DockWorkspace.ResultsContent, currentShell)
@@ -316,26 +319,14 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     public (bool Collapsed, bool Restored) VerifySupportAutoHideRoundTrip() =>
         DockWorkspace.VerifySupportAutoHideRoundTrip();
 
-    public bool HasNoVisibleWorkspaceCommandBar =>
-        WorkspaceCommandBar.Visibility == Visibility.Collapsed;
+    public bool HasVisibleWorkspaceCommandBar =>
+        WorkspaceCommandBar.Visibility == Visibility.Visible;
 
     public bool IsToolInspectorPaneSelected =>
         DockWorkspace.IsToolInspectorPaneSelected;
 
     public bool HasRecipeFlowInspectorViewerOrder =>
         DockWorkspace.HasRecipeFlowInspectorViewerOrder;
-
-    public bool HasVisibleAuthoringFirstActionGuide =>
-        DockWorkspace.DataLayersContent is RecipeChainView
-        {
-            HasVisibleFirstActionGuide: true
-        };
-
-    public bool HasSingleVisibleAuthoringFirstAction =>
-        DockWorkspace.DataLayersContent is RecipeChainView
-        {
-            HasSingleVisibleFirstAction: true
-        };
 
     public bool HasRecipeHealthNavigation =>
         DockWorkspace.DataLayersContent is RecipeChainView
@@ -380,12 +371,24 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             IsContextualStepSetupVisible: true,
             HasDirectToolCatalogReturn: true,
             HasVisibleStepSetupStatus: true,
-            VisibleContextualStepSetupActionCount: 1,
+            VisibleContextualStepSetupActionCount: 0,
+            HasExplicitAuthoringActions: true,
         };
 
     public string ContextualSelectedStepSetupState =>
         DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView selectedTool
-            ? $"card={selectedTool.IsContextualStepSetupVisible}; catalogReturn={selectedTool.HasDirectToolCatalogReturn}; status={selectedTool.HasVisibleStepSetupStatus}; actions={selectedTool.VisibleContextualStepSetupActionCount}"
+            ? $"card={selectedTool.IsContextualStepSetupVisible}; catalogReturn={selectedTool.HasDirectToolCatalogReturn}; status={selectedTool.HasVisibleStepSetupStatus}; setupActions={selectedTool.VisibleContextualStepSetupActionCount}; commandBar={selectedTool.HasExplicitAuthoringActions}"
+            : $"content={DockWorkspace.ToolInspectorContent?.GetType().Name ?? "null"}";
+
+    public bool HasVisibleInspectionContext =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
+        {
+            HasVisibleInspectionContext: true
+        };
+
+    public string InspectionContextState =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView selectedTool
+            ? selectedTool.InspectionContextState
             : $"content={DockWorkspace.ToolInspectorContent?.GetType().Name ?? "null"}";
 
     public bool HasExclusiveSelectedToolWorkspaceSurface =>
@@ -403,8 +406,11 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             IsFailureCorrectionContextVisible: true
         };
 
-    public void ActivateSelectedToolPane() =>
+    public void ActivateSelectedToolPane()
+    {
+        CloseToolLibraryPane();
         DockWorkspace.ActivateToolInspectorPane();
+    }
 
     public void ToggleSelectedToolSideCollapse() =>
         DockWorkspace.ToggleToolInspectorAutoHide();
@@ -442,6 +448,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         var command = layout?.Trim().ToLowerInvariant() switch
         {
             "single" => shell.Workbench.SetSingleViewerLayoutCommand,
+            "height" => shell.Workbench.ShowHeightImageOnlyCommand,
             "vertical" => shell.Workbench.SplitViewerVerticallyCommand,
             "horizontal" => shell.Workbench.SplitViewerHorizontallyCommand,
             "popout" => shell.Workbench.PopOutViewerCommand,
@@ -456,6 +463,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         return layout?.Trim().ToLowerInvariant() switch
         {
             "single" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.Single,
+            "height" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.HeightImageOnly,
             "vertical" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitVertical,
             "horizontal" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitHorizontal,
             "popout" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.PopOut
@@ -581,7 +589,25 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     public void ActivateSessionLogPane() => DockWorkspace.ActivateLinkedViewPane();
 
-    public void ActivateToolLibraryPane() => DockWorkspace.ActivateToolLibraryPane();
+    public void ActivateToolLibraryPane()
+    {
+        if (shell is null || ToolLibraryOverlay.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
+        toolLibraryReturnFocus = Keyboard.FocusedElement;
+        toolLibraryStepCountAtOpen = shell.Workbench.PipelineSteps.Count;
+        ToolLibraryOverlay.Visibility = Visibility.Visible;
+    }
+
+    public void CloseToolLibraryPane() => CloseToolLibraryPane(restoreFocus: true);
+
+    public bool IsToolLibraryPaneVisible => ToolLibraryOverlay.Visibility == Visibility.Visible;
+
+    public int AuthoringSupportTabCount => DockWorkspace.AuthoringSupportTabCount;
+
+    public bool IsToolLibraryDetachedFromAuthoring => DockWorkspace.IsToolLibraryDetachedFromAuthoring;
 
     public bool IsSessionLogPaneSelected => DockWorkspace.IsLinkedViewPaneSelected;
 
@@ -674,6 +700,10 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             ? ActiveResultsWorkspaceSection == ResultsWorkspaceSection.OutputCompare
             : DockWorkspace.IsOutputComparePaneSelected;
 
+    public void ActivateViewerPane() => DockWorkspace.ActivateViewerPane();
+
+    public bool IsViewerPaneSelected => DockWorkspace.IsViewerPaneSelected;
+
     public bool HasUsableOutputCompareDockHeight =>
         OperatorStage == OpenVisionOperatorStage.Results
             ? HasResultsStageComposition
@@ -719,7 +749,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     public bool IsCorrespondenceEvidencePaneSelected => DockWorkspace.IsCorrespondenceEvidencePaneSelected;
 
     public bool HasAllDockContentHosts =>
-        DockWorkspace.ToolLibraryContent is not null
+        ToolLibraryDialogContent is not null
         && DockWorkspace.DataLayersContent is not null
         && DockWorkspace.ViewerContent is not null
         && DockWorkspace.ResultsContent is not null
@@ -795,6 +825,55 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         DetachShell();
     }
 
+    private void OnRecipeInfoEditorScopeIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (args.NewValue is not true || sender is not FrameworkElement focusScope)
+        {
+            return;
+        }
+
+        focusScope.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (focusScope.IsVisible)
+            {
+                focusScope.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            }
+        }));
+    }
+
+    private void OnToolLibraryScopeIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (args.NewValue is not true || sender is not FrameworkElement focusScope)
+        {
+            return;
+        }
+
+        focusScope.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (focusScope.IsVisible)
+            {
+                focusScope.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            }
+        }));
+    }
+
+    private void OnToolLibraryOverlayPreviewKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Escape)
+        {
+            return;
+        }
+
+        CloseToolLibraryPane();
+        args.Handled = true;
+    }
+
+    private void CloseToolLibraryButton_Click(object sender, RoutedEventArgs args)
+    {
+        CloseToolLibraryPane();
+        args.Handled = true;
+    }
+
     private void AttachShell(ShellMainWindowViewModel? candidate)
     {
         if (candidate is null || ReferenceEquals(shell, candidate))
@@ -804,6 +883,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
         shell = candidate;
         shell.PropertyChanged += OnShellPropertyChanged;
+        shell.Workbench.PipelineSteps.CollectionChanged += OnPipelineStepsChanged;
+        shell.Workbench.SelectedStepRunCompleted += OnSelectedStepRunCompleted;
     }
 
     private void DetachShell()
@@ -811,6 +892,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         if (shell is not null)
         {
             shell.PropertyChanged -= OnShellPropertyChanged;
+            shell.Workbench.PipelineSteps.CollectionChanged -= OnPipelineStepsChanged;
+            shell.Workbench.SelectedStepRunCompleted -= OnSelectedStepRunCompleted;
             shell = null;
         }
     }
@@ -820,6 +903,24 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         if (args.PropertyName == nameof(ShellMainWindowViewModel.SelectedWorkspaceMode))
         {
             ApplyOperatorStage();
+        }
+    }
+
+    private void OnSelectedStepRunCompleted(object? sender, EventArgs args)
+    {
+        if (Volatile.Read(ref disposalState) == 0 && IsLoaded)
+        {
+            BringSelectedOutputIntoView();
+        }
+    }
+
+    private void OnPipelineStepsChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        if (ToolLibraryOverlay.Visibility == Visibility.Visible
+            && shell is not null
+            && shell.Workbench.PipelineSteps.Count > toolLibraryStepCountAtOpen)
+        {
+            CloseToolLibraryPane();
         }
     }
 
@@ -846,13 +947,21 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             _ => OpenVisionOperatorStage.Legacy,
         };
 
+        if (stage != OpenVisionOperatorStage.Teach)
+        {
+            CloseToolLibraryPane(restoreFocus: false);
+        }
+
         DockWorkspace.SetOperatorStage(stage);
         if (DockWorkspace.EvidenceContent is RecipePipelineReviewView pipelineReview)
         {
-            pipelineReview.SetPresentationMode(stage switch
+            pipelineReview.SetPresentationMode(shell?.SelectedWorkspaceMode switch
             {
-                OpenVisionOperatorStage.Validate => RecipeReviewPresentationMode.Validation,
-                _ => RecipeReviewPresentationMode.Standard,
+                ShellWorkspaceMode.Inspect => RecipeReviewPresentationMode.Inspection,
+                ShellWorkspaceMode.Review => RecipeReviewPresentationMode.Results,
+                _ => stage == OpenVisionOperatorStage.Validate
+                    ? RecipeReviewPresentationMode.Validation
+                    : RecipeReviewPresentationMode.Standard,
             });
         }
         if (stage == OpenVisionOperatorStage.Results
@@ -877,7 +986,15 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             QueueTeachStageActivation();
         }
 
-        if (stage == OpenVisionOperatorStage.Validate)
+        if (stage == OpenVisionOperatorStage.Validate
+            && shell?.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect)
+        {
+            if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+            {
+                review.ActivateInspectionQueue();
+            }
+        }
+        else if (stage == OpenVisionOperatorStage.Validate)
         {
             if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
             {
@@ -943,6 +1060,22 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         if (operation?.Status == DispatcherOperationStatus.Pending)
         {
             operation.Abort();
+        }
+    }
+
+    private void CloseToolLibraryPane(bool restoreFocus)
+    {
+        if (ToolLibraryOverlay.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        ToolLibraryOverlay.Visibility = Visibility.Collapsed;
+        var returnFocus = toolLibraryReturnFocus;
+        toolLibraryReturnFocus = null;
+        if (restoreFocus && returnFocus is not null)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => Keyboard.Focus(returnFocus)));
         }
     }
 

@@ -8,6 +8,7 @@
         <local:ValidationDockTabPresentationConverter x:Key="ValidationDockTabPresentationConverter" />
         <Style x:Key="OpenVisionTopAnchorablePaneStyle"
                TargetType="{x:Type avalonDockControls:LayoutAnchorablePaneControl}">
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Foreground"
                     Value="{Binding Model.Root.Manager.Foreground, RelativeSource={RelativeSource Self}}" />
             <Setter Property="Background"
@@ -24,7 +25,7 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <Border Grid.RowSpan="2" Background="Transparent" />
-                            <Border Grid.Row="0"
+                            <Border x:Name="PaneTabHeader" Grid.Row="0"
                                     MinHeight="34"
                                     Padding="6,4,6,0"
                                     Panel.ZIndex="1"
@@ -57,6 +58,13 @@
                                 <Setter Property="Foreground"
                                         Value="{DynamicResource ThreeD.DisabledBrush}" />
                             </Trigger>
+                            <DataTrigger Binding="{Binding Items.Count, RelativeSource={RelativeSource Self}}" Value="1">
+                                <Setter TargetName="PaneTabHeader" Property="MinHeight" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Height" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Padding" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="BorderThickness" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="ClipToBounds" Value="True" />
+                            </DataTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -239,9 +247,17 @@
                     </DataTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAuthoringLayout, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                             Value="True">
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style TargetType="{x:Type avalonDockControls:LayoutAnchorableControl}">
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type avalonDockControls:LayoutAnchorableControl}">
@@ -270,6 +286,9 @@
                                          Value="1">
                                 <Setter TargetName="Header" Property="Visibility" Value="Visible" />
                             </DataTrigger>
+                            <DataTrigger Binding="{Binding IsAuthoringLayout, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" Value="True">
+                                <Setter TargetName="Header" Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding Model.IsFloating, RelativeSource={RelativeSource Self}}"
@@ -283,6 +302,13 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAuthoringLayout, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                             Value="True">
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
     <Grid>
@@ -290,7 +316,7 @@
                                    Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                                    Foreground="{DynamicResource ThreeD.PanelHeaderTextBrush}"
                                    BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
-                                   BorderThickness="1"
+                                   BorderThickness="0"
                                    AnchorablePaneControlStyle="{StaticResource OpenVisionTopAnchorablePaneStyle}">
             <avalonDock:LayoutRoot>
                 <avalonDock:LayoutPanel x:Name="workspaceRootPanel"
@@ -305,6 +331,8 @@
                                                          ContentId="tool-library"
                                                          CanClose="False"
                                                          CanFloat="True"
+                                                         AutoHideWidth="320"
+                                                         AutoHideMinWidth="240"
                                                          CanHide="True">
                                 <ContentPresenter Content="{Binding ToolLibraryContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                             </avalonDock:LayoutAnchorable>
@@ -316,6 +344,8 @@
                                                          ContentId="data-layers"
                                                          CanClose="False"
                                                          CanFloat="True"
+                                                         AutoHideWidth="320"
+                                                         AutoHideMinWidth="240"
                                                          CanHide="True">
                                 <ContentPresenter Content="{Binding DataLayersContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                             </avalonDock:LayoutAnchorable>
@@ -327,6 +357,8 @@
                                                          ContentId="tool-inspector"
                                                          CanClose="False"
                                                          CanFloat="True"
+                                                         AutoHideWidth="380"
+                                                         AutoHideMinWidth="300"
                                                          CanHide="True">
                                 <ContentPresenter Content="{Binding ToolInspectorContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                             </avalonDock:LayoutAnchorable>
@@ -347,18 +379,22 @@
                                                          ContentId="displayed-outputs"
                                                          CanClose="False"
                                                          CanFloat="True"
+                                                         AutoHideWidth="360"
+                                                         AutoHideMinWidth="280"
                                                          CanHide="True">
                                 <ContentPresenter Content="{Binding DisplayedOutputsContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                             </avalonDock:LayoutAnchorable>
                         </avalonDock:LayoutAnchorablePane>
                         <avalonDock:LayoutAnchorablePane x:Name="resultsPane"
                                                            DockWidth="1*"
-                                                           DockMinWidth="460">
+                                                           DockMinWidth="320">
                             <avalonDock:LayoutAnchorable x:Name="resultsAnchorable"
                                                          Title="{Binding ResultsTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
                                                          ContentId="results-workspace"
                                                          CanClose="False"
                                                          CanFloat="False"
+                                                         AutoHideWidth="320"
+                                                         AutoHideMinWidth="320"
                                                          CanHide="True">
                                 <ContentPresenter Content="{Binding ResultsContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                             </avalonDock:LayoutAnchorable>
@@ -371,6 +407,8 @@
                                                          ContentId="evidence-workbench"
                                                          CanClose="False"
                                                          CanFloat="True"
+                                                         AutoHideHeight="300"
+                                                         AutoHideMinHeight="220"
                                                          CanHide="True">
                             <ContentPresenter Content="{Binding EvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
@@ -379,6 +417,8 @@
                                                      ContentId="output-compare"
                                                      CanClose="False"
                                                      CanFloat="True"
+                                                     AutoHideHeight="300"
+                                                     AutoHideMinHeight="220"
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding OutputCompareContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
@@ -387,6 +427,8 @@
                                                      ContentId="linked-view"
                                                      CanClose="False"
                                                      CanFloat="True"
+                                                     AutoHideHeight="300"
+                                                     AutoHideMinHeight="220"
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding LinkedViewContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
@@ -395,6 +437,8 @@
                                                      ContentId="height-profile"
                                                      CanClose="False"
                                                      CanFloat="True"
+                                                     AutoHideHeight="300"
+                                                     AutoHideMinHeight="220"
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding ProfileContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
@@ -403,6 +447,8 @@
                                                      ContentId="fit-diagnostics"
                                                      CanClose="False"
                                                      CanFloat="True"
+                                                     AutoHideHeight="300"
+                                                     AutoHideMinHeight="220"
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding FitDiagnosticsContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
@@ -411,6 +457,8 @@
                                                      ContentId="intersection-evidence"
                                                      CanClose="False"
                                                      CanFloat="True"
+                                                     AutoHideHeight="300"
+                                                     AutoHideMinHeight="220"
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding IntersectionEvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
@@ -419,6 +467,8 @@
                                                      ContentId="correspondence-evidence"
                                                      CanClose="False"
                                                      CanFloat="True"
+                                                     AutoHideHeight="300"
+                                                     AutoHideMinHeight="220"
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding CorrespondenceEvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>

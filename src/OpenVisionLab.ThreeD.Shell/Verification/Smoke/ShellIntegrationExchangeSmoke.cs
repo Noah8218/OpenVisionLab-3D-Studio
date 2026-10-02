@@ -1,6 +1,10 @@
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -30,6 +34,9 @@ internal sealed record ShellIntegrationExchangeSmokeResult(
         PressedCaptureAutomationId is not null
         && PressedCaptureScope is not null;
 }
+
+internal sealed record ShellIntegrationExchangeSmokeDataContext(
+    ThreeDIntegrationViewModel IntegrationExchange);
 
 internal static class ShellIntegrationExchangeSmoke
 {
@@ -331,6 +338,214 @@ internal static class ShellIntegrationExchangeSmoke
                     $"IntegrationExchangeInteraction|focus=true|hover=true|mouseLeave=true|disabled=true|canExecute=true|tabTraversal=true|hoverFallback={interactionHoverFallbackUsed}");
         }
 
+        if (requestedState.Equals("tcp-cancel", StringComparison.OrdinalIgnoreCase))
+        {
+            var workspace = FindVisualDescendants<UserControl>(shellWindow)
+                .FirstOrDefault(control =>
+                    AutomationProperties.GetAutomationId(control)
+                    == "MachineExchangeWorkspace");
+            if (workspace is null)
+            {
+                return Failure("Integration exchange workspace was not available.");
+            }
+
+            var smokeRoot = Path.Combine(
+                Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT")
+                    ?? Path.GetTempPath(),
+                "integration-exchange",
+                "tcp-cancel");
+            Directory.CreateDirectory(smokeRoot);
+            var settingsPath = Path.Combine(smokeRoot, "settings.json");
+            var diagnosticPath = Path.Combine(smokeRoot, "smoke-diagnostic.txt");
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var peerPort = ((IPEndPoint)listener.LocalEndpoint).Port;
+            await using var smokeViewModel = new ThreeDIntegrationViewModel(
+                () => null,
+                settingsPath);
+            workspace.DataContext = new ShellIntegrationExchangeSmokeDataContext(smokeViewModel);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.DataBind,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
+            smokeViewModel.ExchangeRoot = smokeRoot;
+            smokeViewModel.TcpListenAddress = IPAddress.Loopback.ToString();
+            smokeViewModel.TcpListenPortText = "45103";
+            smokeViewModel.TcpPeerHost = IPAddress.Loopback.ToString();
+            smokeViewModel.TcpPeerPortText = peerPort.ToString();
+            smokeViewModel.SetSessionSharedKeyCommand.Execute(
+                Convert.ToBase64String(Enumerable.Repeat((byte)0x5A, 32).ToArray()));
+            smokeViewModel.SaveSetupCommand.Execute(null);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.DataBind,
+                    cancellationToken))
+            {
+                return CanceledResult();
+            }
+            shellWindow.UpdateLayout();
+
+            var pingButton = FindVisualDescendants<Button>(workspace)
+                .FirstOrDefault(button =>
+                    AutomationProperties.GetAutomationId(button) == "PingIntegrationPeer");
+            var cancelButton = FindVisualDescendants<Button>(workspace)
+                .FirstOrDefault(button =>
+                    AutomationProperties.GetAutomationId(button) == "CancelIntegrationTcpOperation");
+            var stateText = FindVisualDescendants<TextBlock>(workspace)
+                .FirstOrDefault(textBlock =>
+                    AutomationProperties.GetAutomationId(textBlock) == "IntegrationTcpOperationState");
+            if (pingButton is not { IsVisible: true, IsEnabled: true }
+                || cancelButton is not { IsVisible: true, IsEnabled: false }
+                || stateText is null)
+            {
+                File.WriteAllText(
+                    diagnosticPath,
+                    $"stage=idle-controls; ping={pingButton?.IsEnabled}; cancel={cancelButton?.IsEnabled}; stateText={stateText?.Text}; status={smokeViewModel.StatusText}");
+                return Failure("Integration exchange TCP lifecycle controls were not available in their idle state.");
+            }
+
+            if (!InvokeButton(pingButton))
+            {
+                return Failure("Integration exchange Ping did not expose the UI Automation Invoke pattern.");
+            }
+            File.WriteAllText(
+                diagnosticPath,
+                $"stage=ping-clicked; port={peerPort}; state={smokeViewModel.TcpOperationState}; busy={smokeViewModel.IsTcpBusy}; status={smokeViewModel.StatusText}");
+            TcpClient accepted;
+            try
+            {
+                accepted = await listener.AcceptTcpClientAsync(cancellationToken)
+                    .AsTask()
+                    .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+            }
+            catch (TimeoutException)
+            {
+                File.AppendAllText(
+                    diagnosticPath,
+                    $"{Environment.NewLine}stage=accept-timeout; state={smokeViewModel.TcpOperationState}; busy={smokeViewModel.IsTcpBusy}; status={smokeViewModel.StatusText}");
+                return Failure(
+                    $"Integration exchange Ping did not connect to the isolated peer. state={smokeViewModel.TcpOperationState}; busy={smokeViewModel.IsTcpBusy}; status={smokeViewModel.StatusText}");
+            }
+            using var acceptedClient = accepted;
+            File.AppendAllText(
+                diagnosticPath,
+                $"{Environment.NewLine}stage=accepted; state={smokeViewModel.TcpOperationState}; busy={smokeViewModel.IsTcpBusy}; cancel={cancelButton.IsEnabled}");
+            if (!await WaitUntilAsync(
+                    () => smokeViewModel.IsTcpBusy && cancelButton.IsEnabled,
+                    dispatcher,
+                    cancellationToken,
+                    TimeSpan.FromSeconds(3)))
+            {
+                return Failure(
+                    $"Integration exchange Cancel did not enable for the active TCP action. state={smokeViewModel.TcpOperationState}; busy={smokeViewModel.IsTcpBusy}");
+            }
+
+            if (!cancelButton.Focus() || !cancelButton.IsKeyboardFocusWithin)
+            {
+                return Failure("Integration exchange Cancel did not receive keyboard focus.");
+            }
+
+            shellWindow.Activate();
+            var windowHandle = new WindowInteropHelper(shellWindow).Handle;
+            var foregrounded = SetForegroundWindow(windowHandle);
+            cancelButton.BringIntoView();
+            var relativeCenter = cancelButton.TransformToAncestor(shellWindow).Transform(
+                new Point(cancelButton.ActualWidth / 2, cancelButton.ActualHeight / 2));
+            var transformToDevice = PresentationSource.FromVisual(shellWindow)
+                ?.CompositionTarget?.TransformToDevice
+                ?? Matrix.Identity;
+            var deviceCenter = transformToDevice.Transform(relativeCenter);
+            _ = GetWindowRect(windowHandle, out var windowRect);
+            var screenCenter = new Point(
+                windowRect.Left + deviceCenter.X,
+                windowRect.Top + deviceCenter.Y);
+            var pointerPositioned = SetCursorPos(
+                (int)Math.Round(screenCenter.X),
+                (int)Math.Round(screenCenter.Y));
+            var pointerMessagePosted = PostClientMouseMove(windowHandle, deviceCenter);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.Input,
+                    cancellationToken)
+                || !await DelayAsync(TimeSpan.FromMilliseconds(100), cancellationToken)
+                || !foregrounded
+                || !pointerPositioned
+                || !pointerMessagePosted
+                || !cancelButton.IsMouseOver)
+            {
+                return Failure(
+                    $"Integration exchange Cancel did not enter its actual pointer hover state. foregrounded={foregrounded}; pointer={pointerPositioned}; posted={pointerMessagePosted}; hover={cancelButton.IsMouseOver}");
+            }
+            SendLeftButtonDown();
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.Input,
+                    cancellationToken)
+                || !await DelayAsync(TimeSpan.FromMilliseconds(75), cancellationToken))
+            {
+                SendLeftButtonUp();
+                return CanceledResult();
+            }
+            var actualPointerDown = cancelButton.IsPressed;
+            SendLeftButtonUp();
+            if (!actualPointerDown)
+            {
+                return Failure("Integration exchange Cancel did not enter its actual pointer-down state.");
+            }
+            if (!await WaitUntilAsync(
+                    () => !smokeViewModel.IsTcpBusy,
+                    dispatcher,
+                    cancellationToken,
+                    TimeSpan.FromSeconds(3)))
+            {
+                return Failure("Integration exchange TCP cancellation did not reach a terminal state.");
+            }
+
+            File.AppendAllText(
+                diagnosticPath,
+                $"{Environment.NewLine}stage=terminal; state={smokeViewModel.TcpOperationState}; busy={smokeViewModel.IsTcpBusy}; cancel={cancelButton.IsEnabled}; retry={pingButton.IsEnabled}; rendered={stateText.Text}");
+            var awayDevice = transformToDevice.Transform(new Point(8, 8));
+            _ = SetCursorPos(
+                (int)Math.Round(windowRect.Left + awayDevice.X),
+                (int)Math.Round(windowRect.Top + awayDevice.Y));
+            _ = PostClientMouseMove(windowHandle, awayDevice);
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.Input,
+                    cancellationToken)
+                || !await DelayAsync(TimeSpan.FromMilliseconds(75), cancellationToken))
+            {
+                return CanceledResult();
+            }
+            for (var attempt = 0; attempt < 5 && cancelButton.IsMouseOver; attempt++)
+            {
+                if (!await YieldDispatcherAsync(
+                        dispatcher,
+                        DispatcherPriority.Input,
+                        cancellationToken)
+                    || !await DelayAsync(TimeSpan.FromMilliseconds(50), cancellationToken))
+                {
+                    return CanceledResult();
+                }
+            }
+            File.AppendAllText(
+                diagnosticPath,
+                $"{Environment.NewLine}stage=mouse-leave; hover={cancelButton.IsMouseOver}");
+            return smokeViewModel.TcpOperationState == ThreeDIntegrationTcpOperationState.Cancelled
+                && !cancelButton.IsEnabled
+                && !cancelButton.IsMouseOver
+                && pingButton.IsEnabled
+                && stateText.Text == smokeViewModel.TcpOperationStateText
+                ? Success(
+                    evidenceLine:
+                        "IntegrationExchangeTcpLifecycle|idleCancelDisabled=true|runningCancelEnabled=true|cancelFocus=true|actualHover=true|actualPointerDown=true|mouseLeave=true|cancelCommand=true|terminal=Cancelled|retryEnabled=true|bindingRoundTrip=true")
+                : Failure(
+                    $"Integration exchange TCP cancellation UI did not recover. state={smokeViewModel.TcpOperationState}; cancelEnabled={cancelButton.IsEnabled}; retryEnabled={pingButton.IsEnabled}; renderedState={stateText.Text}");
+        }
+
         if (requestedState.Equals("validation-error", StringComparison.OrdinalIgnoreCase))
         {
             if (cancellationToken.IsCancellationRequested)
@@ -441,6 +656,44 @@ internal static class ShellIntegrationExchangeSmoke
         {
             return false;
         }
+    }
+
+    private static async Task<bool> WaitUntilAsync(
+        Func<bool> condition,
+        Dispatcher dispatcher,
+        CancellationToken cancellationToken,
+        TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return true;
+            }
+            if (!await YieldDispatcherAsync(
+                    dispatcher,
+                    DispatcherPriority.ApplicationIdle,
+                    cancellationToken)
+                || !await DelayAsync(TimeSpan.FromMilliseconds(25), cancellationToken))
+            {
+                return false;
+            }
+        }
+
+        return condition();
+    }
+
+    private static bool InvokeButton(Button button)
+    {
+        var peer = new ButtonAutomationPeer(button);
+        if (peer.GetPattern(PatternInterface.Invoke) is not IInvokeProvider invokeProvider)
+        {
+            return false;
+        }
+
+        invokeProvider.Invoke();
+        return true;
     }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)

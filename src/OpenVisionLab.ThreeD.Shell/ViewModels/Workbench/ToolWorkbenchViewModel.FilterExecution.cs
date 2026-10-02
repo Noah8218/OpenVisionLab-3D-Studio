@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -37,10 +39,18 @@ public sealed partial class ToolWorkbenchViewModel
     public event EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs>? FilterDisplayRequested;
     public event EventHandler<ToolWorkbenchOrderedRunCompletedEventArgs>? OrderedRunCompleted;
     public event EventHandler? OrderedRunInvalidated;
+    public event EventHandler? SelectedStepRunCompleted
+    {
+        add => selectedStepExecutionOwner.RunCompleted += value;
+        remove => selectedStepExecutionOwner.RunCompleted -= value;
+    }
 
     public ICommand PreviewSelectedStepCommand { get; private set; } = null!;
+    public ICommand RunSelectedStepCommand => selectedStepExecutionOwner.RunCommand;
     public ICommand RunTeachingRecipeCommand { get; private set; } = null!;
     public ICommand CancelTeachingRecipeCommand { get; private set; } = null!;
+    public ICommand RetryOrderedRunRecordSaveCommand => inspectionQueueWorkspace?.HasPendingRecordSave == true
+        ? inspectionQueueWorkspace.RetryRecordSaveCommand : orderedRunExecutionOwner.RetryRecordSaveCommand;
     public ICommand PublishSelectedStepCommand { get; private set; } = null!;
     public ICommand CancelFilterPreviewCommand { get; private set; } = null!;
     public ICommand CancelSelectedPreviewCommand { get; private set; } = null!;
@@ -78,7 +88,11 @@ public sealed partial class ToolWorkbenchViewModel
     public ToolRecipeOrderedGraphExecutionResult? CurrentOrderedRunResult =>
         orderedRunResult;
     public string? CurrentOrderedRunRecordPath => orderedRunRecordPath;
-    public string OrderedRunStatus => isOrderedRunRunning
+    public InspectionRunRecord? CurrentOrderedRunRecord => orderedRunExecutionOwner.Record;
+    public bool HasPendingOrderedRunRecordSave => orderedRunExecutionOwner.HasPendingRecordSave;
+    public string OrderedRunStatus => HasPendingOrderedRunRecordSave
+        ? Localize("기록 저장 필요", "Record save required")
+        : isOrderedRunRunning
         ? Localize("실행 중", "Running")
         : orderedRunResult is null
             ? CanRunTeachingRecipe()
@@ -100,10 +114,10 @@ public sealed partial class ToolWorkbenchViewModel
     }
     public string OrderedRunEvidenceSummary => orderedRunRecordPath is null
         ? Localize(
-            "명시적 실행 전에는 Run Record가 생성되지 않습니다.",
+            "실행 전에는 검사 기록이 생성되지 않습니다.",
             "No Run Record is created before explicit Run.")
         : Localize(
-            $"Run Record 저장됨 · {Path.GetFileName(Path.GetDirectoryName(orderedRunRecordPath))}",
+            $"검사 기록 저장됨 · {Path.GetFileName(Path.GetDirectoryName(orderedRunRecordPath))}",
             $"Run Record saved · {Path.GetFileName(Path.GetDirectoryName(orderedRunRecordPath))}");
 
     private void InitializeFilterExecution()
@@ -130,10 +144,27 @@ public sealed partial class ToolWorkbenchViewModel
                 PreviewSelectedFilterAsync,
                 CanPreviewSelectedFilter,
                 PublishSelectedFilter,
-                () => HasCurrentFilterPreview && !IsFilterPreviewPublished,
+                () => HasCurrentFilterPreview && !IsFilterPreviewPublished
+                    && string.Equals(filterPreviewOutput?.EntityId, SelectedPipelineStep?.OutputEntityId, StringComparison.OrdinalIgnoreCase),
                 filterExecutionOwner.CancelPreview,
                 () => IsFilterPreviewRunning,
                 RefreshFilterExecutionState),
+            ["height-threshold-background-removal"] = new(
+                PreviewSelectedHeightThresholdBackgroundRemovalAsync,
+                CanPreviewSelectedHeightThresholdBackgroundRemoval,
+                PublishSelectedHeightThresholdBackgroundRemoval,
+                () => HasCurrentHeightThresholdPreview && !IsHeightThresholdPreviewPublished,
+                CancelHeightThresholdPreview,
+                () => IsHeightThresholdPreviewRunning,
+                RefreshHeightThresholdExecutionState),
+            ["signed-delta-background-subtraction"] = new(
+                PreviewSelectedSignedDeltaBackgroundSubtractionAsync,
+                CanPreviewSelectedSignedDeltaBackgroundSubtraction,
+                PublishSelectedSignedDeltaBackgroundSubtraction,
+                () => HasCurrentSignedDeltaPreview && !IsSignedDeltaPreviewPublished,
+                CancelSignedDeltaBackgroundSubtractionPreview,
+                () => IsSignedDeltaPreviewRunning,
+                RefreshSignedDeltaBackgroundSubtractionExecutionState),
             ["remove-outlier-pixels"] = new(
                 PreviewSelectedRemoveOutlierPixelsAsync,
                 CanPreviewSelectedRemoveOutlierPixels,
@@ -150,6 +181,14 @@ public sealed partial class ToolWorkbenchViewModel
                 CancelConnectedRegionPreview,
                 () => IsConnectedRegionPreviewRunning,
                 RefreshConnectedRegionExecutionState),
+            ["grid-polygon-domain"] = new(
+                PreviewSelectedGridPolygonDomainAsync,
+                CanPreviewSelectedGridPolygonDomain,
+                PublishSelectedGridPolygonDomain,
+                () => HasCurrentGridPolygonDomainPreview && !IsGridPolygonDomainPreviewPublished,
+                CancelGridPolygonDomainPreview,
+                () => IsGridPolygonDomainPreviewRunning,
+                RefreshGridPolygonDomainExecutionState),
             ["domain-mask"] = new(
                 PreviewSelectedDomainMaskAsync,
                 CanPreviewSelectedDomainMask,
@@ -186,7 +225,8 @@ public sealed partial class ToolWorkbenchViewModel
                 PreviewSelectedHeightDifferenceEdgeAsync,
                 CanPreviewSelectedHeightDifferenceEdge,
                 PublishSelectedHeightDifferenceEdge,
-                () => HasCurrentEdgePreview && !IsEdgePreviewPublished,
+                () => HasCurrentEdgePreview && !IsEdgePreviewPublished
+                    && string.Equals(CurrentHeightDifferenceEdgeOutput?.OutputEntityId, SelectedPipelineStep?.OutputEntityId, StringComparison.OrdinalIgnoreCase),
                 CancelHeightDifferenceEdgePreview,
                 () => IsEdgePreviewRunning,
                 RefreshHeightDifferenceEdgeExecutionState),
@@ -218,7 +258,8 @@ public sealed partial class ToolWorkbenchViewModel
                 PreviewSelectedLineFitAsync,
                 CanPreviewSelectedLineFit,
                 PublishSelectedLineFit,
-                () => HasCurrentLineFitPreview && !IsLineFitPreviewPublished,
+                () => HasCurrentLineFitPreview && !IsLineFitPreviewPublished
+                    && string.Equals(CurrentLineFitOutput?.OutputEntityId, SelectedPipelineStep?.OutputEntityId, StringComparison.OrdinalIgnoreCase),
                 CancelLineFitPreview,
                 () => IsLineFitPreviewRunning,
                 RefreshLineFitExecutionState),
@@ -226,7 +267,8 @@ public sealed partial class ToolWorkbenchViewModel
                 PreviewSelectedLineIntersectionAsync,
                 CanPreviewSelectedLineIntersection,
                 PublishSelectedLineIntersection,
-                () => HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished,
+                () => HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished
+                    && string.Equals(CurrentLineIntersectionOutput?.OutputEntityId, SelectedPipelineStep?.OutputEntityId, StringComparison.OrdinalIgnoreCase),
                 CancelLineIntersectionPreview,
                 () => IsLineIntersectionPreviewRunning,
                 RefreshLineIntersectionExecutionState),
@@ -272,6 +314,15 @@ public sealed partial class ToolWorkbenchViewModel
                 RefreshSurfaceMatchExperimentState)
         };
 
+        routes["physical-edge-gap-flush"] = new(
+            physicalEdgeGapFlushExecutionOwner.PreviewAsync,
+            physicalEdgeGapFlushExecutionOwner.CanPreview,
+            physicalEdgeGapFlushExecutionOwner.Publish,
+            physicalEdgeGapFlushExecutionOwner.CanPublish,
+            physicalEdgeGapFlushExecutionOwner.Cancel,
+            () => physicalEdgeGapFlushExecutionOwner.IsPreviewRunning,
+            RefreshPhysicalEdgeGapFlushStateFromOwner);
+
         var measurementRoute = new ToolWorkbenchSelectedStepExecutionRoute(
             PreviewSelectedMeasurementAsync,
             CanPreviewSelectedMeasurement,
@@ -289,7 +340,8 @@ public sealed partial class ToolWorkbenchViewModel
                      "gap-flush",
                      "volume",
                      "cross-section-dimensions",
-                     "completeness-grid"
+                     "completeness-grid",
+                     "connected-region-gate"
                  })
         {
             routes.Add(toolId, measurementRoute);
@@ -333,8 +385,26 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool TryGetOrderedRunCapability(
         ToolRecipeDocument document,
-        out string message)
+        out string message) =>
+        TryGetOrderedRunCapability(document, out message, inspectionInput: false);
+
+    private bool TryGetOrderedRunCapability(
+        ToolRecipeDocument document,
+        out string message,
+        bool inspectionInput)
     {
+        if (HasPendingOrderedRunRecordSave)
+        {
+            message = Localize("계산 결과의 기록 저장을 재시도한 뒤 실행하세요.", "Retry saving the calculated result's Run Record before running again.");
+            return false;
+        }
+        if (IsC3DSourceLoading)
+        {
+            message = Localize(
+                "3D 입력 로드가 끝난 뒤 실행하세요.",
+                "Run after the 3D input finishes loading.");
+            return false;
+        }
         if (isOrderedRunRunning)
         {
             message = Localize(
@@ -342,14 +412,14 @@ public sealed partial class ToolWorkbenchViewModel
                 "Wait for the current recipe Run to finish.");
             return false;
         }
-        if (IsRecipeMutationBlocked)
+        if (inspectionInput ? IsNonQueueRecipeMutationBlocked : IsRecipeMutationBlocked)
         {
             message = Localize(
                 "진행 중인 미리보기 또는 검증이 끝난 뒤 실행하세요.",
                 "Run after the active Preview or validation finishes.");
             return false;
         }
-        if (!IsSourceReadyForRecipe)
+        if (!inspectionInput && !IsSourceReadyForRecipe)
         {
             message = Localize(
                 $"3D 입력을 먼저 준비하세요. {LocalizedSourceReadinessSummary}",
@@ -359,7 +429,7 @@ public sealed partial class ToolWorkbenchViewModel
         if (HasPendingStepParameterChanges)
         {
             message = Localize(
-                "파라미터 초안을 적용하거나 취소한 뒤 실행하세요.",
+                "편집한 설정값을 적용하거나 취소한 뒤 실행하세요.",
                 "Apply or discard the parameter draft before Run.");
             return false;
         }
@@ -373,17 +443,47 @@ public sealed partial class ToolWorkbenchViewModel
         if (RecipePath is null || !File.Exists(RecipePath))
         {
             message = Localize(
-                "Run Record의 레시피 신원을 보존하려면 레시피를 먼저 저장하세요.",
+                "검사 전에 레시피를 저장하세요.",
                 "Save the recipe first so the Run Record can preserve its identity.");
             return false;
         }
+
+        try
+        {
+            using var recipeStream = File.OpenRead(RecipePath);
+            if (!string.Equals(RecipeSession.SavedSha256, Convert.ToHexString(SHA256.HashData(recipeStream)), StringComparison.OrdinalIgnoreCase))
+            {
+                message = Localize("저장된 레시피 파일이 바뀌었습니다. 다시 열어 확인하거나 현재 조건을 저장한 뒤 실행하세요.", "The saved recipe file changed. Reopen it to review, or save the current conditions before Run.");
+                return false;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            message = Localize($"저장된 레시피를 읽을 수 없습니다: {exception.Message}", $"The saved recipe cannot be read: {exception.Message}");
+            return false;
+        }
+
+        var nonOrderedTool = document.Steps
+            .Select(step => Tools.FirstOrDefault(tool =>
+                string.Equals(tool.Id, step.ToolId, StringComparison.Ordinal)))
+            .FirstOrDefault(tool => tool?.RouteKind is
+                ToolWorkbenchToolRouteKind.SpecialExperiment or
+                ToolWorkbenchToolRouteKind.ReviewOnly);
+        if (nonOrderedTool is not null)
+        {
+            message = nonOrderedTool.RouteKind == ToolWorkbenchToolRouteKind.SpecialExperiment
+                ? Localization.SpecialExperimentToolRouteDetail
+                : Localization.ReviewOnlyToolRouteDetail;
+            return false;
+        }
+
         if (!ToolRecipeOrderedGraphExecution.CanExecute(document, out message))
         {
             return false;
         }
 
         message = Localize(
-            $"준비 완료 · 저장된 현재 레시피의 {document.Steps.Count}개 단계를 명시적으로 실행합니다.",
+            $"준비 완료 · 저장된 현재 레시피의 {document.Steps.Count}개 단계를 직접 실행합니다.",
             $"Ready · explicitly run {document.Steps.Count} saved current-recipe step(s) in order.");
         return true;
     }
@@ -410,14 +510,14 @@ public sealed partial class ToolWorkbenchViewModel
             $"{LocalizeStatus(execution.Status)} · {execution.Steps.Count} step(s) · {metricSummary} · {output}");
     }
 
-    internal void AttachOrderedRunRecord(string path)
+    internal void AttachOrderedRunRecord(string path, InspectionRunRecord record)
     {
-        orderedRunExecutionOwner.AttachRecord(path);
+        orderedRunExecutionOwner.AttachRecord(path, record);
     }
 
-    internal void ReportOrderedRunRecordFailure(string message)
+    internal void ReportOrderedRunRecordFailure(string message, InspectionRunRecord? preparedRecord = null)
     {
-        orderedRunExecutionOwner.ReportRecordFailure(message);
+        orderedRunExecutionOwner.ReportRecordFailure(message, preparedRecord);
     }
 
     private void InvalidateOrderedRun(string summary)
@@ -431,10 +531,23 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(HasOrderedRunResult));
         OnPropertyChanged(nameof(CurrentOrderedRunResult));
         OnPropertyChanged(nameof(CurrentOrderedRunRecordPath));
+        OnPropertyChanged(nameof(CurrentOrderedRunRecord));
+        OnPropertyChanged(nameof(HasPendingOrderedRunRecordSave));
+        OnPropertyChanged(nameof(RetryOrderedRunRecordSaveCommand));
+        OnPropertyChanged(nameof(IsRecipeMutationBlocked));
+        OnPropertyChanged(nameof(CanEditRecipe));
+        OnPropertyChanged(nameof(CanRestoreLastRemovedStep));
+        restoreLastRemovedStepCommand?.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanOpenRecipeInfoEditor));
+        OnPropertyChanged(nameof(CanSaveTeachingRecipe));
+        OnPropertyChanged(nameof(IsRecipeSaveBlocked));
+        sourceLoadOwner?.RefreshCommandStates();
+        RefreshFlowConnectionCommands();
         OnPropertyChanged(nameof(OrderedRunStatus));
         OnPropertyChanged(nameof(OrderedRunCapabilitySummary));
         OnPropertyChanged(nameof(OrderedRunEvidenceSummary));
         runTeachingRecipeCommand?.RaiseCanExecuteChanged();
+        if (SelectedToolWorkspace is not null) RefreshSelectedToolWorkspaceProjection();
     }
 
     private bool CanSetFilterKernel(int kernelSize) => IsSelectedStepFilter && !IsFilterPreviewRunning && kernelSize > 0;
@@ -508,16 +621,19 @@ public sealed class ToolWorkbenchOrderedRunCompletedEventArgs : EventArgs
         string recipePath,
         ToolRecipeDocument document,
         string sourcePath,
-        ToolRecipeOrderedGraphExecutionResult execution)
+        ToolRecipeOrderedGraphExecutionResult execution,
+        OrderedRunRecordIdentity? recordIdentity = null)
     {
         RecipePath = recipePath;
         Document = document;
         SourcePath = sourcePath;
         Execution = execution;
+        RecordIdentity = recordIdentity;
     }
 
     public string RecipePath { get; }
     public ToolRecipeDocument Document { get; }
     public string SourcePath { get; }
     public ToolRecipeOrderedGraphExecutionResult Execution { get; }
+    public OrderedRunRecordIdentity? RecordIdentity { get; }
 }

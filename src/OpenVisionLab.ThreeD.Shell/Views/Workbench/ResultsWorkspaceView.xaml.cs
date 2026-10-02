@@ -26,6 +26,13 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             typeof(ResultsWorkspaceView),
             new PropertyMetadata(null));
 
+    public static readonly DependencyProperty IsCompactLayoutProperty =
+        DependencyProperty.Register(
+            nameof(IsCompactLayout),
+            typeof(bool),
+            typeof(ResultsWorkspaceView),
+            new PropertyMetadata(false));
+
     public ResultsWorkspaceView()
     {
         InitializeComponent();
@@ -37,6 +44,7 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             new Binding("ResultsWorkspace.SelectSectionCommand"));
         RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
         Loaded += OnLoaded;
+        SizeChanged += OnSizeChanged;
     }
 
     /// <summary>
@@ -51,6 +59,7 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
         }
 
         Loaded -= OnLoaded;
+        SizeChanged -= OnSizeChanged;
         OutputCompareWorkspace.Dispose();
     }
 
@@ -59,13 +68,48 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
         if (Volatile.Read(ref disposalState) == 0)
         {
             RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
+            ApplyResponsiveLayout(ActualHeight);
         }
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs args) =>
+        ApplyResponsiveLayout(args.NewSize.Height);
+
+    internal void ApplyResponsiveLayout(double availableHeight)
+    {
+        var compact = availableHeight > 0 && availableHeight < 720;
+        IsCompactLayout = compact;
+        ResultsWorkspaceHeader.Visibility = Visibility.Visible;
+        ResultsWorkspaceHeader.Padding = compact ? new Thickness(10, 4, 10, 4) : new Thickness(16, 10, 16, 10);
+        ResultsWorkspaceDetail.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        AdvancedDiagnosticsButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        ResultsSectionHost.RowDefinitions[0].Height = compact ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        ResultsSectionHost.RowDefinitions[1].Height = compact ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+        Grid.SetRow(ResultsSectionNavigation, compact ? 1 : 0);
+        Grid.SetRow(ResultsWorkspaceContent, compact ? 0 : 1);
+        ResultsSectionNavigation.Padding = compact ? new Thickness(8, 2, 8, 2) : new Thickness(10);
+        ResultsSectionNavigation.BorderThickness = compact ? new Thickness(0, 1, 0, 0) : new Thickness(0, 0, 1, 0);
+        RunRecordNavigation.Margin = compact ? new Thickness(0, 0, 8, 0) : new Thickness(0, 0, 12, 6);
+        OutputCompareNavigation.Margin = compact ? new Thickness(0, 0, 8, 0) : new Thickness(0, 0, 12, 6);
+        ReportsNavigation.Margin = compact ? new Thickness(0) : new Thickness(0, 0, 0, 6);
+        RunRecordNavigation.Padding = compact ? new Thickness(8, 3, 8, 3) : new Thickness(10, 8, 10, 8);
+        OutputCompareNavigation.Padding = compact ? new Thickness(8, 3, 8, 3) : new Thickness(10, 8, 10, 8);
+        ReportsNavigation.Padding = compact ? new Thickness(8, 3, 8, 3) : new Thickness(10, 8, 10, 8);
+        ResultsImmutableNotice.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        RunRecordReview.Margin = compact ? new Thickness(8, 2, 8, 2) : new Thickness(12, 4, 12, 12);
+        RunRecordReview.ApplyResponsiveLayout(availableHeight);
     }
 
     public ResultsWorkspaceSection ActiveSection
     {
         get => (ResultsWorkspaceSection)GetValue(ActiveSectionProperty);
         set => SetValue(ActiveSectionProperty, value);
+    }
+
+    public bool IsCompactLayout
+    {
+        get => (bool)GetValue(IsCompactLayoutProperty);
+        private set => SetValue(IsCompactLayoutProperty, value);
     }
 
     public ICommand? SelectSectionCommand
@@ -76,7 +120,10 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
 
     public bool IsReadOnlyComposition =>
         RunRecordReview.PresentationMode == RecipeReviewPresentationMode.Results
-        && RunRecordReview.IsRunRecordSelected;
+        && RunRecordReview.IsRunRecordSelected
+        && RunRecordReview.Visibility == Visibility.Visible
+        && OutputCompareWorkspace.Visibility == Visibility.Collapsed
+        && ReportsWorkspace.Visibility == Visibility.Collapsed;
 
     public bool HasRunRecordHistoryControls =>
         RunRecordReview.HasRunRecordHistoryControls;

@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.WpfPropertyGrid;
 using System.Windows.Media;
+using System.Windows.Input;
 using System.Windows.Threading;
 using OpenVisionLab;
 using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogButtons;
@@ -33,11 +34,13 @@ internal static class RecipeManagerWpgVerification
         };
         var passed = 0;
         var total = 0;
+        var testDataRoot = Environment.GetEnvironmentVariable("OPENVISIONLAB_TEST_DATA_ROOT");
         var fixtureRoot = Path.Combine(
-            Path.GetTempPath(),
+            string.IsNullOrWhiteSpace(testDataRoot) ? Path.GetTempPath() : testDataRoot,
             "OpenVisionLab.ThreeD",
             "RecipeManagerWpgVerification",
             Guid.NewGuid().ToString("N"));
+        lines.Add($"Fixture root: {fixtureRoot}");
 
         void Check(string name, bool condition, string detail)
         {
@@ -71,6 +74,16 @@ internal static class RecipeManagerWpgVerification
             var firstUseRecentPath = Path.Combine(firstUseRoot, "recent.json");
             var firstUseRecipePath = Path.Combine(firstUseRoot, "First Recipe Fixture.ov3d-recipe.json");
             var firstUse = new ToolWorkbenchViewModel(firstUseRecentPath);
+            firstUse.SetInspectionFileView(true);
+            Check("inspection shortcuts target the existing checked-input runner", ReferenceEquals(firstUse.RunCurrentWorkspaceCommand, firstUse.InspectionQueue.RunCheckedCommand)
+                && ReferenceEquals(firstUse.RunCurrentRecipeCommand, firstUse.InspectionQueue.RunCheckedCommand)
+                && ReferenceEquals(firstUse.RunCurrentValidationSetCommand, firstUse.InspectionQueue.RunCheckedCommand)
+                && ReferenceEquals(firstUse.CancelCurrentWorkspaceCommand, firstUse.InspectionQueue.StopCommand), "F5/Ctrl+F5/Ctrl+Shift+F5/Escape use the queue owner");
+            firstUse.SetInspectionFileView(false);
+            Check("teaching shortcuts restore their existing owners", ReferenceEquals(firstUse.RunCurrentWorkspaceCommand, firstUse.RunSelectedStepCommand)
+                && ReferenceEquals(firstUse.RunCurrentRecipeCommand, firstUse.RunTeachingRecipeCommand)
+                && ReferenceEquals(firstUse.RunCurrentValidationSetCommand, firstUse.RunValidationSetCommand)
+                && ReferenceEquals(firstUse.CancelCurrentWorkspaceCommand, firstUse.CancelActiveWorkbenchEditCommand), "context changes do not execute commands");
             var firstUseLogCount = firstUse.RunLog.Count;
             firstUse.BeginFirstRecipeSetup();
             Check(
@@ -84,20 +97,33 @@ internal static class RecipeManagerWpgVerification
                 $"visible={firstUse.IsFirstRecipeSetupVisible}; recipe={firstUse.RecipePath}; source={firstUse.Source.Path}; steps={firstUse.PipelineSteps.Count}; dirty={firstUse.IsDirty}; logs={firstUse.RunLog.Count}/{firstUseLogCount}");
 
             firstUse.FirstRecipeName = "First Recipe Fixture";
+            firstUse.FirstRecipeCategory = "측정";
+            firstUse.FirstRecipeInspectionTarget = "전원 모듈 A-01 패드";
+            firstUse.FirstRecipeDescription = "기준 영역과 패드 영역의 높이 차이를 측정합니다.";
             firstUse.FirstRecipeFolderPath = firstUseRoot;
-            firstUse.FirstRecipeSourcePath = sourcePath;
+            firstUse.FirstRecipeSourcePath = string.Empty;
             firstUse.SelectedFirstRecipeStarter = firstUse.FirstRecipeStarterOptions.Single(option =>
                 option.Id == ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId);
+            Check(
+                "a starter requiring input stays blocked until a C3D source is chosen",
+                !firstUse.IsFirstRecipeSetupValid
+                && firstUse.FirstRecipeSetupStatus == firstUse.Localization.FirstRecipeSourceRequired,
+                firstUse.FirstRecipeSetupStatus);
+            firstUse.SelectedFirstRecipeStarter = firstUse.FirstRecipeStarterOptions.Single(option =>
+                option.Id == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId);
             firstUse.RememberFirstRecipeSetup = true;
             var draftReady = firstUse.TryGetFirstRecipeSetup(out var confirmedSetup, out var draftMessage);
             Check(
-                "one first-use draft exposes a name, folder, C3D source, optional starter, and exact target before Create",
+                "first-use setup permits creating an empty recipe before loading its optional C3D input",
                 draftReady
                 && firstUse.IsFirstRecipeSetupValid
                 && confirmedSetup.RecipeName == "First Recipe Fixture"
+                && confirmedSetup.Category == "측정"
+                && confirmedSetup.InspectionTarget == "전원 모듈 A-01 패드"
+                && confirmedSetup.Description == "기준 영역과 패드 영역의 높이 차이를 측정합니다."
                 && string.Equals(confirmedSetup.FolderPath, firstUseRoot, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(confirmedSetup.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)
-                && confirmedSetup.StarterId == ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId
+                && string.IsNullOrWhiteSpace(confirmedSetup.SourcePath)
+                && confirmedSetup.StarterId == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId
                 && string.Equals(confirmedSetup.RecipePath, firstUseRecipePath, StringComparison.OrdinalIgnoreCase),
                 draftMessage);
             Check(
@@ -109,23 +135,43 @@ internal static class RecipeManagerWpgVerification
                 && firstUse.RunLog.Count == firstUseLogCount,
                 $"recipe={firstUse.RecipePath}; source={firstUse.Source.Path}; steps={firstUse.PipelineSteps.Count}; dirty={firstUse.IsDirty}; logs={firstUse.RunLog.Count}/{firstUseLogCount}");
 
-            firstUse.CreateNewTeachingRecipe(confirmedSetup.RecipeName);
-            firstUse.SetC3DSource(confirmedSetup.SourcePath);
-            var starterApplied = firstUse.TryApplyFirstRecipeStarter(
-                confirmedSetup.StarterId,
-                out var starterMessage);
-            var firstUseSaveMessage = string.Empty;
-            var firstUseSaved = starterApplied
-                && firstUse.TrySaveTeachingRecipe(confirmedSetup.RecipePath, out firstUseSaveMessage);
             var firstUsePreferenceMessage = string.Empty;
+            var firstUseSaved = firstUse.TryCreateEmptyTeachingRecipe(
+                confirmedSetup,
+                out var firstUseSaveMessage);
             var firstUsePreferenceSaved = firstUseSaved
                 && firstUse.CompleteFirstRecipeSetup(out firstUsePreferenceMessage);
             var firstUseDocument = firstUseSaved
                 ? ToolRecipeDocumentStore.Load(firstUseRecipePath)
                 : null;
             Check(
-                "confirmed first-use setup creates one source-routed starter and saves without running inspection",
+                "Create saves and opens a source-less zero-step recipe without running inspection",
                 firstUsePreferenceSaved
+                && firstUseDocument is not null
+                && firstUseDocument.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+                && firstUseDocument.Category == confirmedSetup.Category
+                && firstUseDocument.InspectionTarget == confirmedSetup.InspectionTarget
+                && firstUseDocument.Description == confirmedSetup.Description
+                && string.IsNullOrWhiteSpace(firstUseDocument.Source.Path)
+                && firstUseDocument.Steps.Count == 0
+                && string.IsNullOrWhiteSpace(firstUse.Source.Path)
+                && firstUse.PipelineSteps.Count == 0
+                && !firstUse.IsDirty
+                && !firstUse.IsFirstRecipeSetupVisible,
+                $"create={firstUseSaveMessage}; preference={firstUsePreferenceMessage}; steps={firstUseDocument?.Steps.Count}");
+
+            firstUse.SetC3DSource(sourcePath);
+            var starterApplied = firstUse.TryApplyFirstRecipeStarter(
+                ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId,
+                out var starterMessage);
+            var firstUseUpdateMessage = string.Empty;
+            var firstUseUpdated = starterApplied
+                && firstUse.IsDirty
+                && firstUse.TrySaveTeachingRecipe(firstUseRecipePath, out firstUseUpdateMessage);
+            firstUseDocument = firstUseUpdated ? ToolRecipeDocumentStore.Load(firstUseRecipePath) : null;
+            Check(
+                "loading a C3D input and adding a starter after Create requires an explicit Save",
+                firstUseUpdated
                 && firstUseDocument is not null
                 && string.Equals(
                     ResolvePersistedSourcePath(firstUseRecipePath, firstUseDocument.Source.Path),
@@ -133,9 +179,24 @@ internal static class RecipeManagerWpgVerification
                     StringComparison.OrdinalIgnoreCase)
                 && firstUseDocument.Steps.Count == 1
                 && firstUseDocument.Steps[0].ToolId == "thickness"
-                && !firstUse.IsDirty
-                && !firstUse.IsFirstRecipeSetupVisible,
-                $"starter={starterMessage}; save={firstUseSaveMessage}; preference={firstUsePreferenceMessage}; steps={firstUseDocument?.Steps.Count}");
+                && !firstUse.IsDirty,
+                $"starter={starterMessage}; save={firstUseUpdateMessage}; steps={firstUseDocument?.Steps.Count}");
+
+            var firstUseBytesBeforeCollision = File.ReadAllBytes(firstUseRecipePath);
+            var firstUsePathBeforeCollision = firstUse.RecipePath;
+            var firstUseSourceBeforeCollision = firstUse.Source.Path;
+            var duplicateCreate = firstUse.TryCreateEmptyTeachingRecipe(
+                confirmedSetup with { RecipeName = "Overwrite Attempt" },
+                out var duplicateCreateMessage);
+            Check(
+                "a colliding create leaves the open recipe, input, steps, and saved bytes unchanged",
+                !duplicateCreate
+                && firstUse.RecipePath == firstUsePathBeforeCollision
+                && firstUse.Source.Path == firstUseSourceBeforeCollision
+                && firstUse.PipelineSteps.Count == 1
+                && firstUse.PipelineSteps[0].ToolId == "thickness"
+                && firstUseBytesBeforeCollision.SequenceEqual(File.ReadAllBytes(firstUseRecipePath)),
+                duplicateCreateMessage);
 
             var reopenedRecipe = new ToolWorkbenchViewModel(Path.Combine(firstUseRoot, "reopen-recent.json"));
             var recipeReopened = reopenedRecipe.TryOpenTeachingRecipe(firstUseRecipePath, out var reopenMessage);
@@ -147,6 +208,21 @@ internal static class RecipeManagerWpgVerification
                 && reopenedRecipe.PipelineSteps[0].ToolId == "thickness"
                 && !reopenedRecipe.IsDirty,
                 reopenMessage);
+
+            reopenedRecipe.SelectPipelineStep(reopenedRecipe.PipelineSteps[0].Id);
+            var limitsLogCount = reopenedRecipe.RunLog.Count;
+            Check("new measurement reopens without acceptance limits", reopenedRecipe.IsSelectedStepAcceptanceLimitsUnconfigured
+                && reopenedRecipe.ConfigureSelectedStepAcceptanceLimitsCommand.CanExecute(null), "persisted false; explicit command available");
+            var readinessMethod = typeof(ToolWorkbenchViewModel).GetMethod("GetInspectionQueueRecipeReadiness", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            var limitsReadiness = ((bool CanRun, string Message))readinessMethod.Invoke(reopenedRecipe, [ToolRecipeDocumentStore.Load(firstUseRecipePath)])!;
+            Check("saved unconfigured recipe blocks repeat inspection", !limitsReadiness.CanRun && limitsReadiness.Message.Contains("규격", StringComparison.Ordinal), limitsReadiness.Message);
+            reopenedRecipe.ConfigureSelectedStepAcceptanceLimitsCommand.Execute(null);
+            Check("explicit limits configuration is dirty and does not execute", reopenedRecipe.PipelineSteps[0].AcceptanceLimitsConfigured == true
+                && !reopenedRecipe.IsSelectedStepAcceptanceLimitsUnconfigured && reopenedRecipe.IsDirty
+                && !reopenedRecipe.IsSelectedStepPreviewRunning && reopenedRecipe.CurrentMeasurementOutput is null,
+                $"logs before={limitsLogCount};after={reopenedRecipe.RunLog.Count}");
+            var limitsSaved = reopenedRecipe.TrySaveTeachingRecipe(firstUseRecipePath, out var limitsSaveMessage);
+            Check("configured limits save and reload", limitsSaved && ToolRecipeDocumentStore.Load(firstUseRecipePath).Steps[0].AcceptanceLimitsConfigured == true, limitsSaveMessage);
 
             var variantSourcePath = Path.Combine(firstUseRoot, "variant-source.C3D");
             C3DHeightFieldSnapshot.CreateForVerification(
@@ -163,6 +239,12 @@ internal static class RecipeManagerWpgVerification
             var variantBasePath = Path.Combine(firstUseRoot, "variant-base.ov3d-recipe.json");
             var variantPath = Path.Combine(firstUseRoot, "variant-copy.ov3d-recipe.json");
             var variantBinding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
+            reopenedRecipe.Source.Id = "source.variant.custom";
+            reopenedRecipe.Source.SensorId = "original-source-sensor";
+            reopenedRecipe.Source.MeasurementEvidence = HeightMeasurementEvidence.CalibratedPhysical(
+                reopenedRecipe.Source.SensorId, "original-calibration", reopenedRecipe.Source.FrameId, "Owned fixture evidence for the original input only.");
+            reopenedRecipe.SourceSession.SetSourceAcquisitionProvenance(new ToolRecipeAcquisitionProvenance(
+                ToolRecipeAcquisitionProvenanceState.Available, "Original input acquisition", "Not evidence for another file."));
             var variantReference = new ToolRecipeSelection(
                 "selection.variant.reference",
                 "Variant reference ROI",
@@ -224,9 +306,116 @@ internal static class RecipeManagerWpgVerification
                 reopenedRecipe.FirstRecipeSetupStatus);
 
             reopenedRecipe.FirstRecipeSourcePath = variantSourcePath;
+            Check("variant requires per-input ROI reuse review", !reopenedRecipe.IsFirstRecipeSetupValid
+                && !reopenedRecipe.IsVariantRoiReuseConfirmed, reopenedRecipe.FirstRecipeSetupStatus);
+            reopenedRecipe.IsVariantRoiReuseConfirmed = true;
+            reopenedRecipe.FirstRecipeSourcePath = incompatibleSourcePath;
+            Check("changing input clears ROI reuse confirmation", !reopenedRecipe.IsVariantRoiReuseConfirmed, reopenedRecipe.FirstRecipeSetupStatus);
+            reopenedRecipe.FirstRecipeSourcePath = variantSourcePath;
+            reopenedRecipe.IsVariantRoiReuseConfirmed = true;
             var variantDraftReady = reopenedRecipe.TryGetFirstRecipeSetup(
                 out var variantSetup,
                 out var variantDraftMessage);
+            var reviewedBinding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(variantSourcePath);
+            var rejectedBindings = new[]
+            {
+                reviewedBinding with { Format = "HeightField" },
+                reviewedBinding with { Unit = "mm" },
+                reviewedBinding with { FrameId = "flipped-frame" },
+                reviewedBinding with { OwnerEntityId = "derived-output" },
+                reviewedBinding with { ContentSha256 = new string('a', 64) },
+                reviewedBinding with { GridWidth = 0 }
+            };
+            foreach (var rejectedBinding in rejectedBindings)
+            {
+                var rejected = !reopenedRecipe.TryCreateCompatibleSourceVariant(variantSetup, rejectedBinding, out var rejection);
+                Check("variant rejects changed format/metadata/identity before mutation", rejected
+                    && reopenedRecipe.RecipePath == variantBasePath && !File.Exists(variantPath), rejection);
+            }
+            var originalBytesBeforeCopy = File.ReadAllBytes(variantBasePath);
+            Check("variant rejects overwriting the original at execution boundary",
+                !reopenedRecipe.TryCreateCompatibleSourceVariant(variantSetup with { RecipePath = variantBasePath }, reviewedBinding, out var overwriteMessage)
+                && originalBytesBeforeCopy.SequenceEqual(File.ReadAllBytes(variantBasePath))
+                && reopenedRecipe.RecipePath == variantBasePath, overwriteMessage);
+            var preservedSelection = reopenedRecipe.Selections[0];
+            foreach (var invalidSelection in new[]
+            {
+                preservedSelection with { SourceBinding = preservedSelection.SourceBinding with { ContentSha256 = new string('b', 64) } },
+                preservedSelection with { GridRectangle = new ToolRecipeGridRectangle(0, 0, int.MaxValue, 2) },
+                preservedSelection with { GridRectangle = new ToolRecipeGridRectangle(-1, 0, 1, 1) },
+                preservedSelection with { GridPolygon = new ToolRecipeGridPolygon([]) }
+            })
+            {
+                reopenedRecipe.Selections[0] = invalidSelection;
+                Check("variant rejects stale or unsupported ROI", !reopenedRecipe.BeginCompatibleSourceVariantCommand.CanExecute(null), invalidSelection.Id);
+            }
+            reopenedRecipe.Selections[0] = preservedSelection;
+            Check("input contract summary preserves declared units/frame without calibration claim",
+                reopenedRecipe.SourceContractSummary.Contains(reopenedRecipe.Source.Unit, StringComparison.Ordinal)
+                && reopenedRecipe.SourceContractSummary.Contains(reopenedRecipe.Source.FrameId, StringComparison.Ordinal)
+                && (reopenedRecipe.SourceContractSummary.Contains("Declared", StringComparison.Ordinal)
+                    || reopenedRecipe.SourceContractSummary.Contains("선언", StringComparison.Ordinal)), reopenedRecipe.SourceContractSummary);
+            using (var failedCopy = new ToolWorkbenchViewModel(Path.Combine(firstUseRoot, "failed-copy-recent.json")))
+            {
+                failedCopy.TryOpenTeachingRecipe(variantBasePath, out _);
+                failedCopy.SetValidationSetSources([sourcePath]);
+                failedCopy.BeginCompatibleSourceVariantSetup();
+                failedCopy.FirstRecipeSourcePath = variantSourcePath;
+                failedCopy.IsVariantRoiReuseConfirmed = true;
+                failedCopy.MarkSelectedStepParameterDraftDirty();
+                var draftRejected = !failedCopy.TryCreateCompatibleSourceVariant(variantSetup, reviewedBinding, out var pendingDraftMessage);
+                Check("copy rejects an unapplied parameter draft before changing state or writing",
+                    draftRejected && failedCopy.HasPendingStepParameterChanges && failedCopy.RecipePath == variantBasePath
+                    && failedCopy.Source.Path == sourcePath && !File.Exists(variantPath), pendingDraftMessage);
+                failedCopy.DiscardSelectedStepParameterDraft();
+                var runningOwner = (ToolWorkbenchSignedDeltaExecutionOwner)typeof(ToolWorkbenchViewModel)
+                    .GetField("signedDeltaBackgroundExecutionOwner", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                    .GetValue(failedCopy)!;
+                runningOwner.SetRunning(true);
+                var runningRejected = !failedCopy.TryCreateCompatibleSourceVariant(variantSetup, reviewedBinding, out var runningMessage);
+                Check("copy rejects mutation while an execution owner is running", runningRejected
+                    && runningMessage == failedCopy.Localization.CompatibleVariantBusy && failedCopy.RecipePath == variantBasePath
+                    && failedCopy.Source.Path == sourcePath && !File.Exists(variantPath), runningMessage);
+                runningOwner.SetRunning(false);
+                failedCopy.BeginTeachingSelectionCaptureCommand.Execute(null);
+                var captureWasActive = failedCopy.IsTeachingSelectionCaptureActive;
+                var previousSelections = failedCopy.Selections.ToArray();
+                var previousStep = failedCopy.SelectedPipelineStep;
+                var previousValidationSample = failedCopy.ValidationSetSamples.Single();
+                var previousName = failedCopy.RecipeName;
+                var previousDirty = failedCopy.IsDirty;
+                var previousValidationDirty = failedCopy.IsValidationSetDefinitionDirty;
+                var blockedParent = Path.Combine(firstUseRoot, "copy-parent-is-a-file");
+                File.WriteAllText(blockedParent, "Owned failure fixture; not a directory.");
+                var blockedSetup = variantSetup with { RecipePath = Path.Combine(blockedParent, "copy.ov3d-recipe.json") };
+                var copyRejected = !failedCopy.TryCreateCompatibleSourceVariant(blockedSetup, reviewedBinding, out var failureMessage);
+                Check("copy write failure preserves the original editor, selections, validation set, and file",
+                    copyRejected && failedCopy.RecipePath == variantBasePath && failedCopy.RecipeName == previousName
+                    && failedCopy.Source.Path == sourcePath && failedCopy.SourceSession.SourceBinding == variantBinding
+                    && failedCopy.Selections.SequenceEqual(previousSelections) && ReferenceEquals(failedCopy.SelectedPipelineStep, previousStep)
+                    && failedCopy.ValidationSetSamples.Count == 1 && ReferenceEquals(failedCopy.ValidationSetSamples[0], previousValidationSample)
+                    && failedCopy.IsDirty == previousDirty && failedCopy.IsValidationSetDefinitionDirty == previousValidationDirty
+                    && failedCopy.IsFirstRecipeSetupVisible && !File.Exists(blockedSetup.RecipePath)
+                    && originalBytesBeforeCopy.SequenceEqual(File.ReadAllBytes(variantBasePath)), failureMessage);
+                Check("failed copy leaves an active ROI capture intact", captureWasActive && failedCopy.IsTeachingSelectionCaptureActive,
+                    $"captureBefore={captureWasActive};captureAfter={failedCopy.IsTeachingSelectionCaptureActive}");
+
+                var retryPath = Path.Combine(firstUseRoot, "retry-copy.ov3d-recipe.json");
+                var retryCreated = failedCopy.TryCreateCompatibleSourceVariant(variantSetup with { RecipePath = retryPath }, reviewedBinding, out var retryMessage);
+                using var retryOpened = new ToolWorkbenchViewModel(Path.Combine(firstUseRoot, "retry-reopen-recent.json"));
+                Check("copy can be retried and reopened after a write failure without implicit execution",
+                    retryCreated && retryOpened.TryOpenTeachingRecipe(retryPath, out _)
+                    && retryOpened.Source.Path == variantSourcePath && retryOpened.PipelineSteps.Count == 1
+                    && retryOpened.Source.Id == "source.variant.custom" && retryOpened.PipelineSteps[0].InputEntityIds[0] == retryOpened.Source.Id
+                    && retryOpened.Selections.Select(selection => selection.GridRectangle).SequenceEqual(previousSelections.Select(selection => selection.GridRectangle))
+                    && !retryOpened.HasValidationSetSamples && !failedCopy.IsDirty && !failedCopy.HasCurrentMeasurementPreview
+                    && !failedCopy.IsTeachingSelectionCaptureActive && !failedCopy.IsOrderedRunRunning && !failedCopy.IsSelectedStepPreviewRunning, retryMessage);
+
+                var committedBytes = File.ReadAllBytes(retryPath);
+                var duplicateRejected = !failedCopy.TryCreateCompatibleSourceVariant(variantSetup with { RecipePath = retryPath }, reviewedBinding, out var duplicateMessage);
+                Check("repeated copy does not overwrite the committed destination", duplicateRejected
+                    && committedBytes.SequenceEqual(File.ReadAllBytes(retryPath)) && failedCopy.RecipePath == retryPath, duplicateMessage);
+            }
             var variantCreateMessage = string.Empty;
             var variantCreated = variantDraftReady
                 && reopenedRecipe.TryCreateCompatibleSourceVariant(
@@ -274,6 +463,25 @@ internal static class RecipeManagerWpgVerification
                 && !reopenedRecipe.IsMeasurementPreviewPublished
                 && !reopenedRecipe.IsFirstRecipeSetupVisible,
                 $"draft={variantDraftMessage}; create={variantCreateMessage}; variant={variantDocument?.Source.Path}");
+            Check("copy retains the source entity ID but not original acquisition or calibration evidence",
+                variantDocument?.Source.Id == "source.variant.custom" && reopenedRecipe.Source.Id == variantDocument.Source.Id
+                && variantDocument.Source.SensorId is null && variantDocument.Source.MeasurementEvidence is null
+                && variantDocument.Source.AcquisitionProvenance?.State == ToolRecipeAcquisitionProvenanceState.Unavailable
+                && reopenedRecipe.Source.SensorId is null && reopenedRecipe.Source.MeasurementEvidence is null
+                && originalVariantDocument?.Source.MeasurementEvidence?.CalibrationId == "original-calibration"
+                && originalBytesBeforeCopy.SequenceEqual(File.ReadAllBytes(variantBasePath)), $"source={variantDocument?.Source.Id}");
+            var collisionRejected = false;
+            try
+            {
+                ToolRecipeDocumentStore.SaveNew(variantBasePath, originalVariantDocument! with { Name = "Must not overwrite" });
+            }
+            catch (IOException)
+            {
+                collisionRejected = true;
+            }
+            Check("create-only storage rejects final-commit collisions and removes the temporary sibling",
+                collisionRejected && originalBytesBeforeCopy.SequenceEqual(File.ReadAllBytes(variantBasePath))
+                && !Directory.EnumerateFiles(firstUseRoot, "*.tmp.*", SearchOption.AllDirectories).Any(), $"collisionRejected={collisionRejected}");
 
             var restoredSetup = new ToolWorkbenchViewModel(firstUseRecentPath);
             var restoredLogCount = restoredSetup.RunLog.Count;
@@ -283,8 +491,8 @@ internal static class RecipeManagerWpgVerification
                 restoredSetup.IsFirstRecipeSetupVisible
                 && restoredSetup.FirstRecipeName == "First Recipe Fixture"
                 && string.Equals(restoredSetup.FirstRecipeFolderPath, firstUseRoot, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(restoredSetup.FirstRecipeSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)
-                && restoredSetup.SelectedFirstRecipeStarter?.Id == ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId
+                && string.IsNullOrWhiteSpace(restoredSetup.FirstRecipeSourcePath)
+                && restoredSetup.SelectedFirstRecipeStarter?.Id == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId
                 && restoredSetup.RememberFirstRecipeSetup
                 && string.IsNullOrWhiteSpace(restoredSetup.RecipePath)
                 && string.IsNullOrWhiteSpace(restoredSetup.Source.Path)
@@ -369,8 +577,8 @@ internal static class RecipeManagerWpgVerification
                 $"en={englishSource}; {englishPath} | ko={koreanSource}; {koreanPath}");
             Check(
                 "saveable empty recipe is labeled as execution-incomplete rather than structurally invalid",
-                englishState == "1 execution requirement(s) | Modified"
-                && koreanState == "\uC2E4\uD589 \uC900\uBE44 \uD544\uC694 1\uAC1C | \uC218\uC815\uB428",
+                englishState == "Recipe: 1 execution requirement(s) | Modified"
+                && koreanState == "레시피: 실행 준비 필요 1개 | 수정됨",
                 $"en={englishState} | ko={koreanState}");
             Check(
                 "language change notifies all Recipe Center computed status properties",
@@ -402,7 +610,7 @@ internal static class RecipeManagerWpgVerification
             OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
             Check(
                 "successful zero-step save refreshes the localized saved state",
-                savedLocalizedState == "1 execution requirement(s) | Saved",
+                savedLocalizedState == "Recipe: 1 execution requirement(s) | Saved",
                 savedLocalizedState);
             var filter = AddTool(workbench, "filter");
             Check(
@@ -422,9 +630,11 @@ internal static class RecipeManagerWpgVerification
                 validationSourceRequestRaised,
                 $"requested={validationSourceRequestRaised}");
             workbench.SelectedReviewTabIndex = 4;
+            var validationTabRestored = workbench.SelectedReviewTabIndex == 4;
+            workbench.SelectedReviewTabIndex = 5;
             Check(
-                "review-tab presentation state is owned and bounded by the Workbench ViewModel",
-                workbench.SelectedReviewTabIndex == 4,
+                "review-tab presentation state restores validation and inspection queue tabs",
+                validationTabRestored && workbench.SelectedReviewTabIndex == 5,
                 $"selectedIndex={workbench.SelectedReviewTabIndex}");
 
             var propertySession = new ToolWorkbenchStepPropertySession();
@@ -673,6 +883,42 @@ internal static class RecipeManagerWpgVerification
                 && actionWorkbench.RunLog[0].Category == "Teach",
                 $"confirmed={removalConfirmed}; remaining={string.Join(",", actionWorkbench.PipelineSteps.Select(step => step.ToolId))}; selections={actionWorkbench.Selections.Count}; logs={removalLogCountBefore}->{actionWorkbench.RunLog.Count}; filterPreview={actionWorkbench.HasCurrentFilterPreview}; edgePreview={actionWorkbench.HasCurrentEdgePreview}");
 
+            actionFilter.InputEntityIdsText = $"{actionWorkbench.Source.Id}; {actionSelection.Id}";
+            actionEdge.Parameters[0].Value = "modified detached object";
+            var restorationSucceeded = actionWorkbench.TryRestoreLastRemovedStep(out var restoreMessage);
+            var restoredEdge = actionWorkbench.SelectedPipelineStep;
+            Check("last removed tool restores its snapshot and orphaned ROI without replacing later connections",
+                restorationSucceeded && restoredEdge is not null && !ReferenceEquals(restoredEdge, actionEdge)
+                && actionWorkbench.PipelineSteps[0] == restoredEdge && restoredEdge.Id == actionEdge.Id
+                && restoredEdge.InputEntityIdsText == $"{actionFilter.OutputEntityId}; {actionSelection.Id}"
+                && restoredEdge.Parameters[0].Value != "modified detached object"
+                && actionFilter.InputEntityIdsText == $"{actionWorkbench.Source.Id}; {actionSelection.Id}"
+                && actionWorkbench.Selections.Contains(actionSelection) && !actionWorkbench.HasCurrentEdgePreview,
+                restoreMessage);
+            Check("last removed tool restoration is consumed once and does not execute", !actionWorkbench.TryRestoreLastRemovedStep(out _)
+                && !actionWorkbench.RestoreLastRemovedStepCommand.CanExecute(null) && !actionWorkbench.HasCurrentFilterPreview && !actionWorkbench.HasCurrentEdgePreview, "one restored tool, no output");
+            actionWorkbench.ConfirmSelectedStepRemoval(restoredEdge!.Id);
+            Check("shared ROI survives removal", actionWorkbench.Selections.Contains(actionSelection), actionSelection.Id);
+            var conflict = AddTool(actionWorkbench, "height-difference-edge");
+            var conflictStepCount = actionWorkbench.PipelineSteps.Count;
+            Check("restoration rejects identity collisions atomically", !actionWorkbench.TryRestoreLastRemovedStep(out _)
+                && actionWorkbench.PipelineSteps.Count == conflictStepCount && actionWorkbench.SelectedPipelineStep == conflict, conflict.Id);
+            conflict.Id = "step.nonconflicting";
+            conflict.OutputEntityId = "derived.nonconflicting";
+            Check("restoration remains available after the collision is resolved", actionWorkbench.TryRestoreLastRemovedStep(out _)
+                && actionWorkbench.PipelineSteps.Count == conflictStepCount + 1, actionWorkbench.SelectedPipelineStep?.Id ?? "none");
+            actionWorkbench.ConfirmSelectedStepRemoval(actionWorkbench.SelectedPipelineStep!.Id);
+            actionWorkbench.MarkSelectedStepParameterDraftDirty();
+            Check("pending parameter draft blocks direct restoration", !actionWorkbench.TryRestoreLastRemovedStep(out _), actionWorkbench.StepParameterEditStatus);
+            actionWorkbench.DiscardSelectedStepParameterDraftCommand.Execute(null);
+            actionWorkbench.SetC3DSource(sourcePath);
+            Check("refreshing the same unchanged input preserves restoration", actionWorkbench.CanRestoreLastRemovedStep, sourcePath);
+            var replacementSource = Path.Combine(fixtureRoot, "replacement-input.C3D");
+            File.Copy(sourcePath, replacementSource);
+            actionWorkbench.SetC3DSource(replacementSource);
+            Check("replacing the teaching input ends restoration history", !actionWorkbench.CanRestoreLastRemovedStep && !actionWorkbench.TryRestoreLastRemovedStep(out _), replacementSource);
+            actionWorkbench.Dispose();
+
             var edgeDraft = (HeightDifferenceEdgeStepProperties)workbench.SelectedStepPropertyDraft!;
             edgeDraft.ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns;
             edgeDraft.Polarity = HeightDifferenceEdgePolarity.Rising;
@@ -711,16 +957,52 @@ internal static class RecipeManagerWpgVerification
                 && !workbench.HasCurrentAffineSolvePreview,
                 affineMessage);
 
-            var unsupported = AddTool(workbench, "overlay-control-review");
-            var unsupportedValue = unsupported.Parameters[0].Value;
+            var saved = workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage);
+            var storedBeforeUnsupported = saved
+                ? ToolRecipeDocumentStore.Load(recipePath)
+                : null;
+            var importedOpenMessage = string.Empty;
+            var importedUnsupported = storedBeforeUnsupported is not null;
+            if (storedBeforeUnsupported is not null)
+            {
+                ToolRecipeDocumentStore.Save(
+                    recipePath,
+                    storedBeforeUnsupported with
+                    {
+                        Steps =
+                        [
+                            ..storedBeforeUnsupported.Steps,
+                            new ToolRecipeStep(
+                                "step.overlay-control-review.imported",
+                                "overlay-control-review",
+                                "Overlay / Control Review",
+                                1,
+                                [storedBeforeUnsupported.Source.Id],
+                                "derived.review-overlay.imported",
+                                [
+                                    new ToolRecipeParameter("Overlay", "Selected results"),
+                                    new ToolRecipeParameter("Publish", "Explicit")
+                                ])
+                        ]
+                    });
+                importedUnsupported = workbench.TryOpenTeachingRecipe(
+                    recipePath,
+                    out importedOpenMessage);
+            }
+
+            var unsupported = importedUnsupported
+                ? workbench.PipelineSteps.Single(step => step.ToolId == "overlay-control-review")
+                : null;
+            var unsupportedValue = unsupported?.Parameters[0].Value;
+            workbench.SelectedPipelineStep = unsupported;
             Check(
-                "unsupported step stays visible and read-only",
-                workbench.SelectedStepPropertyDraft is null
+                "imported review-only step stays visible and read-only",
+                importedUnsupported
+                && unsupported is not null
+                && workbench.SelectedStepPropertyDraft is null
                 && workbench.SelectedStepAdapterStatus == workbench.Localization.StepAdapterPartiallySupported
                 && workbench.UnsupportedStepCount == 1,
-                workbench.RecipeAdapterCoverageSummary);
-
-            var saved = workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage);
+                $"open={importedOpenMessage};summary={workbench.RecipeAdapterCoverageSummary}");
             Check(
                 "atomic save completes without a temporary sibling",
                 saved && File.Exists(recipePath) && !Directory.EnumerateFiles(fixtureRoot, "*.tmp.*").Any(),
@@ -741,6 +1023,7 @@ internal static class RecipeManagerWpgVerification
                 && reopenedEdge.Parameters.Single(parameter => parameter.Name == "FutureTiePolicy").Value == "Stable"
                 && MatchesInvariantNumber(reopenedAffine.Parameters.Single(parameter => parameter.Name == "MaximumConditionEstimate").Value, 500000)
                 && MatchesInvariantNumber(reopenedAffine.Parameters.Single(parameter => parameter.Name == "ArithmeticResidualWarning").Value, 0.0025)
+                && unsupportedValue is not null
                 && reopenedUnsupported.Parameters[0].Value == unsupportedValue,
                 openMessage);
             Check(
@@ -932,23 +1215,294 @@ internal static class RecipeManagerWpgVerification
                 && !Directory.EnumerateFiles(fixtureRoot, "*.tmp.*", SearchOption.AllDirectories).Any(),
                 retrySaveMessage);
 
-            var recentCandidates = Enumerable.Range(0, 12).Select(index => Path.Combine(fixtureRoot, $"recent-{index:00}.json")).ToArray();
-            RecipeRecentFileStore.Save(recentPath, recentCandidates);
-            var recent = RecipeRecentFileStore.Load(recentPath);
+            var recentCandidates = Enumerable.Range(0, RecipeRecentFileStore.MaximumRecipeEntries + 2)
+                .Select(index => Path.Combine(fixtureRoot, $"recent-{index:000}.json"))
+                .ToArray();
+            RecipeRecentFileStore.Save(recentPath, recentCandidates, RecipeRecentFileStore.MaximumRecipeEntries);
+            var recent = RecipeRecentFileStore.Load(recentPath, RecipeRecentFileStore.MaximumRecipeEntries);
             Check(
-                "Recent recipe persistence is bounded to ten distinct paths",
-                recent.Count == RecipeRecentFileStore.MaximumEntries && recent.SequenceEqual(recentCandidates.Take(10)),
-                $"count={recent.Count}; max={RecipeRecentFileStore.MaximumEntries}");
+                "Recent recipe persistence retains the first one hundred distinct paths",
+                recent.Count == RecipeRecentFileStore.MaximumRecipeEntries
+                && recent.SequenceEqual(recentCandidates.Take(RecipeRecentFileStore.MaximumRecipeEntries)),
+                $"count={recent.Count}; max={RecipeRecentFileStore.MaximumRecipeEntries}");
+
+            var hundredRecentPath = Path.Combine(fixtureRoot, "hundred-recent.json");
+            RecipeRecentFileStore.Save(hundredRecentPath, recentCandidates, RecipeRecentFileStore.MaximumRecipeEntries);
+            var hundredRecent = new ToolWorkbenchViewModel(hundredRecentPath);
+            Check(
+                "Recipe Manager loads the complete one hundred-item recent list",
+                hundredRecent.RecentRecipes.Count == RecipeRecentFileStore.MaximumRecipeEntries
+                && hundredRecent.RecentRecipes.Select(item => item.Path)
+                    .SequenceEqual(recentCandidates.Take(RecipeRecentFileStore.MaximumRecipeEntries), StringComparer.OrdinalIgnoreCase),
+                $"count={hundredRecent.RecentRecipes.Count}");
+
+            var modifiedSortPath = Path.Combine(fixtureRoot, "modified-sort-recent.json");
+            var alphabeticalSortPath = Path.Combine(fixtureRoot, "alphabetical-sort-recent.json");
+            File.WriteAllText(modifiedSortPath, "{}");
+            File.WriteAllText(alphabeticalSortPath, "{}");
+            File.SetLastWriteTimeUtc(modifiedSortPath, new DateTime(2026, 9, 24, 0, 0, 0, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(alphabeticalSortPath, new DateTime(2026, 9, 23, 0, 0, 0, DateTimeKind.Utc));
+            var modifiedSortRecentPath = Path.Combine(fixtureRoot, "modified-sort-list.json");
+            RecipeRecentFileStore.Save(modifiedSortRecentPath, [alphabeticalSortPath, modifiedSortPath]);
+            using var modifiedSortRecent = new ToolWorkbenchViewModel(modifiedSortRecentPath);
+            Check(
+                "Recipe Manager defaults to recently modified order and keeps name sorting explicit",
+                modifiedSortRecent.RecipeSortMode == "modified"
+                && string.Equals(modifiedSortRecent.FilteredRecentRecipes[0].Path, modifiedSortPath, StringComparison.OrdinalIgnoreCase),
+                $"mode={modifiedSortRecent.RecipeSortMode}; first={modifiedSortRecent.FilteredRecentRecipes[0].Path}");
+            Check(
+                "recipe search keeps corrupt recent entries searchable by filename and path",
+                modifiedSortRecent.RecentRecipes.All(item => item.IsAvailable)
+                && modifiedSortRecent.RecentRecipes.All(item => item.SearchContent.Contains(item.Name, StringComparison.OrdinalIgnoreCase)),
+                $"available={modifiedSortRecent.RecentRecipes.Count(item => item.IsAvailable)}; count={modifiedSortRecent.RecentRecipes.Count}");
+            modifiedSortRecent.RecipeSortMode = "name";
+            Check(
+                "Recipe Manager name sort uses deterministic case-insensitive names",
+                modifiedSortRecent.FilteredRecentRecipes.Select(item => item.Name)
+                    .SequenceEqual(modifiedSortRecent.FilteredRecentRecipes.Select(item => item.Name)
+                        .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
+                $"mode={modifiedSortRecent.RecipeSortMode}; first={modifiedSortRecent.FilteredRecentRecipes[0].Name}");
 
             var startupRecentPath = Path.Combine(fixtureRoot, "startup-recent.json");
             RecipeRecentFileStore.Save(startupRecentPath, [Path.Combine(fixtureRoot, "missing-recipe.json"), recipePath]);
-            var startupRecent = new ToolWorkbenchViewModel(startupRecentPath);
+            using var startupRecent = new ToolWorkbenchViewModel(startupRecentPath);
             Check(
                 "startup recipe selection skips missing recent entries",
                 string.Equals(startupRecent.MostRecentAvailableRecipePath, recipePath, StringComparison.OrdinalIgnoreCase),
                 startupRecent.MostRecentAvailableRecipePath ?? "<none>");
+            var startupRunCount = startupRecent.RunLog.Count;
+            Check(
+                "opening Recipe Center can select the most recent available recipe without loading or running it",
+                startupRecent.SelectDefaultRecentRecipeIfNeeded()
+                && string.Equals(startupRecent.SelectedRecentRecipe?.Path, recipePath, StringComparison.OrdinalIgnoreCase)
+                && startupRecent.BrowsedRecipe?.Name == ToolRecipeDocumentStore.Load(recipePath).Name
+                && string.IsNullOrWhiteSpace(startupRecent.RecipePath)
+                && startupRecent.RunLog.Count == startupRunCount
+                && !startupRecent.SelectDefaultRecentRecipeIfNeeded(),
+                $"selected={startupRecent.SelectedRecentRecipe?.Path}; active={startupRecent.RecipePath}; runs={startupRecent.RunLog.Count}");
+
+            var metadataRecipePath = Path.Combine(fixtureRoot, "metadata-filter-recipe.json");
+            var readyRecipePath = Path.Combine(fixtureRoot, "ready-filter-recipe.json");
+            using var readyWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "ready-filter-recent.json"));
+            readyWorkbench.RecipeName = "Configured recipe";
+            readyWorkbench.SetC3DSource(sourcePath);
+            AddTool(readyWorkbench, "filter");
+            var readySaved = readyWorkbench.TrySaveTeachingRecipe(readyRecipePath, out var readySaveMessage);
+            var readyDocument = readySaved ? ToolRecipeDocumentStore.Load(readyRecipePath) : ToolRecipeDocumentStore.Load(recipePath);
+            Check(
+                "a configured recipe fixture passes the existing inspection validator",
+                readySaved && ToolRecipeValidator.Validate(readyDocument).IsValid && readyWorkbench.IsTeachingRecipeExecutionReady,
+                readySaveMessage);
+            var metadataDocument = readyDocument with
+            {
+                Name = "Power Module Pad Check",
+                Category = "방열 패드",
+                InspectionTarget = "전원 모듈 A-01 상면 패드",
+                Description = "기준 영역과 패드 사이의 높이 차이를 검사합니다."
+            };
+            ToolRecipeDocumentStore.Save(metadataRecipePath, metadataDocument);
+            var searchableRecentPath = Path.Combine(fixtureRoot, "metadata-search-recent.json");
+            RecipeRecentFileStore.Save(searchableRecentPath, [recipePath, metadataRecipePath]);
+            using var searchableRecent = new ToolWorkbenchViewModel(searchableRecentPath);
+            var searchableRunCount = searchableRecent.RunLog.Count;
+            Check(
+                "recipe browser loads saved names, category, target, description, and inspection readiness",
+                searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).Name == metadataDocument.Name
+                && searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).Category == metadataDocument.Category
+                && searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).InspectionTarget == metadataDocument.InspectionTarget
+                && searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).Description == metadataDocument.Description
+                && searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).IsInspectionReady
+                && searchableRecent.RecipeCategoryOptions.Any(option => option.Key == metadataDocument.Category && option.Value == metadataDocument.Category),
+                $"name={searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).Name}; category={searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).Category}; ready={searchableRecent.RecentRecipes.Single(item => item.Path == metadataRecipePath).IsInspectionReady}");
+            searchableRecent.RecipeSearchText = "상면 패드";
+            Check(
+                "recipe browser search finds inspection target metadata without opening or executing",
+                searchableRecent.FilteredRecentRecipes.Count == 1
+                && searchableRecent.FilteredRecentRecipes[0].Path == metadataRecipePath
+                && string.IsNullOrWhiteSpace(searchableRecent.RecipePath)
+                && searchableRecent.RunLog.Count == searchableRunCount,
+                $"matches={searchableRecent.FilteredRecentRecipes.Count}; active={searchableRecent.RecipePath}; runs={searchableRecent.RunLog.Count}");
+            searchableRecent.RecipeSearchText = "기준 영역과 패드 사이";
+            Check(
+                "recipe browser search finds the saved description",
+                searchableRecent.FilteredRecentRecipes.Count == 1
+                && searchableRecent.FilteredRecentRecipes[0].Path == metadataRecipePath,
+                $"matches={searchableRecent.FilteredRecentRecipes.Count}");
+            var firstStoredStep = metadataDocument.Steps.FirstOrDefault();
+            var firstStoredParameter = firstStoredStep?.Parameters.FirstOrDefault();
+            searchableRecent.RecipeSearchText = firstStoredStep?.ToolName ?? string.Empty;
+            Check(
+                "recipe browser search includes saved tool names and condition fields",
+                firstStoredStep is not null && firstStoredParameter is not null
+                && searchableRecent.FilteredRecentRecipes.Count == 2
+                && searchableRecent.FilteredRecentRecipes.All(item => item.SearchContent.Contains(firstStoredParameter.Name, StringComparison.OrdinalIgnoreCase)),
+                $"steps={metadataDocument.Steps.Count}; matches={searchableRecent.FilteredRecentRecipes.Count}; parameter={firstStoredParameter?.Name}");
+            searchableRecent.RecipeSearchText = string.Empty;
+            searchableRecent.RecipeStatusFilter = "ready";
+            searchableRecent.RecipeCategoryFilter = metadataDocument.Category!;
+            Check(
+                "recipe browser combines category and inspection-readiness filters",
+                searchableRecent.FilteredRecentRecipes.Count == 1
+                && searchableRecent.FilteredRecentRecipes[0].Path == metadataRecipePath
+                && searchableRecent.HasRecentRecipeFilter,
+                $"category={searchableRecent.RecipeCategoryFilter}; matches={searchableRecent.FilteredRecentRecipes.Count}");
+            var setupStatusRecentPath = Path.Combine(fixtureRoot, "setup-status-recent.json");
+            var draftRecipePath = Path.Combine(fixtureRoot, "teaching-draft-recipe.json");
+            var missingRecentPath = Path.Combine(fixtureRoot, "missing-recent-recipe.json");
+            ToolRecipeDocumentStore.Save(draftRecipePath, metadataDocument with { Name = "Teaching draft", Steps = [] });
+            RecipeRecentFileStore.Save(setupStatusRecentPath, [metadataRecipePath, draftRecipePath, missingRecentPath]);
+            using var setupStatusRecent = new ToolWorkbenchViewModel(setupStatusRecentPath);
+            setupStatusRecent.RecipeStatusFilter = "ready";
+            Check(
+                "recipe browser ready filter requires the saved recipe to pass inspection validation",
+                setupStatusRecent.FilteredRecentRecipes.Count == 1
+                && setupStatusRecent.FilteredRecentRecipes[0].Path == metadataRecipePath,
+                $"matches={setupStatusRecent.FilteredRecentRecipes.Count}");
+            setupStatusRecent.RecipeStatusFilter = "draft";
+            Check(
+                "recipe browser draft filter identifies a saved recipe that still needs teaching",
+                setupStatusRecent.FilteredRecentRecipes.Count == 1
+                && setupStatusRecent.FilteredRecentRecipes[0].Path == draftRecipePath
+                && !setupStatusRecent.FilteredRecentRecipes[0].IsInspectionReady,
+                $"matches={setupStatusRecent.FilteredRecentRecipes.Count}");
+            setupStatusRecent.RecipeStatusFilter = "missing";
+            Check(
+                "recipe browser missing status identifies unavailable recent paths",
+                setupStatusRecent.FilteredRecentRecipes.Count == 1
+                && setupStatusRecent.FilteredRecentRecipes[0].Path == missingRecentPath,
+                $"matches={setupStatusRecent.FilteredRecentRecipes.Count}");
+            searchableRecent.ClearRecentRecipeSearchCommand.Execute(null);
+            Check(
+                "clearing recipe search, category, and setup status restores the list without opening or running",
+                string.IsNullOrEmpty(searchableRecent.RecipeSearchText)
+                && string.IsNullOrEmpty(searchableRecent.RecipeCategoryFilter)
+                && string.IsNullOrEmpty(searchableRecent.RecipeStatusFilter)
+                && searchableRecent.FilteredRecentRecipes.Count == 2
+                && string.IsNullOrWhiteSpace(searchableRecent.RecipePath)
+                && searchableRecent.RunLog.Count == searchableRunCount,
+                $"matches={searchableRecent.FilteredRecentRecipes.Count}; active={searchableRecent.RecipePath}; runs={searchableRecent.RunLog.Count}");
 
             var appResourcesHadThemeKey = Application.Current.Resources.Contains("Ovl3D.Wpg.SurfaceBrush");
+            var browseRunCount = startupRecent.RunLog.Count;
+            var browseOpenCount = 0;
+            ToolWorkbenchRecipePathRequestEventArgs? browseRequest = null;
+            var setupRequestCount = 0;
+            startupRecent.FirstRecipeSetupRequested += (_, _) => setupRequestCount++;
+            startupRecent.NewTeachingRecipeCommand.Execute(null);
+            startupRecent.NewTeachingRecipeCommand.Execute(null);
+            Check("new recipe requests the existing setup surface on every explicit invocation", setupRequestCount == 2
+                && startupRecent.IsFirstRecipeSetupVisible && string.IsNullOrWhiteSpace(startupRecent.RecipePath), $"requests={setupRequestCount}");
+            startupRecent.CancelFirstRecipeSetupCommand.Execute(null);
+            startupRecent.OpenRecentTeachingRecipeRequested += (_, args) =>
+            {
+                browseOpenCount++;
+                browseRequest = args;
+            };
+            startupRecent.SelectedRecentRecipe = startupRecent.RecentRecipes.Single(item => item.Path == recipePath);
+            Check(
+                "recipe browser reads saved content without loading the active recipe or executing",
+                startupRecent.BrowsedRecipe?.Name == ToolRecipeDocumentStore.Load(recipePath).Name
+                && string.IsNullOrWhiteSpace(startupRecent.RecipePath)
+                && string.IsNullOrWhiteSpace(startupRecent.Source.Path)
+                && startupRecent.RunLog.Count == browseRunCount && browseOpenCount == 0,
+                $"preview={startupRecent.BrowsedRecipe?.Name}; opens={browseOpenCount}");
+            var expectedPreviewHash = ToolRecipeDocumentStore.Load(recipePath).Source.ContentSha256;
+            var previewLoaded = WaitForHeightImagePreview(startupRecent.RecipePreviewViewer);
+            Check(
+                "selecting a saved recipe shows its verified C3D input without changing the active recipe, source, or run log",
+                previewLoaded
+                && startupRecent.RecipePreviewViewer.Frame is { } previewFrame
+                && string.Equals(previewFrame.SourceContentSha256, expectedPreviewHash, StringComparison.OrdinalIgnoreCase)
+                && startupRecent.IsRecipePreviewVisible
+                && string.IsNullOrWhiteSpace(startupRecent.RecipePath)
+                && string.IsNullOrWhiteSpace(startupRecent.Source.Path)
+                && startupRecent.RunLog.Count == browseRunCount,
+                $"loaded={previewLoaded}; frame={startupRecent.RecipePreviewViewer.Frame?.SourceContentSha256}; expected={expectedPreviewHash}; run-log={startupRecent.RunLog.Count}/{browseRunCount}");
+            var mismatchedPreviewPath = Path.Combine(fixtureRoot, "mismatched-preview.json");
+            var mismatchedPreviewDocument = ToolRecipeDocumentStore.Load(recipePath);
+            ToolRecipeDocumentStore.Save(
+                mismatchedPreviewPath,
+                mismatchedPreviewDocument with
+                {
+                    Source = mismatchedPreviewDocument.Source with { ContentSha256 = new string('0', 64) }
+                });
+            startupRecent.SelectedRecentRecipe = ToolWorkbenchRecentRecipeItem.From(mismatchedPreviewPath);
+            var mismatchPreviewLoaded = WaitForHeightImagePreview(startupRecent.RecipePreviewViewer);
+            Check(
+                "saved-source identity mismatch clears the previous image and reports a Viewer error",
+                mismatchPreviewLoaded
+                && startupRecent.RecipePreviewViewer.Frame is null
+                && startupRecent.RecipePreviewViewer.Error.Contains("identity", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(startupRecent.Source.Path)
+                && startupRecent.RunLog.Count == browseRunCount,
+                $"loaded={mismatchPreviewLoaded}; frame={startupRecent.RecipePreviewViewer.Frame?.SourceContentSha256}; error={startupRecent.RecipePreviewViewer.Error}");
+            startupRecent.SelectedRecentRecipe = startupRecent.RecentRecipes.Single(item =>
+                string.Equals(item.Path, recipePath, StringComparison.OrdinalIgnoreCase));
+            var previewRecovered = WaitForHeightImagePreview(startupRecent.RecipePreviewViewer);
+            Check(
+                "selecting a valid recipe after preview identity failure restores the matching image",
+                previewRecovered
+                && string.Equals(
+                    startupRecent.RecipePreviewViewer.Frame?.SourceContentSha256,
+                    expectedPreviewHash,
+                    StringComparison.OrdinalIgnoreCase)
+                && startupRecent.RunLog.Count == browseRunCount,
+                $"loaded={previewRecovered}; frame={startupRecent.RecipePreviewViewer.Frame?.SourceContentSha256}; expected={expectedPreviewHash}");
+            var readyRecentItem = ToolWorkbenchRecentRecipeItem.From(readyRecipePath);
+            Check(
+                "inspection entry is enabled only for a saved recipe that passes inspection validation",
+                readyRecentItem.IsInspectionReady
+                && startupRecent.OpenRecentInspectionRecipeCommand.CanExecute(readyRecentItem)
+                && !startupRecent.OpenRecentInspectionRecipeCommand.CanExecute(startupRecent.SelectedRecentRecipe)
+                && !startupRecent.OpenRecentInspectionRecipeCommand.CanExecute(ToolWorkbenchRecentRecipeItem.From(emptyRecipePath)),
+                $"ready={readyRecentItem.IsInspectionReady}; draftCanInspect={startupRecent.OpenRecentInspectionRecipeCommand.CanExecute(startupRecent.SelectedRecentRecipe)}; incompleteCanInspect={startupRecent.OpenRecentInspectionRecipeCommand.CanExecute(ToolWorkbenchRecentRecipeItem.From(emptyRecipePath))}");
+            startupRecent.OpenRecentTeachingRecipeCommand.Execute(startupRecent.SelectedRecentRecipe);
+            Check("recipe browser opens for teaching only through its explicit request", browseOpenCount == 1
+                && browseRequest is { Path: var teachingPath, OpenForInspection: false } && teachingPath == recipePath,
+                $"opens={browseOpenCount}; inspection={browseRequest?.OpenForInspection}");
+            startupRecent.OpenRecentInspectionRecipeCommand.Execute(readyRecentItem);
+            Check("recipe browser explicitly requests inspection without executing the recipe", browseOpenCount == 2
+                && browseRequest is { Path: var inspectionPath, OpenForInspection: true } && inspectionPath == readyRecipePath
+                && startupRecent.RunLog.Count == browseRunCount, $"opens={browseOpenCount}; inspection={browseRequest?.OpenForInspection}");
+            startupRecent.RecipeSortMode = "name";
+            Check("recipe browser sorts name matches deterministically without opening or running",
+                startupRecent.FilteredRecentRecipes.Select(item => item.Name)
+                    .SequenceEqual(startupRecent.FilteredRecentRecipes.Select(item => item.Name).OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+                && startupRecent.RunLog.Count == browseRunCount && browseOpenCount == 2,
+                $"sort={startupRecent.RecipeSortMode}; count={startupRecent.FilteredRecentRecipes.Count}");
+            startupRecent.RecipeSortMode = "modified";
+            startupRecent.RecipeSearchText = "missing-recipe";
+            Check("recipe browser search filters paths without changing the active recipe", startupRecent.FilteredRecentRecipes.Count == 1
+                && string.IsNullOrWhiteSpace(startupRecent.RecipePath), $"matches={startupRecent.FilteredRecentRecipes.Count}");
+            startupRecent.RecipeSearchText = "r19-no-matching-recipe-000";
+            Check("empty recipe search exposes an explicit reset without loading or running",
+                startupRecent.FilteredRecentRecipes.Count == 0 && startupRecent.HasRecentRecipeSearchText
+                && startupRecent.ClearRecentRecipeSearchCommand.CanExecute(null)
+                && string.IsNullOrWhiteSpace(startupRecent.RecipePath) && startupRecent.RunLog.Count == browseRunCount,
+                $"matches={startupRecent.FilteredRecentRecipes.Count}");
+            startupRecent.ClearRecentRecipeSearchCommand.Execute(null);
+            Check("clearing recipe search restores the list without execution",
+                string.IsNullOrEmpty(startupRecent.RecipeSearchText) && !startupRecent.HasRecentRecipeSearchText
+                && startupRecent.FilteredRecentRecipes.Count == startupRecent.RecentRecipes.Count
+                && !startupRecent.ClearRecentRecipeSearchCommand.CanExecute(null)
+                && string.IsNullOrWhiteSpace(startupRecent.RecipePath) && startupRecent.RunLog.Count == browseRunCount,
+                $"matches={startupRecent.FilteredRecentRecipes.Count}");
+            startupRecent.SelectedRecentRecipe = startupRecent.RecentRecipes.Single(item => !item.IsAvailable);
+            Check("missing saved recipe clears previous preview and disables open", startupRecent.BrowsedRecipe is null
+                && startupRecent.SelectedBrowsedStep is null && !string.IsNullOrWhiteSpace(startupRecent.RecipeBrowseError)
+                && !startupRecent.OpenRecentTeachingRecipeCommand.CanExecute(startupRecent.SelectedRecentRecipe), startupRecent.RecipeBrowseError);
+            startupRecent.SelectedRecentRecipe = startupRecent.RecentRecipes.Single(item => item.Path == recipePath);
+            Check("saved recipe selection recovers after a failed browse", startupRecent.BrowsedRecipe is not null
+                && string.IsNullOrWhiteSpace(startupRecent.RecipeBrowseError)
+                && startupRecent.OpenRecentTeachingRecipeCommand.CanExecute(startupRecent.SelectedRecentRecipe), "valid selection after missing file");
+            var malformedBrowsePath = Path.Combine(fixtureRoot, "malformed-browse.json");
+            File.WriteAllText(malformedBrowsePath, "{ truncated");
+            startupRecent.SelectedRecentRecipe = ToolWorkbenchRecentRecipeItem.From(malformedBrowsePath);
+            Check("malformed browse clears saved details without changing current input or running", startupRecent.BrowsedRecipe is null
+                && !string.IsNullOrWhiteSpace(startupRecent.RecipeBrowseError)
+                && string.IsNullOrWhiteSpace(startupRecent.Source.Path) && startupRecent.RunLog.Count == browseRunCount,
+                startupRecent.RecipeBrowseError);
+
             var host = new RecipeStepPropertyGridHost
             {
                 Width = 620,
@@ -989,7 +1543,7 @@ internal static class RecipeManagerWpgVerification
                 ("Ovl3D.Wpg.MutedTextBrush", "ThreeD.MutedTextBrush"),
                 ("Ovl3D.Wpg.AccentBrush", "ThreeD.AccentBrush"),
                 ("Ovl3D.Wpg.EditorFocusBrush", "ThreeD.FocusBrush"),
-                ("Ovl3D.Wpg.EditorBackgroundBrush", "ThreeD.ControlBrush"),
+                ("Ovl3D.Wpg.EditorBackgroundBrush", "ThreeD.InputBrush"),
                 ("Ovl3D.Wpg.EditorReadOnlyBrush", "ThreeD.DisabledSurfaceBrush"),
                 ("Ovl3D.Wpg.EditorTextBrush", "ThreeD.PrimaryTextBrush"),
                 ("Ovl3D.Wpg.EditorMutedBrush", "ThreeD.DisabledBrush")
@@ -1008,6 +1562,127 @@ internal static class RecipeManagerWpgVerification
                     ? $"aliases={themeResourcePairs.Length}"
                     : string.Join(",", themeMismatches));
 
+            host.SetPropertyFilter(string.Empty);
+            host.SelectedObject = new TwoPointLineStepProperties { OutputRole = "FirstEdge" };
+            host.Width = 285;
+            host.Measure(new Size(285, 360));
+            host.Arrange(new Rect(0, 0, 285, 360));
+            host.UpdateLayout();
+            host.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            host.UpdateLayout();
+            Check("two-field tool hides search and clears the old filter on selection change",
+                ((Grid)host.FindName("PropertySearchRow")).Visibility == Visibility.Collapsed
+                && ((TextBox)host.FindName("PropertyFilterBox")).Text.Length == 0 && host.MatchingPropertyCount == host.VisiblePropertyCount,
+                $"count={host.VisiblePropertyCount};matching={host.MatchingPropertyCount}");
+            var policyDisplay = LocalizedPropertyGridObject.LocalizeOption(nameof(TwoPointLineConstructionPolicy.OrderedPointsDefineSegment));
+            var fixedPolicy = FindVisualChildren<TextBlock>(host).FirstOrDefault(editor => editor.Text == policyDisplay);
+            Check("read-only construction policy displays the complete localized value in a narrow editor",
+                fixedPolicy is not null && fixedPolicy.TextWrapping == TextWrapping.Wrap && fixedPolicy.TextTrimming == TextTrimming.None
+                && fixedPolicy.ActualHeight > 0 && fixedPolicy.ActualHeight >= fixedPolicy.DesiredSize.Height - 0.5,
+                fixedPolicy is null ? string.Join(";", FindVisualChildren<ComboBox>(host).Select(editor => $"text={editor.Text};enabled={editor.IsEnabled}")) : $"text={fixedPolicy.Text};height={fixedPolicy.ActualHeight};wrap={fixedPolicy.TextWrapping}");
+
+            var propertyCaptionLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var captionEvidenceRoot = Path.ChangeExtension(Path.GetFullPath(reportPath), null) + "-images";
+            Directory.CreateDirectory(captionEvidenceRoot);
+            lines.Add($"Property caption captures: {captionEvidenceRoot}");
+            try
+            {
+                foreach (var language in new[] { OpenVisionLanguage.Korean, OpenVisionLanguage.English })
+                {
+                    OpenVisionLanguageService.SetLanguage(language, save: false);
+                    foreach (var width in new[] { 285, 360 })
+                    {
+                        var cornerDraft = new LineIntersectionStepProperties
+                        {
+                            MaximumClosestApproachDistance = 0.001,
+                            MinimumAcuteAngleDegrees = 45,
+                            MaximumSupportExtension = 0,
+                            OutputRole = "Corner caption check"
+                        };
+                        host.SelectedObject = cornerDraft;
+                        host.Width = width;
+                        host.Height = 500;
+                        host.Measure(new Size(width, 500));
+                        host.Arrange(new Rect(0, 0, width, 500));
+                        host.UpdateLayout();
+                        host.ScrollToTop();
+                        host.UpdateLayout();
+                        var captions = FindVisualChildren<TextBlock>(host)
+                            .Where(text => text.GetType().Name == "PropertyNameTextBlock").ToArray();
+                        var clipped = captions.Where(text =>
+                        {
+                            var fullText = new FormattedText(text.Text, CultureInfo.CurrentUICulture, text.FlowDirection,
+                                new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize,
+                                text.Foreground, VisualTreeHelper.GetDpi(text).PixelsPerDip)
+                            {
+                                MaxTextWidth = Math.Max(1, text.ActualWidth)
+                            };
+                            return text.TextTrimming != TextTrimming.None || text.ActualHeight + 0.5 < fullText.Height;
+                        }).Select(text => $"{text.Text}: {text.ActualWidth:G4}x{text.ActualHeight:G4}/{text.TextTrimming}").ToArray();
+                        Check("WPG shows complete condition names in narrow Korean and English panels",
+                            captions.Length == host.VisiblePropertyCount && captions.Length >= 3 && clipped.Length == 0
+                            && cornerDraft.MaximumClosestApproachDistance == 0.001 && cornerDraft.MinimumAcuteAngleDegrees == 45
+                            && cornerDraft.MaximumSupportExtension == 0 && cornerDraft.OutputRole == "Corner caption check",
+                            $"language={language};width={width};captions={captions.Length};clipped={string.Join(";", clipped)}");
+                        var captionBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(width, 500, 96, 96, PixelFormats.Pbgra32);
+                        captionBitmap.Render(host);
+                        var captionEncoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                        captionEncoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(captionBitmap));
+                        using var captionFile = File.Create(Path.Combine(captionEvidenceRoot, $"wpg-captions-{language}-{width}.png"));
+                        captionEncoder.Save(captionFile);
+                        host.ShowAdvancedParameters = false;
+                        host.CommitPendingEdit(out _);
+                        host.Height = 150;
+                        host.Measure(new Size(width, 150));
+                        host.Arrange(new Rect(0, 0, width, 150));
+                        host.UpdateLayout();
+                        host.ScrollToTop();
+                        host.UpdateLayout();
+                        var basicCaptions = FindVisualChildren<TextBlock>(host)
+                            .Where(text => text.GetType().Name == "PropertyNameTextBlock").ToArray();
+                        var basicBounds = basicCaptions.Select(text => text.TransformToAncestor(host)
+                            .TransformBounds(new Rect(text.RenderSize))).ToArray();
+                        var scrollViewer = FindVisualChildren<ScrollViewer>(host)
+                            .FirstOrDefault(scroll => scroll.ScrollableHeight > 0 && scroll.ViewportHeight > 0);
+                        scrollViewer?.ScrollToBottom();
+                        host.UpdateLayout();
+                        var lastCaptionBounds = basicCaptions[^1].TransformToAncestor(host).TransformBounds(new Rect(basicCaptions[^1].RenderSize));
+                        Check("WPG conditions can be reached by scrolling at the production panel height",
+                            basicCaptions.Length == 7 && basicBounds[0].Top >= 0 && basicBounds[0].Bottom <= 150
+                            && scrollViewer?.VerticalOffset > 0 && lastCaptionBounds.Top >= 0 && lastCaptionBounds.Bottom <= 150,
+                            $"language={language};width={width};names={basicCaptions.Length};offset={scrollViewer?.VerticalOffset:G4};lastBottom={lastCaptionBounds.Bottom:G4}");
+                        var basicBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(width, 150, 96, 96, PixelFormats.Pbgra32);
+                        basicBitmap.Render(host);
+                        var basicEncoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                        basicEncoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(basicBitmap));
+                        using var basicCaptionFile = File.Create(Path.Combine(captionEvidenceRoot, $"wpg-captions-basic-{language}-{width}.png"));
+                        basicEncoder.Save(basicCaptionFile);
+                        host.ShowAdvancedParameters = true;
+                        host.CommitPendingEdit(out _);
+                    }
+                }
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(propertyCaptionLanguage, save: false);
+            }
+            host.Width = 285;
+            host.Height = 360;
+
+            host.SelectedObject = new RegridHeightMapStepProperties();
+            host.UpdateLayout();
+            host.SetPropertyFilter("Pitch");
+            Check("many-field tool retains useful search",
+                host.VisiblePropertyCount > 6 && ((Grid)host.FindName("PropertySearchRow")).Visibility == Visibility.Visible
+                && host.MatchingPropertyCount > 0 && host.MatchingPropertyCount < host.VisiblePropertyCount,
+                $"count={host.VisiblePropertyCount};matching={host.MatchingPropertyCount}");
+            host.SelectedObject = new TwoPointLineStepProperties { OutputRole = "SecondEdge" };
+            host.UpdateLayout();
+            Check("returning from filtered complex tool exposes all simple fields",
+                ((Grid)host.FindName("PropertySearchRow")).Visibility == Visibility.Collapsed
+                && ((TextBox)host.FindName("PropertyFilterBox")).Text.Length == 0 && host.MatchingPropertyCount == host.VisiblePropertyCount,
+                $"count={host.VisiblePropertyCount};matching={host.MatchingPropertyCount}");
+
             OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
             var localizedRegrid = LocalizedPropertyGridObject.Create(new RegridHeightMapStepProperties());
             var koreanRegridProperties = TypeDescriptor.GetProperties(localizedRegrid);
@@ -1017,7 +1692,101 @@ internal static class RecipeManagerWpgVerification
             var koreanReferenceFrameCategory = koreanReferenceFrame?.Category;
             var koreanCoverageDisplayName = koreanCoverage?.DisplayName;
             var koreanCoverageCategory = koreanCoverage?.Category;
+            var lineDraft = new TwoPointLineStepProperties { OutputRole = "SecondEdge" };
+            var localizedLine = LocalizedPropertyGridObject.Create(lineDraft);
+            var constructionDescriptor = TypeDescriptor.GetProperties(localizedLine)[nameof(TwoPointLineStepProperties.ConstructionPolicy)]!;
+            Check("Korean option formatting preserves the typed read-only policy and output name",
+                constructionDescriptor.Converter.ConvertToInvariantString(constructionDescriptor.GetValue(localizedLine)) == "두 점을 순서대로 연결"
+                && constructionDescriptor.GetValue(localizedLine) is TwoPointLineConstructionPolicy.OrderedPointsDefineSegment
+                && constructionDescriptor.IsReadOnly && lineDraft.OutputRole == "SecondEdge",
+                $"display={constructionDescriptor.Converter.ConvertToInvariantString(constructionDescriptor.GetValue(localizedLine))};raw={lineDraft.ConstructionPolicy};role={lineDraft.OutputRole}");
+            host.SelectedObject = lineDraft;
+            host.Measure(new Size(285, 360));
+            host.Arrange(new Rect(0, 0, 285, 360));
+            host.UpdateLayout();
+            var localizedPolicyText = FindVisualChildren<TextBlock>(host).FirstOrDefault(text => text.Text == "두 점을 순서대로 연결");
+            Check("WPG renders the Korean fixed option without replacing the source value",
+                localizedPolicyText is not null && localizedPolicyText.TextWrapping == TextWrapping.Wrap
+                && localizedPolicyText.ActualWidth > 0 && localizedPolicyText.ActualHeight > 0
+                && lineDraft.ConstructionPolicy == TwoPointLineConstructionPolicy.OrderedPointsDefineSegment,
+                localizedPolicyText is null ? string.Join(";", FindVisualChildren<TextBlock>(host).Select(text => text.Text)) : $"text={localizedPolicyText.Text};bounds={localizedPolicyText.ActualWidth}x{localizedPolicyText.ActualHeight}");
+            var initialEnumDraft = FilterStepProperties.From(reopenedFilter);
+            var enumValuesBefore = new[] { initialEnumDraft.Method.ToString(), initialEnumDraft.MissingValuePolicy.ToString(), initialEnumDraft.BoundaryPolicy.ToString() };
+            host.SelectedObject = initialEnumDraft;
+            host.UpdateLayout();
+            var closedEnumCaptions = new[]
+            {
+                (nameof(FilterStepProperties.Method), "중앙값 필터"),
+                (nameof(FilterStepProperties.MissingValuePolicy), "누락 위치 유지"),
+                (nameof(FilterStepProperties.BoundaryPolicy), "사용 가능한 주변 셀")
+            };
+            var initialCaptionFailures = closedEnumCaptions.Where(expected =>
+            {
+                var editor = FindVisualChildren<ComboBox>(host).Single(combo => System.Windows.Automation.AutomationProperties.GetAutomationId(combo) == expected.Item1);
+                var presenter = FindVisualChildren<ContentPresenter>(editor).First(content => Equals(content.Content, editor.SelectionBoxItem));
+                return !FindVisualChildren<TextBlock>(presenter).Any(text => text.Text == expected.Item2);
+            }).Select(expected => expected.Item1).ToArray();
+            Check("initial closed enum captions are localized without changing the stored options",
+                initialCaptionFailures.Length == 0 && enumValuesBefore.SequenceEqual(new[] { initialEnumDraft.Method.ToString(), initialEnumDraft.MissingValuePolicy.ToString(), initialEnumDraft.BoundaryPolicy.ToString() }),
+                $"missingCaptions={string.Join(",", initialCaptionFailures)};raw={string.Join(",", enumValuesBefore)}");
+            var termEdgeDraft = new HeightDifferenceEdgeStepProperties { Polarity = HeightDifferenceEdgePolarity.Rising };
+            var localizedEdge = LocalizedPropertyGridObject.Create(termEdgeDraft);
+            var polarityDescriptor = TypeDescriptor.GetProperties(localizedEdge)[nameof(HeightDifferenceEdgeStepProperties.Polarity)]!;
+            var fallingValue = polarityDescriptor.Converter.ConvertFromInvariantString("하강 에지");
+            polarityDescriptor.SetValue(localizedEdge, fallingValue);
+            var standardPolarities = polarityDescriptor.Converter.GetStandardValues()!.Cast<object>().ToArray();
+            Check("localized enum input round-trips to the original option and retains standard values",
+                termEdgeDraft.Polarity == HeightDifferenceEdgePolarity.Falling
+                && polarityDescriptor.Converter.ConvertToInvariantString(termEdgeDraft.Polarity) == "하강 에지"
+                && polarityDescriptor.Converter.ConvertFromInvariantString("Rising") is HeightDifferenceEdgePolarity.Rising
+                && standardPolarities.All(value => value is HeightDifferenceEdgePolarity),
+                $"raw={termEdgeDraft.Polarity};options={standardPolarities.Length}");
+            host.SelectedObject = termEdgeDraft;
+            host.UpdateLayout();
+            var polarityEditor = FindVisualChildren<ComboBox>(host).Single(editor => System.Windows.Automation.AutomationProperties.GetAutomationId(editor) == nameof(HeightDifferenceEdgeStepProperties.Polarity));
+            var risingOption = polarityEditor.Items.Cast<object>().Single(value => value.ToString() == nameof(HeightDifferenceEdgePolarity.Rising));
+            polarityEditor.SelectedItem = risingOption;
+            host.UpdateLayout();
+            Check("rendered localized enum selection updates the same typed draft",
+                termEdgeDraft.Polarity == HeightDifferenceEdgePolarity.Rising
+                && FindVisualChildren<TextBlock>(polarityEditor).Any(text => text.Text == "상승 에지"),
+                $"raw={termEdgeDraft.Polarity};rendered={string.Join(";", FindVisualChildren<TextBlock>(polarityEditor).Select(text => text.Text))}");
+            var domainDraft = new DomainMaskStepProperties();
+            host.SelectedObject = domainDraft;
+            host.UpdateLayout();
+            Check("read-only string policy uses operator text while preserving its stored policy",
+                FindVisualChildren<TextBlock>(host).Any(text => text.Text == "적용된 전체 연결 영역")
+                && domainDraft.DomainPolicy == "Complete Published ConnectedRegionArtifact",
+                $"raw={domainDraft.DomainPolicy};rendered={string.Join(";", FindVisualChildren<TextBlock>(host).Select(text => text.Text))}");
+            var physicalDraft = new PhysicalEdgeGapFlushStepProperties { ToleranceMode = "Enabled", SectionId = "Enabled" };
+            var localizedPhysical = LocalizedPropertyGridObject.Create(physicalDraft);
+            var physicalDescriptors = TypeDescriptor.GetProperties(localizedPhysical);
+            var toleranceDescriptor = physicalDescriptors[nameof(PhysicalEdgeGapFlushStepProperties.ToleranceMode)]!;
+            toleranceDescriptor.SetValue(localizedPhysical, toleranceDescriptor.Converter.ConvertFromInvariantString("사용 안 함"));
+            Check("localized string options preserve protocol values and operator identifiers",
+                physicalDraft.ToleranceMode == "Disabled" && physicalDraft.SectionId == "Enabled"
+                && physicalDescriptors[nameof(PhysicalEdgeGapFlushStepProperties.SectionId)]!.Converter.ConvertToInvariantString(physicalDraft.SectionId) == "Enabled",
+                $"mode={physicalDraft.ToleranceMode};section={physicalDraft.SectionId}");
+            var lineTool = ToolWorkbenchToolCatalog.Create().Single(tool => tool.Id == "two-point-line");
+            var localizedLineStep = new ToolWorkbenchPipelineStepItem("line", lineTool, "source;points", "line.output");
+            Check("normal node contracts use operator terms while raw routes remain unchanged",
+                lineTool.InputContractDisplay == "높이 데이터 + 점(2)" && lineTool.OutputContractDisplay == "직선"
+                && localizedLineStep.FlowInputs[0].ContractDisplay == "높이 데이터" && localizedLineStep.FlowInputs[1].ContractDisplay == "점(2)"
+                && lineTool.InputContract == "Raw C3D HeightField + PointSet(2)" && lineTool.OutputContract == "LineFeature"
+                && ThreeDLocalization.Shared.DisplayedOutputs == "뷰어 결과" && ThreeDLocalization.Shared.Discard == "변경 취소",
+                $"input={lineTool.InputContractDisplay};output={lineTool.OutputContractDisplay};ids={localizedLineStep.InputEntityIdsText}");
+
             OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            host.SelectedObject = new TwoPointLineStepProperties();
+            host.CommitPendingEdit(out _);
+            host.Measure(new Size(285, 360));
+            host.Arrange(new Rect(0, 0, 285, 360));
+            host.UpdateLayout();
+            var englishPolicy = FindVisualChildren<TextBlock>(host).FirstOrDefault(text => text.Text == nameof(TwoPointLineConstructionPolicy.OrderedPointsDefineSegment));
+            Check("long English fixed policy still wraps after language change",
+                englishPolicy is not null && englishPolicy.TextWrapping == TextWrapping.Wrap && englishPolicy.ActualHeight > 24
+                && englishPolicy.ActualHeight >= englishPolicy.DesiredSize.Height - 0.5,
+                englishPolicy is null ? "English policy missing" : $"text={englishPolicy.Text};height={englishPolicy.ActualHeight};desired={englishPolicy.DesiredSize.Height}");
             var englishRegrid = LocalizedPropertyGridObject.Create(new RegridHeightMapStepProperties());
             var englishRegridProperties = TypeDescriptor.GetProperties(englishRegrid);
             var englishReferenceFrame = englishRegridProperties[nameof(RegridHeightMapStepProperties.ReferenceFrameId)];
@@ -1027,14 +1796,104 @@ internal static class RecipeManagerWpgVerification
             Check(
                 "WPG display metadata localizes without renaming the typed Re-grid properties",
                 koreanReferenceFrame?.Name == nameof(RegridHeightMapStepProperties.ReferenceFrameId)
-                && koreanReferenceFrameDisplayName == "기준 프레임 ID"
-                && koreanReferenceFrameCategory == "A3 기준 그리드"
-                && koreanCoverageDisplayName == "최소 커버리지 비율"
-                && koreanCoverageCategory == "A3 게시 정책"
+                && koreanReferenceFrameDisplayName == "기준 좌표계 ID"
+                && koreanReferenceFrameCategory == "기준 그리드"
+                && koreanCoverageDisplayName == "최소 유효 셀 비율"
+                && koreanCoverageCategory == "결과 적용 조건"
                 && englishReferenceFrame?.Name == nameof(RegridHeightMapStepProperties.ReferenceFrameId)
                 && englishReferenceFrameDisplayName == "Reference frame ID"
                 && englishReferenceFrameCategory == "A3 reference grid",
                 $"ko={koreanReferenceFrameDisplayName}/{koreanReferenceFrameCategory}; coverage={koreanCoverageDisplayName}/{koreanCoverageCategory}; en={englishReferenceFrameDisplayName}/{englishReferenceFrameCategory}");
+
+            var emptyMappedDraft = LocalizedPropertyGridObject.Create(new FilterStepProperties());
+            var extensionDraft = LocalizedPropertyGridObject.Create(new FilterStepProperties
+            {
+                UnmappedParameters = "FuturePolicy=RetainMe"
+            });
+            var emptyMappedProperties = TypeDescriptor.GetProperties(emptyMappedDraft);
+            var extensionProperties = TypeDescriptor.GetProperties(extensionDraft);
+            Check(
+                "WPG hides an empty unmapped-parameter row but keeps actual extension data visible",
+                emptyMappedProperties[nameof(FilterStepProperties.UnmappedParameters)] is null
+                && extensionProperties[nameof(FilterStepProperties.UnmappedParameters)]?.GetValue(extensionDraft) is "FuturePolicy=RetainMe",
+                $"empty={emptyMappedProperties[nameof(FilterStepProperties.UnmappedParameters)] is null}; extension={extensionProperties[nameof(FilterStepProperties.UnmappedParameters)]?.GetValue(extensionDraft)}");
+
+            var thicknessDraft = new ThicknessStepProperties { MinimumThickness = 1, MaximumThickness = 2, MinimumValidSampleCount = 3000 };
+            host.SelectedObject = thicknessDraft;
+            host.ShowAdvancedParameters = false;
+            host.CommitPendingEdit(out _);
+            host.Dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => host.UpdateLayout()));
+            var basicThicknessCount = host.VisiblePropertyCount;
+            var basicGridObject = ((System.Windows.Controls.WpfPropertyGrid.PropertyGrid)host.FindName("InnerGrid")).SelectedObject;
+            var basicDescriptorNames = string.Join(",", TypeDescriptor.GetProperties(basicGridObject).Cast<PropertyDescriptor>().Select(property => property.Name));
+            host.ShowAdvancedParameters = true;
+            host.CommitPendingEdit(out _);
+            host.Dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => host.UpdateLayout()));
+            var advancedThicknessCount = host.VisiblePropertyCount;
+            host.ShowAdvancedParameters = false;
+            host.CommitPendingEdit(out _);
+            host.Dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => host.UpdateLayout()));
+            Check("WPG basic and advanced display preserve the same sampling draft", basicThicknessCount == 2
+                && advancedThicknessCount == 3 && host.VisiblePropertyCount == 2
+                && ReferenceEquals(host.SelectedObject, thicknessDraft) && thicknessDraft.MinimumValidSampleCount == 3000,
+                $"basic={basicThicknessCount};advanced={advancedThicknessCount};restored={host.VisiblePropertyCount};samples={thicknessDraft.MinimumValidSampleCount};descriptors={basicDescriptorNames};advancedFlag={host.ShowAdvancedParameters}");
+
+            host.SetPropertyFilter(string.Empty);
+            host.UpdateLayout();
+            var editor = FindTextEditors(host).FirstOrDefault(candidate => System.Windows.Automation.AutomationProperties.GetAutomationId(candidate) == nameof(ThicknessStepProperties.MinimumThickness));
+            if (editor is null) throw new InvalidOperationException("Rendered minimum thickness editor was not found.");
+            editor.Text = "9";
+            editor.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, 0, editor, new Button()) { RoutedEvent = Keyboard.LostKeyboardFocusEvent });
+            Check("WPG mouse focus departure retains the edited typed draft", thicknessDraft.MinimumThickness == 9 && thicknessDraft.MaximumThickness == 2,
+                $"minimum={thicknessDraft.MinimumThickness};maximum={thicknessDraft.MaximumThickness}");
+            host.ShowAdvancedParameters = true;
+            host.CommitPendingEdit(out _);
+            Check("WPG display recomposition retains an invalid-range draft without applying it", thicknessDraft.MinimumThickness == 9 && thicknessDraft.MaximumThickness == 2,
+                $"minimum={thicknessDraft.MinimumThickness};maximum={thicknessDraft.MaximumThickness}");
+
+            var originalCulture = CultureInfo.CurrentCulture;
+            try
+            {
+                foreach (var cultureName in new[] { "en-US", "de-DE" })
+                {
+                    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
+                    var numericDraft = new ThicknessStepProperties { MinimumThickness = 1, MaximumThickness = 2, MinimumValidSampleCount = 1 };
+                    host.IsEnabled = false;
+                    host.SelectedObject = numericDraft;
+                    host.CommitPendingEdit(out _);
+                    host.UpdateLayout();
+                    host.IsEnabled = true;
+                    foreach (var field in new[] { nameof(ThicknessStepProperties.MinimumThickness), nameof(ThicknessStepProperties.MinimumValidSampleCount) })
+                    {
+                        var numericEditor = FindTextEditors(host).Single(candidate => System.Windows.Automation.AutomationProperties.GetAutomationId(candidate) == field);
+                        var binding = numericEditor.GetBindingExpression(TextBox.TextProperty)!;
+                        var numericProperty = ((System.Windows.Controls.WpfPropertyGrid.PropertyItemValue)binding.DataItem).ParentProperty;
+                        foreach (var malformed in new[] { "invalid-number", string.Empty, field == nameof(ThicknessStepProperties.MinimumValidSampleCount) ? "2147483648" : "1e9999x" })
+                        {
+                            numericEditor.SetCurrentValue(TextBox.TextProperty, malformed);
+                            numericEditor.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                            var numericCommitted = host.CommitPendingEdit(out var numericMessage);
+                            Check($"WPG rejects malformed {field} in {cultureName}", !numericCommitted && Validation.GetHasError(numericEditor)
+                                && numericEditor.Text == malformed && numericDraft.MinimumThickness == 1 && numericDraft.MinimumValidSampleCount == 1
+                                && ReferenceEquals(binding, numericEditor.GetBindingExpression(TextBox.TextProperty))
+                                && numericMessage.StartsWith(numericProperty.DisplayName + ":", StringComparison.Ordinal),
+                                $"input={malformed};commit={numericCommitted};error={numericMessage}");
+                        }
+                        var valid = field == nameof(ThicknessStepProperties.MinimumThickness) ? (cultureName == "de-DE" ? "1,25e0" : "1.25e0") : "0x10";
+                        numericEditor.SetCurrentValue(TextBox.TextProperty, valid);
+                        var recoveredNumeric = host.CommitPendingEdit(out var recoveredNumericMessage);
+                        Check($"WPG numeric editor recovers with its existing converter in {cultureName}", recoveredNumeric && !Validation.GetHasError(numericEditor)
+                            && (field == nameof(ThicknessStepProperties.MinimumThickness) ? numericDraft.MinimumThickness == 1.25 : numericDraft.MinimumValidSampleCount == 16),
+                            $"input={valid};commit={recoveredNumeric};{recoveredNumericMessage}");
+                        numericEditor.SetCurrentValue(TextBox.TextProperty, "1");
+                        host.CommitPendingEdit(out _);
+                    }
+                }
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = originalCulture;
+            }
 
             var messageDialog = new WpfMessageDialogControl();
             OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
@@ -1180,6 +2039,39 @@ internal static class RecipeManagerWpgVerification
         return workspace.Report;
     }
 
+    private static bool WaitForHeightImagePreview(HeightImageViewerViewModel viewer)
+    {
+        if (!viewer.IsObservedLoadRunning)
+        {
+            return true;
+        }
+
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(10)
+        };
+        timer.Tick += (_, _) =>
+        {
+            if (!viewer.IsObservedLoadRunning || DateTimeOffset.UtcNow >= deadline)
+            {
+                frame.Continue = false;
+            }
+        };
+        timer.Start();
+        try
+        {
+            Dispatcher.PushFrame(frame);
+        }
+        finally
+        {
+            timer.Stop();
+        }
+
+        return !viewer.IsObservedLoadRunning;
+    }
+
     private static string ResolvePersistedSourcePath(string recipePath, string sourcePath)
     {
         if (Path.IsPathFullyQualified(sourcePath))
@@ -1195,6 +2087,18 @@ internal static class RecipeManagerWpgVerification
     private static bool MatchesInvariantNumber(string text, double expected) =>
         double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var actual)
         && Math.Abs(actual - expected) <= 1e-12;
+
+    private static IEnumerable<TextBox> FindTextEditors(DependencyObject root) => FindVisualChildren<TextBox>(root);
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T editor) yield return editor;
+            foreach (var descendant in FindVisualChildren<T>(child)) yield return descendant;
+        }
+    }
 
     [CategoryOrder("Probe", 0)]
     private sealed class WpgProbeProperties

@@ -32,7 +32,7 @@
                         <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                                    Text="{Binding Localization.DisplayedOutputsTitle}" />
                         <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
-                                   FontSize="10"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.DisplayedOutputsDetail}"
                                    TextTrimming="CharacterEllipsis" />
@@ -46,7 +46,7 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1"
                         CornerRadius="3">
-                    <TextBlock FontSize="9.5"
+                    <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{Binding DisplayedOutputsSummary}" />
                 </Border>
@@ -59,14 +59,14 @@
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                     BorderThickness="1"
                     CornerRadius="3"
-                    AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.CurrentViewerArtifactAccessible, Korean='현재 3D 뷰어 산출물', English='Current 3D viewer artifact'}">
+                    AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.CurrentViewerArtifactAccessible, Korean='현재 뷰어 결과', English='Current viewer artifact'}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock FontSize="10"
+                    <TextBlock FontSize="12"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                Text="{Binding Localization.CurrentViewerDisplay}" />
                     <TextBlock Margin="8,0,0,0"
-                               FontSize="10"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{Binding CurrentViewerOutputSummary}"
                                TextTrimming="CharacterEllipsis" />
@@ -94,7 +94,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock FontSize="10.5"
+                                            <TextBlock FontSize="12"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource ThreeD.TextBrush}"
                                                        Text="{Binding DisplayName}"
@@ -103,18 +103,18 @@
                                                     Padding="4,1"
                                                     Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                                     CornerRadius="2">
-                                                <TextBlock FontSize="9"
+                                                <TextBlock FontSize="12"
                                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                                           Text="{Binding State}" />
+                                                           Text="{Binding StateDisplay}" />
                                             </Border>
                                         </StackPanel>
                                         <TextBlock Margin="0,3,0,0"
-                                                   FontSize="9.5"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                                   Text="{Binding Contract}"
+                                                   Text="{Binding ContractDisplay}"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="9"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding Detail}"
                                                    TextTrimming="CharacterEllipsis" />
@@ -122,7 +122,7 @@
                                     <StackPanel Grid.Column="1"
                                                 Margin="12,0,8,0"
                                                 VerticalAlignment="Center">
-                                        <TextBlock FontSize="9.5"
+                                        <TextBlock FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Availability}"
@@ -132,7 +132,7 @@
                                                     Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                                     CornerRadius="2"
                                                     Visibility="{Binding IsShownInViewer, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock FontSize="9"
+                                                <TextBlock FontSize="12"
                                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                            Text="{Binding DataContext.Localization.DisplayedInViewer, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                             </Border>
@@ -141,7 +141,7 @@
                                                     Background="{DynamicResource ThreeD.PassSurfaceBrush}"
                                                     CornerRadius="2"
                                                     Visibility="{Binding IsPinnedToCompare, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock FontSize="9"
+                                                <TextBlock FontSize="12"
                                                            Foreground="{DynamicResource ThreeD.PassBrush}"
                                                            Text="{Binding ComparePinsSummary}" />
                                             </Border>
@@ -155,18 +155,18 @@
                                                    Icon="{ui:SymbolIcon Eye24}"
                                                    Command="{Binding DataContext.ShowDisplayedOutputInViewerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                    CommandParameter="{Binding}"
-                                                   ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.ShowInViewerTip, Korean='기존 C3D 산출물만 기본 3D 뷰어에 표시합니다.', English='Show only an existing C3D artifact in the main Viewer'}"
+                                                   ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.ShowInViewerTip, Korean='C3D는 기본 3D 뷰어에, signed-delta는 Height Image에 표시합니다.', English='Show C3D in the main 3D Viewer or signed-delta in Height Image'}"
                                                    Visibility="{Binding CanShowInViewer, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.ShowInViewerAction, Korean='기존 C3D 산출물을 3D 뷰어에 표시', English='Show existing C3D output in Viewer'}" />
+                                                   AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.ShowInViewerAction, Korean='결과를 뷰어에 표시', English='Show output in Viewer'}" />
                                         <ui:Button Margin="5,0,0,0"
                                                    Padding="7,3"
                                                    Content="{Binding DataContext.Localization.PinToCompare, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                    Icon="{ui:SymbolIcon Document24}"
                                                    Command="{Binding DataContext.PinDisplayedOutputToCompareCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                    CommandParameter="{Binding}"
-                                                   ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.PinToCompareTip, Korean='기존 C3D 산출물을 비어 있는 첫 번째 비교 슬롯에 고정합니다.', English='Pin the existing C3D artifact to the first empty comparison slot'}"
+                                                   ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.PinToCompareTip, Korean='기존 C3D 결과를 비어 있는 첫 번째 비교 슬롯에 고정합니다.', English='Pin the existing C3D artifact to the first empty comparison slot'}"
                                                    Visibility="{Binding CanPinToCompare, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.PinToCompareAction, Korean='기존 C3D 산출물을 비교에 고정', English='Pin existing C3D output to comparison'}" />
+                                                   AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.PinToCompareAction, Korean='기존 C3D 결과를 비교에 고정', English='Pin existing C3D output to comparison'}" />
                                         <ui:Button Margin="5,0,0,0"
                                                    Padding="7,3"
                                                    Content="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=UserControl}}"

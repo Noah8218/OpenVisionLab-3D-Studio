@@ -107,7 +107,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         foreach (var point in c3dSample.Points)
         {
-            var position = TransformC3DPosition(point.Position);
+            var position = TransformC3DDisplayPosition(point.Position);
             if (!ViewerRayGeometry.TryProjectPoint(
                     ray.origin,
                     ray.direction,

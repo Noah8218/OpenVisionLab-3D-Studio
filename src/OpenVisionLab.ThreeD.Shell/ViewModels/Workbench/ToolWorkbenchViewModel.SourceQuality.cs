@@ -40,6 +40,41 @@ public sealed partial class ToolWorkbenchViewModel
                             ? "Pass"
                             : "Unavailable";
 
+    public bool IsCurrentSourceHeaderStatusVisible =>
+        !IsInspectionFileView && IsCurrentSourceQualityStatusVisible
+        && !string.Equals(CurrentSourceQualityStatusKind, "Pass", StringComparison.Ordinal);
+
+    public string CurrentSourceHeaderStatusText
+    {
+        get
+        {
+            if (!IsCurrentSourceQualityStatusVisible)
+            {
+                return string.Empty;
+            }
+
+            return CurrentSourceQualityStatusKind switch
+            {
+                "Loading" => Localization.CheckingInput,
+                "Error" => Localize("입력 오류", "Input error"),
+                "Warning" => Localize($"입력 결측 {SourceQuality.Report?.Coverage.MissingSampleCount:N0}개", $"Input: {SourceQuality.Report?.Coverage.MissingSampleCount:N0} missing samples"),
+                _ => Localization.InputNeedsReview
+            };
+        }
+    }
+
+    public string CurrentSourceHeaderStatusDetail
+    {
+        get
+        {
+            var detail = CurrentSourceQualityDetail;
+            var viewOnlySuffix = $"{Environment.NewLine}{Localization.SourceQualityViewOnly}";
+            return detail.EndsWith(viewOnlySuffix, StringComparison.Ordinal)
+                ? detail[..^viewOnlySuffix.Length]
+                : detail;
+        }
+    }
+
     public string CurrentSourceQualitySummary => SourceQuality.Report is { } report
         ? string.Concat(
             SourceQuality.GridDiagnosticsStatus,
@@ -119,11 +154,11 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
     }
 
-    private ToolRecipeAcquisitionProvenance CreateUnavailableSourceAcquisitionProvenance() => new(
+    private ToolRecipeAcquisitionProvenance CreateUnavailableSourceAcquisitionProvenance(string? frameId = null) => new(
         ToolRecipeAcquisitionProvenanceState.Unavailable,
         Localization.SourceAcquisitionDefaultEvidence,
         Localization.SourceAcquisitionDefaultLimitations,
-        ToolRecipeAcquisitionDirection.CreateUnavailable(Source.FrameId));
+        ToolRecipeAcquisitionDirection.CreateUnavailable(frameId ?? Source.FrameId));
 
     private void SelectSourceQualityWorkspace()
     {
@@ -404,6 +439,9 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(SelectedWorkspaceState));
         OnPropertyChanged(nameof(IsCurrentSourceQualityStatusVisible));
         OnPropertyChanged(nameof(CurrentSourceQualityStatusKind));
+        OnPropertyChanged(nameof(IsCurrentSourceHeaderStatusVisible));
+        OnPropertyChanged(nameof(CurrentSourceHeaderStatusText));
+        OnPropertyChanged(nameof(CurrentSourceHeaderStatusDetail));
         OnPropertyChanged(nameof(CurrentSourceQualitySummary));
         OnPropertyChanged(nameof(CurrentSourceQualityDetail));
         selectSourceQualityCommand.RaiseCanExecuteChanged();

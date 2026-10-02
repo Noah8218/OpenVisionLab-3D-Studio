@@ -3,12 +3,254 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:workbenchViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              MinWidth="720"
+             SizeChanged="OnViewSizeChanged"
              AutomationProperties.AutomationId="RecipeCenterView">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <DataTemplate x:Key="RecipeFilterCaptionTemplate"><TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="300" /></DataTemplate>
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+        <ItemsPanelTemplate x:Key="RecipeBrowserWideSectionsPanel"><StackPanel /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="RecipeBrowserCompactSectionsPanel"><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+        <DataTemplate x:Key="RecipeOverviewSectionTemplate">
+            <StackPanel>
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Padding="8" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock FontSize="13" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.R19.InputPreview, Korean='3D 입력 미리보기', English='3D input preview'}" />
+                            <TextBlock Margin="0,4,0,7" Text="{Binding RecipePreviewIdentitySummary}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" />
+                            <workbenchViews:HeightImageViewerView Height="230" MinHeight="210" DataContext="{Binding RecipePreviewViewer}" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                        <TextBlock Text="{Binding Localization.RecipeInfoTarget}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding BrowsedRecipe.InspectionTarget}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,10,0,0" Text="{Binding Localization.RecipeInfoCategory}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding BrowsedRecipe.Category}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,10,0,0" Text="{Binding Localization.RecipeInfoDescription}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding BrowsedRecipe.Description}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,10,0,0" Text="{Binding Localization.SourceLabel}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding BrowsedRecipe.Source.Name}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding BrowsedRecipe.Source.Format}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+                <Border Margin="0,12,0,0" Padding="12" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock FontSize="13" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.R19.SavedInputs, Korean='도구와 입력', English='Tools and inputs'}" />
+                        <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding BrowsedRecipe.Steps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="6,5" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,0,1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <ItemsControl Margin="0,3,0,0" ItemsSource="{Binding InputEntityIds}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" /></DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Border Margin="0,12,0,0" Padding="12" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock FontSize="13" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.R19.SavedParameters, Korean='저장된 조건', English='Saved conditions'}" />
+                        <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding BrowsedRecipe.Steps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,4">
+                                        <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <ItemsControl ItemsSource="{Binding Parameters}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="1.2*" /></Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                                        <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Value}" TextWrapping="Wrap" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="RecipeInputSectionTemplate">
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="1.2*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="{Binding Localization.SourceLabel}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                    <TextBlock Margin="0,4,0,0" Text="{Binding BrowsedRecipe.Source.Name}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <Grid Margin="0,8,12,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.InputPath, Korean='파일 위치', English='File location'}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,4,0,4" Text="{Binding BrowsedRecipe.Source.Path}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="1" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.InputFormat, Korean='입력 형식', English='Input format'}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,4,0,4" Text="{Binding BrowsedRecipe.Source.Format}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="2" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.HeightUnit, Korean='높이 단위', English='Height unit'}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,4,0,4" Text="{Binding BrowsedRecipe.Source.Unit}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeSourceHeightUnit" />
+                        <TextBlock Grid.Row="3" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.GridSize, Korean='격자 크기 (열 × 행)', English='Grid size (columns × rows)'}" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,4,0,4" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeSourceGridSize"><TextBlock.Text><MultiBinding StringFormat="{}{0} × {1}"><Binding Path="BrowsedRecipe.Source.GridWidth" /><Binding Path="BrowsedRecipe.Source.GridHeight" /></MultiBinding></TextBlock.Text></TextBlock>
+                        <TextBlock Grid.Row="4" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.Frame, Korean='좌표계', English='Coordinate frame'}" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,4,0,4" Text="{Binding BrowsedRecipe.Source.FrameId}" TextWrapping="Wrap" />
+                    </Grid>
+                    <TextBlock Margin="0,12,0,0" Text="{Binding RecipePreviewIdentitySummary}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Grid.Column="1" Padding="8" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <workbenchViews:HeightImageViewerView Height="340" MinHeight="280" DataContext="{Binding RecipePreviewViewer}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="RecipeToolsSectionTemplate">
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.9*" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+                <ListBox ItemsSource="{Binding BrowsedRecipe.Steps}"
+                         SelectedItem="{Binding SelectedBrowsedStep, Mode=TwoWay}"
+                         SelectionChanged="OnRecipeSelectionChanged"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         AutomationProperties.AutomationId="SavedRecipeSteps">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="4,7">
+                                <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                    <TextBlock Text="{Binding SelectedBrowsedStep.ToolName}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Recipe.SelectTool, Korean='검사 도구를 선택하면 입력과 저장된 조건을 확인할 수 있습니다.', English='Select a tool to view its inputs and saved conditions.'}">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SelectedBrowsedStep}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                    <Expander Margin="0,8,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.Recipe.ToolIdentity, Korean='도구 식별 정보', English='Tool identity'}">
+                        <TextBlock Margin="8" Text="{Binding SelectedBrowsedStep.Id}" TextWrapping="Wrap" />
+                    </Expander>
+                    <TextBlock Margin="0,10,0,4" Text="{i18n:ThreeDText Key=ThreeD.R19.SavedInputs, Korean='입력', English='Inputs'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                    <ItemsControl ItemsSource="{Binding SelectedBrowsedStep.InputEntityIds}">
+                        <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Margin="0,10,0,4" Text="{i18n:ThreeDText Key=ThreeD.R19.SavedParameters, Korean='저장된 조건', English='Saved parameters'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                    <ItemsControl ItemsSource="{Binding SelectedBrowsedStep.Parameters}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="1.2*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Value}" TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="RecipeRegionsSectionTemplate">
+            <StackPanel Margin="0,12,0,0">
+                <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.SavedParameters, Korean='레시피에 저장된 영역 선택', English='Regions saved in this recipe'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" />
+                <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding BrowsedRecipe.Selections}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,8" Padding="10" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Kind}" Value="point-set"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Recipe.PointCount, Korean='선택한 점 개수', English='Selected points'}" TextWrapping="Wrap" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Points.Count}" AutomationProperties.AutomationId="RecipeRegionPointCount" />
+                                    </Grid>
+                                    <Expander Margin="0,8,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.Recipe.RegionDetails, Korean='영역 상세 정보', English='Region details'}">
+                                        <Grid Margin="0,8,12,0">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.RegionKind, Korean='영역 유형', English='Region type'}" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,4,0,4" Text="{Binding Kind}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="1" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.RegionSource, Korean='입력 ID', English='Input ID'}" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,4,0,4" Text="{Binding RootSourceId}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="2" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.Frame, Korean='좌표계', English='Coordinate frame'}" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,4,0,4" Text="{Binding FrameId}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="3" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.InputFormat, Korean='입력 형식', English='Input format'}" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,4,0,4" Text="{Binding SourceBinding.Format}" TextWrapping="Wrap" />
+                                            <TextBlock Grid.Row="4" Margin="0,4,12,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.Recipe.GridSize, Korean='격자 크기 (열 × 행)', English='Grid size (columns × rows)'}" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,4,0,4" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeRegionGridSize"><TextBlock.Text><MultiBinding StringFormat="{}{0} × {1}"><Binding Path="SourceBinding.GridWidth" /><Binding Path="SourceBinding.GridHeight" /></MultiBinding></TextBlock.Text></TextBlock>
+                                        </Grid>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.RegionSelectionEmpty, Korean='이 레시피에는 저장된 영역 선택이 없습니다.', English='This recipe has no saved region selections.'}" TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding BrowsedRecipe.Selections.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="RecipeCriteriaSectionTemplate">
+            <StackPanel Margin="0,12,0,0">
+                <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.SavedParameters, Korean='저장된 판정 조건', English='Saved inspection criteria'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" />
+                <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding BrowsedRecipe.Steps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,8" Padding="10" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <ItemsControl Margin="0,5,0,0" ItemsSource="{Binding Parameters}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,2">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="1.2*" /></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                                    <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Value}" TextWrapping="Wrap" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
     </UserControl.Resources>
     <UserControl.InputBindings>
         <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewTeachingRecipeCommand}" />
@@ -16,63 +258,31 @@
         <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveTeachingRecipeCommand}" />
         <KeyBinding Key="S" Modifiers="Control+Shift" Command="{Binding SaveTeachingRecipeAsCommand}" />
     </UserControl.InputBindings>
-    <Border Padding="18"
+    <Border Padding="0"
             Background="{DynamicResource ThreeD.PanelBrush}"
             TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel>
+            <Border Grid.Row="0"
+                    x:Name="RecipeManagerPageTitle"
+                    MinHeight="50"
+                    Padding="18,12"
+                    Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="0,0,0,1">
                 <TextBlock FontSize="18"
                            FontWeight="SemiBold"
-                           Text="{Binding Localization.RecipeCenter}" />
-                <TextBlock Margin="0,4,0,0"
-                           FontSize="10.5"
-                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                           Text="{Binding Localization.RecipeCenterDetail}"
-                           TextWrapping="Wrap" />
-            </StackPanel>
+                           Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeManagerTitle, Korean='레시피 관리자', English='Recipe Manager'}"
+                           AutomationProperties.AutomationId="RecipeManagerTitle" />
+            </Border>
 
-            <Grid Grid.Row="1" Margin="0,14,0,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <ui:Button Height="64"
-                           Margin="0,0,6,0"
-                           HorizontalAlignment="Stretch"
-                           HorizontalContentAlignment="Left"
-                           Padding="16,10"
-                           Content="{Binding Localization.NewRecipe}"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           Icon="{ui:SymbolIcon DocumentAdd24}"
-                           Command="{Binding NewTeachingRecipeCommand}"
-                           ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.NewTip, Korean='새 검사 레시피 (Ctrl+N)', English='New inspection recipe (Ctrl+N)'}"
-                           AutomationProperties.Name="{Binding Localization.NewRecipe}" />
-                <ui:Button Grid.Column="1"
-                           Height="64"
-                           Margin="6,0,0,0"
-                           HorizontalAlignment="Stretch"
-                           HorizontalContentAlignment="Left"
-                           Padding="16,10"
-                           Content="{Binding Localization.OpenExistingRecipe}"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           Icon="{ui:SymbolIcon FolderOpen24}"
-                           Command="{Binding OpenTeachingRecipeCommand}"
-                           ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.OpenTip, Korean='기존 검사 레시피 열기 (Ctrl+O)', English='Open existing inspection recipe (Ctrl+O)'}"
-                           AutomationProperties.Name="{Binding Localization.OpenExistingRecipe}" />
-            </Grid>
-
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="1">
                 <Grid.Style>
                     <Style TargetType="Grid">
-                        <Setter Property="Visibility" Value="Visible" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsFirstRecipeSetupVisible}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -80,267 +290,356 @@
                         </Style.Triggers>
                     </Style>
                 </Grid.Style>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.92*" />
-                    <ColumnDefinition Width="1.25*" />
-                </Grid.ColumnDefinitions>
-
-                <Border Margin="0,0,7,0"
-                        Padding="14"
-                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="5">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Border Padding="12,6" Margin="18,2,18,2" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Width="18"
-                                           Height="18"
-                                           Margin="0,1,7,0"
-                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                           Symbol="DocumentEdit24" />
-                            <TextBlock FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Text="{Binding Localization.CurrentRecipe}" />
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Text="{Binding Localization.CurrentRecipe}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                            <TextBox MaxWidth="480" HorizontalAlignment="Left" MinWidth="240" Text="{Binding RecipeName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Localization.RecipeNameLabel}" />
+                            <TextBlock Text="{Binding LocalizedRecipeStateSummary}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding LocalizedRecipeSaveBlocker}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" Visibility="{Binding IsRecipeSaveBlocked, Converter={StaticResource BoolToVisibilityConverter}}" />
                         </StackPanel>
-
-                        <StackPanel Grid.Row="1" Margin="0,13,0,0">
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                       Text="{Binding Localization.RecipeNameLabel}" />
-                            <TextBox Margin="0,4,0,0"
-                                     FontWeight="SemiBold"
-                                     AutomationProperties.Name="{Binding Localization.RecipeNameLabel}"
-                                     Text="{Binding RecipeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-
-                        <Border Grid.Row="2"
-                                Margin="0,11,0,0"
-                                Padding="10"
-                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                                BorderBrush="{DynamicResource ThreeD.InfoBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4">
-                            <StackPanel>
-                                <TextBlock FontSize="9.5"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="{Binding Localization.RecipeStatusLabel}" />
-                                <TextBlock Margin="0,3,0,0"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                           Text="{Binding LocalizedRecipeStateSummary}"
-                                           TextWrapping="Wrap" />
-                                <TextBlock Margin="0,3,0,0"
-                                           FontSize="9.5"
-                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           Text="{Binding RecipeSchemaVersion, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=SchemaLabel}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Grid Grid.Row="3" Margin="0,12,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="104" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding Localization.SourceLabel}" />
-                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold"
-                                       Text="{Binding LocalizedSourceReadinessSummary}" TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding LocalizedSourceReadinessSummary}" />
-                        </Grid>
-                        <Grid Grid.Row="4" Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="104" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding Localization.StepsLabel}" />
-                            <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold"
-                                       Text="{Binding PipelineSteps.Count}" />
-                        </Grid>
-                        <Grid Grid.Row="5" Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="104" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding Localization.RecipePathLabel}" />
-                            <TextBlock Grid.Column="1" FontSize="10"
-                                       Text="{Binding LocalizedRecipePathSummary}" TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding LocalizedRecipePathSummary}" />
-                        </Grid>
-
-                        <Border Grid.Row="6"
-                                Margin="0,13,0,0"
-                                Padding="10"
-                                Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
-                                BorderBrush="{DynamicResource ThreeD.WarningBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Visibility="{Binding IsRecipeSaveBlocked, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Width="15"
-                                                   Height="15"
-                                                   Margin="0,1,6,0"
-                                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
-                                                   Symbol="Warning24" />
-                                    <TextBlock FontSize="10.5"
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
-                                               Text="{Binding Localization.RecipeSaveBlockedTitle}" />
-                                </StackPanel>
-                                <TextBlock Margin="21,5,0,0"
-                                           FontSize="9.5"
-                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           Text="{Binding LocalizedRecipeSaveBlocker}"
-                                           TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <WrapPanel Grid.Row="7" Margin="0,14,0,0">
-                            <ui:Button Margin="0,0,6,0"
-                                       Content="{Binding Localization.Save}"
-                                       Icon="{ui:SymbolIcon DocumentCheckmark24}"
-                                       Command="{Binding SaveTeachingRecipeCommand}"
-                                       ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SaveTip, Korean='검사 레시피 저장 (Ctrl+S)', English='Save inspection recipe (Ctrl+S)'}"
-                                       AutomationProperties.Name="{Binding Localization.Save}" />
-                            <ui:Button Content="{Binding Localization.SaveAs}"
-                                       Icon="{ui:SymbolIcon SaveCopy24}"
-                                       Command="{Binding SaveTeachingRecipeAsCommand}"
-                                       ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SaveAsTip, Korean='검사 레시피 다른 이름으로 저장 (Ctrl+Shift+S)', English='Save inspection recipe as (Ctrl+Shift+S)'}"
-                                       AutomationProperties.Name="{Binding Localization.SaveAs}" />
-                            <ui:Button Margin="6,0,0,0"
-                                       Content="{Binding Localization.CompatibleVariant}"
-                                       Icon="{ui:SymbolIcon SaveCopy24}"
-                                       Command="{Binding BeginCompatibleSourceVariantCommand}"
-                                       ToolTip="{Binding Localization.CompatibleVariantSetupDetail}"
-                                       AutomationProperties.AutomationId="BeginCompatibleSourceVariant"
-                                       AutomationProperties.Name="{Binding Localization.CompatibleVariant}" />
+                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                            <ui:Button Content="{Binding Localization.Save}" Command="{Binding SaveTeachingRecipeCommand}" Margin="0,0,6,0" />
+                            <ui:Button Content="{Binding Localization.SaveAs}" Command="{Binding SaveTeachingRecipeAsCommand}" Margin="0,0,6,0" />
+                            <ui:Button Content="{Binding Localization.CompatibleVariant}" Command="{Binding BeginCompatibleSourceVariantCommand}" AutomationProperties.AutomationId="BeginCompatibleSourceVariant" />
                         </WrapPanel>
+                        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0">
+                            <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LocalizedRecipePathSummary}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeManagerSavePath" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SavePath, Korean='현재 레시피 저장 파일', English='Current recipe save file'}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SaveRecoveryHint, Korean='변경한 내용을 저장하세요. 저장에 실패하면 저장 위치를 확인하거나 다른 이름으로 저장하세요.', English='Save your changes. If saving fails, check the location or use Save as.'}" TextWrapping="Wrap" Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="RecipeManagerSaveRecoveryHint" />
+                        </StackPanel>
                     </Grid>
                 </Border>
-
-                <Border Grid.Column="1"
-                        Margin="7,0,0,0"
-                        Padding="14"
-                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="5">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+                <Grid Grid.Row="1" x:Name="RecipeBrowserColumns">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="1.76*" MinWidth="285" /><ColumnDefinition Width="1*" MinWidth="155" /><ColumnDefinition Width="5.6*" MinWidth="300" /></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="0" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border x:Name="RecipeLibraryPanel" Grid.RowSpan="2" Padding="0" Margin="0" Background="{DynamicResource ThreeD.CommandBarBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,1,0">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Width="18"
-                                               Height="18"
-                                               Margin="0,1,7,0"
-                                               Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                               Symbol="History24" />
-                                <TextBlock FontSize="13"
-                                           FontWeight="SemiBold"
-                                           Text="{Binding Localization.RecentRecipes}" />
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <StackPanel Margin="14,14,14,10">
+                                <Grid>
+                                    <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeSearchTitle, Korean='레시피 검색', English='Search recipes'}" />
+                                    <ui:Button HorizontalAlignment="Right" Width="32" Height="30" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding OpenTeachingRecipeCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.OpenTip, Korean='기존 레시피 열기 (Ctrl+O)', English='Open existing recipe (Ctrl+O)'}" AutomationProperties.AutomationId="OpenExistingRecipe" AutomationProperties.Name="{Binding Localization.OpenExistingRecipe}" />
+                                </Grid>
+                                <TextBox Margin="0,8,0,0" Text="{Binding RecipeSearchText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.R19.RecipeSearchTitle, Korean='레시피 검색', English='Search recipes'}" />
+                                <ScrollViewer x:Name="RecipeFiltersScroll" Margin="0,10,0,0" MaxHeight="90" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="RecipeFiltersScroll">
+                                    <Grid Margin="0,0,12,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,4,0">
+                                        <TextBlock Text="{Binding Localization.RecipeInfoCategory}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                                        <ComboBox Margin="0,4,0,0" ItemsSource="{Binding RecipeCategoryOptions}" SelectedValuePath="Key" SelectedValue="{Binding RecipeCategoryFilter, Mode=TwoWay}" AutomationProperties.AutomationId="RecipeCategoryFilter" AutomationProperties.Name="{Binding Localization.RecipeInfoCategory}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate><TextBlock Text="{Binding Value}" TextWrapping="Wrap" MaxWidth="300" /></DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                        <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeStatus, Korean='설정 상태', English='Setup status'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                                        <ComboBox Margin="0,4,0,0" SelectedValue="{Binding RecipeStatusFilter, Mode=TwoWay}" SelectedValuePath="Tag" AutomationProperties.AutomationId="RecipeStatusFilter" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.R19.RecipeStatus, Korean='설정 상태', English='Setup status'}">
+                                            <ComboBoxItem ContentTemplate="{StaticResource RecipeFilterCaptionTemplate}" Tag="" Content="{i18n:ThreeDText Key=ThreeD.R19.AllRecipeStatuses, Korean='전체 상태', English='All statuses'}" />
+                                            <ComboBoxItem ContentTemplate="{StaticResource RecipeFilterCaptionTemplate}" Tag="ready" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeReady, Korean='조건 설정됨', English='Configured'}" />
+                                            <ComboBoxItem ContentTemplate="{StaticResource RecipeFilterCaptionTemplate}" Tag="draft" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeNeedsTeaching, Korean='티칭 필요', English='Teaching needed'}" />
+                                            <ComboBoxItem ContentTemplate="{StaticResource RecipeFilterCaptionTemplate}" Tag="missing" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeFileMissing, Korean='파일 없음', English='File missing'}" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+                                </ScrollViewer>
                             </StackPanel>
-                            <TextBlock Grid.Column="1"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding RecentRecipes.Count}" />
-                        </Grid>
-
-                        <ScrollViewer Grid.Row="1"
-                                      Margin="0,12,0,0"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding RecentRecipes}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,0,0,6"
-                                                Padding="9,7"
-                                                Background="{DynamicResource ThreeD.PanelBrush}"
-                                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="4">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Button Padding="0"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Command="{Binding DataContext.OpenRecentTeachingRecipeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip="{Binding Path}">
-                                                    <StackPanel>
-                                                        <TextBlock FontSize="10.5"
-                                                                   FontWeight="SemiBold"
-                                                                   Text="{Binding Name}"
-                                                                   TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Margin="0,2,0,0"
-                                                                   FontSize="9"
-                                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                                   Text="{Binding Path}"
-                                                                   TextTrimming="CharacterEllipsis" />
-                                                    </StackPanel>
-                                                </Button>
-                                                <Border Grid.Column="1"
-                                                        Margin="8,0,0,0"
-                                                        Padding="6,2"
-                                                        VerticalAlignment="Center"
-                                                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                                                        CornerRadius="3">
-                                                    <TextBlock FontSize="9"
-                                                               Foreground="{DynamicResource ThreeD.InfoBrush}">
+                            <Grid Grid.Row="1" Margin="14,8,14,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite">
+                                    <TextBlock.Inlines>
+                                        <Run Text="{Binding FilteredRecentRecipes.Count, Mode=OneWay}" /><Run Text=" / " /><Run Text="{Binding RecentRecipes.Count, Mode=OneWay}" /><Run Text="개" />
+                                    </TextBlock.Inlines>
+                                </TextBlock>
+                                <TextBlock Grid.Column="1" Margin="0,0,6,0" VerticalAlignment="Center" Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeSort, Korean='정렬', English='Sort'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                                <ComboBox Grid.Column="2" MinWidth="118" SelectedValue="{Binding RecipeSortMode, Mode=TwoWay}" SelectedValuePath="Tag" AutomationProperties.AutomationId="RecipeSort" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.R19.RecipeSort, Korean='정렬', English='Sort'}">
+                                    <ComboBoxItem Tag="modified" Content="{i18n:ThreeDText Key=ThreeD.R19.RecentlyModified, Korean='최근 수정순', English='Recently modified'}" />
+                                    <ComboBoxItem Tag="name" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeNameSort, Korean='이름순', English='By name'}" />
+                                </ComboBox>
+                            </Grid>
+                            <Grid Grid.Row="2">
+                                <ListBox ItemsSource="{Binding FilteredRecentRecipes}" SelectedItem="{Binding SelectedRecentRecipe, Mode=TwoWay}" SelectionChanged="OnRecipeSelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="RecipeBrowserList">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="{x:Type ListBoxItem}">
+                                            <Setter Property="Padding" Value="8,7" />
+                                            <Setter Property="Margin" Value="2" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="BorderBrush" Value="Transparent" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Setter Property="Tag" Value="{Binding DataContext.RemoveRecentTeachingRecipeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <Setter Property="ToolTip" Value="{Binding Path}" />
+                                            <Setter Property="ContextMenu">
+                                                <Setter.Value>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.RemoveFromRecent, Korean='최근 목록에서 제거', English='Remove from recent list'}"
+                                                                  Command="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                    </ContextMenu>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                                                        <Border x:Name="ItemSurface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" /></Trigger>
+                                                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ItemSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+                                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" /><Setter TargetName="ItemSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+                                                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55" /></Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                <TextBlock Margin="0,3,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="{Binding InspectionTarget}" />
+                                                            <Style.Triggers><DataTrigger Binding="{Binding HasInspectionTarget}" Value="False"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.TargetMissing, Korean='검사 대상 미등록', English='No inspection target'}" /></DataTrigger></Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <DockPanel Margin="0,5,0,0" LastChildFill="False">
+                                                    <Border Padding="5,1" Background="{DynamicResource ThreeD.InfoSurfaceBrush}" CornerRadius="3" DockPanel.Dock="Left">
+                                                        <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.InfoBrush}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.R19.RecipeNeedsTeaching, Korean='티칭 필요', English='Teaching needed'}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsAvailable}" Value="False"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.R19.RecipeFileMissing, Korean='파일 없음', English='File missing'}" /></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding IsInspectionReady}" Value="True"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.R19.RecipeReady, Korean='조건 설정됨', English='Configured'}" /></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+                                                    <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
-                                                                <Setter Property="Text" Value="{Binding DataContext.Localization.Unavailable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsAvailable}" Value="True">
-                                                                        <Setter Property="Text" Value="{Binding DataContext.Localization.Available, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
+                                                                <Setter Property="Text" Value="{Binding LastModifiedUtc, StringFormat={}{0:yyyy-MM-dd}}" />
+                                                                <Style.Triggers><DataTrigger Binding="{Binding HasModifiedDate}" Value="False"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.NoModifiedDate, Korean='수정일 없음', English='No modified date'}" /></DataTrigger></Style.Triggers>
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                </Border>
-                                                <ui:Button Grid.Column="2"
-                                                           Margin="7,0,0,0"
-                                                           Padding="5"
-                                                           VerticalAlignment="Center"
-                                                           Icon="{ui:SymbolIcon DismissCircle24}"
-                                                           Command="{Binding DataContext.RemoveRecentTeachingRecipeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           CommandParameter="{Binding}"
-                                                           ToolTip="{Binding DataContext.Localization.RemoveFromRecentToolTip, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           AutomationProperties.Name="{Binding DataContext.Localization.RemoveFromRecent, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                                </DockPanel>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12" AutomationProperties.AutomationId="RecentRecipeEmptyState">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding FilteredRecentRecipes.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.RecentRecipeSearchEmpty, Korean='검색 결과가 없습니다.', English='No recipes match this search.'}" TextAlignment="Center" TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasRecentRecipeFilter}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.RecentRecipeSearchEmptyHint, Korean='검색어나 필터를 바꾸거나 초기화하세요.', English='Change or clear the search or filters.'}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Visibility="{Binding HasRecentRecipeFilter, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                    <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.RecentRecipeEmpty, Korean='최근 레시피가 없습니다.', English='There are no recent recipes.'}" TextAlignment="Center" TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasRecentRecipeFilter}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.R19.RecentRecipeEmptyHint, Korean='기존 레시피 열기에서 레시피를 찾아 여세요.', English='Find and open a recipe from Open Existing Recipe.'}" TextAlignment="Center" TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasRecentRecipeFilter}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ui:Button Content="{i18n:ThreeDText Key=ThreeD.R19.ClearRecipeSearch, Korean='검색·분류·상태 초기화', English='Clear search and filters'}" Command="{Binding ClearRecentRecipeSearchCommand}" Margin="0,10,0,0" HorizontalAlignment="Center" Visibility="{Binding HasRecentRecipeFilter, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="ClearRecipeSearch" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.R19.ClearRecipeSearch, Korean='검색·분류·상태 초기화', English='Clear search and filters'}" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Grid.Row="3" Padding="10,8" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,1,0,0">
+                                <ui:Button Content="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.NewRecipe, Korean='＋ 새 레시피', English='＋ New recipe'}" Command="{Binding NewTeachingRecipeCommand}" AutomationProperties.AutomationId="NewRecipe" AutomationProperties.Name="{Binding Localization.NewRecipe}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <Border x:Name="RecipeSectionsPanel" Grid.Column="1" Grid.RowSpan="2" Padding="12,10" Margin="0" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                            <TextBlock x:Name="RecipeSectionsTitle" FontSize="14" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeSectionsTitle, Korean='레시피 구성', English='Recipe structure'}" />
+                            <TextBlock x:Name="RecipeSectionsHint" Grid.Row="1" Margin="0,10,0,8" Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeSectionsHint, Korean='저장된 설정 보기 · 수정은 티칭에서', English='Review saved settings · edit in teaching'}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                            <ListBox x:Name="RecipeBrowserSections"
+                                     Grid.Row="2"
+                                     SelectedValuePath="Tag"
+                                     SelectedValue="{Binding SelectedRecipeBrowserSection, Mode=TwoWay}"
+                                     AutomationProperties.AutomationId="RecipeBrowserSections"
+                                     AutomationProperties.Name="{Binding Localization.RecipeFlow}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ItemsPanel="{StaticResource RecipeBrowserWideSectionsPanel}">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="{x:Type ListBoxItem}">
+                                        <Setter Property="Padding" Value="8,9" />
+                                        <Setter Property="Margin" Value="0,2" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="ContentTemplate">
+                                            <Setter.Value><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                                                    <Border x:Name="ItemSurface"
+                                                            Padding="{TemplateBinding Padding}"
+                                                            Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                            CornerRadius="3">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock x:Name="SectionChevron"
+                                                                       Margin="0,0,7,0"
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                                       Text="›" />
+                                                            <ContentPresenter Grid.Column="1"
+                                                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                                        </Grid>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                            <Setter TargetName="ItemSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                            <Setter TargetName="ItemSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                            <Setter TargetName="SectionChevron" Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding IsCompact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                                            <Setter TargetName="SectionChevron" Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter Property="Opacity" Value="0.55" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBoxItem Padding="8,9" Tag="overview" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeOverview, Korean='요약', English='Overview'}" />
+                                <ListBoxItem Padding="8,9" Tag="input" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeInputConditions, Korean='입력 조건', English='Input conditions'}" />
+                                <ListBoxItem Padding="8,9" Tag="tools" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeTools, Korean='검사 도구', English='Inspection tools'}" />
+                                <ListBoxItem Padding="8,9" Tag="regions" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeRegions, Korean='검사 영역', English='Inspection regions'}" />
+                                <ListBoxItem Padding="8,9" Tag="criteria" Content="{i18n:ThreeDText Key=ThreeD.R19.RecipeCriteria, Korean='판정 조건', English='Inspection criteria'}" />
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                    <Border x:Name="RecipeDetailsPanel" Grid.Column="2" Grid.RowSpan="2" Padding="14,12" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0">
+                        <ScrollViewer x:Name="RecipePreviewScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Margin="0,0,0,8" Text="{Binding RecipeBrowseError}" Foreground="{DynamicResource ThreeD.FailBrush}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeBrowseError" />
+                                <StackPanel x:Name="SelectedRecipeHeading" Margin="0,0,0,18" Visibility="{Binding HasSelectedRecentRecipe, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="SelectedRecipeHeading">
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.R19.SelectedRecipe, Korean='선택한 레시피', English='Selected recipe'}" />
+                                    <TextBlock Margin="0,4,0,0" FontSize="21" FontWeight="SemiBold" Text="{Binding SelectedRecentRecipe.Name}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,4,0,0" FontSize="13" Text="{Binding SelectedRecentRecipe.Description}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.AccentBrush}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.R19.RecipeNeedsTeaching, Korean='티칭 필요', English='Teaching needed'}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedRecentRecipe.IsAvailable}" Value="False"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.R19.RecipeFileMissing, Korean='파일 없음', English='File missing'}" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedRecentRecipe.IsInspectionReady}" Value="True"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.R19.RecipeReady, Korean='조건 설정됨', English='Configured'}" /></DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ContentControl x:Name="RecipeBrowserContent" Content="{Binding}" Visibility="{Binding IsRecipePreviewVisible, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="RecipeBrowserContent">
+                                    <ContentControl.Style>
+                                        <Style TargetType="ContentControl">
+                                            <Setter Property="ContentTemplate" Value="{StaticResource RecipeOverviewSectionTemplate}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedRecipeBrowserSection}" Value="input"><Setter Property="ContentTemplate" Value="{StaticResource RecipeInputSectionTemplate}" /></DataTrigger>
+                                                <DataTrigger Binding="{Binding SelectedRecipeBrowserSection}" Value="tools"><Setter Property="ContentTemplate" Value="{StaticResource RecipeToolsSectionTemplate}" /></DataTrigger>
+                                                <DataTrigger Binding="{Binding SelectedRecipeBrowserSection}" Value="regions"><Setter Property="ContentTemplate" Value="{StaticResource RecipeRegionsSectionTemplate}" /></DataTrigger>
+                                                <DataTrigger Binding="{Binding SelectedRecipeBrowserSection}" Value="criteria"><Setter Property="ContentTemplate" Value="{StaticResource RecipeCriteriaSectionTemplate}" /></DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ContentControl.Style>
+                                </ContentControl>
+                            </StackPanel>
                         </ScrollViewer>
-                    </Grid>
-                </Border>
+                    </Border>
+                </Grid>
+                <Grid Grid.Row="2" Margin="18,4,18,18">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="{i18n:ThreeDText Key=ThreeD.R19.OpenTarget, Korean='열기 대상', English='Open target'}" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                        <TextBlock Text="{Binding SelectedRecentRecipe.Name}" FontWeight="SemiBold" TextWrapping="Wrap" ToolTip="{Binding SelectedRecentRecipe.Path}" AutomationProperties.AutomationId="RecipeManagerOpenTarget" />
+                    </StackPanel>
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                        <ui:Button Height="38" MinWidth="84" Margin="0,0,8,0" Content="{i18n:ThreeDText Key=ThreeD.Command.Cancel, Korean='취소', English='Cancel'}" Click="OnCancelRequested" AutomationProperties.AutomationId="CancelRecipeManager" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Command.Cancel, Korean='취소', English='Cancel'}" />
+                        <ui:Button Height="38" MinWidth="150" Margin="0,0,8,0" Content="{i18n:ThreeDText Key=ThreeD.R19.OpenSelectedRecipeForTeaching, Korean='티칭으로 열기', English='Open for teaching'}" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding OpenRecentTeachingRecipeCommand}" CommandParameter="{Binding SelectedRecentRecipe}" AutomationProperties.AutomationId="OpenSelectedRecipeForTeaching" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.R19.OpenSelectedRecipeForTeaching, Korean='티칭으로 열기', English='Open for teaching'}" />
+                        <ui:Button Height="38" MinWidth="150" Content="{i18n:ThreeDText Key=ThreeD.R19.OpenSelectedRecipeForInspection, Korean='검사로 열기', English='Open for inspection'}" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding OpenRecentInspectionRecipeCommand}" CommandParameter="{Binding SelectedRecentRecipe}" AutomationProperties.AutomationId="OpenSelectedRecipeForInspection" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.R19.OpenSelectedRecipeForInspection, Korean='검사로 열기', English='Open for inspection'}" />
+                    </WrapPanel>
+                </Grid>
             </Grid>
 
-            <Border Grid.Row="2"
+            <Border Grid.Row="0"
+                    Grid.RowSpan="2"
+                    Background="{DynamicResource ThreeD.PanelBrush}"
+                    Opacity="0.78"
+                    Visibility="{Binding IsFirstRecipeSetupVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <Border Grid.Row="0"
+                    Grid.RowSpan="2"
+                    MaxWidth="940"
+                    MaxHeight="760"
+                    Margin="20,72,20,20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
                     Padding="14"
                     Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -353,7 +652,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -370,12 +669,16 @@
                     </StackPanel>
                     <TextBlock Grid.Row="1"
                                Margin="25,4,0,0"
-                               FontSize="10"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{Binding FirstRecipeSetupDetailText}"
                                TextWrapping="Wrap" />
 
-                    <Grid Grid.Row="2" Margin="0,12,0,0">
+                    <ScrollViewer Grid.Row="2"
+                                  Margin="0,12,0,0"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="0,0,12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120" />
                             <ColumnDefinition Width="*" />
@@ -386,35 +689,54 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
+                        <Grid.Resources>
+                            <Style x:Key="FirstRecipeMetadataRowStyle" TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCompatibleVariantSetup}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Resources>
 
-                        <TextBlock VerticalAlignment="Center"
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,8" FontWeight="SemiBold"
+                                   Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.RequiredInformation, Korean='필수 정보', English='Required information'}" />
+                        <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Margin="0,16,0,0" FontWeight="SemiBold"
+                                   Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.AdditionalSettings, Korean='추가 설정', English='Additional settings'}" />
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center"
                                    Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                   Text="{Binding Localization.RecipeNameLabel}" />
-                        <TextBox Grid.Column="1"
+                                   Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.NameRequiredLabel, Korean='레시피 이름 (필수)', English='Recipe name (required)'}" TextWrapping="Wrap" />
+                        <TextBox Grid.Row="1" Grid.Column="1"
                                  Grid.ColumnSpan="2"
-                                 Height="30"
+                                 Height="34"
                                  VerticalContentAlignment="Center"
                                  AutomationProperties.AutomationId="FirstRecipeName"
                                  AutomationProperties.Name="{Binding Localization.RecipeNameLabel}"
                                  Text="{Binding FirstRecipeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Grid.Row="1"
+                        <TextBlock Grid.Row="2"
                                    Margin="0,9,0,0"
                                    VerticalAlignment="Center"
                                    Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                   Text="{Binding Localization.FirstRecipeFolder}" />
-                        <TextBox Grid.Row="1"
+                                   Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.FolderRequiredLabel, Korean='저장 위치 (필수)', English='Save folder (required)'}" TextWrapping="Wrap" />
+                        <TextBox Grid.Row="2"
                                  Grid.Column="1"
-                                 Height="30"
+                                 Height="34"
                                  Margin="0,9,7,0"
                                  VerticalContentAlignment="Center"
                                  AutomationProperties.AutomationId="FirstRecipeFolder"
                                  AutomationProperties.Name="{Binding Localization.FirstRecipeFolder}"
                                  Text="{Binding FirstRecipeFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <ui:Button Grid.Row="1"
+                        <ui:Button Grid.Row="2"
                                    Grid.Column="2"
-                                   Height="30"
+                                   Height="34"
                                    Margin="0,9,0,0"
                                    Content="{Binding Localization.FirstRecipeBrowse}"
                                    Icon="{ui:SymbolIcon Folder24}"
@@ -422,22 +744,29 @@
                                    AutomationProperties.AutomationId="BrowseFirstRecipeFolder"
                                    AutomationProperties.Name="{Binding Localization.FirstRecipeBrowse}" />
 
-                        <TextBlock Grid.Row="2"
-                                   Margin="0,9,0,0"
-                                   VerticalAlignment="Center"
-                                   Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                   Text="{Binding Localization.FirstRecipeSource}" />
-                        <TextBox Grid.Row="2"
+                        <TextBlock Grid.Row="4" Margin="0,9,0,0" VerticalAlignment="Center" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.FieldLabelTextStyle}">
+                                    <Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.RecipeCenter.SourceRequiredLabel, Korean='C3D 입력 (필수)', English='C3D input (required)'}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedFirstRecipeStarter.Id}" Value="none">
+                                            <Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.RecipeCenter.SourceOptionalLabel, Korean='C3D 입력 (선택)', English='C3D input (optional)'}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Grid.Row="4"
                                  Grid.Column="1"
-                                 Height="30"
+                                 Height="34"
                                  Margin="0,9,7,0"
                                  VerticalContentAlignment="Center"
                                  AutomationProperties.AutomationId="FirstRecipeSource"
                                  AutomationProperties.Name="{Binding Localization.FirstRecipeSource}"
                                  Text="{Binding FirstRecipeSourcePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <ui:Button Grid.Row="2"
+                        <ui:Button Grid.Row="4"
                                    Grid.Column="2"
-                                   Height="30"
+                                   Height="34"
                                    Margin="0,9,0,0"
                                    Content="{Binding Localization.FirstRecipeBrowse}"
                                    Icon="{ui:SymbolIcon FolderOpen24}"
@@ -445,12 +774,12 @@
                                    AutomationProperties.AutomationId="BrowseFirstRecipeSource"
                                    AutomationProperties.Name="{Binding Localization.FirstRecipeBrowse}" />
 
-                        <TextBlock Grid.Row="3"
+                        <TextBlock Grid.Row="5"
                                    Margin="0,9,0,0"
                                    VerticalAlignment="Center"
                                    Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                    Text="{Binding Localization.FirstRecipeStarter}" />
-                        <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,9,0,0">
+                        <Grid Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,9,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="220" />
                                 <ColumnDefinition Width="*" />
@@ -465,12 +794,40 @@
                             <TextBlock Grid.Column="1"
                                        Margin="10,0,0,0"
                                        VerticalAlignment="Center"
-                                       FontSize="9.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        Text="{Binding FirstRecipeStarterDetail}"
-                                       TextWrapping="Wrap" />
+                                        TextWrapping="Wrap" />
+                        </Grid>
+                        <Grid Grid.Row="6" Grid.ColumnSpan="3" Margin="0,14,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.CategoryOptionalLabel, Korean='분류 (선택)', English='Category (optional)'}" TextWrapping="Wrap" />
+                            <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="34" VerticalContentAlignment="Center" MaxLength="500" Text="{Binding FirstRecipeCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FirstRecipeCategory" AutomationProperties.Name="{Binding Localization.RecipeInfoCategory}" />
+                        </Grid>
+                        <Grid Grid.Row="7" Grid.ColumnSpan="3" Margin="0,9,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center" Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.TargetOptionalLabel, Korean='검사 대상 (선택)', English='Inspection target (optional)'}" TextWrapping="Wrap" />
+                            <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="34" VerticalContentAlignment="Center" MaxLength="500" Text="{Binding FirstRecipeInspectionTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FirstRecipeInspectionTarget" AutomationProperties.Name="{Binding Localization.RecipeInfoTarget}" />
+                        </Grid>
+                        <Grid Grid.Row="8" Grid.ColumnSpan="3" Margin="0,9,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Top" Margin="0,6,0,0" Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.DescriptionOptionalLabel, Korean='검사 목적·설명 (선택)', English='Purpose / description (optional)'}" TextWrapping="Wrap" />
+                            <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="76" VerticalContentAlignment="Top" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxLength="500" Text="{Binding FirstRecipeDescription, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FirstRecipeDescription" AutomationProperties.Name="{Binding Localization.RecipeInfoDescription}" />
                         </Grid>
                     </Grid>
+                    </ScrollViewer>
 
                     <Grid Grid.Row="3" Margin="0,12,0,0">
                         <Grid.ColumnDefinitions>
@@ -494,14 +851,21 @@
                                     </Style>
                                 </CheckBox.Style>
                             </CheckBox>
+                            <CheckBox IsChecked="{Binding IsVariantRoiReuseConfirmed, Mode=TwoWay}"
+                                      Visibility="{Binding IsCompatibleVariantSetup, Converter={StaticResource BoolToVisibilityConverter}}"
+                                      AutomationProperties.AutomationId="VariantRoiReuseConfirmation"
+                                      AutomationProperties.Name="{Binding Localization.CompatibleVariantReviewConfirmation}">
+                                <TextBlock Text="{Binding Localization.CompatibleVariantReviewConfirmation}"
+                                           TextWrapping="Wrap" />
+                            </CheckBox>
                             <TextBlock Margin="0,7,0,0"
-                                       FontSize="9"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{Binding Localization.FirstRecipeTargetFile}" />
                             <TextBlock Margin="0,2,0,0"
-                                       FontSize="9.5"
+                                       FontSize="12"
                                        Text="{Binding FirstRecipeTargetPath}"
-                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="Wrap"
                                        ToolTip="{Binding FirstRecipeTargetPath}" />
                         </StackPanel>
                         <Border Grid.Column="1"
@@ -521,7 +885,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <TextBlock FontSize="9.5"
+                            <TextBlock FontSize="12"
                                        Text="{Binding FirstRecipeSetupStatus}"
                                        TextWrapping="Wrap" />
                         </Border>

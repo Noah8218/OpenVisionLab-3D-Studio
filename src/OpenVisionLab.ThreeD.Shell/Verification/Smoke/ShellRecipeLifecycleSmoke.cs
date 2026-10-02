@@ -34,7 +34,9 @@ internal static class ShellRecipeLifecycleSmoke
         viewModel.Workbench.CreateFirstRecipeCommand.Execute(null);
         var clickedDoNotSave = await doNotSaveClick;
         for (var attempt = 0; attempt < 200
-             && (!File.Exists(createdPath) || viewModel.Workbench.IsFirstRecipeSetupVisible); attempt++)
+             && (!File.Exists(createdPath)
+                 || viewModel.Workbench.IsFirstRecipeSetupVisible
+                 || !string.Equals(viewModel.Workbench.Source.Path, fullSourcePath, StringComparison.OrdinalIgnoreCase)); attempt++)
         {
             await Task.Delay(25);
         }
@@ -44,24 +46,25 @@ internal static class ShellRecipeLifecycleSmoke
             createdDocument = ToolRecipeDocumentStore.Load(createdPath);
         }
 
-        var persistedSourcePath = createdDocument is null
+        var persistedSourcePath = createdDocument is null || string.IsNullOrWhiteSpace(createdDocument.Source.Path)
             ? string.Empty
             : Path.IsPathFullyQualified(createdDocument.Source.Path)
                 ? Path.GetFullPath(createdDocument.Source.Path)
                 : Path.GetFullPath(Path.Combine(
                     Path.GetDirectoryName(createdPath) ?? Environment.CurrentDirectory,
                     createdDocument.Source.Path));
-        var expectedStepCount = starterId == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId ? 0 : 1;
         var passed = clickedDoNotSave
             && createdDocument is not null
-            && createdDocument.Steps.Count == expectedStepCount
-            && (expectedStepCount == 0 || createdDocument.Steps[0].ToolId == "thickness")
-            && string.Equals(persistedSourcePath, fullSourcePath, StringComparison.OrdinalIgnoreCase)
+            && createdDocument.Steps.Count == 0
+            && string.IsNullOrWhiteSpace(persistedSourcePath)
+            && string.Equals(viewModel.Workbench.Source.Path, fullSourcePath, StringComparison.OrdinalIgnoreCase)
+            && (starterId == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId
+                || viewModel.Workbench.PipelineSteps.Any(step => step.ToolId == "thickness"))
             && string.Equals(viewModel.Workbench.RecipePath, createdPath, StringComparison.OrdinalIgnoreCase)
             && viewModel.Workbench.IsSourceReadyForRecipe
             && string.Equals(viewer.CurrentC3DSourcePath, fullSourcePath, StringComparison.OrdinalIgnoreCase)
             && !viewModel.Workbench.IsFirstRecipeSetupVisible
-            && !viewModel.Workbench.IsDirty;
+            && viewModel.Workbench.IsDirty;
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
             var fullReportPath = PrepareReportPath(reportPath);
@@ -73,14 +76,15 @@ internal static class ShellRecipeLifecycleSmoke
                 $"RecipePath: {viewModel.Workbench.RecipePath}",
                 $"RecipeExists: {File.Exists(createdPath)}",
                 $"StarterId: {starterId}",
-                $"StepCount: {createdDocument?.Steps.Count}",
-                $"FirstStepToolId: {createdDocument?.Steps.FirstOrDefault()?.ToolId}",
+                $"SavedStepCount: {createdDocument?.Steps.Count}",
+                $"CurrentStepCount: {viewModel.Workbench.PipelineSteps.Count}",
                 $"SourcePath: {createdDocument?.Source.Path}",
-                $"ExpectedSourcePath: {fullSourcePath}",
+                $"CurrentSourcePath: {viewModel.Workbench.Source.Path}",
                 $"SourceReady: {viewModel.Workbench.IsSourceReadyForRecipe}",
                 $"ViewerSourcePath: {viewer.CurrentC3DSourcePath}",
                 $"SetupVisible: {viewModel.Workbench.IsFirstRecipeSetupVisible}",
-                $"IsDirty: {viewModel.Workbench.IsDirty}"
+                $"IsDirty: {viewModel.Workbench.IsDirty}",
+                $"PersistedSourcePath: {persistedSourcePath}"
             ]);
         }
 
@@ -134,35 +138,74 @@ internal static class ShellRecipeLifecycleSmoke
 
     public static bool RunWindowLifetime(
         Action showRecipeManager,
+        Action hideRecipeManager,
         Action closeRecipeManager,
         Func<object?> getRecipeManagerWindow,
         Func<bool> isRecipeManagerVisible,
+        Func<double> getOwnerOpacity,
+        Func<bool> isOwnerEnabled,
         Action disposeLifecycle,
         string? reportPath)
     {
+        closeRecipeManager();
+        var initialOwnerOpacity = getOwnerOpacity();
+        var initialOwnerEnabled = isOwnerEnabled();
+        var ownerStartsRestored = initialOwnerEnabled
+            && Math.Abs(initialOwnerOpacity - 1d) < 0.001;
         showRecipeManager();
         var firstWindow = getRecipeManagerWindow();
-        closeRecipeManager();
+        var firstShowDimsOwner = isRecipeManagerVisible()
+            && !isOwnerEnabled()
+            && Math.Abs(getOwnerOpacity() - 0.4) < 0.001;
+
+        hideRecipeManager();
         var hiddenKeepsInstance = firstWindow is not null
             && ReferenceEquals(firstWindow, getRecipeManagerWindow())
-            && !isRecipeManagerVisible();
+            && !isRecipeManagerVisible()
+            && isOwnerEnabled() == initialOwnerEnabled
+            && Math.Abs(getOwnerOpacity() - initialOwnerOpacity) < 0.001;
 
         showRecipeManager();
         var reopenedSameInstance = firstWindow is not null
             && ReferenceEquals(firstWindow, getRecipeManagerWindow())
-            && isRecipeManagerVisible();
+            && isRecipeManagerVisible()
+            && !isOwnerEnabled()
+            && Math.Abs(getOwnerOpacity() - 0.4) < 0.001;
+
+        closeRecipeManager();
+        var closeHidesAndRestoresOwner = firstWindow is not null
+            && ReferenceEquals(firstWindow, getRecipeManagerWindow())
+            && !isRecipeManagerVisible()
+            && isOwnerEnabled() == initialOwnerEnabled
+            && Math.Abs(getOwnerOpacity() - initialOwnerOpacity) < 0.001;
+
+        showRecipeManager();
+        var closeReopensSameWindow = firstWindow is not null
+            && ReferenceEquals(firstWindow, getRecipeManagerWindow())
+            && isRecipeManagerVisible()
+            && !isOwnerEnabled()
+            && Math.Abs(getOwnerOpacity() - 0.4) < 0.001;
 
         disposeLifecycle();
-        var disposedClearsWindow = getRecipeManagerWindow() is null;
+        var disposedClearsWindow = getRecipeManagerWindow() is null
+            && isOwnerEnabled() == initialOwnerEnabled
+            && Math.Abs(getOwnerOpacity() - initialOwnerOpacity) < 0.001;
         showRecipeManager();
         var disposedRejectsShow = getRecipeManagerWindow() is null;
-        var passed = hiddenKeepsInstance && reopenedSameInstance && disposedClearsWindow && disposedRejectsShow;
+        var passed = ownerStartsRestored
+            && firstShowDimsOwner
+            && hiddenKeepsInstance
+            && reopenedSameInstance
+            && closeHidesAndRestoresOwner
+            && closeReopensSameWindow
+            && disposedClearsWindow
+            && disposedRejectsShow;
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
             var fullReportPath = PrepareReportPath(reportPath);
             File.AppendAllLines(fullReportPath,
             [
-                $"RecipeManagerWindowLifetime|hiddenKeepsInstance={hiddenKeepsInstance}|reopenedSameInstance={reopenedSameInstance}|disposedClearsWindow={disposedClearsWindow}|disposedRejectsShow={disposedRejectsShow}|pass={passed}"
+                $"RecipeManagerWindowLifetime|ownerStartsRestored={ownerStartsRestored};opacity={initialOwnerOpacity:F3};enabled={initialOwnerEnabled}|firstShowDimsOwner={firstShowDimsOwner}|hiddenKeepsInstance={hiddenKeepsInstance}|reopenedSameInstance={reopenedSameInstance}|closeHidesAndRestoresOwner={closeHidesAndRestoresOwner}|closeReopensSameWindow={closeReopensSameWindow}|disposedClearsWindow={disposedClearsWindow}|disposedRejectsShow={disposedRejectsShow}|pass={passed}"
             ]);
         }
 

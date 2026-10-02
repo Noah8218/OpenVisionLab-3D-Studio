@@ -4,16 +4,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
-             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-             Height="56"
-             MinHeight="56"
+             Height="44"
+             MinHeight="44"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True"
              shell:WindowChrome.IsHitTestVisibleInChrome="True"
              MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
              AutomationProperties.AutomationId="StudioTitleBar">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
     </UserControl.Resources>
     <Border Background="{DynamicResource ThreeD.PanelHeaderBrush}"
             BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
@@ -39,10 +39,6 @@
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource ThreeD.PanelHeaderTextBrush}"
                            Text="{Binding TitleText, ElementName=Root}" />
-                <TextBlock Margin="0,1,0,0"
-                           FontSize="10.5"
-                           Foreground="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}"
-                           Text="{Binding SubtitleText, ElementName=Root}" />
             </StackPanel>
 
             <StackPanel Grid.Column="2"
@@ -51,7 +47,7 @@
                         VerticalAlignment="Center"
                         Orientation="Horizontal"
                         Visibility="{Binding IsRecipeContextVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
-                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.ActiveRecipeContextAccessible, Korean='활성 티칭 레시피 컨텍스트', English='Active teaching recipe context'}">
+                        AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.ActiveRecipeContextAccessible, Korean='현재 레시피', English='Current recipe'}">
                 <Border MaxWidth="230"
                         Padding="8,4"
                         Background="{DynamicResource ThreeD.ContextBadgeBrush}"
@@ -59,26 +55,13 @@
                         BorderThickness="1"
                         CornerRadius="4"
                         ToolTip="{Binding RecipeText, ElementName=Root}">
-                    <TextBlock FontSize="10.5"
+                    <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.PanelHeaderTextBrush}"
-                               Text="{Binding RecipeText, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=RecipeLabel}"
-                               TextTrimming="CharacterEllipsis" />
-                </Border>
-                <Border MaxWidth="300"
-                        Margin="6,0,0,0"
-                        Padding="8,4"
-                        Background="{DynamicResource ThreeD.ContextBadgeBrush}"
-                        BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        ToolTip="{Binding SourceContextText, ElementName=Root}">
-                    <TextBlock FontSize="10.5"
-                               Foreground="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}"
-                               Text="{Binding SourceContextText, ElementName=Root}"
+                               Text="{Binding RecipeText, ElementName=Root}"
                                TextTrimming="CharacterEllipsis" />
                 </Border>
                 <Border x:Name="CurrentSourceQualityStatusBadge"
-                        MaxWidth="190"
+                        MaxWidth="280"
                         Margin="6,0,0,0"
                         Padding="8,4"
                         BorderThickness="1"
@@ -109,9 +92,10 @@
                         </Style>
                     </Border.Style>
                     <TextBlock x:Name="CurrentSourceQualityStatusText"
-                               FontSize="10.5"
+                               FontSize="12"
                                Text="{Binding SourceQualityStatusText, ElementName=Root}"
-                               TextWrapping="Wrap">
+                               TextWrapping="Wrap"
+                               TextTrimming="None">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" />
@@ -130,28 +114,16 @@
                         </TextBlock.Style>
                     </TextBlock>
                 </Border>
-                <Border Margin="6,0,0,0"
-                        Padding="8,4"
-                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                    <TextBlock FontSize="10.5"
-                               Foreground="{DynamicResource ThreeD.InfoBrush}"
-                               Text="{Binding AlignmentStatusText, ElementName=Root}" />
-                </Border>
-                <Border Margin="6,0,0,0"
-                        Padding="8,4"
-                        Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                    <TextBlock FontSize="10.5"
-                               Foreground="{DynamicResource ThreeD.WarningBrush}"
-                               Text="{Binding RecipeStateText, ElementName=Root}" />
-                </Border>
             </StackPanel>
 
+            <TextBlock x:Name="RecipeStateStatusText" Grid.Column="3" VerticalAlignment="Center" Margin="8,0" MaxWidth="250"
+                       Foreground="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}"
+                       Text="{Binding RecipeStateText, ElementName=Root}"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding RecipeStateText, ElementName=Root}"
+                       AutomationProperties.Name="{Binding RecipeStateText, ElementName=Root}"
+                       Visibility="{Binding IsRecipeContextVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}" />
             <Border Grid.Column="3"
                     MaxWidth="250"
                     Padding="9,4"
@@ -169,31 +141,68 @@
                                          Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
+                            <DataTrigger Binding="{Binding DataContext.IsStartPageSelected, RelativeSource={RelativeSource AncestorType=Window}}"
+                                         Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock FontSize="11"
+                <TextBlock x:Name="ShellStatusText" FontSize="12"
                            Foreground="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}"
                            Text="{Binding StatusText, ElementName=Root}"
+                           TextWrapping="NoWrap"
                            TextTrimming="CharacterEllipsis" />
             </Border>
 
             <StackPanel Grid.Column="4"
+                        x:Name="WindowControlGroup"
                         Margin="12,0,0,0"
                         VerticalAlignment="Center"
                         Orientation="Horizontal"
                         AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.WindowControlsAccessible, Korean='창 컨트롤', English='Window controls'}">
-                <Button Content="−"
+                <ComboBox x:Name="LanguageSelector"
+                          ItemsSource="{Binding LanguageOptions}"
+                          SelectedItem="{Binding SelectedLanguageOption, Mode=TwoWay}"
+                          ToolTip="{Binding Localization.Language}"
+                          AutomationProperties.AutomationId="StudioLanguageSelector"
+                          AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Navigation.LanguageAccessible, Korean='한국어 또는 영어 선택', English='Select Korean or English'}">
+                    <ComboBox.Style>
+                        <Style TargetType="ComboBox"
+                               BasedOn="{StaticResource {x:Type ComboBox}}">
+                            <Setter Property="Width" Value="112" />
+                            <Setter Property="MinHeight" Value="30" />
+                            <Setter Property="Margin" Value="0,0,8,0" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                            <Style.Triggers>
+                                <Trigger Property="HasItems" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ComboBox.Style>
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock VerticalAlignment="Center"
+                                       TextOptions.TextFormattingMode="Ideal"
+                                       Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button x:Name="MinimizeWindowButton"
+                        Content="−"
                         Style="{DynamicResource ThreeD.WindowControlButtonStyle}"
                         Click="MinimizeButton_Click"
                         ToolTip="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.MinimizeTip, Korean='창 최소화', English='Minimize window'}"
                         AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.MinimizeAccessible, Korean='창 최소화', English='Minimize window'}" />
-                <Button Content="□"
+                <Button x:Name="MaximizeRestoreWindowButton"
+                        Content="□"
                         Style="{DynamicResource ThreeD.WindowControlButtonStyle}"
                         Click="MaximizeRestoreButton_Click"
                         ToolTip="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.MaximizeRestoreTip, Korean='창 최대화 또는 복원', English='Maximize or restore window'}"
                         AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.MaximizeRestoreAccessible, Korean='창 최대화 또는 복원', English='Maximize or restore window'}" />
-                <Button Content="×"
+                <Button x:Name="CloseWindowButton"
+                        Content="×"
                         Style="{DynamicResource ThreeD.WindowCloseButtonStyle}"
                         Click="CloseButton_Click"
                         ToolTip="{i18n:ThreeDText Key=ThreeD.Shell.TitleBar.CloseTip, Korean='창 닫기', English='Close window'}"

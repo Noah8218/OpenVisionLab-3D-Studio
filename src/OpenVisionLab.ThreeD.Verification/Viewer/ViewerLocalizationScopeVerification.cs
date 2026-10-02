@@ -1,11 +1,14 @@
 using System.IO;
 using System.Threading;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Localization;
+using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Verification.Viewer;
 
@@ -82,12 +85,32 @@ internal static class ViewerLocalizationScopeVerification
                 menu?.ToolTip is string tooltip && tooltip == "custom:ThreeD.Viewer.ViewCommands:rev0",
                 $"tooltip={menu?.ToolTip}");
 
+            Drain(dispatcher);
+            var footer = (StackPanel)((Border)((DockPanel)control.Content).Children.OfType<Border>().Single(border => DockPanel.GetDock(border) == Dock.Bottom)).Child;
+            var roiRun = footer.Children.OfType<TextBlock>().Single(text => AutomationProperties.GetAutomationId(text) == "ViewerSelectedRoiStatus").Inlines.OfType<Run>().Last();
+            var coordinateRun = footer.Children.OfType<TextBlock>().Single(text => AutomationProperties.GetAutomationId(text) == "ViewerCoordinateStatus").Inlines.OfType<Run>().Last();
+            var viewModel = (MainWindowViewModel)control.DataContext;
+            var rawRoiBefore = viewModel.SelectedTeachingGridRectangleSummary;
+            var rawCoordinateBefore = viewModel.PickCoordinate;
+            var roiTextBefore = roiRun.Text;
+            var coordinateTextBefore = coordinateRun.Text;
             localization.RaiseLanguageChanged();
             Drain(dispatcher);
             Check(
                 "static ViewerText refreshes after provider language change",
                 menu?.ToolTip is string refreshed && refreshed == "custom:ThreeD.Viewer.ViewCommands:rev1",
                 $"tooltip={menu?.ToolTip}|revision={localization.Revision}");
+
+            Check(
+                "footer ROI and coordinate text follow language revision without changing raw state or executing",
+                roiTextBefore.EndsWith(":rev0", StringComparison.Ordinal)
+                && coordinateTextBefore.EndsWith(":rev0", StringComparison.Ordinal)
+                && roiRun.Text.EndsWith(":rev1", StringComparison.Ordinal)
+                && coordinateRun.Text.EndsWith(":rev1", StringComparison.Ordinal)
+                && viewModel.SelectedTeachingGridRectangleSummary == rawRoiBefore
+                && viewModel.PickCoordinate == rawCoordinateBefore
+                && control.HostState.Inspection.PublishedResultCount == 0,
+                $"roi={roiTextBefore}->{roiRun.Text};coordinate={coordinateTextBefore}->{coordinateRun.Text};published={control.HostState.Inspection.PublishedResultCount}");
 
             Check(
                 "runtime converter retains the same provider",
@@ -119,6 +142,34 @@ internal static class ViewerLocalizationScopeVerification
             "markup outside a Viewer scope keeps the shared fallback",
             fallbackValue is "Korean fallback" or "English fallback",
             $"value={fallbackValue}");
+
+        var previousLanguage = OpenVisionLab.OpenVisionLanguageService.CurrentLanguage;
+        try
+        {
+            const string cursor = "X 124 · Y 56 · H -123456.789 raw-height";
+            const string millimeters = "X 124 · Y 56 · H -123456.789 mm";
+            foreach (var language in new[] { OpenVisionLab.OpenVisionLanguage.Korean, OpenVisionLab.OpenVisionLanguage.English })
+            {
+                OpenVisionLab.OpenVisionLanguageService.SetLanguage(language, save: false);
+                var expected = "X 124 · Y 56 · H -123456.789 " + (language == OpenVisionLab.OpenVisionLanguage.Korean ? "원시 높이" : "raw height");
+                Check("profile cursor preserves signed values and coordinates through language change",
+                    ViewerLocalization.Shared.LocalizeRuntimeText(cursor, "ProfileCursor") == expected, expected);
+                Check("empty profile cursor does not fabricate a measurement",
+                    ViewerLocalization.Shared.LocalizeRuntimeText(null, "ProfileCursor") == string.Empty
+                    && ViewerLocalization.Shared.LocalizeRuntimeText(string.Empty, "ProfileCursor") == string.Empty, language.ToString());
+                Check("profile cursor leaves other units and source names unchanged",
+                    ViewerLocalization.Shared.LocalizeRuntimeText(millimeters, "ProfileCursor") == millimeters
+                    && ViewerLocalization.Shared.LocalizeRuntimeText(@"D:\raw-height.C3D", "ProfileCursor") == @"D:\raw-height.C3D", millimeters);
+                Check("profile cursor formatting is isolated from other runtime modes",
+                    ViewerLocalization.Shared.LocalizeRuntimeText(cursor, "OtherMode") == cursor, cursor);
+                Check("height graph name follows operator terminology",
+                    ViewerLocalization.Shared.LocalizeRuntimeText("Profile") == (language == OpenVisionLab.OpenVisionLanguage.Korean ? "높이 단면" : "Profile"), language.ToString());
+            }
+        }
+        finally
+        {
+            OpenVisionLab.OpenVisionLanguageService.SetLanguage(previousLanguage, save: false);
+        }
 
         summary = $"Viewer localization-scope verification: {(passed == total ? "Pass" : "Fail")} ({passed}/{total} checks)";
         lines.Add(summary);

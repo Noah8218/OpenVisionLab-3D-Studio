@@ -12,7 +12,10 @@ public static class ToolRecipePrimaryInputContract
         "warpage",
         "completeness-grid",
         "connected-region",
-        "domain-mask"
+        "domain-mask",
+        "grid-polygon-domain",
+        "connected-region-gate",
+        "signed-delta-background-subtraction"
     };
 
     private static readonly HashSet<string> TransformedHeightFieldTools = new(StringComparer.OrdinalIgnoreCase)
@@ -66,21 +69,27 @@ public static class ToolRecipePrimaryInputContract
             || string.Equals(
                 artifactContract,
                 "SourceC3D / RawHeightField",
-                StringComparison.Ordinal);
+                StringComparison.Ordinal)
+            || string.Equals(primaryContract, "SignedDeltaHeightField", StringComparison.Ordinal);
     }
 
     public static string GetProducedContract(string? toolId) => toolId?.ToLowerInvariant() switch
     {
-        "filter" or "remove-outlier-pixels" => "FilteredHeightField",
+        "filter" or "remove-outlier-pixels" or "height-threshold-background-removal" => "FilteredHeightField",
         "level-surface" => "LeveledHeightField",
         "roi-crop" => "HeightField",
         "re-grid-height-map" => "TransformedHeightField",
         "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions"
-            or "gap-flush" or "volume" or "cross-section-dimensions" => "MeasurementResult",
+            or "gap-flush" or "physical-edge-gap-flush" or "volume" or "cross-section-dimensions" => "MeasurementResult",
+        "height-difference-edge" => "EdgePointSet",
+        "three-d-line-fit" => "LineFeature",
         "completeness-grid" => "CompletenessGridMetrics",
         "connected-region" => "ConnectedRegionArtifact",
+        "grid-polygon-domain" => "GridDomainArtifact",
         "domain-mask" => "HeightField",
         "editable-region" => "EditableRegionArtifact",
+        "connected-region-gate" => "ConnectedRegionGate",
+        "signed-delta-background-subtraction" => "SignedDeltaHeightField",
         _ => string.Empty
     };
 }

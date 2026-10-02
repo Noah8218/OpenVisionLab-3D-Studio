@@ -5,6 +5,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.Services;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Support;
 
@@ -44,6 +45,20 @@ internal static class RunRecordHistoryVerification
             var fixtureRoot = Path.Combine(reportDirectory, $"run-record-history-fixture-{Guid.NewGuid():N}");
             Directory.CreateDirectory(fixtureRoot);
             var recentPath = Path.Combine(fixtureRoot, "recent.json");
+            var boundedRecentPath = Path.Combine(fixtureRoot, "bounded-run-records.json");
+            var boundedPersistence = new ShellRunRecordPersistence(boundedRecentPath);
+            var boundedCandidates = Enumerable.Range(0, ShellRunRecordPersistence.MaximumRecentRecords + 2)
+                .Select(index => Path.Combine(fixtureRoot, $"run-record-{index:00}.json"))
+                .ToArray();
+            boundedPersistence.SaveRecentPaths(boundedCandidates);
+            var boundedRunRecords = boundedPersistence.LoadRecentPaths();
+            Check(
+                "Run Record path persistence remains bounded to ten when recipe recents allow one hundred",
+                ShellRunRecordPersistence.MaximumRecentRecords == 10
+                && boundedRunRecords.Count == ShellRunRecordPersistence.MaximumRecentRecords
+                && boundedRunRecords.SequenceEqual(boundedCandidates.Take(ShellRunRecordPersistence.MaximumRecentRecords), StringComparer.OrdinalIgnoreCase),
+                $"count={boundedRunRecords.Count}; max={ShellRunRecordPersistence.MaximumRecentRecords}");
+
             var thresholdFixture =
                 CreateThresholdCorrectionFixture(fixtureRoot);
 
@@ -60,6 +75,63 @@ internal static class RunRecordHistoryVerification
                 csvReportPath: first.Csv,
                 recentRunRecordsPath: recentPath);
             var persistence = new ShellRunRecordPersistence(recentPath);
+            var csvInputPaths = Enumerable.Range(1, 3).Select(index => Path.Combine(fixtureRoot, $"csv-input-{index}.c3d")).ToArray();
+            foreach (var inputPath in csvInputPaths) C3DHeightFieldSnapshot.CreateForVerification("source.csv", 2, 2, [1, 1, 2, 2]).SaveC3D(inputPath);
+            var csvQueue = viewModel.Workbench.InspectionQueue;
+            csvQueue.AddSources(csvInputPaths);
+            foreach (var sample in csvQueue.Samples) sample.BeginRun();
+            var csvBaseRecord = persistence.Read(first.Json)!;
+            var csvStep = csvBaseRecord.Steps![0] with
+            {
+                Id = "step.thickness.csv",
+                ToolId = "thickness",
+                ToolName = "=Item,\"1\"",
+                Status = ResultStatus.Fail,
+                Message = "Outside limits\r\nCheck ROI",
+                Metrics = [new("Mean", MetricKind.Length, 8.250000000000002, "raw-height", ResultStatus.Fail),
+                    new("LowerLimit", MetricKind.Length, -7.75, "raw-height", null), new("UpperLimit", MetricKind.Length, 8.25, "raw-height", null)]
+            };
+            var csvRecordA = csvBaseRecord with { Source = csvBaseRecord.Source with { Path = csvInputPaths[0] }, Steps = [csvStep] };
+            var csvRecordB = csvRecordA with { RunId = "run-second-csv", RecordedAtUtc = csvRecordA.RecordedAtUtc.AddMinutes(1), Source = csvRecordA.Source with { Path = csvInputPaths[1], Sha256 = new string('B', 64) } };
+            csvQueue.Samples[0].SetRecord(csvRecordA, first.Json);
+            csvQueue.Samples[1].SetRecord(csvRecordB, first.Json);
+            csvQueue.StatusFilter = InspectionQueueStatusFilter.Untested;
+            var queueCsvPath = Path.Combine(fixtureRoot, "queue.csv");
+            var queueCsvSaved = viewModel.ExportInspectionQueueCsv(queueCsvPath, out var queueCsvMessage);
+            var csvRows = new List<string[]>();
+            using (var parser = new Microsoft.VisualBasic.FileIO.TextFieldParser(queueCsvPath))
+            {
+                parser.SetDelimiters(",");
+                while (!parser.EndOfData) csvRows.Add(parser.ReadFields()!);
+            }
+            var header = csvRows[0];
+            string Cell(string[] row, string name) => row[Array.IndexOf(header, name)];
+            var firstMetricRow = csvRows.Single(row => Cell(row, "RunId") == csvRecordA.RunId && Cell(row, "Metric") == "Mean");
+            Check("queue CSV preserves every input, each execution identity, exact signed values, units and escaped text",
+                queueCsvSaved && csvQueue.VisibleSamples.Count == 1 && csvRows.Count == 8 && csvRows.All(row => row.Length == header.Length)
+                && Cell(firstMetricRow, "StepId") == csvStep.Id && Cell(firstMetricRow, "ToolId") == "thickness"
+                && Cell(firstMetricRow, "ToolName") == "'=Item,\"1\"" && Cell(firstMetricRow, "StepMessage") == csvStep.Message
+                && Cell(firstMetricRow, "Value") == "8.250000000000002" && Cell(firstMetricRow, "Unit") == "raw-height"
+                && Cell(firstMetricRow, "LowerLimit") == "-7.75" && Cell(firstMetricRow, "UpperLimit") == "8.25"
+                && Cell(firstMetricRow, "RecordSaved") == "True" && Cell(firstMetricRow, "RecipeSha256") == csvRecordA.Recipe.Sha256
+                && csvRows.Any(row => Cell(row, "RunId") == csvRecordB.RunId && Cell(row, "RecordedAtUtc") == csvRecordB.RecordedAtUtc.ToString("O"))
+                && csvRows.Any(row => Cell(row, "Status") == "Untested" && Cell(row, "RunId") == "" && Cell(row, "Value") == ""), queueCsvMessage);
+            var csvPending = csvRecordA with { RunId = "run-pending-csv" };
+            csvQueue.Samples[0].SetPendingRecord(csvPending, "record save failed", null);
+            viewModel.ExportInspectionQueueCsv(queueCsvPath, out _);
+            var pendingCsv = File.ReadAllText(queueCsvPath);
+            Check("partial rerun CSV keeps the retained run and labels an unsaved calculation explicitly",
+                pendingCsv.Contains("\"run-pending-csv\"", StringComparison.Ordinal) && pendingCsv.Contains("\"False\"", StringComparison.Ordinal)
+                && pendingCsv.Contains("\"run-second-csv\"", StringComparison.Ordinal) && csvQueue.Samples[0].State == InspectionQueueItemState.Error
+                && csvQueue.Samples[1].Record == csvRecordB, queueCsvPath);
+            var failedExportParent = Path.Combine(fixtureRoot, "blocked-csv-parent");
+            File.WriteAllText(failedExportParent, "owned obstruction");
+            var csvBeforeFailedSave = File.ReadAllBytes(queueCsvPath);
+            Check("CSV write failure preserves the prior export and current execution records",
+                !viewModel.ExportInspectionQueueCsv(Path.Combine(failedExportParent, "queue.csv"), out _)
+                && File.ReadAllBytes(queueCsvPath).SequenceEqual(csvBeforeFailedSave) && csvQueue.Samples[0].Record == csvPending
+                && csvQueue.Samples[1].Record == csvRecordB, failedExportParent);
+            Check("CSV export recovers after a failed write", viewModel.ExportInspectionQueueCsv(queueCsvPath, out _), queueCsvPath);
             var directlyRead = persistence.Read(first.Json);
             Check(
                 "persistence owner reads Run Record JSON and recent paths without a ViewModel",

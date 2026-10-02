@@ -46,6 +46,31 @@ internal static class TeachingSelectionOwnershipVerification
             binding,
             new ToolRecipeGridRectangle(1, 2, 3, 4));
         store.Upsert(selection);
+        var mutationBlocked = false;
+        var guardedDeleteCalls = 0;
+        var guardedStore = new ToolWorkbenchTeachingSelectionStoreOwner(
+            () => sourceId,
+            () => frameId,
+            () => binding,
+            _ => ToolWorkbenchPublishedSelectionBindingState.Unavailable,
+            () => selection,
+            () => false,
+            _ => guardedDeleteCalls++,
+            _ => { },
+            () => mutationBlocked);
+        guardedStore.Upsert(selection);
+        mutationBlocked = true;
+        Check(
+            "applied-selection delete command rejects active recipe mutation",
+            !guardedStore.RemoveSelectedTeachingSelectionCommand.CanExecute(null)
+            && guardedDeleteCalls == 0,
+            $"canExecute={guardedStore.RemoveSelectedTeachingSelectionCommand.CanExecute(null)};calls={guardedDeleteCalls}");
+        mutationBlocked = false;
+        guardedStore.RemoveSelectedTeachingSelectionCommand.Execute(null);
+        Check(
+            "applied-selection delete command resumes after execution becomes idle",
+            guardedDeleteCalls == 1,
+            $"calls={guardedDeleteCalls}");
         store.Upsert(selection with { Name = "Updated ROI" });
         var requirement = new ToolWorkbenchTeachingSelectionRequirement(
             "ROI",

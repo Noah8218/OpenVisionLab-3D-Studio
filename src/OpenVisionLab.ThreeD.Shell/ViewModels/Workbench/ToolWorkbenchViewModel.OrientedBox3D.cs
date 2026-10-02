@@ -21,6 +21,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
         OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
         OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
+        RefreshStepCommands();
         teachingSelectionCaptureOwner.RefreshCommandStates();
     }
 
@@ -60,6 +61,13 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void OnOrientedBoxDeleteRequested(OrientedBox3DDeleteRequestedEventArgs args)
     {
+        if (IsRecipeMutationBlocked)
+        {
+            OrientedBoxEditor.SetStatus(
+                "Delete rejected: inspection or validation is active.");
+            return;
+        }
+
         var selection = Selections.FirstOrDefault(item =>
             item.Kind == ToolRecipeSelectionKinds.OrientedBox3D
             && string.Equals(item.Id, args.SelectionId, StringComparison.OrdinalIgnoreCase));

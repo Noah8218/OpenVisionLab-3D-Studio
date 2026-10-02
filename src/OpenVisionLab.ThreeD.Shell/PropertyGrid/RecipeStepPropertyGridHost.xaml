@@ -1,6 +1,7 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.PropertyGrid.RecipeStepPropertyGridHost"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:wpg="clr-namespace:System.Windows.Controls.WpfPropertyGrid;assembly=OpenVisionLab.WpfPropertyGrid.ThreeD"
@@ -19,18 +20,39 @@
         <StaticResourceExtension x:Key="Ovl3D.Wpg.TextBrush" ResourceKey="ThreeD.TextBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.MutedTextBrush" ResourceKey="ThreeD.MutedTextBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.AccentBrush" ResourceKey="ThreeD.AccentBrush" />
-        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorBorderBrush" ResourceKey="ThreeD.DividerBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorBorderBrush" ResourceKey="ThreeD.InputBorderBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorFocusBrush" ResourceKey="ThreeD.FocusBrush" />
-        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorBackgroundBrush" ResourceKey="ThreeD.ControlBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorBackgroundBrush" ResourceKey="ThreeD.InputBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorPanelBrush" ResourceKey="ThreeD.PanelAlternateBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorReadOnlyBrush" ResourceKey="ThreeD.DisabledSurfaceBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorTextBrush" ResourceKey="ThreeD.PrimaryTextBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorMutedBrush" ResourceKey="ThreeD.DisabledBrush" />
-        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorHoverBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorHoverBrush" ResourceKey="ThreeD.HoverSurfaceBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorSelectedBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderTrackBrush" ResourceKey="ThreeD.DividerBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderFillBrush" ResourceKey="ThreeD.AccentBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderThumbBrush" ResourceKey="ThreeD.PrimaryTextBrush" />
+
+        <local:PropertyGridOptionTextConverter x:Key="PropertyGridOptionText" />
+        <DataTemplate x:Key="LocalizedEnumOptionTemplate">
+            <TextBlock Text="{Binding Converter={StaticResource PropertyGridOptionText}}" TextWrapping="Wrap" />
+        </DataTemplate>
+
+        <ControlTemplate x:Key="ReadOnlyPolicyTemplate" TargetType="{x:Type TextBox}">
+            <Border Background="{DynamicResource ThreeD.DisabledSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" Padding="6,4">
+                <TextBlock Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource PropertyGridOptionText}}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            </Border>
+        </ControlTemplate>
+
+        <ControlTemplate x:Key="ReadOnlyEnumTemplate" TargetType="{x:Type ComboBox}">
+            <Border Background="{DynamicResource ThreeD.DisabledSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" Padding="6,4">
+                <TextBlock Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource PropertyGridOptionText}}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            </Border>
+        </ControlTemplate>
+
+        <Style TargetType="{x:Type ToolTip}" BasedOn="{StaticResource {x:Type ToolTip}}">
+            <Setter Property="StaysOpen" Value="False" />
+        </Style>
 
         <Style x:Key="RecipeStepPropertySearchStyle"
                TargetType="{x:Type TextBox}"
@@ -68,20 +90,20 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Grid Margin="2,2,2,4">
+        <Grid x:Name="PropertySearchRow" Margin="2,2,2,4">
             <TextBox x:Name="PropertyFilterBox"
                      MinHeight="28"
                      Padding="8,3,30,3"
                      Style="{StaticResource RecipeStepPropertySearchStyle}"
                      VerticalContentAlignment="Center"
                      AutomationProperties.AutomationId="RecipeStepPropertySearch"
-                     AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='파라미터 검색', English='Search parameters'}"
+                     AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='설정값 검색', English='Search parameters'}"
                      TextChanged="OnPropertyFilterTextChanged" />
             <TextBlock Margin="10,0,32,0"
                        VerticalAlignment="Center"
                        Foreground="{StaticResource Ovl3D.Wpg.MutedTextBrush}"
                        IsHitTestVisible="False"
-                       Text="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='파라미터 검색', English='Search parameters'}">
+                       Text="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='설정값 검색', English='Search parameters'}">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -108,11 +130,14 @@
                           BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                           Foreground="{DynamicResource ThreeD.TextBrush}"
                           AutomationProperties.AutomationId="RecipeStepPropertyGrid"
-                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.SelectedStepParameters, Korean='선택한 단계 파라미터', English='Selected step parameters'}"
-                          EditorColumnMinWidth="120"
+                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.SelectedStepParameters, Korean='선택한 도구 설정값', English='Selected step parameters'}"
+                          EditorColumnMinWidth="140"
                           PreviewKeyDown="OnInnerGridPreviewKeyDown"
+                          LostKeyboardFocus="OnInnerGridLostKeyboardFocus"
+                          TextBox.TextChanged="OnInnerGridEditorTextChanged"
+                          Loaded="OnReadOnlyEditorsLoaded"
                           PropertyFilterVisibility="Collapsed"
-                          PropertyNameColumnWidth="168"
+                          PropertyNameColumnWidth="128"
                           ShowReadOnlyProperties="True" />
     </Grid>
 </UserControl>

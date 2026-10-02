@@ -9,11 +9,24 @@ using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
 public partial class HeightImageViewerView : UserControl
 {
+    public static readonly DependencyProperty UseEmbeddedChromeProperty =
+        DependencyProperty.Register(
+            nameof(UseEmbeddedChrome),
+            typeof(bool),
+            typeof(HeightImageViewerView),
+            new PropertyMetadata(false, OnUseEmbeddedChromeChanged));
+
+    public static readonly DependencyProperty ProfileStateProperty = DependencyProperty.Register(nameof(ProfileState), typeof(ViewerHostProfileState), typeof(HeightImageViewerView), new PropertyMetadata(ViewerHostProfileState.Empty, OnProfileStateChanged));
+    public static readonly DependencyProperty ProfilePickCommandProperty = DependencyProperty.Register(nameof(ProfilePickCommand), typeof(ICommand), typeof(HeightImageViewerView));
+    public ViewerHostProfileState ProfileState { get => (ViewerHostProfileState)GetValue(ProfileStateProperty); set => SetValue(ProfileStateProperty, value); }
+    public ICommand? ProfilePickCommand { get => (ICommand?)GetValue(ProfilePickCommandProperty); set => SetValue(ProfilePickCommandProperty, value); }
+    private int profileDraggedEndpoint;
     private HeightImageViewerViewModel? viewModel;
     private double imageScale = 1.0;
     private bool isPanning;
@@ -28,6 +41,14 @@ public partial class HeightImageViewerView : UserControl
         DataContextChanged += OnDataContextChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        HeightImage.LostMouseCapture += OnImageLostMouseCapture;
+        ImageScrollViewer.LostMouseCapture += OnScrollLostMouseCapture;
+    }
+
+    public bool UseEmbeddedChrome
+    {
+        get => (bool)GetValue(UseEmbeddedChromeProperty);
+        set => SetValue(UseEmbeddedChromeProperty, value);
     }
 
     public bool HasNativeCoordinateImage =>
@@ -36,19 +57,28 @@ public partial class HeightImageViewerView : UserControl
         && bitmap.PixelWidth == frame.Width
         && bitmap.PixelHeight == frame.Height;
 
+    private static void OnUseEmbeddedChromeChanged(DependencyObject target, DependencyPropertyChangedEventArgs args)
+    {
+        var view = (HeightImageViewerView)target;
+        view.HeightImageDisplaySettings.SetCurrentValue(Expander.IsExpandedProperty, !(bool)args.NewValue);
+    }
+
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs args)
     {
         CancelPendingFitImage();
+        ReleasePointerGestures();
         DetachViewModel();
         viewModel = args.NewValue as HeightImageViewerViewModel;
         AttachViewModel();
         RefreshFrame();
+        QueueFitImage(DispatcherPriority.Loaded);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         AttachViewModel();
         RefreshFrame();
+        QueueFitImage(DispatcherPriority.Loaded);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args) =>
@@ -57,7 +87,27 @@ public partial class HeightImageViewerView : UserControl
     private void OnUnloadedCore()
     {
         CancelPendingFitImage();
+        ReleasePointerGestures();
         DetachViewModel();
+    }
+
+    private void ReleasePointerGestures()
+    {
+        viewModel?.RoiWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Cancel));
+        profileDraggedEndpoint = 0;
+        if (HeightImage.IsMouseCaptured) HeightImage.ReleaseMouseCapture();
+        if (isPanning) EndPan();
+    }
+
+    private void OnImageLostMouseCapture(object sender, MouseEventArgs args)
+    {
+        profileDraggedEndpoint = 0;
+        viewModel?.RoiWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Cancel));
+    }
+
+    private void OnScrollLostMouseCapture(object sender, MouseEventArgs args)
+    {
+        if (isPanning && !ImageScrollViewer.IsMouseCaptured) EndPan();
     }
 
     private void AttachViewModel()
@@ -89,12 +139,18 @@ public partial class HeightImageViewerView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(HeightImageViewerViewModel.Frame)
-            or nameof(HeightImageViewerViewModel.DisplayFrame)
-            or nameof(HeightImageViewerViewModel.CompletenessCellOverlays)
-            or nameof(HeightImageViewerViewModel.SelectedCompletenessCellId))
+        if (args.PropertyName == nameof(HeightImageViewerViewModel.Frame))
+        {
+            ReleasePointerGestures();
+            QueueFitImage(DispatcherPriority.Loaded);
+        }
+        else if (args.PropertyName == nameof(HeightImageViewerViewModel.DisplayFrame))
         {
             RefreshFrame();
+        }
+        else if (args.PropertyName is nameof(HeightImageViewerViewModel.CompletenessCellOverlays)
+            or nameof(HeightImageViewerViewModel.SelectedCompletenessCellId))
+        {
             UpdateRoiOverlay();
         }
 
@@ -109,8 +165,61 @@ public partial class HeightImageViewerView : UserControl
 
     private void OnRoiWorkspacePropertyChanged(
         object? sender,
-        PropertyChangedEventArgs args) =>
+        PropertyChangedEventArgs args)
+    {
+        if (profileDraggedEndpoint == 0 && viewModel?.RoiWorkspace.IsGestureActive != true && HeightImage.IsMouseCaptured)
+            HeightImage.ReleaseMouseCapture();
         UpdateRoiOverlay();
+    }
+
+    private static void OnProfileStateChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (args.OldValue is ViewerHostProfileState before && args.NewValue is ViewerHostProfileState after
+            && before.Visible == after.Visible && before.SourceSha256 == after.SourceSha256
+            && before.FirstRow == after.FirstRow && before.FirstColumn == after.FirstColumn
+            && before.SecondRow == after.SecondRow && before.SecondColumn == after.SecondColumn
+            && ReferenceEquals(before.Trace, after.Trace)) return;
+        ((HeightImageViewerView)owner).UpdateProfileOverlay();
+    }
+
+    private Point? ProfilePosition(int? row, int? column) => row is { } r && column is { } c
+        ? new Point((c + 0.5) * imageScale, (r + 0.5) * imageScale) : null;
+
+    private void UpdateProfileOverlay()
+    {
+        ProfileOverlay.Children.Clear();
+        var profile = ProfileState;
+        if (!profile.Visible || viewModel?.Frame is not { } frame
+            || !string.Equals(profile.SourceSha256, frame.SourceContentSha256, StringComparison.OrdinalIgnoreCase)) return;
+        Point? previous = null;
+        ViewerHeightProfileTraceCell? previousCell = null;
+        foreach (var cell in profile.Trace)
+        {
+            var point = ProfilePosition(cell.Row, cell.Column)!.Value;
+            if (previous is { } before && previousCell is { } prior && Math.Max(Math.Abs(prior.Row - cell.Row), Math.Abs(prior.Column - cell.Column)) == 1)
+                ProfileOverlay.Children.Add(new Line { X1 = before.X, Y1 = before.Y, X2 = point.X, Y2 = point.Y, Stroke = Brushes.Goldenrod, StrokeThickness = 4 });
+            previous = point;
+            previousCell = cell;
+        }
+        var first = ProfilePosition(profile.FirstRow, profile.FirstColumn);
+        var second = ProfilePosition(profile.SecondRow, profile.SecondColumn);
+        var direction = first is { } a && second is { } b ? b - a : new Vector(1, 0);
+        var side = direction.Length < 0.001 ? new Vector(0, 1) : new Vector(-direction.Y, direction.X);
+        side.Normalize();
+        if (first is { } start) DrawBar(start, true);
+        if (second is { } end) DrawBar(end, false);
+
+        void DrawBar(Point point, bool isFirst)
+        {
+            var offset = side * 12;
+            var color = isFirst ? Brushes.Cyan : Brushes.OrangeRed;
+            ProfileOverlay.Children.Add(new Line { X1 = point.X - offset.X, Y1 = point.Y - offset.Y, X2 = point.X + offset.X, Y2 = point.Y + offset.Y, Stroke = color, StrokeThickness = 4 });
+            var label = new TextBlock { Text = isFirst ? "A" : "B", Foreground = Brushes.White, Background = Brushes.Black, FontWeight = FontWeights.Bold, FontSize = 12, Padding = new Thickness(2) };
+            Canvas.SetLeft(label, point.X + offset.X + 3);
+            Canvas.SetTop(label, point.Y + offset.Y);
+            ProfileOverlay.Children.Add(label);
+        }
+    }
 
     private void RefreshFrame()
     {
@@ -138,7 +247,6 @@ public partial class HeightImageViewerView : UserControl
         HeightImage.Source = bitmap;
         UpdateRoiOverlay();
         UpdateLinkedCursorOverlay();
-        QueueFitImage(DispatcherPriority.Loaded);
     }
 
     private void OnDisplayRequest(object? sender, HeightImageDisplayRequest request)
@@ -336,6 +444,11 @@ public partial class HeightImageViewerView : UserControl
                     column));
         }
 
+        if (profileDraggedEndpoint != 0 && args.LeftButton == MouseButtonState.Pressed)
+        {
+            var move = new ViewerHeightProfileCell(ProfileState.SourceSha256, row, column, profileDraggedEndpoint);
+            if (ProfilePickCommand?.CanExecute(move) == true) ProfilePickCommand.Execute(move);
+        }
         viewModel.UpdateHover(column, row);
     }
 
@@ -347,6 +460,22 @@ public partial class HeightImageViewerView : UserControl
         if (viewModel?.Frame is not { } frame
             || !TryGetNativeCell(args.GetPosition(HeightImage), out var row, out var column))
         {
+            return;
+        }
+
+        if (ProfileState.IsActive && string.Equals(ProfileState.SourceSha256, frame.SourceContentSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            var position = args.GetPosition(HeightImage);
+            if (!ProfileState.IsPicking)
+            {
+                var first = ProfilePosition(ProfileState.FirstRow, ProfileState.FirstColumn);
+                var second = ProfilePosition(ProfileState.SecondRow, ProfileState.SecondColumn);
+                profileDraggedEndpoint = first is { } a && (position - a).Length <= 12 ? 1 : second is { } b && (position - b).Length <= 12 ? 2 : 0;
+                if (profileDraggedEndpoint != 0) HeightImage.CaptureMouse();
+            }
+            var pick = new ViewerHeightProfileCell(ProfileState.SourceSha256, row, column, profileDraggedEndpoint);
+            if (ProfilePickCommand?.CanExecute(pick) == true) ProfilePickCommand.Execute(pick);
+            args.Handled = true;
             return;
         }
 
@@ -376,6 +505,13 @@ public partial class HeightImageViewerView : UserControl
         object sender,
         MouseButtonEventArgs args)
     {
+        if (profileDraggedEndpoint != 0)
+        {
+            profileDraggedEndpoint = 0;
+            HeightImage.ReleaseMouseCapture();
+            args.Handled = true;
+            return;
+        }
         if (viewModel?.RoiWorkspace.IsGestureActive != true)
         {
             return;
@@ -763,6 +899,8 @@ public partial class HeightImageViewerView : UserControl
             || viewModel.LinkedCursorColumn >= frame.Width
             || viewModel.LinkedCursorRow < 0
             || viewModel.LinkedCursorRow >= frame.Height
+            || !double.IsFinite(HeightImage.Width)
+            || !double.IsFinite(HeightImage.Height)
             || HeightImage.Width <= 0
             || HeightImage.Height <= 0)
         {
@@ -824,7 +962,7 @@ public partial class HeightImageViewerView : UserControl
         line.Stroke = stroke;
     }
 
-    private void ImageScrollViewer_SizeChanged(object sender, SizeChangedEventArgs args)
+    private void Viewer_SizeChanged(object sender, SizeChangedEventArgs args)
     {
         if (IsLoaded && viewModel?.Frame is not null && imageScale < 1.0)
         {

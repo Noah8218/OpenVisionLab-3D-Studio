@@ -22,7 +22,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
     private readonly Func<ToolRecipeDocument> createDocument;
     private readonly Func<string?> getRecipePath;
     private readonly Func<string, C3DHeightFieldSnapshot?> getPublishedHeightField;
-    private readonly Func<string, C3DConnectedRegionArtifact?> getPublishedDomain;
+    private readonly Func<string, object?> getPublishedDomain;
     private readonly Func<object?, bool> isSourceChangeEvent;
     private readonly Action<string, string> appendLog;
     private readonly Action<ToolWorkbenchFilterDisplayRequestEventArgs> requestDisplay;
@@ -35,9 +35,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
     private bool isPreviewStale;
     private bool isPreviewPublished;
     private string? previewInputEntityId;
+    private string? previewDetectionEntityId;
     private string? previewDomainArtifactId;
+    private int? previewSelectedRegionIndex;
     private string executionSummary =
-        "Select Domain / Mask after publishing a Connected Region, then Preview.";
+        "Select Domain / Mask after publishing a Connected Region or Grid Polygon Domain, then Preview.";
     private int disposalState;
 
     public ToolWorkbenchDomainMaskExecutionOwner(
@@ -48,7 +50,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         Func<ToolRecipeDocument> createDocument,
         Func<string?> getRecipePath,
         Func<string, C3DHeightFieldSnapshot?> getPublishedHeightField,
-        Func<string, C3DConnectedRegionArtifact?> getPublishedDomain,
+        Func<string, object?> getPublishedDomain,
         Func<object?, bool> isSourceChangeEvent,
         Action<string, string> appendLog,
         Action<ToolWorkbenchFilterDisplayRequestEventArgs> requestDisplay,
@@ -98,7 +100,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         preview = null;
         previewPath = null;
         previewInputEntityId = null;
+        previewDetectionEntityId = null;
         previewDomainArtifactId = null;
+        previewSelectedRegionIndex = null;
         isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -150,7 +154,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         isPreviewStale = false;
         isPreviewPublished = false;
         step.State = "Preview running";
-        SetSummary("Domain / Mask Preview is reducing the complete validated Connected Region domain without changing inputs.");
+        SetSummary("Domain / Mask Preview is projecting the complete validated domain without changing inputs.");
         if (!IsCurrentPreview(cancellation))
         {
             return false;
@@ -161,7 +165,14 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         try
         {
             var document = createDocument();
-            if (!TryResolveInputs(document, step.InputEntityIds, out var source, out var domain, out var reason))
+            if (!TryResolveInputs(
+                    document,
+                    step,
+                    out var source,
+                    out var detectionSource,
+                    out var domain,
+                    out var selectedRegionIndex,
+                    out var reason))
             {
                 if (!IsCurrentPreview(cancellation))
                 {
@@ -179,12 +190,41 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             }
 
             var evaluation = await Task.Run(
-                () => ToolRecipeDomainMaskExecution.Execute(
-                    document,
-                    step.Id,
-                    source,
-                    domain,
-                    cancellationToken),
+                () => detectionSource is not null
+                    && domain is C3DConnectedRegionArtifact detectedRegion
+                    && selectedRegionIndex is { } detectedIndex
+                    ? ToolRecipeDomainMaskExecution.Execute(
+                        document,
+                        step.Id,
+                        source,
+                        detectionSource,
+                        detectedRegion,
+                        detectedIndex,
+                        cancellationToken)
+                    : domain switch
+                    {
+                        C3DConnectedRegionArtifact connectedRegion => ToolRecipeDomainMaskExecution.Execute(
+                            document,
+                            step.Id,
+                            source,
+                            connectedRegion,
+                            cancellationToken),
+                        C3DGridDomainArtifact gridDomain => ToolRecipeDomainMaskExecution.Execute(
+                            document,
+                            step.Id,
+                            source,
+                            gridDomain,
+                            cancellationToken),
+                        _ => new C3DDomainMaskEvaluation(
+                            new ToolResult(
+                                C3DDomainMaskRule.ToolName,
+                                ResultStatus.Error,
+                                "Domain / Mask requires a supported ConnectedRegionArtifact or GridDomainArtifact.",
+                                TimeSpan.Zero,
+                                [],
+                                []),
+                            null)
+                    },
                 cancellationToken);
 
             if (!IsCurrentPreview(cancellation))
@@ -196,7 +236,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 preview = null;
                 previewPath = null;
                 previewInputEntityId = null;
+                previewDetectionEntityId = null;
                 previewDomainArtifactId = null;
+                previewSelectedRegionIndex = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
                 if (IsCurrentPreview(cancellation))
@@ -209,7 +251,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 
             preview = evaluation.Output;
             previewInputEntityId = source.EntityId;
-            previewDomainArtifactId = domain.ArtifactId;
+            previewDetectionEntityId = detectionSource?.EntityId;
+            previewDomainArtifactId = DescribeDomain(domain).ArtifactId;
+            previewSelectedRegionIndex = selectedRegionIndex;
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
             SaveC3DAtomically(evaluation.Output, previewPath);
             if (!IsCurrentPreview(cancellation))
@@ -218,13 +262,17 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             }
 
             step.State = "Preview ready";
+            var domainDescription = DescribeDomain(domain);
+            var routeDescription = detectionSource is null
+                ? $"source {source.EntityId}"
+                : $"raw {source.EntityId} | detection {detectionSource.EntityId} | region {selectedRegionIndex}";
             SetSummary(
-                $"Preview ready | domain {domain.Regions.Count:N0} region(s) | valid {evaluation.Output.ValidCount:N0} | missing {evaluation.Output.MissingCount:N0} | source unchanged");
+                $"Preview ready | domain {domainDescription.Kind} {domainDescription.Count:N0} | {routeDescription} | valid {evaluation.Output.ValidCount:N0} | missing {evaluation.Output.MissingCount:N0} | inputs unchanged");
             if (IsCurrentPreview(cancellation))
             {
                 appendLog(
                     "Preview",
-                    $"Domain / Mask Preview ready: output={evaluation.Output.ContentSha256}; source={source.EntityId}; domain={domain.ContentSha256}.");
+                    $"Domain / Mask Preview ready: output={evaluation.Output.ContentSha256}; {routeDescription}; domain={domainDescription.Hash}.");
             }
 
             if (!IsCurrentPreview(cancellation))
@@ -283,8 +331,10 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         && !hasPendingStepParameterChanges()
         && !isPreviewRunning
         && getSelectedPipelineStep() is { } step
-        && step.InputEntityIds.Count == 2
-        && getPublishedDomain(step.InputEntityIds[1]) is not null
+        && (step.InputEntityIds.Count is 2 or 3)
+        && getPublishedDomain(step.InputEntityIds[^1]) is not null
+        && (step.InputEntityIds.Count == 2
+            || getPublishedHeightField(step.InputEntityIds[1]) is not null)
         && ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid;
 
     public void Publish()
@@ -299,7 +349,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         isPreviewPublished = true;
         step.State = "Published";
         SetSummary(
-            $"Published {step.OutputEntityId} | SHA-256 {preview!.ContentSha256} | source and Connected Region remain unchanged");
+            $"Published {step.OutputEntityId} | SHA-256 {preview!.ContentSha256} | source and typed domain remain unchanged");
         appendLog("Publish", $"Domain / Mask output published without re-running: {step.OutputEntityId}.");
         PersistPublishedArtifactIfPossible();
     }
@@ -346,26 +396,29 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
     {
         if (IsDisposed
             || preview is null
+            || isPreviewStale
             || isPreviewRunning
             || getSelectedPipelineStep() is not { } step
-            || step.InputEntityIds.Count != 2)
+            || step.InputEntityIds.Count is not (2 or 3))
         {
             return;
         }
 
-        var domain = getPublishedDomain(step.InputEntityIds[1]);
-        var source = getPublishedHeightField(step.InputEntityIds[0]);
-        var sourceIsRecipeSource = string.Equals(
-            step.InputEntityIds[0],
-            createDocument().Source.Id,
-            StringComparison.OrdinalIgnoreCase);
-        if (domain is null
-            || (!sourceIsRecipeSource
-                && (source is null
-                    || !string.Equals(previewInputEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)))
-            || !string.Equals(previewDomainArtifactId, domain.ArtifactId, StringComparison.OrdinalIgnoreCase))
+        var document = createDocument();
+        if (!TryResolveInputs(
+                document,
+                step,
+                out var source,
+                out var detectionSource,
+                out var domain,
+                out var selectedRegionIndex,
+                out _)
+            || !string.Equals(previewInputEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(previewDetectionEntityId, detectionSource?.EntityId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(previewDomainArtifactId, DescribeDomain(domain).ArtifactId, StringComparison.OrdinalIgnoreCase)
+            || previewSelectedRegionIndex != selectedRegionIndex)
         {
-            MarkStale(step, "Published HeightField or Connected Region domain changed. Preview Domain / Mask again before Publish.");
+            MarkStale(step, "Raw source, detection source, selected region, or Domain / Mask artifact changed. Preview again before Publish.");
         }
     }
 
@@ -383,7 +436,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         preview = null;
         previewPath = null;
         previewInputEntityId = null;
+        previewDetectionEntityId = null;
         previewDomainArtifactId = null;
+        previewSelectedRegionIndex = null;
         isPreviewStale = false;
         isPreviewPublished = false;
         SetSummary(summary);
@@ -438,6 +493,13 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             return;
         }
 
+        if (step.InputEntityIds.Count == 3
+            && (string.IsNullOrWhiteSpace(previewDetectionEntityId)
+                || previewSelectedRegionIndex is null))
+        {
+            return;
+        }
+
         try
         {
             var recipePath = getRecipePath()!;
@@ -449,7 +511,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 step.Id,
                 step.OutputEntityId,
                 previewInputEntityId,
+                previewDetectionEntityId,
                 previewDomainArtifactId,
+                previewSelectedRegionIndex,
                 preview.ContentSha256,
                 preview.Width,
                 preview.Height,
@@ -493,7 +557,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         var document = createDocument();
         var step = document.Steps.FirstOrDefault(candidate =>
             string.Equals(candidate.ToolId, "domain-mask", StringComparison.Ordinal));
-        if (step is null || string.IsNullOrWhiteSpace(recipePath) || step.InputEntityIds.Count != 2)
+        if (step is null || string.IsNullOrWhiteSpace(recipePath) || step.InputEntityIds.Count is not (2 or 3))
         {
             return;
         }
@@ -523,7 +587,14 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 return;
             }
 
-            if (!TryResolveInputs(document, step.InputEntityIds, out var source, out var domain, out var reason))
+            if (!TryResolveInputs(
+                    document,
+                    step,
+                    out var source,
+                    out var detectionSource,
+                    out var domain,
+                    out var selectedRegionIndex,
+                    out var reason))
             {
                 var detail = reasonOrDefault(reason);
                 SetSummary($"Saved Domain / Mask output was not restored: {detail}");
@@ -532,9 +603,19 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             }
 
             if (!string.Equals(record.SourceEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(record.DomainArtifactId, domain.ArtifactId, StringComparison.OrdinalIgnoreCase))
+                || !string.Equals(record.DomainArtifactId, DescribeDomain(domain).ArtifactId, StringComparison.OrdinalIgnoreCase))
             {
                 const string detail = "sidecar source or domain identity does not match the current Published inputs.";
+                SetSummary($"Saved Domain / Mask output was not restored: {detail}");
+                appendLog("Warning", $"Domain / Mask output restore skipped: {detail}");
+                return;
+            }
+
+            if (step.InputEntityIds.Count == 3
+                && (!string.Equals(record.DetectionEntityId, detectionSource?.EntityId, StringComparison.OrdinalIgnoreCase)
+                    || record.SelectedRegionIndex != selectedRegionIndex))
+            {
+                const string detail = "sidecar detection source or selected region does not match the current Published inputs.";
                 SetSummary($"Saved Domain / Mask output was not restored: {detail}");
                 appendLog("Warning", $"Domain / Mask output restore skipped: {detail}");
                 return;
@@ -577,7 +658,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             preview = restored;
             previewPath = c3dPath;
             previewInputEntityId = source.EntityId;
-            previewDomainArtifactId = domain.ArtifactId;
+            previewDetectionEntityId = detectionSource?.EntityId;
+            previewDomainArtifactId = DescribeDomain(domain).ArtifactId;
+            previewSelectedRegionIndex = selectedRegionIndex;
             isPreviewStale = false;
             isPreviewPublished = true;
             if (getSelectedPipelineStep() is { } selected
@@ -605,13 +688,56 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 
     private bool TryResolveInputs(
         ToolRecipeDocument document,
-        IReadOnlyList<string> inputEntityIds,
+        ToolWorkbenchPipelineStepItem step,
         out C3DHeightFieldSnapshot source,
-        out C3DConnectedRegionArtifact domain,
+        out C3DHeightFieldSnapshot? detectionSource,
+        out object domain,
+        out int? selectedRegionIndex,
+        out string reason) =>
+        TryResolveInputs(
+            document,
+            step.InputEntityIds,
+            step.Parameters
+                .Select(parameter => new ToolRecipeParameter(parameter.Name, parameter.Value))
+                .ToArray(),
+            out source,
+            out detectionSource,
+            out domain,
+            out selectedRegionIndex,
+            out reason);
+
+    private bool TryResolveInputs(
+        ToolRecipeDocument document,
+        ToolRecipeStep step,
+        out C3DHeightFieldSnapshot source,
+        out C3DHeightFieldSnapshot? detectionSource,
+        out object domain,
+        out int? selectedRegionIndex,
+        out string reason) =>
+        TryResolveInputs(
+            document,
+            step.InputEntityIds,
+            step.Parameters,
+            out source,
+            out detectionSource,
+            out domain,
+            out selectedRegionIndex,
+            out reason);
+
+    private bool TryResolveInputs(
+        ToolRecipeDocument document,
+        IReadOnlyList<string> inputEntityIds,
+        IReadOnlyList<ToolRecipeParameter>? parameters,
+        out C3DHeightFieldSnapshot source,
+        out C3DHeightFieldSnapshot? detectionSource,
+        out object domain,
+        out int? selectedRegionIndex,
         out string reason)
     {
         source = null!;
+        detectionSource = null;
         domain = null!;
+        selectedRegionIndex = null;
         reason = string.Empty;
         if (IsDisposed)
         {
@@ -619,17 +745,51 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             return false;
         }
 
-        if (inputEntityIds.Count != 2)
+        if (inputEntityIds.Count is not (2 or 3))
         {
-            reason = "Domain / Mask requires one HeightField followed by one Published ConnectedRegionArtifact.";
+            reason = "Domain / Mask requires either the v1 HeightField + domain route or the v2 raw + filtered detection + Connected Region route.";
             return false;
         }
 
-        domain = getPublishedDomain(inputEntityIds[1])!;
-        if (domain is null)
+        domain = getPublishedDomain(inputEntityIds[^1])!;
+        if (inputEntityIds.Count == 2
+            && domain is not (C3DConnectedRegionArtifact or C3DGridDomainArtifact))
         {
-            reason = "The ConnectedRegionArtifact domain is not Published or is no longer current.";
+            reason = "The ConnectedRegionArtifact or GridDomainArtifact domain is not Published or is no longer current.";
             return false;
+        }
+
+        if (inputEntityIds.Count == 3)
+        {
+            if (domain is not C3DConnectedRegionArtifact)
+            {
+                reason = "The v2 raw-region route requires a Published ConnectedRegionArtifact as its third input.";
+                return false;
+            }
+
+            detectionSource = getPublishedHeightField(inputEntityIds[1]);
+            if (detectionSource is null)
+            {
+                reason = "The v2 raw-region route requires the exact Published FilteredHeightField used for detection.";
+                return false;
+            }
+
+            var selectedRegionParameter = parameters?.SingleOrDefault(parameter =>
+                parameter is not null
+                && string.Equals(parameter.Name, "SelectedRegionIndex", StringComparison.Ordinal));
+            if (selectedRegionParameter is null
+                || !int.TryParse(
+                    selectedRegionParameter.Value,
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var parsedRegionIndex)
+                || parsedRegionIndex < 0)
+            {
+                reason = "The v2 raw-region route requires one non-negative SelectedRegionIndex parameter.";
+                return false;
+            }
+
+            selectedRegionIndex = parsedRegionIndex;
         }
 
         source = getPublishedHeightField(inputEntityIds[0])!;
@@ -701,6 +861,16 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
     private static string reasonOrDefault(string reason) =>
         string.IsNullOrWhiteSpace(reason) ? "artifact identity or current input did not match." : reason;
 
+    private static (string Kind, int Count, string Hash, string ArtifactId) DescribeDomain(object domain) =>
+        domain switch
+        {
+            C3DConnectedRegionArtifact connectedRegion =>
+                ("Connected Region", connectedRegion.Regions.Count, connectedRegion.ContentSha256, connectedRegion.ArtifactId),
+            C3DGridDomainArtifact gridDomain =>
+                ("Grid Polygon", gridDomain.Cells.Count, gridDomain.ContentSha256, gridDomain.ArtifactId),
+            _ => ("unsupported", 0, string.Empty, string.Empty)
+        };
+
     private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)
         => WriteAtomically(path, output.SaveC3D);
 
@@ -759,7 +929,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         string StepId,
         string OutputEntityId,
         string SourceEntityId,
+        string? DetectionEntityId,
         string DomainArtifactId,
+        int? SelectedRegionIndex,
         string OutputContentSha256,
         int Width,
         int Height,

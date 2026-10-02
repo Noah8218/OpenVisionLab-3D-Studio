@@ -31,6 +31,7 @@ public sealed partial class MainWindowViewModel
     private double c3DHeightColorMinimumRaw = double.NaN;
     private double c3DHeightColorMaximumRaw = double.NaN;
     private bool c3DHeightColorRangeAuto = true;
+    private int c3DHeightEmphasis = 1;
     private int c3DHeightColorRangeRevision;
 
     public bool C3DHeightDistributionVisible
@@ -151,6 +152,12 @@ public sealed partial class MainWindowViewModel
         private set => SetField(ref c3DHeightColorRangeRevision, value);
     }
 
+    public int C3DHeightEmphasis
+    {
+        get => c3DHeightEmphasis;
+        private set => SetField(ref c3DHeightEmphasis, value);
+    }
+
     public string C3DHeightColorRangeSummary
     {
         get
@@ -240,6 +247,17 @@ public sealed partial class MainWindowViewModel
         }
 
         ApplyC3DHeightColorRange(minimum, maximum, isAuto: false);
+        return true;
+    }
+
+    public bool TrySetC3DHeightEmphasis(int emphasis)
+    {
+        if (!C3DHeightDistributionVisible || emphasis is not (1 or 2 or 3 or 5))
+        {
+            return false;
+        }
+
+        C3DHeightEmphasis = emphasis;
         return true;
     }
 

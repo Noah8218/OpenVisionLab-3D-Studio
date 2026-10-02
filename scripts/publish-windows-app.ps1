@@ -95,7 +95,7 @@ if ($missingFiles.Count -gt 0) {
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination $outputPath
 Copy-Item -LiteralPath (Join-Path $repoRoot 'NOTICE') -Destination $outputPath
 Copy-Item `
-    -LiteralPath (Join-Path $repoRoot 'docs\OPENVISIONLAB_3D_WINDOWS_PACKAGE_QUICK_START.md') `
+    -LiteralPath (Join-Path $repoRoot 'docs\guides\OPENVISIONLAB_3D_WINDOWS_PACKAGE_QUICK_START.md') `
     -Destination (Join-Path $outputPath 'README.md')
 Copy-Item -LiteralPath (Join-Path $repoRoot 'recipes') -Destination (Join-Path $outputPath 'recipes') -Recurse
 $sampleDestination = Join-Path $outputPath '3D\Samples'
@@ -113,10 +113,10 @@ foreach ($sampleFolder in @('glTF', 'STL', 'PointCloud')) {
 $documentationDestination = Join-Path $outputPath 'documentation'
 New-Item -ItemType Directory -Force -Path $documentationDestination | Out-Null
 Copy-Item `
-    -LiteralPath (Join-Path $repoRoot 'docs\OPENVISIONLAB_3D_USER_TUTORIAL.md') `
+    -LiteralPath (Join-Path $repoRoot 'docs\guides\OPENVISIONLAB_3D_USER_TUTORIAL.md') `
     -Destination (Join-Path $documentationDestination 'USER_TUTORIAL.md')
 Copy-Item `
-    -LiteralPath (Join-Path $repoRoot 'docs\OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md') `
+    -LiteralPath (Join-Path $repoRoot 'docs\guides\OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md') `
     -Destination (Join-Path $documentationDestination 'SYSTEM_REQUIREMENTS.md')
 
 [xml]$buildProperties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw

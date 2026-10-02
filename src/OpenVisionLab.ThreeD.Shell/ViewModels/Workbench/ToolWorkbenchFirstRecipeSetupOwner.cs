@@ -8,6 +8,7 @@ using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -40,7 +41,11 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
 
     private bool isFirstRecipeSetupVisible;
     private bool isCompatibleVariantSetup;
+    private ToolRecipeSelectionSourceBinding? confirmedVariantBinding;
     private string firstRecipeName = "new-inspection";
+    private string firstRecipeCategory = string.Empty;
+    private string firstRecipeInspectionTarget = string.Empty;
+    private string firstRecipeDescription = string.Empty;
     private string firstRecipeFolderPath = string.Empty;
     private string firstRecipeSourcePath = string.Empty;
     private bool rememberFirstRecipeSetup;
@@ -158,6 +163,42 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         }
     }
 
+    public string FirstRecipeCategory
+    {
+        get => firstRecipeCategory;
+        set
+        {
+            if (SetField(ref firstRecipeCategory, value ?? string.Empty))
+            {
+                NotifyFirstRecipeSetupDraftChanged();
+            }
+        }
+    }
+
+    public string FirstRecipeInspectionTarget
+    {
+        get => firstRecipeInspectionTarget;
+        set
+        {
+            if (SetField(ref firstRecipeInspectionTarget, value ?? string.Empty))
+            {
+                NotifyFirstRecipeSetupDraftChanged();
+            }
+        }
+    }
+
+    public string FirstRecipeDescription
+    {
+        get => firstRecipeDescription;
+        set
+        {
+            if (SetField(ref firstRecipeDescription, value ?? string.Empty))
+            {
+                NotifyFirstRecipeSetupDraftChanged();
+            }
+        }
+    }
+
     public string FirstRecipeFolderPath
     {
         get => firstRecipeFolderPath;
@@ -177,6 +218,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         {
             if (SetField(ref firstRecipeSourcePath, value ?? string.Empty))
             {
+                IsVariantRoiReuseConfirmed = false;
                 NotifyFirstRecipeSetupDraftChanged();
             }
         }
@@ -201,6 +243,17 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
     {
         get => rememberFirstRecipeSetup;
         set => SetField(ref rememberFirstRecipeSetup, value);
+    }
+
+    public bool IsVariantRoiReuseConfirmed
+    {
+        get => confirmedVariantBinding is not null;
+        set
+        {
+            confirmedVariantBinding = value ? readSourceBinding(FirstRecipeSourcePath.Trim()) : null;
+            OnPropertyChanged();
+            NotifyFirstRecipeSetupDraftChanged();
+        }
     }
 
     public string FirstRecipeStarterDetail =>
@@ -238,6 +291,9 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         IsCompatibleVariantSetup = false;
         var setup = rememberedFirstRecipeSetup;
         FirstRecipeName = setup?.RecipeName ?? "new-inspection";
+        FirstRecipeCategory = string.Empty;
+        FirstRecipeInspectionTarget = string.Empty;
+        FirstRecipeDescription = string.Empty;
         FirstRecipeFolderPath = setup?.FolderPath ?? string.Empty;
         FirstRecipeSourcePath = setup?.SourcePath ?? string.Empty;
         RememberFirstRecipeSetup = setup is not null;
@@ -254,7 +310,11 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         }
 
         IsCompatibleVariantSetup = true;
+        IsVariantRoiReuseConfirmed = false;
         FirstRecipeName = $"{getCurrentRecipeName().Trim()}-variant";
+        FirstRecipeCategory = string.Empty;
+        FirstRecipeInspectionTarget = string.Empty;
+        FirstRecipeDescription = string.Empty;
         FirstRecipeFolderPath = Path.GetDirectoryName(Path.GetFullPath(getCurrentRecipePath()!))!;
         FirstRecipeSourcePath = getCurrentSourcePath();
         RememberFirstRecipeSetup = false;
@@ -275,15 +335,19 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
             return false;
         }
 
+        var sourcePath = FirstRecipeSourcePath.Trim();
         setup = new ToolWorkbenchFirstRecipeSetup(
             FirstRecipeName.Trim(),
             Path.GetFullPath(FirstRecipeFolderPath.Trim()),
-            Path.GetFullPath(FirstRecipeSourcePath.Trim()),
+            string.IsNullOrWhiteSpace(sourcePath) ? string.Empty : Path.GetFullPath(sourcePath),
             IsCompatibleVariantSetup
                 ? CompatibleVariantStarterId
                 : SelectedFirstRecipeStarter?.Id ?? EmptyStarterId,
             targetPath,
-            IsCompatibleVariantSetup);
+            IsCompatibleVariantSetup,
+            IsCompatibleVariantSetup || string.IsNullOrWhiteSpace(FirstRecipeCategory) ? null : FirstRecipeCategory.Trim(),
+            IsCompatibleVariantSetup || string.IsNullOrWhiteSpace(FirstRecipeInspectionTarget) ? null : FirstRecipeInspectionTarget.Trim(),
+            IsCompatibleVariantSetup || string.IsNullOrWhiteSpace(FirstRecipeDescription) ? null : FirstRecipeDescription.Trim());
         message = ThreeDLocalization.Shared.FirstRecipeReadyToCreate;
         return true;
     }
@@ -338,7 +402,9 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
             1,
             FirstRecipeName.Trim(),
             Path.GetFullPath(FirstRecipeFolderPath.Trim()),
-            Path.GetFullPath(FirstRecipeSourcePath.Trim()),
+            string.IsNullOrWhiteSpace(FirstRecipeSourcePath.Trim())
+                ? string.Empty
+                : Path.GetFullPath(FirstRecipeSourcePath.Trim()),
             SelectedFirstRecipeStarter?.Id ?? EmptyStarterId);
         var persisted = RememberFirstRecipeSetup
             ? TrySaveFirstRecipeSetupPreference(setup, out message)
@@ -371,6 +437,9 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         _ = TryDeleteFirstRecipeSetupPreference(out _);
         rememberedFirstRecipeSetup = null;
         FirstRecipeName = "new-inspection";
+        FirstRecipeCategory = string.Empty;
+        FirstRecipeInspectionTarget = string.Empty;
+        FirstRecipeDescription = string.Empty;
         FirstRecipeFolderPath = string.Empty;
         FirstRecipeSourcePath = string.Empty;
         RememberFirstRecipeSetup = false;
@@ -415,6 +484,13 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
 
     private string? GetFirstRecipeSetupValidationError()
     {
+        if (FirstRecipeCategory.Length > ToolRecipeDocument.MaximumMetadataFieldLength
+            || FirstRecipeInspectionTarget.Length > ToolRecipeDocument.MaximumMetadataFieldLength
+            || FirstRecipeDescription.Length > ToolRecipeDocument.MaximumMetadataFieldLength)
+        {
+            return ThreeDLocalization.Shared.RecipeInfoFieldTooLong;
+        }
+
         var name = FirstRecipeName.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -434,32 +510,40 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         {
             return ThreeDLocalization.Shared.FirstRecipeFolderMissing;
         }
-        if (string.IsNullOrWhiteSpace(FirstRecipeSourcePath))
-        {
-            return ThreeDLocalization.Shared.FirstRecipeSourceRequired;
-        }
-        if (!File.Exists(FirstRecipeSourcePath.Trim()))
-        {
-            return ThreeDLocalization.Shared.FirstRecipeSourceMissing;
-        }
-        if (!string.Equals(Path.GetExtension(FirstRecipeSourcePath.Trim()), ".C3D", StringComparison.OrdinalIgnoreCase))
-        {
-            return ThreeDLocalization.Shared.FirstRecipeSourceMustBeC3D;
-        }
-        if (IsCompatibleVariantSetup)
-        {
-            var binding = readSourceBinding(FirstRecipeSourcePath.Trim());
-            var variantError = binding is null
-                ? ThreeDLocalization.Shared.SourceUnreadable
-                : GetCompatibleVariantValidationError(FirstRecipeSourcePath.Trim(), binding);
-            if (variantError is not null)
-            {
-                return variantError;
-            }
-        }
         if (SelectedFirstRecipeStarter is null)
         {
             return ThreeDLocalization.Shared.FirstRecipeStarterRequired;
+        }
+        var sourcePath = FirstRecipeSourcePath.Trim();
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            if (IsCompatibleVariantSetup
+                || !string.Equals(SelectedFirstRecipeStarter.Id, EmptyStarterId, StringComparison.Ordinal))
+            {
+                return ThreeDLocalization.Shared.FirstRecipeSourceRequired;
+            }
+        }
+        else
+        {
+            if (!File.Exists(sourcePath))
+            {
+                return ThreeDLocalization.Shared.FirstRecipeSourceMissing;
+            }
+            if (!string.Equals(Path.GetExtension(sourcePath), ".C3D", StringComparison.OrdinalIgnoreCase))
+            {
+                return ThreeDLocalization.Shared.FirstRecipeSourceMustBeC3D;
+            }
+            if (IsCompatibleVariantSetup)
+            {
+                var binding = readSourceBinding(sourcePath);
+                var variantError = binding is null
+                    ? ThreeDLocalization.Shared.SourceUnreadable
+                    : GetCompatibleVariantValidationError(sourcePath, binding);
+                if (variantError is not null)
+                {
+                    return variantError;
+                }
+            }
         }
         if (TryBuildFirstRecipeTargetPath(out var targetPath) && File.Exists(targetPath))
         {
@@ -601,6 +685,12 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         }
 
         var currentBinding = getCurrentSourceBinding()!;
+        if (!IsRawBinding(currentBinding) || !IsRawBinding(newBinding)
+            || !string.Equals(currentBinding.Unit, newBinding.Unit, StringComparison.Ordinal)
+            || !string.Equals(currentBinding.FrameId, newBinding.FrameId, StringComparison.Ordinal))
+        {
+            return ThreeDLocalization.Shared.CompatibleVariantMetadataMismatch;
+        }
         if (newBinding.GridWidth != currentBinding.GridWidth
             || newBinding.GridHeight != currentBinding.GridHeight)
         {
@@ -611,8 +701,20 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
                 newBinding.GridWidth,
                 newBinding.GridHeight);
         }
+        if (confirmedVariantBinding is null
+            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(confirmedVariantBinding, newBinding))
+        {
+            return ThreeDLocalization.Shared.CompatibleVariantReviewRequired;
+        }
         return null;
     }
+
+    private static bool IsRawBinding(ToolRecipeSelectionSourceBinding binding) =>
+        string.Equals(binding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+        && binding.GridWidth > 0 && binding.GridHeight > 0
+        && binding.ContentSha256 is { Length: 64 } && binding.ContentSha256.All(Uri.IsHexDigit)
+        && string.IsNullOrWhiteSpace(binding.OwnerEntityId)
+        && string.IsNullOrWhiteSpace(binding.RootSourceContentSha256);
 
     private bool AreSelectionsCompatibleWithSourceVariant() => getSelections().All(selection =>
         string.Equals(selection.Kind, ToolRecipeSelectionKinds.GridRectangle, StringComparison.Ordinal)
@@ -623,7 +725,15 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         && selection.Points is null
         && selection.Rows is null
         && selection.OrientedBox3D is null
-        && selection.GridCircle is null);
+        && selection.GridCircle is null
+        && selection.GridPolygon is null
+        && selection.CorrespondenceDescriptor is null
+        && getCurrentSourceBinding() is { } current && IsRawBinding(current)
+        && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, current)
+        && selection.GridRectangle.Row >= 0 && selection.GridRectangle.Column >= 0
+        && selection.GridRectangle.RowCount > 0 && selection.GridRectangle.ColumnCount > 0
+        && (long)selection.GridRectangle.Row + selection.GridRectangle.RowCount <= current.GridHeight
+        && (long)selection.GridRectangle.Column + selection.GridRectangle.ColumnCount <= current.GridWidth);
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

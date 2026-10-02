@@ -40,6 +40,7 @@ internal static class HeightMeasurementCancellationVerification
                 document.Steps[0].Parameters);
             var logs = new List<string>();
             var presented = new List<ToolRecipeHeightMeasurementOutput?>();
+            var cancelOnPresentation = true;
             ToolWorkbenchHeightMeasurementExecutionOwner? owner = null;
             owner = new ToolWorkbenchHeightMeasurementExecutionOwner(
                 () => true,
@@ -58,7 +59,7 @@ internal static class HeightMeasurementCancellationVerification
                 output =>
                 {
                     presented.Add(output);
-                    if (output is not null)
+                    if (output is not null && cancelOnPresentation)
                     {
                         owner!.Cancel();
                     }
@@ -85,6 +86,22 @@ internal static class HeightMeasurementCancellationVerification
                     && canceledSummary
                     && canceledLog;
                 lines.Add($"late-cancel|pass={passed}|previewResult={previewResult}|running={owner.IsPreviewRunning}|hasPreview={owner.HasCurrentPreview}|published={owner.IsPreviewPublished}|stepState={step.State}|presented={presented.Count}|outputPresented={outputPresented}|presentationCleared={presentationCleared}|summary={owner.ExecutionSummary}|canceledLog={canceledLog}");
+                cancelOnPresentation = false;
+                var recovered = Task.Run(() => owner.PreviewAsync()).GetAwaiter().GetResult();
+                owner.Publish();
+                var previous = owner.CurrentOutput;
+                cancelOnPresentation = true;
+                var canceledAgain = !Task.Run(() => owner.PreviewAsync()).GetAwaiter().GetResult();
+                var retained = recovered && previous is not null && canceledAgain
+                    && ReferenceEquals(previous, owner.CurrentOutput)
+                    && owner.IsPreviewStale && !owner.CanPublish();
+                lines.Add($"cancel-preserves-prior-result|pass={retained}|recovered={recovered}|canceled={canceledAgain}|stale={owner.IsPreviewStale}");
+                cancelOnPresentation = false;
+                var finalRecovery = Task.Run(() => owner.PreviewAsync()).GetAwaiter().GetResult();
+                owner.Publish();
+                var recoveryPassed = finalRecovery && owner.HasCurrentPreview && owner.IsPreviewPublished;
+                lines.Add($"explicit-recovery|pass={recoveryPassed}");
+                passed &= retained && recoveryPassed;
             }
             finally
             {

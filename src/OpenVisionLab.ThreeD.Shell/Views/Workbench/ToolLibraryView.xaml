@@ -39,7 +39,7 @@
                                Text="{Binding Localization.ToolLibrary}" />
                 </StackPanel>
                 <TextBlock Margin="0,4,0,0"
-                           FontSize="10.5"
+                           FontSize="12"
                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                            TextWrapping="Wrap"
                            Text="{Binding Localization.ToolLibraryHint}" />
@@ -77,7 +77,7 @@
                                    Foreground="{DynamicResource ThreeD.WarningBrush}"
                                    Symbol="ArrowCircleRight24" />
                     <StackPanel Grid.Column="1">
-                        <TextBlock FontSize="9.5"
+                        <TextBlock FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.NextAction}" />
@@ -123,7 +123,7 @@
                                        Text="{Binding Localization.AddFirstToolActionTitle}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,3,0,0"
-                                       FontSize="9.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        Text="{Binding Localization.AddFirstToolActionDetail}"
                                        TextWrapping="Wrap" />
@@ -156,7 +156,7 @@
                                        Text="{Binding Localization.TeachSelectedStepActionTitle}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,3,0,0"
-                                       FontSize="9.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        Text="{Binding Localization.TeachSelectedStepActionDetail}"
                                        TextWrapping="Wrap" />
@@ -175,10 +175,12 @@
                     <TextBlock FontWeight="SemiBold"
                                Text="{Binding Localization.CompatibleToolCatalogTitle}" />
                     <TextBlock Grid.Column="1"
-                               FontSize="9.5"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.AccentBrush}"
                                Text="{Binding CompatibleToolCatalogSummary}" />
                 </Grid>
+                <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              AutomationProperties.AutomationId="CompatibleToolScroller">
                 <ItemsControl Margin="0,5,0,0" ItemsSource="{Binding CompatibleToolSuggestions}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -194,18 +196,32 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock FontSize="10.5"
-                                                   FontWeight="SemiBold"
-                                                   Text="{Binding Title}"
-                                                   TextWrapping="Wrap"
-                                                   ToolTip="{Binding Title}" />
-                                        <TextBlock FontSize="9"
-                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                   Text="{Binding Detail}"
-                                                   TextWrapping="Wrap"
-                                                   ToolTip="{Binding Detail}" />
+                                        <TextBlock FontSize="12" Text="{Binding BlockerReason}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ThreeD.WarningBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding BlockerReason}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <Expander IsExpanded="False" Padding="2" FontSize="12" HorizontalContentAlignment="Stretch"
+                                                  AutomationProperties.AutomationId="CompatibleToolDetails">
+                                            <Expander.Header>
+                                                <StackPanel>
+                                                    <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Title}" TextWrapping="Wrap" />
+                                                    <TextBlock FontSize="12" Text="{Binding State}" TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                                                </StackPanel>
+                                            </Expander.Header>
+                                            <TextBlock FontSize="12" Text="{Binding Detail}" TextWrapping="Wrap" />
+                                        </Expander>
                                     </StackPanel>
                                     <ui:Button Grid.Column="1"
+                                               VerticalAlignment="Top"
                                                Margin="5,0,0,0"
                                                Padding="7,2"
                                                Content="{Binding DataContext.Localization.AddCompatibleTool, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -219,8 +235,9 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                </ScrollViewer>
                 <TextBlock Margin="0,2,0,0"
-                           FontSize="9.5"
+                           FontSize="12"
                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                            Text="{Binding Localization.FilterOptionalHint}"
                            TextWrapping="Wrap" />
@@ -261,12 +278,12 @@
                         </Style>
                     </Border.Style>
                     <StackPanel>
-                        <TextBlock FontSize="9.5"
+                        <TextBlock FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding SelectedToolProposedRouteTitle}" />
                         <TextBlock Margin="0,2,0,0"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.TextBrush}"
                                    Text="{Binding SelectedToolProposedRouteDetail}"
                                    TextWrapping="Wrap" />
@@ -295,7 +312,7 @@
                             <DataTemplate>
                                 <Border Padding="7,4"
                                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}">
-                                    <TextBlock FontSize="10"
+                                    <TextBlock FontSize="12"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                Text="{Binding Name}" />
@@ -309,30 +326,28 @@
                         <Grid Margin="5,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
-                                                  MinWidth="110" />
-                                <ColumnDefinition Width="Auto" />
+                                                  MinWidth="80" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="10.5"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
-                                           Text="{Binding Name}"
+                                           Text="{Binding DisplayName}"
                                            TextWrapping="Wrap"
-                                           ToolTip="{Binding Name}" />
-                                <TextBlock FontSize="9"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="{Binding InputContract}"
-                                           TextTrimming="CharacterEllipsis" />
+                                           ToolTip="{Binding DisplayName}" />
+                                <Expander Margin="0,4,0,0" IsExpanded="False"
+                                          Header="{Binding DataContext.Localization.ToolContractDetails, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          HorizontalContentAlignment="Stretch"
+                                          AutomationProperties.AutomationId="ToolContractDetails">
+                                    <StackPanel>
+                                        <TextBlock FontSize="12" Text="{Binding InputContractDisplay}" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding OutputContractDisplay}"
+                                                   Foreground="{DynamicResource ThreeD.AccentBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
-                            <TextBlock Grid.Column="1"
-                                       Margin="5,0,0,0"
-                                       VerticalAlignment="Center"
-                                       FontSize="9"
-                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                       Text="{Binding OutputContract}"
-                                       MaxWidth="110"
-                                       TextTrimming="CharacterEllipsis" />
-                            <ui:Button Grid.Column="2"
+                            <ui:Button Grid.Column="1"
+                                       VerticalAlignment="Top"
                                        Width="26"
                                        Height="24"
                                        Margin="5,0,0,0"

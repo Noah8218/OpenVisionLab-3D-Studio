@@ -28,7 +28,17 @@ public static class ToolRecipeDatumPlaneDeviationExecution
         {
             return new C3DDatumPlaneDeviationEvaluation(new ToolResult(C3DDatumPlaneDeviationRule.ToolName, ResultStatus.Error, message, TimeSpan.Zero, [], []), null);
         }
-        return C3DDatumPlaneDeviationRule.Evaluate(input!, cancellationToken);
+        var evaluation = C3DDatumPlaneDeviationRule.Evaluate(input!, cancellationToken);
+        var step = document.Steps.Single(candidate => string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase));
+        if (step.AcceptanceLimitsConfigured != false || evaluation.Output is not { } output) return evaluation;
+        var measuredOutput = C3DDatumPlaneDeviationFeature.Create(
+            output.OutputEntityId, publishedPlane, input!.MeasurementSelection,
+            output.MaximumPeakToValleyRawHeight, output.MinimumValidSampleCount, output.MinimumAbsoluteNormalY,
+            output.MinimumRawHeightResidual, output.MaximumRawHeightResidual, output.PeakToValleyRawHeight,
+            output.RmsRawHeightResidual, output.ValidSampleCount, output.MissingSampleCount,
+            output.MinimumResidualRow, output.MinimumResidualColumn, output.MaximumResidualRow, output.MaximumResidualColumn,
+            ResultStatus.NotRun, output.OutputRole, output.OverlaySamples, output.Provenance);
+        return evaluation with { Result = step.ApplyAcceptancePolicy(evaluation.Result), Output = measuredOutput };
     }
 
     public static bool TryPrepare(

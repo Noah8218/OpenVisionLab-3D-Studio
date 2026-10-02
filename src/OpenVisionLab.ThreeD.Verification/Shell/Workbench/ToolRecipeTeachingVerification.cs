@@ -56,7 +56,77 @@ internal static class ToolRecipeTeachingVerification
             var routeWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-route.json"));
             routeWorkbench.SetC3DSource(sourcePath, markDirty: false);
             routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "thickness");
+            var toolSearchLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var toolSearchActionLogCount = routeWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                routeWorkbench.ToolSearchText = " 두께 ";
+                var koreanThickness = routeWorkbench.FilteredTools.SingleOrDefault(tool => tool.Id == "thickness");
+                routeWorkbench.ToolSearchText = "휨";
+                var koreanWarpage = routeWorkbench.FilteredTools.SingleOrDefault(tool => tool.Id == "warpage");
+                routeWorkbench.ToolSearchText = "뒤틀림";
+                var koreanWarpageAlias = routeWorkbench.FilteredTools.SingleOrDefault(tool => tool.Id == "warpage");
+                routeWorkbench.ToolSearchText = "높이";
+                var koreanHeightTool = routeWorkbench.FilteredTools.Any(tool => tool.Id == "height-difference-edge");
+                routeWorkbench.ToolSearchText = "영역";
+                var koreanRegionTool = routeWorkbench.FilteredTools.Any(tool => tool.Id == "connected-region");
+                Check(
+                    "Korean tool names and aliases resolve the intended catalog identities",
+                    koreanThickness?.DisplayName == "두께"
+                    && koreanWarpage?.DisplayName == "휨"
+                    && koreanWarpageAlias is not null
+                    && koreanHeightTool
+                    && koreanRegionTool
+                    && routeWorkbench.RunLog.Count(item =>
+                        item.Category is "Preview" or "Publish" or "Run") == toolSearchActionLogCount,
+                    $"thickness={koreanThickness?.Id}/{koreanThickness?.DisplayName};"
+                    + $"warpage={koreanWarpage?.Id}/{koreanWarpage?.DisplayName};"
+                    + $"alias={koreanWarpageAlias?.Id};height={koreanHeightTool};region={koreanRegionTool}");
+
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                routeWorkbench.ToolSearchText = "Thickness";
+                var englishThickness = routeWorkbench.FilteredTools.SingleOrDefault(tool => tool.Id == "thickness");
+                routeWorkbench.ToolSearchText = "Warpage";
+                var englishWarpage = routeWorkbench.FilteredTools.SingleOrDefault(tool => tool.Id == "warpage");
+                Check(
+                    "English names resolve the same tool objects after a locale change",
+                    englishThickness is not null
+                    && englishWarpage is not null
+                    && ReferenceEquals(koreanThickness, englishThickness)
+                    && ReferenceEquals(koreanWarpage, englishWarpage)
+                    && englishThickness.DisplayName == "Thickness"
+                    && englishWarpage.DisplayName == "Warpage",
+                    $"thickness={englishThickness?.Id}/{englishThickness?.DisplayName};"
+                    + $"warpage={englishWarpage?.Id}/{englishWarpage?.DisplayName};"
+                    + $"same={ReferenceEquals(koreanThickness, englishThickness)}/{ReferenceEquals(koreanWarpage, englishWarpage)}");
+
+                routeWorkbench.ToolSearchText = "  THICKNESS  ";
+                Check(
+                    "tool search trims whitespace and remains case-insensitive",
+                    routeWorkbench.FilteredTools.Count == 1
+                    && routeWorkbench.FilteredTools[0].Id == "thickness",
+                    $"search='{routeWorkbench.ToolSearchText}';matches={routeWorkbench.FilteredTools.Count}");
+
+                routeWorkbench.ToolSearchText = "not-a-real-tool";
+                var toolSearchActionLogAfter = routeWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run");
+                Check(
+                    "tool search reports no result without changing recipe or execution state",
+                    routeWorkbench.FilteredTools.Count == 0
+                    && routeWorkbench.PipelineSteps.Count == 0
+                    && toolSearchActionLogAfter == toolSearchActionLogCount,
+                    $"matches={routeWorkbench.FilteredTools.Count};steps={routeWorkbench.PipelineSteps.Count};"
+                    + $"actions={toolSearchActionLogAfter}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(toolSearchLanguage, save: false);
+            }
+
             routeWorkbench.ToolSearchText = "Thickness";
+            routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "thickness");
             var selectedStepSetupRequestCount = 0;
             routeWorkbench.SelectedStepSetupRequested += (_, _) => selectedStepSetupRequestCount++;
             Check(
@@ -72,6 +142,11 @@ internal static class ToolRecipeTeachingVerification
             var routeActionLogCount = routeWorkbench.RunLog.Count(item =>
                 item.Category is "Preview" or "Publish" or "Run");
             var routeThickness = AddTool(routeWorkbench, "Thickness");
+            Check(
+                "localized Add stores the canonical tool identity and name",
+                routeThickness.ToolId == "thickness"
+                && routeThickness.ToolName == "Thickness",
+                $"toolId={routeThickness.ToolId};toolName={routeThickness.ToolName}");
             Check(
                 "successful Add clears the Tool Library search without execution",
                 string.IsNullOrEmpty(routeWorkbench.ToolSearchText)
@@ -93,6 +168,201 @@ internal static class ToolRecipeTeachingVerification
                 && routeWarpageProposal.Contains(routeWorkbench.Source.Id, StringComparison.Ordinal)
                 && !routeWarpageProposal.Contains(routeThickness.OutputEntityId, StringComparison.Ordinal),
                 $"proposal={routeWarpageProposal}; route={routeWarpage.InputSummary}");
+
+            var routeAdmissionWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(fixtureRoot, "route-admission-recent.json"));
+            try
+            {
+                routeAdmissionWorkbench.SetC3DSource(sourcePath, markDirty: false);
+                var routeAdmissionQuality = WaitForSourceQuality(routeAdmissionWorkbench.SourceQuality);
+                var surfaceMatchTool = routeAdmissionWorkbench.Tools.Single(tool =>
+                    tool.Id == "surface-match");
+                routeAdmissionWorkbench.SelectedTool = surfaceMatchTool;
+                var surfaceMatchCanAdd = routeAdmissionWorkbench.AddSelectedToolCommand
+                    .CanExecute(surfaceMatchTool);
+                var surfaceMatchDetail = routeAdmissionWorkbench.SelectedToolProposedRouteDetail;
+                routeAdmissionWorkbench.AddSelectedToolCommand.Execute(surfaceMatchTool);
+                var surfaceMatchStep = routeAdmissionWorkbench.SelectedPipelineStep;
+                var surfaceMatchRecipePath = Path.Combine(
+                    fixtureRoot,
+                    "surface-match-route-admission.ov3d-recipe.json");
+                var surfaceMatchSaved = routeAdmissionWorkbench.TrySaveTeachingRecipe(
+                    surfaceMatchRecipePath,
+                    out var surfaceMatchSaveMessage);
+                Check(
+                    "Surface Match remains addable through its dedicated experiment route",
+                    routeAdmissionQuality is not null
+                    && surfaceMatchTool.RouteKind == ToolWorkbenchToolRouteKind.SpecialExperiment
+                    && surfaceMatchCanAdd
+                    && surfaceMatchStep?.ToolId == surfaceMatchTool.Id
+                    && surfaceMatchStep.InputEntityIds.Count == 0
+                    && surfaceMatchDetail == routeAdmissionWorkbench.Localization.SpecialExperimentToolRouteDetail
+                    && surfaceMatchSaved,
+                    $"quality={routeAdmissionQuality is not null};canAdd={surfaceMatchCanAdd};"
+                    + $"route={surfaceMatchTool.RouteKind};step={surfaceMatchStep?.ToolId};"
+                    + $"inputs={surfaceMatchStep?.InputEntityIds.Count};detail={surfaceMatchDetail};"
+                    + $"saved={surfaceMatchSaved};save={surfaceMatchSaveMessage}");
+                Check(
+                    "Surface Match route is blocked from Ordered Run with a dedicated message",
+                    !routeAdmissionWorkbench.RunTeachingRecipeCommand.CanExecute(null)
+                    && routeAdmissionWorkbench.OrderedRunCapabilitySummary
+                        == routeAdmissionWorkbench.Localization.SpecialExperimentToolRouteDetail,
+                    routeAdmissionWorkbench.OrderedRunCapabilitySummary);
+
+                var overlayControlReviewTool = routeAdmissionWorkbench.Tools.Single(tool =>
+                    tool.Id == "overlay-control-review");
+                routeAdmissionWorkbench.SelectedTool = overlayControlReviewTool;
+                var overlayStepCount = routeAdmissionWorkbench.PipelineSteps.Count;
+                var overlayActionLogCount = routeAdmissionWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run");
+                var overlayCanAdd = routeAdmissionWorkbench.AddSelectedToolCommand
+                    .CanExecute(overlayControlReviewTool);
+                var overlayDetail = routeAdmissionWorkbench.SelectedToolProposedRouteDetail;
+                routeAdmissionWorkbench.AddSelectedToolCommand.Execute(overlayControlReviewTool);
+                Check(
+                    "Overlay / Control Review stays review-only and cannot be added to a new recipe",
+                    overlayControlReviewTool.RouteKind == ToolWorkbenchToolRouteKind.ReviewOnly
+                    && !overlayCanAdd
+                    && !routeAdmissionWorkbench.IsSelectedToolProposedRouteCompatible
+                    && overlayDetail == routeAdmissionWorkbench.Localization.ReviewOnlyToolRouteDetail
+                    && routeAdmissionWorkbench.PipelineSteps.Count == overlayStepCount
+                    && routeAdmissionWorkbench.RunLog.Count(item =>
+                        item.Category is "Preview" or "Publish" or "Run") == overlayActionLogCount,
+                    $"route={overlayControlReviewTool.RouteKind};canAdd={overlayCanAdd};"
+                    + $"compatible={routeAdmissionWorkbench.IsSelectedToolProposedRouteCompatible};"
+                    + $"detail={overlayDetail};steps={routeAdmissionWorkbench.PipelineSteps.Count};"
+                    + $"actions={overlayActionLogCount}");
+
+                var importedRecipePath = Path.Combine(
+                    fixtureRoot,
+                    "surface-match-with-imported-review.ov3d-recipe.json");
+                var surfaceMatchDocument = ToolRecipeDocumentStore.Load(surfaceMatchRecipePath);
+                ToolRecipeDocumentStore.Save(
+                    importedRecipePath,
+                    surfaceMatchDocument with
+                    {
+                        Steps =
+                        [
+                            ..surfaceMatchDocument.Steps,
+                            new ToolRecipeStep(
+                                "step.overlay-control-review.imported",
+                                "overlay-control-review",
+                                "Overlay / Control Review",
+                                1,
+                                [surfaceMatchDocument.Source.Id],
+                                "derived.review-overlay.imported",
+                                [
+                                    new ToolRecipeParameter("Overlay", "Selected results"),
+                                    new ToolRecipeParameter("Publish", "Explicit")
+                                ])
+                        ]
+                    });
+                var importedRouteWorkbench = new ToolWorkbenchViewModel(
+                    Path.Combine(fixtureRoot, "imported-route-recent.json"));
+                try
+                {
+                    var importedOpened = importedRouteWorkbench.TryOpenTeachingRecipe(
+                        importedRecipePath,
+                        out var importedOpenMessage);
+                    var importedReview = importedRouteWorkbench.PipelineSteps.SingleOrDefault(step =>
+                        step.ToolId == "overlay-control-review");
+                    var importedReviewSelected = importedReview is not null
+                        && importedRouteWorkbench.SelectPipelineStep(importedReview.Id);
+                    Check(
+                        "imported review-only step remains read-only and preserves its parameters",
+                        importedOpened
+                        && importedReviewSelected
+                        && importedRouteWorkbench.SelectedStepAdapterStatus
+                            == importedRouteWorkbench.Localization.StepAdapterPartiallySupported
+                        && importedRouteWorkbench.SelectedStepPropertyDraft is null
+                        && importedRouteWorkbench.UnsupportedStepCount == 1
+                        && importedReview?.Parameters.Single(parameter => parameter.Name == "Overlay").Value
+                            == "Selected results"
+                        && importedRouteWorkbench.RunLog.All(item =>
+                            item.Category is not ("Preview" or "Publish" or "Run")),
+                        $"opened={importedOpened};selected={importedReviewSelected};"
+                        + $"status={importedRouteWorkbench.SelectedStepAdapterStatus};"
+                        + $"unsupported={importedRouteWorkbench.UnsupportedStepCount};"
+                        + $"message={importedOpenMessage}");
+                }
+                finally
+                {
+                    importedRouteWorkbench.Dispose();
+                }
+            }
+            finally
+            {
+                routeAdmissionWorkbench.Dispose();
+            }
+
+            var localizedSearchRecipePath = Path.Combine(fixtureRoot, "localized-search-route.ov3d-recipe.json");
+            var localizedSearchSaved = routeWorkbench.TrySaveTeachingRecipe(
+                localizedSearchRecipePath,
+                out var localizedSearchSaveMessage);
+            var localizedSearchReopened = new ToolWorkbenchViewModel(
+                Path.Combine(fixtureRoot, "recent-localized-search-reopen.json"));
+            try
+            {
+                var localizedSearchOpened = localizedSearchReopened.TryOpenTeachingRecipe(
+                    localizedSearchRecipePath,
+                    out var localizedSearchOpenMessage);
+                var reopenedThickness = localizedSearchReopened.PipelineSteps.SingleOrDefault(
+                    step => step.ToolId == "thickness");
+                Check(
+                    "localized Add save and reopen retain ToolId and canonical ToolName without execution",
+                    localizedSearchSaved
+                    && localizedSearchOpened
+                    && reopenedThickness is not null
+                    && reopenedThickness.ToolName == "Thickness"
+                    && reopenedThickness.ToolId == "thickness"
+                    && localizedSearchReopened.RunLog.All(item =>
+                        item.Category is not ("Preview" or "Publish" or "Run")),
+                    $"saved={localizedSearchSaved};opened={localizedSearchOpened};"
+                    + $"step={reopenedThickness?.ToolId}/{reopenedThickness?.ToolName};"
+                    + $"message={localizedSearchSaveMessage};open={localizedSearchOpenMessage}");
+            }
+            finally
+            {
+                localizedSearchReopened.Dispose();
+            }
+
+            var gridPolygonDomainWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(fixtureRoot, "recent-grid-polygon-domain-route.json"));
+            try
+            {
+                gridPolygonDomainWorkbench.SetC3DSource(sourcePath, markDirty: false);
+                var gridPolygonDomainTool = gridPolygonDomainWorkbench.Tools.Single(tool =>
+                    tool.Id == "grid-polygon-domain");
+                var gridPolygonDomainQuality = WaitForSourceQuality(
+                    gridPolygonDomainWorkbench.SourceQuality);
+                gridPolygonDomainWorkbench.SelectedTool = gridPolygonDomainTool;
+                var gridPolygonDomainActionCount = gridPolygonDomainWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run");
+                var gridPolygonDomainCanAdd = gridPolygonDomainWorkbench.AddSelectedToolCommand
+                    .CanExecute(gridPolygonDomainTool);
+                var gridPolygonDomainProposal = gridPolygonDomainWorkbench.SelectedToolProposedRouteDetail;
+                gridPolygonDomainWorkbench.AddSelectedToolCommand.Execute(gridPolygonDomainTool);
+                var gridPolygonDomainStep = gridPolygonDomainWorkbench.SelectedPipelineStep;
+                Check(
+                    "Grid Polygon Domain can be added from a ready HeightField before polygon teaching",
+                    gridPolygonDomainQuality is not null
+                    && gridPolygonDomainCanAdd
+                    && gridPolygonDomainStep?.ToolId == gridPolygonDomainTool.Id
+                    && gridPolygonDomainStep.InputEntityIds.SequenceEqual(
+                        [gridPolygonDomainWorkbench.Source.Id])
+                    && gridPolygonDomainWorkbench.BeginTeachingSelectionCaptureCommand.CanExecute(null)
+                    && gridPolygonDomainWorkbench.RunLog.Count(item =>
+                        item.Category is "Preview" or "Publish" or "Run")
+                        == gridPolygonDomainActionCount,
+                    $"quality={gridPolygonDomainQuality is not null};canAdd={gridPolygonDomainCanAdd};"
+                    + $"proposal={gridPolygonDomainProposal};step={gridPolygonDomainStep?.ToolId};"
+                    + $"inputs={gridPolygonDomainStep?.InputSummary};captureCanBegin={gridPolygonDomainWorkbench.BeginTeachingSelectionCaptureCommand.CanExecute(null)}");
+            }
+            finally
+            {
+                gridPolygonDomainWorkbench.Dispose();
+            }
+
             routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "plane-flatness");
             routeWorkbench.ToolSearchText = "Plane Flatness";
             var rejectedAddStepCount = routeWorkbench.PipelineSteps.Count;
@@ -371,6 +641,36 @@ internal static class ToolRecipeTeachingVerification
                     ["source.circle", polygonSelection.Id]),
                 polygonSaveMessage);
 
+            var warpageRouteBeforeReject = routeWarpage.InputEntityIdsText;
+            routeWorkbench.BeginFlowConnectionCommand.Execute(routeThickness.OutputEntityId);
+            routeWorkbench.ConnectFlowOutputCommand.Execute(routeWarpage);
+            var incompatibleGraphRouteRejected =
+                routeWarpage.InputEntityIdsText == warpageRouteBeforeReject
+                && routeWorkbench.HasPendingFlowConnection
+                && routeWorkbench.FlowConnectionMessage == routeWorkbench.Localization.FlowConnectionRejected;
+            routeWorkbench.CancelFlowConnectionCommand.Execute(null);
+            Check(
+                "graph rejects an incompatible output without changing the saved route",
+                incompatibleGraphRouteRejected
+                && !routeWorkbench.HasPendingFlowConnection
+                && routeWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
+                $"route={routeWarpage.InputEntityIdsText};message={routeWorkbench.FlowConnectionMessage}");
+
+            var thicknessRouteBeforeForwardReject = routeThickness.InputEntityIdsText;
+            routeWorkbench.BeginFlowConnectionCommand.Execute(routeWarpage.OutputEntityId);
+            routeWorkbench.ConnectFlowOutputCommand.Execute(routeThickness);
+            var forwardGraphRouteRejected =
+                routeThickness.InputEntityIdsText == thicknessRouteBeforeForwardReject
+                && routeWorkbench.HasPendingFlowConnection
+                && routeWorkbench.FlowConnectionMessage == routeWorkbench.Localization.FlowConnectionRejected;
+            routeWorkbench.CancelFlowConnectionCommand.Execute(null);
+            Check(
+                "graph rejects a later step output and preserves the earlier step route",
+                forwardGraphRouteRejected
+                && !routeWorkbench.HasPendingFlowConnection
+                && routeWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
+                $"route={routeThickness.InputEntityIdsText};message={routeWorkbench.FlowConnectionMessage}");
+
             routeWarpage.InputEntityIdsText = routeThickness.OutputEntityId;
             var legacyRecipePath = Path.Combine(fixtureRoot, "legacy-incompatible-route.ov3d-recipe.json");
             Check(
@@ -425,7 +725,41 @@ internal static class ToolRecipeTeachingVerification
                 string.IsNullOrEmpty(repairWorkbench.ToolSearchText)
                 && repairWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
                 $"search='{repairWorkbench.ToolSearchText}'");
-            repairWorkbench.SelectedPipelineStep!.InputEntityIdsText = repairWorkbench.Source.Id;
+            var repairStep = repairWorkbench.SelectedPipelineStep!;
+            var graphRepairActionCount = repairWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            var routeBeforeGraphCancel = repairStep.InputEntityIdsText;
+            repairWorkbench.BeginFlowConnectionCommand.Execute(repairWorkbench.Source.Id);
+            var graphCancelStarted = repairWorkbench.HasPendingFlowConnection;
+            repairWorkbench.BeginFlowConnectionCommand.Execute(repairWorkbench.Source.Id);
+            var repeatedOutputClickCancelled =
+                repairStep.InputEntityIdsText == routeBeforeGraphCancel
+                && !repairWorkbench.HasPendingFlowConnection
+                && repairWorkbench.FlowConnectionMessage == repairWorkbench.Localization.FlowConnectionCancelled
+                && repairWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == graphRepairActionCount;
+            Check(
+                "repeating the selected output cancels without changing the stored route",
+                graphCancelStarted && repeatedOutputClickCancelled,
+                $"started={graphCancelStarted};route={repairStep.InputEntityIdsText};message={repairWorkbench.FlowConnectionMessage}");
+
+            repairWorkbench.BeginFlowConnectionCommand.Execute(repairWorkbench.Source.Id);
+            var graphRepairStarted = repairWorkbench.HasPendingFlowConnection
+                && repairWorkbench.FlowConnectionMessage.Contains(
+                    repairWorkbench.Source.Name,
+                    StringComparison.Ordinal);
+            repairWorkbench.ConnectFlowOutputCommand.Execute(repairStep);
+            var graphRepairApplied = repairStep.InputEntityIds
+                    .SequenceEqual([repairWorkbench.Source.Id])
+                && !repairWorkbench.HasPendingFlowConnection
+                && repairWorkbench.FlowConnectionMessage == repairWorkbench.Localization.FlowConnectionSaved
+                && repairWorkbench.IsDirty
+                && repairWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == graphRepairActionCount;
+            Check(
+                "compatible graph connection repairs the selected route without running inspection",
+                graphRepairStarted && graphRepairApplied,
+                $"started={graphRepairStarted};route={string.Join(';', repairStep.InputEntityIds)};dirty={repairWorkbench.IsDirty};message={repairWorkbench.FlowConnectionMessage}");
             var repairedRecipePath = Path.Combine(fixtureRoot, "repaired-valid-route.ov3d-recipe.json");
             var repairedSaved = repairWorkbench.TrySaveTeachingRecipe(repairedRecipePath, out var repairedSaveMessage);
             var reopenedRouteWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-reopened-route.json"));
@@ -622,6 +956,161 @@ internal static class ToolRecipeTeachingVerification
                 && workbench.Tools.Any(tool => tool.Name == "Thickness")
                 && workbench.Tools.Any(tool => tool.Name == "Warpage"),
                 string.Join(", ", workbench.Tools.Select(tool => tool.Name)));
+            var operatorCopyLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishDescriptions = workbench.Tools.ToDictionary(
+                    tool => tool.Id,
+                    tool => tool.DisplayDescription,
+                    StringComparer.Ordinal);
+                var internalProse = new[]
+                {
+                    "approved Median contract",
+                    "G12 metrics",
+                    "not a product mode",
+                    "evidence-centric"
+                };
+                var englishDescriptionFailures = englishDescriptions
+                    .Where(item => !item.Value.Contains("Input:", StringComparison.Ordinal)
+                        || !item.Value.Contains("Result:", StringComparison.Ordinal)
+                        || !item.Value.Contains("Next:", StringComparison.Ordinal)
+                        || item.Value.Length > 420
+                        || internalProse.Any(term => item.Value.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                    .Select(item => $"{item.Key}={item.Value}")
+                    .ToArray();
+                Check(
+                    "English catalog descriptions expose purpose, result, and next action",
+                    englishDescriptions.Count == workbench.Tools.Count
+                    && englishDescriptions.Values.All(description =>
+                        description.Contains("Input:", StringComparison.Ordinal)
+                        && description.Contains("Result:", StringComparison.Ordinal)
+                        && description.Contains("Next:", StringComparison.Ordinal)
+                        && description.Length <= 420)
+                    && englishDescriptions.Values.All(description =>
+                        internalProse.All(term => !description.Contains(term, StringComparison.OrdinalIgnoreCase))),
+                    $"count={englishDescriptions.Count};maxLength={englishDescriptions.Values.Max(description => description.Length)};failures={string.Join(" || ", englishDescriptionFailures)}");
+
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanDescriptions = workbench.Tools.ToDictionary(
+                    tool => tool.Id,
+                    tool => tool.DisplayDescription,
+                    StringComparer.Ordinal);
+                var koreanDescriptionFailures = koreanDescriptions
+                    .Where(item => !item.Value.Contains("입력:", StringComparison.Ordinal)
+                        || !item.Value.Contains("결과:", StringComparison.Ordinal)
+                        || !item.Value.Contains("다음:", StringComparison.Ordinal)
+                        || item.Value.Length > 420
+                        || internalProse.Any(term => item.Value.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                    .Select(item => $"{item.Key}={item.Value}")
+                    .ToArray();
+                Check(
+                    "Korean catalog descriptions expose purpose, result, and next action",
+                    koreanDescriptions.Count == workbench.Tools.Count
+                    && koreanDescriptions.Values.All(description =>
+                        description.Contains("입력:", StringComparison.Ordinal)
+                        && description.Contains("결과:", StringComparison.Ordinal)
+                        && description.Contains("다음:", StringComparison.Ordinal)
+                        && description.Length <= 420)
+                    && koreanDescriptions.Values.All(description =>
+                        internalProse.All(term => !description.Contains(term, StringComparison.OrdinalIgnoreCase))),
+                    $"count={koreanDescriptions.Count};maxLength={koreanDescriptions.Values.Max(description => description.Length)};failures={string.Join(" || ", koreanDescriptionFailures)}");
+
+                var thicknessCatalogTool = workbench.Tools.Single(tool => tool.Id == "thickness");
+                var descriptionBeforeLanguage = thicknessCatalogTool.Description;
+                var inputContractBeforeLanguage = thicknessCatalogTool.InputContract;
+                var outputContractBeforeLanguage = thicknessCatalogTool.OutputContract;
+                var descriptionNotifications = new List<string>();
+                thicknessCatalogTool.PropertyChanged += (_, args) =>
+                {
+                    if (args.PropertyName is { } propertyName)
+                    {
+                        descriptionNotifications.Add(propertyName);
+                    }
+                };
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var englishThicknessDescription = thicknessCatalogTool.DisplayDescription;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanThicknessDescription = thicknessCatalogTool.DisplayDescription;
+                Check(
+                    "localized catalog description refresh preserves tool identity and contracts",
+                    englishThicknessDescription != koreanThicknessDescription
+                    && descriptionNotifications.Contains(nameof(thicknessCatalogTool.DisplayDescription), StringComparer.Ordinal)
+                    && thicknessCatalogTool.Description == descriptionBeforeLanguage
+                    && thicknessCatalogTool.InputContract == inputContractBeforeLanguage
+                    && thicknessCatalogTool.OutputContract == outputContractBeforeLanguage
+                    && !workbench.IsDirty,
+                    $"notifications={string.Join(",", descriptionNotifications)};en={englishThicknessDescription};ko={koreanThicknessDescription};dirty={workbench.IsDirty}");
+
+                SelectedToolWorkspaceProjection CreateCopyProjection(ToolWorkbenchPipelineStepItem step) =>
+                    new(
+                        step,
+                        null,
+                        false,
+                        false,
+                        string.Empty,
+                        Array.Empty<ToolWorkbenchArtifactItem>(),
+                        Array.Empty<ToolWorkbenchDisplayedOutputItem>(),
+                        SelectedToolOutputEvidence.Empty,
+                        null,
+                        null,
+                        false,
+                        false,
+                        null,
+                        null,
+                        string.Empty,
+                        string.Empty,
+                        false,
+                        false,
+                        workbench.Localization);
+
+                var copyGuidanceCases = new[]
+                {
+                    (ToolId: "thickness", EnglishToken: "Reference", KoreanToken: "기준면"),
+                    (ToolId: "height-difference-edge", EnglishToken: "EdgePointSet", KoreanToken: "EdgePointSet"),
+                    (ToolId: "three-d-line-fit", EnglishToken: "inlier", KoreanToken: "인라이어")
+                };
+                var copyWorkspace = new SelectedToolWorkspaceViewModel(
+                    new InspectionWorkspaceSelectionSession());
+                foreach (var guidanceCase in copyGuidanceCases)
+                {
+                    var guidanceTool = workbench.Tools.Single(tool => tool.Id == guidanceCase.ToolId);
+                    var guidanceStep = new ToolWorkbenchPipelineStepItem(
+                        $"step.copy.{guidanceCase.ToolId}",
+                        guidanceTool,
+                        string.Empty,
+                        $"derived.copy.{guidanceCase.ToolId}");
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                    copyWorkspace.Refresh(CreateCopyProjection(guidanceStep));
+                    var englishDescription = guidanceTool.DisplayDescription;
+                    var englishGuidance = $"{copyWorkspace.Example} {copyWorkspace.ExpectedOverlay}";
+                    var englishHelp = copyWorkspace.Help;
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                    copyWorkspace.Refresh(CreateCopyProjection(guidanceStep));
+                    var koreanDescription = guidanceTool.DisplayDescription;
+                    var koreanGuidance = $"{copyWorkspace.Example} {copyWorkspace.ExpectedOverlay}";
+                    var koreanHelp = copyWorkspace.Help;
+                    Check(
+                        $"{guidanceCase.ToolId} guidance is concrete and localized",
+                        englishGuidance.Contains(guidanceCase.EnglishToken, StringComparison.OrdinalIgnoreCase)
+                        && englishGuidance.Contains("run the selected tool", StringComparison.OrdinalIgnoreCase)
+                        && !englishGuidance.Contains("Preview", StringComparison.Ordinal)
+                        && !englishGuidance.Contains("Publish", StringComparison.Ordinal)
+                        && koreanGuidance.Contains(guidanceCase.KoreanToken, StringComparison.OrdinalIgnoreCase)
+                        && koreanGuidance.Contains("선택 도구를 실행", StringComparison.Ordinal)
+                        && !koreanGuidance.Contains("Preview", StringComparison.Ordinal)
+                        && !koreanGuidance.Contains("Publish", StringComparison.Ordinal)
+                        && !englishGuidance.Contains("confirm inputs and recipe-owned regions", StringComparison.OrdinalIgnoreCase)
+                        && !koreanGuidance.Contains("레시피 소유 영역을 확인", StringComparison.Ordinal)
+                        && englishHelp.Contains(englishDescription, StringComparison.Ordinal)
+                        && koreanHelp.Contains(koreanDescription, StringComparison.Ordinal),
+                        $"en={englishGuidance};ko={koreanGuidance}");
+                }
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(operatorCopyLanguage, save: false);
+            }
             Check(
                 "source-less empty recipe can save but cannot execute",
                 workbench.CanSaveTeachingRecipe && !workbench.IsTeachingRecipeExecutionReady,
@@ -937,6 +1426,21 @@ internal static class ToolRecipeTeachingVerification
                         && pair.First.Value == pair.Second.Value
                         && pair.First.Unit == pair.Second.Unit),
                     $"en={string.Join(",", englishOutputs.Select(item => item.ResultStatus))}; ko={string.Join(",", koreanOutputs.Select(item => item.ResultStatus))}; values={string.Join(",", koreanOutputs.Select(item => item.Value))}");
+                var resultRow = ReadOutputEvidence([
+                    new SelectedToolOutputEvidence("Mean", "8", "raw-height", "Pass", "7.75–8.25", "Within limits")]);
+                Check(
+                    "selected-tool result row retains typed input, limit, and reason evidence",
+                    resultRow.InputSummary == string.Join(" → ", filter.InputEntityIds)
+                    && resultRow.LimitSummary == "7.75–8.25"
+                    && resultRow.Reason == "Within limits"
+                    && resultRow.HasExecutionResult
+                    && resultRow.Value == "8"
+                    && resultRow.Unit == "raw-height",
+                    $"input={resultRow.InputSummary};limits={resultRow.LimitSummary};reason={resultRow.Reason}");
+                Check(
+                    "unexecuted selected-tool output has no result row",
+                    !ReadOutputEvidence([SelectedToolOutputEvidence.Empty]).HasExecutionResult,
+                    "Empty evidence remains unexecuted");
             }
             finally
             {
@@ -1499,20 +2003,48 @@ internal static class ToolRecipeTeachingVerification
             thickness.ToolName = "Tab 1 Thickness";
             thickness.InputEntityIdsText = $"{workbench.Source.Id}; {thicknessReferenceSelection.Id}; {measurementSelection.Id}";
             thickness.Parameters.Single(parameter => parameter.Name == "MaximumThickness").Value = "120";
+            workbench.DiscardSelectedStepParameterDraft();
+            var limitsLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var committedLimits = thickness.Parameters.Select(parameter => (parameter.Name, parameter.Value)).ToArray();
+            var outputCountBeforeInvalidDraft = workbench.DisplayedOutputs.Count;
+            try
+            {
+                var invalidLimits = (ThicknessStepProperties)workbench.SelectedStepPropertyDraft!;
+                invalidLimits.MinimumThickness = 121;
+                invalidLimits.MaximumThickness = 120;
+                workbench.MarkSelectedStepParameterDraftDirty();
+                var acceptedInvalidLimits = workbench.TryApplySelectedStepParameterDraft(out var limitsError);
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                var koreanLimitsError = workbench.SelectedToolWorkspace.ParameterStatus;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                Check("reversed thickness limits retain committed parameters and expose bilingual correction without execution",
+                    !acceptedInvalidLimits && limitsError == "Thickness limits must be finite and ordered."
+                    && koreanLimitsError == "두께는 유한한 수로 입력하고 최소 두께를 최대 두께 이하로 설정하세요."
+                    && workbench.SelectedToolWorkspace.ParameterStatus == "Enter finite thickness values and set the minimum at or below the maximum."
+                    && workbench.HasPendingStepParameterChanges && workbench.DisplayedOutputs.Count == outputCountBeforeInvalidDraft
+                    && thickness.Parameters.Select(parameter => (parameter.Name, parameter.Value)).SequenceEqual(committedLimits),
+                    $"accepted={acceptedInvalidLimits};raw={limitsError};Korean={koreanLimitsError};English={workbench.SelectedToolWorkspace.ParameterStatus}");
+            }
+            finally
+            {
+                workbench.DiscardSelectedStepParameterDraft();
+                OpenVisionLanguageService.SetLanguage(limitsLanguage, save: false);
+            }
             var warpage = AddTool(workbench, "Warpage");
             warpage.InputEntityIdsText = $"{workbench.Source.Id}; {measurementSelection.Id}";
             warpage.Parameters.Single(parameter => parameter.Name == "MaximumPeakToValley").Value = "80";
-            var review = AddTool(workbench, "Overlay / Control Review");
-            review.InputEntityIdsText = warpage.OutputEntityId;
+            AddTool(workbench, "Surface Match");
 
             workbench.ValidateTeachingRecipeCommand.Execute(null);
             Check(
-                "whole Run is blocked while downstream rows have no adapters",
+                "whole Run is blocked while a special route is not an ordered adapter",
                 !workbench.RunTeachingRecipeCommand.CanExecute(null),
-                "Only the selected Filter Preview adapter exists in this 11-step fixture.");
+                "Surface Match uses its dedicated experiment route in this 11-step fixture.");
             Check(
                 "ordered entity routing validates",
-                workbench.CanSaveTeachingRecipe && workbench.IsTeachingRecipeExecutionReady && workbench.PipelineSteps.Count == 11,
+                workbench.CanSaveTeachingRecipe
+                && !workbench.IsTeachingRecipeExecutionReady
+                && workbench.PipelineSteps.Count == 11,
                 workbench.ValidationSummary);
             Check(
                 "affine solve keeps its exact numerical contract without implicit execution",
@@ -1530,9 +2062,9 @@ internal static class ToolRecipeTeachingVerification
 
             var stored = ToolRecipeDocumentStore.Load(recipePath);
             Check(
-                "saved document preserves source, reference, steps, and parameters",
+                "saved document preserves the portable source, reference, steps, and parameters",
                 stored.Name == "Fixture XYZ Affine Inspection"
-                && stored.Source.Path == Path.GetFullPath(sourcePath)
+                && stored.Source.Path == Path.GetFileName(sourcePath)
                 && stored.References.Single().Id == "reference.fixture-landmarks"
                 && stored.Steps.Count == 11
                 && stored.Source.ContentSha256?.Length == 64
@@ -1603,6 +2135,7 @@ internal static class ToolRecipeTeachingVerification
                     + template.RecipeHealthNeedsInputCount
                     + template.RecipeHealthNeedsSelectionCount
                     + template.RecipeHealthNeedsParametersCount
+                    + template.RecipeHealthExecutionBlockedCount
                     + template.RecipeHealthStalePreviewCount
                     + template.RecipeHealthPublishedCount;
                 Check(
@@ -1640,7 +2173,7 @@ internal static class ToolRecipeTeachingVerification
                 firstDependent.State = originalDependentState;
 
                 Check(
-                    "recipe health distinguishes Ready, input, selection, parameters, stale Preview, and Published",
+                    "recipe health distinguishes Ready, input, selection, parameters, execution blockers, stale Preview, and Published",
                     readyCategory == ToolWorkbenchRecipeHealthCategory.Ready
                     && dependentWithoutPublishedInput == ToolWorkbenchRecipeHealthCategory.NeedsInput
                     && dependentAfterPublished == ToolWorkbenchRecipeHealthCategory.NeedsSelection

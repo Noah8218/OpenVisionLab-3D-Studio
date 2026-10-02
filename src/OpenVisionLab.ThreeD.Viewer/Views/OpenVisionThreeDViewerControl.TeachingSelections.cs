@@ -723,7 +723,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         const double handleRadius = 18.0;
         var handleRadiusSquared = handleRadius * handleRadius;
-        if (TryGetTeachingHeightHandleScreenPoint(rectangle, out var heightHandle)
+        if (viewModel.TeachingRoiHeightHandleVisible
+            && TryGetTeachingHeightHandleScreenPoint(rectangle, out var heightHandle)
             && (screenPoint - heightHandle).LengthSquared <= handleRadiusSquared)
         {
             return TeachingGridRectangleEditMode.Height;
@@ -1165,7 +1166,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void UpdateTeachingRoiHeightHandleOverlay()
     {
-        if (!TryGetVisibleTeachingGridRectangle(out var selectionId, out var rectangle)
+        if (!viewModel.TeachingRoiHeightHandleVisible
+            || !TryGetVisibleTeachingGridRectangle(out var selectionId, out var rectangle)
             || !TryGetTeachingGridRectangleScreenCorners(
                 selectionId,
                 rectangle,

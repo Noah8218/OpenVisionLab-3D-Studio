@@ -1,6 +1,7 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
@@ -898,8 +899,16 @@ internal static class InspectionWorkspaceSelectionVerification
                         ';',
                         reopenedRoiWorkbench.HeightImageViewer.RoiWorkspace.Overlays.Select(item =>
                             $"{item.SelectionId}:{item.Rectangle}"))
-                    : $"{roiSaveMessage} | {roiReopenMessage}");
+                     : $"{roiSaveMessage} | {roiReopenMessage}");
 
+            var removalRequest = (ToolWorkbenchTeachingSelectionRemovalRequestEventArgs?)null;
+            reopenedRoiWorkbench.RemoveSelectedTeachingSelectionRequested += (_, args) =>
+                removalRequest = args;
+            var removalGeometryBefore = reopenedRoiWorkbench.Selections
+                .Single(selection => selection.Id == roiMeasurement.Id)
+                .GridRectangle;
+            var removalRouteBefore = reopenedRoiWorkbench.SelectedPipelineStep?.InputEntityIdsText;
+            var removalDirtyBefore = reopenedRoiWorkbench.IsDirty;
             reopenedRoiWorkbench.HeightImageViewer.RoiWorkspace.TryBeginPointer(
                 row: 3,
                 column: 3,
@@ -907,11 +916,107 @@ internal static class InspectionWorkspaceSelectionVerification
                 columnTolerance: 0);
             reopenedRoiWorkbench.HeightImageViewer.RoiWorkspace.DeleteCommand.Execute(null);
             Check(
-                "Height Image Delete removes only the selected applied ROI without inspection",
-                reopenedRoiWorkbench.Selections.All(item => item.Id != roiMeasurement.Id)
-                && reopenedRoiWorkbench.Selections.Any(item => item.Id == roiReference.Id)
+                "Height Image Delete requests confirmation with stable ROI identity and shared-step impact",
+                removalRequest is not null
+                && removalRequest.Selection.Id == roiMeasurement.Id
+                && removalRequest.SelectionSummary.Contains(roiMeasurement.Name, StringComparison.Ordinal)
+                && removalRequest.AffectedStepNames.Count == 1
+                && removalRequest.AffectedStepNames[0] == roiStep.ToolName
+                && reopenedRoiWorkbench.Selections.Any(item => item.Id == roiMeasurement.Id)
+                && reopenedRoiWorkbench.Selections.Single(item => item.Id == roiMeasurement.Id).GridRectangle
+                    == removalGeometryBefore
+                && reopenedRoiWorkbench.SelectedPipelineStep?.InputEntityIdsText == removalRouteBefore
+                && reopenedRoiWorkbench.IsDirty == removalDirtyBefore
                 && reopenedRoiWorkbench.CurrentMeasurementOutput is null,
-                $"remaining={string.Join(';', reopenedRoiWorkbench.Selections.Select(item => item.Id))}; output={reopenedRoiWorkbench.CurrentMeasurementOutput?.OutputEntityId ?? "(none)"}");
+                $"request={removalRequest?.Selection.Id ?? "(none)"};affected={string.Join(',', removalRequest?.AffectedStepNames ?? [])};dirty={reopenedRoiWorkbench.IsDirty}");
+
+            var staleRemovalRequest = removalRequest is null
+                ? null
+                : removalRequest with
+                {
+                    Selection = removalRequest.Selection with { Name = "Changed while open" }
+                };
+            var staleRemovalRejected = staleRemovalRequest is not null
+                && !reopenedRoiWorkbench.ConfirmSelectedTeachingSelectionRemoval(staleRemovalRequest);
+            Check(
+                "stale ROI confirmation is rejected without mutation",
+                staleRemovalRejected
+                && reopenedRoiWorkbench.Selections.Any(item => item.Id == roiMeasurement.Id)
+                && reopenedRoiWorkbench.SelectedPipelineStep?.InputEntityIdsText == removalRouteBefore
+                && reopenedRoiWorkbench.IsDirty == removalDirtyBefore,
+                $"rejected={staleRemovalRejected};remaining={reopenedRoiWorkbench.Selections.Count(item => item.Id == roiMeasurement.Id)}");
+
+            var confirmedRemoval = removalRequest is not null
+                && reopenedRoiWorkbench.ConfirmSelectedTeachingSelectionRemoval(removalRequest);
+            Check(
+                "confirmed ROI removal mutates through the existing owner without inspection",
+                confirmedRemoval
+                && reopenedRoiWorkbench.Selections.All(item => item.Id != roiMeasurement.Id)
+                && reopenedRoiWorkbench.Selections.Any(item => item.Id == roiReference.Id)
+                && reopenedRoiWorkbench.SelectedPipelineStep?.InputEntityIds.All(id => id != roiMeasurement.Id) == true
+                && reopenedRoiWorkbench.IsDirty
+                && reopenedRoiWorkbench.CurrentMeasurementOutput is null,
+                $"confirmed={confirmedRemoval};remaining={string.Join(';', reopenedRoiWorkbench.Selections.Select(item => item.Id))};dirty={reopenedRoiWorkbench.IsDirty}");
+
+            var removalRecipePath = Path.Combine(root, "height-image-roi-after-removal.ov3d-recipe.json");
+            var removalSaved = reopenedRoiWorkbench.TrySaveTeachingRecipe(
+                removalRecipePath,
+                out var removalSaveMessage);
+            var removalReopenWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(root, "roi-after-removal-recent.json"));
+            var removalReopened = removalReopenWorkbench.TryOpenTeachingRecipe(
+                removalRecipePath,
+                out var removalReopenMessage);
+            removalReopenWorkbench.SelectPipelineStep(roiStep.Id);
+            Check(
+                "confirmed removal saves and reopens with the remaining ROI and missing role",
+                removalSaved
+                && removalReopened
+                && removalReopenWorkbench.Selections.Count(item => item.Id == roiReference.Id) == 1
+                && removalReopenWorkbench.Selections.All(item => item.Id != roiMeasurement.Id)
+                && removalReopenWorkbench.PlaneFlatnessReferenceSelection?.Id == roiReference.Id
+                && removalReopenWorkbench.PlaneFlatnessMeasurementSelection is null
+                && removalReopenWorkbench.CurrentMeasurementOutput is null,
+                removalSaved && removalReopened
+                    ? $"remaining={string.Join(';', removalReopenWorkbench.Selections.Select(item => item.Id))};measurement={removalReopenWorkbench.PlaneFlatnessMeasurementSelection?.Id ?? "(none)"}"
+                    : $"{removalSaveMessage} | {removalReopenMessage}");
+
+            removalReopenWorkbench.WorkspaceSelection.SelectRegion(
+                InspectionWorkspaceRegionRole.Measurement,
+                null);
+            var reteachMeasurement = roiMeasurement with
+            {
+                GridRectangle = new ToolRecipeGridRectangle(0, 2, 2, 2)
+            };
+            removalReopenWorkbench.Selections.Add(reteachMeasurement);
+            removalReopenWorkbench.SelectedCompatibleSelection = reteachMeasurement;
+            removalReopenWorkbench.ReusePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            var reteachRecipePath = Path.Combine(root, "height-image-roi-after-reteach.ov3d-recipe.json");
+            var reteachSaved = removalReopenWorkbench.TrySaveTeachingRecipe(
+                reteachRecipePath,
+                out var reteachSaveMessage);
+            var reteachReopenWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(root, "roi-after-reteach-recent.json"));
+            var reteachReopened = reteachReopenWorkbench.TryOpenTeachingRecipe(
+                reteachRecipePath,
+                out var reteachReopenMessage);
+            reteachReopenWorkbench.SelectPipelineStep(roiStep.Id);
+            Check(
+                "re-teaching the removed role restores the shared recipe route after reopen",
+                removalReopenWorkbench.HasCompleteDualRoiTeaching
+                && removalReopenWorkbench.SelectedPipelineStep?.InputEntityIds.Contains(
+                    roiMeasurement.Id,
+                    StringComparer.OrdinalIgnoreCase) == true
+                && reteachSaved
+                && reteachReopened
+                && reteachReopenWorkbench.PlaneFlatnessReferenceSelection?.Id == roiReference.Id
+                && reteachReopenWorkbench.PlaneFlatnessMeasurementSelection?.Id == roiMeasurement.Id
+                && reteachReopenWorkbench.SelectedPipelineStep?.InputEntityIds.Contains(
+                    roiMeasurement.Id,
+                    StringComparer.OrdinalIgnoreCase) == true,
+                reteachSaved && reteachReopened
+                    ? $"route={string.Join(';', reteachReopenWorkbench.SelectedPipelineStep?.InputEntityIds ?? [])};geometry={reteachReopenWorkbench.PlaneFlatnessMeasurementSelection?.GridRectangle}"
+                    : $"{reteachSaveMessage} | {reteachReopenMessage}");
 
             var boxWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(root, "box-recent.json"));
@@ -1052,6 +1157,90 @@ internal static class InspectionWorkspaceSelectionVerification
                     selection.Kind != ToolRecipeSelectionKinds.OrientedBox3D)
                 && reopenedBoxWorkbench.CurrentMeasurementOutput is null,
                 $"selections={reopenedBoxWorkbench.Selections.Count};output={reopenedBoxWorkbench.CurrentMeasurementOutput?.OutputEntityId ?? "(none)"}");
+
+            var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                foreach (var (toolId, rawName, koreanLabel) in new[]
+                {
+                    ("two-point-line", "Line points", "직선 선택점"),
+                    ("three-point-plane", "Plane points", "평면 선택점"),
+                    ("height-difference-edge", "Edge search band", "에지 검색 영역")
+                })
+                {
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                    using var localizedWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, $"{toolId}-recent.json"));
+                    localizedWorkbench.SetC3DSource(sourcePath, markDirty: false);
+                    localizedWorkbench.AddSelectedToolCommand.Execute(localizedWorkbench.Tools.Single(tool => tool.Id == toolId));
+                    var localizedStep = localizedWorkbench.SelectedPipelineStep!;
+                    localizedStep.ToolName = $"사용자 지정 {toolId}";
+                    var localizedPath = Path.Combine(root, $"{toolId}-language.ov3d-recipe.json");
+                    if (!localizedWorkbench.TrySaveTeachingRecipe(localizedPath, out var localizedSaveMessage))
+                    {
+                        throw new InvalidOperationException(localizedSaveMessage);
+                    }
+
+                    var savedBytes = File.ReadAllBytes(localizedPath);
+                    var englishDescription = localizedWorkbench.SelectedStepSelectionRequirement!.Description;
+                    Check(
+                        "English region presentation uses the canonical selection requirement",
+                        localizedWorkbench.SelectedToolWorkspace.Regions.Single().Label == rawName
+                        && localizedWorkbench.SelectedStepSelectionRequirementTitle.Contains(rawName, StringComparison.Ordinal),
+                        $"tool={toolId};label={localizedWorkbench.SelectedToolWorkspace.Regions.Single().Label}");
+
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                    Check(
+                        "Korean region and capture guidance refresh without changing the raw requirement",
+                        localizedWorkbench.SelectedToolWorkspace.Regions.Single().Label == koreanLabel
+                        && localizedWorkbench.SelectedStepSelectionRequirementTitle.Contains(koreanLabel, StringComparison.Ordinal)
+                        && localizedWorkbench.TeachingSelectionCaptureTitle.Contains(koreanLabel, StringComparison.Ordinal)
+                        && !localizedWorkbench.SelectedStepSelectionRequirementSummary.Contains(englishDescription, StringComparison.Ordinal)
+                        && localizedWorkbench.SelectedStepSelectionRequirement.Name == rawName
+                        && localizedWorkbench.SelectedStepSelectionRequirement.Description == englishDescription
+                        && !localizedWorkbench.IsDirty
+                        && !localizedWorkbench.HasPendingStepParameterChanges
+                        && !localizedWorkbench.IsTeachingSelectionCaptureActive
+                        && !localizedWorkbench.HasCurrentMeasurementPreview
+                        && localizedWorkbench.CurrentMeasurementOutput is null,
+                        $"tool={toolId};label={localizedWorkbench.SelectedToolWorkspace.Regions.Single().Label};dirty={localizedWorkbench.IsDirty};raw={localizedWorkbench.SelectedStepSelectionRequirement.Name}");
+
+                    if (localizedWorkbench.SelectedStepPropertyDraft is TwoPointLineStepProperties lineDraft)
+                    {
+                        lineDraft.OutputRole = "저장 전 설정값";
+                        localizedWorkbench.MarkSelectedStepParameterDraftDirty();
+                        var rejected = !localizedWorkbench.TrySaveTeachingRecipe(localizedPath, out var rejectedMessage);
+                        Check(
+                            "Pending settings reject save with operator guidance while preserving saved bytes",
+                            rejected
+                            && rejectedMessage == "변경한 설정값을 적용하거나 취소한 뒤 저장하세요."
+                            && localizedWorkbench.HasPendingStepParameterChanges
+                            && savedBytes.SequenceEqual(File.ReadAllBytes(localizedPath))
+                            && localizedWorkbench.CurrentMeasurementOutput is null,
+                            $"rejected={rejected};pending={localizedWorkbench.HasPendingStepParameterChanges};message={rejectedMessage}");
+                        localizedWorkbench.DiscardSelectedStepParameterDraftCommand.Execute(null);
+                    }
+
+                    var savedAgain = localizedWorkbench.TrySaveTeachingRecipe(localizedPath, out localizedSaveMessage);
+                    using var reopenedWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, $"{toolId}-reopen-recent.json"));
+                    var reopened = reopenedWorkbench.TryOpenTeachingRecipe(localizedPath, out var reopenMessage);
+                    Check(
+                        "Language changes preserve saved bytes and operator names through reopen without execution",
+                        savedAgain
+                        && savedBytes.SequenceEqual(File.ReadAllBytes(localizedPath))
+                        && reopened
+                        && reopenedWorkbench.SelectedPipelineStep?.ToolName == localizedStep.ToolName
+                        && reopenedWorkbench.SelectedToolWorkspace.Regions.Single().Label == koreanLabel
+                        && reopenedWorkbench.SelectedStepSelectionRequirement?.Name == rawName
+                        && !reopenedWorkbench.IsDirty
+                        && !reopenedWorkbench.HasCurrentMeasurementPreview
+                        && reopenedWorkbench.CurrentMeasurementOutput is null,
+                        $"tool={toolId};save={savedAgain};reopen={reopened};detail={localizedSaveMessage};{reopenMessage}");
+                }
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            }
         }
         catch (Exception exception)
         {

@@ -192,7 +192,7 @@ internal sealed class ToolWorkbenchArtifactNavigatorOwner : INotifyPropertyChang
         string role) => new(
             artifact.NodeKind,
             $"{role}: {artifact.DisplayName}",
-            $"{artifact.Id} | {artifact.Contract} | {artifact.State}{artifact.HashShortSuffix}",
+            $"{artifact.Id} | {ThreeDLocalization.Shared.ContractLabel(artifact.Contract)} | {ThreeDLocalization.Shared.SelectedToolOutputStateLabel(artifact.State)}{artifact.HashShortSuffix}",
             pipelineStep ?? artifact.PipelineStep);
 
     private void SelectNavigatorItem(ToolWorkbenchNavigatorItem? item)

@@ -63,7 +63,17 @@ internal static class RunRecordReportVerification
             checks.Add(("html-escapes-user-text", legacyHtml.Contains("&lt;script&gt;") && !legacyHtml.Contains("<script>")));
             checks.Add(("csv-quotes-delimiters-and-newlines", legacyCsv.Contains("\"<script>,\"\"quoted\"\"\r\nmetric\"")));
             checks.Add(("legacy-environment-unavailable", legacyHtml.Contains("unknown") && legacyHtml.Contains("legacy Run Record")));
-            checks.Add(("empty-metrics-header-only", File.ReadAllLines(Path.Combine(directory, "en-US", "empty.csv")).Length == 1));
+            foreach (var name in new[] { "empty", "source-error", "not-run" })
+            {
+                var record = cases.Single(item => item.Name == name).Record;
+                var csvLines = File.ReadAllLines(Path.Combine(directory, "en-US", name + ".csv"));
+                var fields = csvLines.Length == 2 ? csvLines[1].Split(',') : [];
+                checks.Add(($"{name}/record-without-metrics-retains-run-identity-and-status",
+                    fields.Length == 24 && fields[0] == $"\"{record.RunId}\""
+                    && fields[1] == $"\"{record.RecordedAtUtc:O}\"" && fields[7] == $"\"{record.Status}\""
+                    && fields.Skip(8).Take(5).All(field => field == "\"\"")
+                    && fields[13] == $"\"{record.Recipe.Sha256}\"" && fields[14] == $"\"{record.Source.Sha256}\""));
+            }
             checks.Add(("ordered-empty-step-retained", File.ReadAllText(Path.Combine(directory, "en-US", "ordered.csv")).Contains("\"empty-step\"")));
             checks.Add(("manual-threshold-evidence", File.ReadAllText(Path.Combine(directory, "en-US", "threshold.html")).Contains("Development mismatch:</strong> 1 -&gt; 0")));
             var measurementHtml = File.ReadAllText(Path.Combine(directory, "en-US", "measurement.html"));
@@ -213,6 +223,8 @@ internal static class RunRecordReportVerification
         [
             ("legacy", legacy),
             ("empty", legacy with { Metrics = [], Steps = [] }),
+            ("source-error", legacy with { RunId = "run-source-error", Status = ResultStatus.Error, Metrics = [], Steps = [] }),
+            ("not-run", legacy with { RunId = "run-not-run", Status = ResultStatus.NotRun, Metrics = [], Steps = null }),
             ("context", context),
             ("ordered", ordered),
             ("measurement", measurement),

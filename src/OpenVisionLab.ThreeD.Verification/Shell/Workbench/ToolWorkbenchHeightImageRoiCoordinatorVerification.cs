@@ -81,6 +81,24 @@ internal static class ToolWorkbenchHeightImageRoiCoordinatorVerification
                 && pointerEnd.Candidate == new ToolRecipeGridRectangle(0, 0, 2, 2),
                 $"begin={pointerBegin}; update={pointerUpdate}; end={pointerEnd}");
 
+            pointerContractWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Begin, 0, 0));
+            var candidateBeforeCancel = pointerContractWorkspace.Candidate;
+            var lostCapture = pointerContractWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Cancel));
+            var repeatedCancel = pointerContractWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Cancel));
+            var retried = pointerContractWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Begin, 1, 1));
+            Check("pointer cancellation releases gesture without applying or deleting and permits retry",
+                lostCapture.Handled && lostCapture.ReleaseMouse && !lostCapture.IsGestureActive
+                && lostCapture.Candidate == candidateBeforeCancel && !repeatedCancel.Handled && retried.CaptureMouse
+                && applyCount == 0 && deleteCount == 0, $"cancel={lostCapture}; retry={retried}");
+            pointerContractWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Cancel));
+
+            pointerContractWorkspace.HandlePointer(new HeightImageRoiPointerInput(HeightImageRoiPointerAction.Begin, 0, 0));
+            pointerContractWorkspace.SetProjection(CreateProjection(false, InspectionWorkspaceRegionLifecycleState.Applied, null, includeOverlay: true));
+            Check("ending capture cancels an in-flight pointer and restores applied projection",
+                !pointerContractWorkspace.IsGestureActive && pointerContractWorkspace.Candidate is null
+                && pointerContractWorkspace.ActiveOverlay?.Rectangle == new ToolRecipeGridRectangle(0, 0, 3, 3),
+                $"gesture={pointerContractWorkspace.IsGestureActive}; candidate={pointerContractWorkspace.Candidate}");
+
             workspace.SetProjection(CreateProjection(
                 isCaptureActive: true,
                 lifecycle: InspectionWorkspaceRegionLifecycleState.Drawing,
@@ -118,6 +136,23 @@ internal static class ToolWorkbenchHeightImageRoiCoordinatorVerification
                 applyCount == 1 && cancelCount == 1,
                 $"apply={applyCount}; cancel={cancelCount}");
 
+            workspace.SetProjection(CreateProjection(
+                isCaptureActive: false,
+                lifecycle: InspectionWorkspaceRegionLifecycleState.Applied,
+                candidate: null,
+                includeOverlay: true));
+            workspace.SetProjection(CreateProjection(
+                isCaptureActive: false,
+                lifecycle: InspectionWorkspaceRegionLifecycleState.Applied,
+                candidate: null,
+                includeOverlay: true,
+                isMutationBlocked: true));
+            workspace.DeleteCommand.Execute(null);
+            Check(
+                "active recipe execution disables Height Image ROI deletion",
+                !workspace.DeleteCommand.CanExecute(null)
+                && deleteCount == 0,
+                $"canExecute={workspace.DeleteCommand.CanExecute(null)};delete={deleteCount}");
             workspace.SetProjection(CreateProjection(
                 isCaptureActive: false,
                 lifecycle: InspectionWorkspaceRegionLifecycleState.Applied,
@@ -198,7 +233,8 @@ internal static class ToolWorkbenchHeightImageRoiCoordinatorVerification
         bool isCaptureActive,
         InspectionWorkspaceRegionLifecycleState lifecycle,
         ToolRecipeGridRectangle? candidate,
-        bool includeOverlay = false) =>
+        bool includeOverlay = false,
+        bool isMutationBlocked = false) =>
         new(
             HasContext: true,
             GridWidth: 3,
@@ -216,5 +252,6 @@ internal static class ToolWorkbenchHeightImageRoiCoordinatorVerification
                     new ToolRecipeGridRectangle(0, 0, 3, 3),
                     IsActive: true,
                     IsCandidate: false)]
-                : []);
+                : [],
+            IsMutationBlocked: isMutationBlocked);
 }

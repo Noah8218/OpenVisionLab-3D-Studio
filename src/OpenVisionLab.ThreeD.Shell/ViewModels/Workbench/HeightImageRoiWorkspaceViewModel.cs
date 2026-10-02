@@ -25,6 +25,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
     private ToolRecipeGridRectangle? candidate;
     private bool hasContext;
     private bool isCaptureActive;
+    private bool isMutationBlocked;
     private bool isGestureActive;
     private HeightImageRoiGestureMode gestureMode;
     private int anchorRow;
@@ -46,7 +47,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
             _ => IsCaptureActive);
         deleteCommand = new RelayCommand(
             _ => DeleteRequested?.Invoke(this, EventArgs.Empty),
-            _ => !IsCaptureActive && ActiveOverlay is not null);
+            _ => !IsCaptureActive && !IsMutationBlocked && ActiveOverlay is not null);
         localization.PropertyChanged += OnLocalizationChanged;
     }
 
@@ -77,6 +78,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
     public bool HasContext => hasContext;
     public bool HasOverlays => VisibleOverlays.Count > 0;
     public bool IsCaptureActive => isCaptureActive;
+    public bool IsMutationBlocked => isMutationBlocked;
     public bool IsGestureActive => isGestureActive;
 
     public HeightImageRoiPointerResult HandlePointer(HeightImageRoiPointerInput input)
@@ -90,13 +92,14 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
                 input.ColumnTolerance),
             HeightImageRoiPointerAction.Update => TryUpdatePointer(input.Row, input.Column),
             HeightImageRoiPointerAction.End => EndPointerAndReport(),
+            HeightImageRoiPointerAction.Cancel => CancelPointerAndReport(),
             _ => false
         };
 
         return new(
             handled,
             input.Action == HeightImageRoiPointerAction.Begin && handled,
-            input.Action == HeightImageRoiPointerAction.End && handled,
+            input.Action is HeightImageRoiPointerAction.End or HeightImageRoiPointerAction.Cancel && handled,
             IsGestureActive,
             Candidate);
     }
@@ -162,11 +165,17 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
     public void SetProjection(HeightImageRoiProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
+        if (!projection.HasContext || !projection.IsCaptureActive || projection.IsMutationBlocked
+            || projection.ActiveRole != activeRole || projection.GridWidth != gridWidth || projection.GridHeight != gridHeight)
+        {
+            CancelPointer();
+        }
         overlays = projection.Overlays;
         activeRole = projection.ActiveRole;
         lifecycle = projection.Lifecycle;
         hasContext = projection.HasContext;
         isCaptureActive = projection.IsCaptureActive;
+        isMutationBlocked = projection.IsMutationBlocked;
         gridWidth = Math.Max(0, projection.GridWidth);
         gridHeight = Math.Max(0, projection.GridHeight);
         if (!isGestureActive)
@@ -306,6 +315,13 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         OnPropertyChanged(nameof(IsGestureActive));
     }
 
+    private bool CancelPointerAndReport()
+    {
+        var wasActive = IsGestureActive;
+        CancelPointer();
+        return wasActive;
+    }
+
     private void BeginResize(int oppositeRow, int oppositeColumn)
     {
         gestureMode = HeightImageRoiGestureMode.Resize;
@@ -398,6 +414,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         OnPropertyChanged(nameof(Candidate));
         OnPropertyChanged(nameof(HasContext));
         OnPropertyChanged(nameof(IsCaptureActive));
+        OnPropertyChanged(nameof(IsMutationBlocked));
         OnPropertyChanged(nameof(ActiveRoleSummary));
         OnPropertyChanged(nameof(LifecycleSummary));
         OnPropertyChanged(nameof(InteractionHint));
@@ -425,7 +442,8 @@ public sealed record HeightImageRoiProjection(
     InspectionWorkspaceRegionLifecycleState Lifecycle,
     bool IsCaptureActive,
     ToolRecipeGridRectangle? Candidate,
-    IReadOnlyList<HeightImageRoiOverlayItem> Overlays);
+    IReadOnlyList<HeightImageRoiOverlayItem> Overlays,
+    bool IsMutationBlocked = false);
 
 public sealed record HeightImageRoiOverlayItem(
     string SelectionId,
@@ -460,7 +478,8 @@ public enum HeightImageRoiPointerAction
 {
     Begin,
     Update,
-    End
+    End,
+    Cancel
 }
 
 public readonly record struct HeightImageRoiPointerInput(

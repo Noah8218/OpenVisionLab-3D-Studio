@@ -3,6 +3,7 @@ using System.Threading;
 using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -18,7 +19,9 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private readonly RelayCommand runCommand;
     private readonly Func<ToolRecipeDocument> createDocument;
     private readonly Func<ToolRecipeDocument, (bool CanRun, string Message)> getCapability;
+    private readonly Func<ToolRecipeDocument, string, (bool CanRun, string Message)>? getInspectionCapability;
     private readonly Func<string?> getRecipePath;
+    private readonly Func<string?>? getSavedRecipeSha256;
     private readonly Func<string> getSourcePath;
     private readonly Func<SourceQualityReport?> getSourceQualityReport;
     private readonly Func<IEnumerable<ToolWorkbenchPipelineStepItem>> getPipelineSteps;
@@ -29,6 +32,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private readonly Action<ToolWorkbenchOrderedRunCompletedEventArgs> completed;
     private readonly Action invalidated;
     private readonly RelayCommand cancelCommand;
+    private readonly RelayCommand retryRecordSaveCommand;
 
     private bool isRunning;
     private int runGate;
@@ -38,6 +42,10 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private Task? commandRunObservationTask;
     private ToolRecipeOrderedGraphExecutionResult? result;
     private string? recordPath;
+    private InspectionRunRecord? record;
+    private ToolWorkbenchOrderedRunCompletedEventArgs? completedRun;
+    private volatile bool hasPendingRecordSave;
+    private bool wasLastRunCancelled;
     private string summary;
 
     public ToolWorkbenchOrderedRunExecutionOwner(
@@ -52,7 +60,9 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         Action<string, string> appendLog,
         Action stateChanged,
         Action<ToolWorkbenchOrderedRunCompletedEventArgs> completed,
-        Action invalidated)
+        Action invalidated,
+        Func<ToolRecipeDocument, string, (bool CanRun, string Message)>? getInspectionCapability = null,
+        Func<string?>? getSavedRecipeSha256 = null)
     {
         this.createDocument = createDocument ?? throw new ArgumentNullException(nameof(createDocument));
         this.getCapability = getCapability ?? throw new ArgumentNullException(nameof(getCapability));
@@ -68,12 +78,17 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         this.stateChanged = stateChanged ?? throw new ArgumentNullException(nameof(stateChanged));
         this.completed = completed ?? throw new ArgumentNullException(nameof(completed));
         this.invalidated = invalidated ?? throw new ArgumentNullException(nameof(invalidated));
+        this.getInspectionCapability = getInspectionCapability;
+        this.getSavedRecipeSha256 = getSavedRecipeSha256;
 
         summary = localize(
-            "저장된 현재 레시피를 명시적으로 실행하면 Run Record가 생성됩니다.",
+            "저장된 현재 레시피를 직접 실행하면 검사 기록이 생성됩니다.",
             "Run the saved current recipe explicitly to create a Run Record.");
         runCommand = new RelayCommand(_ => StartCommandRun(), _ => CanRun());
-        cancelCommand = new RelayCommand(_ => Cancel(), _ => IsRunning);
+        cancelCommand = new RelayCommand(
+            _ => Cancel(),
+            _ => Volatile.Read(ref disposalState) == 0 && Volatile.Read(ref runGate) != 0);
+        retryRecordSaveCommand = new RelayCommand(_ => RetryRecordSave(), _ => HasPendingRecordSave && !IsRunning && Volatile.Read(ref disposalState) == 0 && Volatile.Read(ref runGate) == 0);
     }
 
     public RelayCommand RunCommand => runCommand;
@@ -81,10 +96,16 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     public RelayCommand CancelCommand => cancelCommand;
 
     public bool IsRunning => isRunning;
+    public bool HasPendingRecordSave => hasPendingRecordSave;
+    public RelayCommand RetryRecordSaveCommand => retryRecordSaveCommand;
 
     public ToolRecipeOrderedGraphExecutionResult? Result => result;
 
     public string? RecordPath => recordPath;
+
+    public InspectionRunRecord? Record => record;
+
+    public bool WasLastRunCancelled => wasLastRunCancelled;
 
     public string Summary => summary;
 
@@ -100,12 +121,36 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         Volatile.Write(ref commandRunObservationTask, null);
         result = null;
         recordPath = null;
+        record = null;
+        completedRun = null;
+        hasPendingRecordSave = false;
         isRunning = false;
     }
 
-    public async Task<bool> RunAsync()
+    public Task<bool> RunAsync() => RunCoreAsync(null, null, null);
+
+    public Task<bool> RunInspectionInputAsync(
+        ToolRecipeDocument document,
+        string recipePath,
+        string sourcePath)
     {
-        if (Volatile.Read(ref disposalState) != 0)
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentException.ThrowIfNullOrWhiteSpace(recipePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        if (getInspectionCapability is null)
+        {
+            throw new InvalidOperationException("Inspection input execution is not configured.");
+        }
+
+        return RunCoreAsync(document, recipePath, sourcePath);
+    }
+
+    private async Task<bool> RunCoreAsync(
+        ToolRecipeDocument? requestedDocument,
+        string? requestedRecipePath,
+        string? requestedSourcePath)
+    {
+        if (Volatile.Read(ref disposalState) != 0 || HasPendingRecordSave)
         {
             return false;
         }
@@ -118,23 +163,41 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         {
             return false;
         }
-
+        CancellationTokenSource? currentCancellation = null;
         try
         {
+            if (Volatile.Read(ref disposalState) != 0 || HasPendingRecordSave)
+            {
+                return false;
+            }
+
+            wasLastRunCancelled = false;
+            currentCancellation = new CancellationTokenSource();
+            var currentToken = currentCancellation.Token;
+            var previousCancellation = Interlocked.Exchange(
+                ref cancellation,
+                currentCancellation);
+            CancelAndDispose(previousCancellation);
+            cancelCommand.RaiseCanExecuteChanged();
             if (Volatile.Read(ref disposalState) != 0)
             {
                 return false;
             }
 
-            var document = createDocument();
-            var capability = getCapability(document);
-            var recipePath = getRecipePath();
+            var document = requestedDocument ?? createDocument();
+            var recipePath = requestedRecipePath ?? getRecipePath();
+            var sourcePath = requestedSourcePath ?? getSourcePath();
+            currentToken.ThrowIfCancellationRequested();
+            var capability = requestedSourcePath is null
+                ? getCapability(document)
+                : getInspectionCapability!(document, sourcePath);
+            currentToken.ThrowIfCancellationRequested();
             if (Volatile.Read(ref disposalState) != 0)
             {
                 return false;
             }
 
-            if (!capability.CanRun || recipePath is not { } fullRecipePath)
+            if (!capability.CanRun || string.IsNullOrWhiteSpace(recipePath) || !File.Exists(recipePath))
             {
                 summary = capability.Message;
                 NotifyStateChanged();
@@ -142,29 +205,35 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                 return false;
             }
 
-            result = null;
-            recordPath = null;
-            var currentCancellation = new CancellationTokenSource();
-            var currentToken = currentCancellation.Token;
-            var previousCancellation = Interlocked.Exchange(
-                ref cancellation,
-                currentCancellation);
-            CancelAndDispose(previousCancellation);
-            if (Volatile.Read(ref disposalState) != 0)
+            if (string.IsNullOrWhiteSpace(sourcePath))
             {
-                if (ReferenceEquals(
-                    Interlocked.CompareExchange(ref cancellation, null, currentCancellation),
-                    currentCancellation))
-                {
-                    currentCancellation.Dispose();
-                }
-
+                summary = localize("검사할 3D 입력을 먼저 여세요.", "Open a 3D input before running an inspection.");
+                NotifyStateChanged();
                 return false;
             }
 
+            var fullRecipePath = Path.GetFullPath(recipePath);
+            var fullSourcePath = Path.GetFullPath(sourcePath);
+            var identity = OrderedRunRecordIdentity.Create(fullRecipePath, fullSourcePath);
+            if (getSavedRecipeSha256 is not null && !string.Equals(getSavedRecipeSha256(), identity.RecipeSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                summary = localize("실행 준비 중 저장된 레시피가 바뀌었습니다. 현재 결과를 유지합니다. 레시피를 다시 확인하세요.", "The saved recipe changed while preparing Run. The current results were retained. Review the recipe again.");
+                NotifyStateChanged();
+                appendLog("Run", summary);
+                return false;
+            }
+            completedRun = null;
+            result = null;
+            recordPath = null;
+            record = null;
+            SetRunning(true);
+            summary = localize(
+                $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
+                $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
+            NotifyStateChanged();
+
             try
             {
-                SetRunning(true);
                 summary = localize(
                     $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
                     $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
@@ -178,12 +247,13 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                     "Run",
                     $"Ordered recipe Run started: {Path.GetFileName(fullRecipePath)} | steps={document.Steps.Count}.");
 
-                var sourcePath = getSourcePath();
-                var sourceQuality = getSourceQualityReport();
+                var sourceQuality = requestedSourcePath is null
+                    ? getSourceQualityReport()
+                    : null;
                 var execution = await Task.Run(
                     () => ToolRecipeOrderedGraphExecution.Execute(
                         document,
-                        sourcePath,
+                        fullSourcePath,
                         sourceQuality,
                         currentToken),
                     currentToken);
@@ -214,55 +284,62 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                 appendLog(
                     "Run",
                     $"Ordered recipe Run completed: status={execution.Status} | steps={execution.Steps.Count} | elapsedMs={execution.Duration.TotalMilliseconds:F3}.");
-                completed(
-                    new ToolWorkbenchOrderedRunCompletedEventArgs(
-                        Path.GetFullPath(fullRecipePath),
-                        document,
-                        Path.GetFullPath(sourcePath),
-                        execution));
+                completedRun = new ToolWorkbenchOrderedRunCompletedEventArgs(fullRecipePath, document, fullSourcePath, execution, identity);
+                completed(completedRun);
                 return execution.Status is not (ResultStatus.Error or ResultStatus.NotRun);
             }
             catch (OperationCanceledException) when (currentToken.IsCancellationRequested)
             {
-                if (Volatile.Read(ref disposalState) != 0)
-                {
-                    return false;
-                }
-
-                foreach (var step in getPipelineSteps())
-                {
-                    step.State = "Run canceled";
-                }
-
-                result = null;
-                recordPath = null;
-                summary = localize(
-                    "현재 레시피 실행이 취소되었습니다. Run Record는 생성되지 않았습니다.",
-                    "Current recipe Run was canceled. No Run Record was created.");
-                NotifyStateChanged();
-                appendLog("Run", summary);
-                return false;
+                return CompleteCancelledRun();
             }
-            finally
-            {
-                if (ReferenceEquals(cancellation, currentCancellation))
-                {
-                    cancellation = null;
-                    currentCancellation.Dispose();
-                }
-
-                SetRunning(false);
-            }
+        }
+        catch (OperationCanceledException) when (currentCancellation?.IsCancellationRequested == true)
+        {
+            return CompleteCancelledRun();
         }
         finally
         {
+            if (currentCancellation is not null
+                && ReferenceEquals(
+                    Interlocked.CompareExchange(ref cancellation, null, currentCancellation),
+                    currentCancellation))
+            {
+                currentCancellation.Dispose();
+            }
+
+            SetRunning(false);
             Volatile.Write(ref runGate, 0);
             if (Volatile.Read(ref disposalState) == 0)
             {
                 runCommand.RaiseCanExecuteChanged();
                 cancelCommand.RaiseCanExecuteChanged();
+                retryRecordSaveCommand.RaiseCanExecuteChanged();
             }
         }
+    }
+
+    private bool CompleteCancelledRun()
+    {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return false;
+        }
+
+        foreach (var step in getPipelineSteps())
+        {
+            step.State = "Run canceled";
+        }
+
+        result = null;
+        recordPath = null;
+        record = null;
+        wasLastRunCancelled = true;
+        summary = localize(
+            "현재 레시피 실행이 취소되었습니다. 검사 기록은 생성되지 않았습니다.",
+            "Current recipe Run was canceled. No Run Record was created.");
+        NotifyStateChanged();
+        appendLog("Run", summary);
+        return false;
     }
 
     private void StartCommandRun()
@@ -316,7 +393,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     {
         if (Volatile.Read(ref disposalState) != 0
             || Volatile.Read(ref runGate) != 0
-            || isRunning)
+            || isRunning || HasPendingRecordSave)
         {
             return false;
         }
@@ -327,7 +404,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
 
     public void Cancel()
     {
-        if (Volatile.Read(ref disposalState) != 0)
+        if (Volatile.Read(ref disposalState) != 0 || Volatile.Read(ref runGate) == 0)
         {
             return;
         }
@@ -342,41 +419,74 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         }
     }
 
-    public void AttachRecord(string path)
+    public void AttachRecord(string path, InspectionRunRecord attachedRecord)
     {
+        ArgumentNullException.ThrowIfNull(attachedRecord);
         if (Volatile.Read(ref disposalState) != 0)
         {
             return;
         }
 
         recordPath = Path.GetFullPath(path);
+        record = attachedRecord;
+        hasPendingRecordSave = false;
+        completedRun = null;
         NotifyStateChanged();
     }
 
-    public void ReportRecordFailure(string message)
+    public void ReportRecordFailure(string message, InspectionRunRecord? preparedRecord = null)
     {
         if (Volatile.Read(ref disposalState) != 0)
         {
             return;
         }
 
+        hasPendingRecordSave = completedRun is not null;
+        record = preparedRecord;
         summary = localize(
-            $"실행은 완료되었지만 Run Record 저장에 실패했습니다: {message}",
+            $"실행은 완료되었지만 검사 기록 저장에 실패했습니다: {message}",
             $"Run completed, but its Run Record could not be saved: {message}");
         appendLog("Error", summary);
         NotifyStateChanged();
     }
 
+    public bool RetryRecordSave()
+    {
+        if (!HasPendingRecordSave || completedRun is not { } pending || Volatile.Read(ref disposalState) != 0 || Interlocked.CompareExchange(ref runGate, 1, 0) != 0) return false;
+        try
+        {
+            completed(pending);
+            return !HasPendingRecordSave && record is not null && recordPath is not null;
+        }
+        finally
+        {
+            Volatile.Write(ref runGate, 0);
+            NotifyStateChanged();
+        }
+    }
+
     public void Invalidate(string invalidationSummary)
     {
-        if (Volatile.Read(ref disposalState) != 0
-            || result is null && recordPath is null)
+        if (Volatile.Read(ref disposalState) != 0 || HasPendingRecordSave)
+        {
+            return;
+        }
+
+        if (IsRunning)
+        {
+            Cancel();
+            return;
+        }
+
+        if (result is null && recordPath is null)
         {
             return;
         }
 
         result = null;
         recordPath = null;
+        record = null;
+        completedRun = null;
         summary = invalidationSummary;
         NotifyStateChanged();
         invalidated();
@@ -403,6 +513,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         stateChanged();
         runCommand.RaiseCanExecuteChanged();
         cancelCommand.RaiseCanExecuteChanged();
+        retryRecordSaveCommand.RaiseCanExecuteChanged();
     }
 
 }

@@ -249,7 +249,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             ValidationThresholdAssistantStage.Analyze => localize("분석", "Analyze"),
             ValidationThresholdAssistantStage.Propose => localize("제안", "Propose"),
             ValidationThresholdAssistantStage.Review => localize("검토", "Review"),
-            ValidationThresholdAssistantStage.Apply => localize("초안 적용", "Apply draft"),
+            ValidationThresholdAssistantStage.Apply => localize("설정창에 입력", "Apply draft"),
             _ => localize("분석", "Analyze")
         };
 
@@ -268,18 +268,18 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                         "Select a candidate to create a proposal.")
                     : IsValidationThresholdCandidateApplied
                         ? localize(
-                            "PropertyGrid 초안에만 적용되었습니다. 일반 Apply와 실행은 별도입니다.",
+                            "설정창에 입력했습니다. 설정값 적용과 검사 실행은 별도입니다.",
                             "Applied to the PropertyGrid draft only. Normal Apply and execution remain separate.")
                         : IsValidationThresholdReviewActive
                             ? localize(
-                                "제안을 검토 중입니다. Apply 전에는 레시피와 실행 상태가 변하지 않습니다.",
+                                "추천 설정을 확인 중입니다. 설정값 적용 전에는 레시피와 검사 상태가 변하지 않습니다.",
                                 "Reviewing the proposal. Recipe and execution remain unchanged until Apply.")
                             : HasValidationThresholdAssistantProposal
                                 ? localize(
-                                    "제안이 준비되었습니다. 검토를 거친 뒤 초안에 적용하세요.",
+                                    "추천 설정이 준비되었습니다. 확인한 뒤 설정창에 입력하세요.",
                                     "Proposal ready. Review it before applying to the draft.")
                                 : localize(
-                                    "선택한 후보에서 초안 제안을 만드세요.",
+                                    "선택한 후보로 추천 설정을 준비하세요.",
                                     "Create a draft proposal from the selected candidate.");
 
     public ValidationThresholdCandidateRow? SelectedValidationThresholdCandidate

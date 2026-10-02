@@ -77,7 +77,7 @@ internal static class CalibrationCenterViewModelVerification
                 && shell.IsWorkbenchWorkspaceSelected
                 && !shell.IsTaskWorkspaceSelected,
                 shell.WorkspaceSummary);
-            Check("inspection workspace summary", shell.WorkspaceSummary == "Validate | Replay samples and inspect failures", shell.WorkspaceSummary);
+            Check("inspection workspace summary", shell.WorkspaceSummary == "Add files, then inspect the checked files.", shell.WorkspaceSummary);
             shell.ShowReviewWorkspace();
             Check(
                 "review workspace selection",

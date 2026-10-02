@@ -82,6 +82,18 @@ internal sealed class ViewerHostOperationFacade
         return true;
     }
 
+    public bool TryRequestHeightProfile(ViewerHeightProfileAction action)
+    {
+        if (IsDisposed || !Enum.IsDefined(action)) return false;
+        var command = action is ViewerHeightProfileAction.Begin or ViewerHeightProfileAction.Repick
+            ? viewModel.ProfileCommand : viewModel.ProfileActionCommand;
+        object? parameter = action is ViewerHeightProfileAction.Begin or ViewerHeightProfileAction.Repick ? null : action;
+        if (!command.CanExecute(parameter)) return false;
+        command.Execute(parameter);
+        requestVisibleFrame();
+        return true;
+    }
+
     public bool TrySetSelectionMode(string selectionMode)
     {
         if (IsDisposed || string.IsNullOrWhiteSpace(selectionMode))
@@ -89,6 +101,7 @@ internal sealed class ViewerHostOperationFacade
             return false;
         }
 
+        if (selectionMode is "Point" or "Move" && !viewModel.SetPointerModeCommand.CanExecute(selectionMode)) return false;
         viewModel.SelectedSelectionMode = selectionMode;
         return string.Equals(
             viewModel.SelectedSelectionMode,
@@ -240,6 +253,9 @@ internal sealed class ViewerHostOperationFacade
 
         return viewModel.TryApplyLinkedC3DHeightColorRange(minimum, maximum);
     }
+
+    public bool TrySetC3DHeightEmphasis(int emphasis) =>
+        !IsDisposed && viewModel.TrySetC3DHeightEmphasis(emphasis);
 
     public void FitAll() => Execute(callbacks.FitAll);
 

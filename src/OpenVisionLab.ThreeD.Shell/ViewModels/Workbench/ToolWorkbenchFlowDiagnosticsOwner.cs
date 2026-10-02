@@ -23,6 +23,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
     private readonly Action<ToolWorkbenchPipelineStepItem, bool> selectPipelineStep;
     private readonly Func<ToolWorkbenchPipelineStepItem, ToolWorkbenchTeachingSelectionRequirement?> createSelectionRequirement;
     private readonly Func<ToolRecipeSelection, bool> isSelectionCurrent;
+    private readonly Func<ToolWorkbenchPipelineStepItem, ToolWorkbenchExecutionBlocker?> getExecutionBlocker;
     private readonly Func<bool> isRecipeMutationBlocked;
     private readonly Func<bool> hasPendingStepParameterChanges;
     private readonly Func<bool> isTeachingSelectionCaptureActive;
@@ -49,6 +50,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
         Action<ToolWorkbenchPipelineStepItem, bool> selectPipelineStep,
         Func<ToolWorkbenchPipelineStepItem, ToolWorkbenchTeachingSelectionRequirement?> createSelectionRequirement,
         Func<ToolRecipeSelection, bool> isSelectionCurrent,
+        Func<ToolWorkbenchPipelineStepItem, ToolWorkbenchExecutionBlocker?> getExecutionBlocker,
         Func<bool> isRecipeMutationBlocked,
         Func<bool> hasPendingStepParameterChanges,
         Func<bool> isTeachingSelectionCaptureActive,
@@ -70,6 +72,8 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
             ?? throw new ArgumentNullException(nameof(createSelectionRequirement));
         this.isSelectionCurrent = isSelectionCurrent
             ?? throw new ArgumentNullException(nameof(isSelectionCurrent));
+        this.getExecutionBlocker = getExecutionBlocker
+            ?? throw new ArgumentNullException(nameof(getExecutionBlocker));
         this.isRecipeMutationBlocked = isRecipeMutationBlocked
             ?? throw new ArgumentNullException(nameof(isRecipeMutationBlocked));
         this.hasPendingStepParameterChanges = hasPendingStepParameterChanges
@@ -138,6 +142,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
     public int RecipeHealthNeedsInputCount => CountRecipeHealth(ToolWorkbenchRecipeHealthCategory.NeedsInput);
     public int RecipeHealthNeedsSelectionCount => CountRecipeHealth(ToolWorkbenchRecipeHealthCategory.NeedsSelection);
     public int RecipeHealthNeedsParametersCount => CountRecipeHealth(ToolWorkbenchRecipeHealthCategory.NeedsParameters);
+    public int RecipeHealthExecutionBlockedCount => CountRecipeHealth(ToolWorkbenchRecipeHealthCategory.ExecutionBlocked);
     public int RecipeHealthStalePreviewCount => CountRecipeHealth(ToolWorkbenchRecipeHealthCategory.StalePreview);
     public int RecipeHealthPublishedCount => CountRecipeHealth(ToolWorkbenchRecipeHealthCategory.Published);
     public int RecipeHealthIssueCount => RecipeHealthItems.Count(item => item.IsIssue);
@@ -155,6 +160,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
     public string RecipeHealthCountsSecondary => string.Format(
         localization.RecipeHealthCountsSecondaryFormat,
         RecipeHealthNeedsParametersCount,
+        RecipeHealthExecutionBlockedCount,
         RecipeHealthStalePreviewCount,
         RecipeHealthPublishedCount);
 
@@ -294,6 +300,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
         OnPropertyChanged(nameof(RecipeHealthNeedsInputCount));
         OnPropertyChanged(nameof(RecipeHealthNeedsSelectionCount));
         OnPropertyChanged(nameof(RecipeHealthNeedsParametersCount));
+        OnPropertyChanged(nameof(RecipeHealthExecutionBlockedCount));
         OnPropertyChanged(nameof(RecipeHealthStalePreviewCount));
         OnPropertyChanged(nameof(RecipeHealthPublishedCount));
         OnPropertyChanged(nameof(RecipeHealthIssueCount));
@@ -355,6 +362,15 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
                 parameterDetail);
         }
 
+        if (getExecutionBlocker(step) is { } blocker)
+        {
+            return CreateRecipeHealthItem(
+                step,
+                ToolWorkbenchRecipeHealthCategory.ExecutionBlocked,
+                localization.RecipeHealthExecutionBlocked,
+                DescribeExecutionBlocker(blocker));
+        }
+
         return CreateRecipeHealthItem(
             step,
             ToolWorkbenchRecipeHealthCategory.Ready,
@@ -377,6 +393,28 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
                 step.ToolName,
                 label),
             step);
+
+    private string DescribeExecutionBlocker(ToolWorkbenchExecutionBlocker blocker) =>
+        blocker.Reason switch
+        {
+            ToolWorkbenchExecutionBlockerReason.InsufficientReferenceSamples => string.Format(
+                localization.RecipeHealthReferenceSamplesBlockedFormat,
+                blocker.ReferenceSampleCount,
+                blocker.RequiredReferenceSampleCount,
+                blocker.MeasurementSampleCount,
+                blocker.RequiredMeasurementSampleCount,
+                blocker.RawMessage),
+            ToolWorkbenchExecutionBlockerReason.InsufficientMeasurementSamples => string.Format(
+                localization.RecipeHealthMeasurementSamplesBlockedFormat,
+                blocker.MeasurementSampleCount,
+                blocker.RequiredMeasurementSampleCount,
+                blocker.ReferenceSampleCount,
+                blocker.RequiredReferenceSampleCount,
+                blocker.RawMessage),
+            _ => string.Format(
+                localization.RecipeHealthExecutionBlockedDetailFormat,
+                blocker.RawMessage)
+        };
 
     private bool TryDescribeMissingSelection(
         ToolWorkbenchPipelineStepItem step,

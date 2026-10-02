@@ -63,6 +63,8 @@ internal static class RunnerCommandRouter
             ReadOption(args, "--surface-match-runtime");
         var toolRecipeSourcePath = ReadOption(args, "--source");
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
+        var toolTeachingHeightThresholdBackgroundRemovalPath =
+            ReadOption(args, "--tool-teaching-height-threshold-background-removal");
         var toolTeachingRemoveOutliersPath =
             ReadOption(args, "--tool-teaching-remove-outliers");
         var toolTeachingLevelSurfacePath =
@@ -371,6 +373,22 @@ internal static class RunnerCommandRouter
             return ToolRecipeFilterRunnerExecution.Run(toolTeachingFilterPath, toolTeachingStepId, outputC3DPath, reportPath);
         }
 
+        if (toolTeachingHeightThresholdBackgroundRemovalPath is not null)
+        {
+            if (toolTeachingStepId is null || outputC3DPath is null || reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --tool-teaching-height-threshold-background-removal <recipe> --tool-teaching-step <id> --output-c3d <path> --report <path>");
+                return 2;
+            }
+
+            return ToolRecipeHeightThresholdBackgroundRemovalRunnerExecution.Run(
+                toolTeachingHeightThresholdBackgroundRemovalPath,
+                toolTeachingStepId,
+                outputC3DPath,
+                reportPath);
+        }
+
         if (toolTeachingRemoveOutliersPath is not null)
         {
             if (toolTeachingStepId is null
@@ -492,10 +510,12 @@ internal static class RunnerCommandRouter
             new("--verify-c3d-roi-crop", C3DRoiCropGoldenVerification.Run),
             new("--verify-c3d-crop-axis-grid-roundtrip", C3DCropAxisGridRoundTripVerification.Run),
             new("--verify-c3d-domain-mask", C3DDomainMaskGoldenVerification.Run),
+            new("--verify-c3d-grid-polygon-domain", C3DGridPolygonDomainGoldenVerification.Run),
             new("--verify-oriented-box-3d", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
             new("--verify-grid-circle", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
             new("--verify-grid-polygon", RunSelectionContract, UsageOption: "--verify-grid-polygon"),
             new("--verify-c3d-completeness-grid", C3DCompletenessGridGoldenVerification.Run),
+            new("--verify-c3d-connected-region-gate", C3DConnectedRegionGateGoldenVerification.Run),
             new("--verify-labeled-validation-runner", ToolRecipeLabeledValidationRunnerVerification.Run),
             new("--verify-threshold-correction-runner", ToolRecipeThresholdCorrectionRunnerVerification.Run),
             new("--verify-c3d-region-completeness-output-state", C3DRegionCompletenessOutputStateVerification.Run),
@@ -523,6 +543,7 @@ internal static class RunnerCommandRouter
             new("--verify-c3d-constrained-best-fit-rigid-alignment", C3DConstrainedBestFitRigidAlignmentGoldenVerification.Run),
             new("--verify-c3d-height-threshold-background-removal", C3DHeightThresholdBackgroundRemovalGoldenVerification.Run),
             new("--verify-c3d-height-background-subtraction", C3DHeightBackgroundSubtractionGoldenVerification.Run),
+            new("--verify-c3d-signed-delta-background-subtraction", C3DSignedDeltaBackgroundSubtractionGoldenVerification.Run),
             new("--verify-c3d-point-cloud-background-filter", C3DPointCloudBackgroundFilterGoldenVerification.Run),
             new("--verify-c3d-point-cloud-voxel-downsample", C3DPointCloudVoxelDownsampleGoldenVerification.Run),
             new("--verify-c3d-height-map-normal-preparation", C3DHeightMapNormalPreparationGoldenVerification.Run),
@@ -587,6 +608,7 @@ internal static class RunnerCommandRouter
             new("--verify-c3d-thickness-h-axis", C3DThicknessAxisGoldenVerification.Run),
             new("--verify-c3d-warpage", C3DWarpageGoldenVerification.Run),
             new("--verify-gap-flush", GapFlushGoldenVerification.Run),
+            new("--verify-physical-edge-gap-flush", PhysicalEdgeGapFlushExperimentVerification.Run),
             new("--verify-volume", VolumeGoldenVerification.Run),
             new("--verify-cross-section", CrossSectionDimensionsGoldenVerification.Run),
             new("--verify-plane-flatness", PlaneFlatnessGoldenVerification.Run),
@@ -862,6 +884,8 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-roi-crop --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-crop-axis-grid-roundtrip --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-domain-mask --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-grid-polygon-domain --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-connected-region-gate --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
@@ -875,6 +899,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-constrained-best-fit-rigid-alignment --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-threshold-background-removal --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-background-subtraction --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-signed-delta-background-subtraction --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-background-filter --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-voxel-downsample --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-map-normal-preparation --report <path>");
@@ -894,6 +919,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-vision-sdk-3d --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-teaching-height-threshold-background-removal <recipe> --tool-teaching-step <id> --output-c3d <path> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] [--surface-match-runtime <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --threshold-correction-recipe <recipe> --threshold-candidate-id <id> [--threshold-manual-values <Name=Value;...>] --report <json>");

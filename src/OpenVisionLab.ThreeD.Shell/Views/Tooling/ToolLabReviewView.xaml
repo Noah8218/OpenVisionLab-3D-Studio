@@ -25,23 +25,25 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <ui:SymbolIcon Width="16"
                                        Height="16"
                                        Margin="0,1,6,0"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Symbol="WrenchScrewdriver24" />
-                        <StackPanel>
-                            <TextBlock FontSize="10.5"
+                        <StackPanel Grid.Column="1">
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding Localization.ToolLabReview}" />
-                            <TextBlock Margin="0,1,0,0"
-                                       FontSize="9.5"
+                            <TextBlock Margin="0,1,0,0" FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding Localization.ToolLabReviewDetail}"
-                                       TextTrimming="CharacterEllipsis" />
+                                       Text="{Binding SelectedPipelineStep.ToolName}" TextWrapping="Wrap" />
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
                     <Border Grid.Column="1"
                             DataContext="{Binding SelectedPipelineStep}"
                             Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
@@ -49,7 +51,7 @@
                             AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
                             AutomationProperties.HelpText="{Binding State}">
                         <TextBlock MaxWidth="122"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    FontWeight="SemiBold"
                                    Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
                                    Text="{Binding CanonicalStateLabel}"
@@ -57,7 +59,7 @@
                     </Border>
                 </Grid>
             </Border>
-            <workbench:ToolInspectorView Grid.Row="1" />
+            <workbench:SelectedToolWorkspaceView Grid.Row="1" IsLabPresentation="True" />
         </Grid>
     </Border>
 </UserControl>

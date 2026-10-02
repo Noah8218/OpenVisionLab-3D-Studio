@@ -64,6 +64,13 @@ internal static class ToolWorkbenchFirstRecipeEventCoordinatorVerification
         {
             owner.BeginFirstRecipeSetup();
             owner.FirstRecipeFolderPath = folderPath;
+            Check(
+                "an empty source and empty starter allow the name and folder to create a recipe first",
+                owner.CreateFirstRecipeCommand.CanExecute(null)
+                && owner.TryGetFirstRecipeSetup(out var emptySetup, out _)
+                && string.IsNullOrWhiteSpace(emptySetup.SourcePath)
+                && emptySetup.StarterId == ToolWorkbenchFirstRecipeSetupOwner.EmptyStarterId,
+                owner.FirstRecipeSetupStatus);
             owner.FirstRecipeSourcePath = sourcePath;
             Check(
                 "PropertyChanged reaches the Workbench callback",

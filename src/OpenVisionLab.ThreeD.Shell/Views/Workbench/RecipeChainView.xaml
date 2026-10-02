@@ -9,7 +9,84 @@
              AutomationProperties.AutomationId="RecipeChain">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="RecipeFlowPortButtonStyle" TargetType="Button">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="7,4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="IsEnabled" Value="{Binding DataContext.CanEditFlowConnection, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="PortRow" Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse x:Name="PortVisual" Width="9" Height="9" VerticalAlignment="Center"
+                                         Fill="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                         Stroke="{DynamicResource ThreeD.SecondaryTextBrush}" StrokeThickness="1.5" />
+                                <ContentPresenter Grid.Column="1" Margin="5,0"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HorizontalContentAlignment" Value="Right">
+                                <Setter TargetName="PortVisual" Property="Grid.Column" Value="2" />
+                                <Setter TargetName="PortVisual" Property="Fill" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                <Setter TargetName="PortVisual" Property="Stroke" Value="{DynamicResource ThreeD.PanelBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="PortRow" Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                <Setter TargetName="PortRow" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PortRow" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="PortRow" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                <Setter TargetName="PortVisual" Property="Fill" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="PortRow" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="PortRow" Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                                <Setter TargetName="PortVisual" Property="Fill" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+                                <Setter TargetName="PortVisual" Property="Stroke" Value="{DynamicResource ThreeD.PanelBrush}" />
+                                <Setter TargetName="PortRow" Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsEnabled" Value="False" />
+                                    <Condition Property="HorizontalContentAlignment" Value="Left" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PortVisual" Property="Fill" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                <Setter TargetName="PortVisual" Property="Stroke" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTeachingMode, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}" Value="False">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelFlowConnectionCommand}" />
+    </UserControl.InputBindings>
 
     <Border Padding="10"
             Background="{DynamicResource ThreeD.PanelBrush}"
@@ -18,105 +95,170 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon Width="18"
-                                   Height="18"
-                                   Margin="0,0,6,0"
-                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                   Symbol="Branch24" />
-                    <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                               Text="{Binding Localization.RecipeFlow}" />
-                </StackPanel>
-                <TextBlock Margin="0,3,0,0"
-                           FontSize="10"
-                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                           Text="{views:ThreeDText Key=ThreeD.Workspace.RecipeChainHint, Korean='검사 순서와 현재 선택을 한눈에 확인합니다.', English='Review inspection order and the current selection at a glance.'}"
-                           TextWrapping="Wrap" />
-                <Border x:Name="AuthoringFirstActionGuide"
-                        Margin="0,7,0,0"
-                        Padding="7,5"
-                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                        BorderBrush="{DynamicResource ThreeD.InfoBrush}"
-                        BorderThickness="1"
-                        CornerRadius="3"
-                        AutomationProperties.AutomationId="AuthoringFirstActionGuide">
-                    <Grid>
-                        <TextBlock x:Name="InputFirstActionText"
-                                   FontSize="9.5"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.InputFirstAction, Korean='1 · 3D 입력 열기', English='1 · Open 3D input'}"
-                                   TextWrapping="Wrap"
-                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CurrentAction.OpenInputAccessible, Korean='현재 작업: 3D 입력 열기', English='Current action: open 3D input'}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.ToolConnections, Korean='도구 연결', English='Tool connections'}" />
+                        <TextBlock x:Name="RecipeFlowSubtitle"
+                                   Margin="0,3,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RecipeChainHint, Korean='저장된 입력·출력 연결과 실행 상태를 표시합니다.', English='Shows saved input/output routes and execution state.'}"
+                                   TextWrapping="Wrap">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
+                                        <DataTrigger Binding="{Binding IsTeachingMode, ElementName=RecipeChainRoot}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock x:Name="SelectToolFirstActionText"
-                                   FontSize="9.5"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.SelectToolFirstAction, Korean='2 · 검사 도구 선택', English='2 · Select inspection tool'}"
-                                   TextWrapping="Wrap"
-                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CurrentAction.SelectToolAccessible, Korean='현재 작업: 검사 도구 선택', English='Current action: select inspection tool'}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <MultiDataTrigger>
-                                            <MultiDataTrigger.Conditions>
-                                                <Condition Binding="{Binding IsSourceReadyForRecipe}" Value="True" />
-                                                <Condition Binding="{Binding HasSelectedPipelineStep}" Value="False" />
-                                            </MultiDataTrigger.Conditions>
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </MultiDataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock x:Name="RoiPreviewFirstActionText"
-                                   FontSize="9.5"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RoiPreviewFirstAction, Korean='3 · ROI 설정  →  4 · 미리보기', English='3 · Set ROI  →  4 · Preview'}"
-                                   TextWrapping="Wrap"
-                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.CurrentAction.SetRoiPreviewAccessible, Korean='현재 작업: ROI 설정 및 미리보기', English='Current actions: set ROI and preview'}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <MultiDataTrigger>
-                                            <MultiDataTrigger.Conditions>
-                                                <Condition Binding="{Binding IsSourceReadyForRecipe}" Value="True" />
-                                                <Condition Binding="{Binding HasSelectedPipelineStep}" Value="True" />
-                                            </MultiDataTrigger.Conditions>
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </MultiDataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </Grid>
-                </Border>
+                    </StackPanel>
+                    <ui:Button x:Name="RecipeFlowAddTool"
+                               Grid.Column="1"
+                               Margin="7,0,0,0"
+                               Padding="8,5"
+                               VerticalAlignment="Top"
+                               Content="{Binding Localization.AddToolFromCatalog}"
+                               Icon="{ui:SymbolIcon Add24}"
+                               Command="{Binding OpenToolLibraryCommand}"
+                               Visibility="{Binding IsTeachingMode, ElementName=RecipeChainRoot, Converter={StaticResource BoolToVisibilityConverter}}"
+                               ToolTip="{Binding Localization.AddToolFromCatalogToolTip}"
+                               AutomationProperties.Name="{Binding Localization.AddToolFromCatalog}"
+                               AutomationProperties.HelpText="{Binding Localization.AddToolFromCatalogToolTip}" />
+                </Grid>
             </StackPanel>
 
-            <Border Grid.Row="1"
-                    Margin="0,8,0,7"
-                    Padding="8,6"
+            <Border x:Name="RecipeFlowToolbar"
+                    Grid.Row="1"
+                    Margin="0,8,0,6"
+                    Padding="5"
+                    Background="{DynamicResource ThreeD.CommandBarBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    Visibility="{Binding IsTeachingMode, ElementName=RecipeChainRoot, Converter={StaticResource BoolToVisibilityConverter}}"
+                    AutomationProperties.AutomationId="RecipeFlowToolbar">
+                <WrapPanel VerticalAlignment="Center">
+                    <ui:Button x:Name="RecipeFlowZoomOutButton"
+                               Margin="0,0,4,4"
+                               Padding="7,3"
+                               Content="−"
+                               Command="{Binding DecreaseFlowZoomCommand, ElementName=RecipeChainRoot}"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Workspace.FlowZoomOut, Korean='연결도 축소', English='Zoom out flow'}"
+                               AutomationProperties.AutomationId="RecipeFlowZoomOut"
+                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.FlowZoomOut, Korean='연결도 축소', English='Zoom out flow'}" />
+                    <Border MinWidth="38"
+                            Height="27"
+                            Margin="0,0,4,4"
+                            Padding="5,0"
+                            Background="{DynamicResource ThreeD.PanelBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <TextBlock x:Name="RecipeFlowZoomValue"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Text="{Binding FlowZoom, ElementName=RecipeChainRoot, StringFormat={}{0:P0}}"
+                                   AutomationProperties.AutomationId="RecipeFlowZoomValue" />
+                    </Border>
+                    <ui:Button x:Name="RecipeFlowZoomInButton"
+                               Margin="0,0,4,4"
+                               Padding="7,3"
+                               Content="＋"
+                               Command="{Binding IncreaseFlowZoomCommand, ElementName=RecipeChainRoot}"
+                               ToolTip="{views:ThreeDText Key=ThreeD.Workspace.FlowZoomIn, Korean='연결도 확대', English='Zoom in flow'}"
+                               AutomationProperties.AutomationId="RecipeFlowZoomIn"
+                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.FlowZoomIn, Korean='연결도 확대', English='Zoom in flow'}" />
+                    <ui:Button x:Name="RecipeFlowResetButton"
+                               Margin="0,0,4,4"
+                               Padding="7,3"
+                               Content="{views:ThreeDText Key=ThreeD.Workspace.ResetFlowLayout, Korean='노드 배치 정리', English='Reset layout'}"
+                               Command="{Binding ResetFlowViewCommand, ElementName=RecipeChainRoot}"
+                               AutomationProperties.AutomationId="RecipeFlowReset"
+                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.ResetFlowLayout, Korean='노드 배치 정리', English='Reset layout'}" />
+                    <ui:Button x:Name="RecipeFlowFocusSelectedButton"
+                               Margin="0,0,0,4"
+                               Padding="7,3"
+                               Content="{views:ThreeDText Key=ThreeD.Workspace.FocusSelectedTool, Korean='선택 도구로 이동', English='Go to selected tool'}"
+                               Command="{Binding BringSelectedToolIntoViewCommand, ElementName=RecipeChainRoot}"
+                               IsEnabled="{Binding HasSelectedPipelineStep}"
+                               AutomationProperties.AutomationId="RecipeFlowFocusSelected"
+                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.FocusSelectedTool, Korean='선택 도구로 이동', English='Go to selected tool'}" />
+                </WrapPanel>
+            </Border>
+
+            <ScrollViewer x:Name="FlowGraphViewport"
+                          Grid.Row="2"
+                          Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          CanContentScroll="False"
+                          Focusable="True"
+                          PanningMode="Both"
+                          AutomationProperties.AutomationId="RecipeFlowViewport"
+                          AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.FlowDiagram, Korean='도구 연결도', English='Tool flow diagram'}">
+                <Grid x:Name="FlowGraphSurface"
+                      MinWidth="192"
+                      Width="{Binding ViewportWidth, ElementName=FlowGraphViewport}"
+                      MinHeight="{Binding ViewportHeight, ElementName=FlowGraphViewport}"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Top">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform ScaleX="{Binding FlowZoom, ElementName=RecipeChainRoot}"
+                                        ScaleY="{Binding FlowZoom, ElementName=RecipeChainRoot}" />
+                    </Grid.LayoutTransform>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border x:Name="FlowConnectionCancelSurface"
+                            Grid.RowSpan="3"
+                            Panel.ZIndex="-1"
+                            Background="Transparent"
+                            behaviors:PreviewMouseDownCommandBehavior.IsEnabled="True"
+                            behaviors:PreviewMouseDownCommandBehavior.Command="{Binding CancelFlowConnectionCommand}" />
+
+                    <Canvas x:Name="FlowConnectionCanvas"
+                            Grid.Row="0"
+                            Grid.RowSpan="3"
+                            Panel.ZIndex="0"
+                            ClipToBounds="True"
+                            IsHitTestVisible="False"
+                            AutomationProperties.AutomationId="RecipeFlowConnections"
+                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RecipeFlowConnections, Korean='저장된 도구 연결선', English='Saved tool connections'}" />
+
+                    <Canvas x:Name="FlowPortConnectionCanvas"
+                            Grid.Row="0"
+                            Grid.RowSpan="3"
+                            Panel.ZIndex="2"
+                            ClipToBounds="True"
+                            IsHitTestVisible="False" />
+
+            <Border x:Name="RecipeInputNode"
+                    Grid.Row="0"
+                    Panel.ZIndex="1"
+                    Width="160"
+                    Margin="0,8,0,20"
+                    Padding="6,4"
+                    HorizontalAlignment="Center"
                     BorderThickness="1"
                     CornerRadius="3">
                 <Border.Style>
@@ -141,23 +283,28 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock FontSize="9.5"
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.ColumnSpan="3">
+                        <TextBlock FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceLabel}" />
                         <TextBlock Margin="0,1,0,0"
-                                   FontSize="10.5"
+                                   FontSize="12"
                                    FontWeight="SemiBold"
                                    Text="{Binding Source.Name}"
-                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="Wrap"
                                    ToolTip="{Binding Source.Path}" />
                         <TextBlock Margin="0,1,0,0"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding LocalizedSourceReadinessSummary}"
-                                   TextTrimming="CharacterEllipsis" />
+                                   TextWrapping="Wrap" />
                     </StackPanel>
-                    <ui:Button Grid.Column="1"
+                    <ui:Button Grid.Row="1" Grid.Column="1"
                                Margin="7,0,0,0"
                                Padding="7,3"
                                VerticalAlignment="Center"
@@ -166,7 +313,7 @@
                                Command="{Binding SelectSourceQualityCommand}"
                                ToolTip="{Binding Localization.OpenSourceQuality}"
                                AutomationProperties.Name="{Binding Localization.OpenSourceQuality}" />
-                    <ui:Button Grid.Column="2"
+                    <ui:Button Grid.Row="1" Grid.Column="2"
                                Margin="7,0,0,0"
                                Padding="7,3"
                                VerticalAlignment="Center"
@@ -175,54 +322,140 @@
                                Command="{Binding LoadC3DSourceCommand}"
                                ToolTip="{Binding Localization.Open3DMap}"
                                AutomationProperties.Name="{Binding Localization.Open3DMap}" />
+                    <TextBlock Grid.Row="1" Margin="0,4,0,0" FontSize="12"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding Source.Unit}" ToolTip="{Binding SourceContractSummary}"
+                               AutomationProperties.AutomationId="RecipeInputContract" />
+                    <Button x:Name="SourceOutputPort"
+                            Grid.Row="2"
+                            Grid.ColumnSpan="3"
+                            Margin="0,6,0,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Right"
+                            Style="{StaticResource RecipeFlowPortButtonStyle}"
+                            Command="{Binding BeginFlowConnectionCommand}"
+                            CommandParameter="{Binding Source.Id}"
+                            ToolTip="{Binding Localization.FlowConnectionOutputPortHelp}"
+                            AutomationProperties.AutomationId="RecipeSourceOutputPort"
+                            AutomationProperties.Name="{Binding Localization.FlowConnectionOutputPort}"
+                            AutomationProperties.HelpText="{Binding Localization.FlowConnectionOutputPortHelp}">
+                        <TextBlock FontSize="12" TextWrapping="Wrap">
+                            <Run Text="{views:ThreeDText Key=ThreeD.Flow.Output, Korean='출력', English='Output'}" /><Run Text=" " /><Run Text="{views:ThreeDText Key=ThreeD.Flow.Height, Korean='높이 데이터', English='Height data'}" />
+                        </TextBlock>
+                    </Button>
                 </Grid>
             </Border>
 
+            <ItemsControl x:Name="FlowSelectionSources" Grid.Row="1" Panel.ZIndex="1" ItemsSource="{Binding Selections}"
+                          Visibility="{Binding IsTeachingMode, ElementName=RecipeChainRoot, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel HorizontalAlignment="Center" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="160" Margin="8,0,8,14" Padding="6" CornerRadius="3"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Flow.Selection, Korean='선택 영역', English='Selection'}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                <TextBlock Margin="0,6,0,0" FontSize="12" HorizontalAlignment="Right"
+                                           Text="{views:ThreeDText Key=ThreeD.Flow.Output, Korean='출력', English='Output'}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                <Button x:Name="SelectionOutputPort" HorizontalContentAlignment="Right" Style="{StaticResource RecipeFlowPortButtonStyle}"
+                                        Command="{Binding DataContext.BeginFlowConnectionCommand, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}"
+                                        CommandParameter="{Binding Id}" ToolTip="{Binding Id}" AutomationProperties.AutomationId="RecipeSelectionOutputPort">
+                                    <StackPanel>
+                                        <TextBlock FontSize="12" Text="{Binding Name}" TextWrapping="Wrap" />
+                                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding Kind}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="point-set"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="grid-rectangle"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Flow.SelectionRectangle, Korean='사각형 ROI', English='Rectangle ROI'}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="grid-circle"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Flow.SelectionCircle, Korean='원형 ROI', English='Circle ROI'}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="grid-polygon"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Flow.SelectionPolygon, Korean='다각형 ROI', English='Polygon ROI'}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="oriented-box-3d"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Flow.SelectionBox, Korean='3D 박스 ROI', English='3D box ROI'}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="landmark-correspondence-set"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Flow.SelectionCorrespondence, Korean='기준점 대응', English='Landmark correspondence'}" /></DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="point-set"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                            <Run Text="{views:ThreeDText Key=ThreeD.Flow.SelectionPointPrefix, Korean='점(', English='PointSet('}" /><Run Text="{Binding Points.Count, Mode=OneWay}" /><Run Text=")" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <Border x:Name="RecipeHealthCard"
-                    Grid.Row="2"
+                    Grid.Row="1"
+                    Panel.ZIndex="1"
                     Margin="0,0,0,7"
                     Padding="8,7"
+                    MaxWidth="{Binding ActualWidth, ElementName=FlowGraphViewport}"
                     Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                     BorderThickness="1"
                     CornerRadius="3"
-                    Visibility="{Binding HasSelectedPipelineStep, Converter={StaticResource BoolToVisibilityConverter}}"
                     AutomationProperties.AutomationId="RecipeHealthCard">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasSelectedPipelineStep}" Value="True" />
+                                    <Condition Binding="{Binding IsTeachingMode, ElementName=RecipeChainRoot}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock FontSize="10.5"
+                        <TextBlock FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                    Text="{Binding Localization.RecipeHealth}" />
                         <TextBlock Grid.Column="1"
                                    Margin="7,0,0,0"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Text="{Binding RecipeHealthSummary}" />
                     </Grid>
                     <TextBlock Margin="0,4,0,0"
-                               FontSize="9"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{Binding RecipeHealthCountsPrimary}"
                                TextWrapping="Wrap" />
                     <TextBlock Margin="0,1,0,0"
-                               FontSize="9"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{Binding RecipeHealthCountsSecondary}"
                                TextWrapping="Wrap" />
                     <TextBlock Margin="0,6,0,0"
-                               FontSize="9.5"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource ThreeD.AccentBrush}"
                                Text="{Binding SelectedRecipeHealthTitle}"
                                TextWrapping="Wrap"
                                AutomationProperties.Name="{Binding SelectedRecipeHealthTitle}" />
                     <TextBlock Margin="0,2,0,0"
-                               FontSize="9"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{Binding SelectedRecipeHealthDetail}"
                                TextWrapping="Wrap"
@@ -260,77 +493,186 @@
             </Border>
 
             <ListBox x:Name="RecipeStepList"
-                     Grid.Row="3"
+                     Grid.Row="2"
+                     Panel.ZIndex="1"
+                     Width="192"
+                     MinHeight="1"
+                     HorizontalAlignment="Left"
                      ItemsSource="{Binding PipelineSteps}"
                      SelectedItem="{Binding SelectedPipelineStep, Mode=TwoWay}"
                      behaviors:ScrollIntoViewOnSelectionChangedBehavior.IsEnabled="True"
                      Background="Transparent"
                      BorderThickness="0"
+                     ScrollViewer.CanContentScroll="False"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     VirtualizingPanel.IsVirtualizing="True"
-                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="False"
                      AutomationProperties.ItemStatus="{Binding PipelineSteps.Count}"
                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.OrderedRecipeChainAccessible, Korean='순서가 지정된 검사 레시피 체인', English='Ordered inspection recipe chain'}">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="Margin" Value="0,0,0,5" />
-                        <Setter Property="Padding" Value="0" />
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Padding="8,6"
-                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
-                                AutomationProperties.HelpText="{Binding State}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="23"
-                                        Height="23"
-                                        VerticalAlignment="Top"
-                                        Background="{DynamicResource ThreeD.CommandBarBrush}"
-                                        CornerRadius="12">
-                                    <TextBlock HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               FontSize="9.5"
-                                               FontWeight="Bold"
-                                               Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                               Text="{Binding Order}" />
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Canvas />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Width" Value="160" />
+                    <Setter Property="HorizontalAlignment" Value="Left" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Margin" Value="0" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border MinHeight="124"
+                            Padding="6,7"
+                            CornerRadius="3"
+                            AutomationProperties.Name="{Binding FlowNodeStatusLabel}"
+                            AutomationProperties.HelpText="{Binding State}"
+                             ToolTip="{Binding Id}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,9,0,0">
+                                <Border BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Input, Korean='입력', English='Input'}" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="7,0,0,0">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock FontSize="10.5"
-                                                   FontWeight="SemiBold"
-                                                   Text="{Binding ToolName}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="1"
-                                                   Margin="6,0,0,0"
-                                                   FontSize="9"
-                                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                                   Text="{Binding CanonicalStateLabel}" />
-                                    </Grid>
-                                    <TextBlock Margin="0,2,0,0"
-                                               FontSize="9"
-                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                               Text="{Binding Id}"
-                                               TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
+                                <ItemsControl ItemsSource="{Binding FlowInputs}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button x:Name="StepInputPort" Margin="0,3,0,0"
+                                                    HorizontalContentAlignment="Left" Style="{StaticResource RecipeFlowPortButtonStyle}"
+                                                    Command="{Binding DataContext.ConnectFlowOutputCommand, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.AutomationId="RecipeStepInputPort"
+                                                    AutomationProperties.Name="{Binding AccessibleName}" ToolTip="{Binding EntityId}">
+                                                <StackPanel>
+                                                    <TextBlock FontSize="12" Text="{Binding Label}" TextWrapping="Wrap" />
+                                                    <TextBlock FontSize="12" Text="{Binding ContractDisplay}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                               Visibility="{Binding HasContractDetail, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Margin="0,6,0,0" Padding="0,4,0,0" FontSize="12" HorizontalAlignment="Right"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Output, Korean='출력', English='Output'}" />
+                            </StackPanel>
+                            <Button x:Name="StepOutputPort"
+                                    Grid.Row="2"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,3,0,0"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource RecipeFlowPortButtonStyle}"
+                                    Command="{Binding DataContext.BeginFlowConnectionCommand, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}"
+                                    CommandParameter="{Binding OutputEntityId}"
+                                    ToolTip="{Binding DataContext.Localization.FlowConnectionOutputPortHelp, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}"
+                                    AutomationProperties.AutomationId="RecipeStepOutputPort"
+                                    AutomationProperties.Name="{Binding DataContext.Localization.FlowConnectionOutputPort, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}"
+                                    AutomationProperties.HelpText="{Binding DataContext.Localization.FlowConnectionOutputPortHelp, RelativeSource={RelativeSource AncestorType={x:Type workbench:RecipeChainView}}}">
+                                <TextBlock FontSize="12"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           TextWrapping="Wrap"
+                                           ToolTip="{Binding OutputPortDetail}"
+                                           AutomationProperties.HelpText="{Binding OutputPortDetail}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{Binding OutputContractDisplay}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding OutputContract}" Value="MeasurementResult">
+                                                    <Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Workspace.FlowMeasurementOutput, Korean='측정값', English='Measurement value'}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Button>
+                            <Border Width="23"
+                                    Height="23"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource ThreeD.CommandBarBrush}"
+                                    CornerRadius="12">
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                           Text="{Binding Order}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
+                                <TextBlock FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding ToolName}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
             </ListBox>
+                </Grid>
+            </ScrollViewer>
+
+            <Border x:Name="RecipeFlowHint"
+                    Grid.Row="3"
+                    MinHeight="49"
+                    Padding="10,8"
+                    Background="{DynamicResource ThreeD.CommandBarBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="0,1,0,0"
+                    Visibility="{Binding HasPendingFlowConnection, Converter={StaticResource BoolToVisibilityConverter}}"
+                    AutomationProperties.AutomationId="RecipeFlowHint">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding FlowConnectionMessage}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <ui:Button Grid.Column="1"
+                               Margin="8,0,0,0"
+                               Padding="7,3"
+                               Content="{Binding Localization.FlowConnectionCancel}"
+                               Command="{Binding CancelFlowConnectionCommand}"
+                               Visibility="{Binding HasPendingFlowConnection, Converter={StaticResource BoolToVisibilityConverter}}"
+                               AutomationProperties.Name="{Binding Localization.FlowConnectionCancel}" />
+                </Grid>
+            </Border>
 
             <Border Grid.Row="4"
                     Margin="0,7,0,0"
@@ -359,19 +701,19 @@
                             Visibility="{Binding HasThicknessRepeatGroup, Converter={StaticResource BoolToVisibilityConverter}}"
                             AutomationProperties.AutomationId="ThicknessRepeatGroup">
                         <StackPanel>
-                            <TextBlock FontSize="10.5"
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                        Text="{Binding ThicknessRepeatGroupSummary}" />
                             <TextBlock Margin="0,2,0,0"
-                                       FontSize="8.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{Binding ThicknessRepeatGroupMembers}"
                                        TextTrimming="CharacterEllipsis"
                                        ToolTip="{Binding ThicknessRepeatGroupMembers}" />
                         </StackPanel>
                     </Border>
-                    <TextBlock FontSize="10.5"
+                    <TextBlock FontSize="12"
                                FontWeight="SemiBold"
                                Text="{Binding SelectedPipelineStepTitle}"
                                TextTrimming="CharacterEllipsis" />

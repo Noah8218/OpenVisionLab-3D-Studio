@@ -1,5 +1,7 @@
+using System.IO;
 using System.Threading;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Coordination;
@@ -33,30 +35,49 @@ internal sealed class ShellWorkbenchRecipeSourceCoordinator
         ToolWorkbenchFirstRecipeSetup setup,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (setup.IsCompatibleSourceVariant)
+        {
+            try
+            {
+                // A failed copy must not replace the current Viewer input.
+                var binding = await Task.Run(() => ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(setup.SourcePath), cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                return new ShellWorkbenchNewRecipeSourceResult(true, binding, null);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException or OverflowException)
+            {
+                return new ShellWorkbenchNewRecipeSourceResult(false, null, workbench.Localization.SourceUnreadable);
+            }
+        }
+
         var sourceLoaded = sourceLoad.IsViewerSourceAlreadyLoaded(setup.SourcePath)
             || await sourceLoad.LoadWorkbenchC3DSourceAsync(
                 setup.SourcePath,
                 bindToWorkbench: false,
                 cancellationToken: cancellationToken);
-        if (!sourceLoaded)
+        return sourceLoaded ? ShellWorkbenchNewRecipeSourceResult.Ready : ShellWorkbenchNewRecipeSourceResult.NotReady;
+    }
+
+    public async Task<ShellWorkbenchOpenedRecipeSourceResult> ApplyCreatedVariantSourceAsync(CancellationToken cancellationToken)
+    {
+        var path = workbench.Source.Path;
+        var loaded = await sourceLoad.LoadWorkbenchC3DSourceAsync(path, showFailureDialog: false, bindToWorkbench: false, cancellationToken);
+        if (workbench.IsDisposed) return ShellWorkbenchOpenedRecipeSourceResult.NotReady;
+
+        if (!loaded || !sourceLoad.TryGetCurrentC3DSourceBinding(path, out var binding)
+            || workbench.SourceSession.SourceBinding is not { } expected
+            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expected, binding))
         {
-            return ShellWorkbenchNewRecipeSourceResult.NotReady;
+            var message = loaded ? workbench.Localization.SourceIdentityMismatch : workbench.Localization.SourceUnreadable;
+            sourceLoad.ClearC3DTeachingSource(message);
+            updateSampleVisible(false);
+            return new ShellWorkbenchOpenedRecipeSourceResult(false, message);
         }
 
-        if (!setup.IsCompatibleSourceVariant)
-        {
-            return ShellWorkbenchNewRecipeSourceResult.Ready;
-        }
-
-        if (!sourceLoad.TryGetCurrentC3DSourceBinding(setup.SourcePath, out var variantBinding))
-        {
-            return new ShellWorkbenchNewRecipeSourceResult(
-                false,
-                null,
-                workbench.Localization.SourceUnreadable);
-        }
-
-        return new ShellWorkbenchNewRecipeSourceResult(true, variantBinding, null);
+        teaching.SyncAppliedSelections();
+        updateSampleVisible(false);
+        return ShellWorkbenchOpenedRecipeSourceResult.Ready;
     }
 
     public ShellWorkbenchOpenedRecipeSourceResult ApplyOpenedRecipeSource()

@@ -5,6 +5,7 @@ using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Recipe;
+using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Windows;
@@ -48,6 +49,8 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
     private readonly WorkbenchViewerTeachingCoordinator _workbenchViewerTeaching;
     private readonly ShellWorkbenchLifecycleCallbacks _callbacks;
     private RecipeManagerWindow? _recipeManagerWindow;
+    private double? recipeManagerOwnerOpacityBeforeShow;
+    private bool? recipeManagerOwnerEnabledBeforeShow;
     private readonly ShellWorkbenchSourceLoadCoordinator _sourceLoadCoordinator;
     private readonly ShellWorkbenchRecipeSourceCoordinator _recipeSourceCoordinator;
     private readonly ShellWorkbenchRequestOwner _recipeLifecycleRequestOwner;
@@ -75,6 +78,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             _workbenchViewerTeaching,
             _viewModel.UpdateC3DSampleVisible);
         _recipeLifecycleRequestOwner = new(ReportRecipeLifecycleRequestFailure);
+        _viewModel.Workbench.FirstRecipeSetupRequested += OnFirstRecipeSetupRequested;
     }
 
     public RecipeManagerWindow? RecipeManagerWindow => _recipeManagerWindow;
@@ -103,15 +107,54 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
                 DataContext = _viewModel.Workbench
             };
             _recipeManagerWindow.Closed += OnRecipeManagerWindowClosed;
+            _recipeManagerWindow.Closing += OnRecipeManagerWindowClosing;
         }
 
-        _recipeManagerWindow.Show();
-        _recipeManagerWindow.Activate();
+        if (!_recipeManagerWindow.IsVisible)
+        {
+            recipeManagerOwnerOpacityBeforeShow = _owner.Opacity;
+            recipeManagerOwnerEnabledBeforeShow = _owner.IsEnabled;
+            _owner.Opacity = 0.4;
+            _owner.IsEnabled = false;
+        }
+
+        try
+        {
+            _viewModel.Workbench.SelectDefaultRecentRecipeIfNeeded();
+            _recipeManagerWindow.Show();
+            _recipeManagerWindow.Activate();
+        }
+        catch
+        {
+            if (!_recipeManagerWindow.IsVisible)
+            {
+                RestoreRecipeManagerOwnerState();
+            }
+
+            throw;
+        }
     }
 
     public void CloseRecipeManager() => _recipeManagerWindow?.Close();
 
-    public void HideRecipeManager() => _recipeManagerWindow?.Hide();
+    private void OnFirstRecipeSetupRequested(object? sender, EventArgs args)
+    {
+        if (_owner.IsVisible)
+        {
+            ShowRecipeManagerWindow();
+        }
+    }
+
+    public void HideRecipeManager()
+    {
+        if (_recipeManagerWindow is not { IsVisible: true } window)
+        {
+            return;
+        }
+
+        window.Hide();
+        RestoreRecipeManagerOwnerState();
+    }
 
     public Task<bool> LoadWorkbenchC3DSourceAsync(
         string path,
@@ -161,6 +204,8 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
     public void LoadC3DSourceRequested(object? sender, EventArgs args) =>
         _sourceLoadCoordinator.LoadC3DSourceRequested(sender, args);
+    public void UseSelectedInspectionInputForTeachingRequested(object? sender, InspectionQueueSelectionChangedEventArgs args) =>
+        _sourceLoadCoordinator.UseSelectedInspectionInputForTeachingRequested(sender, args);
 
     public void Import3DDataRequested(object? sender, EventArgs args) =>
         _sourceLoadCoordinator.Import3DDataRequested(sender, args);
@@ -266,23 +311,22 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             return;
         }
 
-        var sourcePreparation = await _recipeSourceCoordinator.PrepareNewRecipeSourceAsync(
-            setup,
-            cancellationToken);
-        if (!sourcePreparation.IsReady)
-        {
-            if (sourcePreparation.FailureMessage is not null)
-            {
-                _callbacks.ShowFirstRecipeCreateFailure(sourcePreparation.FailureMessage);
-            }
-
-            return;
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (setup.IsCompatibleSourceVariant)
         {
+            var sourcePreparation = await _recipeSourceCoordinator.PrepareNewRecipeSourceAsync(
+                setup,
+                cancellationToken);
+            if (!sourcePreparation.IsReady)
+            {
+                if (sourcePreparation.FailureMessage is not null)
+                {
+                    _callbacks.ShowFirstRecipeCreateFailure(sourcePreparation.FailureMessage);
+                }
+
+                return;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
             if (sourcePreparation.VariantBinding is not { } variantBinding)
             {
                 _callbacks.ShowFirstRecipeCreateFailure(_viewModel.Workbench.Localization.SourceUnreadable);
@@ -295,31 +339,54 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             }
             _viewModel.ClearCurrentRunEvidenceForRecipeContext();
             _viewModel.Workbench.CompleteFirstRecipeSetup(out _);
+            var variantSource = await _recipeSourceCoordinator.ApplyCreatedVariantSourceAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             ActivateWorkbenchAfterRecipeLifecycle();
+            if (!variantSource.IsReady && variantSource.FailureMessage is { } loadFailure)
+            {
+                _callbacks.ShowRecipeSourceLoadFailure(loadFailure);
+            }
             return;
         }
 
-        _viewModel.Workbench.CreateNewTeachingRecipe(setup.RecipeName);
+        if (!_viewModel.Workbench.TryCreateEmptyTeachingRecipe(setup, out var createMessage))
+        {
+            _callbacks.ShowRecipeSaveFailure(createMessage);
+            return;
+        }
+
         _viewModel.ClearCurrentRunEvidenceForRecipeContext();
-        SetWorkbenchC3DSourceFromViewer(setup.SourcePath);
-        if (!_viewModel.Workbench.TryApplyFirstRecipeStarter(setup.StarterId, out var starterMessage))
-        {
-            _callbacks.ShowFirstRecipeCreateFailure(starterMessage);
-            return;
-        }
-        if (!_viewModel.Workbench.TrySaveTeachingRecipe(setup.RecipePath, out var message))
-        {
-            _callbacks.ShowRecipeSaveFailure(message);
-            return;
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
+        _recipeSourceCoordinator.ApplyOpenedRecipeSource();
         if (!_viewModel.Workbench.CompleteFirstRecipeSetup(out var persistenceMessage))
         {
             _callbacks.ShowFirstRecipeSetupPersistenceFailure(persistenceMessage);
         }
+
         ActivateWorkbenchAfterRecipeLifecycle();
+        if (string.IsNullOrWhiteSpace(setup.SourcePath))
+        {
+            return;
+        }
+
+        var inputPreparation = await _recipeSourceCoordinator.PrepareNewRecipeSourceAsync(
+            setup,
+            cancellationToken);
+        if (!inputPreparation.IsReady)
+        {
+            if (inputPreparation.FailureMessage is not null)
+            {
+                _callbacks.ShowFirstRecipeCreateFailure(inputPreparation.FailureMessage);
+            }
+
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        SetWorkbenchC3DSourceFromViewer(setup.SourcePath);
+        if (!_viewModel.Workbench.TryApplyFirstRecipeStarter(setup.StarterId, out var starterMessage))
+        {
+            _callbacks.ShowFirstRecipeCreateFailure(starterMessage);
+        }
     }
 
     public void BrowseFirstRecipeFolderRequested(object? sender, EventArgs args)
@@ -371,7 +438,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
     {
         if (TryResolveWorkbenchChanges("opening a recent recipe"))
         {
-            OpenWorkbenchRecipe(args.Path);
+            OpenWorkbenchRecipe(args.Path, args.OpenForInspection);
         }
     }
 
@@ -396,6 +463,9 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
     }
 
     public void OpenWorkbenchRecipe(string path)
+        => OpenWorkbenchRecipe(path, openForInspection: false);
+
+    private void OpenWorkbenchRecipe(string path, bool openForInspection)
     {
         if (!File.Exists(path))
         {
@@ -423,11 +493,22 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             {
                 _callbacks.ShowRecipeSourceLoadFailure(sourceApplication.FailureMessage);
             }
+            return;
+        }
+
+        if (openForInspection && _viewModel.Workbench.RunTeachingRecipeCommand.CanExecute(null))
+        {
+            _viewModel.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
         }
     }
 
     public bool TryResolveWorkbenchChanges(string reason)
     {
+        if (_viewModel.Workbench.HasPendingOrderedRunRecordSave)
+        {
+            _callbacks.ShowRecipeSaveFailure(_callbacks.DialogText("ThreeD.Dialog.PendingRunRecord", "검사 기록 저장에 실패한 계산 결과가 남아 있습니다. '기록 저장 재시도'로 저장한 뒤 다시 진행하세요.", "An inspection result is waiting for its Run Record to be saved. Retry saving the record before continuing."));
+            return false;
+        }
         if (!TryResolveParameterDraft()
             || (!_viewModel.Workbench.IsDirty && !_viewModel.Workbench.IsValidationSetDefinitionDirty))
         {
@@ -500,7 +581,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
     private void ActivateWorkbenchAfterRecipeLifecycle()
     {
-        _recipeManagerWindow?.Hide();
+        HideRecipeManager();
         _callbacks.ActivateWorkbench();
     }
 
@@ -520,13 +601,16 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             return;
         }
 
+        _viewModel.Workbench.FirstRecipeSetupRequested -= OnFirstRecipeSetupRequested;
         _sourceLoadCoordinator.Dispose();
         _recipeLifecycleRequestOwner.Dispose();
         var window = _recipeManagerWindow;
         _recipeManagerWindow = null;
+        RestoreRecipeManagerOwnerState();
         if (window is not null)
         {
             window.Closed -= OnRecipeManagerWindowClosed;
+            window.Closing -= OnRecipeManagerWindowClosing;
             window.CloseForOwner();
         }
 
@@ -535,9 +619,39 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
     private void OnRecipeManagerWindowClosed(object? sender, EventArgs args)
     {
+        if (sender is RecipeManagerWindow window)
+        {
+            window.Closed -= OnRecipeManagerWindowClosed;
+            window.Closing -= OnRecipeManagerWindowClosing;
+        }
+
         if (ReferenceEquals(_recipeManagerWindow, sender))
         {
             _recipeManagerWindow = null;
+            RestoreRecipeManagerOwnerState();
+        }
+    }
+
+    private void OnRecipeManagerWindowClosing(object? sender, CancelEventArgs args)
+    {
+        if (ReferenceEquals(_recipeManagerWindow, sender) && args.Cancel)
+        {
+            RestoreRecipeManagerOwnerState();
+        }
+    }
+
+    private void RestoreRecipeManagerOwnerState()
+    {
+        if (recipeManagerOwnerOpacityBeforeShow is { } opacity)
+        {
+            _owner.Opacity = opacity;
+            recipeManagerOwnerOpacityBeforeShow = null;
+        }
+
+        if (recipeManagerOwnerEnabledBeforeShow is { } isEnabled)
+        {
+            _owner.IsEnabled = isEnabled;
+            recipeManagerOwnerEnabledBeforeShow = null;
         }
     }
 

@@ -115,6 +115,8 @@ public sealed record ViewerHostState(
     /// Reports mesh and point-cloud visibility without exposing the concrete
     /// Viewer ViewModel to a host.
     /// </summary>
+    public bool IsTeachingCaptureActive { get; init; }
+
     public bool GlbSampleVisible { get; init; }
 
     public bool LazSampleVisible { get; init; }
@@ -315,6 +317,11 @@ public sealed record ViewerHostSelectionState(
     public string Summary { get; init; } = string.Empty;
 }
 
+public sealed record ViewerHeightProfileCell(string SourceSha256, int Row, int Column, int Endpoint = 0);
+public sealed record ViewerHeightProfileTraceCell(int Row, int Column);
+
+public enum ViewerHeightProfileAction { Begin, Repick, Swap, Clear, Cancel, ToggleCollapsed, SelectA, SelectB, Left, Right, Up, Down }
+
 public sealed record ViewerHostProfileState(
     bool Visible,
     string Summary,
@@ -330,6 +337,19 @@ public sealed record ViewerHostProfileState(
     double LinkedCursorMarkerTop,
     string LinkedCursorSummary)
 {
+    public string SourceSha256 { get; init; } = string.Empty;
+    public bool IsActive { get; init; }
+    public int? FirstRow { get; init; }
+    public int? FirstColumn { get; init; }
+    public int? SecondRow { get; init; }
+    public int? SecondColumn { get; init; }
+    public IReadOnlyList<ViewerHeightProfileTraceCell> Trace { get; init; } = Array.Empty<ViewerHeightProfileTraceCell>();
+    public bool IsCollapsed { get; init; }
+    public bool HasEndpoints { get; init; }
+    public bool IsPicking { get; init; }
+    public string GridDistance { get; init; } = "—";
+    public string HeightDelta { get; init; } = "—";
+
     public static ViewerHostProfileState Empty { get; } = new(
         Visible: false,
         Summary: "Profile: choose P1 and P2 on the C3D height grid.",
@@ -368,6 +388,7 @@ public sealed record ViewerHostPresentationState(
     double C3DHeightColorMinimumRaw,
     double C3DHeightColorMaximumRaw,
     bool C3DHeightColorRangeAuto,
+    int C3DHeightEmphasis,
     int C3DHeightColorRangeRevision,
     string C3DHeightColorRangeSummary)
 {
@@ -378,6 +399,7 @@ public sealed record ViewerHostPresentationState(
         C3DHeightColorMinimumRaw: double.NaN,
         C3DHeightColorMaximumRaw: double.NaN,
         C3DHeightColorRangeAuto: true,
+        C3DHeightEmphasis: 1,
         C3DHeightColorRangeRevision: 0,
         C3DHeightColorRangeSummary: "Height color range: not loaded");
 
@@ -485,6 +507,10 @@ public interface IOpenVisionThreeDViewerHost
 
     bool TrySetSelectionMode(string selectionMode);
 
+    bool TryRequestHeightProfile(ViewerHeightProfileAction action) => false;
+    bool TryPickHeightProfileCell(ViewerHeightProfileCell cell) => false;
+    bool TrySetHeightProfileCursor(double progress) => false;
+
     bool TrySetSelectionOverlayVisible(bool visible);
 
     bool TrySetHudDetailsVisible(bool visible);
@@ -510,6 +536,8 @@ public interface IOpenVisionThreeDViewerHost
     bool TryResetC3DHeightColorRange();
 
     bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum);
+
+    bool TrySetC3DHeightEmphasis(int emphasis);
 
     void FitAll();
 

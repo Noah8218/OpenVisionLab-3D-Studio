@@ -55,6 +55,30 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
                 fixture.TransactionDirectory(passHandoff),
                 IntegrationTransactionLayout.ArtifactsDirectoryName,
                 "3d-run-record.json")));
+        var passResult = ThreeDIntegrationV2Exchange.ReadResult(
+            fixture.Root,
+            passHandoff.TransactionId);
+        var imagePreview = Assert.Single(
+            passResult.Evidence,
+            evidence => string.Equals(
+                evidence.Role,
+                IntegrationArtifactRoles.ResultEvidence,
+                StringComparison.Ordinal));
+        var imagePreviewPath = Path.Combine(
+            fixture.TransactionDirectory(passHandoff),
+            imagePreview.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+        Assert.True(File.Exists(imagePreviewPath));
+        Assert.Equal(
+            [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+            File.ReadAllBytes(imagePreviewPath)[..8]);
+        Assert.Equal(
+            fixture.SourceWidth,
+            System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(
+                File.ReadAllBytes(imagePreviewPath).AsSpan(16, 4)));
+        Assert.Equal(
+            fixture.SourceHeight,
+            System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(
+                File.ReadAllBytes(imagePreviewPath).AsSpan(20, 4)));
         Assert.Equal(
             IntegrationInspectionOutcome.Ng,
             ThreeDIntegrationV2Exchange.ReadResult(
@@ -174,6 +198,10 @@ public sealed class ThreeDIntegrationHeightMapRunnerTests
         }
 
         public string Root { get; }
+
+        public int SourceWidth => 3;
+
+        public int SourceHeight => 3;
 
         public IntegrationHandoffV2 CreateHandoff(
             string caseName,

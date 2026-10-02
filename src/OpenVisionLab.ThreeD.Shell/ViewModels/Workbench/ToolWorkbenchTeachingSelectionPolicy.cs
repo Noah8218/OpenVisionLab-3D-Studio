@@ -90,6 +90,12 @@ internal static class ToolWorkbenchTeachingSelectionPolicy
                 3,
                 true,
                 "Pick three or more ordered grid vertices. This slice stores the outline only; no mask or inspection is generated."),
+            "grid-polygon-domain" => new(
+                "Inspection domain polygon",
+                string.Empty,
+                3,
+                true,
+                "Pick three or more ordered grid vertices. Preview publishes a source-bound authored domain; it does not change source heights."),
             "landmark-correspondence" => new(
                 "Landmark correspondences",
                 string.Empty,

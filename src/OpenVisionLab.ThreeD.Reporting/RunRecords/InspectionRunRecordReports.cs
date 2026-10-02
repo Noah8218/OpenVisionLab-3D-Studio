@@ -406,7 +406,8 @@ public static class InspectionRunRecordReports
             return;
         }
         var lines = new List<string> { "runId,recordedAtUtc,tool,stepId,stepSourceEntityId,stepReferenceIds,stepMeasurementIds,status,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,applicationName,applicationVersion,viewerHostApiVersion,gitCommit,gitWorkingTree,dotNetRuntime,operatingSystem,processArchitecture" };
-        lines.AddRange(record.Metrics.Select(metric => string.Join(',',
+        IEnumerable<InspectionRunMetric?> metrics = record.Metrics.Count == 0 ? Enumerable.Repeat<InspectionRunMetric?>(null, 1) : record.Metrics;
+        lines.AddRange(metrics.Select(metric => string.Join(',',
             Csv(record.RunId),
             Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
             Csv(record.ToolName),
@@ -415,11 +416,11 @@ public static class InspectionRunRecordReports
             Csv(record.Step is null ? string.Empty : FormatIds(record.Step.ReferenceIds)),
             Csv(record.Step is null ? string.Empty : FormatIds(record.Step.MeasurementIds)),
             Csv(record.Status.ToString()),
-            Csv(metric.Name),
-            Csv(metric.Kind.ToString()),
-            Csv(Format(metric.Value)),
-            Csv(metric.Unit),
-            Csv(metric.Status?.ToString() ?? string.Empty),
+            Csv(metric?.Name ?? string.Empty),
+            Csv(metric?.Kind.ToString() ?? string.Empty),
+            Csv(metric is null ? string.Empty : Format(metric.Value)),
+            Csv(metric?.Unit ?? string.Empty),
+            Csv(metric?.Status?.ToString() ?? string.Empty),
             Csv(record.Recipe.Sha256),
             Csv(record.Source.Sha256),
             Csv(record.ViewerRunnerMatchState),

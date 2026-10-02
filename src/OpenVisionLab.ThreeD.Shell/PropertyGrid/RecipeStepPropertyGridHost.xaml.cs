@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -24,6 +26,15 @@ public partial class RecipeStepPropertyGridHost : UserControl
         typeof(ICommand),
         typeof(RecipeStepPropertyGridHost),
         new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ShowAdvancedParametersProperty = DependencyProperty.Register(
+        nameof(ShowAdvancedParameters), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(true, OnSelectedObjectChanged));
+
+    public bool ShowAdvancedParameters
+    {
+        get => (bool)GetValue(ShowAdvancedParametersProperty);
+        set => SetValue(ShowAdvancedParametersProperty, value);
+    }
 
     public RecipeStepPropertyGridHost()
     {
@@ -57,13 +68,42 @@ public partial class RecipeStepPropertyGridHost : UserControl
 
     public bool HasCategories => InnerGrid.HasCategories;
 
-    public void SetPropertyFilter(string value) => InnerGrid.PropertyFilter = value;
+    public void SetPropertyFilter(string value)
+    {
+        PropertyFilterBox.Text = value;
+        InnerGrid.PropertyFilter = value;
+    }
+
+    public bool FocusInvalidEditor()
+    {
+        FlushPendingSelectedObjectRefresh();
+        SetPropertyFilter(string.Empty);
+        InnerGrid.ApplyTemplate();
+        InnerGrid.UpdateLayout();
+        var editors = FindVisualChildren<Control>(InnerGrid).Where(control => control.IsVisible && control.IsEnabled && control.Focusable
+            && control is TextBox { IsReadOnly: false } or ComboBox or ToggleButton).ToArray();
+        var target = editors.FirstOrDefault(Validation.GetHasError) ?? editors.FirstOrDefault();
+        if (target is null) return false;
+        target.BringIntoView();
+        return target.Focus();
+    }
+
+    public void ScrollToTop()
+    {
+        InnerGrid.ApplyTemplate();
+        InnerGrid.UpdateLayout();
+        foreach (var scrollViewer in FindVisualChildren<ScrollViewer>(InnerGrid))
+        {
+            scrollViewer.ScrollToTop();
+        }
+    }
 
     public bool CommitPendingEdit(out string message)
     {
         FlushPendingSelectedObjectRefresh();
         InnerGrid.ApplyTemplate();
         InnerGrid.UpdateLayout();
+        EnsureNumericEditorValidation();
         foreach (var textBox in FindVisualChildren<TextBox>(InnerGrid))
         {
             textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
@@ -80,9 +120,11 @@ public partial class RecipeStepPropertyGridHost : UserControl
             toggle.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
         }
 
-        if (FindVisualChildren<FrameworkElement>(InnerGrid).Any(Validation.GetHasError))
+        if (FindVisualChildren<FrameworkElement>(InnerGrid).FirstOrDefault(Validation.GetHasError) is { } invalidEditor)
         {
-            message = "Correct the highlighted PropertyGrid value before applying.";
+            FocusInvalidEditor();
+            message = Validation.GetErrors(invalidEditor).FirstOrDefault()?.ErrorContent?.ToString()
+                ?? "Correct the highlighted PropertyGrid value before applying.";
             return false;
         }
 
@@ -149,10 +191,84 @@ public partial class RecipeStepPropertyGridHost : UserControl
 
     private void RefreshSelectedObject()
     {
+        // WPG caches descriptors by type; this wrapper changes visible fields per instance.
+        System.Windows.Controls.WpfPropertyGrid.MetadataRepository.Clear();
         InnerGrid.SelectedObject = null;
         if (SelectedObject is not null)
         {
-            InnerGrid.SelectedObject = LocalizedPropertyGridObject.Create(SelectedObject);
+            InnerGrid.SelectedObject = LocalizedPropertyGridObject.Create(SelectedObject, ShowAdvancedParameters);
+        }
+        PropertySearchRow.Visibility = VisiblePropertyCount > 6 ? Visibility.Visible : Visibility.Collapsed;
+        if (PropertySearchRow.Visibility == Visibility.Collapsed) PropertyFilterBox.SetCurrentValue(TextBox.TextProperty, string.Empty);
+        InnerGrid.UpdateLayout();
+        WrapPropertyContent();
+    }
+
+    private void OnReadOnlyEditorsLoaded(object sender, RoutedEventArgs args) => WrapPropertyContent();
+
+    private void WrapPropertyContent()
+    {
+        EnsureNumericEditorValidation();
+        foreach (var caption in FindVisualChildren<TextBlock>(InnerGrid).Where(text => text.GetType().Name == "PropertyNameTextBlock"))
+        {
+            caption.SetCurrentValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+            caption.SetCurrentValue(TextBlock.TextTrimmingProperty, TextTrimming.None);
+        }
+        foreach (var combo in FindVisualChildren<ComboBox>(InnerGrid))
+        {
+            combo.SetCurrentValue(ItemsControl.ItemTemplateProperty, (DataTemplate)Resources["LocalizedEnumOptionTemplate"]);
+            if (combo.IsEnabled)
+            {
+                // WPG can cache the closed caption before its localized item template is assigned.
+                foreach (var presenter in FindVisualChildren<ContentPresenter>(combo).Where(presenter => Equals(presenter.Content, combo.SelectionBoxItem)))
+                    presenter.SetBinding(ContentPresenter.ContentTemplateProperty, new Binding(nameof(ComboBox.ItemTemplate)) { Source = combo });
+                continue;
+            }
+            combo.SetCurrentValue(Control.TemplateProperty, (ControlTemplate)Resources["ReadOnlyEnumTemplate"]);
+            combo.SetCurrentValue(HeightProperty, double.NaN);
+        }
+        foreach (var textBox in FindVisualChildren<TextBox>(InnerGrid).Where(editor => editor.IsReadOnly || !editor.IsEnabled))
+        {
+            var property = TypeDescriptor.GetProperties(InnerGrid.SelectedObject)[System.Windows.Automation.AutomationProperties.GetAutomationId(textBox)];
+            if (property?.IsReadOnly == true && property.PropertyType == typeof(string) && LocalizedPropertyGridObject.LocalizeOption(textBox.Text) != textBox.Text)
+                textBox.SetCurrentValue(Control.TemplateProperty, (ControlTemplate)Resources["ReadOnlyPolicyTemplate"]);
+            textBox.SetCurrentValue(TextBox.TextWrappingProperty, TextWrapping.Wrap);
+            textBox.SetCurrentValue(HeightProperty, double.NaN);
+        }
+    }
+
+    private void EnsureNumericEditorValidation()
+    {
+        foreach (var editor in FindVisualChildren<TextBox>(InnerGrid).Where(editor => !editor.IsReadOnly))
+        {
+            var expression = editor.GetBindingExpression(TextBox.TextProperty);
+            if (expression?.DataItem is System.Windows.Controls.WpfPropertyGrid.PropertyItemValue item
+                && (item.ParentProperty.PropertyType == typeof(int) || item.ParentProperty.PropertyType == typeof(double))
+                && !expression.ParentBinding.ValidationRules.OfType<NumericTextValidationRule>().Any())
+                expression.ParentBinding.ValidationRules.Add(new NumericTextValidationRule());
+        }
+    }
+
+    private sealed class NumericTextValidationRule() : ValidationRule(ValidationStep.RawProposedValue, validatesOnTargetUpdated: false)
+    {
+        public override ValidationResult Validate(object value, CultureInfo cultureInfo) => ValidationResult.ValidResult;
+
+        public override ValidationResult Validate(object value, CultureInfo cultureInfo, BindingExpressionBase owner)
+        {
+            if (owner is not BindingExpression { DataItem: System.Windows.Controls.WpfPropertyGrid.PropertyItemValue item }) return ValidationResult.ValidResult;
+            var property = item.ParentProperty;
+            if (property.IsReadOnly || (property.PropertyType != typeof(int) && property.PropertyType != typeof(double))) return ValidationResult.ValidResult;
+            try
+            {
+                // WPG shares template bindings; use this update's actual row and its existing converter/culture.
+                property.Converter.ConvertFromString(null, CultureInfo.CurrentCulture, (string)value);
+                return ValidationResult.ValidResult;
+            }
+            catch (Exception exception) when (exception is ArgumentException or FormatException or OverflowException)
+            {
+                var reason = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.Korean ? "올바른 숫자를 입력하세요." : "Enter a valid numeric value.";
+                return new ValidationResult(false, $"{property.DisplayName}: {reason}");
+            }
         }
     }
 
@@ -181,6 +297,19 @@ public partial class RecipeStepPropertyGridHost : UserControl
         }
 
         args.Handled = true;
+    }
+
+    private void OnInnerGridLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs args)
+    {
+        if (args.OriginalSource is UIElement editor) CommitFocusedEditor(editor);
+    }
+
+    private void OnInnerGridEditorTextChanged(object sender, TextChangedEventArgs args)
+    {
+        if (args.OriginalSource is TextBox { IsKeyboardFocused: true } editor
+            && editor.GetBindingExpression(TextBox.TextProperty) is not null
+            && PropertyValueChangedCommand?.CanExecute(null) == true)
+            PropertyValueChangedCommand.Execute(null);
     }
 
     private bool TryMoveFocusWithinPropertyGrid(

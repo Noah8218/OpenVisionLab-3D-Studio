@@ -217,9 +217,11 @@ internal static class ViewerPropertyChangePolicyVerification
             "host map groups presentation state",
             ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.HudDetailsVisible))
                 == nameof(ViewerHostState.Presentation)
+            && ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.C3DHeightEmphasis))
+                == nameof(ViewerHostState.Presentation)
             && ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.C3DHeightColorRangeRevision))
                 == nameof(ViewerHostState.Presentation),
-            $"hud={ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.HudDetailsVisible)) ?? "(null)"}|range={ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.C3DHeightColorRangeRevision)) ?? "(null)"}");
+            $"hud={ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.HudDetailsVisible)) ?? "(null)"}|emphasis={ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.C3DHeightEmphasis)) ?? "(null)"}|range={ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.C3DHeightColorRangeRevision)) ?? "(null)"}");
         Check(
             "host map groups ViewerPresentationBar display state",
             ViewerHostStatePropertyMap.Map(nameof(MainWindowViewModel.SelectedColorMode))
@@ -659,6 +661,7 @@ internal static class ViewerPropertyChangePolicyVerification
                 C3DHeightColorMinimumRaw: 0,
                 C3DHeightColorMaximumRaw: 1,
                 C3DHeightColorRangeAuto: false,
+                C3DHeightEmphasis: 1,
                 C3DHeightColorRangeRevision: 1,
                 C3DHeightColorRangeSummary: "fixture range")
             {
@@ -793,6 +796,8 @@ internal static class ViewerPropertyChangePolicyVerification
         }
 
         public bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum) => true;
+
+        public bool TrySetC3DHeightEmphasis(int emphasis) => emphasis is 1 or 2 or 3 or 5;
 
         public void FitAll()
         {

@@ -10,6 +10,7 @@ using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Tooling;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts;
@@ -68,6 +69,7 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
         var smoke = ShellSmokeCommandLineOptions.Parse(context.CommandLineArguments);
         var shellScreenshotPath = smoke.ShellScreenshotPath;
         var screenshotQualityReportPath = smoke.ScreenshotQualityReportPath;
+        var runRecordComparisonPath = smoke.RunRecordComparisonPath;
         var viewerLayoutSmoke = smoke.ViewerLayoutSmoke;
         var viewerPresentationSmoke = smoke.ViewerPresentationSmoke;
         var viewerPresentationPressedSmoke = smoke.ViewerPresentationPressedSmoke;
@@ -192,6 +194,7 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
         var profilePointerSmokeReportPath = smoke.ProfilePointerSmokeReportPath;
         var orientedBoxPointerSmokeReportPath = smoke.OrientedBoxPointerSmokeReportPath;
         var smokeSelectToolId = smoke.SmokeSelectToolId;
+        var openToolLibrarySmoke = smoke.OpenToolLibrarySmoke;
         var expandSelectedToolParametersSmoke =
             smoke.ExpandSelectedToolParametersSmoke;
         var preparationPresetAssistantSmoke =
@@ -284,6 +287,32 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
                     return;
                 }
                 context.ConfigureResultsSectionFromCommandLine(context.StartupConfiguration);
+                if (!string.IsNullOrWhiteSpace(runRecordComparisonPath))
+                {
+                    var fullComparisonPath = Path.GetFullPath(runRecordComparisonPath);
+                    var comparisonItem = context.ViewModel.RecentRunRecords.FirstOrDefault(item =>
+                        string.Equals(Path.GetFullPath(item.Path), fullComparisonPath, StringComparison.OrdinalIgnoreCase));
+                    if (comparisonItem is null)
+                    {
+                        var comparisonRecord = InspectionRunRecordJson.Read(fullComparisonPath);
+                        comparisonItem = new RunRecordRecentItem(
+                            fullComparisonPath,
+                            Path.GetFileName(fullComparisonPath),
+                            comparisonRecord.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+                            comparisonRecord.Status.ToString(),
+                            comparisonRecord.Steps?.Count ?? (comparisonRecord.Step is null ? 0 : 1),
+                            true);
+                        context.ViewModel.RecentRunRecords.Insert(0, comparisonItem);
+                    }
+
+                    context.ViewModel.SelectedRecentRunRecord = comparisonItem;
+                    if (!context.ViewModel.CompareSelectedRunRecord(out var comparisonFailure))
+                    {
+                        context.ViewModel.SetViewerSmokeFailed(comparisonFailure);
+                        context.ShutdownApplication(1);
+                        return;
+                    }
+                }
                 if (!TryConfigureSurfaceMatchEvidenceFromCommandLine(
                         out var surfaceMatchFailure))
                 {
@@ -705,6 +734,14 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
                     await context.ValidationThresholdSmoke.ReassertForCaptureAsync();
                 }
 
+                if (openToolLibrarySmoke)
+                {
+                    context.Workbench.ActivateToolLibraryPane();
+                    await context.Window.Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                }
+
                 if (!await operation.DelayAsync(TimeSpan.FromMilliseconds(100)))
                 {
                     return;
@@ -812,9 +849,12 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
                 if (recipeManagerScreenshotPath is not null
                     && !ShellRecipeLifecycleSmoke.RunWindowLifetime(
                         context.WorkbenchLifecycle.ShowRecipeManagerWindow,
+                        context.WorkbenchLifecycle.HideRecipeManager,
                         context.WorkbenchLifecycle.CloseRecipeManager,
                         () => context.WorkbenchLifecycle.RecipeManagerWindow,
                         () => context.WorkbenchLifecycle.IsRecipeManagerVisible,
+                        () => context.Window.Opacity,
+                        () => context.Window.IsEnabled,
                         context.WorkbenchLifecycle.Dispose,
                         recipeManagerScreenshotQualityReportPath))
                 {

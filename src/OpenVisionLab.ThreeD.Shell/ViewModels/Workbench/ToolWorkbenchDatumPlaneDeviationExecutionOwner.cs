@@ -25,8 +25,10 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
 
     private CancellationTokenSource? previewCancellation;
     private C3DDatumPlaneDeviationFeature? previewOutput;
-    private readonly Dictionary<string, C3DDatumPlaneDeviationFeature> publishedOutputs =
-        new(StringComparer.OrdinalIgnoreCase);
+    private ToolWorkbenchPipelineStepItem? previewStep;
+    private string previewContext = string.Empty;
+    private ToolResult? previewResult;
+    private readonly Dictionary<string, (C3DDatumPlaneDeviationFeature Output, string StepId, string Context, ToolResult Result)> publishedOutputs = new(StringComparer.OrdinalIgnoreCase);
     private bool isPreviewRunning;
     private bool isPreviewStale;
     private bool isPreviewPublished;
@@ -68,10 +70,12 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
 
     public bool IsSelectedStepDatumPlaneDeviation => !IsDisposed && isSelectedStepDatumPlaneDeviation();
     public bool IsPreviewRunning => !IsDisposed && isPreviewRunning;
-    public bool HasCurrentPreview => !IsDisposed && previewOutput is not null && !isPreviewStale;
+    public bool HasCurrentPreview => !IsDisposed && ReferenceEquals(previewStep, getSelectedPipelineStep())
+        && previewOutput is not null && !isPreviewStale && IsOutputCurrent(previewOutput, previewStep!.Id, previewContext, createDocument());
     public bool IsPreviewStale => !IsDisposed && isPreviewStale;
-    public bool IsPreviewPublished => !IsDisposed && isPreviewPublished;
-    public C3DDatumPlaneDeviationFeature? CurrentOutput => IsDisposed ? null : previewOutput;
+    public bool IsPreviewPublished => isPreviewPublished && HasCurrentPreview;
+    public C3DDatumPlaneDeviationFeature? CurrentOutput => !IsDisposed && ReferenceEquals(previewStep, getSelectedPipelineStep()) ? previewOutput : null;
+    public ToolResult? CurrentResult => CurrentOutput is not null ? previewResult : null;
     public string ExecutionSummary => IsDisposed
         ? "Datum Plane Deviation execution owner has been disposed."
         : executionSummary;
@@ -120,7 +124,13 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
             return false;
         }
 
-        return publishedOutputs.TryGetValue(outputEntityId, out output);
+        if (publishedOutputs.TryGetValue(outputEntityId, out var published) && IsOutputCurrent(published.Output, published.StepId, published.Context, createDocument()))
+        {
+            output = published.Output;
+            return true;
+        }
+        output = null;
+        return false;
     }
 
     public void Dispose()
@@ -135,6 +145,9 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
+        previewResult = null;
         publishedOutputs.Clear();
         isPreviewRunning = false;
         isPreviewStale = false;
@@ -181,6 +194,10 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
             return false;
         }
 
+        var document = createDocument();
+        var context = document.CreateStepExecutionContext(step.Id);
+        var recipeDirectory = GetRecipeDirectory();
+        publishedOutputs.Remove(step.OutputEntityId);
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -196,10 +213,10 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
         {
             var evaluation = await Task.Run(
                 () => ToolRecipeDatumPlaneDeviationExecution.Execute(
-                    createDocument(),
+                    document,
                     step.Id,
                     plane,
-                    GetRecipeDirectory(),
+                    recipeDirectory,
                     cancellationToken),
                 cancellationToken);
             if (!IsCurrentPreview(currentCancellation))
@@ -207,7 +224,17 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
                 return false;
             }
 
-            if (evaluation.Output is null || evaluation.Result.Status is not (ResultStatus.Pass or ResultStatus.Fail))
+            if (!ReferenceEquals(step, getSelectedPipelineStep())
+                || !string.Equals(context, createDocument().CreateStepExecutionContext(step.Id), StringComparison.Ordinal)
+                || !string.Equals(getPublishedPlane(plane.OutputEntityId)?.ContentSha256, plane.ContentSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                isPreviewStale = previewOutput is not null;
+                step.State = "Preview stale";
+                SetSummary("Input or conditions changed. Run again for the current result.");
+                return false;
+            }
+
+            if (evaluation.Output is null || evaluation.Result.Status == ResultStatus.Error)
             {
                 if (!IsCurrentPreview(currentCancellation))
                 {
@@ -226,6 +253,9 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
             }
 
             previewOutput = evaluation.Output;
+            previewStep = step;
+            previewContext = context;
+            previewResult = evaluation.Result;
             if (!IsCurrentPreview(currentCancellation))
             {
                 return false;
@@ -310,7 +340,7 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
         }
 
         isPreviewPublished = true;
-        publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
+        publishedOutputs[previewOutput!.OutputEntityId] = (previewOutput, step.Id, previewContext, previewResult!);
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | local raw-height software result only; not physical metrology.");
         appendLog("Publish", $"Datum Plane Raw-Height Deviation output published without re-running: {step.OutputEntityId}.");
@@ -336,43 +366,42 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
 
     public void MarkStaleIfNeeded(object? sender = null, string? upstreamPlaneOutputId = null)
     {
-        if (IsDisposed || previewOutput is null || isPreviewRunning)
+        if (IsDisposed || isPreviewRunning || previewOutput is null && publishedOutputs.Count == 0) return;
+        var document = createDocument();
+        var changed = false;
+        foreach (var (id, published) in publishedOutputs.ToArray())
         {
-            return;
+            if (IsOutputCurrent(published.Output, published.StepId, published.Context, document)) continue;
+            publishedOutputs.Remove(id);
+            if (findStepByOutputEntityId(id) is { } step) step.State = "Preview stale";
+            changed = true;
         }
-
-        var step = findStepByOutputEntityId(previewOutput.OutputEntityId);
-        if (step is null)
+        if (previewOutput is not null && !isPreviewStale && previewStep is not null
+            && !IsOutputCurrent(previewOutput, previewStep.Id, previewContext, document))
         {
-            return;
+            isPreviewStale = true;
+            isPreviewPublished = false;
+            previewStep.State = "Preview stale";
+            clearDisplay();
+            changed = true;
         }
+        if (!changed || IsDisposed) return;
+        if (isPreviewStale) SetSummary("Published plane, measurement ROI, source, parameter, route, or output changed. Preview again before Publish.");
+        else onExecutionStateChanged();
+    }
 
-        if (upstreamPlaneOutputId is not null
-            && !string.Equals(step.InputEntityIds.ElementAtOrDefault(1), upstreamPlaneOutputId, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        if (sender is not null)
-        {
-            var selectedIsCurrentDatum = IsSelectedStepDatumPlaneDeviation
-                && ReferenceEquals(getSelectedPipelineStep(), step);
-            var isDatumParameter = sender is ToolWorkbenchParameterItem parameter
-                && step.Parameters.Contains(parameter);
-            var isUpstreamPlaneStep = sender is ToolWorkbenchPipelineStepItem upstream
-                && string.Equals(upstream.OutputEntityId, step.InputEntityIds.ElementAtOrDefault(1), StringComparison.OrdinalIgnoreCase);
-            if (!selectedIsCurrentDatum && !isDatumParameter && !isUpstreamPlaneStep)
-            {
-                return;
-            }
-        }
-
-        isPreviewStale = true;
+    public void ForgetOutput(string outputEntityId)
+    {
+        if (IsDisposed) return;
+        publishedOutputs.Remove(outputEntityId);
+        if (!string.Equals(previewOutput?.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)) return;
+        previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
+        previewResult = null;
+        isPreviewStale = false;
         isPreviewPublished = false;
-        publishedOutputs.Clear();
-        step.State = "Preview stale";
         clearDisplay();
-        SetSummary("Published plane, measurement ROI, source, parameter, route, or output changed. Preview again before Publish.");
     }
 
     public void Clear(string summary)
@@ -387,6 +416,9 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
+        previewResult = null;
         publishedOutputs.Clear();
         isPreviewRunning = false;
         isPreviewStale = false;
@@ -400,6 +432,29 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
         if (IsDisposed)
         {
             return;
+        }
+
+        MarkStaleIfNeeded();
+        if (!isPreviewRunning && IsSelectedStepDatumPlaneDeviation && getSelectedPipelineStep() is { } selected)
+        {
+            if (TryGetPublishedOutput(selected.OutputEntityId, out _) && publishedOutputs.TryGetValue(selected.OutputEntityId, out var published))
+            {
+                previewOutput = published.Output;
+                previewStep = selected;
+                previewContext = published.Context;
+                previewResult = published.Result;
+                isPreviewStale = false;
+                isPreviewPublished = true;
+            }
+            else if (!ReferenceEquals(previewStep, selected))
+            {
+                previewOutput = null;
+                previewStep = null;
+                previewContext = string.Empty;
+                previewResult = null;
+                isPreviewStale = false;
+                isPreviewPublished = false;
+            }
         }
 
         if (getSelectedPipelineStep() is { } step && IsSelectedStepDatumPlaneDeviation
@@ -459,6 +514,10 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
         measurementSelection = getSelection(step.InputEntityIds[2]);
         return measurementSelection is not null;
     }
+
+    private bool IsOutputCurrent(C3DDatumPlaneDeviationFeature output, string stepId, string context, ToolRecipeDocument document) =>
+        string.Equals(context, document.CreateStepExecutionContext(stepId), StringComparison.Ordinal)
+        && string.Equals(getPublishedPlane(output.PlaneFeatureEntityId)?.ContentSha256, output.PlaneFeatureContentSha256, StringComparison.OrdinalIgnoreCase);
 
     private void SetRunning(bool value)
     {

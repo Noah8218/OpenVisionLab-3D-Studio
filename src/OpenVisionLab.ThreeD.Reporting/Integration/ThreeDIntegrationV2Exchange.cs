@@ -242,6 +242,122 @@ public static class ThreeDIntegrationV2Exchange
         return result;
     }
 
+    public static IntegrationResultV2 PublishCancelledResult(
+        string exchangeRoot,
+        Guid transactionId,
+        IntegrationApplicationIdentity consumerBuild,
+        string reason = "The 3D inspection was cancelled before a completed Run Record was published.")
+    {
+        ArgumentNullException.ThrowIfNull(consumerBuild);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        var handoff = ReadHandoff(exchangeRoot, transactionId);
+        EnsureConsumerIdentity(handoff, consumerBuild);
+        var acknowledgement = ReadAcknowledgement(exchangeRoot, transactionId);
+        if (acknowledgement.Status != IntegrationAcknowledgementStatus.Accepted)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.InvalidState,
+                "A cancelled 3D inspection requires an accepted Acknowledgement.");
+        }
+
+        var transactionDirectory = GetTransactionDirectory(exchangeRoot, transactionId);
+        var resultPath = Path.Combine(
+            transactionDirectory,
+            IntegrationTransactionLayout.ResultFileName);
+        if (File.Exists(resultPath))
+        {
+            return ReadResult(exchangeRoot, transactionId);
+        }
+
+        var result = new IntegrationResultV2(
+            IntegrationContractSchema.V2,
+            IntegrationMessageKind.Result,
+            Guid.NewGuid(),
+            handoff.TransactionId,
+            handoff.MessageId,
+            acknowledgement.MessageId,
+            NotBefore(acknowledgement.CreatedAtUtc),
+            consumerBuild,
+            IntegrationResultStatus.Cancelled,
+            IntegrationInspectionOutcome.Indeterminate,
+            null,
+            null,
+            IntegrationRunCorrelation.FromContext(handoff.Context),
+            [],
+            [],
+            new IntegrationError(
+                IntegrationErrorCode.Cancelled,
+                reason,
+                true));
+        ThrowIfInvalid(IntegrationContractValidator.ValidateV2Sequence(
+            handoff,
+            acknowledgement,
+            result));
+        WriteNewMessage(
+            transactionDirectory,
+            IntegrationTransactionLayout.ResultFileName,
+            IntegrationContractJson.SerializeCanonical(result));
+        return result;
+    }
+
+    public static IntegrationResultV2 PublishFailedResult(
+        string exchangeRoot,
+        Guid transactionId,
+        IntegrationApplicationIdentity consumerBuild,
+        string reason = "The 3D inspection failed before a completed Run Record was published.")
+    {
+        ArgumentNullException.ThrowIfNull(consumerBuild);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        var handoff = ReadHandoff(exchangeRoot, transactionId);
+        EnsureConsumerIdentity(handoff, consumerBuild);
+        var acknowledgement = ReadAcknowledgement(exchangeRoot, transactionId);
+        if (acknowledgement.Status != IntegrationAcknowledgementStatus.Accepted)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.InvalidState,
+                "A failed 3D inspection requires an accepted Acknowledgement.");
+        }
+
+        var transactionDirectory = GetTransactionDirectory(exchangeRoot, transactionId);
+        var resultPath = Path.Combine(
+            transactionDirectory,
+            IntegrationTransactionLayout.ResultFileName);
+        if (File.Exists(resultPath))
+        {
+            return ReadResult(exchangeRoot, transactionId);
+        }
+
+        var result = new IntegrationResultV2(
+            IntegrationContractSchema.V2,
+            IntegrationMessageKind.Result,
+            Guid.NewGuid(),
+            handoff.TransactionId,
+            handoff.MessageId,
+            acknowledgement.MessageId,
+            NotBefore(acknowledgement.CreatedAtUtc),
+            consumerBuild,
+            IntegrationResultStatus.Failed,
+            IntegrationInspectionOutcome.ExecutionError,
+            null,
+            null,
+            IntegrationRunCorrelation.FromContext(handoff.Context),
+            [],
+            [],
+            new IntegrationError(
+                IntegrationErrorCode.ExecutionFailed,
+                reason,
+                false));
+        ThrowIfInvalid(IntegrationContractValidator.ValidateV2Sequence(
+            handoff,
+            acknowledgement,
+            result));
+        WriteNewMessage(
+            transactionDirectory,
+            IntegrationTransactionLayout.ResultFileName,
+            IntegrationContractJson.SerializeCanonical(result));
+        return result;
+    }
+
     public static IntegrationResultV2 ReadResult(
         string exchangeRoot,
         Guid transactionId)

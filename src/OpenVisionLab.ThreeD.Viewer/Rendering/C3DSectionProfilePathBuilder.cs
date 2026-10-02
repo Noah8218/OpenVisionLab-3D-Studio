@@ -17,23 +17,23 @@ internal static class C3DSectionProfilePathBuilder
         const double chartHeight = 54.0;
         const double padding = 3.0;
         var span = Math.Max(0.001, max - min);
-        var stride = Math.Max(1, (int)Math.Ceiling(samples.Count / 80.0));
-        var reduced = samples.Where((_, index) => index % stride == 0).ToList();
-        if (reduced[^1] != samples[^1])
-        {
-            reduced.Add(samples[^1]);
-        }
-
+        if (samples.Count == 0) return string.Empty;
+        var first = samples[0];
+        var last = samples[^1];
+        var steps = Math.Max(Math.Abs(last.Row - first.Row), Math.Abs(last.Column - first.Column));
         var builder = new StringBuilder();
-        for (var index = 0; index < reduced.Count; index++)
+        var previousStep = -2;
+        for (var index = 0; index < samples.Count; index++)
         {
-            var sample = reduced[index];
-            var x = reduced.Count == 1 ? 0.0 : chartWidth * index / (reduced.Count - 1);
+            var sample = samples[index];
+            var step = Math.Max(Math.Abs(sample.Row - first.Row), Math.Abs(sample.Column - first.Column));
+            var x = steps == 0 ? 0.0 : chartWidth * step / steps;
             var y = padding + (1.0 - ((sample.RawValue - min) / span)) * (chartHeight - padding * 2.0);
-            builder.Append(index == 0 ? "M " : " L ");
+            builder.Append(step == previousStep + 1 ? " L " : " M ");
             builder.Append(x.ToString("F1", CultureInfo.InvariantCulture));
             builder.Append(',');
             builder.Append(y.ToString("F1", CultureInfo.InvariantCulture));
+            previousStep = step;
         }
 
         return builder.ToString();

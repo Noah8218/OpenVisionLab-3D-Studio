@@ -118,6 +118,181 @@ internal static class C3DDomainMaskGoldenVerification
                 "domain-mask-cancellation-propagates",
                 canceled,
                 $"canceled={canceled}"));
+
+            var rawRegionRecipe = recipe with
+            {
+                Steps = recipe.Steps
+                    .Select(step => string.Equals(step.ToolId, "domain-mask", StringComparison.Ordinal)
+                        ? step with
+                        {
+                            InputEntityIds = [source.EntityId, filteredSource.EntityId, domain.ArtifactId],
+                            Parameters = [new ToolRecipeParameter("SelectedRegionIndex", "0")]
+                        }
+                        : step)
+                    .ToArray()
+            };
+            var rawRegion = ToolRecipeDomainMaskExecution.Execute(
+                rawRegionRecipe,
+                "step.domain",
+                source,
+                filteredSource,
+                domain,
+                selectedRegionIndex: 0);
+            var selectedCells = domain.Regions[0].Cells.ToHashSet();
+            var rawExpected = source.Values.ToArray();
+            for (var row = 0; row < source.Height; row++)
+            {
+                for (var column = 0; column < source.Width; column++)
+                {
+                    if (!selectedCells.Contains(new C3DConnectedRegionArtifactCell(row, column)))
+                    {
+                        rawExpected[row * source.Width + column] = double.NaN;
+                    }
+                }
+            }
+
+            checks.Add(Check(
+                "raw-region-route-preserves-selected-raw-values",
+                rawRegion.Result.Status == ResultStatus.Pass
+                && rawRegion.Output is not null
+                && rawRegion.Output.RootSourceSha256 == source.RootSourceSha256
+                && rawRegion.Output.EntityId == "domain.height-field"
+                && SameValues(rawRegion.Output.Values.Span, rawExpected),
+                rawRegion.Output is null
+                    ? rawRegion.Result.Message
+                    : $"status={rawRegion.Result.Status};raw={source.ContentSha256};detection={filteredSource.ContentSha256};region=0;cells={selectedCells.Count};valid={rawRegion.Output.ValidCount};missing={rawRegion.Output.MissingCount}"));
+
+            var orderedRawRegion = ToolRecipeOrderedGraphExecution.Execute(
+                rawRegionRecipe,
+                sourcePath);
+            var orderedRawRegionStep = orderedRawRegion.Steps.SingleOrDefault(step => step.ToolId == "domain-mask");
+            checks.Add(Check(
+                "ordered-graph-runs-raw-region-route",
+                orderedRawRegion.Status == ResultStatus.Pass
+                && orderedRawRegionStep?.Result.Status == ResultStatus.Pass
+                && orderedRawRegionStep.OutputContentSha256 == rawRegion.Output?.ContentSha256,
+                $"overall={orderedRawRegion.Status};step={orderedRawRegionStep?.Result.Status};output={orderedRawRegionStep?.OutputContentSha256}"));
+
+            var mismatchedDetection = C3DHeightFieldSnapshot.CreateForVerification(
+                "detection.other",
+                filteredSource.Width,
+                filteredSource.Height,
+                filteredSource.Values.ToArray(),
+                filteredSource.Unit,
+                filteredSource.FrameId);
+            var mismatchRawRegion = C3DDomainMaskRule.Evaluate(
+                new C3DRawRegionDomainMaskInput(
+                    "step.domain",
+                    source,
+                    mismatchedDetection,
+                    domain,
+                    0,
+                    "domain.mismatch-detection"));
+            checks.Add(Check(
+                "raw-region-mismatched-detection-fails-closed",
+                mismatchRawRegion.Result.Status == ResultStatus.Error
+                && mismatchRawRegion.Output is null,
+                $"status={mismatchRawRegion.Result.Status};message={mismatchRawRegion.Result.Message}"));
+
+            var mismatchedUnit = C3DHeightFieldSnapshot.CreateForVerification(
+                "detection.unit-mismatch",
+                filteredSource.Width,
+                filteredSource.Height,
+                filteredSource.Values.ToArray(),
+                "other-unit",
+                filteredSource.FrameId);
+            var unitMismatch = C3DDomainMaskRule.Evaluate(
+                new C3DRawRegionDomainMaskInput(
+                    "step.domain",
+                    source,
+                    mismatchedUnit,
+                    domain,
+                    0,
+                    "domain.mismatch-unit"));
+            checks.Add(Check(
+                "raw-region-unit-mismatch-fails-closed",
+                unitMismatch.Result.Status == ResultStatus.Error
+                && unitMismatch.Output is null,
+                $"status={unitMismatch.Result.Status};message={unitMismatch.Result.Message}"));
+
+            var mismatchedFrame = C3DHeightFieldSnapshot.CreateForVerification(
+                "detection.frame-mismatch",
+                filteredSource.Width,
+                filteredSource.Height,
+                filteredSource.Values.ToArray(),
+                filteredSource.Unit,
+                "frame.other");
+            var frameMismatch = C3DDomainMaskRule.Evaluate(
+                new C3DRawRegionDomainMaskInput(
+                    "step.domain",
+                    source,
+                    mismatchedFrame,
+                    domain,
+                    0,
+                    "domain.mismatch-frame"));
+            checks.Add(Check(
+                "raw-region-frame-mismatch-fails-closed",
+                frameMismatch.Result.Status == ResultStatus.Error
+                && frameMismatch.Output is null,
+                $"status={frameMismatch.Result.Status};message={frameMismatch.Result.Message}"));
+
+            var mismatchedHashDomain = domain with
+            {
+                SourceContentSha256 = new string('0', 64)
+            };
+            mismatchedHashDomain = mismatchedHashDomain with
+            {
+                ContentSha256 = C3DConnectedRegionArtifact.CalculateContentSha256(mismatchedHashDomain)
+            };
+            var hashMismatch = C3DDomainMaskRule.Evaluate(
+                new C3DRawRegionDomainMaskInput(
+                    "step.domain",
+                    source,
+                    filteredSource,
+                    mismatchedHashDomain,
+                    0,
+                    "domain.mismatch-hash"));
+            checks.Add(Check(
+                "raw-region-content-mismatch-fails-closed",
+                hashMismatch.Result.Status == ResultStatus.Error
+                && hashMismatch.Output is null,
+                $"status={hashMismatch.Result.Status};message={hashMismatch.Result.Message}"));
+
+            var mismatchedGeometryDomain = domain with
+            {
+                OriginX = domain.OriginX + 1d
+            };
+            mismatchedGeometryDomain = mismatchedGeometryDomain with
+            {
+                ContentSha256 = C3DConnectedRegionArtifact.CalculateContentSha256(mismatchedGeometryDomain)
+            };
+            var geometryMismatch = C3DDomainMaskRule.Evaluate(
+                new C3DRawRegionDomainMaskInput(
+                    "step.domain",
+                    source,
+                    filteredSource,
+                    mismatchedGeometryDomain,
+                    0,
+                    "domain.mismatch-geometry"));
+            checks.Add(Check(
+                "raw-region-geometry-mismatch-fails-closed",
+                geometryMismatch.Result.Status == ResultStatus.Error
+                && geometryMismatch.Output is null,
+                $"status={geometryMismatch.Result.Status};message={geometryMismatch.Result.Message}"));
+
+            var outOfRangeRawRegion = C3DDomainMaskRule.Evaluate(
+                new C3DRawRegionDomainMaskInput(
+                    "step.domain",
+                    source,
+                    filteredSource,
+                    domain,
+                    domain.Regions.Count,
+                    "domain.out-of-range"));
+            checks.Add(Check(
+                "raw-region-index-fails-closed",
+                outOfRangeRawRegion.Result.Status == ResultStatus.Error
+                && outOfRangeRawRegion.Output is null,
+                $"status={outOfRangeRawRegion.Result.Status};message={outOfRangeRawRegion.Result.Message}"));
         }
 
         var passed = checks.Count(item => item.Passed);

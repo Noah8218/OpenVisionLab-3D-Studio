@@ -1,9 +1,15 @@
 using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts;
+using static OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
@@ -15,6 +21,7 @@ internal static class ShellTeachingSelectionSmoke
     public static async Task<bool> RunAsync(
         ShellMainWindowViewModel viewModel,
         OpenVisionThreeDViewerControl viewer,
+        FrameworkElement visualRoot,
         string modeValue,
         string? reportPath)
     {
@@ -26,6 +33,7 @@ internal static class ShellTeachingSelectionSmoke
             return await RunCoordinateConfidenceDualTargetAsync(
                 viewModel,
                 viewer,
+                visualRoot,
                 workbench,
                 step,
                 reportPath);
@@ -115,13 +123,14 @@ internal static class ShellTeachingSelectionSmoke
             return Complete(false, "No teaching pipeline step is selected.");
         }
 
-        if (mode == "grid-polygon")
+        if (mode is "grid-polygon" or "grid-polygon-domain-e2e")
         {
             return await RunGridPolygonAsync(
                 viewModel,
                 viewer,
                 workbench,
                 step,
+                mode == "grid-polygon-domain-e2e",
                 reportPath);
         }
 
@@ -333,6 +342,7 @@ internal static class ShellTeachingSelectionSmoke
         OpenVisionThreeDViewerControl viewer,
         ToolWorkbenchViewModel workbench,
         ToolWorkbenchPipelineStepItem step,
+        bool runDomainExecution,
         string? reportPath)
     {
         var selectionBefore = workbench.SelectedStepTeachingSelection;
@@ -342,9 +352,10 @@ internal static class ShellTeachingSelectionSmoke
         var schemaBefore = workbench.RecipeSchemaVersion;
         var selectionCountBefore = workbench.Selections.Count;
         var inputIdsBefore = step.InputEntityIds.ToArray();
+        var isGridPolygonDomain = string.Equals(step.ToolId, "grid-polygon-domain", StringComparison.Ordinal);
         var lines = new List<string>
         {
-            "OpenVisionLab 3D GridPolygon authoring Shell smoke",
+            $"OpenVisionLab 3D GridPolygon {(isGridPolygonDomain ? "domain" : "authoring")} Shell smoke",
             "Mode=grid-polygon",
             $"Step={step.Id}",
             $"AuthoredBefore|dirty={dirtyBefore}|schema={schemaBefore}|selections={selectionCountBefore}|inputs={string.Join(';', inputIdsBefore)}",
@@ -387,7 +398,7 @@ internal static class ShellTeachingSelectionSmoke
             return passed;
         }
 
-        if (step.ToolId != "grid-polygon-authoring"
+        if (step.ToolId is not ("grid-polygon-authoring" or "grid-polygon-domain")
             || selectionBefore is not { GridPolygon: { Vertices.Count: >= ToolRecipeGridPolygonGeometry.MinimumVertexCount } }
             || polygonBefore is null
             || !workbench.IsTeachingGridPolygonEditorVisible
@@ -598,16 +609,147 @@ internal static class ShellTeachingSelectionSmoke
             && step.InputEntityIds.Contains(appliedSelection.Id, StringComparer.OrdinalIgnoreCase)
             && ExecutionUnchanged();
         lines.Add($"Apply|pass={appliedPassed}|captureActive={viewer.TeachingCaptureSnapshot.IsActive}|dirty={workbench.IsDirty}|sameSelectionId={string.Equals(appliedSelection?.Id, selectionBefore?.Id, StringComparison.Ordinal)}|executionUnchanged={ExecutionUnchanged()}");
+        if (appliedPassed && runDomainExecution)
+        {
+            appliedPassed = await RunGridPolygonDomainExecutionAsync(
+                viewer,
+                workbench,
+                step,
+                reportPath,
+                lines);
+        }
+
         return Complete(
             appliedPassed,
             appliedPassed
-                ? "GridPolygon numeric edit, reorder, add/remove, Cancel, restart, and explicit Apply were exercised in the current WPF shell; the same selection identity was preserved and Preview/Run remained untouched."
+                ? runDomainExecution
+                    ? "GridPolygon teaching was followed by explicit Preview, Publish, ordered Run, Run Record creation, and recipe/artifact reopen in the current WPF shell."
+                    : "GridPolygon numeric edit, reorder, add/remove, Cancel, restart, and explicit Apply were exercised in the current WPF shell; the same selection identity was preserved and Preview/Run remained untouched."
                 : "GridPolygon explicit Apply did not preserve selection identity and the no-execution boundary.");
+    }
+
+    private static async Task<bool> RunGridPolygonDomainExecutionAsync(
+        OpenVisionThreeDViewerControl viewer,
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem step,
+        string? reportPath,
+        ICollection<string> lines)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            lines.Add("DomainExecution|pass=False|reason=report-path-required");
+            return false;
+        }
+
+        var recipePath = Path.Combine(
+            GetReportDirectory(reportPath),
+            $"{Path.GetFileNameWithoutExtension(reportPath)}.e2e.ov3d-teach.json");
+        var savePassed = workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage)
+            && !workbench.IsDirty
+            && File.Exists(recipePath);
+        lines.Add($"DomainSave|pass={savePassed}|path={recipePath}|dirty={workbench.IsDirty}|message={saveMessage}");
+        if (!savePassed)
+        {
+            return false;
+        }
+
+        var previewCommandReady = workbench.PreviewSelectedStepCommand.CanExecute(null);
+        workbench.PreviewSelectedStepCommand.Execute(null);
+        var previewCompleted = await WaitForConditionAsync(
+            () => !workbench.IsSelectedStepPreviewRunning,
+            TimeSpan.FromMinutes(2));
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var previewArtifact = workbench.CurrentGridPolygonDomainArtifact;
+        var previewPath = workbench.CurrentGridPolygonDomainArtifactPath;
+        var previewPassed = previewCommandReady
+            && previewCompleted
+            && workbench.HasCurrentGridPolygonDomainPreview
+            && !workbench.IsGridPolygonDomainPreviewPublished
+            && previewArtifact is not null
+            && string.Equals(previewArtifact.ArtifactId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+            && previewPath is not null
+            && File.Exists(previewPath);
+        lines.Add($"DomainPreview|pass={previewPassed}|commandReady={previewCommandReady}|completed={previewCompleted}|hasPreview={workbench.HasCurrentGridPolygonDomainPreview}|published={workbench.IsGridPolygonDomainPreviewPublished}|artifact={previewArtifact?.ArtifactId ?? "(none)"}|cells={previewArtifact?.Cells.Count ?? 0}|path={previewPath ?? "(none)"}");
+        if (!previewPassed)
+        {
+            return false;
+        }
+
+        var publishCommandReady = workbench.PublishSelectedStepCommand.CanExecute(null);
+        workbench.PublishSelectedStepCommand.Execute(null);
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var publishedPath = workbench.CurrentGridPolygonDomainArtifactPath;
+        var publishPassed = publishCommandReady
+            && workbench.IsGridPolygonDomainPreviewPublished
+            && publishedPath is not null
+            && File.Exists(publishedPath);
+        lines.Add($"DomainPublish|pass={publishPassed}|commandReady={publishCommandReady}|published={workbench.IsGridPolygonDomainPreviewPublished}|path={publishedPath ?? "(none)"}");
+        if (!publishPassed)
+        {
+            return false;
+        }
+
+        var runCommandReady = workbench.RunTeachingRecipeCommand.CanExecute(null);
+        workbench.RunTeachingRecipeCommand.Execute(null);
+        var runCompleted = await WaitForConditionAsync(
+            () => !workbench.IsOrderedRunRunning
+                && workbench.HasOrderedRunResult
+                && workbench.CurrentOrderedRunRecordPath is { } path
+                && File.Exists(path),
+            TimeSpan.FromMinutes(2));
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var runResult = workbench.CurrentOrderedRunResult;
+        var domainStepResult = runResult?.Steps.FirstOrDefault(result =>
+            string.Equals(result.ToolId, "grid-polygon-domain", StringComparison.Ordinal));
+        var maskStepResult = runResult?.Steps.FirstOrDefault(result =>
+            string.Equals(result.ToolId, "domain-mask", StringComparison.Ordinal));
+        var runPassed = runCommandReady
+            && runCompleted
+            && runResult is not null
+            && runResult.Status == ResultStatus.Pass
+            && domainStepResult?.Result.Status == ResultStatus.Pass
+            && maskStepResult?.Result.Status == ResultStatus.Pass;
+        lines.Add($"DomainRun|pass={runPassed}|commandReady={runCommandReady}|completed={runCompleted}|status={runResult?.Status.ToString() ?? "(none)"}|domainStatus={domainStepResult?.Result.Status.ToString() ?? "(none)"}|maskStatus={maskStepResult?.Result.Status.ToString() ?? "(none)"}|record={workbench.CurrentOrderedRunRecordPath ?? "(none)"}");
+        if (!runPassed)
+        {
+            return false;
+        }
+
+        using var reopened = new ToolWorkbenchViewModel();
+        var reopenedRecipe = reopened.TryOpenTeachingRecipe(recipePath, out var reopenMessage);
+        var selectedAgain = reopenedRecipe && reopened.SelectPipelineStep(step.Id);
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var restoredArtifact = reopened.CurrentGridPolygonDomainArtifact;
+        var reopenPassed = reopenedRecipe
+            && selectedAgain
+            && !reopened.IsDirty
+            && reopened.HasCurrentGridPolygonDomainPreview
+            && reopened.IsGridPolygonDomainPreviewPublished
+            && restoredArtifact is not null
+            && string.Equals(restoredArtifact.ArtifactId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+            && reopened.CurrentGridPolygonDomainArtifactPath is { } restoredPath
+            && File.Exists(restoredPath);
+        lines.Add($"DomainReopen|pass={reopenPassed}|recipe={reopenedRecipe}|selected={selectedAgain}|dirty={reopened.IsDirty}|hasPreview={reopened.HasCurrentGridPolygonDomainPreview}|published={reopened.IsGridPolygonDomainPreviewPublished}|artifact={restoredArtifact?.ArtifactId ?? "(none)"}|path={reopened.CurrentGridPolygonDomainArtifactPath ?? "(none)"}|message={reopenMessage}");
+        return reopenPassed;
+    }
+
+    private static async Task<bool> WaitForConditionAsync(
+        Func<bool> condition,
+        TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(25);
+        }
+
+        return condition();
     }
 
     private static async Task<bool> RunCoordinateConfidenceDualTargetAsync(
         ShellMainWindowViewModel viewModel,
         OpenVisionThreeDViewerControl viewer,
+        FrameworkElement visualRoot,
         ToolWorkbenchViewModel workbench,
         ToolWorkbenchPipelineStepItem? step,
         string? reportPath)
@@ -646,25 +788,27 @@ internal static class ShellTeachingSelectionSmoke
         var inspectionBefore = viewer.HostState.Inspection;
         var referenceId = referenceBefore.Id;
         var measurementId = measurementBefore.Id;
-        lines.Add($"Start|perspective={startedPerspective}|reference={referenceTarget}|measurement={measurementTarget}");
+        var referenceRetarget = CreateDisjointVerticalTarget(
+            referenceTarget,
+            referenceBefore.SourceBinding.GridHeight);
+        var measurementRetarget = CreateDisjointVerticalTarget(
+            measurementTarget,
+            measurementBefore.SourceBinding.GridHeight);
+        lines.Add($"Start|perspective={startedPerspective}|reference={referenceTarget}->{referenceRetarget}|measurement={measurementTarget}->{measurementRetarget}");
 
-        if (!workbench.RemovePlaneFlatnessMeasurementRoiCommand.CanExecute(null)
-            || !workbench.RemovePlaneFlatnessReferenceRoiCommand.CanExecute(null))
+        if (!workbench.CapturePlaneFlatnessReferenceRoiCommand.CanExecute(null))
         {
-            return Complete(false, "The saved Thickness ROIs could not enter a clean dual-target reteach.");
-        }
-        workbench.RemovePlaneFlatnessMeasurementRoiCommand.Execute(null);
-        workbench.RemovePlaneFlatnessReferenceRoiCommand.Execute(null);
-        if (workbench.Selections.Any(selection =>
-                string.Equals(selection.Id, referenceId, StringComparison.Ordinal)
-                || string.Equals(selection.Id, measurementId, StringComparison.Ordinal))
-            || !workbench.BeginTeachingSelectionCaptureCommand.CanExecute(null))
-        {
-            return Complete(false, "The saved Thickness ROIs were not removed without changing the selected step.");
+            return Complete(false, "The saved Reference ROI could not enter explicit reteach.");
         }
 
-        workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+        workbench.CapturePlaneFlatnessReferenceRoiCommand.Execute(null);
         await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        for (var index = 0;
+             index < 2 && workbench.UndoTeachingSelectionCaptureCommand.CanExecute(null);
+             index++)
+        {
+            workbench.UndoTeachingSelectionCaptureCommand.Execute(null);
+        }
         var evidenceDirectory = string.IsNullOrWhiteSpace(reportPath)
             ? null
             : GetReportDirectory(reportPath);
@@ -672,7 +816,7 @@ internal static class ShellTeachingSelectionSmoke
             ? null
             : Path.Combine(evidenceDirectory, "coordinate-confidence-reference-pointer.txt");
         var referenceResult = await viewer.RunTeachingTargetRectanglePointerSmokeAsync(
-            referenceTarget,
+            referenceRetarget,
             referencePointerReport);
         var referenceCoordinatesVisible = CandidateMatchesWorkbench(
             workbench,
@@ -687,17 +831,23 @@ internal static class ShellTeachingSelectionSmoke
         workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
         await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-        if (!workbench.BeginTeachingSelectionCaptureCommand.CanExecute(null))
+        if (!workbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null))
         {
             return Complete(false, "Measurement ROI did not become the next explicit teaching role.");
         }
-        workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+        workbench.CapturePlaneFlatnessMeasurementRoiCommand.Execute(null);
         await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        for (var index = 0;
+             index < 2 && workbench.UndoTeachingSelectionCaptureCommand.CanExecute(null);
+             index++)
+        {
+            workbench.UndoTeachingSelectionCaptureCommand.Execute(null);
+        }
         var measurementPointerReport = evidenceDirectory is null
             ? null
             : Path.Combine(evidenceDirectory, "coordinate-confidence-measurement-pointer.txt");
         var measurementResult = await viewer.RunTeachingTargetRectanglePointerSmokeAsync(
-            measurementTarget,
+            measurementRetarget,
             measurementPointerReport);
         var measurementCoordinatesVisible = CandidateMatchesWorkbench(
             workbench,
@@ -709,8 +859,14 @@ internal static class ShellTeachingSelectionSmoke
         {
             return Complete(false, $"Measurement ROI one-drag teaching failed: {measurementResult.Failure}");
         }
-        workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
-        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        if (!await ExerciseGridRectangleKeyboardAsync(
+                visualRoot,
+                workbench,
+                measurementResult.Candidate!,
+                lines))
+        {
+            return Complete(false, "Measurement ROI numeric keyboard editing, focus traversal, Apply, or Cancel failed.");
+        }
 
         var routeRestored = step.InputEntityIds.Count == 3
             && string.Equals(step.InputEntityIds[1], referenceId, StringComparison.Ordinal)
@@ -723,7 +879,154 @@ internal static class ShellTeachingSelectionSmoke
             && routeRestored
             && executionUnchanged
             && !viewer.TeachingCaptureSnapshot.IsActive,
-            "Reference and Measurement ROIs were each retaught from an initially Perspective workflow with one actual Top-view drag, exact visible coordinates, explicit Apply, and no Preview or Run.");
+            "Reference and Measurement ROIs were each retaught from an initially Perspective workflow with actual Top-view drag, exact visible coordinates, native Tab/Shift+Tab numeric editing, Enter Apply, Escape Cancel, and no Preview or Run.");
+    }
+
+    private static async Task<bool> ExerciseGridRectangleKeyboardAsync(
+        FrameworkElement visualRoot,
+        ToolWorkbenchViewModel workbench,
+        ToolRecipeGridRectangle candidate,
+        ICollection<string> lines)
+    {
+        var editors = FindVisualDescendants<TextBox>(visualRoot)
+            .Where(editor => editor.IsVisible && editor.IsEnabled)
+            .Select(editor => new
+            {
+                Editor = editor,
+                Path = editor.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path
+            })
+            .ToArray();
+        TextBox? FindEditor(string path) => editors
+            .FirstOrDefault(item => string.Equals(item.Path, path, StringComparison.Ordinal))
+            ?.Editor;
+
+        var columnEditor = FindEditor(nameof(workbench.TeachingGridRectangleColumn));
+        var rowEditor = FindEditor(nameof(workbench.TeachingGridRectangleRow));
+        var columnCountEditor = FindEditor(nameof(workbench.TeachingGridRectangleColumnCount));
+        var rowCountEditor = FindEditor(nameof(workbench.TeachingGridRectangleRowCount));
+        var window = Window.GetWindow(visualRoot);
+        if (window is null
+            || columnEditor is null
+            || rowEditor is null
+            || columnCountEditor is null
+            || rowCountEditor is null)
+        {
+            lines.Add($"KeyboardNumeric|pass=False|reason=editors-unavailable|visibleBindings={string.Join(',', editors.Select(item => item.Path).Where(path => path is not null))}");
+            return false;
+        }
+
+        columnEditor.BringIntoView();
+        window.UpdateLayout();
+        window.Activate();
+        var windowHandle = new WindowInteropHelper(window).Handle;
+        var foregrounded = SetForegroundWindow(windowHandle);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        if (!foregrounded
+            || !IsForegroundWindow(windowHandle)
+            || !columnEditor.Focus()
+            || !columnEditor.IsKeyboardFocusWithin)
+        {
+            lines.Add($"KeyboardNumeric|pass=False|reason=foreground-or-focus|foregrounded={foregrounded}|foreground={IsForegroundWindow(windowHandle)}|focused={columnEditor.IsKeyboardFocusWithin}");
+            return false;
+        }
+
+        const byte controlKey = 0x11;
+        const byte shiftKey = 0x10;
+        const byte tabKey = 0x09;
+        const byte enterKey = 0x0D;
+        const byte escapeKey = 0x1B;
+        const byte aKey = 0x41;
+        void KeyDown(byte key) => SendKeyboardEvent(key, 0, 0, UIntPtr.Zero);
+        void KeyUp(byte key) => SendKeyUp(key);
+        void SelectAll()
+        {
+            KeyDown(controlKey);
+            KeyDown(aKey);
+            KeyUp(aKey);
+            KeyUp(controlKey);
+        }
+        void TypeInteger(int value)
+        {
+            foreach (var character in value.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            {
+                var key = (byte)(0x30 + character - '0');
+                KeyDown(key);
+                KeyUp(key);
+            }
+        }
+        void Press(byte key)
+        {
+            KeyDown(key);
+            KeyUp(key);
+        }
+
+        var editedColumn = candidate.Column + 1;
+        SelectAll();
+        TypeInteger(editedColumn);
+        Press(tabKey);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+        var tabPassed = ReferenceEquals(Keyboard.FocusedElement, rowEditor);
+        var editedCandidate = candidate with { Column = editedColumn };
+        var editPassed = CandidateMatchesWorkbench(workbench, editedCandidate);
+
+        KeyDown(shiftKey);
+        Press(tabKey);
+        KeyUp(shiftKey);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        var shiftTabPassed = ReferenceEquals(Keyboard.FocusedElement, columnEditor);
+
+        SelectAll();
+        TypeInteger(candidate.Column);
+        Press(tabKey);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+        var restored = CandidateMatchesWorkbench(workbench, candidate);
+        var enterForeground = IsForegroundWindow(windowHandle);
+        var enterFocusedElement = Keyboard.FocusedElement?.GetType().Name ?? "(none)";
+        var canApplyBeforeEnter = workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null);
+        if (enterForeground)
+        {
+            Press(enterKey);
+        }
+        await Task.Delay(120);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var enterApplied = !workbench.IsTeachingSelectionCaptureActive;
+
+        var escapeCanceled = false;
+        if (!enterApplied && IsForegroundWindow(windowHandle))
+        {
+            Press(escapeKey);
+            await Task.Delay(120);
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            escapeCanceled = !workbench.IsTeachingSelectionCaptureActive;
+        }
+        else if (enterApplied && workbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null))
+        {
+            workbench.CapturePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            if (columnEditor.Focus()
+                && columnEditor.IsKeyboardFocusWithin
+                && IsForegroundWindow(windowHandle))
+            {
+                Press(escapeKey);
+                await Task.Delay(120);
+                await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+                await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                escapeCanceled = !workbench.IsTeachingSelectionCaptureActive;
+            }
+        }
+
+        var passed = tabPassed
+            && editPassed
+            && shiftTabPassed
+            && restored
+            && enterApplied
+            && escapeCanceled;
+        lines.Add($"KeyboardNumeric|pass={passed}|foreground=True|tab={tabPassed}|shiftTab={shiftTabPassed}|edit={editPassed}|restored={restored}|enterForeground={enterForeground}|enterFocus={enterFocusedElement}|canApplyBeforeEnter={canApplyBeforeEnter}|enterApply={enterApplied}|escapeCancel={escapeCanceled}|column={candidate.Column}->{editedColumn}->{workbench.TeachingGridRectangleColumn}");
+        return passed;
     }
 
     private static bool CandidateMatchesWorkbench(
@@ -735,4 +1038,21 @@ internal static class ShellTeachingSelectionSmoke
         && workbench.TeachingGridRectangleColumn == candidate.Column
         && workbench.TeachingGridRectangleRowCount == candidate.RowCount
         && workbench.TeachingGridRectangleColumnCount == candidate.ColumnCount;
+
+    private static ToolRecipeGridRectangle CreateDisjointVerticalTarget(
+        ToolRecipeGridRectangle current,
+        int gridHeight)
+    {
+        const int overlayHitTestClearance = 64;
+        var after = current.Row + current.RowCount + overlayHitTestClearance;
+        if (after + current.RowCount <= gridHeight)
+        {
+            return current with { Row = after };
+        }
+
+        return current with
+        {
+            Row = Math.Max(0, current.Row - current.RowCount - overlayHitTestClearance)
+        };
+    }
 }

@@ -15,6 +15,7 @@ internal readonly record struct C3DDisplayListKey(
     double HeightColorMinimumRaw,
     double HeightColorMaximumRaw,
     double PointSize,
+    int HeightEmphasis,
     C3DWireframeLodLevel WireframeLodLevel);
 
 /// <summary>
@@ -26,4 +27,5 @@ internal readonly record struct C3DGpuBufferKey(
     ViewerColorMap ColorMap,
     double HeightColorMinimumRaw,
     double HeightColorMaximumRaw,
+    int HeightEmphasis,
     ViewerPlaneFlatnessDisplayEvaluation? DynamicColorEvaluation);

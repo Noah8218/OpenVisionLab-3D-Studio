@@ -1,3 +1,4 @@
+using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Data;
@@ -14,6 +15,7 @@ public static class ToolRecipeSelectionContractVerification
         "schema 1.4 accepts a finite rotated right-handed OrientedBox3D",
         "current schema accepts the schema 1.4 OrientedBox3D contract",
         "rotated OrientedBox3D center axes and half-extents survive save and reopen",
+        "schema 1.7 OrientedBox3D recipe saves and reopens",
         "schema 1.3 rejects the new OrientedBox3D kind",
         "zero-length OrientedBox3D axis is rejected",
         "finite non-unit OrientedBox3D axis is rejected",
@@ -41,6 +43,8 @@ public static class ToolRecipeSelectionContractVerification
     [
         "current schema accepts an in-bounds GridPolygon",
         "GridPolygon vertex order survives save and reopen",
+        "schema 1.7 GridPolygon recipe saves and reopens",
+        "schema 1.7 artifact-owned selection saves and reopens",
         "schema 1.6 rejects the new GridPolygon kind",
         "GridPolygon requires its geometry payload",
         "GridPolygon requires at least three vertices",
@@ -51,6 +55,18 @@ public static class ToolRecipeSelectionContractVerification
         "GridPolygon rejects self-intersecting edges",
         "GridPolygon rejects mixed rectangle payloads",
         "undeclared GridPolygon consumer fails closed"
+    ];
+
+    private static readonly string[] Schema17CompatibilityCaseNames =
+    [
+        "schema 1.7 empty draft saves and reopens",
+        "schema 1.7 capability helpers include introduced selection features",
+        "schema 1.7 dual-ROI recipe saves and reopens",
+        "schema 1.7 OrientedBox3D recipe saves and reopens",
+        "schema 1.7 GridPolygon recipe saves and reopens",
+        "schema 1.7 artifact-owned selection saves and reopens",
+        "future and unknown recipe schemas remain rejected",
+        "corrupt recipe JSON remains rejected"
     ];
 
     private static readonly string[] GridPolygonRasterizationCaseNames =
@@ -97,6 +113,7 @@ public static class ToolRecipeSelectionContractVerification
         var gridPolygonRasterizationSubsetComplete = false;
         var gridCircleRasterizationSubsetComplete = false;
         var gridRectangleRasterizationSubsetComplete = false;
+        var schema17CompatibilitySubsetComplete = false;
         var fixtureRoot = Path.Combine(
             Path.GetTempPath(),
             "OpenVisionLab.ThreeD",
@@ -164,6 +181,77 @@ public static class ToolRecipeSelectionContractVerification
                 && reopenedSelections[0].SourceBinding == binding,
                 $"schema={reopened.SchemaVersion}; selections={reopened.Selections?.Count ?? 0}");
 
+            var schema17Draft = CreateDocument(
+                ToolRecipeDocument.GridPolygonSchemaVersion,
+                sourcePath,
+                null,
+                current.Source.Id);
+            var schema17DraftPath = Path.Combine(fixtureRoot, "schema-1.7-draft.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(schema17DraftPath, schema17Draft);
+            var reopenedSchema17Draft = ToolRecipeDocumentStore.Load(schema17DraftPath);
+            Check(
+                "schema 1.7 empty draft saves and reopens",
+                ToolRecipeValidator.ValidateForStorage(schema17Draft).IsValid
+                && reopenedSchema17Draft.SchemaVersion == ToolRecipeDocument.GridPolygonSchemaVersion
+                && reopenedSchema17Draft.Selections is null,
+                $"schema={reopenedSchema17Draft.SchemaVersion};selections={reopenedSchema17Draft.Selections?.Count ?? 0}");
+            Check(
+                "schema 1.7 capability helpers include introduced selection features",
+                ToolRecipeDocument.SupportsArtifactOwnedSelections(ToolRecipeDocument.GridPolygonSchemaVersion)
+                && ToolRecipeDocument.SupportsOrientedBox3D(ToolRecipeDocument.GridPolygonSchemaVersion)
+                && ToolRecipeDocument.SupportsDualRoiRouting(ToolRecipeDocument.GridPolygonSchemaVersion)
+                && ToolRecipeDocument.SupportsGridCircle(ToolRecipeDocument.GridPolygonSchemaVersion)
+                && ToolRecipeDocument.SupportsGridPolygon(ToolRecipeDocument.GridPolygonSchemaVersion),
+                $"artifact={ToolRecipeDocument.SupportsArtifactOwnedSelections(ToolRecipeDocument.GridPolygonSchemaVersion)};box={ToolRecipeDocument.SupportsOrientedBox3D(ToolRecipeDocument.GridPolygonSchemaVersion)};dual={ToolRecipeDocument.SupportsDualRoiRouting(ToolRecipeDocument.GridPolygonSchemaVersion)};circle={ToolRecipeDocument.SupportsGridCircle(ToolRecipeDocument.GridPolygonSchemaVersion)};polygon={ToolRecipeDocument.SupportsGridPolygon(ToolRecipeDocument.GridPolygonSchemaVersion)}");
+
+            var metadataDocument = current with
+            {
+                SchemaVersion = ToolRecipeDocument.RecipeMetadataSchemaVersion,
+                Category = "측정",
+                InspectionTarget = "전원 모듈 A-01 패드",
+                Description = "기준 영역과 패드 영역의 높이 차이를 측정합니다."
+            };
+            var metadataPath = Path.Combine(fixtureRoot, "recipe-metadata.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(metadataPath, metadataDocument);
+            var reopenedMetadata = ToolRecipeDocumentStore.Load(metadataPath);
+            Check(
+                "schema 1.9 recipe metadata survives save and reopen",
+                reopenedMetadata.SchemaVersion == ToolRecipeDocument.RecipeMetadataSchemaVersion
+                && reopenedMetadata.Category == metadataDocument.Category
+                && reopenedMetadata.InspectionTarget == metadataDocument.InspectionTarget
+                && reopenedMetadata.Description == metadataDocument.Description,
+                $"schema={reopenedMetadata.SchemaVersion};category={reopenedMetadata.Category};target={reopenedMetadata.InspectionTarget}");
+
+            var schema18Document = current with
+            {
+                SchemaVersion = ToolRecipeDocument.OutputPolicySchemaVersion,
+                Category = null,
+                InspectionTarget = null,
+                Description = null
+            };
+            var schema18Path = Path.Combine(fixtureRoot, "schema-1.8-without-metadata.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(schema18Path, schema18Document);
+            var schema18Json = File.ReadAllText(schema18Path);
+            var reopenedSchema18 = ToolRecipeDocumentStore.Load(schema18Path);
+            Check(
+                "schema 1.8 document without optional metadata remains readable",
+                reopenedSchema18.SchemaVersion == ToolRecipeDocument.OutputPolicySchemaVersion
+                && reopenedSchema18.Category is null
+                && reopenedSchema18.InspectionTarget is null
+                && reopenedSchema18.Description is null
+                && !schema18Json.Contains("\"category\"", StringComparison.Ordinal)
+                && !schema18Json.Contains("\"inspectionTarget\"", StringComparison.Ordinal)
+                && !schema18Json.Contains("\"description\"", StringComparison.Ordinal),
+                $"schema={reopenedSchema18.SchemaVersion};metadata fields omitted={schema18Json.Contains("\"category\"", StringComparison.Ordinal) == false}");
+            Check(
+                "recipe metadata requires schema 1.9 and enforces the 500-character field limit",
+                !ToolRecipeValidator.ValidateForStorage(schema18Document with { Category = "측정" }).IsValid
+                && !ToolRecipeValidator.ValidateForStorage(metadataDocument with
+                {
+                    Description = new string('x', ToolRecipeDocument.MaximumMetadataFieldLength + 1)
+                }).IsValid,
+                "metadata under schema 1.8 and an overlength description are rejected");
+
             var dualReference = rectangle with
             {
                 Id = "selection.thickness.reference",
@@ -213,6 +301,7 @@ public static class ToolRecipeSelectionContractVerification
                 "gap-flush",
                 "grid-circle-authoring",
                 "grid-polygon-authoring",
+                "grid-polygon-domain",
                 "height-difference-edge",
                 "landmark-correspondence",
                 "level-surface",
@@ -227,7 +316,7 @@ public static class ToolRecipeSelectionContractVerification
             };
             Check(
                 "selection-consuming tool inventory has one explicit compatibility matrix",
-                ToolRecipeSelectionContract.Declarations.Count == 22
+                ToolRecipeSelectionContract.Declarations.Count == 23
                 && declaredTools.SequenceEqual(expectedDeclaredTools, StringComparer.Ordinal)
                 && ToolRecipeSelectionContract.Declarations
                     .GroupBy(requirement => (requirement.ToolId, requirement.Role))
@@ -487,6 +576,23 @@ public static class ToolRecipeSelectionContractVerification
                     .SequenceEqual([current.Source.Id, dualMeasurement.Id]),
                 $"route={string.Join(';', reopenedIncompleteDualRoi.Steps.Single().InputEntityIds)}");
 
+            var schema17DualRoiDocument = dualRoiDocument with
+            {
+                SchemaVersion = ToolRecipeDocument.GridPolygonSchemaVersion
+            };
+            var schema17DualRoiPath = Path.Combine(fixtureRoot, "schema-1.7-dual-roi.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(schema17DualRoiPath, schema17DualRoiDocument);
+            var reopenedSchema17DualRoi = ToolRecipeDocumentStore.Load(schema17DualRoiPath);
+            Check(
+                "schema 1.7 dual-ROI recipe saves and reopens",
+                ToolRecipeValidator.Validate(schema17DualRoiDocument).IsValid
+                && reopenedSchema17DualRoi.SchemaVersion == ToolRecipeDocument.GridPolygonSchemaVersion
+                && reopenedSchema17DualRoi.Steps.Single().DualRoiRouting
+                    == dualRoiDocument.Steps.Single().DualRoiRouting
+                && reopenedSchema17DualRoi.Steps.Single().InputEntityIds
+                    .SequenceEqual(dualRoiDocument.Steps.Single().InputEntityIds),
+                $"schema={reopenedSchema17DualRoi.SchemaVersion};route={string.Join(';', reopenedSchema17DualRoi.Steps.Single().InputEntityIds)}");
+
             var oldSchemaDualRoutingValidation = ToolRecipeValidator.ValidateForStorage(
                 incompleteDualRoiDocument with
                 {
@@ -533,6 +639,21 @@ public static class ToolRecipeSelectionContractVerification
                 && reopenedBoxes[0].Kind == ToolRecipeSelectionKinds.OrientedBox3D
                 && reopenedBoxes[0].OrientedBox3D == orientedBox.OrientedBox3D,
                 $"schema={reopenedOrientedBox.SchemaVersion}; box={reopenedOrientedBox.Selections?[0].OrientedBox3D}");
+
+            var schema17OrientedBoxDocument = orientedBoxDocument with
+            {
+                SchemaVersion = ToolRecipeDocument.GridPolygonSchemaVersion
+            };
+            var schema17OrientedBoxPath = Path.Combine(fixtureRoot, "schema-1.7-oriented-box.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(schema17OrientedBoxPath, schema17OrientedBoxDocument);
+            var reopenedSchema17OrientedBox = ToolRecipeDocumentStore.Load(schema17OrientedBoxPath);
+            Check(
+                "schema 1.7 OrientedBox3D recipe saves and reopens",
+                ToolRecipeValidator.Validate(schema17OrientedBoxDocument).IsValid
+                && reopenedSchema17OrientedBox.SchemaVersion == ToolRecipeDocument.GridPolygonSchemaVersion
+                && reopenedSchema17OrientedBox.Selections is [var schema17Box]
+                && schema17Box.OrientedBox3D == orientedBox.OrientedBox3D,
+                $"schema={reopenedSchema17OrientedBox.SchemaVersion};box={reopenedSchema17OrientedBox.Selections?[0].OrientedBox3D}");
 
             var oldSchemaOrientedBox = orientedBoxDocument with
             {
@@ -825,6 +946,60 @@ public static class ToolRecipeSelectionContractVerification
                 && reopenedVertices.SequenceEqual(expectedVertices)
                 && reopenedPolygon.SourceBinding == binding,
                 $"schema={reopenedGridPolygon.SchemaVersion};vertices={reopenedGridPolygon.Selections?[0].GridPolygon?.Vertices.Count ?? 0}");
+
+            var schema17GridPolygonDocument = gridPolygonDocument with
+            {
+                SchemaVersion = ToolRecipeDocument.GridPolygonSchemaVersion
+            };
+            var schema17GridPolygonPath = Path.Combine(fixtureRoot, "schema-1.7-grid-polygon.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(schema17GridPolygonPath, schema17GridPolygonDocument);
+            var reopenedSchema17GridPolygon = ToolRecipeDocumentStore.Load(schema17GridPolygonPath);
+            Check(
+                "schema 1.7 GridPolygon recipe saves and reopens",
+                ToolRecipeValidator.Validate(schema17GridPolygonDocument).IsValid
+                && reopenedSchema17GridPolygon.SchemaVersion == ToolRecipeDocument.GridPolygonSchemaVersion
+                && reopenedSchema17GridPolygon.Selections is [var schema17Polygon]
+                && schema17Polygon.Kind == ToolRecipeSelectionKinds.GridPolygon
+                && schema17Polygon.GridPolygon?.Vertices.SequenceEqual(gridPolygon.GridPolygon!.Vertices) == true
+                && schema17Polygon.SourceBinding == binding,
+                $"schema={reopenedSchema17GridPolygon.SchemaVersion};vertices={reopenedSchema17GridPolygon.Selections?[0].GridPolygon?.Vertices.Count ?? 0}");
+
+            var artifactBinding = new ToolRecipeSelectionSourceBinding(
+                "HeightField",
+                new string('A', 64),
+                binding.GridWidth,
+                binding.GridHeight,
+                "derived.height-field.01",
+                binding.ContentSha256,
+                "raw-height",
+                "frame.c3d-grid-index");
+            var schema17ArtifactPolygon = gridPolygon with
+            {
+                Id = "selection.polygon.artifact.01",
+                SourceBinding = artifactBinding
+            };
+            var schema17ArtifactDocument = schema17GridPolygonDocument with
+            {
+                Steps =
+                [
+                    schema17GridPolygonDocument.Steps[0] with
+                    {
+                        InputEntityIds = [current.Source.Id, schema17ArtifactPolygon.Id]
+                    }
+                ],
+                Selections = [schema17ArtifactPolygon]
+            };
+            var schema17ArtifactPath = Path.Combine(fixtureRoot, "schema-1.7-artifact-owned.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(schema17ArtifactPath, schema17ArtifactDocument);
+            var reopenedSchema17Artifact = ToolRecipeDocumentStore.Load(schema17ArtifactPath);
+            Check(
+                "schema 1.7 artifact-owned selection saves and reopens",
+                ToolRecipeValidator.Validate(schema17ArtifactDocument).IsValid
+                && reopenedSchema17Artifact.SchemaVersion == ToolRecipeDocument.GridPolygonSchemaVersion
+                && reopenedSchema17Artifact.Selections is [var schema17Artifact]
+                && schema17Artifact.SourceBinding == artifactBinding
+                && schema17Artifact.GridPolygon?.Vertices.SequenceEqual(gridPolygon.GridPolygon!.Vertices) == true,
+                $"schema={reopenedSchema17Artifact.SchemaVersion};owner={reopenedSchema17Artifact.Selections?[0].SourceBinding.OwnerEntityId};format={reopenedSchema17Artifact.Selections?[0].SourceBinding.Format}");
 
             var oldSchemaGridPolygonValidation = ToolRecipeValidator.Validate(
                 gridPolygonDocument with { SchemaVersion = ToolRecipeDocument.GridCircleSchemaVersion });
@@ -1431,6 +1606,34 @@ public static class ToolRecipeSelectionContractVerification
                 && !legacyJson.Contains("\"selections\"", StringComparison.Ordinal),
                 $"bytes={new FileInfo(legacyRecipePath).Length}");
 
+            var futureSchemaValidation = ToolRecipeValidator.ValidateForStorage(
+                CreateDocument("99.0", sourcePath, null, current.Source.Id));
+            var unknownSchemaValidation = ToolRecipeValidator.ValidateForStorage(
+                CreateDocument("future", sourcePath, null, current.Source.Id));
+            Check(
+                "future and unknown recipe schemas remain rejected",
+                !futureSchemaValidation.IsValid
+                && futureSchemaValidation.Errors.Any(error => error.Contains("Unsupported teaching recipe schema", StringComparison.Ordinal))
+                && !unknownSchemaValidation.IsValid
+                && unknownSchemaValidation.Errors.Any(error => error.Contains("Unsupported teaching recipe schema", StringComparison.Ordinal)),
+                $"future={string.Join(" | ", futureSchemaValidation.Errors)};unknown={string.Join(" | ", unknownSchemaValidation.Errors)}");
+
+            var corruptRecipePath = Path.Combine(fixtureRoot, "corrupt.ov3d-teach.json");
+            File.WriteAllText(corruptRecipePath, "{\"schemaVersion\":\"1.7\"");
+            var corruptRecipeRejected = false;
+            try
+            {
+                ToolRecipeDocumentStore.Load(corruptRecipePath);
+            }
+            catch (Exception exception) when (exception is JsonException or InvalidDataException)
+            {
+                corruptRecipeRejected = true;
+            }
+            Check(
+                "corrupt recipe JSON remains rejected",
+                corruptRecipeRejected,
+                "malformed JSON must not be accepted or partially restored");
+
             WriteC3D(sourcePath, 4, 4, 100.0f);
             var stale = ToolRecipeSelectionSourceBindingVerifier.Verify(sourcePath, binding);
             Check(
@@ -1477,6 +1680,9 @@ public static class ToolRecipeSelectionContractVerification
             }
         }
 
+        schema17CompatibilitySubsetComplete =
+            Schema17CompatibilityCaseNames.All(caseName => lines.Any(line =>
+                line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
         var reportDirectory = Path.GetDirectoryName(reportPath);
         if (!string.IsNullOrWhiteSpace(reportDirectory)) Directory.CreateDirectory(reportDirectory);
         var succeeded = passed == total
@@ -1487,6 +1693,7 @@ public static class ToolRecipeSelectionContractVerification
             && gridPolygonRasterizationSubsetComplete
             && gridCircleRasterizationSubsetComplete
             && gridRectangleRasterizationSubsetComplete
+            && schema17CompatibilitySubsetComplete
             && !lines.Any(line => line.StartsWith("FAIL |", StringComparison.Ordinal));
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         File.WriteAllLines(reportPath, lines);

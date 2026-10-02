@@ -35,7 +35,9 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
 
     private CancellationTokenSource? previewCancellation;
     private C3DHeightDifferenceEdgePointSet? previewOutput;
-    private readonly Dictionary<string, C3DHeightDifferenceEdgePointSet> publishedOutputs =
+    private ToolWorkbenchPipelineStepItem? previewStep;
+    private string previewContext = string.Empty;
+    private readonly Dictionary<string, (C3DHeightDifferenceEdgePointSet Output, string StepId, string Context)> publishedOutputs =
         new(StringComparer.OrdinalIgnoreCase);
     private bool isPreviewRunning;
     private bool isPreviewStale;
@@ -198,7 +200,14 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
             return false;
         }
 
-        return publishedOutputs.TryGetValue(outputEntityId, out output);
+        if (publishedOutputs.TryGetValue(outputEntityId, out var published)
+            && string.Equals(published.Context, createDocument().CreateStepExecutionContext(published.StepId), StringComparison.Ordinal))
+        {
+            output = published.Output;
+            return true;
+        }
+        output = null;
+        return false;
     }
 
     public async Task<bool> PreviewAsync()
@@ -229,6 +238,9 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
             return false;
         }
 
+        var document = createDocument();
+        var context = document.CreateStepExecutionContext(step.Id);
+        publishedOutputs.Remove(step.OutputEntityId);
         SetRunning(true);
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -253,13 +265,22 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
 
             var evaluation = await Task.Run(
                 () => ToolRecipeHeightDifferenceEdgeExecution.Execute(
-                    createDocument(),
+                    document,
                     step.Id,
                     filterOutput,
                     cancellationToken),
                 cancellationToken);
             if (!IsCurrentPreview(currentCancellation))
             {
+                return false;
+            }
+
+            if (!ReferenceEquals(step, getSelectedPipelineStep())
+                || !string.Equals(context, createDocument().CreateStepExecutionContext(step.Id), StringComparison.Ordinal))
+            {
+                isPreviewStale = previewOutput is not null;
+                step.State = "Preview stale";
+                SetSummary("Input or conditions changed. Run again for the current result.");
                 return false;
             }
 
@@ -278,6 +299,8 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
             }
 
             previewOutput = evaluation.Output;
+            previewStep = step;
+            previewContext = context;
             step.State = "Preview ready";
             var diagnostics = evaluation.Output.Diagnostics;
             SetSummary($"Preview ready | points {diagnostics.AcceptedScanlineCount:N0}/{diagnostics.ScanlineCount:N0} | eligible pairs {diagnostics.EligiblePairCount:N0} | missing skips {diagnostics.SkippedMissingPairCount:N0} | no OK/NG");
@@ -352,13 +375,14 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
 
     public void Publish()
     {
-        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview
+            || !ReferenceEquals(step, previewStep))
         {
             return;
         }
 
         isPreviewPublished = true;
-        publishedOutputs[previewOutput!.OutputEntityId] = previewOutput;
+        publishedOutputs[previewOutput!.OutputEntityId] = (previewOutput, step.Id, previewContext);
         step.State = "Published";
         SetSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {previewOutput.ContentSha256} | feature extraction only, no OK/NG");
         if (IsDisposed)
@@ -412,60 +436,49 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
         onExecutionStateChanged();
     }
 
-    public void MarkStaleIfNeeded(object? sender = null)
-    {
-        if (IsDisposed || previewOutput is null || isPreviewRunning)
-        {
-            return;
-        }
-
-        if (sender is not null)
-        {
-            var selected = getSelectedPipelineStep();
-            var selectedIsEdge = string.Equals(
-                selected?.ToolId,
-                "height-difference-edge",
-                StringComparison.Ordinal);
-            var selectedIsCurrentEdge = selectedIsEdge
-                && string.Equals(
-                    selected?.OutputEntityId,
-                    previewOutput.OutputEntityId,
-                    StringComparison.OrdinalIgnoreCase);
-            var isSelectedEdgeParameter = selectedIsEdge
-                && sender is ToolWorkbenchParameterItem parameter
-                && (selected?.Parameters.Contains(parameter) ?? false);
-            if (!selectedIsCurrentEdge
-                || (!ReferenceEquals(sender, selected) && !isSelectedEdgeParameter))
-            {
-                return;
-            }
-        }
-
+    public void MarkStaleIfNeeded(object? sender = null) =>
         MarkStale("Input, search band, parameter, route, or output changed. Preview again before Publish.");
-    }
 
     public void MarkStale(string summary)
     {
-        if (IsDisposed || previewOutput is null)
+        if (IsDisposed || isPreviewRunning || previewOutput is null && publishedOutputs.Count == 0)
         {
             return;
         }
 
-        isPreviewStale = true;
+        var document = createDocument();
+        var changed = false;
+        foreach (var (id, published) in publishedOutputs.ToArray())
+        {
+            if (string.Equals(published.Context, document.CreateStepExecutionContext(published.StepId), StringComparison.Ordinal)) continue;
+            publishedOutputs.Remove(id);
+            if (findStepByOutputEntityId(id) is { } step) step.State = "Preview stale";
+            changed = true;
+        }
+        if (previewOutput is not null && !isPreviewStale && previewStep is not null
+            && !string.Equals(previewContext, document.CreateStepExecutionContext(previewStep.Id), StringComparison.Ordinal))
+        {
+            isPreviewStale = true;
+            isPreviewPublished = false;
+            previewStep.State = "Preview stale";
+            changed = true;
+        }
+        if (!changed) return;
+        markLineFitStale();
+        if (isPreviewStale) SetSummary(summary);
+        else onExecutionStateChanged();
+    }
+
+    public void ForgetOutput(string outputEntityId)
+    {
+        if (IsDisposed) return;
+        publishedOutputs.Remove(outputEntityId);
+        if (!string.Equals(previewOutput?.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)) return;
+        previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
+        isPreviewStale = false;
         isPreviewPublished = false;
-        publishedOutputs.Clear();
-        var step = findStepByOutputEntityId(previewOutput.OutputEntityId);
-        if (step is not null)
-        {
-            step.State = "Preview stale";
-        }
-
-        if (!IsDisposed)
-        {
-            markLineFitStale();
-        }
-
-        SetSummary(summary);
     }
 
     public void Clear(string summary)
@@ -480,6 +493,8 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
         isPreviewStale = false;
         isPreviewPublished = false;
         publishedOutputs.Clear();
@@ -498,6 +513,8 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
         {
             return;
         }
+
+        MarkStaleIfNeeded();
 
         if (getSelectedPipelineStep() is { } step && IsSelectedStepHeightDifferenceEdge
             && (previewOutput is null
@@ -590,6 +607,8 @@ internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner : IDisposa
             null);
         CancelAndDispose(currentCancellation);
         previewOutput = null;
+        previewStep = null;
+        previewContext = string.Empty;
         publishedOutputs.Clear();
         isPreviewRunning = false;
         isPreviewStale = false;

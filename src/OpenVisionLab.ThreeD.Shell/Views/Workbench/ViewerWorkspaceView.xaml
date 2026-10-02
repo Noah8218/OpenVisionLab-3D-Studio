@@ -4,11 +4,62 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:host="clr-namespace:OpenVisionLab.ThreeD.Viewer.Hosting;assembly=OpenVisionLab.ThreeD.Viewer"
+             xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
+             xmlns:workbenchViewModels="clr-namespace:OpenVisionLab.ThreeD.Shell.ViewModels.Workbench"
              xmlns:workbenchViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              AutomationProperties.AutomationId="ViewerWorkspace">
+    <UserControl.InputBindings>
+        <KeyBinding Key="D1" Command="{Binding SetSingleViewerLayoutCommand}" />
+        <KeyBinding Key="D2" Command="{Binding ShowHeightImageOnlyCommand}" />
+        <KeyBinding Key="D3" Command="{Binding OpenHeightImageCommand}" />
+
+        <KeyBinding Key="F" Command="{Binding Presentation.FitAllCommand, ElementName=MainViewerPresentationBar}" />
+        <KeyBinding Key="R" Command="{Binding Presentation.RotateCommand, ElementName=MainViewerPresentationBar}" />
+        <KeyBinding Key="M" Command="{Binding Presentation.MoveCommand, ElementName=MainViewerPresentationBar}" />
+        <KeyBinding Key="Escape" Command="{Binding Presentation.ProfileActionCommand, ElementName=MainViewerPresentationBar}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Cancel}" />
+        <KeyBinding Key="Left" Command="{Binding Presentation.ProfileActionCommand, ElementName=MainViewerPresentationBar}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Left}" />
+        <KeyBinding Key="Right" Command="{Binding Presentation.ProfileActionCommand, ElementName=MainViewerPresentationBar}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Right}" />
+        <KeyBinding Key="Up" Command="{Binding Presentation.ProfileActionCommand, ElementName=MainViewerPresentationBar}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Up}" />
+        <KeyBinding Key="Down" Command="{Binding Presentation.ProfileActionCommand, ElementName=MainViewerPresentationBar}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Down}" />
+    </UserControl.InputBindings>
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <ContextMenu x:Key="WorkbenchViewerContextMenu">
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.InputLoad, Korean='입력 불러오기', English='Load input'}" Command="{Binding Import3DDataCommand}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}" Command="{Binding Tag.FitAllCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" InputGestureText="F" />
+            <Separator />
+            <MenuItem Tag="OrbitHere" Header="{views:ThreeDText Key=ThreeD.Viewer.OrbitHere, Korean='여기를 회전 중심으로', English='Orbit around here'}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.Rotate, Korean='회전', English='Rotate'}" Command="{Binding Tag.RotateCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" IsChecked="{Binding Tag.IsRotateMode, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}" InputGestureText="R" IsCheckable="True" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.Move, Korean='이동', English='Move'}" Command="{Binding Tag.MoveCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" IsChecked="{Binding Tag.IsMoveMode, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}" InputGestureText="M" IsCheckable="True" />
+            <Separator />
+            <MenuItem Header="3D" Command="{Binding SetSingleViewerLayoutCommand}" IsCheckable="True" IsChecked="{Binding IsSingleViewerLayout, Mode=OneWay}" />
+            <MenuItem Header="XY" Command="{Binding ShowHeightImageOnlyCommand}" IsCheckable="True" IsChecked="{Binding IsHeightImageOnlyViewerLayout, Mode=OneWay}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.SplitLayout, Korean='분할', English='Split'}" Command="{Binding OpenHeightImageCommand}" IsCheckable="True" IsChecked="{Binding IsSplitVerticalViewerLayout, Mode=OneWay}" />
+            <Separator />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.Measure, Korean='두 점 측정', English='Measure two points'}" Command="{Binding Tag.MeasureCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" IsChecked="{Binding Tag.IsProfileMode, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}" IsCheckable="True" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Profile.Repick, Korean='A/B 다시 선택', English='Repick A/B'}" Command="{Binding Tag.ProfileActionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Repick}" Visibility="{Binding Tag.HasProfileEndpoints, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <MenuItem Header="A ↔ B" Command="{Binding Tag.ProfileActionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Swap}" Visibility="{Binding Tag.HasProfileEndpoints, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Profile.Clear, Korean='현재 측정 지우기', English='Clear measurement'}" Command="{Binding Tag.ProfileActionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Clear}" Visibility="{Binding Tag.ProfileState.Visible, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <Separator />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.ColorDisplay, Korean='색상·표시', English='Color and display'}" Command="{Binding Tag.OpenDisplaySettingsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+        </ContextMenu>
+        <ContextMenu x:Key="HeightImageContextMenu">
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.InputLoad, Korean='입력 불러오기', English='Load input'}" Command="{Binding Import3DDataCommand}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}" Command="{Binding HeightImageViewer.FitCommand}" InputGestureText="F" />
+            <MenuItem Header="1:1" Command="{Binding HeightImageViewer.ActualPixelsCommand}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.HeightImage.AutoRange, Korean='높이 자동 범위', English='Auto height range'}" Command="{Binding HeightImageViewer.AutoRangeCommand}" />
+            <Separator />
+            <MenuItem Header="3D" Command="{Binding SetSingleViewerLayoutCommand}" IsCheckable="True" IsChecked="{Binding IsSingleViewerLayout, Mode=OneWay}" />
+            <MenuItem Header="XY" Command="{Binding ShowHeightImageOnlyCommand}" IsCheckable="True" IsChecked="{Binding IsHeightImageOnlyViewerLayout, Mode=OneWay}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.SplitLayout, Korean='분할', English='Split'}" Command="{Binding OpenHeightImageCommand}" IsCheckable="True" IsChecked="{Binding IsSplitVerticalViewerLayout, Mode=OneWay}" />
+            <Separator />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.Measure, Korean='두 점 측정', English='Measure two points'}" Command="{Binding Tag.MeasureCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" IsChecked="{Binding Tag.IsProfileMode, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}" IsCheckable="True" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Profile.Repick, Korean='A/B 다시 선택', English='Repick A/B'}" Command="{Binding Tag.ProfileActionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Repick}" Visibility="{Binding Tag.HasProfileEndpoints, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <MenuItem Header="A ↔ B" Command="{Binding Tag.ProfileActionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Swap}" Visibility="{Binding Tag.HasProfileEndpoints, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <MenuItem Header="{views:ThreeDText Key=ThreeD.Profile.Clear, Korean='현재 측정 지우기', English='Clear measurement'}" Command="{Binding Tag.ProfileActionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Clear}" Visibility="{Binding Tag.ProfileState.Visible, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </ContextMenu>
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
         <Style x:Key="ViewerLayoutIconButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="34" />
@@ -103,191 +154,165 @@
         <Style x:Key="ViewerCameraLinkToggleStyle"
                TargetType="{x:Type ToggleButton}"
                BasedOn="{StaticResource ViewerLayoutIconToggleStyle}">
-            <Setter Property="Width" Value="152" />
+            <Setter Property="Width" Value="96" />
             <Setter Property="Padding" Value="8,4" />
         </Style>
+        <Style x:Key="ViewerModeToggleStyle"
+               TargetType="{x:Type ToggleButton}"
+               BasedOn="{StaticResource ViewerLayoutIconToggleStyle}">
+            <Setter Property="Width" Value="Auto" />
+            <Setter Property="MinWidth" Value="48" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="ViewerCombinedModeToggleStyle"
+               TargetType="{x:Type ToggleButton}"
+               BasedOn="{StaticResource ViewerModeToggleStyle}">
+            <Setter Property="Width" Value="Auto" />
+            <Setter Property="MinWidth" Value="92" />
+        </Style>
     </UserControl.Resources>
-    <Grid Background="{DynamicResource ThreeD.PanelBrush}">
+    <ScrollViewer x:Name="ViewerWorkspaceScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch" Focusable="False">
+    <Grid x:Name="ViewerWorkspaceSurface" Background="{DynamicResource ThreeD.PanelBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border x:Name="ViewerLayoutToolbar"
-                Grid.Row="0"
-                Margin="0,6,0,0"
-                Padding="0"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                Panel.ZIndex="10"
-                Background="Transparent"
-                BorderThickness="0"
-                AutomationProperties.AutomationId="ViewerLayoutToolbar"
-                AutomationProperties.Name="{Binding Localization.ViewerLayout}"
-                AutomationProperties.HelpText="{Binding ViewerWorkspaceLayoutSummary}">
-            <WrapPanel VerticalAlignment="Center">
-                <Button Style="{StaticResource ViewerLayoutIconButtonStyle}"
-                        Command="{Binding Import3DDataCommand}"
-                        ToolTip="{Binding Localization.Import3DDataToolTip}"
-                        AutomationProperties.Name="{Binding Localization.Import3DData}"
-                        AutomationProperties.AutomationId="Import3DData">
-                    <ui:SymbolIcon Width="17"
-                                   Height="17"
-                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
-                                   Symbol="ArrowImport24" />
-                </Button>
-                <Button Style="{StaticResource ViewerLayoutIconButtonStyle}"
-                        Command="{Binding OpenHeightImageCommand}"
-                        ToolTip="{Binding Localization.HeightImageViewOnly}"
-                        AutomationProperties.Name="{Binding Localization.OpenHeightImage}"
-                        AutomationProperties.AutomationId="OpenHeightImage">
-                    <ui:SymbolIcon Width="17"
-                                   Height="17"
-                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
-                                   Symbol="DataHistogram24" />
-                </Button>
-                <Border Width="1"
-                        Height="22"
-                        Margin="3,0,7,0"
-                        VerticalAlignment="Center"
-                        Background="{DynamicResource ThreeD.DividerBrush}" />
-                <ToggleButton Style="{StaticResource ViewerLayoutIconToggleStyle}"
-                              Command="{Binding SetSingleViewerLayoutCommand}"
-                              IsChecked="{Binding IsSingleViewerLayout, Mode=OneWay}"
-                              ToolTip="{Binding Localization.ViewerReturnToSingle}"
-                              AutomationProperties.Name="{Binding Localization.ViewerSingle}"
-                              AutomationProperties.AutomationId="ViewerSingleLayout">
-                    <Viewbox Width="17" Height="17">
-                        <Canvas Width="16" Height="16">
-                            <Path Data="M2,2 H14 V14 H2 Z"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"
-                                  StrokeThickness="1.5" />
-                        </Canvas>
-                    </Viewbox>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource ViewerLayoutIconToggleStyle}"
-                              Command="{Binding SplitViewerVerticallyCommand}"
-                              IsChecked="{Binding IsSplitVerticalViewerLayout, Mode=OneWay}"
-                              ToolTip="{Binding Localization.ViewerPresentationOnly}"
-                              AutomationProperties.Name="{Binding Localization.ViewerSplitVertical}"
-                              AutomationProperties.AutomationId="ViewerSplitVerticalLayout">
-                    <Viewbox Width="17" Height="17">
-                        <Canvas Width="16" Height="16">
-                            <Path Data="M2,2 H14 V14 H2 Z M8,2 V14"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"
-                                  StrokeThickness="1.5" />
-                        </Canvas>
-                    </Viewbox>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource ViewerLayoutIconToggleStyle}"
-                              Command="{Binding SplitViewerHorizontallyCommand}"
-                              IsChecked="{Binding IsSplitHorizontalViewerLayout, Mode=OneWay}"
-                              ToolTip="{Binding Localization.ViewerPresentationOnly}"
-                              AutomationProperties.Name="{Binding Localization.ViewerSplitHorizontal}"
-                              AutomationProperties.AutomationId="ViewerSplitHorizontalLayout">
-                    <Viewbox Width="17" Height="17">
-                        <Canvas Width="16" Height="16">
-                            <Path Data="M2,2 H14 V14 H2 Z M2,8 H14"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"
-                                  StrokeThickness="1.5" />
-                        </Canvas>
-                    </Viewbox>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource ViewerLayoutIconToggleStyle}"
-                              Command="{Binding PopOutViewerCommand}"
-                              IsChecked="{Binding IsPopOutViewerLayout, Mode=OneWay}"
-                              ToolTip="{Binding Localization.ViewerPresentationOnly}"
-                              AutomationProperties.Name="{Binding Localization.ViewerPopOut}"
-                              AutomationProperties.AutomationId="ViewerPopOutLayout">
-                    <Viewbox Width="17" Height="17">
-                        <Canvas Width="16" Height="16">
-                            <Path Data="M2,5 V14 H11 M6,2 H14 V10 M8,8 L14,2"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ToggleButton}}}"
-                                  StrokeThickness="1.5" />
-                        </Canvas>
-                    </Viewbox>
-                </ToggleButton>
-                <ToggleButton Style="{StaticResource ViewerCameraLinkToggleStyle}"
-                              Command="{Binding ToggleViewerCameraLinkCommand}"
-                              IsChecked="{Binding ViewerWorkspace.IsCameraLinked, Mode=OneWay}"
-                              ToolTip="{Binding ViewerCameraLinkSummary}"
-                              AutomationProperties.Name="{Binding ViewerCameraLinkLabel}"
-                              AutomationProperties.HelpText="{Binding ViewerCameraLinkSummary}"
-                              AutomationProperties.AutomationId="ViewerCameraLink">
-                    <TextBlock Text="{Binding ViewerCameraLinkLabel}"
-                               TextWrapping="NoWrap" />
-                </ToggleButton>
-                <StackPanel Margin="0,0,8,0"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal">
-                    <TextBlock Margin="0,0,5,0"
-                               VerticalAlignment="Center"
-                               FontSize="9"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding Localization.ViewerMainSlot}" />
-                    <ComboBox Width="210"
-                              MinHeight="30"
-                              ItemsSource="{Binding MainViewerCandidates}"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValuePath="Id"
-                              SelectedValue="{Binding MainViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              ToolTip="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                              AutomationProperties.Name="{Binding Localization.ViewerMainSlot}"
-                              AutomationProperties.AutomationId="MainViewerContentPin" />
-                    <ui:Button Margin="4,0,0,0"
-                               Padding="7,3"
-                               Content="×"
-                               Command="{Binding ClearMainViewerPinCommand}"
-                               ToolTip="{Binding Localization.ViewerClearPin}"
-                               AutomationProperties.Name="{Binding Localization.ViewerClearPin}"
-                               AutomationProperties.AutomationId="ClearMainViewerPin" />
-                    <TextBlock Width="220"
-                               Margin="6,0,0,0"
-                               VerticalAlignment="Center"
-                               FontSize="9"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
-                </StackPanel>
-                <StackPanel Margin="0,0,8,0"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal"
-                            Visibility="{Binding ViewerWorkspace.HasAuxiliarySlot, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Margin="0,0,5,0"
-                               VerticalAlignment="Center"
-                               FontSize="9"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding Localization.ViewerAuxiliarySlot}" />
-                    <ComboBox Width="210"
-                              MinHeight="30"
-                              ItemsSource="{Binding ViewerWorkspaceCandidates}"
-                              DisplayMemberPath="DisplayName"
-                              SelectedValuePath="Id"
-                              SelectedValue="{Binding AuxiliaryViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              ToolTip="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                              AutomationProperties.Name="{Binding Localization.ViewerAuxiliaryOutput}"
-                              AutomationProperties.AutomationId="AuxiliaryViewerContentPin" />
-                    <ui:Button Margin="4,0,0,0"
-                               Padding="7,3"
-                               Content="×"
-                               Command="{Binding ClearAuxiliaryViewerPinCommand}"
-                               ToolTip="{Binding Localization.ViewerClearPin}"
-                               AutomationProperties.Name="{Binding Localization.ViewerClearPin}"
-                               AutomationProperties.AutomationId="ClearAuxiliaryViewerPin" />
-                    <TextBlock Width="220"
-                               Margin="6,0,0,0"
-                               VerticalAlignment="Center"
-                               FontSize="9"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
-                </StackPanel>
-            </WrapPanel>
-        </Border>
+        <WrapPanel x:Name="ViewerCommandRows" Grid.Row="0" VerticalAlignment="Top">
+            <Border x:Name="ViewerLayoutToolbar"
+                    Margin="8,4,8,4"
+                    Padding="0"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Panel.ZIndex="10"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    AutomationProperties.AutomationId="ViewerLayoutToolbar"
+                    AutomationProperties.Name="{Binding Localization.ViewerLayout}"
+                    AutomationProperties.HelpText="{Binding ViewerWorkspaceLayoutSummary}">
+                <WrapPanel VerticalAlignment="Center">
+                    <ToggleButton x:Name="ThreeDViewerMode"
+                                  Style="{StaticResource ViewerModeToggleStyle}"
+                                  Command="{Binding SetSingleViewerLayoutCommand}"
+                                  IsChecked="{Binding IsSingleViewerLayout, Mode=OneWay}"
+                                  ToolTip="{Binding Localization.ViewerReturnToSingle}"
+                                  AutomationProperties.Name="{Binding Localization.ViewerSingle}"
+                                  AutomationProperties.AutomationId="ViewerSingleLayout"
+                                  Content="3D">
+                    </ToggleButton>
+                    <ToggleButton x:Name="HeightOnlyViewerMode"
+                                  Style="{StaticResource ViewerModeToggleStyle}"
+                                  Command="{Binding ShowHeightImageOnlyCommand}"
+                                  IsChecked="{Binding IsHeightImageOnlyViewerLayout, Mode=OneWay}"
+                                  Content="XY"
+                                  ToolTip="{Binding Localization.HeightImageViewOnly}"
+                                  AutomationProperties.Name="{Binding Localization.HeightImage}"
+                                  AutomationProperties.AutomationId="ViewerHeightImageOnly" />
+                    <ToggleButton x:Name="ThreeDHeightViewerMode"
+                                  Style="{StaticResource ViewerCombinedModeToggleStyle}"
+                                  Command="{Binding OpenHeightImageCommand}"
+                                  IsChecked="{Binding IsSplitVerticalViewerLayout, Mode=OneWay}"
+                                  ToolTip="{Binding Localization.HeightImageViewOnly}"
+                                  AutomationProperties.Name="{Binding Localization.OpenHeightImage}"
+                                  AutomationProperties.AutomationId="OpenHeightImage">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="HeightImageModeLabel"
+                                       Text="{views:ThreeDText Key=ThreeD.Viewer.SplitLayout, Korean='분할', English='Split'}" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <Menu IsMainMenu="False" x:Name="ViewerWorkspaceOptionsMenu"
+                          Margin="0,0,6,0"
+                          Height="30"
+                          Padding="0"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource ThreeD.PanelBrush}"
+                          Foreground="{DynamicResource ThreeD.TextBrush}"
+                          AutomationProperties.Name="{views:ThreeDText Key=ThreeD.R19.ViewerLayoutOptions, Korean='화면 배치', English='Layout'}"
+                          AutomationProperties.AutomationId="ViewerWorkspaceOptionsMenu">
+<MenuItem Template="{StaticResource R19TopMenuItemTemplate}" Header="{views:ThreeDText Key=ThreeD.R19.ViewerLayoutOptions, Korean='화면 배치', English='Layout'}"
+                                  Height="30"
+                                  Padding="6,0"
+                                  FontSize="12"
+                                  VerticalContentAlignment="Center"
+                                  ToolTip="{Binding ViewerWorkspaceLayoutSummary}"
+                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.R19.ViewerLayoutOptions, Korean='화면 배치', English='Layout'}"
+                                  AutomationProperties.HelpText="{Binding ViewerWorkspaceLayoutSummary}"
+                                  AutomationProperties.AutomationId="ViewerWorkspaceOptionsRoot">
+                            <MenuItem Header="{Binding Localization.ViewerSplitHorizontal}"
+                                      Command="{Binding SplitViewerHorizontallyCommand}"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding IsSplitHorizontalViewerLayout, Mode=OneWay}"
+                                      AutomationProperties.Name="{Binding Localization.ViewerSplitHorizontal}"
+                                      AutomationProperties.AutomationId="ViewerSplitHorizontalLayout" />
+                            <MenuItem Header="{Binding Localization.ViewerPopOut}"
+                                      Command="{Binding PopOutViewerCommand}"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding IsPopOutViewerLayout, Mode=OneWay}"
+                                      AutomationProperties.Name="{Binding Localization.ViewerPopOut}"
+                                      AutomationProperties.AutomationId="ViewerPopOutLayout" />
+                            <Separator />
+                            <MenuItem Header="{Binding ViewerCameraLinkLabel}"
+                                      Command="{Binding ToggleViewerCameraLinkCommand}"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding ViewerWorkspace.IsCameraLinked, Mode=OneWay}"
+                                      ToolTip="{Binding ViewerCameraLinkSummary}"
+                                      AutomationProperties.Name="{Binding ViewerCameraLinkLabel}"
+                                      AutomationProperties.HelpText="{Binding ViewerCameraLinkSummary}"
+                                      AutomationProperties.AutomationId="ViewerCameraLink" />
+                            <Separator />
+                            <MenuItem x:Name="ViewerInspectionOutputCompare"
+                                      Header="{views:ThreeDText Key=ThreeD.R19.ViewerComparePinned, Korean='고정 결과 A/B 비교', English='Compare pinned A/B'}"
+                                      IsCheckable="True"
+                                      Command="{Binding ShowOutputCompareViewerCommand}"
+                                      IsChecked="{Binding IsOutputCompareViewerActive, Mode=OneWay}"
+                                      IsEnabled="{Binding CanShowOutputCompareViewer}"
+                                      AutomationProperties.AutomationId="ViewerInspectionOutputCompare" />
+                        </MenuItem>
+                    </Menu>
+                </WrapPanel>
+            </Border><Border x:Name="ViewerInspectionDataSwitch" Margin="0,4,8,4" AutomationProperties.AutomationId="ViewerInspectionDataSwitch">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasInspectionStep}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Menu IsMainMenu="False" Background="Transparent">
+                    <MenuItem Header="{views:ThreeDText Key=ThreeD.Viewer.DataView, Korean='입력 / 결과', English='Input / result'}" Template="{StaticResource R19TopMenuItemTemplate}">
+                        <MenuItem x:Name="ViewerInspectionInput" Header="{views:ThreeDText Key=ThreeD.Viewer.Input, Korean='입력', English='Input'}" IsCheckable="True"
+                                  Command="{Binding SetInspectionDataViewCommand}" CommandParameter="{x:Static workbenchViewModels:ViewerInspectionDataView.Input}"
+                                  IsChecked="{Binding IsInspectionInputView, Mode=OneWay}" AutomationProperties.AutomationId="ViewerInspectionInput" />
+                        <MenuItem x:Name="ViewerInspectionOutput" Header="{views:ThreeDText Key=ThreeD.Viewer.Output, Korean='결과', English='Output'}" IsCheckable="True"
+                                  Command="{Binding SetInspectionDataViewCommand}" CommandParameter="{x:Static workbenchViewModels:ViewerInspectionDataView.Output}"
+                                  IsChecked="{Binding IsInspectionOutputView, Mode=OneWay}" AutomationProperties.AutomationId="ViewerInspectionOutput" />
+                        <MenuItem x:Name="ViewerInspectionInputOutput" Header="{views:ThreeDText Key=ThreeD.Viewer.InputOutput, Korean='입력 + 결과', English='Input + result'}" IsCheckable="True"
+                                  Command="{Binding SetInspectionDataViewCommand}" CommandParameter="{x:Static workbenchViewModels:ViewerInspectionDataView.InputOutput}"
+                                  IsChecked="{Binding IsInspectionInputOutputView, Mode=OneWay}" AutomationProperties.AutomationId="ViewerInspectionInputOutput" />
+                    </MenuItem>
+                </Menu>
+            </Border>
 
-        <Border Grid.Row="1"
+
+
+        </WrapPanel>
+
+
+
+        <Border Grid.Row="3" Panel.ZIndex="20" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20" Background="{DynamicResource ThreeD.PanelBrush}">
+            <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
+                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsInspectionFileView}" Value="True" /><Condition Binding="{Binding InspectionQueue.HasSelectedSample}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
+            </Style.Triggers></Style></Border.Style>
+            <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Inspection.NoInput, Korean='검사할 파일을 추가하고 선택하세요.', English='Add and select an inspection file.'}" />
+        </Border>
+        <Border Grid.Row="3"
                 Margin="12,12,12,0"
                 Padding="9,5"
                 MaxWidth="520"
@@ -307,7 +332,7 @@
         </Border>
 
         <Grid x:Name="ViewerGrid"
-              Grid.Row="1"
+              Grid.Row="3"
               Margin="8">
             <Grid.RowDefinitions>
                 <RowDefinition x:Name="FirstRow" Height="*" />
@@ -343,72 +368,258 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Border Padding="7,4"
+                    <Border Padding="7,0"
                             Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                            BorderThickness="0,0,0,1"
-                            Visibility="{Binding ViewerWorkspace.HasAuxiliarySlot, Converter={StaticResource BoolToVisibilityConverter}}">
+                            BorderThickness="0,0,0,1">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <Border Margin="0,0,6,0"
-                                        Padding="5,2"
-                                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                                        CornerRadius="2">
-                                    <TextBlock FontSize="9"
-                                               FontWeight="Bold"
-                                               Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                               Text="A" />
-                                </Border>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="MainViewerContentPin"
+                                      MinWidth="120"
+                                      MaxWidth="240"
+                                      MinHeight="30"
+                                      HorizontalAlignment="Left"
+                                      ItemsSource="{Binding MainViewerCandidates}"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="Id"
+                                      SelectedValue="{Binding MainViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Visibility="{Binding CanEditMainViewerPin, Converter={StaticResource BoolToVisibilityConverter}}"
+                                      ToolTip="{Binding MainViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                      AutomationProperties.Name="{Binding Localization.ViewerMainSlot}"
+                                      AutomationProperties.AutomationId="MainViewerContentPin" />
+                            <TextBlock MaxWidth="240"
+                                       Margin="4,0"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+
+                                       TextTrimming="CharacterEllipsis"
+                                       >
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding EffectiveMainViewerSummary}" />
+                                        <Setter Property="ToolTip" Value="{Binding EffectiveMainViewerSummary}" />
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasInspectionStep}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsOutputCompareViewerActive}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsInspectionFileView}" Value="True"><Setter Property="Visibility" Value="Visible" /><Setter Property="ToolTip" Value="{Binding InspectionQueue.SelectedSample.SourcePath}" /><Setter Property="Text" Value="{Binding InspectionQueue.SelectedSample.FileName, TargetNullValue=—}" /></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <StackPanel Grid.Column="1"
+                                        HorizontalAlignment="Right"
+                                        Orientation="Horizontal">
                                 <TextBlock VerticalAlignment="Center"
-                                           FontSize="10"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.TextBrush}"
-                                           Text="{Binding Localization.ViewerMainSlot}" />
+                                           FontSize="12"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="3D" />
+                                <ui:Button Margin="4,0,0,0"
+                                           Padding="7,2"
+                                           Content="×"
+                                           Command="{Binding ClearMainViewerPinCommand}"
+                                           Visibility="{Binding CanEditMainViewerPin, Converter={StaticResource BoolToVisibilityConverter}}"
+                                           ToolTip="{Binding Localization.ViewerClearPin}"
+                                           AutomationProperties.Name="{Binding Localization.ViewerClearPin}"
+                                           AutomationProperties.AutomationId="ClearMainViewerPin" />
                             </StackPanel>
-                            <workbenchViews:ViewerPresentationBar Grid.Row="1"
-                                                                   Margin="-7,4,-7,-4"
-                                                                   ViewerHost="{Binding MainViewerContent, ElementName=Root}"
-                                                                   SlotLabel="{Binding Localization.ViewerMainSlot}" />
+                                    <Border Grid.Row="1" Grid.ColumnSpan="2" Margin="-7,4,-7,0">
+                <Border.Style>
+                    <Style TargetType="{x:Type Border}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsHeightImageOnlyViewerLayout}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasInspectionStep}" Value="True" />
+                                    <Condition Binding="{Binding HasEffectiveMainGeometry}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <workbenchViews:ViewerPresentationBar x:Name="MainViewerPresentationBar"
+                                                      Margin="0"
+                                                      ViewerHost="{Binding MainViewerContent, ElementName=Root}"
+                                                      DialogPlacementTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                      SlotLabel="" />
+            </Border>
+                            <Border Grid.Row="2" Grid.ColumnSpan="2" Padding="4,3"
+                                    Visibility="{Binding HeightImageViewer.HasLinkedCursor, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    AutomationProperties.AutomationId="SharedHeightCursorSummary">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Width="16" Height="16" Margin="0,0,6,0"
+                                                       Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="CursorClick24" />
+                                        <TextBlock Margin="0,0,7,0" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                   Text="{Binding Localization.SharedHeightCursor}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="Consolas" FontSize="12"
+                                               Foreground="{DynamicResource ThreeD.TextBrush}" TextWrapping="Wrap"
+                                               Text="{Binding HeightImageViewer.HoverSummary}" />
+                                </Grid>
+                            </Border>
                         </Grid>
                     </Border>
                     <Grid Grid.Row="1">
                         <ContentPresenter x:Name="MainViewerPresenter"
-                                          Content="{Binding MainViewerContent, ElementName=Root}" />
-                        <Border MaxWidth="560"
-                                Margin="14,14,14,30"
-                                Padding="9,6"
+                                          Content="{Binding MainViewerContent, ElementName=Root}"
+                                          Visibility="{Binding HasEffectiveMainGeometry, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <Border x:Name="ViewerCompareMainNoGeometry"
+                                MaxWidth="460"
+                                Margin="24"
+                                Padding="18"
                                 HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
-                                Background="#e6172435"
-                                BorderBrush="#00f0e8"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource ThreeD.PanelBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                 BorderThickness="1"
-                                CornerRadius="4"
-                                IsHitTestVisible="False"
-                                Visibility="{Binding HeightImageViewer.HasLinkedCursor, Converter={StaticResource BoolToVisibilityConverter}}"
-                                AutomationProperties.AutomationId="SharedHeightCursorSummary">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Width="16"
-                                               Height="16"
-                                               Margin="0,0,6,0"
-                                               VerticalAlignment="Center"
-                                               Foreground="#00f0e8"
-                                               Symbol="CursorClick24" />
-                                <TextBlock Margin="0,0,7,0"
-                                           VerticalAlignment="Center"
-                                           FontSize="9.5"
+                                CornerRadius="5"
+                                AutomationProperties.Name="{Binding Localization.OutputCompareNoSelection}"
+                                AutomationProperties.HelpText="{Binding Localization.OutputCompareDetail}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsOutputCompareViewerActive}" Value="True" />
+                                                <Condition Binding="{Binding HasEffectiveMainGeometry}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock FontSize="15"
                                            FontWeight="SemiBold"
-                                           Foreground="#00f0e8"
-                                           Text="{Binding Localization.SharedHeightCursor}" />
-                                <TextBlock VerticalAlignment="Center"
-                                           FontFamily="Consolas"
-                                           FontSize="9.5"
-                                           Foreground="White"
-                                           Text="{Binding HeightImageViewer.HoverSummary}"
-                                           TextTrimming="CharacterEllipsis" />
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding Localization.OutputCompareNoSelection}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding Localization.OutputCompareDetail}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="ViewerInputNoGeometry"
+                                MaxWidth="460"
+                                Margin="24"
+                                Padding="18"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource ThreeD.PanelBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="5"
+                                AutomationProperties.AutomationId="ViewerInputNoGeometry">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsInspectionInputView}" Value="True" />
+                                                <Condition Binding="{Binding HasInspectionStep}" Value="True" />
+                                                <Condition Binding="{Binding HasEffectiveMainGeometry}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsInspectionInputOutputView}" Value="True" />
+                                                <Condition Binding="{Binding HasEffectiveMainGeometry}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    <DataTrigger Binding="{Binding IsInspectionFileView}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock FontSize="15"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding ViewerInspectionInput.DisplayName}" />
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding ViewerInspectionInput.State}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding Localization.ViewerMainNoOutput}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="ViewerOutputNoGeometry"
+                                MaxWidth="460"
+                                Margin="24"
+                                Padding="18"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource ThreeD.PanelBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="5"
+                                AutomationProperties.AutomationId="ViewerOutputNoGeometry">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsInspectionOutputView}" Value="True" />
+                                                <Condition Binding="{Binding HasEffectiveOutputGeometry}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    <DataTrigger Binding="{Binding IsInspectionFileView}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock FontSize="15"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding ViewerInspectionOutput.DisplayName}" />
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding ViewerInspectionOutput.ResultStatus}"
+                                           TextWrapping="Wrap" />
+                                <StackPanel Margin="0,7,0,0"
+                                            Orientation="Horizontal"
+                                            Visibility="{Binding ViewerInspectionOutput.HasEvidenceValue, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{Binding ViewerInspectionOutput.ValueLabel}" />
+                                    <TextBlock Margin="8,0,0,0"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                                               Text="{Binding ViewerInspectionOutput.Value}" />
+                                    <TextBlock Margin="4,0,0,0"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{Binding ViewerInspectionOutput.Unit}" />
+                                </StackPanel>
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding ViewerInspectionOutput.Availability}"
+                                           TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                         <Border x:Name="ViewerInputFirstAction"
@@ -435,7 +646,7 @@
                                         <DataTrigger Binding="{Binding HasViewerOnlyImport}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
-                                    </Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsInspectionFileView}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
                                 </Style>
                             </Border.Style>
                             <StackPanel HorizontalAlignment="Center">
@@ -501,7 +712,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Border Padding="7,4"
+                    <Border Padding="7,0"
                             Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                             BorderThickness="0,0,0,1">
@@ -514,31 +725,91 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Border Margin="0,0,6,0"
-                                    Padding="5,2"
-                                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                                    CornerRadius="2">
-                                <TextBlock FontSize="9"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                           Text="B" />
-                            </Border>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock FontSize="10"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.TextBrush}"
-                                           Text="{Binding Localization.ViewerAuxiliarySlot}" />
-                                <TextBlock Margin="0,1,0,0"
-                                           FontSize="9"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                                       TextTrimming="CharacterEllipsis" />
+                            <ComboBox x:Name="AuxiliaryViewerContentPin"
+                                      MinWidth="120"
+                                      MaxWidth="240"
+                                      MinHeight="30"
+                                      ItemsSource="{Binding ViewerWorkspaceCandidates}"
+                                      SelectedValuePath="Id"
+                                      SelectedValue="{Binding AuxiliaryViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Visibility="{Binding CanEditAuxiliaryViewerPin, Converter={StaticResource BoolToVisibilityConverter}}"
+                                      ToolTip="{Binding AuxiliaryViewerSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                      AutomationProperties.Name="{Binding Localization.ViewerAuxiliaryOutput}"
+                                      AutomationProperties.AutomationId="AuxiliaryViewerContentPin">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Style>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Setter Property="Text" Value="{Binding DisplayName}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Kind}"
+                                                                     Value="{x:Static workbenchViewModels:ViewerWorkspaceCandidateKind.HeightImage}">
+                                                            <Setter Property="Text"
+                                                                    Value="{Binding DataContext.Localization.HeightImage, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock MaxWidth="240"
+                                       Margin="4,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                       Text="{Binding EffectiveAuxiliaryViewerSummary}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding EffectiveAuxiliaryViewerSummary}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsInspectionInputOutputView}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsOutputCompareViewerActive}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <StackPanel Grid.Column="1"
+                                        HorizontalAlignment="Right"
+                                        Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Text" Value="3D" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedItem.Kind, ElementName=AuxiliaryViewerContentPin}"
+                                                             Value="{x:Static workbenchViewModels:ViewerWorkspaceCandidateKind.HeightImage}">
+                                                    <Setter Property="Text" Value="{Binding Localization.HeightImage}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ui:Button Margin="4,0,0,0"
+                                           Padding="7,2"
+                                           Content="×"
+                                           Command="{Binding ClearAuxiliaryViewerPinCommand}"
+                                           Visibility="{Binding CanEditAuxiliaryViewerPin, Converter={StaticResource BoolToVisibilityConverter}}"
+                                           ToolTip="{Binding Localization.ViewerClearPin}"
+                                           AutomationProperties.Name="{Binding Localization.ViewerClearPin}"
+                                           AutomationProperties.AutomationId="ClearAuxiliaryViewerPin" />
                             </StackPanel>
                     <workbenchViews:ViewerPresentationBar x:Name="AuxiliaryViewerPresentationBar"
                                                                    Grid.Row="1"
                                                                    Grid.ColumnSpan="2"
                                                                    Margin="-7,4,-7,-4"
-                                                                   SlotLabel="{Binding Localization.ViewerAuxiliarySlot}" />
+                                                                   DialogPlacementTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                                   SlotLabel="{Binding AuxiliaryViewerSlotLabel}" />
+
                         </Grid>
                     </Border>
                     <Grid Grid.Row="1">
@@ -552,9 +823,65 @@
                                    Text="{Binding Localization.ViewerAuxiliaryNoOutput}"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap" />
+                        <Border x:Name="ViewerComparedOutputNoGeometry"
+                                MaxWidth="360"
+                                Margin="18"
+                                Padding="16"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource ThreeD.PanelBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="5"
+                                AutomationProperties.AutomationId="ViewerComparedOutputNoGeometry">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsInspectionInputOutputView}" Value="True" />
+                                                <Condition Binding="{Binding HasEffectiveOutputGeometry}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    <DataTrigger Binding="{Binding IsInspectionFileView}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding ViewerInspectionOutput.DisplayName}" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding ViewerInspectionOutput.ResultStatus}"
+                                           TextWrapping="Wrap" />
+                                <StackPanel Margin="0,6,0,0"
+                                            Orientation="Horizontal"
+                                            Visibility="{Binding ViewerInspectionOutput.HasEvidenceValue, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{Binding ViewerInspectionOutput.ValueLabel}" />
+                                    <TextBlock Margin="8,0,0,0"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                                               Text="{Binding ViewerInspectionOutput.Value}" />
+                                    <TextBlock Margin="4,0,0,0"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{Binding ViewerInspectionOutput.Unit}" />
+                                </StackPanel>
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding ViewerInspectionOutput.Availability}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </Grid>
             </Border>
         </Grid>
+        <workbenchViews:HeightProfileView x:Name="InlineHeightProfile" Grid.Row="4" ViewerHost="{Binding MainViewerContent, ElementName=Root}"
+                                       Visibility="{Binding DataContext.ProfileVisible, RelativeSource={RelativeSource Self}, Converter={StaticResource BoolToVisibilityConverter}}" />
     </Grid>
+    </ScrollViewer>
 </UserControl>

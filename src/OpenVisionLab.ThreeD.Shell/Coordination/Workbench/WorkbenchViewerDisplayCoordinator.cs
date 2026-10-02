@@ -19,6 +19,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     private readonly OpenVisionDockWorkspaceView expertView;
     private readonly WorkbenchViewerTeachingCoordinator teaching;
     private string? displayedEvidenceSamplePath;
+    private bool isInspectionDisplayActive;
 
     public WorkbenchViewerDisplayCoordinator(
         ShellMainWindowViewModel shell,
@@ -39,6 +40,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.FilterDisplayRequested += OnFilterDisplayRequested;
         workbench.ViewerArtifactDisplayRequested += OnArtifactDisplayRequested;
         workbench.OutputComparePaneRequested += OnOutputComparePaneRequested;
+        workbench.OutputCompareViewerRequested += OnOutputCompareViewerRequested;
         workbench.HeightDifferenceEdgeDisplayRequested += OnHeightDifferenceEdgeDisplayRequested;
         workbench.TwoPointLineDisplayRequested += OnTwoPointLineDisplayRequested;
         workbench.TwoPointLineDisplayCleared += OnTwoPointLineDisplayCleared;
@@ -55,6 +57,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.SurfaceMatchDisplayRequested += OnSurfaceMatchDisplayRequested;
         workbench.SurfaceMatchDisplayCleared += OnSurfaceMatchDisplayCleared;
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
+        workbench.InspectionQueue.SelectedSampleChanged += OnInspectionSampleSelected;
         shell.PropertyChanged += OnShellPropertyChanged;
         viewer.WorkbenchLineFitPointSelected += OnWorkbenchLineFitPointSelected;
     }
@@ -64,6 +67,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.FilterDisplayRequested -= OnFilterDisplayRequested;
         workbench.ViewerArtifactDisplayRequested -= OnArtifactDisplayRequested;
         workbench.OutputComparePaneRequested -= OnOutputComparePaneRequested;
+        workbench.OutputCompareViewerRequested -= OnOutputCompareViewerRequested;
         workbench.HeightDifferenceEdgeDisplayRequested -= OnHeightDifferenceEdgeDisplayRequested;
         workbench.TwoPointLineDisplayRequested -= OnTwoPointLineDisplayRequested;
         workbench.TwoPointLineDisplayCleared -= OnTwoPointLineDisplayCleared;
@@ -80,6 +84,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.SurfaceMatchDisplayRequested -= OnSurfaceMatchDisplayRequested;
         workbench.SurfaceMatchDisplayCleared -= OnSurfaceMatchDisplayCleared;
         workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+        workbench.InspectionQueue.SelectedSampleChanged -= OnInspectionSampleSelected;
         shell.PropertyChanged -= OnShellPropertyChanged;
         viewer.WorkbenchLineFitPointSelected -= OnWorkbenchLineFitPointSelected;
     }
@@ -95,10 +100,31 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         }
     }
 
+    private void OnInspectionSampleSelected(
+        object? sender,
+        InspectionQueueSelectionChangedEventArgs args)
+    {
+        if (shell.IsInspectWorkspaceSelected)
+        {
+            ShowSelectedInspectionSample(args.Sample);
+        }
+    }
+
     private void OnShellPropertyChanged(
         object? sender,
         PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(ShellMainWindowViewModel.IsInspectWorkspaceSelected))
+        {
+            workbench.SetInspectionFileView(shell.IsInspectWorkspaceSelected);
+            if (shell.IsInspectWorkspaceSelected)
+            {
+                isInspectionDisplayActive = true;
+                ShowSelectedInspectionSample(workbench.InspectionQueue.SelectedSample);
+            }
+            return;
+        }
+
         if (args.PropertyName is nameof(ShellMainWindowViewModel.IsValidateWorkspaceSelected)
             or nameof(ShellMainWindowViewModel.IsResultsWorkspaceSelected))
         {
@@ -113,9 +139,59 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         }
     }
 
+    private void ShowSelectedInspectionSample(InspectionQueueSampleItem? sample)
+    {
+        if (sample is null)
+        {
+            shell.ClearCurrentRunEvidenceForRecipeContext();
+            displayedEvidenceSamplePath = null;
+            viewer.ClearC3DTeachingSource(workbench.Localization.Resolve("ThreeD.Inspection.NoInput", "검사할 파일을 선택하세요.", "Select an inspection file."));
+            workbench.HeightImageViewer.ClearSource();
+            RefreshViewerSourceState();
+            return;
+        }
+
+        if (!File.Exists(sample.SourcePath))
+        {
+            viewer.ClearC3DTeachingSource(workbench.Localization.SourceMissing);
+            displayedEvidenceSamplePath = null;
+            workbench.HeightImageViewer.ClearSource();
+            shell.ClearCurrentRunEvidenceForRecipeContext();
+            RefreshViewerSourceState();
+            return;
+        }
+
+        workbench.BeginHeightImageSourceLoad();
+        var fullPath = Path.GetFullPath(sample.SourcePath);
+        if (!string.Equals(displayedEvidenceSamplePath, fullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!viewer.ShowC3DWorkbenchResult(fullPath, $"Inspection input | {sample.FileName}"))
+            {
+                viewer.ClearC3DTeachingSource(workbench.Localization.SourceUnreadable);
+                displayedEvidenceSamplePath = null;
+                workbench.HeightImageViewer.ClearSource();
+                shell.ClearCurrentRunEvidenceForRecipeContext();
+                RefreshViewerSourceState();
+                WriteViewerError();
+                return;
+            }
+
+            displayedEvidenceSamplePath = fullPath;
+            RefreshViewerSourceState();
+        }
+
+        if (sample.CanOpenCurrentRunRecord
+            && shell.LoadRunRecord(sample.RunRecordPath!, out _))
+        {
+            return;
+        }
+
+        shell.ClearCurrentRunEvidenceForRecipeContext();
+    }
+
     private void ShowSelectedValidationEvidence()
     {
-        if ((!shell.IsValidateWorkspaceSelected && !shell.IsResultsWorkspaceSelected)
+        if (shell.IsInspectWorkspaceSelected || (!shell.IsValidateWorkspaceSelected && !shell.IsResultsWorkspaceSelected)
             || workbench.SelectedValidationSetSample is not { } sample
             || !File.Exists(sample.SourcePath))
         {
@@ -151,10 +227,14 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
 
     private void RestoreAuthoredSourceDisplay()
     {
-        if (displayedEvidenceSamplePath is null
-            || string.IsNullOrWhiteSpace(workbench.Source.Path)
-            || !File.Exists(workbench.Source.Path))
+        if (!isInspectionDisplayActive && displayedEvidenceSamplePath is null) return;
+        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path))
         {
+            displayedEvidenceSamplePath = null;
+            isInspectionDisplayActive = false;
+            viewer.ClearC3DTeachingSource(workbench.Localization.SourceMissing);
+            workbench.HeightImageViewer.ClearSource();
+            RefreshViewerSourceState();
             return;
         }
 
@@ -162,6 +242,8 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         if (viewer.ShowC3DWorkbenchResult(sourcePath, $"Taught source | {Path.GetFileName(sourcePath)}"))
         {
             displayedEvidenceSamplePath = null;
+            isInspectionDisplayActive = false;
+            workbench.BeginHeightImageSourceLoad();
             RefreshViewerSourceState(syncTeaching: true);
             return;
         }
@@ -198,6 +280,23 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         object? sender,
         ToolWorkbenchArtifactDisplayRequestEventArgs args)
     {
+        if (args.SignedDelta is { } signedDelta)
+        {
+            args.WasDisplayed = workbench.HeightImageViewer.ShowSignedDeltaArtifact(signedDelta);
+            if (args.WasDisplayed)
+            {
+                RefreshViewerSourceState(syncTeaching: true);
+                OVLog.Write(
+                    LogCategory.UI,
+                    LogLevel.Info,
+                    $"Signed-delta viewer display | artifact={signedDelta.ContentSha256} | values={signedDelta.OutputContentSha256} | finiteZero={signedDelta.ZeroDeltaSampleCount} | missing={signedDelta.MissingEitherSampleCount} | c3dEncoding=false");
+                return;
+            }
+
+            WriteViewerError();
+            return;
+        }
+
         var label = $"{args.DisplayName} | {args.Contract} | {args.State}";
         args.WasDisplayed = viewer.ShowC3DWorkbenchResult(args.C3DPath, label);
         if (args.WasDisplayed)
@@ -218,6 +317,17 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         }
 
         workbenchView.ActivateOutputComparePane();
+    }
+
+    private void OnOutputCompareViewerRequested(object? sender, EventArgs args)
+    {
+        if (shell.IsExpertWorkspaceSelected)
+        {
+            expertView.ActivateViewerPane();
+            return;
+        }
+
+        workbenchView.ActivateViewerPane();
     }
 
     private void OnHeightDifferenceEdgeDisplayRequested(

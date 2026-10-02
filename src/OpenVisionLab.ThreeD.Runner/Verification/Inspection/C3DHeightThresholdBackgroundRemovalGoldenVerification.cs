@@ -22,6 +22,7 @@ internal static class C3DHeightThresholdBackgroundRemovalGoldenVerification
                 Check("all-removed-returns-controlled-warning", VerifyAllRemovedWarning),
                 Check("deterministic-output-and-evidence-identity", VerifyDeterminism),
                 Check("invalid-input-and-cancellation-fail-closed", VerifyGuards),
+                Check("recipe-save-reopen-and-ordered-replay", () => VerifyRecipeAdapterAndOrderedReplay(fixtureDirectory)),
                 Check("runner-replay-and-source-identity-parity", () => VerifyRunnerParity(fixtureDirectory)),
                 Check("runner-report-atomicity", () => VerifyRunnerReportAtomicity(fixtureDirectory))
             };
@@ -320,6 +321,111 @@ internal static class C3DHeightThresholdBackgroundRemovalGoldenVerification
         return (
             parity && identityRejected,
             $"runnerExit={runnerExit};outputHash={outputHash};evidenceHash={evidenceHash};rootSource={rootSourceHash};sourceMutation={sourceMutation};sourceUnchanged={sourceBytesBefore.SequenceEqual(sourceBytesAfter)};identityExit={invalidIdentityExit};identityRejected={identityRejected}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyRecipeAdapterAndOrderedReplay(string fixtureDirectory)
+    {
+        var source = CreateFixture("source.height-threshold.recipe");
+        var sourcePath = Path.Combine(fixtureDirectory, "recipe-source.c3d");
+        var recipePath = Path.Combine(fixtureDirectory, "height-threshold-recipe.json");
+        source.SaveC3D(sourcePath);
+        var step = new ToolRecipeStep(
+            "step.height-threshold.recipe",
+            "height-threshold-background-removal",
+            "Height Threshold Background Removal",
+            1,
+            [source.EntityId],
+            "derived.height-threshold.recipe",
+            [
+                new("Threshold", "3"),
+                new("Mode", nameof(C3DHeightThresholdBackgroundRemovalMode.KeepAtOrAboveThreshold)),
+                new("ComparisonPolicy", C3DHeightThresholdBackgroundRemovalEvidence.ComparisonPolicyName),
+                new("MissingValuePolicy", C3DHeightThresholdBackgroundRemovalEvidence.MissingValuePolicyName),
+                new("BackgroundPolicy", C3DHeightThresholdBackgroundRemovalEvidence.BackgroundPolicyName)
+            ]);
+        var document = new ToolRecipeDocument(
+            ToolRecipeDocument.CurrentSchemaVersion,
+            "Height threshold recipe",
+            new ToolRecipeSource(
+                source.EntityId,
+                "Recipe source",
+                "C3D",
+                source.Unit,
+                source.FrameId,
+                sourcePath,
+                source.ByteLength,
+                source.ContentSha256,
+                source.Width,
+                source.Height),
+            [],
+            [step]);
+        var validation = ToolRecipeValidator.Validate(document);
+        var direct = ToolRecipeHeightThresholdBackgroundRemovalExecution.Execute(
+            document,
+            step.Id,
+            fixtureDirectory);
+        if (direct.Output is null || direct.Evidence is null)
+        {
+            return (false, $"validation={validation.IsValid};direct={direct.Result.Status};message={direct.Result.Message}");
+        }
+
+        ToolRecipeDocumentStore.Save(recipePath, document);
+        var reopened = ToolRecipeDocumentStore.Load(recipePath);
+        var replay = ToolRecipeOrderedGraphExecution.Execute(reopened, sourcePath);
+        var replayStep = replay.Steps.SingleOrDefault(candidate => candidate.StepId == step.Id);
+        var recipeRunnerOutputPath = Path.Combine(fixtureDirectory, "recipe-runner-output.c3d");
+        var recipeRunnerReportPath = Path.Combine(fixtureDirectory, "recipe-runner-report.json");
+        var recipeRunnerExit = ToolRecipeHeightThresholdBackgroundRemovalRunnerExecution.Run(
+            recipePath,
+            step.Id,
+            recipeRunnerOutputPath,
+            recipeRunnerReportPath);
+        var recipeRunnerOutput = File.Exists(recipeRunnerOutputPath)
+            ? C3DHeightFieldSnapshot.LoadVerified(
+                recipeRunnerOutputPath,
+                direct.Output.EntityId,
+                direct.Output.Unit,
+                direct.Output.FrameId,
+                direct.Output.ByteLength,
+                direct.Output.ContentSha256,
+                direct.Output.Width,
+                direct.Output.Height)
+            : null;
+        using var recipeRunnerReport = File.Exists(recipeRunnerReportPath)
+            ? JsonDocument.Parse(File.ReadAllText(recipeRunnerReportPath))
+            : null;
+        var recipeRunnerOutputHash = recipeRunnerReport?.RootElement
+            .GetProperty("output")
+            .GetProperty("contentSha256")
+            .GetString();
+        var recipeRunnerEvidenceHash = recipeRunnerReport?.RootElement
+            .GetProperty("evidence")
+            .GetProperty("contentSha256")
+            .GetString();
+        var recipeRunnerParity = recipeRunnerExit == 0
+            && recipeRunnerOutput is not null
+            && recipeRunnerReport is not null
+            && recipeRunnerOutputHash == direct.Output.ContentSha256
+            && recipeRunnerEvidenceHash == direct.Evidence.ContentSha256
+            && recipeRunnerOutput.ContentSha256 == direct.Output.ContentSha256
+            && SameValues(recipeRunnerOutput.Values.Span, direct.Output.Values.ToArray());
+        var sourceHash = source.ContentSha256;
+        var passed = validation.IsValid
+            && direct.Result.Status == ResultStatus.Pass
+            && direct.Output is not null
+            && direct.Evidence is not null
+            && reopened.Steps.Single().Parameters.Single(parameter => parameter.Name == "Threshold").Value == "3"
+            && replay.Status == ResultStatus.Pass
+            && replayStep?.OutputContentSha256 == direct.Output.ContentSha256
+            && replay.SourceContentSha256 == sourceHash
+            && recipeRunnerParity
+            && ToolRecipePrimaryInputContract.GetProducedContract(step.ToolId) == "FilteredHeightField"
+            && ToolRecipePrimaryInputContract.IsCompatible("connected-region", "FilteredHeightField")
+            && ToolRecipePrimaryInputContract.IsCompatible("thickness", "FilteredHeightField")
+            && ToolRecipePrimaryInputContract.IsCompatible("warpage", "FilteredHeightField");
+        return (
+            passed,
+            $"validation={validation.IsValid};direct={direct.Result.Status};reopenedThreshold={reopened.Steps.Single().Parameters.Single(parameter => parameter.Name == "Threshold").Value};replay={replay.Status};replayOutput={replayStep?.OutputContentSha256};recipeRunnerExit={recipeRunnerExit};recipeRunnerOutput={recipeRunnerOutputHash};recipeRunnerEvidence={recipeRunnerEvidenceHash};recipeRunnerParity={recipeRunnerParity};directOutput={direct.Output?.ContentSha256};source={sourceHash}");
     }
 
     private static (bool Passed, string Evidence) VerifyRunnerReportAtomicity(string fixtureDirectory)

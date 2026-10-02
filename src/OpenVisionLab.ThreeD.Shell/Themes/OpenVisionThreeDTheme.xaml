@@ -6,40 +6,47 @@
         selection, focus, pass/warning/fail, while the Viewer height map keeps
         its independent scientific color scale.
     -->
-    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#090E15" />
-    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#141B24" />
-    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#1B2531" />
-    <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#0E151E" />
-    <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#202B38" />
-    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#334155" />
-    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#E7EEF6" />
-    <SolidColorBrush x:Key="ThreeD.PrimaryTextBrush" Color="#F3F7FB" />
-    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#BECADA" />
-    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#8796A8" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderBrush" Color="#080D14" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#27374A" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#F5F9FC" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#A7B6C7" />
-    <SolidColorBrush x:Key="ThreeD.ContextBadgeBrush" Color="#203650" />
-    <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#39C6C1" />
-    <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#56D8D2" />
-    <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#15383D" />
-    <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#67E8F9" />
-    <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#4ADE80" />
-    <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#FBBF24" />
-    <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#FB7185" />
-    <SolidColorBrush x:Key="ThreeD.InfoBrush" Color="#38BDF8" />
-    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#657487" />
-    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#070B11" />
+    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#15191E" />
+    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#1B2128" />
+    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#252D36" />
+    <SolidColorBrush x:Key="ThreeD.DialogBackdropBrush" Color="#CC03070C" />
+    <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#1B2128" />
+    <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#252D36" />
+    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#37424E" />
+    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#E4E9EF" />
+    <SolidColorBrush x:Key="ThreeD.PrimaryTextBrush" Color="#E4E9EF" />
+    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#ADB9C6" />
+    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#ADB9C6" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderBrush" Color="#15191E" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#37424E" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#E4E9EF" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#ADB9C6" />
+    <SolidColorBrush x:Key="ThreeD.ContextBadgeBrush" Color="#252D36" />
+    <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#65B9AE" />
+    <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#7BCCC0" />
+    <SolidColorBrush x:Key="ThreeD.AccentPressedBrush" Color="#4A9A91" />
+    <SolidColorBrush x:Key="ThreeD.HoverSurfaceBrush" Color="#303A46" />
+    <SolidColorBrush x:Key="ThreeD.PressedSurfaceBrush" Color="#202730" />
+    <SolidColorBrush x:Key="ThreeD.InputBrush" Color="#222A33" />
+    <SolidColorBrush x:Key="ThreeD.InputBorderBrush" Color="#718293" />
+    <SolidColorBrush x:Key="ThreeD.PrimaryButtonTextBrush" Color="#11171B" />
+    <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#243C3C" />
+    <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#A2DFD4" />
+    <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#91D1A8" />
+    <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#F1C27A" />
+    <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#F29D9F" />
+    <SolidColorBrush x:Key="ThreeD.InfoBrush" Color="#94BDD8" />
+    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#8B98A6" />
+    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#11161C" />
     <SolidColorBrush x:Key="ThreeD.ViewportGridBrush" Color="#526B83" />
     <SolidColorBrush x:Key="ThreeD.AxisXBrush" Color="#E05252" />
     <SolidColorBrush x:Key="ThreeD.AxisYBrush" Color="#2F9D62" />
     <SolidColorBrush x:Key="ThreeD.AxisZBrush" Color="#3B82F6" />
-    <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#3A2A12" />
-    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#12313E" />
-    <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#123322" />
-    <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#3A1C27" />
-    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#222B36" />
+    <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#382D20" />
+    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#22313D" />
+    <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#22362B" />
+    <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#3C272C" />
+    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#252D36" />
 
     <!--
         WPF-UI's Button template consumes these resource names instead of the
@@ -47,21 +54,50 @@
         graphite semantic palette so Appearance=Primary/Secondary does not
         reintroduce the library's light-blue accent.
     -->
-    <SolidColorBrush x:Key="ButtonBackground" Color="#202B38" />
-    <SolidColorBrush x:Key="ButtonForeground" Color="#E7EEF6" />
-    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1B2531" />
-    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#15383D" />
-    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#39C6C1" />
-    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#F3F7FB" />
-    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#222B36" />
-    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#334155" />
-    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#657487" />
-    <SolidColorBrush x:Key="AccentButtonBackground" Color="#39C6C1" />
-    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#56D8D2" />
-    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#15383D" />
-    <SolidColorBrush x:Key="AccentButtonForeground" Color="#071318" />
-    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#071318" />
-    <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="#334155" />
+    <SolidColorBrush x:Key="ButtonBackground" Color="#252D36" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="#E4E9EF" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#303A46" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#202730" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#718293" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#E4E9EF" />
+    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#252D36" />
+    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#37424E" />
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="AccentButtonBackground" Color="#65B9AE" />
+    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#7BCCC0" />
+    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#4A9A91" />
+    <SolidColorBrush x:Key="AccentButtonForeground" Color="#11171B" />
+    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#11171B" />
+    <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="#37424E" />
+
+    <!-- WPF-UI text templates read these resources for focused and disabled states. -->
+    <SolidColorBrush x:Key="TextControlFocusedBorderBrush" Color="#A2DFD4" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#222A33" />
+    <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="#252D36" />
+    <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="#37424E" />
+    <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="#8B98A6" />
+
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#65B9AE" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#7BCCC0" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#4A9A91" />
+    <SolidColorBrush x:Key="CheckBoxCheckGlyphForeground" Color="#11171B" />
+    <SolidColorBrush x:Key="CheckBoxCheckBorderBrush" Color="#65B9AE" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#303A46" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#202730" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedDisabled" Color="#252D36" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedDisabled" Color="#37424E" />
+    <SolidColorBrush x:Key="CheckBoxForegroundUncheckedDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#11171B" />
+    <SolidColorBrush x:Key="RadioButtonForegroundDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokeDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" Color="#7BCCC0" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFill" Color="#222A33" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillDisabled" Color="#252D36" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPointerOver" Color="#303A46" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPressed" Color="#202730" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="#718293" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeDisabled" Color="#37424E" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokePressed" Color="#718293" />
 
     <!--
         The WPF-UI Button template exposes its state brushes as dependency
@@ -73,21 +109,19 @@
         <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
-        <Setter Property="MouseOverBackground" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
-        <Setter Property="MouseOverBorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
-        <Setter Property="PressedBackground" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
-        <Setter Property="PressedBorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+        <Setter Property="MouseOverBackground" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" />
+        <Setter Property="MouseOverBorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" />
+        <Setter Property="PressedBorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
         <Setter Property="PressedForeground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+        <Setter Property="CornerRadius" Value="6" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                <Setter Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
-            </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                <Setter Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
@@ -95,9 +129,12 @@
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
             </Trigger>
             <Trigger Property="Appearance" Value="Primary">
+                <Setter Property="PressedBackground" Value="{DynamicResource ThreeD.AccentPressedBrush}" />
+                <Setter Property="PressedBorderBrush" Value="{DynamicResource ThreeD.AccentPressedBrush}" />
+                <Setter Property="PressedForeground" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" />
                 <Setter Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AppBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" />
                 <Setter Property="MouseOverBackground" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
                 <Setter Property="MouseOverBorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
             </Trigger>
@@ -114,10 +151,16 @@
                     <Condition Property="Appearance" Value="Primary" />
                     <Condition Property="IsPressed" Value="True" />
                 </MultiTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+                <Setter Property="Background" Value="{DynamicResource ThreeD.AccentPressedBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentPressedBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" />
             </MultiTrigger>
+            <!-- Keep keyboard focus visible through appearance and pointer states. -->
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                <Setter Property="MouseOverBorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                <Setter Property="PressedBorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+            </Trigger>
             <!-- Keep disabled actions muted even when Appearance=Primary is set. -->
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
@@ -320,7 +363,7 @@
 
     <Style x:Key="ThreeD.DockPanelCaptionTextStyle" TargetType="TextBlock">
         <Setter Property="Margin" Value="0,2,0,0" />
-        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -357,7 +400,7 @@
                             <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
                             <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                             <Setter Property="Foreground" Value="{DynamicResource ThreeD.PanelHeaderTextBrush}" />
                         </Trigger>
@@ -392,7 +435,7 @@
 
     <Style x:Key="ThreeD.WindowHeaderSubtitleTextStyle" TargetType="{x:Type TextBlock}">
         <Setter Property="Margin" Value="0,3,0,0" />
-        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}" />
     </Style>
 
@@ -421,26 +464,26 @@
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource ThreeD.FailBrush}" />
-                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" />
             </Trigger>
         </Style.Triggers>
     </Style>
 
     <Style x:Key="ThreeD.FieldLabelTextStyle" TargetType="{x:Type TextBlock}">
         <Setter Property="Margin" Value="0,8,0,4" />
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
     </Style>
 
     <Style TargetType="{x:Type TextBox}"
            BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Padding" Value="8,4" />
-        <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="Background" Value="{DynamicResource ThreeD.InputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
@@ -454,6 +497,53 @@
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource {x:Type CheckBox}}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.InputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+    </Style>
+
+    <Style TargetType="{x:Type Expander}" BasedOn="{StaticResource {x:Type Expander}}">
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+    </Style>
+
+    <Style TargetType="{x:Type RadioButton}" BasedOn="{StaticResource {x:Type RadioButton}}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+    </Style>
+
+    <Style TargetType="{x:Type ToolTip}" BasedOn="{StaticResource {x:Type ToolTip}}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="MaxWidth" Value="420" />
+    </Style>
+
+    <Style TargetType="{x:Type ContextMenu}" BasedOn="{StaticResource {x:Type ContextMenu}}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
+
+    <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource {x:Type MenuItem}}">
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="FontSize" Value="12" />
+        <Style.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
             </Trigger>
         </Style.Triggers>
@@ -464,12 +554,12 @@
         <Setter Property="MinHeight" Value="30" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
-        <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="Background" Value="{DynamicResource ThreeD.InputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
@@ -672,4 +762,64 @@
         <Setter Property="CellStyle" Value="{StaticResource ThreeD.CalibrationDataGridCellStyle}" />
         <Setter Property="IsReadOnly" Value="True" />
     </Style>
+        <ControlTemplate x:Key="R19TopMenuItemTemplate" TargetType="MenuItem">
+            <Grid SnapsToDevicePixels="True">
+                <Border x:Name="TopLevelMenuItemBorder"
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="2">
+                    <ContentPresenter x:Name="HeaderContent"
+                                      ContentSource="Header"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True" />
+                </Border>
+                <Popup x:Name="PART_Popup"
+                       AllowsTransparency="True"
+                       Focusable="False"
+                       Placement="Bottom"
+                       PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                       StaysOpen="False"
+                       IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                    <Border Padding="4"
+                            Background="{DynamicResource ThreeD.PanelBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1">
+                        <ScrollViewer CanContentScroll="True"
+                                      KeyboardNavigation.DirectionalNavigation="Cycle">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"
+                                            KeyboardNavigation.TabNavigation="Cycle" />
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="Background"
+                            Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="BorderBrush"
+                            Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="BorderBrush"
+                            Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsSubmenuOpen" Value="True">
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="Background"
+                            Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="BorderBrush"
+                            Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="HeaderContent" Property="Opacity" Value="0.55" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
 </ResourceDictionary>

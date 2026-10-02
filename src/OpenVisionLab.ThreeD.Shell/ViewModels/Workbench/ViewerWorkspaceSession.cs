@@ -34,7 +34,9 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
     public bool IsAuxiliaryContentExplicitlyCleared => auxiliaryContentExplicitlyCleared;
     public bool IsCameraLinked => cameraLinked;
     public string FocusedSlotId => focusedSlotId;
-    public bool HasAuxiliarySlot => layout != ViewerWorkspaceLayout.Single;
+    public bool HasAuxiliarySlot => layout is ViewerWorkspaceLayout.SplitVertical
+        or ViewerWorkspaceLayout.SplitHorizontal or ViewerWorkspaceLayout.PopOut;
+    public bool IsHeightImageOnly => layout == ViewerWorkspaceLayout.HeightImageOnly;
     public bool IsInlineSplit =>
         layout is ViewerWorkspaceLayout.SplitVertical or ViewerWorkspaceLayout.SplitHorizontal;
     public bool IsPopOut => layout == ViewerWorkspaceLayout.PopOut;
@@ -50,7 +52,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
         }
 
         layout = value;
-        if (layout == ViewerWorkspaceLayout.Single)
+        if (layout is ViewerWorkspaceLayout.Single or ViewerWorkspaceLayout.HeightImageOnly)
         {
             SetCameraLinked(false);
             focusedSlotId = MainSlotId;
@@ -58,6 +60,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(Layout));
         OnPropertyChanged(nameof(HasAuxiliarySlot));
+        OnPropertyChanged(nameof(IsHeightImageOnly));
         OnPropertyChanged(nameof(IsInlineSplit));
         OnPropertyChanged(nameof(IsPopOut));
         OnPropertyChanged(nameof(FocusedSlotId));
@@ -71,7 +74,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
         string? preferredContentId)
     {
         ArgumentNullException.ThrowIfNull(availableContentIds);
-        if (value != ViewerWorkspaceLayout.Single)
+        if (value is not ViewerWorkspaceLayout.Single)
         {
             var available = availableContentIds
                 .Select(NormalizeIdentity)
@@ -95,7 +98,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
         }
 
         SetLayout(value);
-        if (value == ViewerWorkspaceLayout.Single)
+        if (value is ViewerWorkspaceLayout.Single or ViewerWorkspaceLayout.HeightImageOnly)
         {
             FocusSlot(MainSlotId);
         }
@@ -314,6 +317,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
 public enum ViewerWorkspaceLayout
 {
     Single,
+    HeightImageOnly,
     SplitVertical,
     SplitHorizontal,
     PopOut

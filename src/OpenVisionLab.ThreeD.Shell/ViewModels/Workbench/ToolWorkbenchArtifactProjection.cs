@@ -212,6 +212,58 @@ internal sealed class ToolWorkbenchArtifactProjection
                 "ConnectedRegionArtifact");
         }
 
+        if (string.Equals(step.ToolId, C3DSignedHeightDeltaRecipePolicy.ToolId, StringComparison.Ordinal)
+            && snapshot.SignedDeltaBackgroundSubtraction is { Output: { } signedDelta } signedDeltaPreview
+            && string.Equals(signedDelta.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                signedDelta.OutputEntityId,
+                step.ToolName,
+                "SignedDeltaHeightField",
+                signedDeltaPreview.IsStale
+                    ? "Stale"
+                    : signedDeltaPreview.IsPublished
+                        ? "Published"
+                        : "Preview",
+                source.Id,
+                string.Join("; ", step.InputEntityIds) + $"; {signedDelta.BackgroundEntityId}",
+                signedDelta.Unit,
+                signedDelta.FrameId,
+                signedDelta.ContentSha256,
+                $"Signed current-minus-background delta | paired {signedDelta.PairedValidSampleCount:N0} | missing {signedDelta.MissingEitherSampleCount:N0} | zero {signedDelta.ZeroDeltaSampleCount:N0} | +{signedDelta.PositiveDeltaSampleCount:N0} / -{signedDelta.NegativeDeltaSampleCount:N0} | current {signedDelta.CurrentSourceContentSha256} | background {signedDelta.BackgroundContentSha256} | finite zero is preserved outside C3D wire encoding",
+                step,
+                "SignedDeltaHeightField");
+        }
+
+        if (string.Equals(
+                step.ToolId,
+                "grid-polygon-domain",
+                StringComparison.Ordinal)
+            && snapshot.GridPolygonDomain.Output is { } gridDomain
+            && string.Equals(
+                gridDomain.ArtifactId,
+                step.OutputEntityId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                gridDomain.ArtifactId,
+                step.ToolName,
+                "GridDomainArtifact",
+                snapshot.GridPolygonDomain.IsStale
+                    ? "Stale"
+                    : snapshot.GridPolygonDomain.IsPublished
+                        ? "Published"
+                        : "Preview",
+                source.Id,
+                string.Join("; ", step.InputEntityIds),
+                gridDomain.Unit,
+                gridDomain.FrameId,
+                gridDomain.ContentSha256,
+                $"GridPolygon domain | cells {gridDomain.Cells.Count:N0} | selection {gridDomain.SelectionId} | source {gridDomain.SourceContentSha256}",
+                step,
+                "GridDomainArtifact");
+        }
+
         if (string.Equals(
                 step.ToolId,
                 "domain-mask",
@@ -335,8 +387,52 @@ internal sealed class ToolWorkbenchArtifactProjection
             };
         }
 
+        if (string.Equals(
+                step.ToolId,
+                "height-threshold-background-removal",
+                StringComparison.Ordinal)
+            && snapshot.HeightThreshold.Output is { } thresholdOutput
+            && snapshot.HeightThreshold.Evidence is { } thresholdEvidence)
+        {
+            var qualityDelta = snapshot.CreateSourceQualityDelta(
+                thresholdOutput,
+                thresholdEvidence.RemovedBackgroundSampleCount,
+                snapshot.HeightThresholdQualityDeltaEvidence);
+            return new ToolWorkbenchArtifactItem(
+                thresholdOutput.EntityId,
+                step.ToolName,
+                "FilteredHeightField",
+                snapshot.HeightThreshold.IsStale
+                    ? "Stale"
+                    : snapshot.HeightThreshold.IsPublished
+                        ? "Published"
+                        : "Preview",
+                source.Id,
+                source.Id,
+                thresholdOutput.Unit,
+                thresholdOutput.FrameId,
+                thresholdOutput.ContentSha256,
+                string.Format(
+                    snapshot.HeightThresholdArtifactDetailFormat,
+                    thresholdOutput.Width,
+                    thresholdOutput.Height,
+                    thresholdEvidence.Threshold,
+                    thresholdEvidence.RetainedValidSampleCount,
+                    thresholdEvidence.RemovedBackgroundSampleCount,
+                    snapshot.SourceIdentityRetainedDetail),
+                step,
+                "FilteredHeightField")
+            {
+                PreparationQualityDelta = qualityDelta
+            };
+        }
+
+        var filter = snapshot.Filter;
+        if (step.ToolId == "filter" && !string.Equals(filter.Output?.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            filter = new(snapshot.GetPublishedFilterOutput?.Invoke(step.OutputEntityId), false, true);
         if (string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
-            && snapshot.Filter.Output is { } filterPreviewOutput)
+            && filter.Output is { } filterPreviewOutput
+            && string.Equals(filterPreviewOutput.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 filterPreviewOutput,
@@ -346,7 +442,7 @@ internal sealed class ToolWorkbenchArtifactProjection
                 filterPreviewOutput.EntityId,
                 step.ToolName,
                 "FilteredHeightField",
-                snapshot.Filter.IsStale ? "Stale" : snapshot.Filter.IsPublished ? "Published" : "Preview",
+                filter.IsStale ? "Stale" : filter.IsPublished ? "Published" : "Preview",
                 source.Id,
                 source.Id,
                 filterPreviewOutput.Unit,
@@ -367,15 +463,18 @@ internal sealed class ToolWorkbenchArtifactProjection
             };
         }
 
+        var edge = snapshot.HeightDifferenceEdge;
+        if (step.ToolId == "height-difference-edge" && !string.Equals(edge.Output?.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            edge = new(snapshot.GetPublishedHeightDifferenceEdgeOutput?.Invoke(step.OutputEntityId), false, true);
         if (string.Equals(step.ToolId, "height-difference-edge", StringComparison.Ordinal)
-            && snapshot.HeightDifferenceEdge.Output is { } edgePreviewOutput
+            && edge.Output is { } edgePreviewOutput
             && string.Equals(edgePreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
                 edgePreviewOutput.OutputEntityId,
                 step.ToolName,
                 "EdgePointSet",
-                snapshot.HeightDifferenceEdge.IsStale ? "Stale" : snapshot.HeightDifferenceEdge.IsPublished ? "Published" : "Preview",
+                edge.IsStale ? "Stale" : edge.IsPublished ? "Published" : "Preview",
                 edgePreviewOutput.RootSourceEntityId,
                 edgePreviewOutput.InputEntityId,
                 edgePreviewOutput.Unit,
@@ -604,30 +703,82 @@ internal sealed class ToolWorkbenchArtifactProjection
                 "TransformedHeightField");
         }
 
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"
+        if (string.Equals(step.ToolId, "physical-edge-gap-flush", StringComparison.Ordinal))
+        {
+            if (snapshot.PhysicalEdgeGapFlush.Output is { } physicalOutput
+                && string.Equals(
+                    physicalOutput.OutputEntityId,
+                    step.OutputEntityId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return new ToolWorkbenchArtifactItem(
+                    physicalOutput.OutputEntityId,
+                    step.ToolName,
+                    "MeasurementResult",
+                    snapshot.PhysicalEdgeGapFlush.IsStale
+                        ? "Stale"
+                        : snapshot.PhysicalEdgeGapFlush.IsPublished
+                            ? "Published"
+                            : "Preview",
+                    physicalOutput.RootSourceEntityId,
+                    string.Join(
+                        "; ",
+                        physicalOutput.FirstLineEntityId,
+                        physicalOutput.SecondLineEntityId,
+                        physicalOutput.FirstEdgePointSetEntityId,
+                        physicalOutput.SecondEdgePointSetEntityId),
+                    physicalOutput.Unit,
+                    physicalOutput.FrameId,
+                    physicalOutput.ContentSha256,
+                    physicalOutput.EvidenceSummary,
+                    step,
+                    "MeasurementResult");
+            }
+
+            return new ToolWorkbenchArtifactItem(
+                step.OutputEntityId,
+                step.ToolName,
+                "MeasurementResult",
+                "Declared",
+                source.Id,
+                string.Join("; ", step.InputEntityIds),
+                source.Unit,
+                source.FrameId,
+                string.Empty,
+                "Physical Edge Gap / Flush requires authored LineFeature A/B followed by EdgePointSet A/B. Preview is explicit; no result exists yet.",
+                step,
+                "DeclaredOutput");
+        }
+
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "connected-region-gate"
             && snapshot.Measurement.Output is { } measurementOutput
             && string.Equals(measurementOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
+            var gateOutput = measurementOutput.ConnectedRegionGate;
+            var outputContract = gateOutput is not null
+                ? "ConnectedRegionGate"
+                : measurementOutput.CompletenessGrid is null
+                    ? "MeasurementResult"
+                    : "CompletenessGridMetrics";
             return new ToolWorkbenchArtifactItem(
                 measurementOutput.OutputEntityId,
                 step.ToolName,
-                measurementOutput.CompletenessGrid is null
-                    ? "MeasurementResult"
-                    : "CompletenessGridMetrics",
+                outputContract,
                 snapshot.Measurement.IsStale ? "Stale" : snapshot.Measurement.IsPublished ? "Published" : "Preview",
                 measurementOutput.RootSourceEntityId,
-                $"{measurementOutput.InputEntityId}; {measurementOutput.SelectionId}",
+                gateOutput is null
+                    ? $"{measurementOutput.InputEntityId}; {measurementOutput.SelectionId}"
+                    : $"{gateOutput.RawSourceEntityId}; {gateOutput.DetectionEntityId}; {gateOutput.RegionArtifactId}",
                 measurementOutput.Unit,
                 measurementOutput.FrameId,
                 measurementOutput.ContentSha256,
                 string.Format(
                     snapshot.MeasurementArtifactDetailFormat,
-                    snapshot.ResultStatusLabel(measurementOutput.Result.Status),
-                    measurementOutput.EvidenceSummary),
+                    snapshot.MeasurementResultStatusLabel,
+                    measurementOutput.Result.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage
+                        ? snapshot.MeasurementResultMessage : measurementOutput.EvidenceSummary),
                 step,
-                measurementOutput.CompletenessGrid is null
-                    ? "MeasurementResult"
-                    : "CompletenessGridMetrics");
+                outputContract);
         }
 
         return new ToolWorkbenchArtifactItem(
@@ -667,6 +818,12 @@ internal sealed record ToolWorkbenchRemoveOutlierArtifactPreview(
     bool IsStale,
     bool IsPublished);
 
+internal sealed record ToolWorkbenchHeightThresholdArtifactPreview(
+    C3DHeightFieldSnapshot? Output,
+    C3DHeightThresholdBackgroundRemovalEvidence? Evidence,
+    bool IsStale,
+    bool IsPublished);
+
 internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     ToolWorkbenchSourceItem Source,
     bool IsSourceReadyForRecipe,
@@ -684,6 +841,7 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     string RoiCropQualityDeltaEvidence,
     string LevelSurfaceQualityDeltaEvidence,
     string DomainMaskQualityDeltaEvidence,
+    string HeightThresholdQualityDeltaEvidence,
     string RemoveOutlierQualityDeltaEvidence,
     string FilterQualityDeltaEvidence,
     string DeclaredOutputDetailFormat,
@@ -699,6 +857,7 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     string RoiCropArtifactDetailFormat,
     string LevelSurfaceArtifactDetailFormat,
     string FilterArtifactDetailFormat,
+    string HeightThresholdArtifactDetailFormat,
     string HeightDifferenceEdgeArtifactDetailFormat,
     string LineFitArtifactDetailFormat,
     string TwoPointLineArtifactDetailFormat,
@@ -710,12 +869,16 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     string XyzAffineApplyArtifactDetailFormat,
     string RegridHeightFieldArtifactDetailFormat,
     string MeasurementArtifactDetailFormat,
+    string MeasurementResultStatusLabel,
+    string MeasurementResultMessage,
     Func<ResultStatus, string> ResultStatusLabel,
     ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot> RoiCrop,
     ToolWorkbenchLevelSurfaceArtifactPreview LevelSurface,
     ToolWorkbenchArtifactPreview<C3DConnectedRegionArtifact> ConnectedRegion,
+    ToolWorkbenchArtifactPreview<C3DGridDomainArtifact> GridPolygonDomain,
     ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot> DomainMask,
     ToolWorkbenchArtifactPreview<C3DEditableRegionArtifact> EditableRegion,
+    ToolWorkbenchHeightThresholdArtifactPreview HeightThreshold,
     ToolWorkbenchRemoveOutlierArtifactPreview RemoveOutlier,
     ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot> Filter,
     ToolWorkbenchArtifactPreview<C3DHeightDifferenceEdgePointSet> HeightDifferenceEdge,
@@ -728,4 +891,8 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     Func<string, C3DAffineTransform3D?> GetPublishedAffineSolveOutput,
     ToolWorkbenchArtifactPreview<C3DTransformedPointCloud> AffineApply,
     ToolWorkbenchArtifactPreview<C3DTransformedHeightField> RegridHeightField,
-    ToolWorkbenchArtifactPreview<ToolRecipeHeightMeasurementOutput> Measurement);
+    ToolWorkbenchArtifactPreview<C3DPhysicalEdgeGapFlushResult> PhysicalEdgeGapFlush,
+    ToolWorkbenchArtifactPreview<ToolRecipeHeightMeasurementOutput> Measurement,
+    ToolWorkbenchArtifactPreview<C3DSignedHeightDeltaArtifact>? SignedDeltaBackgroundSubtraction = null,
+    Func<string, C3DHeightFieldSnapshot?>? GetPublishedFilterOutput = null,
+    Func<string, C3DHeightDifferenceEdgePointSet?>? GetPublishedHeightDifferenceEdgeOutput = null);

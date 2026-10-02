@@ -81,7 +81,11 @@ public static class C3DHeightDifferenceEdgeRule
                 numericalDiagnostics.AcceptedMagnitudeMinimum,
                 numericalDiagnostics.AcceptedMagnitudeMaximum,
                 numericalDiagnostics.AcceptedMagnitudeMean);
-            var provenance = $"{input.StepId}:HeightDifferenceEdge:{C3DHeightDifferenceEdgePointSet.ContractVersion}:axis={input.ComparisonAxis}:polarity={input.Polarity}:minimumDelta={input.MinimumDelta:R}:candidate=StrongestPerScanline:point=PairMidpoint:missing=SkipPair:boundary=WithinSelection:root={input.Source.RootSourceSha256}:input={input.Source.ContentSha256}:selection={input.SelectionId}";
+            var candidateEvidence = C3DHeightDifferenceEdgeCandidateEvidence.StrongestOnly(
+                numericalDiagnostics.AcceptedScanlineCount,
+                "OpenVisionLab.Vision3D DeterministicHeightDifferenceEdgeTool",
+                "The SDK output retains one strongest candidate per scanline; numeric second-best score is unavailable.");
+            var provenance = $"{input.StepId}:HeightDifferenceEdge:{C3DHeightDifferenceEdgePointSet.ContractVersion}:axis={input.ComparisonAxis}:polarity={input.Polarity}:minimumDelta={input.MinimumDelta:R}:candidate=StrongestPerScanline:candidateEvidence={candidateEvidence.Summary}:point=PairMidpoint:missing=SkipPair:boundary=WithinSelection:root={input.Source.RootSourceSha256}:input={input.Source.ContentSha256}:selection={input.SelectionId}";
             var output = C3DHeightDifferenceEdgePointSet.Create(
                 input.OutputEntityId,
                 input.RootSourceEntityId,
@@ -97,7 +101,8 @@ public static class C3DHeightDifferenceEdgeRule
                 input.MinimumDelta,
                 points,
                 diagnostics,
-                provenance);
+                provenance,
+                candidateEvidence);
             stopwatch.Stop();
             return new C3DHeightDifferenceEdgeEvaluation(
                 new ToolResult(

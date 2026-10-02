@@ -297,6 +297,7 @@ internal static class DomainMaskWorkbenchVerification
                 $"before={hadDomainMaskOutputBeforeDispose};running={workbench.IsDomainMaskPreviewRunning};current={workbench.HasCurrentDomainMaskPreview};published={workbench.IsDomainMaskPreviewPublished};preview={workbench.PreviewSelectedStepCommand.CanExecute(null)};publish={workbench.PublishSelectedStepCommand.CanExecute(null)};cancel={workbench.CancelSelectedPreviewCommand.CanExecute(null)}");
 
             reopened.Dispose();
+            VerifyRawRegionRoute(rootDirectory, source, sourcePath, Check);
         }
         catch (Exception exception)
         {
@@ -337,7 +338,8 @@ internal static class DomainMaskWorkbenchVerification
 
     private static ToolRecipeDocument CreateDocument(
         C3DHeightFieldSnapshot source,
-        string sourcePath) =>
+        string sourcePath,
+        bool rawRegionRoute = false) =>
         new(
             ToolRecipeDocument.CurrentSchemaVersion,
             "Domain Mask Workbench",
@@ -390,9 +392,153 @@ internal static class DomainMaskWorkbenchVerification
                     "domain-mask",
                     "Domain / Mask",
                     2,
-                    ["derived.outlier-removed.01", "derived.connected-regions.01"],
+                    rawRegionRoute
+                        ? [source.EntityId, "derived.outlier-removed.01", "derived.connected-regions.01"]
+                        : ["derived.outlier-removed.01", "derived.connected-regions.01"],
                     "derived.domain-mask.01",
-                    [])
+                    rawRegionRoute
+                        ? [new ToolRecipeParameter("SelectedRegionIndex", "0")]
+                        : [])
             ],
             []);
+
+    private static void VerifyRawRegionRoute(
+        string rootDirectory,
+        C3DHeightFieldSnapshot source,
+        string sourcePath,
+        Action<string, bool, string> check)
+    {
+        var recipePath = Path.Combine(rootDirectory, "domain-mask-raw-region.ov3d-recipe.json");
+        var document = CreateDocument(source, sourcePath, rawRegionRoute: true);
+        ToolRecipeDocumentStore.Save(recipePath, document);
+        var sourceBytesBefore = File.ReadAllBytes(sourcePath);
+        var workbench = new ToolWorkbenchViewModel();
+        try
+        {
+            check(
+                "v2 raw-region recipe opens",
+                workbench.TryOpenTeachingRecipe(recipePath, out var openMessage),
+                openMessage);
+            workbench.SourceQuality.EnsureSourceAsync(
+                sourcePath,
+                workbench.Source.Id,
+                workbench.Source.Unit,
+                workbench.Source.FrameId,
+                cancellationToken => workbench.SourceSession.GetOrLoadDecodedSourceAsync(
+                    workbench.Source.Path,
+                    workbench.Source.Id,
+                    workbench.Source.Unit,
+                    workbench.Source.FrameId,
+                    cancellationToken)).GetAwaiter().GetResult();
+
+            workbench.SelectPipelineStep("step.remove-outliers.01");
+            check(
+                "v2 upstream filter publishes explicitly",
+                workbench.PreviewSelectedRemoveOutlierPixelsAsync().GetAwaiter().GetResult()
+                && !workbench.IsRemoveOutlierPreviewPublished,
+                workbench.RemoveOutlierExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+
+            workbench.SelectPipelineStep("step.connected-region.01");
+            check(
+                "v2 connected region publishes explicitly",
+                workbench.PreviewSelectedConnectedRegionAsync().GetAwaiter().GetResult()
+                && !workbench.IsConnectedRegionPreviewPublished,
+                workbench.ConnectedRegionExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            var connectedArtifact = workbench.CurrentConnectedRegionArtifact;
+
+            workbench.SelectPipelineStep("step.domain-mask.01");
+            var domainProperties = workbench.SelectedStepPropertyDraft as DomainMaskStepProperties;
+            check(
+                "v2 property grid exposes selected region contract",
+                domainProperties is not null
+                && domainProperties.SelectedRegionIndex == 0
+                && workbench.SelectedPipelineStep?.Parameters.Count == 1,
+                workbench.SelectedStepAdapterStatus);
+            check(
+                "v2 Preview is enabled only after three inputs are Published",
+                workbench.PreviewSelectedStepCommand.CanExecute(null)
+                && !workbench.HasCurrentDomainMaskPreview,
+                workbench.DomainMaskExecutionSummary);
+
+            var previewed = workbench.PreviewSelectedDomainMaskAsync().GetAwaiter().GetResult();
+            var rawOutput = workbench.CurrentDomainMaskPreviewOutput;
+            var detectionOutput = workbench.CurrentRemoveOutlierPreviewOutput;
+            var direct = connectedArtifact is not null && detectionOutput is not null
+                ? ToolRecipeDomainMaskExecution.Execute(
+                    document,
+                    "step.domain-mask.01",
+                    source,
+                    detectionOutput,
+                    connectedArtifact,
+                    selectedRegionIndex: 0)
+                : null;
+            check(
+                "v2 Preview applies selected region to raw values",
+                previewed
+                && rawOutput is not null
+                && rawOutput.ValidCount > 0
+                && rawOutput.RootSourceSha256 == source.RootSourceSha256
+                && rawOutput.ContentSha256 == direct?.Output?.ContentSha256
+                && detectionOutput is not null
+                && detectionOutput.ContentSha256 != rawOutput.ContentSha256,
+                workbench.DomainMaskOutputSummary);
+
+            workbench.PublishSelectedStepCommand.Execute(null);
+            var publishedHash = workbench.CurrentDomainMaskPreviewOutput?.ContentSha256;
+            check(
+                "v2 Publish persists raw/detection/region provenance",
+                publishedHash is not null
+                && File.ReadAllText(
+                    Path.Combine(
+                        rootDirectory,
+                        "domain-mask-raw-region.ov3d-recipe.domain-mask.derived_domain-mask_01.json"))
+                    .Contains("DetectionEntityId", StringComparison.Ordinal)
+                && File.ReadAllText(
+                    Path.Combine(
+                        rootDirectory,
+                        "domain-mask-raw-region.ov3d-recipe.domain-mask.derived_domain-mask_01.json"))
+                    .Contains("SelectedRegionIndex", StringComparison.Ordinal),
+                workbench.DomainMaskExecutionSummary);
+            check(
+                "v2 source bytes remain unchanged",
+                sourceBytesBefore.SequenceEqual(File.ReadAllBytes(sourcePath)),
+                $"bytesUnchanged={sourceBytesBefore.SequenceEqual(File.ReadAllBytes(sourcePath))}");
+
+            var reopened = new ToolWorkbenchViewModel();
+            try
+            {
+                var reopenedOk = reopened.TryOpenTeachingRecipe(recipePath, out var reopenedMessage);
+                reopened.SelectPipelineStep("step.domain-mask.01");
+                check(
+                    "v2 save/reopen restores Published output without execution",
+                    reopenedOk
+                    && reopened.IsDomainMaskPreviewPublished
+                    && reopened.CurrentDomainMaskPreviewOutput?.ContentSha256 == publishedHash
+                    && reopened.CurrentDomainMaskPreviewOutput?.RootSourceSha256 == source.RootSourceSha256,
+                    $"open={reopenedMessage};summary={reopened.DomainMaskExecutionSummary}");
+                check(
+                    "v2 ordered Run reaches the raw-region route",
+                    reopened.RunTeachingRecipeAsync().GetAwaiter().GetResult()
+                    && reopened.CurrentOrderedRunResult?.Status is not (ResultStatus.Error or ResultStatus.NotRun)
+                    && reopened.CurrentOrderedRunResult?.Steps.Any(step =>
+                        step.ToolId == "domain-mask"
+                        && step.Result.Status == ResultStatus.Pass) == true,
+                    reopened.OrderedRunCapabilitySummary);
+            }
+            finally
+            {
+                reopened.Dispose();
+            }
+        }
+        catch (Exception exception)
+        {
+            check("v2 raw-region workbench unexpected exception", false, exception.ToString());
+        }
+        finally
+        {
+            workbench.Dispose();
+        }
+    }
 }

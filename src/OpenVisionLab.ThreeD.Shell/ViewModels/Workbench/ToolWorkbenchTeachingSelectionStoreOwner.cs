@@ -21,6 +21,7 @@ internal sealed class ToolWorkbenchTeachingSelectionStoreOwner : INotifyProperty
     private readonly Func<bool> canUseCompatibleSelection;
     private readonly Action<ToolRecipeSelection> removeSelection;
     private readonly Action<ToolRecipeSelection> useCompatibleSelection;
+    private readonly Func<bool> isRecipeMutationBlocked;
     private readonly RelayCommand removeSelectedTeachingSelectionCommand;
     private readonly RelayCommand useExistingTeachingSelectionCommand;
     private ToolRecipeSelection? selectedCompatibleSelection;
@@ -34,7 +35,8 @@ internal sealed class ToolWorkbenchTeachingSelectionStoreOwner : INotifyProperty
         Func<ToolRecipeSelection?> getSelectedTeachingSelection,
         Func<bool> canUseCompatibleSelection,
         Action<ToolRecipeSelection> removeSelection,
-        Action<ToolRecipeSelection> useCompatibleSelection)
+        Action<ToolRecipeSelection> useCompatibleSelection,
+        Func<bool>? isRecipeMutationBlocked = null)
     {
         this.getRootSourceId = getRootSourceId
             ?? throw new ArgumentNullException(nameof(getRootSourceId));
@@ -52,10 +54,12 @@ internal sealed class ToolWorkbenchTeachingSelectionStoreOwner : INotifyProperty
             ?? throw new ArgumentNullException(nameof(removeSelection));
         this.useCompatibleSelection = useCompatibleSelection
             ?? throw new ArgumentNullException(nameof(useCompatibleSelection));
+        this.isRecipeMutationBlocked = isRecipeMutationBlocked ?? (() => false);
 
         removeSelectedTeachingSelectionCommand = new RelayCommand(
             _ => RemoveSelectedTeachingSelection(),
-            _ => getSelectedTeachingSelection() is not null);
+            _ => getSelectedTeachingSelection() is not null
+                && !this.isRecipeMutationBlocked());
         useExistingTeachingSelectionCommand = new RelayCommand(
             _ => UseExistingTeachingSelection(),
             _ => SelectedCompatibleSelection is not null
@@ -289,7 +293,8 @@ internal sealed class ToolWorkbenchTeachingSelectionStoreOwner : INotifyProperty
 
     private void RemoveSelectedTeachingSelection()
     {
-        if (getSelectedTeachingSelection() is { } selection)
+        if (!isRecipeMutationBlocked()
+            && getSelectedTeachingSelection() is { } selection)
         {
             removeSelection(selection);
         }

@@ -25,7 +25,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
     private bool isRunning;
     private bool isCandidateDisplayed;
     private string statusKorean =
-        "파라미터를 비교하려면 게시된 정합 결과를 먼저 불러오세요.";
+        "설정값을 비교하려면 적용된 정합 결과를 먼저 불러오세요.";
     private string statusEnglish =
         "Load a published match result before comparing parameters.";
     private string? stepStateBeforePreview;
@@ -90,7 +90,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
             || policy is null)
         {
             SetStatus(
-                "정합 파라미터가 유효하지 않아 후보 Preview를 시작할 수 없습니다.",
+                "정합 설정값이 유효하지 않아 후보 미리보기를 시작할 수 없습니다.",
                 message);
             return false;
         }
@@ -122,7 +122,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         SetRunning(true);
         step.State = "Preview running";
         SetStatus(
-            $"작성된 후보 {search.MaximumCandidateCount}개 제한 안에서 후보 Preview를 실행 중입니다. 게시 증거는 변경되지 않습니다.",
+            $"작성된 후보 {search.MaximumCandidateCount}개 제한 안에서 후보 미리보기를 실행 중입니다. 적용 정보는 변경되지 않습니다.",
             $"Candidate Preview is running inside {search.MaximumCandidateCount} authored-candidate guard. Published evidence is unchanged.");
         appendLog(
             "Preview",
@@ -155,7 +155,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
             isCandidateDisplayed = true;
             step.State = "Preview ready";
             SetStatus(
-                "후보는 임시 상태입니다. 게시 결과와 비교한 뒤 명시적으로 게시하거나 버리세요.",
+                "후보는 임시 결과입니다. 적용된 결과와 비교한 뒤 결과를 적용하거나 후보를 취소하세요.",
                 "Candidate is temporary. Compare it with Published, then Publish explicitly or discard it.");
             requestDisplay(Candidate!);
             appendLog(
@@ -174,7 +174,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
             isCandidateDisplayed = false;
             RestoreStepState(step);
             SetStatus(
-                "후보 Preview가 취소되었습니다. 게시 증거는 그대로 유지됩니다.",
+                "후보 미리보기가 취소되었습니다. 적용 정보는 그대로 유지됩니다.",
                 "Candidate Preview cancelled. Published evidence remains active.");
             ShowPublished();
             return false;
@@ -193,7 +193,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
             isCandidateDisplayed = false;
             RestoreStepState(step);
             SetStatus(
-                "후보 Preview가 안전하게 실패했습니다. 게시 증거는 변경되지 않았습니다.",
+                "후보 미리보기에 실패했습니다. 적용된 결과는 변경되지 않았습니다.",
                 $"Candidate Preview failed closed: {exception.Message}");
             ShowPublished();
             appendLog(
@@ -249,7 +249,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         stepStateBeforePreview = null;
         step.State = "Published";
         SetStatus(
-            "후보를 Preview 그대로 게시했습니다. 다른 비교를 시작하려면 파라미터를 편집하고 Preview를 실행하세요.",
+            "후보를 미리보기 그대로 적용했습니다. 다른 비교를 시작하려면 설정값을 편집하고 미리보기를 실행하세요.",
             "Candidate published exactly as previewed. Edit parameters and Preview to start another comparison.");
         requestDisplay(published);
         appendLog(
@@ -316,7 +316,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         }
 
         SetStatus(
-            "후보를 버렸습니다. 게시 증거가 활성 상태로 유지됩니다.",
+            "후보를 취소했습니다. 적용된 결과는 유지됩니다.",
             "Candidate discarded. Published evidence remains active.");
         ShowPublished();
     }
@@ -334,7 +334,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         isCandidateDisplayed = false;
         RestoreStepState(step);
         SetStatus(
-            "Preview 이후 파라미터가 변경되어 후보가 오래된 상태입니다. 게시하기 전에 다시 Preview를 실행하세요.",
+            "미리보기 이후 설정값이 변경되어 후보가 오래된 상태입니다. 적용하기 전에 다시 미리보기를 실행하세요.",
             "Parameters changed after Preview. The candidate is stale; Preview again before Publish.");
         ShowPublished();
     }
@@ -356,7 +356,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         stepStateBeforePreview = null;
         notifyPublishedEvidenceChanged();
         SetStatus(
-            "게시 기준선이 준비되었습니다. 파라미터 변경을 적용한 뒤 명시적으로 Preview하여 비교하세요.",
+            "적용 기준선이 준비되었습니다. 설정값 변경을 적용한 뒤 직접 미리보기하여 비교하세요.",
             "Published baseline ready. Apply parameter changes, then Preview explicitly to compare.");
     }
 
@@ -396,7 +396,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         stepStateBeforePreview = null;
         notifyPublishedEvidenceChanged();
         SetStatus(
-            "파라미터를 비교하려면 게시된 정합 결과를 먼저 불러오세요.",
+            "설정값을 비교하려면 적용된 정합 결과를 먼저 불러오세요.",
             "Load a published match result before comparing parameters.");
     }
 

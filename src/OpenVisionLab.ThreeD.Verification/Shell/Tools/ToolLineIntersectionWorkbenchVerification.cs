@@ -49,6 +49,8 @@ internal static class ToolLineIntersectionWorkbenchVerification
                     EdgeStep("step.edge.b", secondSelection.Id, "AcrossRows", "derived.edge.b"),
                     LineFitStep("step.line.b", "derived.edge.b", "derived.line.b"),
                     IntersectionStep(),
+                    IntersectionStep("step.corner.02", "derived.corner.02"),
+                    FilterStep(source.EntityId) with { Id = "step.filter.02", OutputEntityId = "derived.filtered.02" },
                 ],
                 [firstSelection, secondSelection]);
             var recipePath = Path.Combine(root, "line-intersection.ov3d-teach.json");
@@ -73,6 +75,44 @@ internal static class ToolLineIntersectionWorkbenchVerification
             var secondLine = RunAndPublishLine(workbench, "step.line.b", Check);
             Check("second LineFeature is published", secondLine is not null && workbench.TryGetPublishedLineFitOutput("derived.line.b", out var publishedB) && ReferenceEquals(secondLine, publishedB), workbench.LineFitExecutionSummary);
 
+            var lateDocument = document;
+            var lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.corner.01");
+            var changeOnStart = 1;
+            var lateDisplays = 0;
+            using (var lateOwner = new ToolWorkbenchLineIntersectionExecutionOwner(
+                () => true, () => lateSelected, () => true, () => false,
+                id => id == "derived.line.a" ? firstLine : id == "derived.line.b" ? secondLine : null,
+                id => workbench.PipelineSteps.FirstOrDefault(step => step.OutputEntityId == id),
+                () => lateDocument,
+                (_, message) =>
+                {
+                    if (!message.Contains("Preview started", StringComparison.Ordinal)) return;
+                    if (changeOnStart == 1)
+                        lateDocument = document with { Steps = document.Steps.Select(step => step.Id == "step.corner.01"
+                            ? step with { Parameters = step.Parameters.Select(parameter => parameter.Name == "MaximumClosestApproachDistance" ? parameter with { Value = "0.002" } : parameter).ToArray() }
+                            : step).ToArray() };
+                    else if (changeOnStart == 2)
+                        lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.corner.02");
+                },
+                _ => lateDisplays++, () => { }, () => { }, () => { }))
+            {
+                Check("late condition change rejects captured corner completion", !lateOwner.PreviewAsync().GetAwaiter().GetResult()
+                    && lateOwner.CurrentOutput is null && !lateOwner.IsPreviewRunning && lateDisplays == 0, lateOwner.ExecutionSummary);
+                lateDocument = document;
+                lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.corner.01");
+                changeOnStart = 2;
+                Check("late selection change cannot publish to another corner", !lateOwner.PreviewAsync().GetAwaiter().GetResult()
+                    && lateOwner.CurrentOutput is null && !lateOwner.IsPreviewRunning && lateDisplays == 0, lateOwner.ExecutionSummary);
+                lateSelected = workbench.PipelineSteps.Single(step => step.Id == "step.corner.01");
+                changeOnStart = 0;
+                var recovered = lateOwner.PreviewAsync().GetAwaiter().GetResult();
+                var recoveredOutput = lateOwner.CurrentOutput;
+                lateOwner.Publish();
+                Check("late-completion rejection recovers through explicit Preview/Publish", recovered
+                    && lateOwner.TryGetPublishedOutput("derived.corner.01", out var recoveredCorner)
+                    && ReferenceEquals(recoveredOutput, recoveredCorner) && lateDisplays == 2, lateOwner.ExecutionSummary);
+            }
+
             C3DLineIntersectionFeature? preview = null;
             C3DLineIntersectionFeature? published = null;
             workbench.LineIntersectionDisplayRequested += (_, args) =>
@@ -87,14 +127,55 @@ internal static class ToolLineIntersectionWorkbenchVerification
             Check("explicit Line Intersection Preview", previewSucceeded && preview is not null && preview.ClosestApproachDistance == 0 && NearlyEqual(preview.CornerAnchorX, 4.5) && NearlyEqual(preview.CornerAnchorZ, 4.5), workbench.LineIntersectionEvidenceSummary);
             var headless = ToolRecipeLineIntersectionExecution.Execute(document, "step.corner.01", firstLine!, secondLine!);
             Check("Workbench and headless share exact output hash", preview?.ContentSha256 == headless.Output?.ContentSha256, $"workbench={preview?.ContentSha256};headless={headless.Output?.ContentSha256}");
+            workbench.SelectPipelineStep("step.corner.02");
+            Check("unexecuted corner cannot publish the first corner preview", !workbench.PublishSelectedStepCommand.CanExecute(null), workbench.LineIntersectionExecutionSummary);
+            workbench.SelectPipelineStep("step.corner.01");
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Publish reuses exact Intersection Preview", workbench.IsLineIntersectionPreviewPublished && ReferenceEquals(preview, published) && workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out var corner) && ReferenceEquals(corner, published), workbench.LineIntersectionExecutionSummary);
             Check("published corner appears as typed artifact", workbench.ArtifactRegistry.Any(item => item.Id == "derived.corner.01" && item.Contract == "CornerAnchor" && item.State == "Published"), workbench.ArtifactRegistrySummary);
 
+            var firstCorner = published;
+            workbench.SelectedPipelineStep!.ToolName = "Renamed first corner";
+            Check("corner display name preserves published calculation", workbench.IsLineIntersectionPreviewPublished
+                && workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out var renamedCorner)
+                && ReferenceEquals(renamedCorner, firstCorner), workbench.LineIntersectionExecutionSummary);
+            workbench.SelectPipelineStep("step.filter.02");
+            workbench.SetFilterKernel5Command.Execute(null);
+            Check("unrelated Filter edit preserves the first corner", workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out var independentCorner)
+                && ReferenceEquals(independentCorner, firstCorner), workbench.LineIntersectionExecutionSummary);
+            workbench.SelectPipelineStep("step.corner.02");
+            Check("second corner explicit Preview", workbench.PreviewSelectedLineIntersectionAsync().GetAwaiter().GetResult(), workbench.LineIntersectionExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            Check("second corner Publish preserves the first exact output", workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out var retainedCorner)
+                && ReferenceEquals(retainedCorner, firstCorner)
+                && workbench.TryGetPublishedLineIntersectionOutput("derived.corner.02", out _), workbench.LineIntersectionExecutionSummary);
+
             var gap = workbench.SelectedPipelineStep!.Parameters.Single(item => item.Name == "MaximumClosestApproachDistance");
             gap.Value = "0.01";
-            Check("intersection parameter change stales only the current corner Preview", workbench.IsLineIntersectionPreviewStale && !workbench.IsLineIntersectionPreviewPublished && !workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out _), workbench.LineIntersectionExecutionSummary);
+            Check("intersection parameter change stales only the affected corner", workbench.IsLineIntersectionPreviewStale && !workbench.IsLineIntersectionPreviewPublished
+                && !workbench.TryGetPublishedLineIntersectionOutput("derived.corner.02", out _)
+                && workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out var unchangedCorner)
+                && ReferenceEquals(unchangedCorner, firstCorner), workbench.LineIntersectionExecutionSummary);
             Check("published input lines remain available after corner stale", workbench.TryGetPublishedLineFitOutput("derived.line.a", out _) && workbench.TryGetPublishedLineFitOutput("derived.line.b", out _), workbench.LineIntersectionUpstreamSummary);
+
+            gap.Value = "0.001";
+            Check("changed corner explicit recovery", workbench.PreviewSelectedLineIntersectionAsync().GetAwaiter().GetResult(), workbench.LineIntersectionExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            Check("remove corner preserves the independent exact output", workbench.ConfirmSelectedStepRemoval("step.corner.02")
+                && !workbench.TryGetPublishedLineIntersectionOutput("derived.corner.02", out _)
+                && workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out var afterRemoval)
+                && ReferenceEquals(afterRemoval, firstCorner), "Owned generated recipe only.");
+            Check("restore corner settings leaves its calculation absent", workbench.TryRestoreLastRemovedStep(out var restored)
+                && !workbench.TryGetPublishedLineIntersectionOutput("derived.corner.02", out _)
+                && workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out _), restored);
+            Check("restored corner explicit recovery", workbench.PreviewSelectedLineIntersectionAsync().GetAwaiter().GetResult(), workbench.LineIntersectionExecutionSummary);
+            workbench.PublishSelectedStepCommand.Execute(null);
+            workbench.SelectPipelineStep("step.line.b");
+            workbench.SelectedPipelineStep!.Parameters.Single(item => item.Name == "MaximumOrthogonalResidual").Value = "0.002";
+            Check("shared upstream line edit invalidates both corners without running", !workbench.TryGetPublishedLineIntersectionOutput("derived.corner.01", out _)
+                && !workbench.TryGetPublishedLineIntersectionOutput("derived.corner.02", out _)
+                && workbench.TryGetPublishedLineFitOutput("derived.line.a", out _)
+                && !workbench.TryGetPublishedLineFitOutput("derived.line.b", out _), workbench.LineIntersectionExecutionSummary);
 
             workbench.Dispose();
             Check(
@@ -164,8 +245,8 @@ internal static class ToolLineIntersectionWorkbenchVerification
     private static ToolRecipeStep LineFitStep(string id, string input, string output) =>
         new(id, "three-d-line-fit", "3D Line Fit", 1, [input], output, [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "0.001"), new("MinimumInlierCount", "3"), new("MinimumInlierRatio", "1"), new("MinimumInlierScanlineSpan", "2"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]);
 
-    private static ToolRecipeStep IntersectionStep() =>
-        new("step.corner.01", "line-intersection", "Line Intersection", 2, ["derived.line.a", "derived.line.b"], "derived.corner.01", [new("MaximumClosestApproachDistance", "0.001"), new("MinimumAcuteAngleDegrees", "45"), new("MaximumSupportExtension", "1.5"), new("OutputRole", "SyntheticCorner"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]);
+    private static ToolRecipeStep IntersectionStep(string id = "step.corner.01", string output = "derived.corner.01") =>
+        new(id, "line-intersection", "Line Intersection", 2, ["derived.line.a", "derived.line.b"], output, [new("MaximumClosestApproachDistance", "0.001"), new("MinimumAcuteAngleDegrees", "45"), new("MaximumSupportExtension", "1.5"), new("OutputRole", $"SyntheticCorner-{id}"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]);
 
     private static bool NearlyEqual(double actual, double expected) => Math.Abs(actual - expected) <= 0.000001;
 }

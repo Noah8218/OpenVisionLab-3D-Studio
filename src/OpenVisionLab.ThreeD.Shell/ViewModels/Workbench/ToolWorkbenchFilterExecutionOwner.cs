@@ -29,15 +29,16 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
     private readonly Func<bool> isEdgePreviewRunning;
     private readonly Func<ToolRecipeDocument> createDocument;
     private readonly Func<string?> getRecipePath;
-    private readonly Func<object?, bool> isSourceChangeEvent;
     private readonly Action<string, string> appendLog;
     private readonly Action<ToolWorkbenchFilterDisplayRequestEventArgs> requestDisplay;
     private readonly Action<string> markEdgePreviewStale;
-    private readonly Action<string> clearEdgePreview;
     private readonly Action onExecutionStateChanged;
 
     private CancellationTokenSource? filterPreviewCancellation;
     private C3DHeightFieldSnapshot? filterPreviewOutput;
+    private ToolWorkbenchPipelineStepItem? previewStep;
+    private string previewContext = string.Empty;
+    private readonly Dictionary<string, (C3DHeightFieldSnapshot Output, string Path, string StepId, string Context)> publishedOutputs = new(StringComparer.OrdinalIgnoreCase);
     private string? filterPreviewPath;
     private bool isFilterPreviewRunning;
     private bool isFilterPreviewStale;
@@ -60,11 +61,9 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
         Func<bool> isEdgePreviewRunning,
         Func<ToolRecipeDocument> createDocument,
         Func<string?> getRecipePath,
-        Func<object?, bool> isSourceChangeEvent,
         Action<string, string> appendLog,
         Action<ToolWorkbenchFilterDisplayRequestEventArgs> requestDisplay,
         Action<string> markEdgePreviewStale,
-        Action<string> clearEdgePreview,
         Action onExecutionStateChanged)
     {
         showFilterSourceCommand = new RelayCommand(_ => showFilterSource(), _ => canShowFilterSource());
@@ -79,11 +78,9 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
         this.isEdgePreviewRunning = isEdgePreviewRunning;
         this.createDocument = createDocument;
         this.getRecipePath = getRecipePath;
-        this.isSourceChangeEvent = isSourceChangeEvent;
         this.appendLog = appendLog;
         this.requestDisplay = requestDisplay;
         this.markEdgePreviewStale = markEdgePreviewStale;
-        this.clearEdgePreview = clearEdgePreview;
         this.onExecutionStateChanged = onExecutionStateChanged;
 
         filterExecutionSummary = "Select a Filter step, then Preview explicitly.";
@@ -98,7 +95,7 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
     public C3DHeightFieldSnapshot? FilterPreviewOutput => IsDisposed ? null : filterPreviewOutput;
     public string? FilterPreviewPath => IsDisposed ? null : filterPreviewPath;
     public bool IsFilterPreviewRunning => !IsDisposed && isFilterPreviewRunning;
-    public bool HasCurrentFilterPreview => !IsDisposed && filterPreviewOutput is not null && !isFilterPreviewStale;
+    public bool HasCurrentFilterPreview => !IsDisposed && !isFilterPreviewRunning && filterPreviewOutput is not null && !isFilterPreviewStale;
     public bool IsFilterPreviewStale => !IsDisposed && isFilterPreviewStale;
     public bool IsFilterPreviewPublished => !IsDisposed && isFilterPreviewPublished;
     public string FilterExecutionSummary => IsDisposed
@@ -115,6 +112,9 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
         var cancellation = Interlocked.Exchange(ref filterPreviewCancellation, null);
         CancelAndDispose(cancellation);
         filterPreviewOutput = null;
+        publishedOutputs.Clear();
+        previewStep = null;
+        previewContext = string.Empty;
         filterPreviewPath = null;
         isFilterPreviewRunning = false;
         isFilterPreviewStale = false;
@@ -148,21 +148,23 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
             return false;
         }
 
+        publishedOutputs.Remove(step.OutputEntityId);
         SetRunning(true);
-        isFilterPreviewStale = false;
+        isFilterPreviewStale = filterPreviewOutput is not null;
         isFilterPreviewPublished = false;
         step.State = "Preview running";
         SetSummary("Median Preview is running from the verified C3D source bytes.");
-        if (!IsCurrentPreview(cancellation))
-        {
-            return false;
-        }
-
-        appendLog("Preview", $"Filter Preview started: {step.Id}.");
-
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentPreview(cancellation))
+            {
+                return false;
+            }
+
+            appendLog("Preview", $"Filter Preview started: {step.Id}.");
             var document = createDocument();
+            var context = document.CreateStepExecutionContext(step.Id);
             var evaluation = await Task.Run(
                 () => ToolRecipeFilterExecution.Execute(
                     document,
@@ -170,15 +172,24 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
                     GetRecipeDirectory(),
                     cancellationToken),
                 cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsCurrentPreview(cancellation))
             {
                 return false;
             }
 
+            if (!ReferenceEquals(step, getSelectedPipelineStep())
+                || !string.Equals(context, createDocument().CreateStepExecutionContext(step.Id), StringComparison.Ordinal))
+            {
+                isFilterPreviewStale = filterPreviewOutput is not null;
+                step.State = "Preview stale";
+                SetSummary("Input or conditions changed. Run again for the current result.");
+                return false;
+            }
+
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
-                filterPreviewOutput = null;
-                filterPreviewPath = null;
+                isFilterPreviewStale = filterPreviewOutput is not null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
                 if (IsCurrentPreview(cancellation))
@@ -189,14 +200,19 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
                 return false;
             }
 
-            filterPreviewOutput = evaluation.Output;
-            filterPreviewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
-            SaveC3DAtomically(evaluation.Output, filterPreviewPath);
+            var outputPath = CreatePreviewPath(evaluation.Output.ContentSha256);
+            SaveC3DAtomically(evaluation.Output, outputPath);
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsCurrentPreview(cancellation))
             {
                 return false;
             }
 
+            filterPreviewOutput = evaluation.Output;
+            previewStep = step;
+            previewContext = context;
+            filterPreviewPath = outputPath;
+            isFilterPreviewStale = false;
             step.State = "Preview ready";
             SetSummary($"Preview ready | valid {evaluation.Output.ValidCount:N0} | missing {evaluation.Output.MissingCount:N0} | preprocessing only, no OK/NG");
             appendLog("Preview", $"Filter Preview ready: {evaluation.Output.ContentSha256}.");
@@ -209,7 +225,7 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
         }
         catch (OperationCanceledException)
         {
-            if (!IsCurrentPreview(cancellation))
+            if (IsDisposed || !ReferenceEquals(Volatile.Read(ref filterPreviewCancellation), cancellation))
             {
                 return false;
             }
@@ -248,12 +264,14 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
 
     public void Publish()
     {
-        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentFilterPreview)
+        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentFilterPreview
+            || !ReferenceEquals(step, previewStep))
         {
             return;
         }
 
         isFilterPreviewPublished = true;
+        publishedOutputs[filterPreviewOutput!.EntityId] = (filterPreviewOutput, filterPreviewPath!, step.Id, previewContext);
         step.State = "Published";
         SetSummary($"Published output {step.OutputEntityId} | SHA-256 {filterPreviewOutput!.ContentSha256} | preprocessing only, no OK/NG");
         appendLog("Publish", $"Filter output published without re-running: {step.OutputEntityId}.");
@@ -276,30 +294,51 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
 
     public void MarkPreviewStaleIfNeeded(object? sender)
     {
-        if (IsDisposed || filterPreviewOutput is null || isFilterPreviewRunning)
+        if (IsDisposed || isFilterPreviewRunning || filterPreviewOutput is null && publishedOutputs.Count == 0)
         {
             return;
         }
 
-        var selected = getSelectedPipelineStep();
-        var selectedIsFilter = isSelectedStepFilter();
-        var isSelectedFilterParameter = selectedIsFilter
-            && sender is ToolWorkbenchParameterItem parameter
-            && (selected?.Parameters.Contains(parameter) ?? false);
-        if (isSourceChangeEvent(sender)
-            || selectedIsFilter && ReferenceEquals(sender, selected)
-            || isSelectedFilterParameter)
+        var document = createDocument();
+        var changed = false;
+        foreach (var (id, published) in publishedOutputs.ToArray())
+        {
+            if (string.Equals(published.Context, document.CreateStepExecutionContext(published.StepId), StringComparison.Ordinal)) continue;
+            publishedOutputs.Remove(id);
+            changed = true;
+        }
+        if (filterPreviewOutput is not null && !isFilterPreviewStale && previewStep is not null
+            && !string.Equals(previewContext, document.CreateStepExecutionContext(previewStep.Id), StringComparison.Ordinal))
         {
             isFilterPreviewStale = true;
             isFilterPreviewPublished = false;
-            markEdgePreviewStale(
-                "Published Filter input changed. Preview Edge again after Filter is republished.");
-            if (selected is not null)
-            {
-                selected.State = "Preview stale";
-            }
-            SetSummary("Source, routing, output, or Kernel changed. Preview again before Publish.");
+            previewStep.State = "Preview stale";
+            changed = true;
         }
+        if (!changed) return;
+        markEdgePreviewStale("Published Filter input changed. Preview Edge again after Filter is republished.");
+        if (isFilterPreviewStale) SetSummary("Source, routing, output, or Kernel changed. Preview again before Publish.");
+        else onExecutionStateChanged();
+    }
+
+    public (C3DHeightFieldSnapshot Output, string Path)? GetPublishedOutput(string? outputEntityId)
+    {
+        if (IsDisposed || outputEntityId is null || !publishedOutputs.TryGetValue(outputEntityId, out var published)
+            || !string.Equals(published.Context, createDocument().CreateStepExecutionContext(published.StepId), StringComparison.Ordinal)) return null;
+        return (published.Output, published.Path);
+    }
+
+    public void ForgetOutput(string outputEntityId)
+    {
+        if (IsDisposed) return;
+        publishedOutputs.Remove(outputEntityId);
+        if (!string.Equals(filterPreviewOutput?.EntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)) return;
+        filterPreviewOutput = null;
+        filterPreviewPath = null;
+        previewStep = null;
+        previewContext = string.Empty;
+        isFilterPreviewStale = false;
+        isFilterPreviewPublished = false;
     }
 
     public void ClearPreview(string summary)
@@ -312,10 +351,13 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
         var cancellation = Interlocked.Exchange(ref filterPreviewCancellation, null);
         CancelAndDispose(cancellation);
         filterPreviewOutput = null;
+        publishedOutputs.Clear();
+        previewStep = null;
+        previewContext = string.Empty;
         filterPreviewPath = null;
         isFilterPreviewStale = false;
         isFilterPreviewPublished = false;
-        clearEdgePreview(
+        markEdgePreviewStale(
             "Published Filter output is unavailable; Edge Preview is required after Filter is republished.");
         SetSummary(summary);
     }
@@ -326,6 +368,8 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
         {
             return;
         }
+
+        MarkPreviewStaleIfNeeded(null);
 
         if (getSelectedPipelineStep() is { } step
             && isSelectedStepFilter()
@@ -371,7 +415,7 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
     }
 
     private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
-        !IsDisposed && ReferenceEquals(
+        !IsDisposed && !cancellation.IsCancellationRequested && ReferenceEquals(
             Volatile.Read(ref filterPreviewCancellation),
             cancellation);
 
@@ -391,11 +435,11 @@ internal sealed class ToolWorkbenchFilterExecutionOwner : IDisposable
 
     private static string CreatePreviewPath(string hash)
     {
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenVisionLab",
-            "3DStudio",
-            "Preview");
+        var root = Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        var directory = string.IsNullOrWhiteSpace(root)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenVisionLab", "3DStudio", "Preview")
+            : Path.Combine(Path.GetFullPath(root), "Preview");
+        Directory.CreateDirectory(directory);
         return Path.Combine(directory, $"filter-{hash}.c3d");
     }
 

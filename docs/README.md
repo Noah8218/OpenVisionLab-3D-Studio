@@ -1,59 +1,17 @@
-# OpenVisionLab 3D Documentation
+# OpenVisionLab 3D documentation
 
-This index lists documentation that is present in the public repository. Dated
-documents preserve the scope and evidence recorded when they were written;
-current product direction is owned by the master backlog and current handoff.
+Start with the [product README](../README.md) and
+[source setup and project navigation](OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md).
 
-## Current authority
+| Purpose | Document |
+| --- | --- |
+| Run the included inspection | [First inspection](OPENVISIONLAB_3D_USER_TUTORIAL.md) |
+| Find redistributable inputs | [Sample data](OPENVISIONLAB_3D_SAMPLE_DATA.md) |
+| Maintain algorithm and product boundaries | [SDK package boundary](OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md) |
+| Consume Viewer display state | [Viewer Host display contract](OPENVISIONLAB_3D_VIEWER_HOST_DISPLAY_BOUNDARY_20260909.md) |
+| Contribute safely | [Contributor operating rules](../AGENTS.md) |
+| Review version history | [Changelog](../CHANGELOG.md) |
 
-- [Repository operating rules](../AGENTS.md)
-- [Master development workflow and backlog](OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md)
-- [Current session handoff](OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md)
-- [Next-chat entry prompt](OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md)
-- [Vision SDK package boundary](OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md)
-- [Vision SDK Tool contract and migration baseline](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md)
-- [Changelog](../CHANGELOG.md)
-
-## Users and operators
-
-- [Root README](../README.md) — product overview, supported workflows, source
-  build, package creation, and documentation entry points.
-- [User tutorial](OPENVISIONLAB_3D_USER_TUTORIAL.md) — first Thickness Coupon
-  inspection.
-- [Windows package quick start](OPENVISIONLAB_3D_WINDOWS_PACKAGE_QUICK_START.md)
-  — self-contained package startup.
-- [System requirements and setup](OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
-  — operator and developer prerequisites.
-- [Sample data](OPENVISIONLAB_3D_SAMPLE_DATA.md) and
-  [public sample attribution](../3D/PublicSamples/README.md) — sample inventory
-  and attribution.
-
-## Integration and verification evidence
-
-- [V2 adapter implementation](INTEGRATION_V2_ADAPTER_IMPLEMENTATION_20260825.md)
-- [Recipe-owned HeightMap execution](INTEGRATION_3D_RECIPE_OWNED_HEIGHTMAP_EXECUTION_20260826.md)
-- [WPF HeightMap execution](INTEGRATION_3D_WPF_HEIGHTMAP_EXECUTION_20260826.md)
-- [HeightMap buffer runtime](INTEGRATION_3D_HEIGHTMAP_BUFFER_RUNTIME_20260826.md)
-- [Cross-process HeightMap smoke](INTEGRATION_3D_CROSS_PROCESS_HEIGHTMAP_SMOKE_20260826.md)
-- [Cross-modal coordinate projection](INTEGRATION_3D_CROSS_MODAL_PROJECTION_20260827.md)
-- [Refactor batch 0.5.6-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260914.md)
-- [Refactor batch 0.5.5-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260910.md)
-- [Viewer Host display boundary 0.5.4-dev](OPENVISIONLAB_3D_VIEWER_HOST_DISPLAY_BOUNDARY_20260909.md)
-- [Refactor batch 0.5.3-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260905_LAZ.md)
-- [Public CI repair batch 0.5.2-dev](OPENVISIONLAB_3D_PUBLIC_CI_REPAIR_BATCH_20260905.md)
-- [Refactor batch 0.5.1-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260905.md)
-- [Refactor batch 0.5.0-dev](OPENVISIONLAB_3D_REFACTOR_BATCH_20260904.md)
-- [Connected Region G-11 closure](OPENVISIONLAB_3D_CONNECTED_REGION_G11_CLOSURE_20260826.md)
-- [Connected Region G-12 closure](OPENVISIONLAB_3D_CONNECTED_REGION_G12_CLOSURE_20260826.md)
-- [Presence Check G-13 closure](OPENVISIONLAB_3D_PRESENCE_CHECK_G13_CLOSURE_20260826.md)
-
-## Public documentation boundary
-
-Private market research, vendor comparisons, supplied-media reviews, and former
-chronological archives are not tracked or distributed. Public documentation
-contains OpenVisionLab-owned requirements, contracts, implementation decisions,
-verification evidence, and required license or attribution records.
-
-The current development line remains software-only. A `raw-height` result does
-not claim calibrated physical metrology; calibration and acceptance limits must
-be supplied and verified for the intended use.
+Project references, package versions, and command registrations are owned by the
+solution, project files, and source. These documents explain workflow and
+maintenance decisions rather than maintaining duplicate implementation lists.

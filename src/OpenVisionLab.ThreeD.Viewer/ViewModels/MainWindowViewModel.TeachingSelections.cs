@@ -18,6 +18,7 @@ public sealed partial class MainWindowViewModel
     private readonly Dictionary<string, double> teachingRoiDisplayHeightOffsets = new(StringComparer.OrdinalIgnoreCase);
     private double selectedTeachingRoiAutomaticRawHeight = double.NaN;
     private double teachingRoiDisplayHeightStep = 1.0;
+    private bool teachingRoiHeightHandleVisible;
 
     public bool IsTeachingCaptureActive => teachingCaptureRequest is not null;
     internal ToolRecipeSelectionSourceBinding? TeachingCaptureSourceBinding => teachingCaptureRequest?.SourceBinding;
@@ -33,6 +34,17 @@ public sealed partial class MainWindowViewModel
 
     public bool SelectedTeachingGridRectangleVisible =>
         GetVisibleTeachingGridRectangle() is not null;
+
+    public bool TeachingRoiHeightHandleVisible
+    {
+        get => teachingRoiHeightHandleVisible;
+        set
+        {
+            if (teachingRoiHeightHandleVisible == value) return;
+            teachingRoiHeightHandleVisible = value;
+            OnPropertyChanged(nameof(TeachingRoiHeightHandleVisible));
+        }
+    }
 
     public double SelectedTeachingRoiDisplayHeightOffset
     {

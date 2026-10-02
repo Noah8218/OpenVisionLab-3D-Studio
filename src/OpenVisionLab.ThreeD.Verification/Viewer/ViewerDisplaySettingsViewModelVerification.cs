@@ -39,6 +39,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
             Check("initial display-only", viewModel.IsDisplayOnly && !viewModel.CanSelectGeometryStyle, viewModel.EffectiveSummary);
             Check("initial color selectable", viewModel.CanSelectColorMap, viewModel.CanSelectColorMap.ToString());
             Check("initial choices", Sequence(viewModel.AvailableColorMaps, "Solid", "Height"), string.Join(",", viewModel.AvailableColorMaps));
+            Check("initial diagnostic channel is unavailable", !viewModel.CanSelectDiagnosticChannel, viewModel.CanSelectDiagnosticChannel.ToString());
             var initialSettings = viewModel.EffectiveSettings;
             Check(
                 "initial typed snapshot",
@@ -234,6 +235,15 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 && lazDiagnosticViewModel.DisplaySettingsRevision == diagnosticRevision
                 && lazDiagnosticViewModel.FallbackSummary.Contains("not selectable", StringComparison.Ordinal),
                 lazDiagnosticViewModel.FallbackSummary);
+
+            var generatedDiagnosticViewModel = new ViewerDisplaySettingsViewModel();
+            generatedDiagnosticViewModel.ConfigureGeneratedGeometry(deviationAvailable: false);
+            Check(
+                "unavailable diagnostic catalog cannot open a blank selector",
+                generatedDiagnosticViewModel.DiagnosticChannelOptions.Count > 0
+                && !generatedDiagnosticViewModel.CanSelectDiagnosticChannel
+                && generatedDiagnosticViewModel.SelectedDiagnosticChannel is null,
+                $"options={generatedDiagnosticViewModel.DiagnosticChannelOptions.Count};selectable={generatedDiagnosticViewModel.CanSelectDiagnosticChannel}");
 
             var c3dDiagnosticViewModel = new ViewerDisplaySettingsViewModel();
             c3dDiagnosticViewModel.ConfigureC3DHeightGrid(
@@ -606,6 +616,16 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 && translatedPositions[0] == identityPositions[0] + new Vector3(1.0f, 2.0f, 3.0f)
                 && renderPositionCache.CurrentTransform == translatedTransform,
                 $"sameObject={ReferenceEquals(identityPositions, translatedPositions)}|first={translatedPositions[0]}");
+            var emphasizedPositions = renderPositionCache.GetOrCreate(renderProxy, translatedTransform, 3);
+            Check(
+                "height emphasis changes only the displayed C3D height",
+                !ReferenceEquals(translatedPositions, emphasizedPositions)
+                && emphasizedPositions.Length == translatedPositions.Length
+                && Math.Abs(emphasizedPositions[0].X - translatedPositions[0].X) < 1e-6f
+                && Math.Abs(emphasizedPositions[0].Z - translatedPositions[0].Z) < 1e-6f
+                && Math.Abs(emphasizedPositions[0].Y - (2.0f + renderProxy.Points[0].Position.Y * 3.0f)) < 1e-6f
+                && renderPositionCache.CurrentHeightEmphasis == 3,
+                $"sameObject={ReferenceEquals(translatedPositions, emphasizedPositions)}|original={translatedPositions[0]}|emphasized={emphasizedPositions[0]}|factor={renderPositionCache.CurrentHeightEmphasis}");
             var preparedPositions = translatedPositions.ToArray();
             renderPositionCache.Set(renderProxy, translatedTransform, preparedPositions);
             Check(
@@ -1089,7 +1109,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "viewer localization evidence summary",
                 ViewerLocalization.Shared.LocalizeRuntimeText(
                     "Runner/UI contract matched | Status: Fail | Key metric: Peak 1.0 | Evidence: Matched")
-                == "Runner/UI 계약 일치 | 상태: 실패 | 핵심 측정값: Peak 1.0 | 증거: 일치",
+                == "Runner/UI 계약 일치 | 상태: 실패 | 핵심 측정값: 피크 1.0 | 증거: 일치",
                 ViewerLocalization.Shared.LocalizeRuntimeText(
                     "Runner/UI contract matched | Status: Fail | Key metric: Peak 1.0 | Evidence: Matched"));
             Check(

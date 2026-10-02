@@ -9,7 +9,8 @@ internal sealed record ToolRecipeOrderedGraphStepExecution(
     C3DOutlierCellMap? OutlierMask = null,
     C3DLevelFrameArtifact? LevelFrame = null,
     C3DLevelFrameQualityEvidence? LevelFrameQuality = null,
-    C3DLevelSurfaceCoordinateFrameChain? FrameChain = null);
+    C3DLevelSurfaceCoordinateFrameChain? FrameChain = null,
+    C3DSignedHeightDeltaArtifact? SignedDeltaBackgroundSubtraction = null);
 
 /// <summary>
 /// Selects and invokes the typed adapter for one ordered recipe step.
@@ -21,8 +22,10 @@ internal static class ToolRecipeOrderedGraphStepExecutor
     private static readonly HashSet<string> SupportedToolIds = new(StringComparer.Ordinal)
     {
         "filter",
+        "height-threshold-background-removal",
         "remove-outlier-pixels",
         "connected-region",
+        "grid-polygon-domain",
         "editable-region",
         "domain-mask",
         "level-surface",
@@ -32,6 +35,7 @@ internal static class ToolRecipeOrderedGraphStepExecutor
         "three-point-plane",
         "datum-plane-raw-height-deviation",
         "three-d-line-fit",
+        "physical-edge-gap-flush",
         "line-intersection",
         "landmark-correspondence",
         "xyz-affine-solve",
@@ -44,7 +48,9 @@ internal static class ToolRecipeOrderedGraphStepExecutor
         "gap-flush",
         "volume",
         "cross-section-dimensions",
-        "completeness-grid"
+        "completeness-grid",
+        "connected-region-gate",
+        "signed-delta-background-subtraction"
     };
 
     private static readonly HashSet<string> MeasurementToolIds = new(StringComparer.Ordinal)
@@ -74,6 +80,14 @@ internal static class ToolRecipeOrderedGraphStepExecutor
                 var evaluation = ToolRecipeFilterExecution.Execute(document, step.Id, cancellationToken: cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
+            case "height-threshold-background-removal":
+            {
+                var evaluation = ToolRecipeHeightThresholdBackgroundRemovalExecution.Execute(
+                    document,
+                    step.Id,
+                    cancellationToken: cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
             case "remove-outlier-pixels":
             {
                 var evaluation = ToolRecipeRemoveOutlierPixelsExecution.Execute(
@@ -100,6 +114,24 @@ internal static class ToolRecipeOrderedGraphStepExecutor
                     cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
+            case "grid-polygon-domain":
+            {
+                var source = Required<C3DHeightFieldSnapshot>(
+                    artifacts,
+                    step.InputEntityIds[0],
+                    step);
+                var selection = document.Selections?.SingleOrDefault(candidate =>
+                    string.Equals(candidate.Id, step.InputEntityIds[1], StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidDataException(
+                        $"Step '{step.Id}' requires recipe selection '{step.InputEntityIds[1]}'.");
+                var evaluation = ToolRecipeGridPolygonDomainExecution.Execute(
+                    document,
+                    step.Id,
+                    source,
+                    selection,
+                    cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
             case "editable-region":
             {
                 var input = Required<C3DConnectedRegionArtifact>(
@@ -115,21 +147,102 @@ internal static class ToolRecipeOrderedGraphStepExecutor
             }
             case "domain-mask":
             {
+                if (step.InputEntityIds.Count == 3)
+                {
+                    var rawSource = Required<C3DHeightFieldSnapshot>(
+                        artifacts,
+                        step.InputEntityIds[0],
+                        step);
+                    var detectionSource = Required<C3DHeightFieldSnapshot>(
+                        artifacts,
+                        step.InputEntityIds[1],
+                        step);
+                    var region = Required<C3DConnectedRegionArtifact>(
+                        artifacts,
+                        step.InputEntityIds[2],
+                        step);
+                    if (!TryGetSelectedRegionIndex(step, out var selectedRegionIndex))
+                    {
+                        throw new InvalidDataException(
+                            $"Step '{step.Id}' requires one non-negative SelectedRegionIndex parameter for the raw-region route.");
+                    }
+
+                    return ToExecution(ToolRecipeDomainMaskExecution.Execute(
+                        document,
+                        step.Id,
+                        rawSource,
+                        detectionSource,
+                        region,
+                        selectedRegionIndex,
+                        cancellationToken));
+                }
+
                 var source = Required<C3DHeightFieldSnapshot>(
                     artifacts,
                     step.InputEntityIds[0],
                     step);
-                var domain = Required<C3DConnectedRegionArtifact>(
+                if (!artifacts.TryGetValue(step.InputEntityIds[1], out var domainArtifact))
+                {
+                    throw new InvalidDataException(
+                        $"Step '{step.Id}' is waiting for domain artifact '{step.InputEntityIds[1]}'.");
+                }
+                return domainArtifact switch
+                {
+                    C3DConnectedRegionArtifact connected =>
+                        ToExecution(ToolRecipeDomainMaskExecution.Execute(
+                            document,
+                            step.Id,
+                            source,
+                            connected,
+                            cancellationToken)),
+                    C3DGridDomainArtifact authored =>
+                        ToExecution(ToolRecipeDomainMaskExecution.Execute(
+                            document,
+                            step.Id,
+                            source,
+                            authored,
+                            cancellationToken)),
+                    _ => throw new InvalidDataException(
+                        $"Step '{step.Id}' requires a ConnectedRegionArtifact or GridDomainArtifact domain, but the published artifact is {domainArtifact.GetType().Name}.")
+                };
+            }
+            case "connected-region-gate":
+            {
+                var rawSource = Required<C3DHeightFieldSnapshot>(
+                    artifacts,
+                    step.InputEntityIds[0],
+                    step);
+                var detectionSource = Required<C3DHeightFieldSnapshot>(
                     artifacts,
                     step.InputEntityIds[1],
                     step);
-                var evaluation = ToolRecipeDomainMaskExecution.Execute(
+                var region = Required<C3DConnectedRegionArtifact>(
+                    artifacts,
+                    step.InputEntityIds[2],
+                    step);
+                var evaluation = ToolRecipeConnectedRegionGateExecution.Execute(
                     document,
                     step.Id,
-                    source,
-                    domain,
+                    rawSource,
+                    detectionSource,
+                    region,
+                    recipeDirectory: null,
                     cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
+            }
+            case "signed-delta-background-subtraction":
+            {
+                var current = Required<C3DHeightFieldSnapshot>(
+                    artifacts,
+                    step.InputEntityIds[0],
+                    step);
+                var evaluation = ToolRecipeSignedDeltaBackgroundSubtractionExecution.Execute(
+                    document,
+                    step.Id,
+                    current,
+                    recipeDirectory: Path.GetDirectoryName(Path.GetFullPath(document.Source.Path)),
+                    cancellationToken);
+                return new(evaluation.Result, evaluation.Output, SignedDeltaBackgroundSubtraction: evaluation.Output);
             }
             case "level-surface":
             {
@@ -179,6 +292,35 @@ internal static class ToolRecipeOrderedGraphStepExecutor
             {
                 var input = Required<C3DHeightDifferenceEdgePointSet>(artifacts, step.InputEntityIds[0], step);
                 var evaluation = ToolRecipeLineFitExecution.Execute(document, step.Id, input, cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
+            case "physical-edge-gap-flush":
+            {
+                if (step.InputEntityIds.Count != 4)
+                {
+                    throw new InvalidDataException(
+                        $"Step '{step.Id}' requires LineFeature A/B followed by EdgePointSet A/B.");
+                }
+
+                var firstLine = Required<C3DLineFeature>(artifacts, step.InputEntityIds[0], step);
+                var secondLine = Required<C3DLineFeature>(artifacts, step.InputEntityIds[1], step);
+                var firstEdge = Required<C3DHeightDifferenceEdgePointSet>(artifacts, step.InputEntityIds[2], step);
+                var secondEdge = Required<C3DHeightDifferenceEdgePointSet>(artifacts, step.InputEntityIds[3], step);
+                if (!C3DPhysicalEdgeGapFlushProfile.TryParse(step.Parameters, out var profile, out var profileMessage))
+                {
+                    throw new InvalidDataException(profileMessage);
+                }
+
+                var evaluation = PhysicalEdgeGapFlushRule.Evaluate(
+                    new C3DPhysicalEdgeGapFlushInput(
+                        step.Id,
+                        step.OutputEntityId,
+                        firstLine,
+                        secondLine,
+                        firstEdge,
+                        secondEdge,
+                        profile!),
+                    cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
             case "line-intersection":
@@ -256,6 +398,27 @@ internal static class ToolRecipeOrderedGraphStepExecutor
 
     public static string GetOutlierMaskArtifactId(string outputEntityId) =>
         $"{outputEntityId}::outlier-mask";
+
+    private static ToolRecipeOrderedGraphStepExecution ToExecution(
+        C3DDomainMaskEvaluation evaluation) =>
+        new(evaluation.Result, evaluation.Output);
+
+    private static bool TryGetSelectedRegionIndex(
+        ToolRecipeStep step,
+        out int selectedRegionIndex)
+    {
+        selectedRegionIndex = -1;
+        var parameter = (step.Parameters ?? []).SingleOrDefault(candidate =>
+            candidate is not null
+            && string.Equals(candidate.Name, "SelectedRegionIndex", StringComparison.Ordinal));
+        return parameter is not null
+            && int.TryParse(
+                parameter.Value,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out selectedRegionIndex)
+            && selectedRegionIndex >= 0;
+    }
 
     private static T Required<T>(
         IReadOnlyDictionary<string, object> artifacts,

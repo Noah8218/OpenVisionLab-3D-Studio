@@ -234,10 +234,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         lazTwoPointSecond = null;
         twoPointFirst = null;
         twoPointSecond = null;
-        profileFirst = null;
-        profileSecond = null;
-        profileSamples = [];
-        profileSourceSha256 = null;
+        viewModel.HeightProfile.Attach(null);
         linkedHeightCursor = null;
         lastPublishedThreeDGridHover = null;
         planeReferenceMeasurement = null;
@@ -312,6 +309,42 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         VerifyHostDispatcherAccess(nameof(TryApplyCameraState));
         return hostOperations.TryApplyCameraState(state);
+    }
+
+    public bool TryPickHeightProfileCell(ViewerHeightProfileCell cell)
+    {
+        VerifyHostDispatcherAccess(nameof(TryPickHeightProfileCell));
+        if (IsDisposed || c3dSample is null || cell is null || viewModel.SelectedSelectionMode != MainWindowViewModel.ProfileSelectionMode
+            || !string.Equals(cell.SourceSha256, c3dSample.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            || cell.Endpoint is < 0 or > 2 || cell.Row < 0 || cell.Row >= c3dSample.Height || cell.Column < 0 || cell.Column >= c3dSample.Width) return false;
+        try
+        {
+            var point = c3dSample.ReadPoint(cell.Row, cell.Column);
+            var command = cell.Endpoint == 0 ? viewModel.ProfilePickCommand : viewModel.ProfileMoveCommand;
+            object parameter = cell.Endpoint == 0 ? point : (cell.Endpoint, point);
+            if (!command.CanExecute(parameter)) return false;
+            command.Execute(parameter);
+            RenderNow();
+            return true;
+        }
+        catch (InvalidDataException) { return false; }
+    }
+
+    public bool TrySetHeightProfileCursor(double progress)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetHeightProfileCursor));
+        if (IsDisposed) return false;
+        var point = viewModel.HeightProfile.GetTracePoint(progress);
+        C3DGridCursor? cursor = point is { } sample ? CreateThreeDGridCursor(sample) : null;
+        SetLinkedHeightCursor(cursor);
+        PublishThreeDGridHover(cursor);
+        return point is not null;
+    }
+
+    public bool TryRequestHeightProfile(ViewerHeightProfileAction action)
+    {
+        VerifyHostDispatcherAccess(nameof(TryRequestHeightProfile));
+        return hostOperations.TryRequestHeightProfile(action);
     }
 
     public bool TrySetSelectionMode(string selectionMode)
@@ -396,6 +429,12 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         VerifyHostDispatcherAccess(nameof(TryApplyLinkedC3DHeightColorRange));
         return hostOperations.TryApplyLinkedC3DHeightColorRange(minimum, maximum);
+    }
+
+    public bool TrySetC3DHeightEmphasis(int emphasis)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetC3DHeightEmphasis));
+        return hostOperations.TrySetC3DHeightEmphasis(emphasis);
     }
 
     public int SmokeExitCode => smokeScenario.ExitCode;

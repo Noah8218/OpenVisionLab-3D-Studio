@@ -199,6 +199,24 @@ internal static class RenderableC3DCatalogVerification
                 .Select(preparation => preparation.Output?.EntityId ?? string.Empty)
                 .ToArray();
             owner.Rebuild(snapshot);
+            var typedLine = new ToolWorkbenchArtifactItem("derived.line.background", "Line", "LineFeature", "Published", source.EntityId,
+                "derived.filter.01", source.Unit, source.FrameId, new string('A', 64), "typed line", null, "LineFeature");
+            var typedArtifacts = artifacts.Append(typedLine).ToArray();
+            Check("typed line background follows the nearest verified height field",
+                owner.GetInputBackgroundTarget(typedLine.Id, typedArtifacts)?.Id == "derived.filter.01"
+                && owner.GetTarget(typedLine.Id) is null, "The line remains a typed overlay; no C3D candidate is invented.");
+            foreach (var invalidLine in new[] { typedLine with { State = "Stale" }, typedLine with { FrameId = "other-frame" }, typedLine with { Unit = "mm" }, typedLine with { RootSourceId = "other-source" } })
+            {
+                Check($"unusable typed input has no guessed background: {invalidLine.State}/{invalidLine.FrameId}/{invalidLine.Unit}/{invalidLine.RootSourceId}",
+                    owner.GetInputBackgroundTarget(invalidLine.Id, artifacts.Append(invalidLine).ToArray()) is null, "Current source/frame/unit identity is required.");
+            }
+            var cyclicLine = typedLine with { InputEntityIds = "derived.line.cycle" };
+            var cyclicPeer = typedLine with { Id = "derived.line.cycle", InputEntityIds = typedLine.Id };
+            Check("cyclic typed provenance terminates without a background",
+                owner.GetInputBackgroundTarget(typedLine.Id, artifacts.Concat([cyclicLine, cyclicPeer]).ToArray()) is null, "Visited identities bound the read-only walk.");
+            Check("ambiguous typed identity never chooses an arbitrary background",
+                owner.GetInputBackgroundTarget(typedLine.Id, artifacts.Concat([typedLine, typedLine]).ToArray()) is null, "Duplicate typed IDs fail closed.");
+
 
             var expectedIds = new[]
             {
@@ -247,6 +265,10 @@ internal static class RenderableC3DCatalogVerification
                 owner.Targets.Skip(1).Take(2).Select(target => target.Id)
                     .SequenceEqual(["validation.sample.1", "validation.sample.2"]),
                 "validation-order=1,2");
+
+            owner.Rebuild(snapshot with { PreparationOutputs = [.. snapshot.PreparationOutputs, preparations[0]] });
+            Check("duplicate output identity fails closed without hiding other tools", owner.GetTarget("derived.filter.01") is null
+                && owner.GetTarget("derived.roi-crop.01") is not null, "Two snapshots for the same entity are ambiguous.");
 
             var invalidPreparations = new[]
             {

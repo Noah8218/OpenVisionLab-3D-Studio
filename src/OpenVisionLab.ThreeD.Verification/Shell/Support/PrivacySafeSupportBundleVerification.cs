@@ -239,6 +239,185 @@ internal static class PrivacySafeSupportBundleVerification
                 && !currentResult.RootElement.TryGetProperty("ExecutionEnvironment", out _),
                 currentResult.RootElement.GetProperty("RunId").GetString() ?? string.Empty);
 
+            var passSteps = currentResult.RootElement.GetProperty("Steps");
+            var failSteps = fixture.Record.Steps!.ToArray();
+            failSteps[0] = failSteps[0] with
+            {
+                Status = ResultStatus.Fail,
+                Message = "Valid sample count 2 is below the 3..4 sample limits. Next action: inspect the missing-value mask and source coverage.",
+                Metrics = [new InspectionRunMetric("Valid samples", MetricKind.Count, 2, "samples", ResultStatus.Fail)]
+            };
+            var failRecord = fixture.Record with
+            {
+                RunId = "run-support-fail",
+                Status = ResultStatus.Fail,
+                Message = "Filter coverage failed at step step.private. Review valid sample count 2 against the 3..4 sample limits.",
+                Metrics = [new InspectionRunMetric("Valid samples", MetricKind.Count, 2, "samples", ResultStatus.Fail)],
+                Steps = failSteps
+            };
+            var failPath = WriteRunRecord(root, "fail-run-record.json", failRecord);
+            var failBundle = PrivacySafeSupportBundleWriter.Write(failPath, exportRoot, []);
+            var failEntries = ReadEntries(failBundle);
+            using var failResult = JsonDocument.Parse(failEntries["current-result.json"]);
+            var failMetricStep = failResult.RootElement.GetProperty("Steps")[0];
+            Check(
+                "Pass and Fail bundles expose step metric limits and algorithm identity for offline triage",
+                currentResult.RootElement.GetProperty("Status").GetString() == "Pass"
+                && passSteps[0].GetProperty("Status").GetString() == "Pass"
+                && passSteps[0].GetProperty("Metrics")[0].GetProperty("Value").GetDouble() == 4
+                && passSteps[0].GetProperty("Message").GetString()!.Contains("3..4", StringComparison.Ordinal)
+                && failResult.RootElement.GetProperty("Status").GetString() == "Fail"
+                && failMetricStep.GetProperty("Status").GetString() == "Fail"
+                && failMetricStep.GetProperty("Message").GetString()!.Contains("3..4", StringComparison.Ordinal)
+                && failMetricStep.GetProperty("Metrics")[0].GetProperty("Status").GetString() == "Fail"
+                && failMetricStep.GetProperty("SemanticFingerprint").GetString()!.Length == 64
+                && failMetricStep.GetProperty("AlgorithmEvidence").GetProperty("SdkPackageId").GetString() == "OpenVisionLab.Vision3D",
+                $"pass={currentResult.RootElement.GetProperty("Status").GetString()};fail={failResult.RootElement.GetProperty("Status").GetString()};limits=3..4 samples");
+
+            var errorMessage = "Filter step stopped because source coverage could not produce a valid sample count. Repair: inspect Source Quality and the missing-value mask, then run Preview explicitly.";
+            var errorStep = fixture.Record.Steps![0] with
+            {
+                Status = ResultStatus.Error,
+                Message = errorMessage,
+                Metrics = []
+            };
+            var errorRecord = fixture.Record with
+            {
+                RunId = "run-support-step-error",
+                Status = ResultStatus.Error,
+                Message = errorMessage,
+                Metrics = [],
+                Steps = [errorStep]
+            };
+            var errorPath = WriteRunRecord(root, "step-error-run-record.json", errorRecord);
+            var errorBundle = PrivacySafeSupportBundleWriter.Write(errorPath, exportRoot, []);
+            var errorEntries = ReadEntries(errorBundle);
+            using var errorResult = JsonDocument.Parse(errorEntries["current-result.json"]);
+            var retainedErrorStep = errorResult.RootElement.GetProperty("Steps")[0];
+            Check(
+                "controlled Step Error keeps the failing step cause repair action and algorithm identity",
+                errorResult.RootElement.GetProperty("Status").GetString() == "Error"
+                && retainedErrorStep.GetProperty("Id").GetString() == "step.private"
+                && retainedErrorStep.GetProperty("Status").GetString() == "Error"
+                && retainedErrorStep.GetProperty("Message").GetString() == errorMessage
+                && retainedErrorStep.GetProperty("AlgorithmEvidence").GetProperty("AlgorithmDefinitionVersion").GetString() == "filter-fixture-v1"
+                && retainedErrorStep.GetProperty("Message").GetString()!.Contains("run Preview explicitly", StringComparison.Ordinal),
+                retainedErrorStep.GetProperty("Message").GetString() ?? string.Empty);
+
+            var rejectedRecipeSha256 = new string('A', 64);
+            var rejectedSourceSha256 = new string('B', 64);
+            var rejectionMessage = $"Recipe/source identity rejected at {privateRoot}; operator={Environment.UserName}; machine={Environment.MachineName}; expected recipe {fixture.Record.Recipe.Sha256} and source {fixture.Record.Source.Sha256}, actual recipe {rejectedRecipeSha256} and source {rejectedSourceSha256}. Next action: reopen the recorded recipe and exact source before Run.";
+            var rejectedSource = fixture.Record.Source with
+            {
+                Path = Path.Combine(privateRoot, "rejected-private-source.C3D"),
+                Sha256 = rejectedSourceSha256
+            };
+            var rejectedRecord = fixture.Record with
+            {
+                RunId = "run-support-identity-rejection",
+                Recipe = fixture.Record.Recipe with
+                {
+                    Path = Path.Combine(privateRoot, "missing-private-recipe.ov3d-recipe.json"),
+                    Sha256 = rejectedRecipeSha256
+                },
+                Source = rejectedSource,
+                Status = ResultStatus.Error,
+                Message = rejectionMessage,
+                Metrics = [],
+                Steps =
+                [
+                    fixture.Record.Steps![0] with
+                    {
+                        Status = ResultStatus.Error,
+                        Message = rejectionMessage,
+                        Metrics = []
+                    }
+                ],
+                SourceQualityEvidence = InspectionRunSourceQualityEvidence.Unavailable(
+                    $"Identity rejection prevented Source Quality admission at {privateRoot}; operator={Environment.UserName}; machine={Environment.MachineName}.")
+            };
+            var rejectedPath = WriteRunRecord(root, "identity-rejection-run-record.json", rejectedRecord);
+            var rejectedBundle = PrivacySafeSupportBundleWriter.Write(rejectedPath, exportRoot, []);
+            var rejectedEntries = ReadEntries(rejectedBundle);
+            using var rejectedRecipe = JsonDocument.Parse(rejectedEntries["recipe.json"]);
+            using var rejectedQuality = JsonDocument.Parse(rejectedEntries["source-quality.json"]);
+            using var rejectedResult = JsonDocument.Parse(rejectedEntries["current-result.json"]);
+            Check(
+                "identity rejection bundle exposes recorded hashes rejection reason and next action",
+                rejectedRecipe.RootElement.GetProperty("State").GetString() == "Unavailable"
+                && rejectedQuality.RootElement.GetProperty("State").GetString() == "Unavailable"
+                && rejectedResult.RootElement.GetProperty("Status").GetString() == "Error"
+                && rejectedResult.RootElement.GetProperty("Recipe").GetProperty("Sha256").GetString() == rejectedRecipeSha256
+                && rejectedResult.RootElement.GetProperty("Source").GetProperty("Sha256").GetString() == rejectedSourceSha256
+                && rejectedResult.RootElement.GetProperty("Message").GetString()!.Contains("Next action", StringComparison.Ordinal)
+                && rejectedResult.RootElement.GetProperty("Steps")[0].GetProperty("AlgorithmEvidence").GetProperty("SdkPackageVersion").GetString() == "1.0.0",
+                $"recipe={rejectedRecipe.RootElement.GetProperty("State").GetString()};quality={rejectedQuality.RootElement.GetProperty("State").GetString()};status={rejectedResult.RootElement.GetProperty("Status").GetString()}");
+            var rejectedText = string.Join(
+                "\n",
+                rejectedEntries.Values.Select(bytes => Encoding.UTF8.GetString(bytes)));
+            Check(
+                "identity rejection adversarial free text omits private paths labeled user and machine identity and raw bytes",
+                !rejectedText.Contains(privateRoot, StringComparison.OrdinalIgnoreCase)
+                && !rejectedText.Contains($"operator={Environment.UserName}", StringComparison.OrdinalIgnoreCase)
+                && !rejectedText.Contains($"machine={Environment.MachineName}", StringComparison.OrdinalIgnoreCase)
+                && !rejectedText.Contains(fixture.RawSourceMarker, StringComparison.Ordinal)
+                && rejectedResult.RootElement.GetProperty("Message").GetString()!.Contains("<omitted>", StringComparison.Ordinal),
+                "private path, labeled operator/machine, and raw marker absent");
+
+            var tamperedPath = Path.Combine(root, "tampered-support.zip");
+            File.Copy(first, tamperedPath);
+            using (var tamperedArchive = ZipFile.Open(tamperedPath, ZipArchiveMode.Update))
+            {
+                var originalResultEntry = tamperedArchive.GetEntry("current-result.json")!;
+                originalResultEntry.Delete();
+                var replacement = tamperedArchive.CreateEntry("current-result.json");
+                using var writer = new StreamWriter(replacement.Open(), Encoding.UTF8);
+                writer.Write(Encoding.UTF8.GetString(entries["current-result.json"]));
+                writer.Write(' ');
+            }
+
+            var tamperedEntries = ReadEntries(tamperedPath);
+            using var tamperedManifest = JsonDocument.Parse(tamperedEntries["manifest.json"]);
+            var tamperDetected = tamperedManifest.RootElement
+                .GetProperty("Payloads")
+                .EnumerateArray()
+                .Any(payload =>
+                {
+                    var name = payload.GetProperty("Entry").GetString()!;
+                    var bytes = tamperedEntries[name];
+                    return payload.GetProperty("Length").GetInt32() != bytes.Length
+                        || !string.Equals(
+                            payload.GetProperty("Sha256").GetString(),
+                            Convert.ToHexString(SHA256.HashData(bytes)),
+                            StringComparison.OrdinalIgnoreCase);
+                });
+            Check(
+                "manifest length and SHA-256 detect payload tampering",
+                tamperDetected,
+                $"detected={tamperDetected}");
+
+            var blockedTargetRoot = Path.Combine(root, "blocked-target-root");
+            File.WriteAllText(blockedTargetRoot, "This file blocks directory creation.");
+            var exportCountBeforeWriteFailure = Directory.GetFiles(exportRoot, "*.zip").Length;
+            var writeFailed = false;
+            try
+            {
+                PrivacySafeSupportBundleWriter.Write(fixture.RunRecordPath, blockedTargetRoot, []);
+            }
+            catch (IOException)
+            {
+                writeFailed = true;
+            }
+
+            var recoveryBundle = PrivacySafeSupportBundleWriter.Write(fixture.RunRecordPath, exportRoot, []);
+            Check(
+                "write failure publishes no ZIP or staging file and a later valid export recovers",
+                writeFailed
+                && Directory.GetFiles(exportRoot, "*.zip").Length == exportCountBeforeWriteFailure + 1
+                && Directory.GetFiles(exportRoot, "*.staging.*", SearchOption.TopDirectoryOnly).Length == 0
+                && File.Exists(recoveryBundle),
+                $"failed={writeFailed};recovered={File.Exists(recoveryBundle)};staging={Directory.GetFiles(exportRoot, "*.staging.*", SearchOption.TopDirectoryOnly).Length}");
+
             var legacy = CreateLegacyFixture(root, fixture);
             var legacyBundle = PrivacySafeSupportBundleWriter.Write(
                 legacy,
@@ -479,11 +658,11 @@ internal static class PrivacySafeSupportBundleVerification
                 recipePath,
                 recipeSha256),
             source,
-            "Thickness",
+            "Median Filter Coverage",
             ResultStatus.Pass,
-            $"result path={root}",
+            $"Valid sample count 4 is within the 3..4 sample limits; evidence path={root}; operator={Environment.UserName}; machine={Environment.MachineName}.",
             2.5,
-            [new InspectionRunMetric("Thickness", MetricKind.Length, 3.0, "raw-height", ResultStatus.Pass)],
+            [new InspectionRunMetric("Valid samples", MetricKind.Count, 4, "samples", ResultStatus.Pass)],
             [new InspectionRunOverlay("overlay.private", OverlayKind.Point, "Private overlay", ResultStatus.Pass, source.EntityId)],
             "NotCompared",
             new InspectionRunArtifacts(
@@ -495,6 +674,28 @@ internal static class PrivacySafeSupportBundleVerification
                 Path.Combine(root, "run.csv")))
         {
             SourceQualityEvidence = quality,
+            Steps =
+            [
+                new InspectionRunStepResult(
+                    0,
+                    "step.private",
+                    "filter",
+                    "Filter",
+                    [source.EntityId],
+                    "result.private",
+                    ResultStatus.Pass,
+                    "Valid sample count 4 is within the 3..4 sample limits.",
+                    2.5,
+                    [new InspectionRunMetric("Valid samples", MetricKind.Count, 4, "samples", ResultStatus.Pass)],
+                    [])
+                {
+                    SemanticFingerprint = new string('1', 64),
+                    AlgorithmEvidence = new InspectionRunAlgorithmEvidence(
+                        "filter-fixture-v1",
+                        "OpenVisionLab.Vision3D",
+                        "1.0.0")
+                }
+            ],
             Timing = timing,
             ExecutionEnvironment = new InspectionRunEnvironment(
                 "OpenVisionLab 3D Studio",
@@ -548,6 +749,16 @@ internal static class PrivacySafeSupportBundleVerification
             RunId = "run-invalid-quality",
             SourceQualityEvidence = evidence
         };
+        File.WriteAllText(path, JsonSerializer.Serialize(record, JsonOptions));
+        return path;
+    }
+
+    private static string WriteRunRecord(
+        string root,
+        string fileName,
+        InspectionRunRecord record)
+    {
+        var path = Path.Combine(root, fileName);
         File.WriteAllText(path, JsonSerializer.Serialize(record, JsonOptions));
         return path;
     }

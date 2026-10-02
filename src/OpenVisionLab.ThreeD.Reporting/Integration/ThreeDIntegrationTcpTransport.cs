@@ -14,6 +14,7 @@ public sealed class ThreeDIntegrationTcpTransport : IAsyncDisposable
     private readonly byte[] sharedKey;
     private readonly TcpIntegrationOptions options;
     private TcpIntegrationServer? server;
+    private Func<IntegrationCancelRequestV2, CancellationToken, Task<TcpIntegrationCancellationReceipt>>? cancellationRequested;
     private bool disposed;
 
     public ThreeDIntegrationTcpTransport(
@@ -40,6 +41,12 @@ public sealed class ThreeDIntegrationTcpTransport : IAsyncDisposable
 
     public IPEndPoint? LocalEndpoint => server?.LocalEndpoint;
 
+    public event Func<IntegrationCancelRequestV2, CancellationToken, Task<TcpIntegrationCancellationReceipt>>? CancellationRequested
+    {
+        add => cancellationRequested += value;
+        remove => cancellationRequested -= value;
+    }
+
     public async Task<IPEndPoint> StartListeningAsync(
         IPAddress listenAddress,
         int port,
@@ -59,6 +66,7 @@ public sealed class ThreeDIntegrationTcpTransport : IAsyncDisposable
             port,
             sharedKey,
             options);
+        nextServer.CancellationRequested += ForwardCancellationRequestedAsync;
         try
         {
             await nextServer.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -131,6 +139,22 @@ public sealed class ThreeDIntegrationTcpTransport : IAsyncDisposable
             CryptographicOperations.ZeroMemory(sharedKey);
             disposed = true;
         }
+    }
+
+    private Task<TcpIntegrationCancellationReceipt> ForwardCancellationRequestedAsync(
+        IntegrationCancelRequestV2 request,
+        CancellationToken cancellationToken)
+    {
+        var handler = cancellationRequested;
+        if (handler is null)
+        {
+            return Task.FromException<TcpIntegrationCancellationReceipt>(
+                new TcpIntegrationTransportException(
+                    "cancellationUnsupported",
+                    "The 3D TCP integration transport has no cancellation handler."));
+        }
+
+        return handler(request, cancellationToken);
     }
 
     private async Task<TcpIntegrationTransferReceipt> ExecuteClientAsync(

@@ -59,6 +59,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                 "not evaluated by ROI / Crop",
                 "not evaluated by Level Surface",
                 "domain cells are the explicit Connected Region union",
+                "not evaluated by Height Threshold Background Removal",
                 "detected by Remove Outlier Pixels mask",
                 "not evaluated by Median Filter",
                 "Typed output '{0}' is declared, but has no current Preview or Published evidence.",
@@ -74,6 +75,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                 "{0} × {1} | source origin ({2}, {3}) | valid {4:N0} | missing {5:N0} | {6} | {7}",
                 "{0} × {1} | reference RMS {2:G6} | transform {3} | level frame {4} | frame chain {5} | quality {6} {7} | {8} | {9}",
                 "{0} × {1} | {2} | {3}",
+                "{0} × {1} | threshold {2:G6} | retained {3:N0} · removed {4:N0} | {5}",
                 "{0:N0} points | {1}",
                 "{0:N0}/{1:N0} inliers | {2}",
                 "ordered picks ({0}, {1}) -> ({2}, {3}) | {4}",
@@ -82,15 +84,19 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                  "{0} | gap {1:G6} | acute {2:G6} degrees",
                  "{0}/4 pairs | source rank {1}/4 | reference rank {2}/4 | correspondence evidence only",
                  "condition {0:G6} | max residual {1:G6} | matrix evidence only",
-                 "{0:N0} finite transformed points | {1:N0} missing source cells | A3 re-grid excluded",
+                "{0:N0} finite transformed points | {1:N0} missing source cells | A3 re-grid excluded",
                  "{0:N0}/{1:N0} populated | coverage {2:P2} | missing {3:N0} | collisions {4:N0}",
                  "{0} | {1}",
+                 string.Empty,
+                 string.Empty,
                  status => status.ToString(),
                  new ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot>(null, false, false),
                 new ToolWorkbenchLevelSurfaceArtifactPreview(null, null, null, null, null, false, false),
                 new ToolWorkbenchArtifactPreview<C3DConnectedRegionArtifact>(null, false, false),
+                new ToolWorkbenchArtifactPreview<C3DGridDomainArtifact>(null, false, false),
                 new ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot>(null, false, false),
                 new ToolWorkbenchArtifactPreview<C3DEditableRegionArtifact>(null, false, false),
+                new ToolWorkbenchHeightThresholdArtifactPreview(null, null, false, false),
                 new ToolWorkbenchRemoveOutlierArtifactPreview(null, null, false, false),
                 new ToolWorkbenchArtifactPreview<C3DHeightFieldSnapshot>(null, false, false),
                 new ToolWorkbenchArtifactPreview<C3DHeightDifferenceEdgePointSet>(null, false, false),
@@ -103,6 +109,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                 null!,
                 new ToolWorkbenchArtifactPreview<C3DTransformedPointCloud>(null, false, false),
                 new ToolWorkbenchArtifactPreview<C3DTransformedHeightField>(null, false, false),
+                new ToolWorkbenchArtifactPreview<C3DPhysicalEdgeGapFlushResult>(null, false, false),
                 new ToolWorkbenchArtifactPreview<ToolRecipeHeightMeasurementOutput>(null, false, false));
             var owner = new ToolWorkbenchArtifactNavigatorOwner(
                 new ToolWorkbenchArtifactProjection(),
@@ -910,7 +917,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                     Check(
                         "landmark-correspondence detail localizes pair and rank labels while preserving evidence, output identity, source, state, and node kind",
                         englishCorrespondenceArtifact.Detail.Contains("4/4 pairs | source rank 4/4 | reference rank 4/4 | correspondence evidence only", StringComparison.Ordinal)
-                        && koreanCorrespondenceArtifact.Detail.Contains("쌍 4/4 | 소스 순위 4/4 | 참조 순위 4/4 | 대응 증거 전용", StringComparison.Ordinal)
+                        && koreanCorrespondenceArtifact.Detail.Contains("쌍 4/4 | 입력 데이터 순위 4/4 | 참조 순위 4/4 | 대응 정보 전용", StringComparison.Ordinal)
                         && englishCorrespondenceArtifact.Detail != koreanCorrespondenceArtifact.Detail
                         && englishCorrespondenceArtifact.Id == koreanCorrespondenceArtifact.Id
                         && englishCorrespondenceArtifact.ContentSha256 == koreanCorrespondenceArtifact.ContentSha256
@@ -1011,7 +1018,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                     Check(
                         "xyz-affine-solve detail localizes condition and residual labels while preserving matrix evidence, output identity, correspondence source, state, and node kind",
                         englishAffineArtifact.Detail.Contains("condition 12.5 | max residual 0.25 | matrix evidence only", StringComparison.Ordinal)
-                        && koreanAffineArtifact.Detail.Contains("조건수 12.5 | 최대 잔차 0.25 | 행렬 증거 전용", StringComparison.Ordinal)
+                        && koreanAffineArtifact.Detail.Contains("조건수 12.5 | 최대 잔차 0.25 | 행렬 정보 전용", StringComparison.Ordinal)
                         && englishAffineArtifact.Detail != koreanAffineArtifact.Detail
                         && englishAffineArtifact.Id == koreanAffineArtifact.Id
                         && englishAffineArtifact.ContentSha256 == koreanAffineArtifact.ContentSha256
@@ -1220,6 +1227,8 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                         {
                             PipelineSteps = [measurementStep],
                             MeasurementArtifactDetailFormat = ThreeDLocalization.Shared.MeasurementArtifactDetailFormat,
+                            MeasurementResultStatusLabel = ThreeDLocalization.Shared.ResultStatusLabel(measurementOutput.Result.Status),
+                            MeasurementResultMessage = measurementOutput.Result.Message,
                             ResultStatusLabel = status => status == ResultStatus.Pass
                                 ? ThreeDLocalization.Shared.ValidationSetFilterPass
                                 : status.ToString(),
@@ -1235,6 +1244,8 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                         {
                             PipelineSteps = [measurementStep],
                             MeasurementArtifactDetailFormat = ThreeDLocalization.Shared.MeasurementArtifactDetailFormat,
+                            MeasurementResultStatusLabel = ThreeDLocalization.Shared.ResultStatusLabel(measurementOutput.Result.Status),
+                            MeasurementResultMessage = measurementOutput.Result.Message,
                             ResultStatusLabel = status => status == ResultStatus.Pass
                                 ? ThreeDLocalization.Shared.ValidationSetFilterPass
                                 : status.ToString(),
@@ -1265,7 +1276,28 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                         && koreanMeasurementArtifact.NodeKind == "MeasurementResult",
                         $"en={englishMeasurementArtifact.Detail}; ko={koreanMeasurementArtifact.Detail}; id={koreanMeasurementArtifact.Id}; state={koreanMeasurementArtifact.State}; hash={koreanMeasurementArtifact.ContentSha256}");
 
+                    OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                    var unconfiguredOutput = measurementOutput with
+                    {
+                        Result = measurementOutput.Result with { Message = ToolRecipeStep.UnconfiguredAcceptanceMessage }
+                    };
+                    var capturedMeasurement = snapshot with
+                    {
+                        PipelineSteps = [measurementStep],
+                        MeasurementArtifactDetailFormat = "{0} | {1}",
+                        MeasurementResultStatusLabel = "미판정",
+                        MeasurementResultMessage = "규격 미설정 · 측정값만 확인할 수 있습니다.",
+                        Measurement = new ToolWorkbenchArtifactPreview<ToolRecipeHeightMeasurementOutput>(unconfiguredOutput, false, true)
+                    };
                     OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                    var capturedArtifact = new ToolWorkbenchArtifactProjection().Project(capturedMeasurement)
+                        .Single(item => item.Id == unconfiguredOutput.OutputEntityId);
+                    Check(
+                        "measurement projection uses captured status and message without global language or ViewModel access",
+                        capturedArtifact.Detail == "미판정 | 규격 미설정 · 측정값만 확인할 수 있습니다."
+                        && capturedArtifact.ContentSha256 == measurementOutput.ContentSha256
+                        && capturedArtifact.RootSourceId == source.Id && capturedArtifact.State == "Published",
+                        capturedArtifact.Detail);
                     var englishDeclaredArtifact = new ToolWorkbenchArtifactProjection()
                         .Project(snapshot with
                         {
@@ -1294,7 +1326,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                     Check(
                         "declared artifact fallback localizes while preserving output identity and state",
                         englishDeclaredDetail == "Typed output 'derived.quality-delta' is declared, but has no current Preview or Published evidence."
-                        && koreanDeclaredDetail == "정식 출력 'derived.quality-delta'이(가) 선언되었지만 현재 Preview/Published 증거는 없습니다."
+                        && koreanDeclaredDetail == "출력 'derived.quality-delta'이(가) 아직 생성되지 않았습니다."
                         && englishDeclaredDetail != koreanDeclaredDetail
                         && englishDeclaredArtifact.Id == koreanDeclaredArtifact.Id
                         && englishDeclaredArtifact.State == "Declared"
@@ -1329,8 +1361,8 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                     var koreanDisabledDetail = koreanDisabledArtifact.Detail;
                     Check(
                         "disabled artifact detail localizes while preserving policy state and step identity",
-                        englishDisabledDetail == "Step 'step.disabled-output' disabled output policy. No Preview, Run output, or evidence is fabricated."
-                        && koreanDisabledDetail == "단계 'step.disabled-output'의 출력 정책이 비활성화했습니다. Preview, Run 출력 또는 증거를 만들지 않습니다."
+                        englishDisabledDetail == "Step 'step.disabled-output' output is disabled. Preview and Run do not produce this result or its review information."
+                        && koreanDisabledDetail == "단계 'step.disabled-output'의 결과 표시가 꺼져 있습니다. 미리보기와 검사에서 이 결과나 검토 정보를 만들지 않습니다."
                         && englishDisabledDetail != koreanDisabledDetail
                         && englishDisabledArtifact.Id == koreanDisabledArtifact.Id
                         && englishDisabledArtifact.State == "Disabled"
@@ -1410,7 +1442,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                     Check(
                         "stale selection recapture detail localizes while preserving identity and state",
                         englishStaleDetail == "Recapture is required because the source binding changed."
-                        && koreanStaleDetail == "소스 바인딩이 변경되어 선택 영역을 다시 지정해야 합니다."
+                        && koreanStaleDetail == "입력 데이터가 변경되어 선택 영역을 다시 지정해야 합니다."
                         && englishStaleDetail != koreanStaleDetail
                         && englishStaleArtifact.Id == koreanStaleArtifact.Id
                         && englishStaleArtifact.State == "Stale"

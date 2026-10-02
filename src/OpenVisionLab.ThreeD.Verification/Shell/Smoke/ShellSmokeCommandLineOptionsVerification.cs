@@ -1,4 +1,5 @@
 using System.IO;
+using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Smoke;
@@ -49,6 +50,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ViewerLayout", VerifyViewerLayout()),
             ("IntegrationExchangeState", VerifyIntegrationExchangeState()),
             ("IntegrationExchangeExe", VerifyIntegrationExchangeExe()),
+            ("IntegrationExchangeExeReadOnlyResult", VerifyIntegrationExchangeExeReadOnlyResult()),
             ("ViewerPopoutCaptureLoadedHandler", VerifyViewerPopoutCaptureLoadedHandler()),
             ("RemoveOutlierPreviewLoadedHandler", VerifyRemoveOutlierPreviewLoadedHandler()),
             ("LevelSurfacePreviewLoadedHandler", VerifyLevelSurfacePreviewLoadedHandler()),
@@ -697,8 +699,49 @@ internal static class ShellSmokeCommandLineOptionsVerification
             "--smoke-integration-exe-report",
             "integration-report.json"
         ]);
+        var boundaryArguments = new ShellCommandLineArguments(
+        [
+            "shell.exe",
+            "--smoke-integration-exe-pre-ack-delay-ms",
+            "1500",
+            "--smoke-integration-exe-pre-run-delay-ms",
+            "1600",
+            "--smoke-integration-exe-ready-file",
+            "ready.txt",
+            "--smoke-integration-exe-listening-ready-file",
+            "listening.txt",
+            "--smoke-integration-exe-result-ready-file",
+            "result.txt"
+        ]);
         return options.IntegrationExchangeExeRole == "consumer"
             && options.IntegrationExchangeExeReportPath == "integration-report.json"
+            && boundaryArguments.GetValueIgnoreCase(
+                "--smoke-integration-exe-pre-ack-delay-ms") == "1500"
+            && boundaryArguments.GetValueIgnoreCase(
+                "--smoke-integration-exe-pre-run-delay-ms") == "1600"
+            && boundaryArguments.GetValueIgnoreCase(
+                "--smoke-integration-exe-ready-file") == "ready.txt"
+            && boundaryArguments.GetValueIgnoreCase(
+                "--smoke-integration-exe-listening-ready-file") == "listening.txt"
+            && boundaryArguments.GetValueIgnoreCase(
+                "--smoke-integration-exe-result-ready-file") == "result.txt"
             && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyIntegrationExchangeExeReadOnlyResult()
+    {
+        var boundaryArguments = new ShellCommandLineArguments(
+        [
+            "shell.exe",
+            "--smoke-integration-exe-reopen-result-transaction-id",
+            "0432ab6c-12e5-47f9-a9d0-7fa66dc4e869",
+            "--smoke-integration-exe-hold-ms",
+            "250"
+        ]);
+        return boundaryArguments.GetValueIgnoreCase(
+                   "--smoke-integration-exe-reopen-result-transaction-id")
+                   == "0432ab6c-12e5-47f9-a9d0-7fa66dc4e869"
+               && boundaryArguments.GetValueIgnoreCase(
+                   "--smoke-integration-exe-hold-ms") == "250";
     }
 }

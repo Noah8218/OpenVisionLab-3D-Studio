@@ -1,10 +1,16 @@
 using System.Globalization;
 using System.Numerics;
+using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Rendering;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    internal HeightProfileSession HeightProfile { get; } = new();
+    internal IReadOnlyList<ViewerHeightProfileTraceCell> ProfileTrace { get; private set; } = Array.Empty<ViewerHeightProfileTraceCell>();
     private bool profileVisible;
     private string profileSummary = "Profile: choose P1 and P2 on the C3D height grid.";
     private string profileEndpointSummary = "P1: not set | P2: not set";
@@ -18,6 +24,84 @@ public sealed partial class MainWindowViewModel
     private double profileLinkedCursorMarkerLeft;
     private double profileLinkedCursorMarkerTop;
     private string profileLinkedCursorSummary = "Linked cursor: unavailable until P1–P2 trace is ready.";
+
+    public bool ProfileIsCollapsed => HeightProfile.IsCollapsed;
+    public bool ProfileHasEndpoints => HeightProfile.HasEndpoints;
+    public bool ProfileIsPicking => HeightProfile.IsPicking;
+    public string ProfileGridDistance => HeightProfile.HasEndpoints ? HeightProfile.GridDistance.ToString("F3", CultureInfo.InvariantCulture) : "—";
+    public string ProfileHeightDelta => HeightProfile.HasEndpoints ? HeightProfile.HeightDelta.ToString("+0.000;-0.000;0.000", CultureInfo.InvariantCulture) : "—";
+
+    private bool CanRequestHeightProfile(ViewerHeightProfileAction action) => action switch
+    {
+        ViewerHeightProfileAction.Begin or ViewerHeightProfileAction.Repick => C3DSampleVisible && !IsTeachingCaptureActive,
+        ViewerHeightProfileAction.Cancel => HeightProfile.IsPicking,
+        ViewerHeightProfileAction.ToggleCollapsed or ViewerHeightProfileAction.Clear => HeightProfile.IsVisible,
+        ViewerHeightProfileAction.Left or ViewerHeightProfileAction.Right or ViewerHeightProfileAction.Up or ViewerHeightProfileAction.Down => HeightProfile.HasEndpoints && !HeightProfile.IsPicking && SelectedSelectionMode == ProfileSelectionMode,
+        _ => HeightProfile.HasEndpoints && !HeightProfile.IsPicking
+    };
+
+    private void PickHeightProfile(HeightGridPoint point)
+    {
+        if (!HeightProfile.Pick(point)) return;
+        SelectedEntity = "C3D Height Profile";
+        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"column {point.Column} / row {point.Row} / H {point.RawValue:F3} raw-height");
+    }
+
+    private void RequestHeightProfile(ViewerHeightProfileAction action)
+    {
+        switch (action)
+        {
+            case ViewerHeightProfileAction.Begin:
+            case ViewerHeightProfileAction.Repick: HeightProfile.Begin(); break;
+            case ViewerHeightProfileAction.Cancel: HeightProfile.Cancel(); break;
+            case ViewerHeightProfileAction.Swap: HeightProfile.Swap(); break;
+            case ViewerHeightProfileAction.Clear: HeightProfile.Clear(); break;
+            case ViewerHeightProfileAction.ToggleCollapsed: HeightProfile.ToggleCollapsed(); break;
+            case ViewerHeightProfileAction.SelectA: HeightProfile.SelectEndpoint(1); break;
+            case ViewerHeightProfileAction.SelectB: HeightProfile.SelectEndpoint(2); break;
+            case ViewerHeightProfileAction.Left: HeightProfile.Nudge(-1, 0); break;
+            case ViewerHeightProfileAction.Right: HeightProfile.Nudge(1, 0); break;
+            case ViewerHeightProfileAction.Up: HeightProfile.Nudge(0, -1); break;
+            case ViewerHeightProfileAction.Down: HeightProfile.Nudge(0, 1); break;
+        }
+    }
+
+    private void RefreshHeightProfile(object? sender, EventArgs args)
+    {
+        var session = HeightProfile;
+        ProfileTrace = Array.AsReadOnly(session.Samples.Select(point => new ViewerHeightProfileTraceCell(point.Row, point.Column)).ToArray());
+        if (!session.IsVisible) ClearProfile();
+        else if (session.First is { } first && session.Second is { } second)
+        {
+            SetProfile(first.Row, first.Column, first.Position, first.RawValue, second.Row, second.Column, second.Position, second.RawValue,
+                session.Samples.Length, Math.Max(0, session.ExpectedSampleCount - session.Samples.Length), session.Minimum, session.Maximum, session.Mean,
+                C3DSectionProfilePathBuilder.Build(session.Samples, session.Minimum, session.Maximum));
+            ProfileEndpointSummary = string.Create(CultureInfo.InvariantCulture, $"A ({first.Column}, {first.Row}) → B ({second.Column}, {second.Row})");
+            ProfileRange = string.Create(CultureInfo.InvariantCulture, $"H {session.Minimum:F3}–{session.Maximum:F3} · {session.Samples.Length} / {session.ExpectedSampleCount}");
+        }
+        else if (session.First is { } start)
+        {
+            SetProfileStart(start.Row, start.Column, start.Position, start.RawValue);
+            ProfilePathData = string.Empty;
+            ProfileRange = string.Empty;
+            ProfileEndpointSummary = string.Create(CultureInfo.InvariantCulture, $"A ({start.Column}, {start.Row}) → B —");
+        }
+        else
+        {
+            ClearProfile();
+            ProfileVisible = true;
+            ProfileSummary = "Choose A, then B.";
+            ProfilePathData = string.Empty;
+            ProfileRange = string.Empty;
+            ProfileEndpointSummary = "A — · B —";
+        }
+        OnPropertyChanged(nameof(ProfileIsCollapsed));
+        OnPropertyChanged(nameof(ProfileHasEndpoints));
+        OnPropertyChanged(nameof(ProfileIsPicking));
+        OnPropertyChanged(nameof(ProfileGridDistance));
+        OnPropertyChanged(nameof(ProfileHeightDelta));
+        profileActionCommand?.RaiseCanExecuteChanged();
+    }
 
     public bool ProfileVisible
     {
@@ -188,6 +272,7 @@ public sealed partial class MainWindowViewModel
         ProfileLinkedCursorSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"Linked cursor: ({row},{column}) raw {rawHeight:F3} | sample {sampleIndex + 1:N0}/{sampleCount:N0}");
+        if (HeightProfile.HasEndpoints) ProfileLinkedCursorSummary = string.Create(CultureInfo.InvariantCulture, $"X {column} · Y {row} · H {rawHeight:F3} raw-height");
         ProfileLinkedCursorVisible = true;
     }
 

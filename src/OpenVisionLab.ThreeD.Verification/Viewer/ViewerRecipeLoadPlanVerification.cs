@@ -93,8 +93,18 @@ public static class ViewerRecipeLoadPlanVerification
                 && normalViewModel.RecipeSourcePath == plan.SourcePath
                 && normalViewModel.PreviewToolResult.Status == OpenVisionLab.ThreeD.Core.ResultStatus.NotRun
                 && !normalViewModel.ResultOverlayVisible
+                && !normalViewModel.SampleResultOverlayVisible
                 && normalViewModel.ViewerStatus.StartsWith("Recipe loaded:", StringComparison.Ordinal),
                 $"applied={appliedNormally}|sampleStatus={sampleStatusCalls}|roi={roiApplyCalls}|preview={normalViewModel.PreviewToolResult.Status}|source={normalViewModel.RecipeSourcePath}");
+
+            normalViewModel.ResultOverlayVisible = true;
+            Check(
+                "normal result visibility does not authorize sample geometry",
+                normalViewModel.ResultOverlayVisible
+                && !normalViewModel.SampleResultOverlayVisible
+                && !normalViewModel.ShouldDrawSampleResultOverlay,
+                $"result={normalViewModel.ResultOverlayVisible}|sample={normalViewModel.SampleResultOverlayVisible}|draw={normalViewModel.ShouldDrawSampleResultOverlay}");
+            normalViewModel.ResultOverlayVisible = false;
 
             var smokeViewModel = new OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel();
             var smokeApplied = HeightDeviationRecipeApplyCoordinator.Apply(
@@ -111,8 +121,17 @@ public static class ViewerRecipeLoadPlanVerification
                 smokeApplied
                 && smokeViewModel.PreviewToolResult.Status is not OpenVisionLab.ThreeD.Core.ResultStatus.NotRun
                 && smokeViewModel.ResultOverlayVisible
+                && smokeViewModel.SampleResultOverlayVisible
+                && smokeViewModel.ShouldDrawSampleResultOverlay
                 && smokeViewModel.ViewerStatus.StartsWith("Smoke recipe:", StringComparison.Ordinal),
                 $"applied={smokeApplied}|preview={smokeViewModel.PreviewToolResult.Status}|overlay={smokeViewModel.ResultOverlayVisible}");
+
+            smokeViewModel.ResultOverlayVisible = false;
+            Check(
+                "result visibility off suppresses sample geometry",
+                smokeViewModel.SampleResultOverlayVisible
+                && !smokeViewModel.ShouldDrawSampleResultOverlay,
+                $"result={smokeViewModel.ResultOverlayVisible}|sample={smokeViewModel.SampleResultOverlayVisible}|draw={smokeViewModel.ShouldDrawSampleResultOverlay}");
 
             var volumeRecipePath = Path.GetFullPath(
                 Path.Combine("recipes", "c3d-volume.recipe.json"));

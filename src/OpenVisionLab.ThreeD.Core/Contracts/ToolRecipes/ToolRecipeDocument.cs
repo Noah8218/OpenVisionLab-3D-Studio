@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace OpenVisionLab.ThreeD.Core;
@@ -13,8 +14,12 @@ public sealed record ToolRecipeDocument(
     ToolRecipeSource Source,
     IReadOnlyList<ToolRecipeReference> References,
     IReadOnlyList<ToolRecipeStep> Steps,
-    IReadOnlyList<ToolRecipeSelection>? Selections = null)
+    IReadOnlyList<ToolRecipeSelection>? Selections = null,
+    string? Category = null,
+    string? InspectionTarget = null,
+    string? Description = null)
 {
+    public const int MaximumMetadataFieldLength = 500;
     public const string LegacySchemaVersion = "1.0";
     public const string SelectionSchemaVersion = "1.1";
     public const string GenericMeasurementSchemaVersion = "1.2";
@@ -24,37 +29,84 @@ public sealed record ToolRecipeDocument(
     public const string GridCircleSchemaVersion = "1.6";
     public const string GridPolygonSchemaVersion = "1.7";
     public const string OutputPolicySchemaVersion = "1.8";
-    public const string CurrentSchemaVersion = OutputPolicySchemaVersion;
+    public const string RecipeMetadataSchemaVersion = "1.9";
+    public const string AcceptanceLimitsSchemaVersion = "1.10";
+    public const string CurrentSchemaVersion = AcceptanceLimitsSchemaVersion;
+
+    /// <summary>Calculation context for one step and its upstream graph, excluding descriptive metadata.</summary>
+    public string CreateStepExecutionContext(string stepId)
+    {
+        var selected = Steps.FirstOrDefault(step => string.Equals(step.Id, stepId, StringComparison.OrdinalIgnoreCase));
+        if (selected is null) return string.Empty;
+        var producers = Steps.ToLookup(step => step.OutputEntityId, StringComparer.OrdinalIgnoreCase);
+        var selections = (Selections ?? []).ToLookup(selection => selection.Id, StringComparer.OrdinalIgnoreCase);
+        var stepIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var entityIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var pendingSteps = new Queue<ToolRecipeStep>();
+        pendingSteps.Enqueue(selected);
+        while (pendingSteps.TryDequeue(out var step))
+        {
+            if (!stepIds.Add(step.Id)) continue;
+            var inputs = new Queue<string>(step.InputEntityIds.Concat(new[] { step.DualRoiRouting?.FirstRegionSelectionId, step.DualRoiRouting?.SecondRegionSelectionId }
+                .Where(id => id is not null).Select(id => id!)));
+            while (inputs.TryDequeue(out var inputId))
+            {
+                if (!entityIds.Add(inputId)) continue;
+                foreach (var producer in producers[inputId]) pendingSteps.Enqueue(producer);
+                foreach (var selection in selections[inputId])
+                    if (selection.SourceBinding.OwnerEntityId is { } ownerId) inputs.Enqueue(ownerId);
+            }
+        }
+        return JsonSerializer.Serialize(new
+        {
+            Source = Source with { Name = string.Empty },
+            Steps = Steps.Where(step => stepIds.Contains(step.Id)).OrderBy(step => step.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(step => step with { ToolName = string.Empty }),
+            Selections = (Selections ?? []).Where(selection => entityIds.Contains(selection.Id)).OrderBy(selection => selection.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(selection => selection with { Name = string.Empty }),
+            References = References.Where(reference => entityIds.Contains(reference.Id)).OrderBy(reference => reference.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(reference => reference with { Name = string.Empty })
+        });
+    }
 
     public static bool SupportsArtifactOwnedSelections(string? schemaVersion) =>
         string.Equals(schemaVersion, ArtifactOwnedSelectionSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OrientedBox3DSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsOrientedBox3D(string? schemaVersion) =>
         string.Equals(schemaVersion, OrientedBox3DSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsDualRoiRouting(string? schemaVersion) =>
         string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsGridCircle(string? schemaVersion) =>
         string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
-        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal);
+        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsGridPolygon(string? schemaVersion) =>
         string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 }
 
@@ -163,7 +215,140 @@ public sealed record ToolRecipeStep(
     string OutputEntityId,
     IReadOnlyList<ToolRecipeParameter> Parameters,
     ToolRecipeDualRoiRouting? DualRoiRouting = null,
-    bool OutputEnabled = true);
+    bool OutputEnabled = true,
+    ToolRecipeSignedDeltaSidecarReference? SignedDeltaSidecar = null,
+    bool? AcceptanceLimitsConfigured = null)
+{
+    public static bool RequiresAcceptanceLimits(string toolId) => toolId is "thickness" or "warpage" or "plane-flatness"
+        or "datum-plane-raw-height-deviation" or "point-pair-dimensions" or "gap-flush" or "volume"
+        or "cross-section-dimensions" or "completeness-grid" or "connected-region-gate";
+
+    public const string UnconfiguredAcceptanceMessage = "Acceptance limits are not configured. Measurement values are available without a judgement.";
+
+    public ToolResult ApplyAcceptancePolicy(ToolResult result) => AcceptanceLimitsConfigured != false
+        || result.Status is ResultStatus.Error or ResultStatus.Warning ? result : result with
+    {
+        Status = ResultStatus.NotRun,
+        Message = UnconfiguredAcceptanceMessage,
+        Metrics = result.Metrics.Select(metric => metric.Status is ResultStatus.Pass or ResultStatus.Fail
+            ? metric with { Status = ResultStatus.NotRun } : metric).ToArray(),
+        Overlays = result.Overlays.Select(overlay => overlay.Status is ResultStatus.Pass or ResultStatus.Fail
+            ? overlay with { Status = ResultStatus.NotRun } : overlay).ToArray()
+    };
+}
+
+/// <summary>
+/// Explicit, recipe-relative reference to a published signed-delta evidence
+/// sidecar. The artifact content and value hashes bind the reference to the
+/// output that was selected for Save; opening a recipe never discovers a
+/// sidecar by convention when this reference is absent.
+/// </summary>
+public sealed record ToolRecipeSignedDeltaSidecarReference(
+    string Path,
+    string StepId,
+    string OutputEntityId,
+    string ContentSha256,
+    string OutputContentSha256,
+    string CurrentSourceEntityId,
+    string CurrentSourceContentSha256,
+    string CurrentRootSourceSha256,
+    string BackgroundEntityId,
+    string BackgroundContentSha256,
+    string BackgroundRootSourceSha256,
+    int Width,
+    int Height,
+    int GridOriginColumn,
+    int GridOriginRow,
+    string Unit,
+    string FrameId)
+{
+    private const string SidecarExtension = ".sdelta.json";
+
+    /// <summary>
+    /// Validates the persisted reference shape and, when supplied, its binding
+    /// to the recipe step and signed-delta artifact. File existence and
+    /// recipe-directory containment remain the Save/Open owner policy.
+    /// </summary>
+    public bool TryValidateContract(
+        string? expectedStepId,
+        string? expectedToolId,
+        string? expectedOutputEntityId,
+        C3DSignedHeightDeltaArtifact? artifact,
+        out string message)
+    {
+        if (string.IsNullOrWhiteSpace(Path)
+            || System.IO.Path.IsPathFullyQualified(Path)
+            || System.IO.Path.IsPathRooted(Path)
+            || !Path.EndsWith(SidecarExtension, StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(StepId)
+            || string.IsNullOrWhiteSpace(OutputEntityId)
+            || !IsSha256(ContentSha256)
+            || !IsSha256(OutputContentSha256)
+            || string.IsNullOrWhiteSpace(CurrentSourceEntityId)
+            || !IsSha256(CurrentSourceContentSha256)
+            || !IsSha256(CurrentRootSourceSha256)
+            || string.IsNullOrWhiteSpace(BackgroundEntityId)
+            || !IsSha256(BackgroundContentSha256)
+            || !IsSha256(BackgroundRootSourceSha256)
+            || Width <= 0
+            || Height <= 0
+            || string.IsNullOrWhiteSpace(Unit)
+            || string.IsNullOrWhiteSpace(FrameId))
+        {
+            message = "Signed-delta sidecar reference has an invalid path, identity, hash, grid, unit, or frame.";
+            return false;
+        }
+
+        if (expectedToolId is not null
+            && !string.Equals(expectedToolId, C3DSignedHeightDeltaRecipePolicy.ToolId, StringComparison.OrdinalIgnoreCase))
+        {
+            message = "Signed-delta sidecar reference is owned by a non-signed-delta step.";
+            return false;
+        }
+
+        if (expectedStepId is not null
+            && !string.Equals(expectedStepId, StepId, StringComparison.OrdinalIgnoreCase))
+        {
+            message = "Signed-delta sidecar reference step identity does not match the recipe or Run Record.";
+            return false;
+        }
+
+        if (expectedOutputEntityId is not null
+            && !string.Equals(expectedOutputEntityId, OutputEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            message = "Signed-delta sidecar reference output identity does not match the recipe or Run Record.";
+            return false;
+        }
+
+        if (artifact is not null
+            && (!string.Equals(StepId, artifact.StepId, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(OutputEntityId, artifact.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(ContentSha256, artifact.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(OutputContentSha256, artifact.OutputContentSha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(CurrentSourceEntityId, artifact.CurrentSourceEntityId, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(CurrentSourceContentSha256, artifact.CurrentSourceContentSha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(CurrentRootSourceSha256, artifact.CurrentRootSourceSha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(BackgroundEntityId, artifact.BackgroundEntityId, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(BackgroundContentSha256, artifact.BackgroundContentSha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(BackgroundRootSourceSha256, artifact.BackgroundRootSourceSha256, StringComparison.OrdinalIgnoreCase)
+                || Width != artifact.Width
+                || Height != artifact.Height
+                || GridOriginColumn != artifact.GridOriginColumn
+                || GridOriginRow != artifact.GridOriginRow
+                || !string.Equals(Unit, artifact.Unit, StringComparison.Ordinal)
+                || !string.Equals(FrameId, artifact.FrameId, StringComparison.Ordinal)))
+        {
+            message = "Signed-delta sidecar reference does not match the artifact identity.";
+            return false;
+        }
+
+        message = "Signed-delta sidecar reference contract is valid.";
+        return true;
+    }
+
+    private static bool IsSha256(string? value) =>
+        value is { Length: 64 } && value.All(Uri.IsHexDigit);
+}
 
 /// <summary>
 /// Persists the semantic region roles owned by one dual-ROI inspection step.

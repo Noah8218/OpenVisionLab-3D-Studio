@@ -63,6 +63,14 @@ internal static class ShellWindowNativeInterop
         out double left,
         out double top)
     {
+        var found = TryGetLeftmostWorkArea(out var workArea);
+        left = workArea.Left;
+        top = workArea.Top;
+        return found;
+    }
+
+    public static bool TryGetLeftmostWorkArea(out Rect workArea)
+    {
         var leftmostMonitor = MonitorFromPoint(
             new NativePoint
             {
@@ -84,13 +92,17 @@ internal static class ShellWindowNativeInterop
                 EffectiveDpi,
                 out dpiX,
                 out dpiY);
-            left = monitorInfo.WorkArea.Left * 96.0 / Math.Max(96u, dpiX);
-            top = monitorInfo.WorkArea.Top * 96.0 / Math.Max(96u, dpiY);
+            var scaleX = 96.0 / Math.Max(96u, dpiX);
+            var scaleY = 96.0 / Math.Max(96u, dpiY);
+            workArea = new Rect(
+                monitorInfo.WorkArea.Left * scaleX,
+                monitorInfo.WorkArea.Top * scaleY,
+                (monitorInfo.WorkArea.Right - monitorInfo.WorkArea.Left) * scaleX,
+                (monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top) * scaleY);
             return true;
         }
 
-        left = SystemParameters.VirtualScreenLeft;
-        top = SystemParameters.VirtualScreenTop;
+        workArea = SystemParameters.WorkArea;
         return false;
     }
 
@@ -143,6 +155,10 @@ internal static class ShellWindowNativeInterop
 
     public static bool SetForegroundWindow(IntPtr windowHandle) =>
         SetForegroundWindowNative(windowHandle);
+
+    public static bool IsForegroundWindow(IntPtr windowHandle) =>
+        windowHandle != IntPtr.Zero
+        && GetForegroundWindow() == windowHandle;
 
     public static bool PostClientMouseMove(
         IntPtr windowHandle,
@@ -222,6 +238,9 @@ internal static class ShellWindowNativeInterop
     [DllImport("user32.dll", EntryPoint = "SetForegroundWindow")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindowNative(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -10,6 +10,7 @@ public static class InspectionRunRecordJson
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
         Converters = { new JsonStringEnumConverter() },
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
@@ -95,6 +96,12 @@ public static class InspectionRunRecordJson
         {
             throw new InvalidDataException(
                 "Run Record contains invalid semantic algorithm or SDK evidence.");
+        }
+
+        if (record.NominalActualAlignmentEvidence is { } alignment
+            && !alignment.TryValidate(out var alignmentValidationMessage))
+        {
+            throw new InvalidDataException(alignmentValidationMessage);
         }
     }
 }

@@ -51,6 +51,12 @@ public sealed record InspectionRunRecord(
         get;
         init;
     }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public NominalActualAlignmentEvidence? NominalActualAlignmentEvidence
+    {
+        get;
+        init;
+    }
 }
 
 public enum InspectionRunSourceQualityEvidenceState
@@ -270,6 +276,10 @@ public sealed record InspectionRunStepResult(
     public string? FrameChainContentSha256 { get; init; }
     public InspectionRunTiming? Timing { get; init; }
     public C3DCompletenessGridMetricOutput? CompletenessGrid { get; init; }
+    public C3DConnectedRegionGateOutput? ConnectedRegionGate { get; init; }
+    public C3DSignedHeightDeltaArtifact? SignedDeltaBackgroundSubtraction { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ToolRecipeSignedDeltaSidecarReference? SignedDeltaSidecar { get; init; }
 
     public bool TryValidateEvidence(out string validationMessage)
     {
@@ -282,6 +292,23 @@ public sealed record InspectionRunStepResult(
         }
 
         if (AlgorithmEvidence is not null && !AlgorithmEvidence.TryValidate(out validationMessage))
+        {
+            return false;
+        }
+
+        if (SignedDeltaBackgroundSubtraction is { } signedDeltaArtifact
+            && !signedDeltaArtifact.TryValidate(out validationMessage))
+        {
+            return false;
+        }
+
+        if (SignedDeltaSidecar is { } signedDeltaSidecar
+            && !signedDeltaSidecar.TryValidateContract(
+                Id,
+                ToolId,
+                OutputEntityId,
+                SignedDeltaBackgroundSubtraction,
+                out validationMessage))
         {
             return false;
         }

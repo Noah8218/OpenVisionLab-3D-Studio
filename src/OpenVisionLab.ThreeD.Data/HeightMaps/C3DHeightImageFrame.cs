@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Data;
 
 /// <summary>
-/// Immutable, full-resolution height-image projection of one C3D grid.
+/// Immutable, full-resolution height-image projection of one C3D or signed-delta grid.
 /// Pixel X is the source column and pixel Y is the source row. No flip,
 /// interpolation, dilation, or sampling is permitted at this boundary.
 /// </summary>
@@ -21,24 +22,43 @@ public sealed class C3DHeightImageFrame
     private readonly byte[] bgra32Pixels;
 
     private C3DHeightImageFrame(
-        C3DHeightFieldSnapshot source,
+        string sourceEntityId,
+        string sourcePath,
+        string sourceContentSha256,
+        string unit,
+        string frameId,
+        int width,
+        int height,
+        int validCount,
+        int missingCount,
+        double minimum,
+        double maximum,
+        double mean,
+        double defaultDisplayMinimum,
+        double defaultDisplayMaximum,
+        int gridOriginColumn,
+        int gridOriginRow,
         C3DInvalidCellMap invalidCellMap,
         ReadOnlyMemory<double> values,
         byte[] bgra32Pixels,
         string pixelSha256)
     {
-        SourceEntityId = source.EntityId;
-        SourcePath = source.SourcePath;
-        SourceContentSha256 = source.ContentSha256;
-        Unit = source.Unit;
-        FrameId = source.FrameId;
-        Width = source.Width;
-        Height = source.Height;
-        ValidCount = source.ValidCount;
-        MissingCount = source.MissingCount;
-        Minimum = source.Minimum;
-        Maximum = source.Maximum;
-        Mean = source.Mean;
+        SourceEntityId = sourceEntityId;
+        SourcePath = sourcePath;
+        SourceContentSha256 = sourceContentSha256;
+        Unit = unit;
+        FrameId = frameId;
+        Width = width;
+        Height = height;
+        ValidCount = validCount;
+        MissingCount = missingCount;
+        Minimum = minimum;
+        Maximum = maximum;
+        Mean = mean;
+        DefaultDisplayMinimum = defaultDisplayMinimum;
+        DefaultDisplayMaximum = defaultDisplayMaximum;
+        GridOriginColumn = gridOriginColumn;
+        GridOriginRow = gridOriginRow;
         InvalidCellMap = invalidCellMap;
         this.values = values;
         this.bgra32Pixels = bgra32Pixels;
@@ -47,8 +67,8 @@ public sealed class C3DHeightImageFrame
             Width,
             Height,
             C3DHeightImagePalette.Height,
-            Minimum,
-            Maximum,
+            DefaultDisplayMinimum,
+            DefaultDisplayMaximum,
             bgra32Pixels,
             pixelSha256,
             C3DHeightImageInvalidOverlayMode.Hidden,
@@ -68,6 +88,10 @@ public sealed class C3DHeightImageFrame
     public double Minimum { get; }
     public double Maximum { get; }
     public double Mean { get; }
+    public double DefaultDisplayMinimum { get; }
+    public double DefaultDisplayMaximum { get; }
+    public int GridOriginColumn { get; }
+    public int GridOriginRow { get; }
     public C3DInvalidCellMap InvalidCellMap { get; }
     public string PixelSha256 { get; }
     public C3DHeightImageDisplayFrame DefaultDisplayFrame { get; }
@@ -94,7 +118,85 @@ public sealed class C3DHeightImageFrame
 
         cancellationToken.ThrowIfCancellationRequested();
         return new C3DHeightImageFrame(
-            source,
+            source.EntityId,
+            source.SourcePath,
+            source.ContentSha256,
+            source.Unit,
+            source.FrameId,
+            source.Width,
+            source.Height,
+            source.ValidCount,
+            source.MissingCount,
+            source.Minimum,
+            source.Maximum,
+            source.Mean,
+            source.Minimum,
+            source.Maximum,
+            0,
+            0,
+            invalidCellMap,
+            values,
+            pixels,
+            Convert.ToHexString(SHA256.HashData(pixels)));
+    }
+
+    public static C3DHeightImageFrame Create(
+        C3DSignedHeightDeltaArtifact source,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!source.TryValidate(out var message))
+        {
+            throw new InvalidDataException(message);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var values = source.Values.ToArray();
+        var invalidCellMap = C3DInvalidCellMap.CreateSignedDelta(
+            source.Width,
+            source.Height,
+            values,
+            source.MissingEitherSampleCount);
+        if (!C3DSignedHeightDeltaViewerContract.TryGetDisplayRange(
+                values,
+                out var displayMinimum,
+                out var displayMaximum,
+                out message))
+        {
+            throw new InvalidDataException(message);
+        }
+
+        var finiteValues = values.Where(double.IsFinite).ToArray();
+        var minimum = finiteValues.Min();
+        var maximum = finiteValues.Max();
+        var mean = finiteValues.Average();
+        var pixels = RenderPixels(
+            values,
+            invalidCellMap,
+            C3DHeightImagePalette.Height,
+            displayMinimum,
+            displayMaximum,
+            C3DHeightImageInvalidOverlayMode.Hidden,
+            cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return new C3DHeightImageFrame(
+            source.OutputEntityId,
+            $"signed-delta://{source.ContentSha256}",
+            source.ContentSha256,
+            source.Unit,
+            source.FrameId,
+            source.Width,
+            source.Height,
+            source.PairedValidSampleCount,
+            source.MissingEitherSampleCount,
+            minimum,
+            maximum,
+            mean,
+            displayMinimum,
+            displayMaximum,
+            source.GridOriginColumn,
+            source.GridOriginRow,
             invalidCellMap,
             values,
             pixels,

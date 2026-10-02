@@ -104,7 +104,8 @@ public sealed partial class ToolWorkbenchViewModel
             : null;
         var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
         HeightImageViewer.RoiWorkspace.SetProjection(new HeightImageRoiProjection(
-            SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
+            !IsInspectionFileView
+            && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
             && binding is not null,
             binding?.GridWidth ?? 0,
             binding?.GridHeight ?? 0,
@@ -112,7 +113,8 @@ public sealed partial class ToolWorkbenchViewModel
             lifecycle,
             IsTeachingSelectionCaptureActive,
             candidate,
-            overlays));
+            overlays,
+            IsRecipeMutationBlocked || IsInspectionFileView));
     }
 
     private static void AddHeightImageRoiOverlay(

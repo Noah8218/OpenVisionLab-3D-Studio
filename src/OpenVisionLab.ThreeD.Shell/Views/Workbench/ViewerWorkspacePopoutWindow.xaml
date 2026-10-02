@@ -37,7 +37,7 @@
                         Padding="5,2"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                         CornerRadius="2">
-                    <TextBlock FontSize="9"
+                    <TextBlock FontSize="12"
                                FontWeight="Bold"
                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                Text="B" />

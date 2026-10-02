@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
@@ -225,6 +226,152 @@ internal static class SelectedStepExecutionRoutingVerification
             commandPreviewCancellationAdmitted && commandPreviewCancellationReleased,
             $"admitted={commandPreviewCancellationAdmitted};released={commandPreviewCancellationReleased};calls={commandPreviewCalls}");
         commandPreviewOwner.Dispose();
+
+        var runStep = CreateStep("run", outputEnabled: true);
+        var otherStep = CreateStep("other", outputEnabled: true);
+        var currentStep = runStep;
+        var context = "input-A/conditions-1";
+        var runCalls = 0;
+        var publishCalls = 0;
+        var cancelCalls = 0;
+        var completedCalls = 0;
+        var canPublish = true;
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var runOwner = new ToolWorkbenchSelectedStepExecutionOwner(
+            () => currentStep,
+            new Dictionary<string, ToolWorkbenchSelectedStepExecutionRoute>
+            {
+                ["run"] = new(
+                    () => { Interlocked.Increment(ref runCalls); return release.Task; },
+                    () => true,
+                    () => Interlocked.Increment(ref publishCalls),
+                    () => canPublish,
+                    () => Interlocked.Increment(ref cancelCalls),
+                    () => false,
+                    () => { })
+            },
+            (category, message) => commandLog.Add($"{category}:{message}"),
+            _ => context);
+        runOwner.RunCompleted += (_, _) => Interlocked.Increment(ref completedCalls);
+        bool WaitReleased() => SpinWait.SpinUntil(() => !runOwner.IsCommandRunning, TimeSpan.FromSeconds(2));
+        void BeginRun()
+        {
+            currentStep = runStep;
+            release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            runOwner.RunCommand.Execute(null);
+        }
+
+        BeginRun();
+        runOwner.RunCommand.Execute(null);
+        Check("W01 duplicate Run shares one admission", runCalls == 1 && runOwner.IsRunning
+            && !runOwner.RunCommand.CanExecute(null) && runOwner.CancelCommand.CanExecute(null), $"calls={runCalls}");
+        release.SetResult(true);
+        Check("W01 success publishes once and reveals results", WaitReleased() && publishCalls == 1 && completedCalls == 1,
+            $"published={publishCalls};revealed={completedCalls}");
+
+        BeginRun();
+        currentStep = otherStep;
+        runOwner.Cancel();
+        release.SetResult(true);
+        Check("W01 cancel targets captured route after selection change; late success cannot publish",
+            WaitReleased() && cancelCalls == 1 && publishCalls == 1, $"canceled={cancelCalls};published={publishCalls}");
+
+        BeginRun();
+        currentStep = otherStep;
+        release.SetResult(true);
+        Check("W01 late completion cannot publish to a different step", WaitReleased() && publishCalls == 1,
+            $"published={publishCalls}");
+
+        foreach (var changedContext in new[] { "input-B/conditions-1", "input-B/conditions-2" })
+        {
+            BeginRun();
+            context = changedContext;
+            release.SetResult(true);
+            Check("W01 input/condition change rejects late publication", WaitReleased() && publishCalls == 1, context);
+        }
+
+        BeginRun();
+        release.SetException(new InvalidOperationException("W01 controlled failure"));
+        Check("W01 failure releases admission without publishing", WaitReleased() && publishCalls == 1
+            && commandLog.Any(log => log.Contains("W01 controlled failure", StringComparison.Ordinal)), $"published={publishCalls}");
+        BeginRun();
+        release.SetCanceled();
+        Check("W01 canceled Task releases admission", WaitReleased() && publishCalls == 1, $"published={publishCalls}");
+        BeginRun();
+        canPublish = false;
+        release.SetResult(true);
+        Check("W01 route CanPublish remains authoritative", WaitReleased() && publishCalls == 1, $"published={publishCalls}");
+        canPublish = true;
+        BeginRun();
+        release.SetResult(true);
+        Check("W01 recovers with explicit Run after failure/cancel/change", WaitReleased() && publishCalls == 2 && completedCalls == 2,
+            $"published={publishCalls};revealed={completedCalls}");
+        runOwner.RefreshSelectedStepState();
+        context = "restored-input/conditions";
+        Check("W01 refresh and restored conditions do not execute", runCalls == 9, $"calls={runCalls}");
+        BeginRun();
+        runOwner.Dispose();
+        release.SetResult(true);
+        Check("W01 disposal cancels captured work and disables Run", !runOwner.RunCommand.CanExecute(null)
+            && publishCalls == 2 && cancelCalls == 2, $"published={publishCalls};canceled={cancelCalls}");
+
+        var filterTool = ToolWorkbenchToolCatalog.Create().Single(tool => tool.Id == "filter");
+        var filterStep = new ToolWorkbenchPipelineStepItem("step.filter", filterTool, "source.filter", "output.filter",
+            [new("Method", "Median"), new("KernelSize", "3"), new("MissingValuePolicy", "PreserveMask"), new("BoundaryPolicy", "AvailableNeighbors")]);
+        var filterDocument = new ToolRecipeDocument(ToolRecipeDocument.CurrentSchemaVersion, "W01 cancellation",
+            new ToolRecipeSource("source.filter", "Cancellation fixture", "C3D", "raw-height", "frame.raw",
+                Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "not-opened.c3d"), 64, new string('A', 64), 4, 4),
+            [], [new ToolRecipeStep(filterStep.Id, "filter", "Filter", 1, ["source.filter"], "output.filter",
+                [new("Method", "Median"), new("KernelSize", "3"), new("MissingValuePolicy", "PreserveMask"), new("BoundaryPolicy", "AvailableNeighbors")])], []);
+        ToolWorkbenchFilterExecutionOwner? filterOwner = null;
+        filterOwner = new ToolWorkbenchFilterExecutionOwner(
+            () => false, () => { }, () => { }, () => false, () => { }, () => false, () => { }, () => false,
+            () => true, () => filterStep, () => true, () => false, () => false, () => filterDocument,
+            () => reportPath, (_, _) => { }, _ => { }, _ => { },
+            () => { if (filterOwner?.IsFilterPreviewRunning == true) filterOwner.CancelPreview(); });
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var admitted = filterOwner.CanPreview();
+            var result = filterOwner.PreviewAsync().GetAwaiter().GetResult();
+            Check("W01 Filter immediate cancellation releases state for another explicit attempt",
+                admitted && !result && !filterOwner.IsFilterPreviewRunning && filterOwner.CanPreview()
+                && filterOwner.FilterExecutionSummary.Contains("canceled", StringComparison.Ordinal),
+                $"attempt={attempt};{filterOwner.FilterExecutionSummary}");
+        }
+        filterOwner.Dispose();
+
+        firstRunning = false;
+        firstCanPreview = firstCanPublish = true;
+        var resultContext = "input-A/conditions-A";
+        selectedStep = firstStep;
+        using var resultOwner = new ToolWorkbenchSelectedStepExecutionOwner(() => selectedStep, routes, (_, _) => { },
+            _ => resultContext, captureOutput: () => new SelectedToolOutputEvidence("Output", selectedStep!.ToolId, "count", "Calculated"));
+        resultOwner.RunCommand.Execute(null);
+        var secondStep = CreateStep("second", outputEnabled: true);
+        selectedStep = secondStep;
+        resultOwner.RunCommand.Execute(null);
+        Check("R19 separate non-measurement results survive selection",
+            resultOwner.TryGetCompletedResult(firstStep, out var stored, out var current) && current && stored.Value == "first"
+            && resultOwner.TryGetCompletedResult(secondStep, out var second, out var secondCurrent) && secondCurrent && second.Value == "second", "two retained results");
+        var callsBeforeSelection = firstPreview + secondPreview;
+        selectedStep = firstStep;
+        resultOwner.RefreshSelectedStepState();
+        Check("R19 selection restores evidence without execution",
+            resultOwner.TryGetCompletedResult(firstStep, out stored, out current) && current && stored.Value == "first"
+            && firstPreview + secondPreview == callsBeforeSelection, "selection only");
+        resultContext = "input-B/conditions-B";
+        Check("R19 changed context marks retained result previous",
+            resultOwner.TryGetCompletedResult(firstStep, out stored, out current) && !current && stored.Value == "first", resultContext);
+        firstCanPublish = false;
+        resultOwner.RunCommand.Execute(null);
+        Check("R19 failed publication preserves previous result",
+            resultOwner.TryGetCompletedResult(firstStep, out stored, out current) && !current && stored.Value == "first", "publish blocked");
+        firstCanPublish = true;
+        resultOwner.RunCommand.Execute(null);
+        Check("R19 explicit retry restores current result", resultOwner.TryGetCompletedResult(firstStep, out _, out current) && current, resultContext);
+        resultOwner.ClearCompletedResults();
+        Check("R19 replacement releases retained results",
+            !resultOwner.TryGetCompletedResult(firstStep, out _, out _) && !resultOwner.TryGetCompletedResult(secondStep, out _, out _), "cleared");
 
         owner.Dispose();
         Check(

@@ -82,6 +82,9 @@ internal static class TeachingCaptureViewModelVerification
                 && editedRectangle?.GridRectangle == new ToolRecipeGridRectangle(5, 6, 7, 13)
                 && viewModel.AppliedTeachingSelections.Single().GridRectangle == new ToolRecipeGridRectangle(2, 3, 7, 10),
                 viewModel.SelectedTeachingGridRectangleSummary);
+            Check("view-only height handle starts hidden", !viewModel.TeachingRoiHeightHandleVisible, "recipe editing remains independent");
+            viewModel.TeachingRoiHeightHandleVisible = true;
+            Check("view-only height handle can be requested explicitly", viewModel.TeachingRoiHeightHandleVisible, "no execution");
             viewModel.SetSelectedTeachingRoiAutomaticRawHeight(1234.5);
             viewModel.SelectedTeachingRoiDisplayHeightOffset = 75.25;
             Check(

@@ -111,7 +111,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         set => SelectDiagnosticChannel(value);
     }
 
-    public bool CanSelectDiagnosticChannel => DiagnosticChannelOptions.Count > 0;
+    public bool CanSelectDiagnosticChannel => DiagnosticChannelOptions.Any(option => option.IsSelectable);
 
     public string DiagnosticChannelSummary => selectedDiagnosticChannel is { } channel
         ? $"Diagnostic channel: {channel.Label} | {channel.Evidence} | Display only."

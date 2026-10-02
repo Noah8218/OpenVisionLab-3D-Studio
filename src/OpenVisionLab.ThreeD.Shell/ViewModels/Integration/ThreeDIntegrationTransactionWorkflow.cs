@@ -26,7 +26,7 @@ public sealed record ThreeDIntegrationTransactionItem(
     public string Detail => $"schema {SchemaVersion} | {ModalitySummary} | {AcknowledgementSummary} | {ResultSummary} | {SequenceId} / {StepId} | {CameraId} | {CreatedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
 }
 
-internal sealed record ThreeDIntegrationPublishedResult(string Outcome, string RunId);
+internal sealed record ThreeDIntegrationPublishedResult(string Outcome, string? RunId);
 
 /// <summary>
 /// Owns transaction discovery, review, and result publication without WPF state.
@@ -58,7 +58,7 @@ internal sealed class ThreeDIntegrationTransactionWorkflow
                 root,
                 transaction.Handoff.TransactionId);
             var state = sequence.Result is not null
-                ? localize("StatePublished", "결과 게시됨", "Result published")
+                ? localize("StatePublished", "결과 준비됨", "Result published")
                 : sequence.Acknowledgement is not null
                     ? localize("StateReviewed", "검토됨", "Reviewed")
                     : localize("StatePending", "검토 대기", "Pending review");
@@ -83,7 +83,7 @@ internal sealed class ThreeDIntegrationTransactionWorkflow
         foreach (var transaction in discoveredLegacy)
         {
             var state = transaction.HasResult
-                ? localize("StatePublished", "결과 게시됨", "Result published")
+                ? localize("StatePublished", "결과 준비됨", "Result published")
                 : transaction.HasAcknowledgement
                     ? localize("StateReviewed", "검토됨", "Reviewed")
                     : localize("StatePending", "검토 대기", "Pending review");
@@ -98,11 +98,11 @@ internal sealed class ThreeDIntegrationTransactionWorkflow
                 state,
                 "Legacy/3D",
                 transaction.HasAcknowledgement
-                    ? localize("AckPresent", "ACK 있음", "ACK present")
-                    : localize("AckAbsent", "ACK 없음", "ACK absent"),
+                    ? localize("AckPresent", "검토 기록 있음", "ACK present")
+                    : localize("AckAbsent", "검토 기록 없음", "ACK absent"),
                 transaction.HasResult
-                    ? localize("ResultPresent", "Result 있음", "Result present")
-                    : localize("ResultAbsent", "Result 없음", "Result absent"),
+                    ? localize("ResultPresent", "검사 결과 있음", "Result present")
+                    : localize("ResultAbsent", "검사 결과 없음", "Result absent"),
                 true,
                 transaction.HasAcknowledgement,
                 transaction.HasResult,
@@ -153,12 +153,31 @@ internal sealed class ThreeDIntegrationTransactionWorkflow
         if (selected.SchemaVersion == IntegrationContractSchema.V2)
         {
             var handoff = ThreeDIntegrationV2Exchange.ReadHandoff(root, selected.TransactionId);
-            var result = ThreeDIntegrationV2Exchange.PublishCompletedResult(
-                root,
-                selected.TransactionId,
-                identityResolver(handoff.Context.ConsumerBuild),
-                runRecordPath);
-            return new(result.Outcome.ToString(), result.RunId!);
+            ThreeDIntegrationEvidenceArtifact? imagePreview = null;
+            try
+            {
+                if (IsThreeDInspectionRequest(handoff))
+                {
+                    imagePreview = ThreeDHeightImagePreviewArtifact.CreateTemporary(
+                        handoff,
+                        Path.Combine(
+                            root,
+                            IntegrationTransactionLayout.TransactionsDirectoryName,
+                            selected.TransactionId.ToString("D")));
+                }
+
+                var result = ThreeDIntegrationV2Exchange.PublishCompletedResult(
+                    root,
+                    selected.TransactionId,
+                    identityResolver(handoff.Context.ConsumerBuild),
+                    runRecordPath,
+                    imagePreview is null ? null : [imagePreview]);
+                return new(result.Outcome.ToString(), result.RunId!);
+            }
+            finally
+            {
+                TryDeleteFile(imagePreview?.SourcePath);
+            }
         }
 
         var legacyResult = ThreeDIntegrationExchange.PublishCompletedResult(
@@ -169,14 +188,84 @@ internal sealed class ThreeDIntegrationTransactionWorkflow
         return new(legacyResult.Disposition.ToString(), legacyResult.RunId!);
     }
 
+    public ThreeDIntegrationPublishedResult RunInspection(
+        string exchangeRoot,
+        ThreeDIntegrationTransactionItem selected,
+        CancellationToken cancellationToken,
+        bool forceExecutionError = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(exchangeRoot);
+        ArgumentNullException.ThrowIfNull(selected);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (selected.SchemaVersion != IntegrationContractSchema.V2
+            || !selected.CanInspectInThreeD)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.RequestRejected,
+                "Only a schema-v2 ThreeD HeightMap handoff can run in the 3D inspection workflow.");
+        }
+
+        var root = Path.GetFullPath(exchangeRoot);
+        var handoff = ThreeDIntegrationV2Exchange.ReadHandoff(root, selected.TransactionId);
+        var consumerBuild = identityResolver(handoff.Context.ConsumerBuild);
+        IntegrationResultV2 result;
+        try
+        {
+            if (forceExecutionError)
+            {
+                throw new InvalidDataException(
+                    "Controlled EXE smoke failure before 3D HeightMap execution.");
+            }
+
+            result = ThreeDIntegrationHeightMapRunner.RunAcceptedHandoffFromRecipe(
+                root,
+                selected.TransactionId,
+                consumerBuild,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (IsPublishableExecutionFailure(exception))
+        {
+            result = ThreeDIntegrationV2Exchange.PublishFailedResult(
+                root,
+                selected.TransactionId,
+                consumerBuild,
+                DescribeExecutionFailure(exception));
+        }
+
+        return new(
+            result.Outcome.ToString(),
+            result.RunId);
+    }
+
+    private static bool IsPublishableExecutionFailure(Exception exception) =>
+        exception is ArgumentException
+            or InvalidDataException
+            or IOException
+            or InvalidOperationException
+            or JsonException
+            or IntegrationContractException
+            or UnauthorizedAccessException;
+
+    private static string DescribeExecutionFailure(Exception exception)
+    {
+        var detail = exception.Message.Trim();
+        return string.IsNullOrWhiteSpace(detail)
+            ? "The 3D inspection failed before a completed Run Record was published."
+            : $"3D inspection execution failed: {detail}";
+    }
+
     private string DescribeAcknowledgement(IntegrationAcknowledgementV2? acknowledgement) =>
         acknowledgement is null
-            ? localize("AckAbsent", "ACK 없음", "ACK absent")
+            ? localize("AckAbsent", "검토 기록 없음", "ACK absent")
             : $"ACK {acknowledgement.Status}";
 
     private string DescribeResult(IntegrationResultV2? result) =>
         result is null
-            ? localize("ResultAbsent", "Result 없음", "Result absent")
+            ? localize("ResultAbsent", "검사 결과 없음", "Result absent")
             : $"Result {result.Status}/{result.Outcome}/Run {result.RunId ?? "-"}";
 
     private static IntegrationAcknowledgementStatus? ReadLegacyAcknowledgementStatus(
@@ -216,4 +305,21 @@ internal sealed class ThreeDIntegrationTransactionWorkflow
             handoff.Context.ConsumerBuild.ApplicationId,
             IntegrationApplicationIds.ThreeDStudio,
             StringComparison.Ordinal);
+
+    private static void TryDeleteFile(string? path)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
 }

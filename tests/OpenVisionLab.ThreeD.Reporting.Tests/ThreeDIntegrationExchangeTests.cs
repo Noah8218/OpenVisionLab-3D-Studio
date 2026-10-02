@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using System.Net;
 using OpenVisionLab.Integration.Contracts;
+using OpenVisionLab.Integration.Transport.Tcp;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Reporting.Integration;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
@@ -153,6 +155,122 @@ public sealed class ThreeDIntegrationExchangeTests
             fixture.TransactionDirectory,
             IntegrationTransactionLayout.ArtifactsDirectoryName,
             "3d-run-record.json")));
+    }
+
+    [Fact]
+    public void PublishCancelledResult_WritesTerminalCancelledResult()
+    {
+        using var fixture = new ExchangeFixture();
+        fixture.Accept();
+
+        var result = ThreeDIntegrationV2Exchange.PublishCancelledResult(
+            fixture.Root,
+            fixture.Handoff.TransactionId,
+            ExchangeFixture.Consumer);
+
+        Assert.Equal(IntegrationResultStatus.Cancelled, result.Status);
+        Assert.Equal(IntegrationInspectionOutcome.Indeterminate, result.Outcome);
+        Assert.Equal(IntegrationErrorCode.Cancelled, result.Error?.Code);
+        var persisted = ThreeDIntegrationV2Exchange.ReadResult(
+            fixture.Root,
+            fixture.Handoff.TransactionId);
+        Assert.Equal(result.MessageId, persisted.MessageId);
+        Assert.Equal(result.TransactionId, persisted.TransactionId);
+        Assert.Equal(result.Status, persisted.Status);
+        Assert.Equal(result.Outcome, persisted.Outcome);
+        Assert.Equal(result.Error, persisted.Error);
+    }
+
+    [Fact]
+    public void PublishFailedResult_WritesTerminalExecutionErrorWithoutRunRecord()
+    {
+        using var fixture = new ExchangeFixture();
+        fixture.Accept();
+
+        var result = ThreeDIntegrationV2Exchange.PublishFailedResult(
+            fixture.Root,
+            fixture.Handoff.TransactionId,
+            ExchangeFixture.Consumer,
+            "HeightMap recipe execution failed.");
+
+        Assert.Equal(IntegrationResultStatus.Failed, result.Status);
+        Assert.Equal(IntegrationInspectionOutcome.ExecutionError, result.Outcome);
+        Assert.Null(result.RunId);
+        Assert.Null(result.RunRecord);
+        Assert.Empty(result.Evidence);
+        Assert.Equal(IntegrationErrorCode.ExecutionFailed, result.Error?.Code);
+        Assert.False(result.Error?.Retryable);
+
+        var persisted = ThreeDIntegrationV2Exchange.ReadResult(
+            fixture.Root,
+            fixture.Handoff.TransactionId);
+        Assert.Equal(result.MessageId, persisted.MessageId);
+        Assert.Equal(result.Status, persisted.Status);
+        Assert.Equal(result.Outcome, persisted.Outcome);
+        Assert.Equal(result.Error, persisted.Error);
+    }
+
+    [Fact]
+    public async Task AuthenticatedCancelRequest_ReachesThreeDCoordinatorAndPublishesCancelledResult()
+    {
+        var testCancellation = TestContext.Current.CancellationToken;
+        using var fixture = new ExchangeFixture();
+        fixture.Accept();
+        using var coordinator = new ThreeDIntegrationCancellationCoordinator(
+            fixture.Root,
+            ExchangeFixture.Consumer);
+        var started = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var run = Task.Run(() => coordinator.RunWithCancellation(
+            fixture.Handoff.TransactionId,
+            cancellationToken =>
+            {
+                started.TrySetResult(null);
+                cancellationToken.WaitHandle.WaitOne();
+                cancellationToken.ThrowIfCancellationRequested();
+                return IntegrationResultStatus.Completed;
+            },
+            cancelledResult => cancelledResult.Status));
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
+
+        var request = new IntegrationCancelRequestV2(
+            IntegrationContractSchema.V2,
+            IntegrationMessageKind.CancelRequest,
+            Guid.NewGuid(),
+            fixture.Handoff.TransactionId,
+            fixture.Handoff.MessageId,
+            DateTimeOffset.UtcNow,
+            new IntegrationApplicationIdentity(
+                IntegrationApplicationIds.MachineStudio,
+                "0.1.0",
+                new string('1', 40),
+                IntegrationSourceState.Clean),
+            "3D cancellation test");
+        await using var transport = new ThreeDIntegrationTcpTransport(
+            fixture.Root,
+            new byte[32]);
+        transport.CancellationRequested += coordinator.HandleCancellationRequestedAsync;
+        var endpoint = await transport.StartListeningAsync(
+            IPAddress.Loopback,
+            0,
+            testCancellation);
+        using var client = new TcpIntegrationClient(
+            IntegrationApplicationIds.MachineStudio,
+            new TcpIntegrationEndpoint(IPAddress.Loopback.ToString(), endpoint.Port),
+            new byte[32]);
+
+        var receipt = await client.CancelTransactionAsync(request, testCancellation);
+        var repeated = await client.CancelTransactionAsync(request, testCancellation);
+        var resultStatus = await run.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
+
+        Assert.Equal(TcpIntegrationCancellationStatus.Accepted, receipt.Status);
+        Assert.Equal(TcpIntegrationCancellationStatus.AlreadyCancelled, repeated.Status);
+        Assert.Equal(IntegrationResultStatus.Cancelled, resultStatus);
+        Assert.Equal(
+            IntegrationResultStatus.Cancelled,
+            ThreeDIntegrationV2Exchange.ReadResult(
+                fixture.Root,
+                fixture.Handoff.TransactionId).Status);
     }
 
     [Fact]

@@ -8,6 +8,11 @@
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              AutomationProperties.AutomationId="ResultsWorkspace">
     <UserControl.Resources>
+        <Style x:Key="TeachingResultCellStyle" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="8,6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
     </UserControl.Resources>
@@ -18,7 +23,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Padding="16,10"
+        <Border x:Name="ResultsWorkspaceHeader"
+                Padding="16,10"
                 Background="{DynamicResource ThreeD.CommandBarBrush}"
                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                 BorderThickness="0,0,0,1">
@@ -27,16 +33,73 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock FontSize="15"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding Localization.ResultsWorkspaceTitle}" />
-                    <TextBlock Margin="0,2,0,0"
-                               FontSize="10.5"
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <DockPanel LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                   Text="{Binding Localization.ResultsWorkspaceRunResultTitle}" />
+                        <TextBlock x:Name="CompactResultSnapshot"
+                                   Margin="12,0,0,0"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding ResultsOperatorCompactDecision, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                   TextAlignment="Right"
+                                   TextTrimming="CharacterEllipsis"
+                                   AutomationProperties.AutomationId="CompactResultSnapshot">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}" Value="True" />
+                                                <Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock x:Name="TeachingCompactResultSnapshot"
+                                   Margin="12,0,0,0"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding Workbench.SelectedToolWorkspace.CurrentOutput.ResultStatus}"
+                                   TextTrimming="CharacterEllipsis"
+                                   AutomationProperties.AutomationId="TeachingCompactResultSnapshot">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}" Value="True" />
+                                                <Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </DockPanel>
+                    <TextBlock x:Name="ResultsWorkspaceDetail"
+                               Grid.Row="1"
+                               Margin="0,2,0,0"
+                               FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{Binding Localization.ResultsWorkspaceDetail}" />
-                </StackPanel>
+                               Text="{Binding Localization.ResultsWorkspaceDetail}"
+                               TextWrapping="Wrap" />
+                </Grid>
                 <ui:Button x:Name="AdvancedDiagnosticsButton"
                            Grid.Column="1"
                            Margin="12,0,0,0"
@@ -64,94 +127,92 @@
                 CornerRadius="4"
                 AutomationProperties.AutomationId="ResultsOperatorSummary"
                 AutomationProperties.Name="{Binding Localization.ResultsOperatorSummaryTitle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}" Value="False" />
+                                <Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="False" />
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Visibility" Value="Visible" />
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <ScrollViewer x:Name="OperatorResultSummaryScroller"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock FontSize="11"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.AccentBrush}"
-                               Text="{Binding Localization.ResultsOperatorSummaryTitle}" />
-                    <TextBlock Margin="0,5,0,0"
-                               FontSize="9"
-                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{Binding Localization.ResultsOperatorDecision}" />
-                    <TextBlock x:Name="OperatorDecisionValue"
-                               Margin="0,1,0,0"
-                               FontSize="11"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding ResultsOperatorDecisionSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Margin="0,5,0,0"
-                               FontSize="9"
-                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{Binding Localization.ResultsOperatorAffectedSteps}" />
-                    <TextBlock x:Name="OperatorAffectedStepsValue"
-                               Margin="0,1,0,0"
-                               FontSize="10"
-                               Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding ResultsOperatorAffectedStepsSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-                <Border Grid.Row="1"
-                        x:Name="ResultsValueValidityPanel"
-                        Margin="0,8,0,0"
-                        Padding="9"
-                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="3"
-                        AutomationProperties.AutomationId="ResultsValueValidity"
-                        AutomationProperties.Name="{Binding Localization.ResultsValueValidityTitle}">
-                    <StackPanel>
-                        <TextBlock FontSize="9.5"
+                    <DockPanel>
+                        <ui:Button x:Name="ResultsFixInTeachButton"
+                                   DockPanel.Dock="Right"
+                                   Margin="8,0,0,0"
+                                   Appearance="Primary"
+                                   Icon="{ui:SymbolIcon Edit24}"
+                                   Content="{Binding Localization.ValidationWorkspaceOpenInTeach}"
+                                   Command="{Binding OpenSelectedValidationIssueInTeachCommand}"
+                                   ToolTip="{Binding Localization.ValidationWorkspaceOpenInTeachHint}"
+                                   IsTabStop="True"
+                                   AutomationProperties.AutomationId="ResultsFixInTeach"
+                                   AutomationProperties.Name="{Binding Localization.ValidationWorkspaceOpenInTeach}"
+                                   AutomationProperties.HelpText="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" />
+                        <TextBlock VerticalAlignment="Center"
+                                   FontSize="12"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                   Text="{Binding Localization.ResultsValueValidityTitle}" />
-                        <TextBlock x:Name="ResultsValueValidityValue"
-                                   Margin="0,5,0,0"
-                                   FontSize="9.5"
-                                   Foreground="{DynamicResource ThreeD.TextBrush}"
-                                   Text="{Binding ResultsValueValiditySummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                                   TextWrapping="Wrap"
-                                   AutomationProperties.AutomationId="ResultsValueValidityText"
-                                   AutomationProperties.Name="{Binding Localization.ResultsValueValidityTitle}" />
-                    </StackPanel>
-                </Border>
-                <StackPanel Grid.Row="2"
-                            Margin="0,8,0,0"
-                            VerticalAlignment="Center">
-                    <TextBlock FontSize="9.5"
-                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{Binding Localization.ResultsOperatorNextAction}"
+                                   Text="{Binding Localization.ResultsOperatorSummaryTitle}"
+                                   TextWrapping="Wrap" />
+                    </DockPanel>
+                    <TextBlock x:Name="OperatorDecisionValue"
+                               Margin="0,5,0,0"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                               Text="{Binding ResultsOperatorDecisionDisplaySummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextWrapping="Wrap" />
-                    <ui:Button x:Name="ResultsFixInTeachButton"
-                               Margin="0,7,0,0"
-                               HorizontalAlignment="Left"
-                               Appearance="Primary"
-                               Icon="{ui:SymbolIcon Edit24}"
-                               Content="{Binding Localization.ValidationWorkspaceOpenInTeach}"
-                               Command="{Binding OpenSelectedValidationIssueInTeachCommand}"
-                               ToolTip="{Binding Localization.ValidationWorkspaceOpenInTeachHint}"
-                               IsTabStop="True"
-                               AutomationProperties.AutomationId="ResultsFixInTeach"
-                               AutomationProperties.Name="{Binding Localization.ValidationWorkspaceOpenInTeach}"
-                               AutomationProperties.HelpText="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" />
+                    <Expander x:Name="ResultsValueValidityPanel"
+                              Margin="0,8,0,0"
+                              Padding="8,6"
+                              FontSize="12"
+                              Foreground="{DynamicResource ThreeD.TextBrush}"
+                              Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                              BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                              Header="{Binding Localization.ResultsValueValidityTitle}"
+                              IsExpanded="False"
+                              HorizontalContentAlignment="Stretch"
+                              AutomationProperties.AutomationId="ResultsValueValidity"
+                              AutomationProperties.Name="{Binding Localization.ResultsValueValidityTitle}">
+                        <StackPanel Margin="8">
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding Localization.ResultsOperatorAffectedSteps}" />
+                            <TextBlock x:Name="OperatorAffectedStepsValue"
+                                       Margin="0,3,0,0"
+                                       Text="{Binding ResultsOperatorAffectedStepsSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock x:Name="ResultsValueValidityValue"
+                                       Margin="0,8,0,0"
+                                       Text="{Binding ResultsValueValidityDisplaySummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.AutomationId="ResultsValueValidityText"
+                                       AutomationProperties.Name="{Binding Localization.ResultsValueValidityTitle}" />
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
-            </Grid>
+            </ScrollViewer>
         </Border>
 
-        <Grid Grid.Row="2">
+        <Grid x:Name="ResultsSectionHost"
+              Grid.Row="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Padding="10"
+            <Border x:Name="ResultsSectionNavigation"
+                    Padding="10"
                     Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                     BorderThickness="0,0,1,0">
@@ -161,13 +222,23 @@
                                      Margin="0,0,12,6"
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
-                                     Content="{Binding Localization.ResultsWorkspaceRunRecord}"
                                      IsChecked="{Binding ResultsWorkspace.IsRunRecordSelected, Mode=OneWay}"
                                      behaviors:CheckedCommandBehavior.IsEnabled="True"
                                      behaviors:CheckedCommandBehavior.Command="{Binding ResultsWorkspace.SelectSectionCommand}"
                                      behaviors:CheckedCommandBehavior.CommandParameter="RunRecord"
                                      AutomationProperties.AutomationId="ResultsRunRecordNavigation"
-                                     AutomationProperties.Name="{Binding Localization.ResultsWorkspaceRunRecord}" />
+                                     AutomationProperties.Name="{Binding Content, RelativeSource={RelativeSource Self}}">
+                            <RadioButton.Style>
+                                <Style TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+                                    <Setter Property="Content" Value="{Binding Localization.ResultsWorkspaceRunRecord}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAuthoringWorkspaceSelected}" Value="True">
+                                            <Setter Property="Content" Value="{Binding Localization.ResultsWorkspaceRunResultTitle}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </RadioButton.Style>
+                        </RadioButton>
                         <RadioButton x:Name="OutputCompareNavigation"
                                      Margin="0,0,12,6"
                                      Padding="10,8"
@@ -191,7 +262,8 @@
                                      AutomationProperties.AutomationId="ResultsReportsNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceReports}" />
                     </WrapPanel>
-                    <Border DockPanel.Dock="Bottom"
+                    <Border x:Name="ResultsImmutableNotice"
+                            DockPanel.Dock="Bottom"
                             Margin="0,12,0,0"
                             Padding="9"
                             VerticalAlignment="Bottom"
@@ -199,7 +271,7 @@
                             BorderBrush="{DynamicResource ThreeD.InfoBrush}"
                             BorderThickness="1"
                             CornerRadius="3">
-                        <TextBlock FontSize="9.5"
+                        <TextBlock FontSize="12"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding Localization.ResultsWorkspaceImmutable}"
                                    TextWrapping="Wrap" />
@@ -207,17 +279,119 @@
                 </DockPanel>
             </Border>
 
-            <Grid Grid.Row="1">
+            <Grid x:Name="ResultsWorkspaceContent"
+                  Grid.Row="1">
+                <Border x:Name="TeachingResultSurface"
+                        Margin="12,4,12,12"
+                        Background="{DynamicResource ThreeD.PanelBrush}"
+                        AutomationProperties.AutomationId="TeachingResultSurface">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="True" />
+                                        <Condition Binding="{Binding ResultsWorkspace.IsRunRecordSelected}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
+                        <TextBlock x:Name="TeachingResultEmptyHint"
+                                   Padding="12"
+                                   VerticalAlignment="Top"
+                                   HorizontalAlignment="Left"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding Localization.ResultsWorkspaceNoRun}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="TeachingResultEmptyHint">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Workbench.HasTeachingResults}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <DataGrid x:Name="TeachingResultsTable" ItemsSource="{Binding Workbench.TeachingResults}"
+                                  SelectedItem="{Binding Workbench.SelectedTeachingResult, Mode=TwoWay}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  RowDetailsVisibilityMode="VisibleWhenSelected" FontSize="12"
+                                  Background="Transparent" BorderThickness="0"
+                                  AutomationProperties.AutomationId="TeachingResultsTable">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Workbench.HasTeachingResults}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn ElementStyle="{StaticResource TeachingResultCellStyle}" Header="{views:ThreeDText Key=ThreeD.Results.Item, Korean='항목', English='Item'}" Binding="{Binding Step.ToolName}" Width="160" />
+                                <DataGridTextColumn ElementStyle="{StaticResource TeachingResultCellStyle}" x:Name="TeachingResultDecisionColumn" Header="{views:ThreeDText Key=ThreeD.Results.Decision, Korean='판정', English='Decision'}" Binding="{Binding Status}" Width="150" />
+                                <DataGridTextColumn ElementStyle="{StaticResource TeachingResultCellStyle}" x:Name="TeachingResultValueColumn" Header="{views:ThreeDText Key=ThreeD.Results.Value, Korean='측정값', English='Value'}" Binding="{Binding Value}" Width="170" />
+                                <DataGridTextColumn ElementStyle="{StaticResource TeachingResultCellStyle}" Header="{views:ThreeDText Key=ThreeD.Results.Unit, Korean='단위', English='Unit'}" Binding="{Binding Unit}" Width="90" />
+                                <DataGridTextColumn ElementStyle="{StaticResource TeachingResultCellStyle}" x:Name="TeachingResultLimitsColumn" Header="{views:ThreeDText Key=ThreeD.Results.Limits, Korean='규격', English='Limits'}" Binding="{Binding Limits}" Width="120" />
+                                <DataGridTextColumn ElementStyle="{StaticResource TeachingResultCellStyle}" x:Name="TeachingResultReasonColumn" Header="{views:ThreeDText Key=ThreeD.Results.Reason, Korean='내용', English='Message'}" Binding="{Binding Reason}" Width="*" MinWidth="180" />
+                            </DataGrid.Columns>
+                            <DataGrid.RowDetailsTemplate>
+                                <DataTemplate>
+                                    <Expander Header="{views:ThreeDText Key=ThreeD.Results.MeasurementDetails, Korean='측정 상세', English='Measurement details'}" Margin="8,4" IsExpanded="False">
+                                        <ItemsControl ItemsSource="{Binding Metrics}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="8,3">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="220" /><ColumnDefinition Width="200" />
+                                                            <ColumnDefinition Width="110" /><ColumnDefinition Width="100" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Value, StringFormat={}{0:G17}}" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Unit}" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding Status}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                </DataTemplate>
+                            </DataGrid.RowDetailsTemplate>
+                        </DataGrid>
+                    </Grid>
+                </Border>
                 <workbench:RecipePipelineReviewView x:Name="RunRecordReview"
                                                     Margin="12,4,12,12"
-                                                    Visibility="{Binding ResultsWorkspace.IsRunRecordSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                     DataContext="{Binding Workbench}"
                                                     RunRecordSteps="{Binding DataContext.InspectionSteps, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
                                                     RunRecordSummary="{Binding DataContext.InspectionStepSummary, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
                                                     RunRecordContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
-                                                    AutomationProperties.AutomationId="ResultsRunRecordWorkspace" />
+                                                    AutomationProperties.AutomationId="ResultsRunRecordWorkspace">
+                    <workbench:RecipePipelineReviewView.Style>
+                        <Style TargetType="workbench:RecipePipelineReviewView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.IsAuthoringWorkspaceSelected, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}" Value="False" />
+                                        <Condition Binding="{Binding DataContext.ResultsWorkspace.IsRunRecordSelected, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </workbench:RecipePipelineReviewView.Style>
+                </workbench:RecipePipelineReviewView>
                 <workbench:OutputCompareView x:Name="OutputCompareWorkspace"
-                                             Visibility="{Binding ResultsWorkspace.IsOutputCompareSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                             Visibility="{Binding DataContext.ResultsWorkspace.IsOutputCompareSelected, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                              DataContext="{Binding Workbench}" />
                 <ScrollViewer x:Name="ReportsWorkspace"
                               Visibility="{Binding ResultsWorkspace.IsReportsSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -254,7 +428,7 @@
                                            Text="{Binding RunSnapshotEvidence, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,8,0,0"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding InspectionStepSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             </StackPanel>
@@ -283,16 +457,8 @@
                                        Command="{Binding OpenCsvReportCommand}" />
                             <ui:Button Margin="0,0,6,6"
                                        Appearance="Primary"
-                                       Icon="{ui:SymbolIcon DocumentLock24}"
-                                       Content="{Binding Localization.SupportBundleExport}"
-                                       Command="{Binding ExportPrivacySafeSupportBundleCommand}"
-                                       ToolTip="{Binding Localization.SupportBundleToolTip}"
-                                       AutomationProperties.AutomationId="ReportsPrivacySafeSupportBundleButton"
-                                       AutomationProperties.Name="{Binding Localization.SupportBundleExport}"
-                                       AutomationProperties.HelpText="{Binding Localization.SupportBundleToolTip}" />
-                            <ui:Button Margin="0,0,6,6"
-                                       Appearance="Secondary"
                                        Icon="{ui:SymbolIcon SaveCopy24}"
+                                       x:Name="ReportsExportResultsButton"
                                        Content="{Binding Localization.RunRecordExport}"
                                        Command="{Binding ExportRunRecordCommand}" />
                             <ui:Button Margin="0,0,6,6"
@@ -301,11 +467,26 @@
                                        Content="{Binding Localization.RunRecordOpenFolder}"
                                        Command="{Binding OpenRunRecordFolderCommand}" />
                             </WrapPanel>
+                            <Expander x:Name="ReportsSupportFilesSection" Margin="0,8,0,0" IsExpanded="False"
+                                      Header="{views:ThreeDText Key=ThreeD.Results.SupportInformation, Korean='지원용 자료', English='Support files'}">
+                            <StackPanel>
                             <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Text="{Binding Localization.SupportBundlePrivacyNotice}"
                                        TextWrapping="Wrap"
                                        AutomationProperties.Name="{Binding Localization.SupportBundlePrivacyNotice}" />
+                            <ui:Button Margin="0,6,0,0" HorizontalAlignment="Left"
+                                       x:Name="ReportsSupportFilesButton"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon DocumentLock24}"
+                                       Content="{Binding Localization.SupportBundleExport}"
+                                       Command="{Binding ExportPrivacySafeSupportBundleCommand}"
+                                       ToolTip="{Binding Localization.SupportBundleToolTip}"
+                                       AutomationProperties.AutomationId="ReportsPrivacySafeSupportBundleButton"
+                                       AutomationProperties.Name="{Binding Localization.SupportBundleExport}"
+                                       AutomationProperties.HelpText="{Binding Localization.SupportBundleToolTip}" />
+                            </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

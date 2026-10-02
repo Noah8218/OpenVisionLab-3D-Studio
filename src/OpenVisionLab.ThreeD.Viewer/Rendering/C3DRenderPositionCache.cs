@@ -13,26 +13,34 @@ internal sealed class C3DRenderPositionCache
     private C3DHeightGridRenderProxy? sourceProxy;
     private Vector3[]? positions;
     private ModelTransform transform;
+    private int heightEmphasis = 1;
 
     public Vector3[]? Current => positions;
 
     public ModelTransform CurrentTransform => transform;
 
+    public int CurrentHeightEmphasis => heightEmphasis;
+
     public bool HasValue => sourceProxy is not null || positions is not null;
 
-    public Vector3[] GetOrCreate(C3DHeightGridRenderProxy renderProxy, ModelTransform nextTransform)
+    public Vector3[] GetOrCreate(C3DHeightGridRenderProxy renderProxy, ModelTransform nextTransform, int nextHeightEmphasis = 1)
     {
         ArgumentNullException.ThrowIfNull(renderProxy);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(nextHeightEmphasis);
         if (!ReferenceEquals(sourceProxy, renderProxy)
             || positions is null
-            || transform != nextTransform)
+            || transform != nextTransform
+            || heightEmphasis != nextHeightEmphasis)
         {
             sourceProxy = renderProxy;
             transform = nextTransform;
+            heightEmphasis = nextHeightEmphasis;
             positions = new Vector3[renderProxy.Points.Length];
             for (var index = 0; index < renderProxy.Points.Length; index++)
             {
-                positions[index] = nextTransform.Apply(renderProxy.Points[index].Position);
+                var sourcePosition = renderProxy.Points[index].Position;
+                sourcePosition.Y *= nextHeightEmphasis;
+                positions[index] = nextTransform.Apply(sourcePosition);
             }
         }
 
@@ -42,7 +50,8 @@ internal sealed class C3DRenderPositionCache
     public void Set(
         C3DHeightGridRenderProxy renderProxy,
         ModelTransform preparedTransform,
-        Vector3[] preparedPositions)
+        Vector3[] preparedPositions,
+        int preparedHeightEmphasis = 1)
     {
         ArgumentNullException.ThrowIfNull(renderProxy);
         ArgumentNullException.ThrowIfNull(preparedPositions);
@@ -53,8 +62,11 @@ internal sealed class C3DRenderPositionCache
                 nameof(preparedPositions));
         }
 
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(preparedHeightEmphasis);
+
         sourceProxy = renderProxy;
         transform = preparedTransform;
+        heightEmphasis = preparedHeightEmphasis;
         positions = preparedPositions;
     }
 
@@ -63,5 +75,6 @@ internal sealed class C3DRenderPositionCache
         sourceProxy = null;
         positions = null;
         transform = default;
+        heightEmphasis = 1;
     }
 }

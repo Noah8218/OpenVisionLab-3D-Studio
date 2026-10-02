@@ -168,7 +168,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         DrawThicknessRoi(gl);
         DrawWarpageRoi(gl);
 
-        if (viewModel.ResultOverlayVisible || viewModel.ResultEntities.Count > 0)
+        if (viewModel.ShouldDrawSampleResultOverlay)
         {
             InspectionOverlayRenderer.DrawResultOverlay(gl, viewModel.C3DSampleVisible);
         }
@@ -227,7 +227,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
-        var panRequested = e.ChangedButton == MouseButton.Middle || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        var panRequested = e.ChangedButton == MouseButton.Middle || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+            || e.ChangedButton == MouseButton.Left && viewModel.SelectedSelectionMode == "Move";
 
         if (viewModel.IsTeachingCaptureActive
             && e.ChangedButton == MouseButton.Left
@@ -773,6 +774,9 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         if (!suppressNextViewerContextMenu)
         {
+            Viewport.ContextMenu?.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Tag, "OrbitHere"))?.SetCurrentValue(MenuItem.CommandParameterProperty,
+                e.CursorLeft >= 0 && e.CursorTop >= 0 && TryPickC3DPoint(new Point(e.CursorLeft, e.CursorTop), out var point)
+                    ? (object)TransformC3DPosition(point.Position) : null);
             return;
         }
 

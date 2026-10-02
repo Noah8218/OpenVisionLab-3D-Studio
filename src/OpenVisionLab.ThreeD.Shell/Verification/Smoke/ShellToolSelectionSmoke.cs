@@ -44,6 +44,11 @@ internal sealed class ShellToolSelectionSmoke
 
             workbenchView.ActivateToolLibraryPane();
             await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+            if (!workbenchView.IsToolLibraryPaneVisible)
+            {
+                return "Tool Library overlay did not open from the existing command path.";
+            }
+
             var toolList = ShellSmokeArtifacts.FindVisualDescendants<ListBox>(workbenchView)
                 .FirstOrDefault(list => string.Equals(list.Name, "AllToolsList", StringComparison.Ordinal));
             if (toolList is null)
@@ -63,9 +68,10 @@ internal sealed class ShellToolSelectionSmoke
             var selectedStep = workbench.SelectedPipelineStep;
             var added = workbench.PipelineSteps.Count == initialStepCount + 1
                 && selectedStep is not null
-                && string.Equals(selectedStep.ToolId, tool.Id, StringComparison.Ordinal);
+                && string.Equals(selectedStep.ToolId, tool.Id, StringComparison.Ordinal)
+                && !workbenchView.IsToolLibraryPaneVisible;
             Console.WriteLine(
-                $"ToolLibraryDoubleClick|handled={doubleClickArgs.Handled}|selected={string.Equals(workbench.SelectedTool?.Id, tool.Id, StringComparison.Ordinal)}|added={added}|steps={initialStepCount}->{workbench.PipelineSteps.Count}");
+                $"ToolLibraryDoubleClick|handled={doubleClickArgs.Handled}|selected={string.Equals(workbench.SelectedTool?.Id, tool.Id, StringComparison.Ordinal)}|added={added}|closed={!workbenchView.IsToolLibraryPaneVisible}|steps={initialStepCount}->{workbench.PipelineSteps.Count}");
             if (!doubleClickArgs.Handled || !added)
             {
                 return "Tool Library double-click did not invoke AddSelectedToolCommand exactly once.";

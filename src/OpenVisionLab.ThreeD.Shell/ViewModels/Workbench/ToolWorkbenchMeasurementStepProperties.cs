@@ -222,6 +222,125 @@ public sealed class CompletenessGridStepProperties
     }
 }
 
+[CategoryOrder("Gate", 0)]
+[CategoryOrder("Reference surface", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class ConnectedRegionGateStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        C3DConnectedRegionGatePolicy.ParameterNames.ToHashSet(StringComparer.Ordinal);
+
+    [Category("Gate")]
+    [DisplayName("Gate mode")]
+    [Description("Presence uses raw-height coverage and mean height; FillHeight also evaluates the authored reference surface trend.")]
+    [PropertyOrder(0)]
+    public C3DConnectedRegionGateMode GateMode { get; set; }
+
+    [Category("Gate")]
+    [DisplayName("Selected region index")]
+    [Description("Stable connected-region index selected from the Published ConnectedRegionArtifact.")]
+    [PropertyOrder(1)]
+    public int SelectedRegionIndex { get; set; }
+
+    [Category("Gate")]
+    [DisplayName("Minimum finite coverage ratio")]
+    [Description("Inclusive finite-cell ratio from 0 through 1. Missing cells remain explicit and never imply object absence.")]
+    [PropertyOrder(2)]
+    public double MinimumFiniteCoverageRatio { get; set; }
+
+    [Category("Gate")]
+    [DisplayName("Minimum mean height")]
+    [Description("Inclusive lower bound in the raw source's declared scalar unit.")]
+    [PropertyOrder(3)]
+    public double MinimumMeanHeight { get; set; }
+
+    [Category("Gate")]
+    [DisplayName("Maximum mean height")]
+    [Description("Inclusive upper bound in the raw source's declared scalar unit.")]
+    [PropertyOrder(4)]
+    public double MaximumMeanHeight { get; set; }
+
+    [Category("Reference surface")]
+    [DisplayName("Reference slope X")]
+    [Description("Authored raw-height reference slope along X; no calibration or fitting is performed by this gate.")]
+    [PropertyOrder(0)]
+    public double ReferenceSlopeX { get; set; }
+
+    [Category("Reference surface")]
+    [DisplayName("Reference slope Z")]
+    [Description("Authored raw-height reference slope along Z; no calibration or fitting is performed by this gate.")]
+    [PropertyOrder(1)]
+    public double ReferenceSlopeZ { get; set; }
+
+    [Category("Reference surface")]
+    [DisplayName("Reference intercept")]
+    [Description("Authored raw-height reference intercept in the source's declared scalar unit.")]
+    [PropertyOrder(2)]
+    public double ReferenceIntercept { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static ConnectedRegionGateStepProperties From(ToolWorkbenchPipelineStepItem step)
+    {
+        var parameters = step.Parameters
+            .Select(parameter => new ToolRecipeParameter(parameter.Name, parameter.Value))
+            .ToArray();
+        var policy = C3DConnectedRegionGatePolicy.FromRecipeParameters(parameters);
+        return new ConnectedRegionGateStepProperties
+        {
+            GateMode = policy.Mode,
+            SelectedRegionIndex = policy.SelectedRegionIndex,
+            MinimumFiniteCoverageRatio = policy.MinimumFiniteCoverageRatio,
+            MinimumMeanHeight = policy.MinimumMeanHeight,
+            MaximumMeanHeight = policy.MaximumMeanHeight,
+            ReferenceSlopeX = policy.ReferenceSlopeX,
+            ReferenceSlopeZ = policy.ReferenceSlopeZ,
+            ReferenceIntercept = policy.ReferenceIntercept,
+            UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
+        };
+    }
+
+    internal bool TryCreatePolicy(out C3DConnectedRegionGatePolicy? policy, out string message)
+    {
+        policy = null;
+        try
+        {
+            policy = C3DConnectedRegionGatePolicy.FromRecipeParameters(
+                new C3DConnectedRegionGatePolicy(
+                    GateMode,
+                    SelectedRegionIndex,
+                    MinimumFiniteCoverageRatio,
+                    MinimumMeanHeight,
+                    MaximumMeanHeight,
+                    ReferenceSlopeX,
+                    ReferenceSlopeZ,
+                    ReferenceIntercept,
+                    "raw-height").ToRecipeParameters());
+            message = string.Empty;
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+            or ArgumentException
+            or OverflowException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+
+    private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
+        int.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value : 0;
+}
+
 [CategoryOrder("Acceptance", 0)]
 [CategoryOrder("Sampling", 1)]
 [CategoryOrder("Compatibility", 2)]

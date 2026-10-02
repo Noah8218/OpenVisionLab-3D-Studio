@@ -44,7 +44,8 @@ internal static class ToolRecipeHeightDifferenceEdgeRunnerExecution
                 $"Filter|step={filterStep.Id}|output={filter.Output.EntityId}|sha256={filter.Output.ContentSha256}|rootSha256={filter.Output.RootSourceSha256}",
                 $"HeightDifferenceEdge|status={edge.Result.Status}|step={edgeStep.Id}|input={output.InputEntityId}|selection={output.SelectionId}|output={output.OutputEntityId}|axis={output.ComparisonAxis}|polarity={output.Polarity}|minimumDelta={output.MinimumDelta:R}|points={output.Points.Count}|sha256={output.ContentSha256}",
                 $"Diagnostics|scanlines={diagnostics.ScanlineCount}|eligiblePairs={diagnostics.EligiblePairCount}|missingPairSkips={diagnostics.SkippedMissingPairCount}|accepted={diagnostics.AcceptedScanlineCount}|noCandidate={diagnostics.NoCandidateScanlineCount}|magnitudeMin={diagnostics.AcceptedMagnitudeMinimum:R}|magnitudeMax={diagnostics.AcceptedMagnitudeMaximum:R}|magnitudeMean={diagnostics.AcceptedMagnitudeMean:R}",
-                $"Policy|candidate=StrongestPerScanline|tie=LowestStartIndex|point=PairMidpoint|missing=SkipPair|boundary=WithinSelection|contract={C3DHeightDifferenceEdgePointSet.ContractVersion}"
+                $"Policy|candidate=StrongestPerScanline|tie=LowestStartIndex|point=PairMidpoint|missing=SkipPair|boundary=WithinSelection|contract={C3DHeightDifferenceEdgePointSet.ContractVersion}",
+                $"CandidateEvidence|{output.CandidateEvidence.Summary}"
             };
             lines.AddRange(output.Points.Select(point =>
                 $"Point|scanline={point.ScanlineIndex}|first={point.FirstRow},{point.FirstColumn},{point.FirstHeight:R}|second={point.SecondRow},{point.SecondColumn},{point.SecondHeight:R}|delta={point.SignedDelta:R}|magnitude={point.Magnitude:R}|xyz={point.X:R},{point.Y:R},{point.Z:R}"));

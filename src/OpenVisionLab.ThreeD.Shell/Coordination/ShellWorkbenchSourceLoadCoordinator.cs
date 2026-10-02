@@ -4,6 +4,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Shell.Dialogs;
+using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -61,7 +62,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
         bool bindToWorkbench = true,
         CancellationToken cancellationToken = default)
     {
-        if (IsDisposed || cancellationToken.IsCancellationRequested)
+        if (IsDisposed || cancellationToken.IsCancellationRequested || viewModel.Workbench.IsRecipeMutationBlocked)
         {
             return false;
         }
@@ -118,6 +119,25 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
     public void LoadC3DSourceRequested(object? sender, EventArgs args) =>
         sourceRequestOwner.TryStart(LoadC3DSourceRequestAsync);
 
+    public void UseSelectedInspectionInputForTeachingRequested(object? sender, InspectionQueueSelectionChangedEventArgs args)
+    {
+        if (args.Sample is not { } sample || !viewModel.Workbench.InspectionQueue.CanUseSelectedInputForTeaching) return;
+        var path = sample.SourcePath;
+        var stepId = viewModel.Workbench.InspectionQueue.SelectedStepResult?.StepId
+            ?? sample.Steps.FirstOrDefault(step => step.Status == nameof(ResultStatus.Fail))?.StepId;
+        sourceRequestOwner.TryStart(async cancellationToken => { await UseInspectionInputForTeachingAsync(path, stepId, cancellationToken); });
+    }
+
+    internal async Task<bool> UseInspectionInputForTeachingAsync(string path, string? stepId, CancellationToken cancellationToken = default)
+    {
+        if (IsDisposed || viewModel.Workbench.HasPendingStepParameterChanges || viewModel.Workbench.IsRecipeMutationBlocked
+            || viewModel.Workbench.IsC3DSourceLoading || cancellationToken.IsCancellationRequested) return false;
+        if (!await LoadWorkbenchC3DSourceAsync(path, cancellationToken: cancellationToken)) return false;
+        if (stepId is not null) viewModel.Workbench.SelectPipelineStep(stepId);
+        if (viewModel.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Teach)) viewModel.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+        return true;
+    }
+
     private async Task LoadC3DSourceRequestAsync(CancellationToken cancellationToken)
     {
         if (!sourceFileDialogs.TrySelectC3DSourcePath(out var path))
@@ -171,7 +191,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
         bool showFailureDialog = true,
         CancellationToken cancellationToken = default)
     {
-        if (IsDisposed || cancellationToken.IsCancellationRequested)
+        if (IsDisposed || cancellationToken.IsCancellationRequested || viewModel.Workbench.IsRecipeMutationBlocked)
         {
             return false;
         }
@@ -180,7 +200,7 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
         var format = extension.TrimStart('.').ToUpperInvariant();
         if (format is not ("GLB" or "STL" or "LAS" or "LAZ"))
         {
-            throw new NotSupportedException($"Viewer-only import does not support '{extension}'.");
+            throw new NotSupportedException(FormatUnsupportedViewerOnlyInput(format));
         }
 
         using var operation = sourceLoadOperations.Begin(cancellationToken);
@@ -254,6 +274,11 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
 
     public void SetWorkbenchC3DSourceFromViewer(string path, bool markDirty = true)
     {
+        if (viewModel.Workbench.IsRecipeMutationBlocked)
+        {
+            throw new InvalidOperationException("The C3D source cannot change while a recipe or tool operation is running.");
+        }
+
         var sourceBindingStart = System.Diagnostics.Stopwatch.GetTimestamp();
         if (!viewer.TryGetCurrentC3DSourceBinding(path, out var sourceBinding))
         {
@@ -305,9 +330,8 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
 
         try
         {
-            var details = viewer.HostState.ViewerStatus;
-            callbacks.ShowLoadSourceFailure(
-                string.IsNullOrWhiteSpace(details) ? exception.Message : details);
+            // ViewerStatus is mutable presentation state and may still describe a prior request.
+            callbacks.ShowLoadSourceFailure(FormatSourceRequestFailure(exception));
         }
         catch (Exception dialogException)
         {
@@ -316,6 +340,24 @@ internal sealed class ShellWorkbenchSourceLoadCoordinator : IDisposable
                 LogLevel.Error,
                 $"Workbench[source request] failure dialog failed: {dialogException}");
         }
+    }
+
+    internal static string FormatSourceRequestFailure(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        return string.IsNullOrWhiteSpace(exception.Message)
+            ? exception.GetType().Name
+            : exception.Message;
+    }
+
+    internal static string FormatUnsupportedViewerOnlyInput(string format)
+    {
+        var koreanSubject = string.IsNullOrWhiteSpace(format) ? "이 파일은" : $"{format} 파일은";
+        var englishSubject = string.IsNullOrWhiteSpace(format) ? "This file" : $"The {format} file";
+        return ThreeDLocalization.Shared.Resolve(
+            "ThreeD.Dialog.LoadSource.UnsupportedFormat",
+            $"{koreanSubject} 3D 입력 형식으로 지원하지 않습니다. C3D, GLB, STL, LAS, LAZ 파일을 선택하세요.",
+            $"{englishSubject} is not supported as a 3D input. Choose C3D, GLB, STL, LAS, or LAZ.");
     }
 }
 

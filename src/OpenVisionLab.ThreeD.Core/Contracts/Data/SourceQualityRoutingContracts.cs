@@ -35,8 +35,10 @@ public static class SourceQualityToolGate
             "filter",
             "level-surface",
             "remove-outlier-pixels",
+            "height-threshold-background-removal",
             "roi-crop",
-            "completeness-grid"
+            "completeness-grid",
+            "connected-region-gate"
         ],
         StringComparer.OrdinalIgnoreCase);
 

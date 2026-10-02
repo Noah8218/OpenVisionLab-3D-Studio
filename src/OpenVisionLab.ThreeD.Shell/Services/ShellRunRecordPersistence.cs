@@ -1,4 +1,6 @@
 using System.IO;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
@@ -20,6 +22,7 @@ internal sealed class ShellRunRecordPersistence
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
         Converters = { new JsonStringEnumConverter() }
     };
 
@@ -112,5 +115,77 @@ internal sealed class ShellRunRecordPersistence
             runRecordPath,
             targetRoot,
             sessionLog);
+    }
+
+    public void ExportInspectionQueueCsv(
+        IReadOnlyList<InspectionQueueExportRow> rows,
+        string targetPath)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
+
+        var fullPath = Path.GetFullPath(targetPath);
+        var directory = Path.GetDirectoryName(fullPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            throw new ArgumentException("CSV export path must include a parent directory.", nameof(targetPath));
+        }
+
+        Directory.CreateDirectory(directory);
+        var stagingPath = $"{fullPath}.staging.{Guid.NewGuid():N}";
+        var lines = new List<string>
+        {
+            "Order,InputPath,Status,Message,RunId,RecordedAtUtc,RecipePath,RecipeVersion,RecipeSha256,InputSha256,InputId,RecordSaved,StepIndex,StepId,ToolId,ToolName,StepStatus,StepMessage,Metric,Value,Unit,MetricStatus,LowerLimit,UpperLimit,OutputId,OutputSha256,ElapsedMilliseconds"
+        };
+        foreach (var row in rows)
+        {
+            string[] identity = [row.Order.ToString(CultureInfo.InvariantCulture), row.SourcePath, row.Status, row.Message,
+                row.RunId, row.RecordedAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty, row.RecipePath,
+                row.RecipeVersion, row.RecipeSha256, row.SourceSha256, row.Record?.Source.EntityId ?? string.Empty, row.RecordSaved.ToString()];
+            var steps = row.Record?.Steps?.Cast<InspectionRunStepResult?>().ToArray() ?? [];
+            if (steps.Length == 0) steps = [null];
+            foreach (var step in steps)
+            {
+                var metrics = (step?.Metrics ?? row.Record?.Metrics ?? []).Cast<InspectionRunMetric?>().ToArray();
+                if (metrics.Length == 0) metrics = [null];
+                foreach (var metric in metrics)
+                {
+                    string[] tool = [step?.RecipeIndex.ToString(CultureInfo.InvariantCulture) ?? string.Empty, step?.Id ?? string.Empty,
+                        step?.ToolId ?? string.Empty, step?.ToolName ?? row.Record?.ToolName ?? string.Empty,
+                        step?.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage ? "Unjudged" : step?.Status.ToString() ?? string.Empty,
+                        step?.Message ?? string.Empty, metric?.Name ?? string.Empty];
+                    var cells = identity.Concat(tool).Select(value => CsvCell(value)).Concat(new[]
+                    {
+                        CsvCell(metric?.Value.ToString("R", CultureInfo.InvariantCulture) ?? string.Empty, protectFormula: false),
+                        CsvCell(metric?.Unit ?? string.Empty), CsvCell(metric?.Status?.ToString() ?? string.Empty),
+                        CsvCell(step?.Metrics.FirstOrDefault(value => value.Name == "LowerLimit")?.Value.ToString("R", CultureInfo.InvariantCulture) ?? string.Empty, protectFormula: false),
+                        CsvCell(step?.Metrics.FirstOrDefault(value => value.Name == "UpperLimit")?.Value.ToString("R", CultureInfo.InvariantCulture) ?? string.Empty, protectFormula: false),
+                        CsvCell(step?.OutputEntityId ?? string.Empty), CsvCell(step?.OutputContentSha256 ?? string.Empty),
+                        CsvCell(step?.ElapsedMilliseconds.ToString("R", CultureInfo.InvariantCulture) ?? string.Empty, protectFormula: false)
+                    });
+                    lines.Add(string.Join(',', cells));
+                }
+            }
+        }
+
+        try
+        {
+            File.WriteAllText(stagingPath, string.Join("\r\n", lines) + "\r\n", new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            File.Move(stagingPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(stagingPath)) File.Delete(stagingPath);
+        }
+    }
+
+    private static string CsvCell(string value, bool protectFormula = true)
+    {
+        if (protectFormula && value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
+        {
+            value = "'" + value;
+        }
+
+        return '"' + value.Replace("\"", "\"\"", StringComparison.Ordinal) + '"';
     }
 }

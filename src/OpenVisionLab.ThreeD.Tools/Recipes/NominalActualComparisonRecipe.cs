@@ -27,7 +27,7 @@ public sealed record NominalActualComparisonRecipe(
         var recipeDirectory = GetRecipeDirectory(recipePath);
         return new NominalActualComparisonRecipe(
             SupportedRecipeType,
-            "1.0",
+            input.Alignment is null ? "1.0" : "1.1",
             new NominalActualComparisonRecipeStep(
                 input.StepId,
                 NominalActualComparisonInput.Direction,
@@ -39,7 +39,8 @@ public sealed record NominalActualComparisonRecipe(
                 input.AlignmentId,
                 FullQuerySampling,
                 input.LowerTolerance,
-                input.UpperTolerance));
+                input.UpperTolerance,
+                ToRecipeAlignment(input.Alignment, recipeDirectory)));
     }
 
     public static NominalActualComparisonRecipe Load(string path)
@@ -55,7 +56,7 @@ public sealed record NominalActualComparisonRecipe(
     {
         Validate(this);
         var recipeDirectory = GetRecipeDirectory(recipePath);
-        return new NominalActualComparisonInput(
+        var input = new NominalActualComparisonInput(
             Step.Id,
             ToIdentity(Step.ActualSource, recipeDirectory),
             ToIdentity(Step.NominalSource, recipeDirectory),
@@ -64,7 +65,14 @@ public sealed record NominalActualComparisonRecipe(
             Step.FrameId,
             Step.AlignmentId,
             Step.LowerTolerance,
-            Step.UpperTolerance);
+            Step.UpperTolerance,
+            ToRuntimeAlignment(Step.Alignment, recipeDirectory));
+        if (input.Alignment is not null)
+        {
+            NominalActualComparisonExecutor.ValidateAlignment(input);
+        }
+
+        return input;
     }
 
     public void Save(string path)
@@ -114,6 +122,19 @@ public sealed record NominalActualComparisonRecipe(
         {
             throw new InvalidDataException("Nominal/actual recipe file IDs must be distinct.");
         }
+
+        if (step.Alignment is null)
+        {
+            if (!NominalActualComparisonInput.IsIdentityAlignmentId(step.AlignmentId))
+            {
+                throw new InvalidDataException(
+                    "A non-identity Nominal/Actual alignment requires exact Surface Match artifact references.");
+            }
+        }
+        else
+        {
+            ValidateAlignment(step.Alignment);
+        }
     }
 
     private static void ValidateFile(NominalActualComparisonRecipeFile? file, string role)
@@ -162,6 +183,76 @@ public sealed record NominalActualComparisonRecipe(
 
         return new NominalActualFileIdentity(file.Id, file.Name, path, file.ByteLength, file.Sha256);
     }
+
+    private static NominalActualAlignmentReference? ToRecipeAlignment(
+        NominalActualAlignmentReference? alignment,
+        string recipeDirectory) =>
+        alignment is null
+            ? null
+            : new NominalActualAlignmentReference(
+                ToRecipeArtifact(alignment.Model, recipeDirectory),
+                ToRecipeArtifact(alignment.Scene, recipeDirectory),
+                ToRecipeArtifact(alignment.Execution, recipeDirectory),
+                ToRecipeArtifact(alignment.Assessment, recipeDirectory));
+
+    private static NominalActualAlignmentReference? ToRuntimeAlignment(
+        NominalActualAlignmentReference? alignment,
+        string recipeDirectory) =>
+        alignment is null
+            ? null
+            : new NominalActualAlignmentReference(
+                ToRuntimeArtifact(alignment.Model, recipeDirectory),
+                ToRuntimeArtifact(alignment.Scene, recipeDirectory),
+                ToRuntimeArtifact(alignment.Execution, recipeDirectory),
+                ToRuntimeArtifact(alignment.Assessment, recipeDirectory));
+
+    private static NominalActualArtifactReference ToRecipeArtifact(
+        NominalActualArtifactReference reference,
+        string recipeDirectory) =>
+        reference with
+        {
+            Path = Path.GetRelativePath(recipeDirectory, Path.GetFullPath(reference.Path)).Replace('\\', '/')
+        };
+
+    private static NominalActualArtifactReference ToRuntimeArtifact(
+        NominalActualArtifactReference reference,
+        string recipeDirectory) =>
+        reference with
+        {
+            Path = Path.IsPathRooted(reference.Path)
+                ? Path.GetFullPath(reference.Path)
+                : Path.GetFullPath(Path.Combine(recipeDirectory, reference.Path))
+        };
+
+    private static void ValidateAlignment(NominalActualAlignmentReference alignment)
+    {
+        ValidateArtifact(alignment.Model, "model");
+        ValidateArtifact(alignment.Scene, "scene");
+        ValidateArtifact(alignment.Execution, "execution");
+        ValidateArtifact(alignment.Assessment, "assessment");
+        if (new[]
+            {
+                Path.GetFullPath(alignment.Model.Path),
+                Path.GetFullPath(alignment.Scene.Path),
+                Path.GetFullPath(alignment.Execution.Path),
+                Path.GetFullPath(alignment.Assessment.Path)
+            }.Distinct(StringComparer.OrdinalIgnoreCase).Count() != 4)
+        {
+            throw new InvalidDataException("Nominal/actual alignment artifact paths must be distinct.");
+        }
+    }
+
+    private static void ValidateArtifact(NominalActualArtifactReference? reference, string role)
+    {
+        if (reference is null
+            || string.IsNullOrWhiteSpace(reference.Path)
+            || reference.ContentSha256?.Length != 64
+            || reference.ContentSha256.Any(character => !Uri.IsHexDigit(character)))
+        {
+            throw new InvalidDataException(
+                $"Nominal/actual alignment {role} requires a path and SHA-256 content identity.");
+        }
+    }
 }
 
 public sealed record NominalActualComparisonRecipeStep(
@@ -175,7 +266,8 @@ public sealed record NominalActualComparisonRecipeStep(
     string AlignmentId,
     string EvaluationSampling,
     double LowerTolerance,
-    double UpperTolerance);
+    double UpperTolerance,
+    NominalActualAlignmentReference? Alignment = null);
 
 public sealed record NominalActualComparisonRecipeFile(
     string Id,

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
@@ -15,7 +16,13 @@ public static class ToolRecipeDocumentStore
         WriteIndented = true
     };
 
-    public static void Save(string path, ToolRecipeDocument document)
+    public static void Save(string path, ToolRecipeDocument document) => SaveCore(path, document, overwrite: true);
+
+    public static void Save(string path, ToolRecipeDocument document, out string sha256) => sha256 = SaveCore(path, document, overwrite: true);
+
+    public static void SaveNew(string path, ToolRecipeDocument document) => SaveCore(path, document, overwrite: false);
+
+    private static string SaveCore(string path, ToolRecipeDocument document, bool overwrite)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var validation = ToolRecipeValidator.ValidateForStorage(document);
@@ -44,7 +51,8 @@ public static class ToolRecipeDocumentStore
                 stream.Flush(flushToDisk: true);
             }
 
-            File.Move(temporaryPath, fullPath, overwrite: true);
+            File.Move(temporaryPath, fullPath, overwrite);
+            return Convert.ToHexString(SHA256.HashData(bytes));
         }
         finally
         {
@@ -55,7 +63,9 @@ public static class ToolRecipeDocumentStore
         }
     }
 
-    public static ToolRecipeDocument Load(string path)
+    public static ToolRecipeDocument Load(string path) => Load(path, out _);
+
+    public static ToolRecipeDocument Load(string path, out string sha256)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var fullPath = Path.GetFullPath(path);
@@ -68,6 +78,8 @@ public static class ToolRecipeDocumentStore
             throw new InvalidDataException(string.Join(Environment.NewLine, validation.Errors));
         }
 
+        stream.Position = 0;
+        sha256 = Convert.ToHexString(SHA256.HashData(stream));
         return document;
     }
 

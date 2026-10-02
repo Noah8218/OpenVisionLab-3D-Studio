@@ -304,7 +304,7 @@ internal static class ToolArtifactNavigatorVerification
             var declaredSelectedOutput = workbench.SelectedToolWorkspace.Outputs.Single();
             Check(
                 "Selected Tool exposes declared output state and disabled inline actions without execution",
-                declaredSelectedOutput.State == "Declared"
+                declaredSelectedOutput.State == workbench.Localization.FlowPortDeclared
                 && declaredSelectedOutput.Value == "\u2014"
                 && !declaredSelectedOutput.CanShowInViewer
                 && !declaredSelectedOutput.CanPinToCompare
@@ -314,7 +314,7 @@ internal static class ToolArtifactNavigatorVerification
                 && !workbench.CompareWorkspaceOutputCommand.CanExecute(declaredSelectedOutput)
                 && !workbench.HasCurrentFilterPreview
                 && !workbench.HasCurrentEdgePreview,
-                $"state={declaredSelectedOutput.State};availability={declaredSelectedOutput.Availability}");
+                $"state={declaredSelectedOutput.State};expected={workbench.Localization.FlowPortDeclared};availability={declaredSelectedOutput.Availability}");
             var filterPreviewed = workbench.PreviewSelectedFilterAsync().GetAwaiter().GetResult();
             var filterArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.filtered.01");
             string FilterExecutionState() =>
@@ -368,21 +368,29 @@ internal static class ToolArtifactNavigatorVerification
                 $"slotA={workbench.CompareSlotAArtifactId};slotB={workbench.CompareSlotBArtifactId}");
 
             var comparePaneRequests = 0;
+            var compareViewerRequests = 0;
             workbench.OutputComparePaneRequested += (_, _) => comparePaneRequests++;
+            workbench.OutputCompareViewerRequested += (_, _) => compareViewerRequests++;
             workbench.CompareSlotCArtifactId = source.EntityId;
+            var viewerMainPinBeforeCompare = workbench.ViewerWorkspace.MainContentId;
+            var viewerAuxiliaryPinBeforeCompare = workbench.ViewerWorkspace.AuxiliaryContentId;
             selectedFilterOutput = workbench.SelectedToolWorkspace.Outputs.Single();
             workbench.CompareWorkspaceOutputCommand.Execute(selectedFilterOutput);
             filterArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.filtered.01");
             Check("Filter Preview remains current after Selected Tool compare", workbench.HasCurrentFilterPreview, FilterExecutionState());
             Check(
                 "Selected Tool Compare normalizes a preparation source/output comparison without execution",
-                comparePaneRequests == 1
+                comparePaneRequests == 0
+                && compareViewerRequests == 1
                 && string.Equals(workbench.CompareSlotAArtifactId, source.EntityId, StringComparison.Ordinal)
                 && string.Equals(workbench.CompareSlotBArtifactId, filterArtifact.Id, StringComparison.Ordinal)
                 && workbench.CompareSlotCArtifactId.Length == 0
                 && workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitVertical
-                && string.Equals(workbench.MainViewerContentId, source.EntityId, StringComparison.Ordinal)
-                && string.Equals(workbench.AuxiliaryViewerContentId, filterArtifact.Id, StringComparison.Ordinal)
+                && workbench.IsOutputCompareViewerActive
+                && string.Equals(workbench.EffectiveMainViewerContentId, source.EntityId, StringComparison.Ordinal)
+                && string.Equals(workbench.EffectiveAuxiliaryViewerContentId, filterArtifact.Id, StringComparison.Ordinal)
+                && workbench.ViewerWorkspace.MainContentId == viewerMainPinBeforeCompare
+                && workbench.ViewerWorkspace.AuxiliaryContentId == viewerAuxiliaryPinBeforeCompare
                 && workbench.HasPreparationQualityComparisonSummary
                 && workbench.PreparationQualityComparisonSummary.Contains(
                     filterArtifact.DisplayName,
@@ -392,7 +400,7 @@ internal static class ToolArtifactNavigatorVerification
                     StringComparison.Ordinal)
                 && workbench.PipelineSteps.Select(step => step.Id).SequenceEqual(initialStepIds)
                 && !workbench.HasCurrentEdgePreview,
-                $"requests={comparePaneRequests};slotA={workbench.CompareSlotAArtifactId};slotB={workbench.CompareSlotBArtifactId};slotC={workbench.CompareSlotCArtifactId};layout={workbench.ViewerWorkspace.Layout};main={workbench.MainViewerContentId};aux={workbench.AuxiliaryViewerContentId};quality={workbench.PreparationQualityComparisonSummary}");
+                $"paneRequests={comparePaneRequests};viewerRequests={compareViewerRequests};slotA={workbench.CompareSlotAArtifactId};slotB={workbench.CompareSlotBArtifactId};slotC={workbench.CompareSlotCArtifactId};layout={workbench.ViewerWorkspace.Layout};main={workbench.EffectiveMainViewerContentId};aux={workbench.EffectiveAuxiliaryViewerContentId};pins={workbench.ViewerWorkspace.MainContentId}/{workbench.ViewerWorkspace.AuxiliaryContentId};quality={workbench.PreparationQualityComparisonSummary}");
 
             workbench.CompareSlotBArtifactId = filterArtifact.Id;
             filterArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.filtered.01");

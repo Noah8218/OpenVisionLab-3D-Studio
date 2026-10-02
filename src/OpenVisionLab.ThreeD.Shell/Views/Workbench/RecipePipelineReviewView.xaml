@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              AutomationProperties.AutomationId="RecipePipelineReview">
     <UserControl.Resources>
@@ -20,6 +21,14 @@
             </Border>
         </ControlTemplate>
     </UserControl.Resources>
+    <UserControl.InputBindings>
+        <KeyBinding Key="F5"
+                    Modifiers="Control"
+                    Command="{Binding RunTeachingRecipeCommand}" />
+        <KeyBinding Key="F5"
+                    Modifiers="Control+Shift"
+                    Command="{Binding RunValidationSetCommand}" />
+    </UserControl.InputBindings>
     <Border Background="{DynamicResource ThreeD.PanelBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="0,1,0,0"
@@ -110,7 +119,7 @@
                                Margin="0,7,12,0"
                                VerticalAlignment="Center"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               FontSize="9.5"
+                               FontSize="12"
                                Text="{Binding Localization.ValidationWorkspaceNavigationHint}"
                                TextWrapping="Wrap" />
                     <StackPanel Grid.Row="1"
@@ -171,18 +180,18 @@
                                     Padding="7,3"
                                     VerticalAlignment="Top"
                                     Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding OrderedRunStatus}" />
                             </Border>
                             <StackPanel Grid.Column="1">
                                 <TextBlock Foreground="{DynamicResource ThreeD.TextBrush}"
-                                           FontSize="10"
+                                           FontSize="12"
                                            Text="{Binding OrderedRunCapabilitySummary}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,2,0,0"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="9.5"
+                                           FontSize="12"
                                            Text="{Binding OrderedRunEvidenceSummary}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding CurrentOrderedRunRecordPath}" />
@@ -216,7 +225,7 @@
                                            Text="{Binding Localization.RecipePipelineTeachReview}" />
                                 <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="10"
+                                           FontSize="12"
                                            TextTrimming="CharacterEllipsis"
                                            Text="{Binding ValidationSummary}" />
                             </StackPanel>
@@ -237,11 +246,11 @@
                                 <ColumnDefinition Width="190" />
                                 <ColumnDefinition Width="160" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnNumber}" />
-                            <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTool}" />
-                            <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnInputs}" />
-                            <TextBlock Grid.Column="3" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTypedOutput}" />
-                            <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnState}" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnNumber}" />
+                            <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTool}" />
+                            <TextBlock Grid.Column="2" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnInputs}" />
+                            <TextBlock Grid.Column="3" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTypedOutput}" />
+                            <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnState}" />
                         </Grid>
                         <ListBox Grid.Row="2"
                                  Background="Transparent"
@@ -278,16 +287,16 @@
                                                 <ColumnDefinition Width="190" />
                                                 <ColumnDefinition Width="160" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding Order}" />
-                                            <TextBlock Grid.Column="1" FontSize="10.5" FontWeight="SemiBold" Text="{Binding ToolName}" />
-                                            <TextBlock Grid.Column="2" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontSize="10.5" Text="{Binding InputSummary}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Grid.Column="3" Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="10.5" Text="{Binding OutputEntityId}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Order}" />
+                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding ToolName}" />
+                                            <TextBlock Grid.Column="2" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontSize="12" Text="{Binding InputSummary}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="3" Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="12" Text="{Binding OutputEntityId}" TextTrimming="CharacterEllipsis" />
                                             <Border Grid.Column="4"
                                                     HorizontalAlignment="Right"
                                                     Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
-                                                    <TextBlock MaxWidth="122" FontSize="9.5" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock MaxWidth="122" FontSize="12" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
@@ -308,7 +317,7 @@
                                 <DataTemplate>
                                     <TextBlock Margin="0,1,0,0"
                                                Foreground="{DynamicResource ThreeD.WarningBrush}"
-                                               FontSize="10.5"
+                                               FontSize="12"
                                                Text="{Binding Message, StringFormat=??{0}}"
                                                TextWrapping="Wrap" />
                                 </DataTemplate>
@@ -329,10 +338,10 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding Localization.FlowMapTitle}" />
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.FlowMapTitle}" />
                                 <TextBlock Margin="0,2,0,0"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="10"
+                                           FontSize="12"
                                            Text="{Binding Localization.FlowMapDetail}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
@@ -344,7 +353,7 @@
                                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                     BorderThickness="1"
                                     CornerRadius="3">
-                                <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Localization.FlowMapReadOnly}" />
+                                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Localization.FlowMapReadOnly}" />
                             </Border>
                         </Grid>
                         <ListBox Grid.Row="1"
@@ -388,9 +397,9 @@
                                                     BorderThickness="1"
                                                     CornerRadius="2">
                                                 <StackPanel>
-                                                    <TextBlock FontSize="9" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding DataContext.Localization.FlowMapInput, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                                    <TextBlock Margin="0,2,0,0" FontSize="10" FontWeight="SemiBold" Text="{Binding InputContract}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontSize="9.5" Text="{Binding InputSummary}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding DataContext.Localization.FlowMapInput, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="SemiBold" Text="{Binding InputContractDisplay}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontSize="12" Text="{Binding InputSummary}" TextTrimming="CharacterEllipsis" />
                                                     <StackPanel Margin="0,3,0,0"
                                                                 Orientation="Horizontal"
                                                                 ToolTip="{Binding InputPortDetail}">
@@ -428,10 +437,10 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="10" FontWeight="Bold" Text="{Binding Order}" />
+                                                    <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="12" FontWeight="Bold" Text="{Binding Order}" />
                                                     <StackPanel Grid.Column="1">
-                                                        <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="9" Text="{Binding Id}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="12" Text="{Binding Id}" TextTrimming="CharacterEllipsis" />
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>
@@ -443,9 +452,9 @@
                                                     BorderThickness="1"
                                                     CornerRadius="2">
                                                 <StackPanel>
-                                                    <TextBlock FontSize="9" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding DataContext.Localization.FlowMapOutput, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                                    <TextBlock Margin="0,2,0,0" FontSize="10" FontWeight="SemiBold" Text="{Binding OutputContract}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="9.5" Text="{Binding OutputEntityId}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding DataContext.Localization.FlowMapOutput, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="SemiBold" Text="{Binding OutputContractDisplay}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="12" Text="{Binding OutputEntityId}" TextTrimming="CharacterEllipsis" />
                                                     <StackPanel Margin="0,3,0,0"
                                                                 Orientation="Horizontal"
                                                                 ToolTip="{Binding OutputPortDetail}">
@@ -480,7 +489,7 @@
                                                     AutomationProperties.HelpText="{Binding State}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
-                                                    <TextBlock MaxWidth="108" FontSize="9.5" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock MaxWidth="108" FontSize="12" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
@@ -511,10 +520,10 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding Localization.ProblemsTitle}" />
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.ProblemsTitle}" />
                                 <TextBlock Margin="0,2,0,0"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="10"
+                                           FontSize="12"
                                            Text="{Binding Localization.ProblemsDetail}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
@@ -526,7 +535,7 @@
                                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                     BorderThickness="1"
                                     CornerRadius="3">
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding FlowProblemsSummary}" />
                             </Border>
@@ -559,21 +568,21 @@
                                                                        Symbol="Warning24" />
                                                         <StackPanel Grid.Column="1">
                                                             <StackPanel Orientation="Horizontal">
-                                                                <TextBlock FontSize="10"
+                                                                <TextBlock FontSize="12"
                                                                            FontWeight="SemiBold"
                                                                            Text="{Binding StepTitle}" />
                                                                 <TextBlock Margin="6,0,0,0"
-                                                                           FontSize="9.5"
+                                                                           FontSize="12"
                                                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                                                            Text="{Binding Status}" />
                                                             </StackPanel>
                                                             <TextBlock Margin="0,1,0,0"
-                                                                       FontSize="9.5"
+                                                                       FontSize="12"
                                                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                                        Text="{Binding EntityId}"
                                                                        TextTrimming="CharacterEllipsis" />
                                                             <TextBlock Margin="0,1,0,0"
-                                                                       FontSize="9"
+                                                                       FontSize="12"
                                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                                        Text="{Binding Detail}"
                                                                        TextTrimming="CharacterEllipsis" />
@@ -594,7 +603,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                     <TextBlock Margin="4,6,4,4"
-                                               FontSize="9.5"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                Text="{Binding Localization.ProblemsValidationMessages}" />
@@ -613,7 +622,7 @@
                                                                        Margin="0,0,5,0"
                                                                        Foreground="{DynamicResource ThreeD.WarningBrush}"
                                                                        Symbol="Warning24" />
-                                                        <TextBlock FontSize="9.5"
+                                                        <TextBlock FontSize="12"
                                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                                    Text="{Binding Message}"
                                                                    TextTrimming="CharacterEllipsis" />
@@ -645,8 +654,12 @@
                 </TabItem>
 
                 <TabItem Header="{Binding Localization.RunRecord}">
-                    <Grid Margin="0,8,0,0">
+                    <ScrollViewer x:Name="RunRecordScrollViewer"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="0,8,0,0">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -655,21 +668,23 @@
                         </Grid.RowDefinitions>
                         <StackPanel x:Name="RunRecordHeader"
                                     Margin="4,0,4,6">
-                            <TextBlock FontSize="11"
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding Localization.RunRecordTitle}" />
                             <TextBlock x:Name="RunRecordDetailText"
                                        Margin="0,2,0,0"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       FontSize="10"
+                                       FontSize="12"
                                        Text="{Binding Localization.RunRecordDetail}" />
                             <TextBlock Margin="0,3,0,0"
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                       FontSize="10"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding RunRecordSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </StackPanel>
-                        <StackPanel Grid.Row="2" Margin="4,1,4,7">
+                        <StackPanel x:Name="RunRecordActionPanel"
+                                    Grid.Row="2"
+                                    Margin="4,1,4,7">
                             <WrapPanel x:Name="RunRecordActions"
                                        VerticalAlignment="Center">
                                 <ui:Button x:Name="RunRecordOpenButton"
@@ -704,7 +719,7 @@
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpenCsv}" />
                                 <ui:Button x:Name="SupportBundleButton"
                                            Margin="0,0,3,4"
-                                           Appearance="Primary"
+                                           Appearance="Secondary"
                                            Icon="{ui:SymbolIcon DocumentLock24}"
                                            Content="{Binding Localization.SupportBundleExport}"
                                            Command="{Binding RunRecordContext.ExportPrivacySafeSupportBundleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -714,7 +729,7 @@
                                            AutomationProperties.HelpText="{Binding Localization.SupportBundleToolTip}" />
                                 <ui:Button x:Name="RunRecordExportButton"
                                            Margin="0,0,3,4"
-                                           Appearance="Secondary"
+                                           Appearance="Primary"
                                            Icon="{ui:SymbolIcon SaveCopy24}"
                                            Content="{Binding Localization.RunRecordExport}"
                                            Command="{Binding RunRecordContext.ExportRunRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -753,8 +768,8 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                             <ui:Button x:Name="RunRecordOpenRecentButton"
-                                       Margin="0,0,0,4"
-                                       Appearance="Primary"
+                                       Margin="0,0,3,4"
+                                       Appearance="Secondary"
                                        Icon="{ui:SymbolIcon ArrowRight24}"
                                        Content="{Binding Localization.RunRecordOpenRecent}"
                                        Command="{Binding RunRecordContext.OpenRecentRunRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -762,11 +777,22 @@
                                        Visibility="{Binding HasItems, ElementName=RecentRunRecordCombo, Converter={StaticResource BooleanToVisibilityConverter}}"
                                        AutomationProperties.AutomationId="RunRecordOpenRecentButton"
                                        AutomationProperties.Name="{Binding Localization.RunRecordOpenRecent}" />
+                            <ui:Button x:Name="RunRecordCompareRecentButton"
+                                       Margin="0,0,0,4"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon ArrowSwap24}"
+                                       Content="{Binding Localization.RunRecordCompareRecent}"
+                                       Command="{Binding RunRecordContext.CompareRecentRunRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                       Visibility="{Binding HasItems, ElementName=RecentRunRecordCombo, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                       ToolTip="{Binding Localization.RunRecordComparisonDetail}"
+                                       AutomationProperties.AutomationId="RunRecordCompareRecentButton"
+                                       AutomationProperties.Name="{Binding Localization.RunRecordCompareRecent}"
+                                       AutomationProperties.HelpText="{Binding Localization.RunRecordComparisonDetail}" />
                             </WrapPanel>
                             <TextBlock x:Name="SupportBundlePrivacyNotice"
                                        Margin="1,0,1,0"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                       FontSize="9.5"
+                                       FontSize="12"
                                        Text="{Binding Localization.SupportBundlePrivacyNotice}"
                                        TextWrapping="Wrap"
                                        AutomationProperties.AutomationId="SupportBundlePrivacyNotice"
@@ -793,7 +819,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock VerticalAlignment="Center"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.RunRecordSourceQuality}"
                                            ToolTip="{Binding Localization.RunRecordSourceQualityDetail}" />
@@ -827,15 +853,15 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock FontSize="9.5"
+                                    <TextBlock FontSize="12"
                                                FontWeight="SemiBold"
-                                               Text="{Binding RunRecordContext.SourceQualityState, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                               Text="{Binding RunRecordContext.SourceQualityStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 </Border>
                                 <TextBlock Grid.Column="2"
                                            Margin="6,0,0,0"
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           FontSize="10"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding RunRecordContext.SourceQualitySummary, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            TextTrimming="CharacterEllipsis"
@@ -844,7 +870,7 @@
                                            AutomationProperties.HelpText="{Binding RunRecordContext.SourceQualityDetail, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 <TextBlock Grid.Row="1"
                                            VerticalAlignment="Center"
-                                           FontSize="10.5"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.RunRecordThresholdCorrection}"
                                            ToolTip="{Binding Localization.RunRecordThresholdCorrectionDetail}" />
@@ -858,16 +884,16 @@
                                             BorderThickness="1"
                                             CornerRadius="8">
                                     <TextBlock Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                               FontSize="9.5"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
-                                               Text="{Binding RunRecordContext.ThresholdCorrectionState, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                               Text="{Binding RunRecordContext.ThresholdCorrectionStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 </Border>
                                 <TextBlock Grid.Row="1"
                                                Grid.Column="2"
                                                Margin="6,0,0,0"
                                                VerticalAlignment="Center"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               FontSize="10"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding RunRecordContext.ThresholdCorrectionSummary, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                TextTrimming="CharacterEllipsis" />
@@ -886,12 +912,12 @@
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                               FontSize="9.5"
+                                                               FontSize="12"
                                                                FontWeight="SemiBold"
                                                                Text="{Binding Label}" />
                                                     <TextBlock Grid.Column="1"
                                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                                               FontSize="9.5"
+                                                               FontSize="12"
                                                                Text="{Binding Evidence}"
                                                                TextTrimming="CharacterEllipsis"
                                                                ToolTip="{Binding Evidence}" />
@@ -902,7 +928,101 @@
                                 </ScrollViewer>
                             </Grid>
                         </Border>
-                        <Grid Grid.Row="3" Margin="8,2,8,4">
+                        <Border x:Name="RunRecordComparisonPanel"
+                                Grid.Row="3"
+                                Margin="4,0,4,7"
+                                Padding="8,7"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Visibility="{Binding RunRecordContext.HasRunRecordComparison, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                IsVisibleChanged="RunRecordComparisonPanel_IsVisibleChanged"
+                                AutomationProperties.AutomationId="RunRecordComparisonPanel"
+                                AutomationProperties.Name="{Binding Localization.RunRecordComparisonTitle}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding Localization.RunRecordComparisonTitle}" />
+                                    <Border Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Padding="6,2"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RunRecordContext.RunRecordComparisonStatus, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="DirectlyComparable">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding RunRecordContext.RunRecordComparisonStatus, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="ConditionsChanged">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding RunRecordContext.RunRecordComparisonStatus, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="NotDirectlyComparable">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding RunRecordContext.RunRecordComparisonStatus, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="Error">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding RunRecordContext.RunRecordComparisonStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Grid.Row="1"
+                                           Margin="0,4,0,0"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           FontSize="12"
+                                           Text="{Binding Localization.RunRecordComparisonDetail}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="2"
+                                           Margin="0,5,0,0"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding RunRecordContext.RunRecordComparisonSummary, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.AutomationId="RunRecordComparisonSummary" />
+                                <ScrollViewer x:Name="RunRecordComparisonDetailsViewer"
+                                              Grid.Row="3"
+                                              MaxHeight="92"
+                                              Margin="0,5,0,0"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               FontFamily="Consolas"
+                                               FontSize="12"
+                                               Text="{Binding RunRecordContext.RunRecordComparisonDetails, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               TextWrapping="Wrap"
+                                               AutomationProperties.AutomationId="RunRecordComparisonDetails" />
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                        <Grid x:Name="RunRecordColumns"
+                              Grid.Row="4"
+                              Margin="8,2,8,4"
+                              Visibility="{Binding HasItems, ElementName=RunRecordStepsList, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="34" />
                                 <ColumnDefinition Width="1.25*" />
@@ -910,16 +1030,37 @@
                                 <ColumnDefinition Width="1.15*" />
                                 <ColumnDefinition Width="1.25*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnNumber}" />
-                            <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTool}" />
-                            <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnState}" />
-                            <TextBlock Grid.Column="3" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ValidationSetDuration}" />
-                            <TextBlock Grid.Column="4" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnEvidence}" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnNumber}" />
+                            <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTool}" />
+                            <TextBlock Grid.Column="2" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnState}" />
+                            <TextBlock Grid.Column="3" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ValidationSetDuration}" />
+                            <TextBlock Grid.Column="4" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnEvidence}" />
                         </Grid>
-                        <ListBox Grid.Row="4"
+                        <TextBlock x:Name="RunRecordEmptyHint"
+                                   Grid.Row="5"
+                                   Margin="8,12,8,0"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding Localization.ResultsWorkspaceNoRun}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="RunRecordEmptyHint"
+                                   AutomationProperties.Name="{Binding Localization.ResultsWorkspaceNoRun}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasItems, ElementName=RunRecordStepsList}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ListBox x:Name="RunRecordStepsList"
+                                 Grid.Row="5"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  ItemsSource="{Binding RunRecordSteps, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                 Visibility="{Binding HasItems, RelativeSource={RelativeSource Self}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  AutomationProperties.Name="{Binding Localization.RunRecordTitle}">
@@ -939,8 +1080,8 @@
                                                 <ColumnDefinition Width="1.15*" />
                                                 <ColumnDefinition Width="1.25*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding Order}" />
-                                            <TextBlock Grid.Column="1" FontSize="10.5" FontWeight="SemiBold" Text="{Binding Stage}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Order}" />
+                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Stage}" TextTrimming="CharacterEllipsis" />
                                             <Border Grid.Column="2"
                                                     Margin="0,0,8,0"
                                                     Padding="6,2"
@@ -967,17 +1108,17 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <TextBlock FontSize="9.5" FontWeight="SemiBold" Text="{Binding Status}" />
+                                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Status}" />
                                             </Border>
                                             <TextBlock Grid.Column="3"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                                       FontSize="10"
+                                                       FontSize="12"
                                                        Text="{Binding Timing}"
                                                        TextTrimming="CharacterEllipsis"
                                                        ToolTip="{Binding Timing}" />
                                             <TextBlock Grid.Column="4"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                                       FontSize="10"
+                                                       FontSize="12"
                                                        Text="{Binding Evidence}"
                                                        TextTrimming="CharacterEllipsis"
                                                        ToolTip="{Binding Evidence}" />
@@ -986,7 +1127,8 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </Grid>
+                        </Grid>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem x:Name="ValidationTabItem"
@@ -1008,18 +1150,18 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel x:Name="ValidationSetTitleSummary">
-                                <TextBlock FontSize="11"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.ValidationSetTitle}" />
                                 <TextBlock Margin="0,2,0,0"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="10"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding ValidationSetSummary}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding ValidationSetCapability}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="9"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding ValidationSetProgressText}"
                                            Visibility="{Binding IsValidationSetRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -1122,7 +1264,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock FontSize="11"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding Localization.ValidationFailureSummaryTitle}" />
@@ -1130,12 +1272,12 @@
                                            Margin="0,6,0,0">
                                     <StackPanel Width="210"
                                                 Margin="0,0,14,5">
-                                        <TextBlock FontSize="9"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Localization.ValidationFailureSample}" />
                                         <TextBlock x:Name="ValidationFailureSampleValue"
                                                    Margin="0,2,0,0"
-                                                   FontSize="10.5"
+                                                   FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding SelectedValidationSetSample.FileName}"
                                                    TextTrimming="CharacterEllipsis"
@@ -1143,12 +1285,12 @@
                                     </StackPanel>
                                     <StackPanel Width="180"
                                                 Margin="0,0,14,5">
-                                        <TextBlock FontSize="9"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Localization.ValidationFailureRule}" />
                                         <TextBlock x:Name="ValidationFailureRuleValue"
                                                    Margin="0,2,0,0"
-                                                   FontSize="10.5"
+                                                   FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding SelectedValidationSetStep.ToolName}"
                                                    TextTrimming="CharacterEllipsis"
@@ -1156,23 +1298,23 @@
                                     </StackPanel>
                                     <StackPanel Width="360"
                                                 Margin="0,0,14,5">
-                                        <TextBlock FontSize="9"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Localization.ValidationFailureReason}" />
                                         <TextBlock x:Name="ValidationFailureReasonValue"
                                                    Margin="0,2,0,0"
-                                                   FontSize="10"
+                                                   FontSize="12"
                                                    Text="{Binding SelectedValidationSetStep.Evidence}"
                                                    TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding SelectedValidationSetStep.Evidence}" />
                                     </StackPanel>
                                     <StackPanel Width="360"
                                                 Margin="0,0,0,5">
-                                        <TextBlock FontSize="9"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Localization.ValidationFailureNextAction}" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="10"
+                                                   FontSize="12"
                                                    Text="{Binding Localization.ValidationFailureNextActionDetail}"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
@@ -1192,13 +1334,13 @@
                                     CornerRadius="3"
                                     AutomationProperties.AutomationId="ValidationSamplesMeaningGuide">
                                 <StackPanel>
-                                    <TextBlock FontSize="10"
+                                    <TextBlock FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding Localization.ValidationSetWorkflowGuide}"
                                                TextWrapping="Wrap" />
                                     <TextBlock Margin="0,2,0,0"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               FontSize="9"
+                                               FontSize="12"
                                                Text="{Binding Localization.ValidationSetMeaningGuide}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
@@ -1210,7 +1352,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.ValidationSetSelectedExpectedRole}" />
                                 <WrapPanel Grid.Row="1"
@@ -1368,7 +1510,7 @@
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
                                     <TextBlock Margin="2,0,2,5"
-                                               FontSize="10"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding Localization.ValidationSetSamples}" />
                                     <DataGrid Grid.Row="1"
@@ -1465,7 +1607,7 @@
                                         <ColumnDefinition Width="1*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Margin="2,0,2,5"
-                                               FontSize="10"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding Localization.ValidationSetSelectedRecord}" />
         <ListBox x:Name="ValidationSetStepsList"
@@ -1492,11 +1634,11 @@
                                                             <ColumnDefinition Width="64" />
                                                             <ColumnDefinition Width="*" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding Order}" />
-                                                        <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolName}" />
-                                                        <TextBlock Grid.Column="2" FontSize="9.5" FontWeight="SemiBold" Text="{Binding StatusText}" />
+                                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Order}" />
+                                                        <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolName}" />
+                                                        <TextBlock Grid.Column="2" FontSize="12" FontWeight="SemiBold" Text="{Binding StatusText}" />
                                                         <TextBlock Grid.Column="3"
-                                                                   FontSize="9.5"
+                                                                   FontSize="12"
                                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                                    Text="{Binding Evidence}"
                                                                    TextTrimming="CharacterEllipsis"
@@ -1525,7 +1667,7 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
-                                                <TextBlock FontSize="9.5"
+                                                <TextBlock FontSize="12"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Text="{Binding Localization.ValidationSetMetrics}" />
@@ -1542,8 +1684,8 @@
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock FontSize="9" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
-                                                                <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="9" FontWeight="SemiBold">
+                                                                <TextBlock FontSize="12" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                                                <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="12" FontWeight="SemiBold">
                                                                     <Run Text="{Binding Value}" />
                                                                     <Run Text="{Binding Unit}" />
                                                                     <Run Text="{Binding StatusText}" />
@@ -1558,7 +1700,7 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
-                                                <TextBlock FontSize="9.5"
+                                                <TextBlock FontSize="12"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Text="{Binding Localization.ValidationSetOverlays}" />
@@ -1576,9 +1718,9 @@
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock FontSize="9" FontWeight="SemiBold" Text="{Binding Kind}" />
-                                                                <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="9" Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}" />
-                                                                <TextBlock Grid.Column="2" Margin="6,0,0,0" FontSize="9" Text="{Binding StatusText}" />
+                                                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Kind}" />
+                                                                <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="12" Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}" />
+                                                                <TextBlock Grid.Column="2" Margin="6,0,0,0" FontSize="12" Text="{Binding StatusText}" />
                                                             </Grid>
                                                         </DataTemplate>
                                                     </ListBox.ItemTemplate>
@@ -1614,12 +1756,12 @@
                                   MaxHeight="190"
                                   Header="{Binding Localization.ValidationSetLabeledEvidence}">
                             <StackPanel Margin="0,5,0,0">
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding ValidationEvidenceSummary}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,2,0,4"
-                                           FontSize="9"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding ValidationEvidenceWarning}"
                                            TextWrapping="Wrap" />
@@ -1684,13 +1826,13 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock FontSize="9.5"
+                                                <TextBlock FontSize="12"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                            Text="{Binding Localization.ValidationSetThresholdAssistant}" />
                                                 <TextBlock Grid.Column="1"
                                                            Margin="8,0,0,0"
-                                                           FontSize="9.5"
+                                                           FontSize="12"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Text="{Binding ValidationThresholdAssistantStageText}" />
@@ -1703,7 +1845,7 @@
                                                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                         BorderThickness="1"
                                                         CornerRadius="2">
-                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdAnalyze}" />
+                                                    <TextBlock FontSize="12" Text="{Binding Localization.ValidationSetThresholdAnalyze}" />
                                                 </Border>
                                                 <TextBlock Margin="0,2,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="→" />
                                                 <Border Margin="0,0,4,0"
@@ -1712,7 +1854,7 @@
                                                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                         BorderThickness="1"
                                                         CornerRadius="2">
-                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdPropose}" />
+                                                    <TextBlock FontSize="12" Text="{Binding Localization.ValidationSetThresholdPropose}" />
                                                 </Border>
                                                 <TextBlock Margin="0,2,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="→" />
                                                 <Border Margin="0,0,4,0"
@@ -1721,7 +1863,7 @@
                                                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                         BorderThickness="1"
                                                         CornerRadius="2">
-                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdReviewStage}" />
+                                                    <TextBlock FontSize="12" Text="{Binding Localization.ValidationSetThresholdReviewStage}" />
                                                 </Border>
                                                 <TextBlock Margin="0,2,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="→" />
                                                 <Border Padding="5,2"
@@ -1729,11 +1871,11 @@
                                                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                         BorderThickness="1"
                                                         CornerRadius="2">
-                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdApplyStage}" />
+                                                    <TextBlock FontSize="12" Text="{Binding Localization.ValidationSetThresholdApplyStage}" />
                                                 </Border>
                                             </WrapPanel>
                                             <TextBlock Grid.Row="2"
-                                                       FontSize="9"
+                                                       FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                        Text="{Binding ValidationThresholdAssistantSummary}"
                                                        TextWrapping="Wrap" />
@@ -1741,16 +1883,16 @@
                                 </Border>
                                 <StackPanel Grid.Row="2"
                                             Grid.ColumnSpan="3">
-                                    <TextBlock FontSize="9.5"
+                                    <TextBlock FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding ValidationThresholdSummary}"
                                                TextWrapping="Wrap" />
                                     <TextBlock Margin="0,2,0,3"
-                                               FontSize="9"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                Text="{Binding Localization.ValidationSetThresholdReadOnly}" />
                                     <TextBlock Margin="0,0,0,4"
-                                               FontSize="9"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.WarningBrush}"
                                                Text="{Binding ValidationThresholdWarning}"
                                                TextWrapping="Wrap" />
@@ -1835,7 +1977,7 @@
                                     </WrapPanel>
                                     <TextBlock Grid.Row="1"
                                                Margin="0,4,0,0"
-                                               FontSize="9"
+                                               FontSize="12"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                Text="{Binding ValidationThresholdCorrectionSummary}"
                                                TextWrapping="Wrap" />
@@ -1852,9 +1994,9 @@
                                           ItemsSource="{Binding ValidationThresholdParameterChanges}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdParameterChanges, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.ReviewedTypedParameterChangesAccessible, Korean='검토한 타입 파라미터 변경', English='Reviewed typed parameter changes'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.ReviewedTypedParameterChangesAccessible, Korean='검토한 설정값 변경', English='Reviewed typed parameter changes'}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.TypedParameter, Korean='타입 파라미터', English='Typed parameter'}" Binding="{Binding ParameterName}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.TypedParameter, Korean='도구 설정값', English='Typed parameter'}" Binding="{Binding ParameterName}" />
                                         <DataGridTextColumn Width="95" Header="{shell:ThreeDText Key=ThreeD.Validation.Before, Korean='이전 값', English='Before'}" Binding="{Binding BeforeValue}" />
                                         <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.Suggested, Korean='제안 값', English='Suggested'}" Binding="{Binding ProposedValue}" />
                                         <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.Manual, Korean='수동 값', English='Manual'}" Binding="{Binding ManualValue}" />
@@ -1873,7 +2015,7 @@
                                           ItemsSource="{Binding ValidationThresholdHeldOutSamples}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdHeldOutEvidence, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOutReplayEvidenceAccessible, Korean='명시적 홀드아웃 재실행 증거', English='Explicit Held-out replay evidence'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOutReplayEvidenceAccessible, Korean='검증 샘플 재검사 기록', English='Explicit Held-out replay evidence'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
                                         <DataGridTextColumn Width="115" Header="{Binding ValidationSetFile, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding FileName}" />
@@ -1895,7 +2037,7 @@
                                           ItemsSource="{Binding ValidationThresholdDevelopmentSamples}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdDevelopmentEvidence, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='개발 보정 전후 증거', English='Before and after development correction evidence'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='개발 보정 전후 정보', English='Before and after development correction evidence'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="58" Header="{shell:ThreeDText Key=ThreeD.Validation.Stage, Korean='단계', English='Stage'}" Binding="{Binding Stage}" />
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
@@ -1967,12 +2109,18 @@
                                         <DataGridTextColumn Width="68" Header="{Binding ValidationSetPredicted, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding PredictedRole}" />
                                         <DataGridTextColumn Width="92" Header="{Binding ValidationSetDecision, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Decision}" />
                                         <DataGridTextColumn Width="72" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Value}" />
-                                        <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.CellEvidence, Korean='셀 증거', English='Cell evidence'}" Binding="{Binding EvidenceLocator}" />
+                                        <DataGridTextColumn Width="82" Header="{shell:ThreeDText Key=ThreeD.Validation.CellEvidence, Korean='셀 정보', English='Cell evidence'}" Binding="{Binding EvidenceLocator}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
                         </Expander>
                     </Grid>
+                </TabItem>
+                <TabItem x:Name="InspectionQueueTabItem"
+                         Header="{shell:ThreeDText Key=ThreeD.Inspection.Queue, Korean='검사 목록', English='Inspection queue'}"
+                         AutomationProperties.AutomationId="InspectionQueueTab">
+                    <workbench:InspectionQueueWorkspaceView DataContext="{Binding InspectionQueue}"
+                                                            AutomationProperties.AutomationId="InspectionQueueView" />
                 </TabItem>
             </TabControl>
         </Grid>

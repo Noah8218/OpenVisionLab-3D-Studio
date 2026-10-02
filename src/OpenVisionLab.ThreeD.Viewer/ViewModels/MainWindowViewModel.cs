@@ -9,6 +9,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
@@ -360,6 +361,12 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private readonly RelayCommand saveRecipeCommand;
     private readonly RelayCommand screenshotCommand;
     private readonly RelayCommand profileCommand;
+    private readonly RelayCommand profileActionCommand;
+    private readonly RelayCommand profilePickCommand;
+    private readonly RelayCommand profileMoveCommand;
+    private readonly RelayCommand profileSourceCommand;
+    private readonly RelayCommand setPointerModeCommand;
+    private readonly RelayCommand orbitHereCommand;
     private readonly RelayCommand decreaseC3DHeightColorMaximumCommand;
     private readonly RelayCommand increaseC3DHeightColorMaximumCommand;
     private readonly RelayCommand decreaseC3DHeightColorMinimumCommand;
@@ -394,6 +401,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public MainWindowViewModel()
     {
+        HeightProfile.Changed += RefreshHeightProfile;
         Display.PropertyChanged += OnDisplayPropertyChanged;
         Display.RenderSettingsChanged += OnDisplayRenderSettingsChanged;
         NominalActual.PropertyChanged += OnNominalActualPropertyChanged;
@@ -434,7 +442,17 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
                 SelectedSelectionMode = ProfileSelectionMode;
                 ProfileViewRequested?.Invoke(this, EventArgs.Empty);
             },
-            _ => C3DSampleVisible);
+            _ => C3DSampleVisible && !IsTeachingCaptureActive);
+        profileActionCommand = new RelayCommand(parameter => RequestHeightProfile((ViewerHeightProfileAction)parameter!),
+            parameter => parameter is ViewerHeightProfileAction action && CanRequestHeightProfile(action));
+        profilePickCommand = new RelayCommand(parameter => PickHeightProfile((OpenVisionLab.ThreeD.Data.HeightGridPoint)parameter!),
+            parameter => parameter is OpenVisionLab.ThreeD.Data.HeightGridPoint && HeightProfile.IsPicking);
+        profileMoveCommand = new RelayCommand(parameter => { var move = ((int Endpoint, OpenVisionLab.ThreeD.Data.HeightGridPoint Point))parameter!; HeightProfile.Move(move.Endpoint, move.Point); },
+            parameter => parameter is ValueTuple<int, OpenVisionLab.ThreeD.Data.HeightGridPoint> && HeightProfile.HasEndpoints && !HeightProfile.IsPicking);
+        profileSourceCommand = new RelayCommand(parameter => HeightProfile.Attach(parameter as OpenVisionLab.ThreeD.Data.C3DHeightGrid));
+        orbitHereCommand = new RelayCommand(parameter => { var target = (Vector3)parameter!; CameraTargetX = target.X; CameraTargetY = target.Y; CameraTargetZ = target.Z; },
+            parameter => C3DSampleVisible && parameter is Vector3 point && float.IsFinite(point.X) && float.IsFinite(point.Y) && float.IsFinite(point.Z));
+        setPointerModeCommand = new RelayCommand(parameter => SelectedSelectionMode = (string)parameter!, parameter => parameter is "Point" or "Move" && !IsTeachingCaptureActive);
         decreaseC3DHeightColorMaximumCommand = new RelayCommand(_ => ShiftC3DHeightColorMaximum(-1), _ => C3DHeightDistributionVisible);
         increaseC3DHeightColorMaximumCommand = new RelayCommand(_ => ShiftC3DHeightColorMaximum(1), _ => C3DHeightDistributionVisible);
         decreaseC3DHeightColorMinimumCommand = new RelayCommand(_ => ShiftC3DHeightColorMinimum(-1), _ => C3DHeightDistributionVisible);
@@ -459,7 +477,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes => Display.RenderDensityModes;
 
-    public string[] SelectionModes { get; } = ["Point", ProfileSelectionMode, "Two Point Measure", "Plane Distance", "Plane Flatness", ThicknessRoiSelectionMode, WarpageRoiSelectionMode, "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", "Move", ProfileSelectionMode, "Two Point Measure", "Plane Distance", "Plane Flatness", ThicknessRoiSelectionMode, WarpageRoiSelectionMode, "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
 
     public ViewerDisplaySettingsViewModel Display { get; } = new();
 
@@ -500,6 +518,12 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public ICommand SaveRecipeCommand => saveRecipeCommand;
     public ICommand ScreenshotCommand => screenshotCommand;
     public ICommand ProfileCommand => profileCommand;
+    public ICommand ProfileActionCommand => profileActionCommand;
+    public ICommand SetPointerModeCommand => setPointerModeCommand;
+    public ICommand OrbitHereCommand => orbitHereCommand;
+    internal ICommand ProfilePickCommand => profilePickCommand;
+    internal ICommand ProfileMoveCommand => profileMoveCommand;
+    internal ICommand ProfileSourceCommand => profileSourceCommand;
     public ICommand DecreaseC3DHeightColorMaximumCommand => decreaseC3DHeightColorMaximumCommand;
     public ICommand IncreaseC3DHeightColorMaximumCommand => increaseC3DHeightColorMaximumCommand;
     public ICommand DecreaseC3DHeightColorMinimumCommand => decreaseC3DHeightColorMinimumCommand;
@@ -892,6 +916,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SelectionSession.SelectedMode != value)
             {
+                if (value != ProfileSelectionMode) HeightProfile.Cancel();
                 SelectionSession.SelectedMode = value;
                 OnPropertyChanged(nameof(SelectedSelectionMode));
                 SelectionSummary = value switch
@@ -964,6 +989,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    internal bool SampleResultOverlayVisible { get; private set; }
+
+    internal bool ShouldDrawSampleResultOverlay => ResultOverlayVisible && SampleResultOverlayVisible;
 
     public string ResultSummary
     {

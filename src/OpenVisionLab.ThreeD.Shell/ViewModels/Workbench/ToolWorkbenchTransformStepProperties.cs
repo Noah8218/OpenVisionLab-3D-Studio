@@ -98,7 +98,9 @@ public sealed class XYZAffineApplyStepProperties
 [CategoryOrder("D-07 contract", 0)]
 public sealed class DomainMaskStepProperties
 {
-    internal static readonly HashSet<string> MappedNames = [];
+    internal static readonly HashSet<string> MappedNames = ["SelectedRegionIndex"];
+
+    private bool usesDetectedRegion;
 
     [Category("D-07 contract")]
     [DisplayName("Domain policy")]
@@ -108,18 +110,70 @@ public sealed class DomainMaskStepProperties
     public string DomainPolicy { get; init; } = "Complete Published ConnectedRegionArtifact";
 
     [Category("D-07 contract")]
+    [DisplayName("Raw source policy")]
+    [Description("The v2 route reads output values from the recipe raw C3D; the filtered source is used only to prove the detected region identity.")]
+    [PropertyOrder(1)]
+    [ReadOnly(true)]
+    public string RawSourcePolicy { get; init; } = "v1: selected HeightField; v2: recipe raw C3D";
+
+    [Category("D-07 contract")]
+    [DisplayName("Detection source policy")]
+    [Description("The v2 route requires the exact Published FilteredHeightField that produced the ConnectedRegionArtifact.")]
+    [PropertyOrder(2)]
+    [ReadOnly(true)]
+    public string DetectionSourcePolicy { get; init; } = "v2: exact Published FilteredHeightField";
+
+    [Category("Region")]
+    [DisplayName("Selected region index")]
+    [Description("Zero-based region index from the Published ConnectedRegionArtifact. Only the selected region's raw cells are retained in v2.")]
+    [PropertyOrder(3)]
+    [NumberRange(0, int.MaxValue, 1)]
+    public int SelectedRegionIndex { get; set; }
+
+    [Category("D-07 contract")]
     [DisplayName("Missing-value policy")]
     [Description("Cells outside the domain become missing; in-domain values, including existing missing cells, are preserved.")]
-    [PropertyOrder(1)]
+    [PropertyOrder(4)]
     [ReadOnly(true)]
     public string MissingValuePolicy { get; init; } = "Outside → missing; inside → preserve";
 
     [Category("D-07 contract")]
     [DisplayName("Execution policy")]
     [Description("Preview, Publish, Run, and save/reopen remain explicit. Selection or editing never executes the tool.")]
-    [PropertyOrder(2)]
+    [PropertyOrder(5)]
     [ReadOnly(true)]
     public string ExecutionPolicy { get; init; } = "Explicit Preview → Publish → Run";
 
-    internal static DomainMaskStepProperties From(ToolWorkbenchPipelineStepItem step) => new();
+    internal static DomainMaskStepProperties From(ToolWorkbenchPipelineStepItem step)
+    {
+        var usesDetectedRegion = step.InputEntityIds.Count == 3;
+        return new DomainMaskStepProperties
+        {
+            usesDetectedRegion = usesDetectedRegion,
+            DomainPolicy = usesDetectedRegion
+                ? "Selected Published ConnectedRegionArtifact region"
+                : "Complete Published ConnectedRegionArtifact",
+            SelectedRegionIndex = int.TryParse(
+                ToolWorkbenchStepParameterAccess.GetParameter(step, "SelectedRegionIndex"),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var selectedRegionIndex)
+                ? selectedRegionIndex
+                : 0
+        };
+    }
+
+    internal bool UsesDetectedRegion => usesDetectedRegion;
+
+    internal bool TryValidate(out string message)
+    {
+        if (UsesDetectedRegion && SelectedRegionIndex < 0)
+        {
+            message = "Selected region index must be zero or greater.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
+    }
 }

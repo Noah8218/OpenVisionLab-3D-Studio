@@ -64,6 +64,18 @@ public static class ToolRecipeValidator
             document.SchemaVersion,
             ToolRecipeDocument.GridCircleSchemaVersion,
             StringComparison.Ordinal);
+        var isGridPolygonSchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.GridPolygonSchemaVersion,
+            StringComparison.Ordinal);
+        var isOutputPolicySchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.OutputPolicySchemaVersion,
+            StringComparison.Ordinal);
+        var isRecipeMetadataSchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.RecipeMetadataSchemaVersion,
+            StringComparison.Ordinal);
         var isCurrentSchema = string.Equals(
             document.SchemaVersion,
             ToolRecipeDocument.CurrentSchemaVersion,
@@ -75,6 +87,9 @@ public static class ToolRecipeValidator
             && !isOrientedBox3DSchema
             && !isDualRoiRoutingSchema
             && !isGridCircleSchema
+            && !isGridPolygonSchema
+            && !isOutputPolicySchema
+            && !isRecipeMetadataSchema
             && !isCurrentSchema)
         {
             errors.Add($"Unsupported teaching recipe schema: {Clean(document.SchemaVersion)}.");
@@ -83,6 +98,19 @@ public static class ToolRecipeValidator
         if (string.IsNullOrWhiteSpace(document.Name))
         {
             errors.Add("Recipe name is required.");
+        }
+
+        if (document.Category?.Length > ToolRecipeDocument.MaximumMetadataFieldLength
+            || document.InspectionTarget?.Length > ToolRecipeDocument.MaximumMetadataFieldLength
+            || document.Description?.Length > ToolRecipeDocument.MaximumMetadataFieldLength)
+        {
+            errors.Add($"Recipe category, inspection target, and description must each be {ToolRecipeDocument.MaximumMetadataFieldLength} characters or fewer.");
+        }
+
+        if (!isRecipeMetadataSchema && !isCurrentSchema
+            && (document.Category is not null || document.InspectionTarget is not null || document.Description is not null))
+        {
+            errors.Add($"Recipe metadata requires teaching recipe schema {ToolRecipeDocument.RecipeMetadataSchemaVersion}.");
         }
 
         var source = document.Source;
@@ -260,6 +288,11 @@ public static class ToolRecipeValidator
                 warnings.Add($"{label} '{Clean(step.ToolName)}' is saved as an incomplete draft ({inputs.Count}/{minimumInputCount} inputs).");
             }
 
+            if (step.AcceptanceLimitsConfigured is not null && (!isCurrentSchema || !ToolRecipeStep.RequiresAcceptanceLimits(step.ToolId)))
+            {
+                errors.Add($"{label} acceptance limits require a measurement tool and schema {ToolRecipeDocument.AcceptanceLimitsSchemaVersion}.");
+            }
+
             var uniqueInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var input in inputs)
             {
@@ -291,6 +324,17 @@ public static class ToolRecipeValidator
                 ToolRecipeDocument.SupportsDualRoiRouting(document.SchemaVersion),
                 label,
                 errors);
+
+            if (step.SignedDeltaSidecar is { } signedDeltaSidecar
+                && !signedDeltaSidecar.TryValidateContract(
+                    step.Id,
+                    step.ToolId,
+                    step.OutputEntityId,
+                    artifact: null,
+                    out var signedDeltaSidecarMessage))
+            {
+                errors.Add($"{label} signed-delta sidecar reference is invalid: {signedDeltaSidecarMessage}");
+            }
 
             if (validateStepContract)
             {
@@ -348,6 +392,36 @@ public static class ToolRecipeValidator
             if (validateStepContract
                 && string.Equals(
                     step.ToolId,
+                    "height-threshold-background-removal",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateHeightThresholdBackgroundRemovalStep(
+                    step,
+                    inputs,
+                    source,
+                    label,
+                    errors,
+                    warnings);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    C3DSignedHeightDeltaRecipePolicy.ToolId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateSignedHeightDeltaBackgroundSubtractionStep(
+                    step,
+                    inputs,
+                    source,
+                    label,
+                    errors,
+                    warnings);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
                     "connected-region",
                     StringComparison.OrdinalIgnoreCase))
             {
@@ -385,6 +459,37 @@ public static class ToolRecipeValidator
                     step,
                     inputs,
                     source,
+                    outputContracts,
+                    label,
+                    errors);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "connected-region-gate",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateConnectedRegionGateStep(
+                    step,
+                    inputs,
+                    source,
+                    outputContracts,
+                    label,
+                    errors);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "grid-polygon-domain",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateGridPolygonDomainStep(
+                    step,
+                    inputs,
+                    source,
+                    selections,
                     outputContracts,
                     label,
                     errors);
@@ -462,6 +567,12 @@ public static class ToolRecipeValidator
                     label,
                     ToolRecipeDocument.SupportsArtifactOwnedSelections(document.SchemaVersion),
                     errors);
+            }
+
+            if (validateStepContract
+                && string.Equals(step.ToolId, "physical-edge-gap-flush", StringComparison.Ordinal))
+            {
+                ValidatePhysicalEdgeGapFlushStep(step, inputs, outputContracts, label, errors);
             }
         }
 
@@ -824,6 +935,179 @@ public static class ToolRecipeValidator
         }
     }
 
+    private static void ValidateHeightThresholdBackgroundRemovalStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        string label,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count != 1
+            || !string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(
+                $"{label} Height Threshold Background Removal v1 requires exactly the recipe C3D source as input.");
+        }
+
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal))
+        {
+            errors.Add($"{label} Height Threshold Background Removal v1 requires a C3D raw-height source.");
+        }
+
+        if (source.ByteLength is null
+            || source.ContentSha256 is null
+            || source.GridWidth is null
+            || source.GridHeight is null)
+        {
+            errors.Add(
+                $"{label} Height Threshold Background Removal v1 requires source byte length, SHA-256, width, and height identity.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        var expectedNames = new HashSet<string>(
+            [
+                "Threshold",
+                "Mode",
+                "ComparisonPolicy",
+                "MissingValuePolicy",
+                "BackgroundPolicy"
+            ],
+            StringComparer.Ordinal);
+        if (expectedNames.Any(
+                name => parameters.Count(
+                    parameter => parameter is not null && parameter.Name == name) != 1))
+        {
+            errors.Add(
+                $"{label} Height Threshold Background Removal v1 requires Threshold, Mode, ComparisonPolicy, MissingValuePolicy, and BackgroundPolicy exactly once.");
+            return;
+        }
+
+        var unknownNames = parameters
+            .Where(parameter => parameter is not null && !expectedNames.Contains(parameter.Name))
+            .Select(parameter => parameter.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownNames.Length > 0)
+        {
+            warnings.Add(
+                $"{label} preserves unmapped Height Threshold Background Removal parameter(s): {string.Join(", ", unknownNames)}.");
+        }
+
+        string Value(string name) =>
+            parameters.Single(parameter => parameter.Name == name).Value;
+
+        if (!double.TryParse(
+                Value("Threshold"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var threshold)
+            || !double.IsFinite(threshold))
+        {
+            errors.Add($"{label} Height Threshold Background Removal v1 Threshold must be finite.");
+        }
+
+        if (!Enum.TryParse<C3DHeightThresholdBackgroundRemovalMode>(
+                Value("Mode"),
+                ignoreCase: false,
+                out var mode)
+            || !Enum.IsDefined(mode))
+        {
+            errors.Add($"{label} Height Threshold Background Removal v1 Mode is invalid.");
+        }
+
+        if (!string.Equals(
+                Value("ComparisonPolicy"),
+                C3DHeightThresholdBackgroundRemovalEvidence.ComparisonPolicyName,
+                StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Height Threshold Background Removal v1 ComparisonPolicy must be '{C3DHeightThresholdBackgroundRemovalEvidence.ComparisonPolicyName}'.");
+        }
+
+        if (!string.Equals(
+                Value("MissingValuePolicy"),
+                C3DHeightThresholdBackgroundRemovalEvidence.MissingValuePolicyName,
+                StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Height Threshold Background Removal v1 MissingValuePolicy must be '{C3DHeightThresholdBackgroundRemovalEvidence.MissingValuePolicyName}'.");
+        }
+
+        if (!string.Equals(
+                Value("BackgroundPolicy"),
+                C3DHeightThresholdBackgroundRemovalEvidence.BackgroundPolicyName,
+                StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Height Threshold Background Removal v1 BackgroundPolicy must be '{C3DHeightThresholdBackgroundRemovalEvidence.BackgroundPolicyName}'.");
+        }
+    }
+
+    private static void ValidateSignedHeightDeltaBackgroundSubtractionStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        string label,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count != 1
+            || !string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(
+                $"{label} Signed Delta Background Subtraction requires exactly the recipe C3D source as its current input.");
+        }
+
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal))
+        {
+            errors.Add($"{label} Signed Delta Background Subtraction requires a C3D raw-height source.");
+        }
+
+        if (source.ByteLength is null
+            || source.ContentSha256 is null
+            || source.GridWidth is null
+            || source.GridHeight is null)
+        {
+            errors.Add(
+                $"{label} Signed Delta Background Subtraction requires source byte length, SHA-256, width, and height identity.");
+        }
+
+        if (!C3DSignedHeightDeltaRecipePolicy.TryRead(step.Parameters, out var reference, out var message))
+        {
+            errors.Add($"{label} {message}");
+            return;
+        }
+
+        if (string.Equals(reference.EntityId, source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"{label} Signed Delta Background Subtraction background entity ID must differ from the current source ID.");
+        }
+
+        if (reference.Width != source.GridWidth || reference.Height != source.GridHeight)
+        {
+            errors.Add($"{label} Signed Delta Background Subtraction background dimensions must match the recipe source grid.");
+        }
+
+        if (!string.Equals(reference.Unit, source.Unit, StringComparison.Ordinal)
+            || !string.Equals(reference.FrameId, source.FrameId, StringComparison.Ordinal))
+        {
+            errors.Add($"{label} Signed Delta Background Subtraction background unit and frame must match the recipe source.");
+        }
+
+        var unknownNames = (step.Parameters ?? [])
+            .Where(parameter => parameter is not null && !C3DSignedHeightDeltaRecipePolicy.ParameterNames.Contains(parameter.Name, StringComparer.Ordinal))
+            .Select(parameter => parameter.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownNames.Length > 0)
+        {
+            warnings.Add($"{label} preserves unmapped Signed Delta Background Subtraction parameter(s): {string.Join(", ", unknownNames)}.");
+        }
+    }
+
     private static void ValidateConnectedRegionStep(
         ToolRecipeStep step,
         IReadOnlyList<string> inputs,
@@ -1022,12 +1306,7 @@ public static class ToolRecipeValidator
         string label,
         List<string> errors)
     {
-        if (inputs.Count != 2)
-        {
-            errors.Add(
-                $"{label} Domain / Mask v1 requires exactly one HeightField input followed by one ConnectedRegionArtifact domain.");
-        }
-        else
+        if (inputs.Count == 2)
         {
             var sourceInput = string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase)
                 || (outputContracts.TryGetValue(inputs[0], out var sourceContract)
@@ -1039,16 +1318,187 @@ public static class ToolRecipeValidator
             }
 
             if (!outputContracts.TryGetValue(inputs[1], out var domainContract)
-                || !string.Equals(domainContract, "ConnectedRegionArtifact", StringComparison.Ordinal))
+                || (domainContract is not "ConnectedRegionArtifact" and not "GridDomainArtifact"))
             {
                 errors.Add(
-                    $"{label} Domain / Mask v1 second input '{inputs[1]}' must be an earlier ConnectedRegionArtifact.");
+                    $"{label} Domain / Mask v1 second input '{inputs[1]}' must be an earlier ConnectedRegionArtifact or GridDomainArtifact.");
+            }
+
+            if ((step.Parameters ?? []).Count != 0)
+            {
+                errors.Add($"{label} Domain / Mask v1 does not accept parameters; the complete upstream domain is the contract.");
+            }
+
+            return;
+        }
+
+        if (inputs.Count != 3)
+        {
+            errors.Add(
+                $"{label} Domain / Mask requires either the v1 HeightField + domain route or the v2 raw HeightField + filtered HeightField + ConnectedRegionArtifact route.");
+            return;
+        }
+
+        if (!string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(
+                $"{label} Domain / Mask v2 first input '{inputs[0]}' must be the recipe raw C3D source '{source.Id}'.");
+        }
+
+        if (!outputContracts.TryGetValue(inputs[1], out var detectionContract)
+            || !string.Equals(detectionContract, "FilteredHeightField", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Domain / Mask v2 second input '{inputs[1]}' must be an earlier Published FilteredHeightField used for detection.");
+        }
+
+        if (!outputContracts.TryGetValue(inputs[2], out var regionContract)
+            || !string.Equals(regionContract, "ConnectedRegionArtifact", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Domain / Mask v2 third input '{inputs[2]}' must be an earlier ConnectedRegionArtifact.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        if (parameters.Count(parameter => parameter is not null
+                && string.Equals(parameter.Name, "SelectedRegionIndex", StringComparison.Ordinal)) != 1)
+        {
+            errors.Add(
+                $"{label} Domain / Mask v2 requires exactly one SelectedRegionIndex parameter.");
+            return;
+        }
+
+        if (!int.TryParse(
+                parameters.Single(parameter => string.Equals(parameter.Name, "SelectedRegionIndex", StringComparison.Ordinal)).Value,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var regionIndex)
+            || regionIndex < 0)
+        {
+            errors.Add(
+                $"{label} Domain / Mask v2 SelectedRegionIndex must be a non-negative invariant integer.");
+        }
+    }
+
+    private static void ValidateConnectedRegionGateStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 3)
+        {
+            errors.Add(
+                $"{label} Connected Region Coverage/Height Gate v1 requires raw C3D, filtered detection HeightField, and ConnectedRegionArtifact inputs.");
+            return;
+        }
+
+        if (!string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal)
+            || source.ByteLength is null
+            || source.ContentSha256 is null
+            || source.GridWidth is null
+            || source.GridHeight is null)
+        {
+            errors.Add(
+                $"{label} Connected Region Coverage/Height Gate v1 first input must be the fully identified raw C3D source '{source.Id}'.");
+        }
+
+        if (!outputContracts.TryGetValue(inputs[1], out var detectionContract)
+            || !string.Equals(detectionContract, "FilteredHeightField", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Connected Region Coverage/Height Gate v1 second input must be an earlier Published FilteredHeightField used for detection.");
+        }
+
+        if (!outputContracts.TryGetValue(inputs[2], out var regionContract)
+            || !string.Equals(regionContract, "ConnectedRegionArtifact", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Connected Region Coverage/Height Gate v1 third input must be an earlier ConnectedRegionArtifact.");
+        }
+
+        try
+        {
+            _ = C3DConnectedRegionGatePolicy.FromRecipeParameters(
+                step.Parameters ?? [],
+                source.Unit);
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+            or ArgumentException
+            or OverflowException)
+        {
+            errors.Add($"{label} {exception.Message}");
+        }
+    }
+
+    private static void ValidateGridPolygonDomainStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyList<ToolRecipeSelection> selections,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 2)
+        {
+            errors.Add(
+                $"{label} Grid Polygon Domain v1 requires exactly one HeightField input followed by one GridPolygon selection.");
+        }
+        else
+        {
+            var sourceInputIsRaw = string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase);
+            var sourceInputIsCompatible = sourceInputIsRaw
+                || (outputContracts.TryGetValue(inputs[0], out var sourceContract)
+                    && ToolRecipePrimaryInputContract.IsCompatible("grid-polygon-domain", sourceContract));
+            if (!sourceInputIsCompatible)
+            {
+                errors.Add(
+                    $"{label} Grid Polygon Domain v1 first input '{inputs[0]}' must be a compatible HeightField artifact.");
+            }
+
+            var selection = selections.SingleOrDefault(candidate =>
+                string.Equals(candidate.Id, inputs[1], StringComparison.OrdinalIgnoreCase));
+            if (selection is null)
+            {
+                errors.Add(
+                    $"{label} Grid Polygon Domain v1 second input '{inputs[1]}' must be a recipe-owned GridPolygon selection.");
+            }
+            else
+            {
+                if (!string.Equals(selection.Kind, ToolRecipeSelectionKinds.GridPolygon, StringComparison.Ordinal))
+                {
+                    errors.Add(
+                        $"{label} Grid Polygon Domain v1 selection '{selection.Id}' must be a GridPolygon.");
+                }
+
+                var binding = selection.SourceBinding;
+                if (sourceInputIsRaw)
+                {
+                    if (!string.Equals(binding.Format, source.Format, StringComparison.OrdinalIgnoreCase)
+                        || !string.Equals(selection.RootSourceId, source.Id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        errors.Add(
+                            $"{label} Grid Polygon Domain v1 raw selection '{selection.Id}' must remain bound to the recipe C3D source.");
+                    }
+                }
+                else if (!string.Equals(binding.Format, "HeightField", StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(binding.OwnerEntityId, inputs[0], StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(
+                        $"{label} Grid Polygon Domain v1 derived selection '{selection.Id}' must bind to HeightField owner '{inputs[0]}'.");
+                }
             }
         }
 
         if ((step.Parameters ?? []).Count != 0)
         {
-            errors.Add($"{label} Domain / Mask v1 does not accept parameters; the complete upstream domain is the contract.");
+            errors.Add($"{label} Grid Polygon Domain v1 does not accept parameters; the recipe-owned polygon is the contract.");
         }
     }
 
@@ -1430,6 +1880,63 @@ public static class ToolRecipeValidator
             {
                 errors.Add($"{label} {exception.Message}");
             }
+        }
+    }
+
+    private static void ValidatePhysicalEdgeGapFlushStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        List<string> errors)
+    {
+        if (step.MinimumInputCount != 4 || inputs.Count != 4)
+        {
+            errors.Add($"{label} {Clean(step.ToolName)} v1 requires four ordered inputs: FirstLine, SecondLine, FirstEdgePointSet, SecondEdgePointSet.");
+        }
+        else
+        {
+            if (string.Equals(inputs[0], inputs[1], StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} {Clean(step.ToolName)} FirstLine and SecondLine inputs must be distinct.");
+            }
+            if (string.Equals(inputs[2], inputs[3], StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} {Clean(step.ToolName)} FirstEdgePointSet and SecondEdgePointSet inputs must be distinct.");
+            }
+
+            for (var inputIndex = 0; inputIndex < inputs.Count; inputIndex++)
+            {
+                var input = inputs[inputIndex];
+                var expectedContract = inputIndex < 2 ? "LineFeature" : "EdgePointSet";
+                if (!outputContracts.TryGetValue(input, out var contract)
+                    || !string.Equals(contract, expectedContract, StringComparison.Ordinal))
+                {
+                    errors.Add($"{label} {Clean(step.ToolName)} input '{Clean(input)}' must be an earlier {expectedContract} output.");
+                }
+            }
+
+            if (outputContracts.TryGetValue(inputs[0], out var firstLineContract)
+                && string.Equals(firstLineContract, "LineFeature", StringComparison.Ordinal)
+                && outputContracts.TryGetValue(inputs[2], out var firstEdgeContract)
+                && string.Equals(firstEdgeContract, "EdgePointSet", StringComparison.Ordinal)
+                && string.Equals(inputs[0], inputs[2], StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} {Clean(step.ToolName)} FirstLine and FirstEdgePointSet inputs must be distinct artifacts.");
+            }
+            if (outputContracts.TryGetValue(inputs[1], out var secondLineContract)
+                && string.Equals(secondLineContract, "LineFeature", StringComparison.Ordinal)
+                && outputContracts.TryGetValue(inputs[3], out var secondEdgeContract)
+                && string.Equals(secondEdgeContract, "EdgePointSet", StringComparison.Ordinal)
+                && string.Equals(inputs[1], inputs[3], StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} {Clean(step.ToolName)} SecondLine and SecondEdgePointSet inputs must be distinct artifacts.");
+            }
+        }
+
+        if (!C3DPhysicalEdgeGapFlushProfile.TryParse(step.Parameters, out _, out var message))
+        {
+            errors.Add($"{label} {message}");
         }
     }
 

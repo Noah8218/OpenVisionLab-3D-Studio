@@ -25,18 +25,30 @@ internal static class ShellOrderedRunRecordWriter
         ToolRecipeOrderedGraphExecutionResult execution,
         string? outputRoot = null)
     {
+        var artifact = Prepare(recipePath, document, sourcePath, execution, outputRoot);
+        Save(artifact, execution);
+        return artifact;
+    }
+
+    public static ShellOrderedRunRecordArtifact Prepare(
+        string recipePath,
+        ToolRecipeDocument document,
+        string sourcePath,
+        ToolRecipeOrderedGraphExecutionResult execution,
+        string? outputRoot = null,
+        OrderedRunRecordIdentity? capturedIdentity = null)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(recipePath);
         ArgumentNullException.ThrowIfNull(document);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
         ArgumentNullException.ThrowIfNull(execution);
 
-        var identity = OrderedRunRecordIdentity.Create(recipePath, sourcePath);
+        var identity = capturedIdentity ?? OrderedRunRecordIdentity.Create(recipePath, sourcePath);
         var root = Path.GetFullPath(outputRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OpenVisionLab",
             "ThreeDStudio",
             "Runs"));
-        Directory.CreateDirectory(root);
 
         var baseRunId = identity.RunId;
         var runId = baseRunId;
@@ -47,12 +59,8 @@ internal static class ShellOrderedRunRecordWriter
             runDirectory = Path.Combine(root, runId);
         }
 
-        var stagingDirectory = $"{runDirectory}.staging.{Guid.NewGuid():N}";
-        Directory.CreateDirectory(stagingDirectory);
         var jsonPath = Path.Combine(runDirectory, "run-record.json");
         var reportPath = Path.Combine(runDirectory, "ordered-run.txt");
-        var stagedJsonPath = Path.Combine(stagingDirectory, "run-record.json");
-        var stagedReportPath = Path.Combine(stagingDirectory, "ordered-run.txt");
         identity = identity with { RunId = runId };
         var record = OrderedRunRecordFactory.Create(
             identity,
@@ -67,23 +75,35 @@ internal static class ShellOrderedRunRecordWriter
                 null,
                 null));
 
+        return new ShellOrderedRunRecordArtifact(record, jsonPath, reportPath);
+    }
+
+    public static void Save(ShellOrderedRunRecordArtifact artifact, ToolRecipeOrderedGraphExecutionResult execution)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentNullException.ThrowIfNull(execution);
+        var runDirectory = Path.GetDirectoryName(artifact.JsonPath)!;
+        Directory.CreateDirectory(Path.GetDirectoryName(runDirectory)!);
+        var stagingDirectory = $"{runDirectory}.staging.{Guid.NewGuid():N}";
+        Directory.CreateDirectory(stagingDirectory);
+        var stagedJsonPath = Path.Combine(stagingDirectory, "run-record.json");
+        var stagedReportPath = Path.Combine(stagingDirectory, "ordered-run.txt");
         try
         {
             File.WriteAllText(
                 stagedReportPath,
-                CreateReport(record, execution),
+                CreateReport(artifact.Record, execution),
                 new UTF8Encoding(false));
-            InspectionRunRecordJson.Write(stagedJsonPath, record);
+            InspectionRunRecordJson.Write(stagedJsonPath, artifact.Record);
 
             var persistedRecord = InspectionRunRecordJson.Read(stagedJsonPath);
-            if (!string.Equals(persistedRecord.RunId, record.RunId, StringComparison.Ordinal)
+            if (!string.Equals(persistedRecord.RunId, artifact.Record.RunId, StringComparison.Ordinal)
                 || !File.Exists(stagedReportPath))
             {
                 throw new InvalidDataException("Ordered Run Record staging validation failed.");
             }
 
             Directory.Move(stagingDirectory, runDirectory);
-            return new ShellOrderedRunRecordArtifact(record, jsonPath, reportPath);
         }
         finally
         {

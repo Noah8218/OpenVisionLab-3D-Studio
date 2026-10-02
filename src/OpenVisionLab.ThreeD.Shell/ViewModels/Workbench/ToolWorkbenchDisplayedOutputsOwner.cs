@@ -1,13 +1,15 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 /// <summary>
 /// Owns the session-only Displayed Outputs collection and presentation policy.
-/// It consumes an artifact snapshot and the neutral renderable C3D catalog;
-/// recipe and execution state remain outside this owner.
+/// It consumes an artifact snapshot, the neutral renderable C3D catalog, and
+/// the zero-preserving signed-delta viewer artifact; recipe and execution state
+/// remain outside this owner.
 /// </summary>
 internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChanged
 {
@@ -15,6 +17,8 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
         getArtifactSnapshot;
     private readonly Func<string?, ToolWorkbenchRenderableC3DTarget?>
         getRenderableTarget;
+    private readonly Func<string?, C3DSignedHeightDeltaArtifact?>
+        getSignedDeltaArtifact;
     private readonly ThreeDLocalization localization;
     private readonly Func<string, string> getComparePins;
     private readonly Func<bool> hasEmptyCompareSlot;
@@ -37,11 +41,38 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
         Action<string> displayInPrimaryViewer,
         Action<ToolWorkbenchPipelineStepItem> selectPipelineStep,
         Action refreshSelectedToolWorkspaceProjection)
+        : this(
+            getArtifactSnapshot,
+            getRenderableTarget,
+            _ => null,
+            localization,
+            getComparePins,
+            hasEmptyCompareSlot,
+            tryPinToCompare,
+            displayInPrimaryViewer,
+            selectPipelineStep,
+            refreshSelectedToolWorkspaceProjection)
+    {
+    }
+
+    public ToolWorkbenchDisplayedOutputsOwner(
+        Func<IReadOnlyList<ToolWorkbenchArtifactItem>> getArtifactSnapshot,
+        Func<string?, ToolWorkbenchRenderableC3DTarget?> getRenderableTarget,
+        Func<string?, C3DSignedHeightDeltaArtifact?> getSignedDeltaArtifact,
+        ThreeDLocalization localization,
+        Func<string, string> getComparePins,
+        Func<bool> hasEmptyCompareSlot,
+        Func<string, bool> tryPinToCompare,
+        Action<string> displayInPrimaryViewer,
+        Action<ToolWorkbenchPipelineStepItem> selectPipelineStep,
+        Action refreshSelectedToolWorkspaceProjection)
     {
         this.getArtifactSnapshot = getArtifactSnapshot
             ?? throw new ArgumentNullException(nameof(getArtifactSnapshot));
         this.getRenderableTarget = getRenderableTarget
             ?? throw new ArgumentNullException(nameof(getRenderableTarget));
+        this.getSignedDeltaArtifact = getSignedDeltaArtifact
+            ?? throw new ArgumentNullException(nameof(getSignedDeltaArtifact));
         this.localization = localization
             ?? throw new ArgumentNullException(nameof(localization));
         this.getComparePins = getComparePins
@@ -102,7 +133,7 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
 
     public string CurrentViewerOutputSummary =>
         DisplayedOutputs.FirstOrDefault(item => item.IsShownInViewer) is { } item
-            ? $"{item.DisplayName} | {item.Contract}"
+            ? $"{item.DisplayName} | {item.ContractDisplay}"
             : localization.DisplayedOutputsNoViewerSelection;
 
     public void Rebuild()
@@ -131,18 +162,22 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
     {
         if (item is null
             || !item.CanShowInViewer
-            || TryGetDisplayableTarget(item.Id) is not { } target)
+            || (TryGetDisplayableTarget(item.Id) is null
+                && getSignedDeltaArtifact(item.Id) is null))
         {
             return;
         }
 
+        var target = TryGetDisplayableTarget(item.Id);
+        var signedDelta = getSignedDeltaArtifact(item.Id);
         var request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
             item.Id,
-            target.C3DPath,
+            target?.C3DPath ?? string.Empty,
             item.DisplayName,
             item.Contract,
-            target.State,
-            target.IsSource);
+            target?.State ?? item.State,
+            target?.IsSource ?? false,
+            signedDelta);
         ViewerArtifactDisplayRequested?.Invoke(this, request);
         if (!request.WasDisplayed)
         {
@@ -185,7 +220,9 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
         // concurrent registry rebuild cannot invalidate this enumeration.
         foreach (var item in DisplayedOutputs.ToArray())
         {
-            var isRenderable = TryGetDisplayableTarget(item.Id) is not null;
+            var c3DRenderable = TryGetDisplayableTarget(item.Id) is not null;
+            var signedDelta = getSignedDeltaArtifact(item.Id) is not null;
+            var isRenderable = c3DRenderable || signedDelta;
             var pins = getComparePins(item.Id);
             item.UpdatePresentation(
                 isRenderable,
@@ -194,9 +231,11 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
                     displayedViewerArtifactId,
                     StringComparison.OrdinalIgnoreCase),
                 pins,
-                isRenderable && pins.Length == 0 && hasEmptyCompareSlot(),
+                c3DRenderable && pins.Length == 0 && hasEmptyCompareSlot(),
                 isRenderable
-                    ? localization.DisplayableC3DData
+                    ? signedDelta
+                        ? localization.DisplayableHeightImageData
+                        : localization.DisplayableC3DData
                     : item.IsEvidenceOnly
                         ? localization.EvidenceOnlyOutput
                         : localization.NoCurrentDisplayableOutput,
@@ -233,7 +272,8 @@ public sealed class ToolWorkbenchArtifactDisplayRequestEventArgs(
     string displayName,
     string contract,
     string state,
-    bool isSource) : EventArgs
+    bool isSource,
+    C3DSignedHeightDeltaArtifact? signedDelta = null) : EventArgs
 {
     public string ArtifactId { get; } = artifactId;
     public string C3DPath { get; } = c3DPath;
@@ -241,6 +281,7 @@ public sealed class ToolWorkbenchArtifactDisplayRequestEventArgs(
     public string Contract { get; } = contract;
     public string State { get; } = state;
     public bool IsSource { get; } = isSource;
+    public C3DSignedHeightDeltaArtifact? SignedDelta { get; } = signedDelta;
     public bool WasDisplayed { get; set; }
 }
 
@@ -264,7 +305,9 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
     public string Id => Artifact.Id;
     public string DisplayName => Artifact.DisplayName;
     public string Contract => Artifact.Contract;
+    public string ContractDisplay => ThreeDLocalization.Shared.ContractLabel(Contract);
     public string State => Artifact.State;
+    public string StateDisplay => ThreeDLocalization.Shared.SelectedToolOutputStateLabel(State);
     public string Detail => Artifact.Detail;
     public string NodeKind => Artifact.NodeKind;
     public ToolWorkbenchPipelineStepItem? PipelineStep => Artifact.PipelineStep;
@@ -312,6 +355,8 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
             ref comparePinsSummary,
             newComparePinsSummary,
             nameof(ComparePinsSummary));
+        OnPropertyChanged(nameof(ContractDisplay));
+        OnPropertyChanged(nameof(StateDisplay));
         OnPropertyChanged(nameof(IsEvidenceOnly));
         OnPropertyChanged(nameof(HasNoCurrentOutput));
         OnPropertyChanged(nameof(Availability));

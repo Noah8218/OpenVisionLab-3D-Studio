@@ -25,9 +25,11 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepPlaneFlatness => string.Equals(SelectedPipelineStep?.ToolId, "plane-flatness", StringComparison.Ordinal);
     public bool IsSelectedStepPointPairDimensions => string.Equals(SelectedPipelineStep?.ToolId, "point-pair-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepGapFlush => string.Equals(SelectedPipelineStep?.ToolId, "gap-flush", StringComparison.Ordinal);
+    public bool IsSelectedStepPhysicalEdgeGapFlush => string.Equals(SelectedPipelineStep?.ToolId, "physical-edge-gap-flush", StringComparison.Ordinal);
     public bool IsSelectedStepVolume => string.Equals(SelectedPipelineStep?.ToolId, "volume", StringComparison.Ordinal);
     public bool IsSelectedStepCrossSectionDimensions => string.Equals(SelectedPipelineStep?.ToolId, "cross-section-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepCompletenessGrid => string.Equals(SelectedPipelineStep?.ToolId, "completeness-grid", StringComparison.Ordinal);
+    public bool IsSelectedStepConnectedRegionGate => string.Equals(SelectedPipelineStep?.ToolId, "connected-region-gate", StringComparison.Ordinal);
     public bool IsSelectedStepCompletenessGridUsingEditableRegion =>
         IsSelectedStepCompletenessGrid
         && SelectedPipelineStep?.InputEntityIds.ElementAtOrDefault(2) is { } inspectionInputId
@@ -37,13 +39,33 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepThickness || IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume || IsSelectedStepCompletenessGrid;
     public bool IsSelectedStepDualRoiTeaching =>
         IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion;
-    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions;
+    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions || IsSelectedStepConnectedRegionGate;
     public bool IsMeasurementPreviewRunning => heightMeasurementExecutionOwner.IsPreviewRunning;
     public bool HasCurrentMeasurementPreview => heightMeasurementExecutionOwner.HasCurrentPreview;
     public bool IsMeasurementPreviewPublished => heightMeasurementExecutionOwner.IsPreviewPublished;
     internal bool IsMeasurementPreviewStale => heightMeasurementExecutionOwner.IsPreviewStale;
-    public string MeasurementExecutionSummary => heightMeasurementExecutionOwner.ExecutionSummary;
-    public string MeasurementEvidenceSummary => heightMeasurementExecutionOwner.EvidenceSummary;
+    public bool IsPhysicalEdgeGapFlushPreviewRunning => physicalEdgeGapFlushExecutionOwner.IsPreviewRunning;
+    public bool HasCurrentPhysicalEdgeGapFlushPreview => physicalEdgeGapFlushExecutionOwner.HasCurrentPreview;
+    public bool IsPhysicalEdgeGapFlushPreviewStale => physicalEdgeGapFlushExecutionOwner.IsPreviewStale;
+    public bool IsPhysicalEdgeGapFlushPreviewPublished => physicalEdgeGapFlushExecutionOwner.IsPreviewPublished;
+    internal C3DPhysicalEdgeGapFlushResult? CurrentPhysicalEdgeGapFlushOutput =>
+        physicalEdgeGapFlushExecutionOwner.CurrentOutput;
+    public string PhysicalEdgeGapFlushExecutionSummary =>
+        physicalEdgeGapFlushExecutionOwner.ExecutionSummary;
+    public string PhysicalEdgeGapFlushOutputHashSummary =>
+        physicalEdgeGapFlushExecutionOwner.OutputHashSummary;
+    public string PhysicalEdgeGapFlushUpstreamSummary =>
+        physicalEdgeGapFlushExecutionOwner.UpstreamSummary;
+    public string PhysicalEdgeGapFlushEvidenceSummary =>
+        physicalEdgeGapFlushExecutionOwner.EvidenceSummary;
+    public string MeasurementExecutionSummary => IsSelectedStepPhysicalEdgeGapFlush
+        ? physicalEdgeGapFlushExecutionOwner.ExecutionSummary
+        : heightMeasurementExecutionOwner.ExecutionSummary;
+    public string MeasurementEvidenceSummary => IsSelectedStepPhysicalEdgeGapFlush
+        ? physicalEdgeGapFlushExecutionOwner.EvidenceSummary
+        : heightMeasurementExecutionOwner.EvidenceSummary;
+    internal ToolWorkbenchExecutionBlocker? CurrentMeasurementExecutionBlocker =>
+        heightMeasurementExecutionOwner.CurrentExecutionBlocker;
     internal ToolRecipeHeightMeasurementOutput? CurrentMeasurementOutput =>
         heightMeasurementExecutionOwner.CurrentOutput;
     public ICommand CapturePlaneFlatnessReferenceRoiCommand => capturePlaneFlatnessReferenceRoiCommand;
@@ -175,7 +197,7 @@ public sealed partial class ToolWorkbenchViewModel
     private void RemovePlaneFlatnessRoleSelection(bool measurementRole)
     {
         SetPlaneFlatnessTeachingRole(measurementRole);
-        RemoveSelectedTeachingSelection();
+        RequestSelectedTeachingSelectionRemoval();
     }
 
     private bool CanCapturePlaneFlatnessRole(bool measurementRole) =>
@@ -203,6 +225,7 @@ public sealed partial class ToolWorkbenchViewModel
     private bool CanRemovePlaneFlatnessRoleSelection(bool measurementRole) =>
         IsSelectedStepDualRoiMeasurement
         && !IsTeachingSelectionCaptureActive
+        && !IsRecipeMutationBlocked
         && (measurementRole ? PlaneFlatnessMeasurementSelection : PlaneFlatnessReferenceSelection) is not null;
 
     private void SetPlaneFlatnessTeachingRole(bool measurementRole)
@@ -308,8 +331,12 @@ public sealed partial class ToolWorkbenchViewModel
         heightMeasurementExecutionOwner.Cancel();
     private void ClearMeasurementPreview(string summary) =>
         heightMeasurementExecutionOwner.Clear(summary);
+    private void ClearPhysicalEdgeGapFlushPreview(string summary) =>
+        physicalEdgeGapFlushExecutionOwner.Clear(summary);
     private void MarkMeasurementPreviewStaleIfNeeded(object? sender = null) =>
         heightMeasurementExecutionOwner.MarkStaleIfNeeded(sender);
+    private void MarkPhysicalEdgeGapFlushPreviewStaleIfNeeded(object? sender = null) =>
+        physicalEdgeGapFlushExecutionOwner.MarkStaleIfNeeded(sender);
 
     private void RefreshMeasurementExecutionState()
     {
@@ -318,15 +345,37 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepPlaneFlatness));
         OnPropertyChanged(nameof(IsSelectedStepPointPairDimensions));
         OnPropertyChanged(nameof(IsSelectedStepGapFlush));
+        OnPropertyChanged(nameof(IsSelectedStepPhysicalEdgeGapFlush));
         OnPropertyChanged(nameof(IsSelectedStepVolume));
         OnPropertyChanged(nameof(IsSelectedStepCrossSectionDimensions));
         OnPropertyChanged(nameof(IsSelectedStepCompletenessGrid));
+        OnPropertyChanged(nameof(IsSelectedStepConnectedRegionGate));
         OnPropertyChanged(nameof(IsSelectedStepCompletenessGridUsingEditableRegion));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiTeaching));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();
         heightMeasurementExecutionOwner.RefreshState();
+        physicalEdgeGapFlushExecutionOwner.RefreshState();
+    }
+
+    private void RefreshPhysicalEdgeGapFlushStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepPhysicalEdgeGapFlush));
+        OnPropertyChanged(nameof(IsPhysicalEdgeGapFlushPreviewRunning));
+        OnPropertyChanged(nameof(HasCurrentPhysicalEdgeGapFlushPreview));
+        OnPropertyChanged(nameof(IsPhysicalEdgeGapFlushPreviewStale));
+        OnPropertyChanged(nameof(IsPhysicalEdgeGapFlushPreviewPublished));
+        OnPropertyChanged(nameof(CurrentPhysicalEdgeGapFlushOutput));
+        OnPropertyChanged(nameof(PhysicalEdgeGapFlushExecutionSummary));
+        OnPropertyChanged(nameof(PhysicalEdgeGapFlushOutputHashSummary));
+        OnPropertyChanged(nameof(PhysicalEdgeGapFlushUpstreamSummary));
+        OnPropertyChanged(nameof(PhysicalEdgeGapFlushEvidenceSummary));
+        OnPropertyChanged(nameof(MeasurementExecutionSummary));
+        OnPropertyChanged(nameof(MeasurementEvidenceSummary));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        RefreshSelectedToolWorkspaceProjection();
     }
 
     private void RefreshMeasurementCommands()

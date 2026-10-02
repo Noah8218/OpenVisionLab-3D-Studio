@@ -6,7 +6,8 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 /// <summary>
 /// Compatibility facade for the independently owned Displayed Outputs
-/// presentation state. Renderability remains supplied by the neutral catalog.
+/// presentation state. Renderability remains supplied by the neutral catalog
+/// or the signed-delta image-viewer contract.
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel
 {
@@ -42,6 +43,7 @@ public sealed partial class ToolWorkbenchViewModel
         displayedOutputsOwner = new ToolWorkbenchDisplayedOutputsOwner(
             () => ArtifactRegistry.ToArray(),
             GetRenderableC3DTarget,
+            GetRenderableSignedDeltaArtifact,
             Localization,
             outputCompareSession.GetComparePins,
             () => outputCompareSession.HasEmptyCompareSlot,
@@ -87,6 +89,21 @@ public sealed partial class ToolWorkbenchViewModel
         // Showing an existing typed artifact in the primary Viewer is an
         // explicit presentation action. It does not change recipe routing or
         // execute work.
+        if (GetRenderableSignedDeltaArtifact(artifactId) is not null)
+        {
+            var availableContentIds = ViewerWorkspaceCandidates
+                .Select(candidate => candidate.Id)
+                .ToArray();
+            if (ViewerWorkspace.TryOpenAuxiliaryContent(
+                    HeightImageViewerContentId,
+                    availableContentIds))
+            {
+                WorkspaceSelection.SelectOutput(artifactId);
+                WorkspaceSelection.FocusViewerSlot(ViewerWorkspaceSession.AuxiliarySlotId);
+                return;
+            }
+        }
+
         ViewerWorkspace.PinMainContent(artifactId);
         ViewerWorkspace.FocusSlot(ViewerWorkspaceSession.MainSlotId);
         WorkspaceSelection.SelectOutput(artifactId);

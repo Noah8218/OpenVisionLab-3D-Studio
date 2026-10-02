@@ -3,6 +3,7 @@ using System.Threading;
 using System.Windows;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
+using OpenVisionLab.ThreeD.Viewer.Localization;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
@@ -24,6 +25,8 @@ public abstract class ToolLabWindowBase : Window, IDisposable
         string expectedStepMismatchMessage,
         bool activateOnActivated = true)
     {
+        SetResourceReference(ForegroundProperty, "ThreeD.TextBrush");
+        Resources["ToolLabRuntimeText"] = new ViewerRuntimeTextConverter();
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
         this.selectPipelineStep = selectPipelineStep ?? throw new ArgumentNullException(nameof(selectPipelineStep));
         this.expectedToolId = string.IsNullOrWhiteSpace(expectedToolId)

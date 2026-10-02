@@ -71,6 +71,7 @@ public sealed partial class ToolWorkbenchViewModel
             or nameof(CompareSlotBArtifactId)
             or nameof(CompareSlotCArtifactId))
         {
+            viewerWorkspaceViewModel.RefreshOutputCompareSlots();
             NotifyCompareSlotQualityPresentation();
         }
     }
@@ -121,21 +122,16 @@ public sealed partial class ToolWorkbenchViewModel
             return false;
         }
 
-        if (!ViewerWorkspace.TrySetLayout(
-                ViewerWorkspaceLayout.SplitVertical,
-                ViewerWorkspaceCandidates.Select(candidate => candidate.Id),
-                source.Id))
+        CompareSlotAArtifactId = source.Id;
+        CompareSlotBArtifactId = prepared.Id;
+        CompareSlotCArtifactId = string.Empty;
+        if (!ShowOutputCompareViewerCommand.CanExecute(null))
         {
             return false;
         }
 
-        MainViewerContentId = source.Id;
-        AuxiliaryViewerContentId = prepared.Id;
-        CompareSlotAArtifactId = source.Id;
-        CompareSlotBArtifactId = prepared.Id;
-        CompareSlotCArtifactId = string.Empty;
-        OutputComparePaneRequested?.Invoke(this, EventArgs.Empty);
-        return true;
+        ShowOutputCompareViewerCommand.Execute(null);
+        return viewerWorkspaceViewModel.IsOutputCompareViewerActive;
     }
 
     private string GetCompareSlotQualitySummary(string? artifactId)

@@ -26,9 +26,8 @@ internal static class ViewerWorkbenchOverlayRendererVerification
         var passed = 0;
         var total = 0;
         var root = Path.Combine(
-            "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio",
-            "refactor-audit-20260909",
-            "pl0437-viewer-overlay",
+            Path.GetDirectoryName(Path.GetFullPath(reportPath))!,
+            "viewer-overlay",
             "renderer-fixture",
             Guid.NewGuid().ToString("N"));
 

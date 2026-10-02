@@ -5,8 +5,9 @@
         xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.WindowTitle, Korean='2포인트 라인 툴 랩 | OpenVisionLab 3D Studio', English='2-Point Line Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.WindowTitle, Korean='2포인트 라인 도구 실험실 | OpenVisionLab 3D Studio', English='2-Point Line Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1600" Height="920" MinWidth="1120" MinHeight="700"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -22,40 +23,48 @@
             <RowDefinition Height="280" />
         </Grid.RowDefinitions>
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Subtitle, Korean='2포인트 라인 툴 랩', English='2-Point Line Tool Lab'}"
-                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Status, Korean='순서가 있는 raw-C3D 포인트 / 라인 구성 증거', English='Ordered raw-C3D picks / line construction evidence'}" />
+                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Subtitle, Korean='2포인트 라인 도구 실험실', English='2-Point Line Tool Lab'}"
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Status, Korean='순서가 있는 원본 높이 데이터 포인트 / 라인 구성 정보', English='Ordered raw-C3D picks / line construction evidence'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12" Background="{DynamicResource ThreeD.PanelHeaderBrush}" BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
             <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
+                <Grid Grid.ColumnSpan="2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Symbol="PointScan24" />
-                    <StackPanel>
-                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Title, Korean='전체 XYZ 2포인트 라인', English='Full-XYZ 2-Point Line Tool Lab'}" />
-                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Detail, Korean='순서가 있는 두 C3D 그리드 포인트로 선분을 정의합니다. 현재 소스 높이만 해석하며 피팅·스냅·보간·OK/NG 판정은 수행하지 않습니다.', English='Two ordered C3D grid picks define a segment. The tool resolves current source height; it never fits, snaps, interpolates, or evaluates OK/NG.'}" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Title, Korean='전체 XYZ 2포인트 라인', English='Full-XYZ 2-Point Line Tool Lab'}" />
+                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Detail, Korean='순서가 있는 두 C3D 그리드 포인트로 선분을 정의합니다. 현재 입력 데이터 높이만 해석하며 피팅·스냅·보간·OK/NG 판정은 수행하지 않습니다.', English='Two ordered C3D grid picks define a segment. The tool resolves current source height; it never fits, snaps, interpolates, or evaluates OK/NG.'}" />
                     </StackPanel>
-                </StackPanel>
-                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.ShowPicks, Korean='포인트 보기', English='Show picks'}" Icon="{ui:SymbolIcon Eye24}" Click="ShowInputsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksTip, Korean='현재 소스와 구성된 선분을 표시합니다.', English='Show the exact current source and constructed segment'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksAction, Korean='2포인트 라인 입력 보기', English='Show 2-Point Line inputs'}" />
-                    <ui:Button Margin="0,0,6,0" Content="{Binding Localization.Preview}" Icon="{ui:SymbolIcon Play24}" Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewTip, Korean='작성된 포인트에 현재 raw C3D 값을 명시적으로 해석합니다.', English='Resolve current raw C3D values for the authored picks'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewAction, Korean='2포인트 라인 미리보기', English='Preview 2-Point Line'}" />
-                    <ui:Button Content="{Binding Localization.Publish}" Icon="{ui:SymbolIcon CheckmarkCircle24}" Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishTip, Korean='다시 실행하지 않고 현재 2포인트 라인 미리보기를 게시합니다.', English='Publish the current 2-Point Line Preview without running again'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishAction, Korean='2포인트 라인 게시', English='Publish 2-Point Line'}" />
+                </Grid>
+                <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.ShowPicks, Korean='포인트 보기', English='Show picks'}" Icon="{ui:SymbolIcon Eye24}" Click="ShowInputsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksTip, Korean='현재 입력 데이터와 구성된 선분을 표시합니다.', English='Show the exact current source and constructed segment'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksAction, Korean='2포인트 라인 입력 보기', English='Show 2-Point Line inputs'}" />
+                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{Binding Localization.Preview}" Icon="{ui:SymbolIcon Play24}" Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewTip, Korean='작성된 포인트에 현재 원본 높이 데이터 값을 직접 해석합니다.', English='Resolve current raw C3D values for the authored picks'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewAction, Korean='2포인트 라인 미리보기', English='Preview 2-Point Line'}" />
+                    <ui:Button Content="{Binding Localization.Publish}" Icon="{ui:SymbolIcon CheckmarkCircle24}" Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishTip, Korean='다시 실행하지 않고 현재 2포인트 라인 미리보기를 적용합니다.', English='Apply the current 2-Point Line Preview without running again'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishAction, Korean='2포인트 라인 적용', English='Apply 2-Point Line'}" />
                 </WrapPanel>
             </Grid>
         </Border>
-        <Grid Grid.Row="2" Margin="16,12">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Input, Korean='입력 | Raw C3D + 순서가 있는 PointSet(2)', English='Input | Raw C3D + ordered PointSet(2)'}" /></StackPanel><TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding TwoPointLineSelectionSummary}" /></StackPanel></Border>
-                    <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
-                </Grid>
-            </Border>
-            <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Output, Korean='출력 | 순서가 있는 전체 XYZ 선분', English='Output | Ordered full-XYZ segment'}" /></StackPanel><TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding TwoPointLineExecutionSummary}" /><TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding TwoPointLineOutputHashSummary}" /></StackPanel></Border>
-                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
-                </Grid>
-            </Border>
+        <Grid Grid.Row="2" Grid.RowSpan="2" Margin="16,12,16,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="344" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+        <tooling:ToolLabReviewView Grid.Column="0" />
+            <Grid Grid.Column="2">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel><DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Input, Korean='입력 | 원본 높이 데이터 + 순서가 있는 점 2개', English='Input | Raw C3D + ordered PointSet(2)'}" /></DockPanel><TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="TwoPointLineSelectionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></StackPanel></Border>
+                        <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel><DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Output, Korean='출력 | 순서가 있는 전체 XYZ 선분', English='Output | Ordered full-XYZ segment'}" /></DockPanel><TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="TwoPointLineExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock><Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="TwoPointLineOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander></StackPanel></Border>
+                        <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
-        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </tooling:ToolLabWindowBase>

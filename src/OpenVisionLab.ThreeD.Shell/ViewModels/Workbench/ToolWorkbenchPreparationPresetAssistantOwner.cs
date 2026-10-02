@@ -129,7 +129,7 @@ internal sealed class ToolWorkbenchPreparationPresetAssistantOwner : INotifyProp
         !IsPreparationPresetAssistantVisible
             ? localize("준비", "Analyze")
             : isPreparationPresetDraftApplied
-                ? localize("초안 적용", "Apply draft")
+                ? localize("설정창에 입력", "Apply draft")
                 : isPreparationPresetReviewActive
                     ? localize("검토", "Review")
                     : proposedPreparationPreset is not null
@@ -251,7 +251,7 @@ internal sealed class ToolWorkbenchPreparationPresetAssistantOwner : INotifyProp
             option.KernelSize == currentKernel);
         preparationPresetAssistantSummary = selectedPreparationPreset is { } current
             ? localize(
-                $"Filter 준비 프리셋 3개를 확인했습니다. 현재 초안은 {current.DisplayName}입니다. 제안을 선택한 뒤 검토하세요.",
+                $"Filter 준비 프리셋 3개를 확인했습니다. 현재 설정은 {current.DisplayName}입니다. 제안을 선택한 뒤 검토하세요.",
                 $"Found three Filter preparation presets. The current draft is {current.DisplayName}. Select a proposal and review it.")
             : localize(
                 "Filter 준비 프리셋 3개를 확인했습니다. 유효한 프리셋을 선택한 뒤 제안하세요.",
@@ -271,7 +271,7 @@ internal sealed class ToolWorkbenchPreparationPresetAssistantOwner : INotifyProp
         isPreparationPresetReviewActive = false;
         isPreparationPresetDraftApplied = false;
         preparationPresetAssistantSummary = localize(
-            $"{selected.DisplayName} 제안이 준비되었습니다. Review 전에는 초안·레시피·실행이 변경되지 않습니다.",
+            $"{selected.DisplayName} 추천 설정이 준비되었습니다. 확인 전에는 설정값·레시피·검사 상태가 변경되지 않습니다.",
             $"{selected.DisplayName} is ready as a proposal. Draft, recipe, and execution remain unchanged until Review.");
         NotifyState();
     }
@@ -285,7 +285,7 @@ internal sealed class ToolWorkbenchPreparationPresetAssistantOwner : INotifyProp
 
         isPreparationPresetReviewActive = true;
         preparationPresetAssistantSummary = localize(
-            $"{proposal.DisplayName}을 검토 중입니다. Apply draft는 PropertyGrid 초안만 변경합니다.",
+            $"{proposal.DisplayName}을 검토 중입니다. 제안 입력은 설정창의 편집값만 바꿉니다.",
             $"Reviewing {proposal.DisplayName}. Apply draft changes only the PropertyGrid draft.");
         NotifyState();
     }
@@ -301,7 +301,7 @@ internal sealed class ToolWorkbenchPreparationPresetAssistantOwner : INotifyProp
         isPreparationPresetReviewActive = false;
         isPreparationPresetDraftApplied = false;
         preparationPresetAssistantSummary = localize(
-            "프리셋 제안을 취소했습니다. 파라미터 초안과 실행 상태는 변경되지 않았습니다.",
+            "프리셋 제안을 취소했습니다. 편집한 설정값과 실행 상태는 변경되지 않았습니다.",
             "The preset proposal was canceled. The parameter draft and execution state were unchanged.");
         NotifyState();
     }
@@ -326,7 +326,7 @@ internal sealed class ToolWorkbenchPreparationPresetAssistantOwner : INotifyProp
         isPreparationPresetReviewActive = false;
         isPreparationPresetDraftApplied = true;
         preparationPresetAssistantSummary = localize(
-            $"{proposal.DisplayName}을 PropertyGrid 초안에만 적용했습니다. 일반 Apply를 선택하기 전에는 레시피가 변경되지 않으며 Preview/Publish/Run도 실행되지 않습니다.",
+            $"{proposal.DisplayName}을 설정창에 입력했습니다. 설정값 적용 전에는 레시피가 바뀌지 않으며 미리보기·결과 적용·검사도 실행되지 않습니다.",
             $"Applied {proposal.DisplayName} to the PropertyGrid draft only. The recipe is unchanged until normal Apply, and Preview/Publish/Run were not invoked.");
         NotifyState();
     }

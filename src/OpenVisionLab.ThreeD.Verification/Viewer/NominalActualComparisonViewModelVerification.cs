@@ -182,6 +182,35 @@ internal static class NominalActualComparisonViewModelVerification
                 !viewModel.CompletePreview(cancelledRequestId, CreateResult(readyInput)),
                 $"request={cancelledRequestId}");
 
+            var alignmentChangeViewModel = new NominalActualComparisonViewModel();
+            var alignmentChangeInput = ApplyReadyInputs(alignmentChangeViewModel);
+            NominalActualPreviewRequestedEventArgs? alignmentChangeRequest = null;
+            alignmentChangeViewModel.PreviewRequested += (_, args) => alignmentChangeRequest = args;
+            alignmentChangeViewModel.PreviewCommand.Execute(null);
+            var alignmentChangeToken = alignmentChangeRequest!.CancellationToken;
+            var changedAlignmentInput = alignmentChangeInput with
+            {
+                AlignmentId = "alignment.registered-transform.identity.v1"
+            };
+            alignmentChangeViewModel.ApplyInputValidation(
+                "Actual: measured.stl",
+                "Nominal: nominal.stl",
+                "Validation query: validation-query.ply",
+                "Frame: NIST 3-2-1 | Units: mm",
+                $"Alignment: {changedAlignmentInput.AlignmentId}",
+                "mm",
+                changedAlignmentInput.SourceFingerprint);
+            Check(
+                "alignment-change-cancels-running-preview",
+                alignmentChangeToken.IsCancellationRequested
+                && alignmentChangeViewModel.State == NominalActualComparisonState.InputsReady
+                && alignmentChangeViewModel.PreviewResult is null,
+                $"cancelled={alignmentChangeToken.IsCancellationRequested}|state={alignmentChangeViewModel.State}|result={alignmentChangeViewModel.PreviewResult is not null}");
+            Check(
+                "late-completion-after-alignment-change-rejected",
+                !alignmentChangeViewModel.CompletePreview(alignmentChangeRequest.RequestId, CreateResult(alignmentChangeInput)),
+                $"request={alignmentChangeRequest.RequestId}|alignment={changedAlignmentInput.AlignmentId}");
+
             request = null;
             viewModel.PreviewCommand.Execute(null);
             Check("second preview request", request is not null, "event raised");

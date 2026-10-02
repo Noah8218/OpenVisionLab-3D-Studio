@@ -49,7 +49,10 @@ internal static class ShellSourceQualitySmoke
             StringComparison.Ordinal));
         var visibleDiagnosticItemCount = quality.GridDiagnostics.Count(item =>
             visibleText.Any(line => line.Contains($"text={item.Title}", StringComparison.Ordinal)));
-        var qualityBadge = InspectCurrentSourceQualityBadge(shellRoot, workbench.CurrentSourceQualitySummary);
+        var diagnosticDetails = FindVisualDescendant<Expander>(workbenchView,
+            element => AutomationProperties.GetAutomationId(element) == "SourceQualityGridDiagnosticsDetails");
+        var expectedVisibleDiagnosticItemCount = diagnosticDetails?.IsExpanded == true ? quality.GridDiagnostics.Count : 0;
+        var qualityBadge = InspectCurrentSourceQualityBadge(shellRoot, workbench.CurrentSourceHeaderStatusText);
 
         var expectedGlobalKind = quality.HasGridDiagnosticError
             ? "Error"
@@ -60,6 +63,9 @@ internal static class ShellSourceQualitySmoke
                       && !quality.IsLoading
                       && !quality.HasError
                       && workbench.IsCurrentSourceQualityStatusVisible
+                      && workbench.IsCurrentSourceHeaderStatusVisible
+                      && !workbench.CurrentSourceHeaderStatusText.Contains("품질", StringComparison.OrdinalIgnoreCase)
+                      && !workbench.CurrentSourceHeaderStatusDetail.Contains("품질", StringComparison.OrdinalIgnoreCase)
                       && string.Equals(
                           workbench.CurrentSourceQualityStatusKind,
                           expectedGlobalKind,
@@ -71,7 +77,9 @@ internal static class ShellSourceQualitySmoke
                       && workbenchView.IsToolInspectorPaneSelected
                       && quality.GridDiagnostics.Count == 4
                       && diagnosticsSectionVisible
-                      && visibleDiagnosticItemCount == quality.GridDiagnostics.Count
+                      && diagnosticDetails is { IsVisible: true }
+                      && (!quality.HasGridDiagnosticError || diagnosticDetails.IsExpanded)
+                      && visibleDiagnosticItemCount == expectedVisibleDiagnosticItemCount
                       && qualityBadge.IsFullyVisible
                       && workbench.IsDirty == beforeDirty
                       && workbench.PipelineSteps.Count == beforeStepCount
@@ -90,9 +98,9 @@ internal static class ShellSourceQualitySmoke
                 [
                     $"SourceQualityWorkspaceSmoke|{(passed ? "Pass" : "Fail")}|viewOnly=true|recipeChanged=false|inspectionRun=false",
                     $"State|loading={quality.IsLoading}|hasReport={quality.HasReport}|hasError={quality.HasError}|visible={workbench.IsSourceQualityWorkspaceVisible}|selectedStep={workbench.SelectedPipelineStep?.Id ?? "(none)"}",
-                    $"Diagnostics|count={quality.GridDiagnostics.Count}|state={sourceReport?.GridDiagnostics?.State}|paneSelected={workbenchView.IsToolInspectorPaneSelected}|sectionVisible={diagnosticsSectionVisible}|visibleItems={visibleDiagnosticItemCount}|codes={string.Join(',', quality.GridDiagnostics.Select(item => item.Code))}",
-                    $"JobBarQualityBadge|visible={qualityBadge.IsVisible}|fullyVisible={qualityBadge.IsFullyVisible}|withinTitleBar={qualityBadge.IsWithinTitleBar}|withinWindow={qualityBadge.IsWithinWindow}|wrap={qualityBadge.TextWrapping}|trimming={qualityBadge.TextTrimming}|badgeSize={qualityBadge.BadgeWidth.ToString("F1", CultureInfo.InvariantCulture)}x{qualityBadge.BadgeHeight.ToString("F1", CultureInfo.InvariantCulture)}|textSize={qualityBadge.TextWidth.ToString("F1", CultureInfo.InvariantCulture)}x{qualityBadge.TextHeight.ToString("F1", CultureInfo.InvariantCulture)}|requiredTextHeight={qualityBadge.RequiredTextHeight.ToString("F1", CultureInfo.InvariantCulture)}|text={qualityBadge.Text}",
-                    $"GlobalStatus|visible={workbench.IsCurrentSourceQualityStatusVisible}|kind={workbench.CurrentSourceQualityStatusKind}|summary={workbench.CurrentSourceQualitySummary}|detail={workbench.CurrentSourceQualityDetail.Replace(Environment.NewLine, " | ")}",
+                    $"Diagnostics|count={quality.GridDiagnostics.Count}|state={sourceReport?.GridDiagnostics?.State}|paneSelected={workbenchView.IsToolInspectorPaneSelected}|sectionVisible={diagnosticsSectionVisible}|detailsExpanded={diagnosticDetails?.IsExpanded}|visibleItems={visibleDiagnosticItemCount}|expectedVisibleItems={expectedVisibleDiagnosticItemCount}|codes={string.Join(',', quality.GridDiagnostics.Select(item => item.Code))}",
+                    $"JobBarInputStatusBadge|visible={qualityBadge.IsVisible}|fullyVisible={qualityBadge.IsFullyVisible}|withinTitleBar={qualityBadge.IsWithinTitleBar}|withinWindow={qualityBadge.IsWithinWindow}|wrap={qualityBadge.TextWrapping}|trimming={qualityBadge.TextTrimming}|badgeSize={qualityBadge.BadgeWidth.ToString("F1", CultureInfo.InvariantCulture)}x{qualityBadge.BadgeHeight.ToString("F1", CultureInfo.InvariantCulture)}|textSize={qualityBadge.TextWidth.ToString("F1", CultureInfo.InvariantCulture)}x{qualityBadge.TextHeight.ToString("F1", CultureInfo.InvariantCulture)}|requiredTextHeight={qualityBadge.RequiredTextHeight.ToString("F1", CultureInfo.InvariantCulture)}|text={qualityBadge.Text}",
+                    $"GlobalStatus|visible={workbench.IsCurrentSourceQualityStatusVisible}|kind={workbench.CurrentSourceQualityStatusKind}|summary={workbench.CurrentSourceQualitySummary}|header={workbench.CurrentSourceHeaderStatusText}|headerDetail={workbench.CurrentSourceHeaderStatusDetail.Replace(Environment.NewLine, " | ")}|detail={workbench.CurrentSourceQualityDetail.Replace(Environment.NewLine, " | ")}",
                     $"Source|name={quality.SourceName}|grid={sourceReport?.Grid.Width ?? 0}x{sourceReport?.Grid.Height ?? 0}|cells={sourceReport?.Grid.CellCount ?? 0}|valid={sourceReport?.Coverage.ValidSampleCount ?? 0}|validRatio={sourceReport?.Coverage.ValidRatio ?? 0:R}|missing={sourceReport?.Coverage.MissingSampleCount ?? 0}|missingRatio={sourceReport?.Coverage.MissingRatio ?? 0:R}",
                     $"Height|min={sourceReport?.Height.Minimum?.ToString("R") ?? "null"}|max={sourceReport?.Height.Maximum?.ToString("R") ?? "null"}|mean={sourceReport?.Height.Mean?.ToString("R") ?? "null"}|bins={sourceReport?.Height.Distribution?.BinCount ?? 0}|peak={sourceReport?.Height.Distribution?.PeakBinIndex ?? -1}",
                     $"Mask|bytes={sourceReport?.Coverage.InvalidCellMask.ByteLength ?? 0}|sha256={quality.MaskSha256}",
@@ -128,9 +136,10 @@ internal static class ShellSourceQualitySmoke
         }
 
         var pixelsPerDip = VisualTreeHelper.GetDpi(text).PixelsPerDip;
+        const double tolerance = 1d;
         var formattedText = new FormattedText(
             text.Text,
-            CultureInfo.CurrentUICulture,
+            text.Language.GetEquivalentCulture(),
             text.FlowDirection,
             new Typeface(
                 text.FontFamily,
@@ -139,12 +148,13 @@ internal static class ShellSourceQualitySmoke
                 text.FontStretch),
             text.FontSize,
             text.Foreground,
+            null,
+            TextOptions.GetTextFormattingMode(text),
             pixelsPerDip)
         {
-            MaxTextWidth = Math.Max(1d, text.ActualWidth),
+            MaxTextWidth = Math.Max(1d, text.ActualWidth + tolerance),
             Trimming = TextTrimming.None
         };
-        const double tolerance = 1d;
         var isWithinTitleBar = IsWithin(badge, titleBar, tolerance);
         var isWithinWindow = IsWithin(badge, window, tolerance);
         var textHasFullHeight = text.ActualHeight + tolerance >= formattedText.Height;

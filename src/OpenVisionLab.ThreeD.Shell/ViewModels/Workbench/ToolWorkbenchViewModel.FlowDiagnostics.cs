@@ -34,6 +34,7 @@ public sealed partial class ToolWorkbenchViewModel
     public int RecipeHealthNeedsInputCount => flowDiagnosticsOwner.RecipeHealthNeedsInputCount;
     public int RecipeHealthNeedsSelectionCount => flowDiagnosticsOwner.RecipeHealthNeedsSelectionCount;
     public int RecipeHealthNeedsParametersCount => flowDiagnosticsOwner.RecipeHealthNeedsParametersCount;
+    public int RecipeHealthExecutionBlockedCount => flowDiagnosticsOwner.RecipeHealthExecutionBlockedCount;
     public int RecipeHealthStalePreviewCount => flowDiagnosticsOwner.RecipeHealthStalePreviewCount;
     public int RecipeHealthPublishedCount => flowDiagnosticsOwner.RecipeHealthPublishedCount;
     public int RecipeHealthIssueCount => flowDiagnosticsOwner.RecipeHealthIssueCount;
@@ -73,6 +74,10 @@ public sealed partial class ToolWorkbenchViewModel
             SelectPipelineStepFromFlowDiagnostics,
             step => CreateSelectionRequirement(step),
             IsSelectionCurrent,
+            step => heightMeasurementExecutionOwner.CurrentExecutionBlocker is { } blocker
+                && string.Equals(blocker.StepId, step.Id, StringComparison.Ordinal)
+                    ? blocker
+                    : null,
             () => IsRecipeMutationBlocked,
             () => HasPendingStepParameterChanges,
             () => IsTeachingSelectionCaptureActive,
@@ -131,6 +136,7 @@ public enum ToolWorkbenchRecipeHealthCategory
     NeedsInput,
     NeedsSelection,
     NeedsParameters,
+    ExecutionBlocked,
     StalePreview,
     Published
 }
@@ -145,6 +151,7 @@ public sealed record ToolWorkbenchRecipeHealthItem(
     public bool IsIssue => Category is ToolWorkbenchRecipeHealthCategory.NeedsInput
         or ToolWorkbenchRecipeHealthCategory.NeedsSelection
         or ToolWorkbenchRecipeHealthCategory.NeedsParameters
+        or ToolWorkbenchRecipeHealthCategory.ExecutionBlocked
         or ToolWorkbenchRecipeHealthCategory.StalePreview;
 
     public string AccessibleName => $"{Title}. {Detail}";

@@ -27,7 +27,7 @@
                                Text="{Binding Localization.RecipeFlow}" />
                 </StackPanel>
                 <TextBlock Margin="0,4,0,0"
-                           FontSize="10.5"
+                           FontSize="12"
                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                            TextWrapping="Wrap"
                            Text="{Binding Localization.RecipeFlowHint}" />
@@ -60,11 +60,11 @@
                                        Foreground="{DynamicResource ThreeD.PassBrush}"
                                        Symbol="CheckmarkCircle24" />
                         <StackPanel Grid.Column="1">
-                            <TextBlock FontSize="10"
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding Localization.RecipeSource}" />
                             <TextBlock Margin="0,2,0,0"
-                                       FontSize="9.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        Text="{Binding LocalizedSourceReadinessSummary}"
                                        TextWrapping="Wrap" />
@@ -111,7 +111,7 @@
                                            Margin="0,1,6,0"
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                            Symbol="ArrowFlowUpRight24" />
-                            <TextBlock FontSize="10"
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Text="{Binding Localization.SelectedRoute}" />
@@ -127,10 +127,10 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.Input}" />
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            Text="{Binding SelectedRouteInputIds}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
@@ -141,17 +141,17 @@
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                            Symbol="ArrowRight24" />
                             <StackPanel Grid.Column="2">
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.Output}" />
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                            Text="{Binding SelectedRouteOutputId}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Grid>
                         <TextBlock Margin="22,7,0,0"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding Localization.SelectedStepActionsHint}"
                                    TextWrapping="Wrap" />
@@ -188,7 +188,7 @@
                           Header="{Binding Localization.RecipeNavigator}"
                           IsExpanded="True">
                     <StackPanel Margin="0,6,0,0">
-                        <TextBlock FontSize="9.5"
+                        <TextBlock FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding ArtifactRegistrySummary}" />
                         <TreeView Margin="0,6,0,0"
@@ -237,11 +237,11 @@
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Symbol="FlowchartCircle24" />
                                             <StackPanel Grid.Column="1">
-                                                <TextBlock FontSize="10"
+                                                <TextBlock FontSize="12"
                                                            FontWeight="SemiBold"
                                                            Text="{Binding Title, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=ArtifactNavigatorTitle}"
                                                            TextTrimming="CharacterEllipsis" />
-                                                <TextBlock FontSize="9"
+                                                <TextBlock FontSize="12"
                                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                            Text="{Binding Detail, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=ArtifactNavigatorDetail}"
                                                            TextTrimming="CharacterEllipsis" />
@@ -262,7 +262,7 @@
                                    Text="{Binding Source.Name}"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Margin="0,3,0,0"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Source.Path}"
                                    TextTrimming="CharacterEllipsis"
@@ -284,7 +284,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                 <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.Frame, Korean='프레임', English='Frame'}" />
+                                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.Frame, Korean='좌표계', English='Frame'}" />
                                 <TextBox Text="{Binding Source.FrameId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </Grid>
@@ -292,11 +292,11 @@
                 </Expander>
 
                 <Expander Margin="0,9,0,0"
-                          Header="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.ReferencesAndFrame, Korean='참조 및 프레임', English='References &amp; frame'}"
+                          Header="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.ReferencesAndFrame, Korean='참조 및 좌표계', English='References &amp; frame'}"
                           IsExpanded="False">
                     <StackPanel Margin="0,6,0,0">
                         <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.SourceEntityId, Korean='소스 엔터티 ID', English='Source entity ID'}" />
+                                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.SourceEntityId, Korean='입력 데이터 ID', English='Source entity ID'}" />
                         <TextBox Text="{Binding Source.Id, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.DeclaredReference, Korean='선언된 참조', English='Declared reference'}" />
@@ -306,7 +306,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBox Margin="0,0,4,0"
-                                     ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.ReferenceIdTip, Korean='참조 엔터티 ID를 입력합니다.', English='Reference entity ID'}"
+                                     ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.ReferenceCatalog.ReferenceIdTip, Korean='참조 데이터 ID를 입력합니다.', English='Reference entity ID'}"
                                      Text="{Binding NewReferenceId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBox Grid.Column="1"
                                      Margin="4,0,0,0"
@@ -336,7 +336,7 @@
                                 <DataTemplate>
                                     <StackPanel Margin="4,2">
                                         <TextBlock FontWeight="SemiBold" Text="{Binding Id}" />
-                                        <TextBlock FontSize="9.5"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding Kind}" />
                                     </StackPanel>

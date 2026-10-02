@@ -335,7 +335,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dSample.Width,
             c3dSample.Height,
             c3dSample.HorizontalScale,
-            C3DHeightGrid.ViewerHeightScale,
+            C3DHeightGrid.ViewerHeightScale * viewModel.C3DHeightEmphasis,
             c3dSample.Mean,
             row,
             column,
@@ -457,6 +457,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.C3DHeightColorMinimumRaw,
             viewModel.C3DHeightColorMaximumRaw,
             viewModel.PointSize,
+            viewModel.C3DHeightEmphasis,
             wireframeLodLevel);
         if (wireframeLodLevel != C3DWireframeLodLevel.Precise)
         {
@@ -593,6 +594,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.Display.EffectiveSettings.ColorMap,
             viewModel.C3DHeightColorMinimumRaw,
             viewModel.C3DHeightColorMaximumRaw,
+            viewModel.C3DHeightEmphasis,
             UsesDynamicC3DColor() ? planeFlatnessEvaluation : null);
         if (c3dRenderResources.RequiresGpuReplacement(bufferKey))
         {
@@ -840,7 +842,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
     private Vector3[] GetC3DRenderPositions(C3DHeightGridRenderProxy renderProxy)
-        => c3dRenderPositionCache.GetOrCreate(renderProxy, viewModel.C3DModelTransform);
+        => c3dRenderPositionCache.GetOrCreate(renderProxy, viewModel.C3DModelTransform, viewModel.C3DHeightEmphasis);
 
     private void InvalidateC3DRenderProxy()
     {

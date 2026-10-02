@@ -89,6 +89,15 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
                 1,
                 item.Contract)
             && string.Equals(item.State, "Current selection", StringComparison.Ordinal));
+        var polygonSelection = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+            item.NodeKind == "Selection"
+            && string.Equals(item.Contract, ToolRecipeSelectionKinds.GridPolygon, StringComparison.Ordinal)
+            && string.Equals(item.State, "Current selection", StringComparison.Ordinal));
+        var gridPolygonDomainTool = snapshot.Tools.FirstOrDefault(item =>
+            string.Equals(item.Id, "grid-polygon-domain", StringComparison.Ordinal));
+        var gridPolygonPrimary = gridPolygonDomainTool is null
+            ? null
+            : FindCompatiblePrimaryInput(snapshot, gridPolygonDomainTool);
         var publishedFilter = snapshot.ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "FilteredHeightField", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
@@ -99,12 +108,16 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
         var publishedConnectedRegion = snapshot.ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "ConnectedRegionArtifact", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedGridDomain = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "GridDomainArtifact", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
         var publishedEditableRegion = snapshot.ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "EditableRegionArtifact", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
         var publishedEdge = snapshot.ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "EdgePointSet", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var physicalEdgeGapFlushInputs = FindPhysicalEdgeGapFlushInputs(snapshot);
         var publishedPlane = snapshot.ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "PlaneFeature", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
@@ -117,6 +130,11 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
 
         var suggestions = new List<ToolWorkbenchCompatibleToolItem>();
         AddCompatibleTool(snapshot, suggestions, "three-d-line-fit", publishedEdge is null ? [] : [publishedEdge]);
+        AddCompatibleTool(
+            snapshot,
+            suggestions,
+            "physical-edge-gap-flush",
+            physicalEdgeGapFlushInputs);
         AddCompatibleTool(
             snapshot,
             suggestions,
@@ -136,14 +154,40 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
             suggestions,
             "connected-region",
             publishedOutlier is null ? [] : [publishedOutlier]);
+        AddCompatibleTool(
+            snapshot,
+            suggestions,
+            "grid-polygon-domain",
+            gridPolygonPrimary is not null
+                && (string.Equals(gridPolygonPrimary.State, "Ready", StringComparison.Ordinal)
+                    || string.Equals(gridPolygonPrimary.State, "Published", StringComparison.Ordinal))
+                && polygonSelection is not null
+                ? [gridPolygonPrimary, polygonSelection]
+                : []);
         IReadOnlyList<ToolWorkbenchArtifactItem> publishedDomainMask =
-            publishedConnectedRegion is not null
+            source is not null
+            && publishedConnectedRegion is not null
             && publishedOutlier is not null
             && string.Equals(
                 publishedConnectedRegion.InputEntityIds,
                 publishedOutlier.Id,
                 StringComparison.OrdinalIgnoreCase)
-                ? [publishedOutlier, publishedConnectedRegion]
+                ? [source, publishedOutlier, publishedConnectedRegion]
+                : publishedConnectedRegion is not null
+                  && publishedOutlier is not null
+                  && string.Equals(
+                      publishedConnectedRegion.InputEntityIds,
+                      publishedOutlier.Id,
+                      StringComparison.OrdinalIgnoreCase)
+                    ? [publishedOutlier, publishedConnectedRegion]
+                : publishedGridDomain is not null
+                    && GetFirstInputEntityId(publishedGridDomain) is { Length: > 0 } gridDomainSourceId
+                    && snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                        string.Equals(item.Id, gridDomainSourceId, StringComparison.OrdinalIgnoreCase)
+                        && (item.NodeKind == "Source" || item.PipelineStep is not null)
+                        && (string.Equals(item.State, "Ready", StringComparison.Ordinal)
+                            || string.Equals(item.State, "Published", StringComparison.Ordinal))) is { } gridDomainSource
+                    ? [gridDomainSource, publishedGridDomain]
                 : [];
         AddCompatibleTool(snapshot, suggestions, "domain-mask", publishedDomainMask);
         AddCompatibleTool(
@@ -157,6 +201,19 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
             "completeness-grid",
             source is not null && gridSelection is not null && publishedEditableRegion is not null
                 ? [source, gridSelection, publishedEditableRegion]
+                : []);
+        AddCompatibleTool(
+            snapshot,
+            suggestions,
+            "connected-region-gate",
+            source is not null
+                && publishedOutlier is not null
+                && publishedConnectedRegion is not null
+                && string.Equals(
+                    publishedConnectedRegion.InputEntityIds,
+                    publishedOutlier.Id,
+                    StringComparison.OrdinalIgnoreCase)
+                ? [source, publishedOutlier, publishedConnectedRegion]
                 : []);
         AddCompatibleTool(snapshot, suggestions, "roi-crop", source is null ? [] : [source]);
         AddCompatibleTool(snapshot, suggestions, "two-point-line", source is null ? [] : [source]);
@@ -321,9 +378,55 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
             return new ToolWorkbenchInputRouteProposal(false, string.Empty, string.Empty);
         }
 
+        if (tool.RouteKind == ToolWorkbenchToolRouteKind.ReviewOnly)
+        {
+            return new ToolWorkbenchInputRouteProposal(
+                false,
+                string.Empty,
+                localization.ReviewOnlyToolRouteDetail);
+        }
+
+        if (tool.RouteKind == ToolWorkbenchToolRouteKind.SpecialExperiment)
+        {
+            return new ToolWorkbenchInputRouteProposal(
+                true,
+                string.Empty,
+                localization.SpecialExperimentToolRouteDetail);
+        }
+
         if (string.Equals(tool.Id, "domain-mask", StringComparison.Ordinal))
         {
-            var primary = FindCompatiblePrimaryInput(snapshot, tool);
+            var rawSource = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                item.NodeKind == "Source"
+                && string.Equals(item.Id, snapshot.Source.Id, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.State, "Ready", StringComparison.Ordinal));
+            var publishedDetection = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                item.PipelineStep?.ToolId == "remove-outlier-pixels"
+                && string.Equals(item.Contract, "FilteredHeightField", StringComparison.Ordinal)
+                && string.Equals(item.State, "Published", StringComparison.Ordinal));
+            var detectedRegion = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Contract, "ConnectedRegionArtifact", StringComparison.Ordinal)
+                && string.Equals(item.State, "Published", StringComparison.Ordinal)
+                && publishedDetection is not null
+                && string.Equals(item.InputEntityIds, publishedDetection.Id, StringComparison.OrdinalIgnoreCase));
+            if (rawSource is not null && publishedDetection is not null && detectedRegion is not null)
+            {
+                var rawSourceGate = EvaluateSourceQualityGate(snapshot, tool, rawSource);
+                var rawRegionRoute = string.Join("; ", rawSource.Id, publishedDetection.Id, detectedRegion.Id);
+                return new ToolWorkbenchInputRouteProposal(
+                    rawSourceGate.IsAllowed,
+                    rawRegionRoute,
+                    rawSourceGate.IsAllowed
+                        ? string.Format(
+                            localization.ProposedToolRouteFormat,
+                            rawRegionRoute,
+                            tool.InputContract,
+                            tool.Name,
+                            tool.OutputContract)
+                        : rawSourceGate.Detail);
+            }
+
+            ToolWorkbenchArtifactItem? primary = FindCompatiblePrimaryInput(snapshot, tool);
             var domain = snapshot.ArtifactRegistry.FirstOrDefault(item =>
                 string.Equals(item.Contract, "ConnectedRegionArtifact", StringComparison.Ordinal)
                 && string.Equals(item.State, "Published", StringComparison.Ordinal)
@@ -332,12 +435,27 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
                     item.InputEntityIds,
                     primary.Id,
                     StringComparison.OrdinalIgnoreCase));
+            if (domain is null)
+            {
+                domain = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                    string.Equals(item.Contract, "GridDomainArtifact", StringComparison.Ordinal)
+                    && string.Equals(item.State, "Published", StringComparison.Ordinal));
+                if (domain is not null)
+                {
+                    var domainSourceId = GetFirstInputEntityId(domain);
+                    primary = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                        string.Equals(item.Id, domainSourceId, StringComparison.OrdinalIgnoreCase)
+                        && (item.NodeKind == "Source" || item.PipelineStep is not null)
+                        && (string.Equals(item.State, "Ready", StringComparison.Ordinal)
+                            || string.Equals(item.State, "Published", StringComparison.Ordinal)));
+                }
+            }
             if (primary is null || domain is null)
             {
                 return new ToolWorkbenchInputRouteProposal(
                     false,
                     string.Empty,
-                    "Domain / Mask requires a Published HeightField followed by its matching Published ConnectedRegionArtifact.");
+                    "Domain / Mask requires a Published HeightField followed by its matching Published ConnectedRegionArtifact or GridDomainArtifact.");
             }
 
             var sourceGate = EvaluateSourceQualityGate(snapshot, tool, primary);
@@ -353,6 +471,100 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
                         tool.Name,
                         tool.OutputContract)
                     : sourceGate.Detail);
+        }
+
+        if (string.Equals(tool.Id, "connected-region-gate", StringComparison.Ordinal))
+        {
+            var rawSource = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                item.NodeKind == "Source"
+                && string.Equals(item.Id, snapshot.Source.Id, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.State, "Ready", StringComparison.Ordinal));
+            var publishedDetection = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                item.PipelineStep?.ToolId == "remove-outlier-pixels"
+                && string.Equals(item.Contract, "FilteredHeightField", StringComparison.Ordinal)
+                && string.Equals(item.State, "Published", StringComparison.Ordinal));
+            var detectedRegion = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Contract, "ConnectedRegionArtifact", StringComparison.Ordinal)
+                && string.Equals(item.State, "Published", StringComparison.Ordinal)
+                && publishedDetection is not null
+                && string.Equals(item.InputEntityIds, publishedDetection.Id, StringComparison.OrdinalIgnoreCase));
+            if (rawSource is null || publishedDetection is null || detectedRegion is null)
+            {
+                return new ToolWorkbenchInputRouteProposal(
+                    false,
+                    string.Empty,
+                    "Connected Region Coverage / Height Gate requires the raw C3D, its Published detection HeightField, and the matching Published ConnectedRegionArtifact.");
+            }
+
+            var sourceGate = EvaluateSourceQualityGate(snapshot, tool, rawSource);
+            var route = string.Join("; ", rawSource.Id, publishedDetection.Id, detectedRegion.Id);
+            return new ToolWorkbenchInputRouteProposal(
+                sourceGate.IsAllowed,
+                route,
+                sourceGate.IsAllowed
+                    ? string.Format(
+                        localization.ProposedToolRouteFormat,
+                        route,
+                        tool.InputContract,
+                        tool.Name,
+                        tool.OutputContract)
+                    : sourceGate.Detail);
+        }
+
+        if (string.Equals(tool.Id, "grid-polygon-domain", StringComparison.Ordinal))
+        {
+            var primary = FindCompatiblePrimaryInput(snapshot, tool);
+            var polygon = snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                item.NodeKind == "Selection"
+                && string.Equals(item.Contract, ToolRecipeSelectionKinds.GridPolygon, StringComparison.Ordinal)
+                && string.Equals(item.State, "Current selection", StringComparison.Ordinal));
+            if (primary is null
+                || (primary.State != "Ready" && primary.State != "Published"))
+            {
+                return new ToolWorkbenchInputRouteProposal(
+                    false,
+                    string.Empty,
+                    "Grid Polygon Domain requires a compatible HeightField. Teach a GridPolygon selection before Preview.");
+            }
+
+            var sourceGate = EvaluateSourceQualityGate(snapshot, tool, primary);
+            var route = polygon is null
+                ? primary.Id
+                : string.Join("; ", primary.Id, polygon.Id);
+            return new ToolWorkbenchInputRouteProposal(
+                sourceGate.IsAllowed,
+                route,
+                sourceGate.IsAllowed
+                    ? string.Format(
+                        localization.ProposedToolRouteFormat,
+                        route,
+                        tool.InputContract,
+                        tool.Name,
+                        tool.OutputContract)
+                : sourceGate.Detail);
+        }
+
+        if (string.Equals(tool.Id, "physical-edge-gap-flush", StringComparison.Ordinal))
+        {
+            var inputArtifacts = FindPhysicalEdgeGapFlushInputs(snapshot);
+            if (inputArtifacts.Count != tool.MinimumInputCount)
+            {
+                return new ToolWorkbenchInputRouteProposal(
+                    false,
+                    string.Empty,
+                    "Physical Edge Gap / Flush requires two distinct Published LineFeature artifacts followed by their matching Published EdgePointSet artifacts in authored First/Second order.");
+            }
+
+            var route = string.Join("; ", inputArtifacts.Select(item => item.Id));
+            return new ToolWorkbenchInputRouteProposal(
+                true,
+                route,
+                string.Format(
+                    localization.ProposedToolRouteFormat,
+                    route,
+                    tool.InputContract,
+                    tool.Name,
+                    tool.OutputContract));
         }
 
         var sourceSuggestion = CompatibleToolSuggestions.FirstOrDefault(suggestion =>
@@ -488,6 +700,58 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
             .FirstOrDefault(item =>
                 ToolRecipePrimaryInputContract.IsCompatible(tool.Id, item.Contract));
 
+    private static string GetFirstInputEntityId(ToolWorkbenchArtifactItem artifact) =>
+        artifact.InputEntityIds
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault() ?? string.Empty;
+
+    private static IReadOnlyList<ToolWorkbenchArtifactItem> FindPhysicalEdgeGapFlushInputs(
+        ToolWorkbenchCompatibleToolCatalogSnapshot snapshot)
+    {
+        var edges = snapshot.ArtifactRegistry
+            .Where(item => string.Equals(item.Contract, "EdgePointSet", StringComparison.Ordinal)
+                && string.Equals(item.State, "Published", StringComparison.Ordinal))
+            .ToArray();
+        if (edges.Length < 2)
+        {
+            return [];
+        }
+
+        var firstEdge = edges[0];
+        var secondEdge = edges.Skip(1).FirstOrDefault(edge =>
+            HasCommonLineage(firstEdge, edge)
+            && !string.Equals(firstEdge.Id, edge.Id, StringComparison.OrdinalIgnoreCase));
+        if (secondEdge is null)
+        {
+            return [];
+        }
+
+        var firstLine = FindMatchingPublishedLine(snapshot, firstEdge);
+        var secondLine = FindMatchingPublishedLine(snapshot, secondEdge);
+        return firstLine is null || secondLine is null
+            ? []
+            : [firstLine, secondLine, firstEdge, secondEdge];
+    }
+
+    private static ToolWorkbenchArtifactItem? FindMatchingPublishedLine(
+        ToolWorkbenchCompatibleToolCatalogSnapshot snapshot,
+        ToolWorkbenchArtifactItem edge) =>
+        snapshot.ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "LineFeature", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal)
+            && HasCommonLineage(edge, item)
+            && item.InputEntityIds
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(inputId => string.Equals(inputId, edge.Id, StringComparison.OrdinalIgnoreCase)));
+
+    private static bool HasCommonLineage(
+        ToolWorkbenchArtifactItem first,
+        ToolWorkbenchArtifactItem second) =>
+        !string.IsNullOrWhiteSpace(first.RootSourceId)
+        && string.Equals(first.RootSourceId, second.RootSourceId, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(first.FrameId, second.FrameId, StringComparison.Ordinal)
+        && string.Equals(first.Unit, second.Unit, StringComparison.Ordinal);
+
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
@@ -518,7 +782,7 @@ public sealed record ToolWorkbenchCompatibleToolItem(
 {
     public bool IsAvailable { get; init; } = true;
     public string BlockerReason { get; init; } = string.Empty;
-    public string Title => Tool.Name;
+    public string Title => Tool.DisplayName;
     public string InputContract => Tool.InputContract;
     public string Detail => IsAvailable
         ? $"{State} | {InputContract} ← {InputArtifactIds}"

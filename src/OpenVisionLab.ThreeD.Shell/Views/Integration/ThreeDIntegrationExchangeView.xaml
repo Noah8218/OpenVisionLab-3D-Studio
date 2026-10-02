@@ -4,6 +4,7 @@
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              AutomationProperties.AutomationId="MachineExchangeWorkspace">
     <Grid Background="{DynamicResource ThreeD.PanelBrush}"
           TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
@@ -22,9 +23,9 @@
                            Foreground="{DynamicResource ThreeD.TextBrush}"
                            Text="{views:ThreeDText Key=ThreeD.Exchange.Title, Korean='2D / Machine Studio TCP 연동', English='2D / Machine Studio TCP exchange'}" />
                 <TextBlock Margin="0,2,0,0"
-                           FontSize="10.5"
+                           FontSize="12"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='로컬 거래 저장소와 직접 TCP를 함께 사용합니다. 수신, 전송, 검토와 결과 게시는 각각 명시적으로 실행합니다.', English='Use the local transaction store with direct TCP. Listening, transfer, review, and result publication are separate explicit actions.'}" />
+                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='공유 폴더와 TCP로 검사 요청과 결과를 주고받습니다. 수신·검토·검사·전송은 각각 버튼으로 실행하세요.', English='Use the local transaction store with direct TCP. Listening, transfer, review, and result publication are separate explicit actions.'}" />
             </StackPanel>
         </Border>
 
@@ -51,7 +52,7 @@
                         <TextBlock Margin="0,4,0,10"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    TextWrapping="Wrap"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.SetupHint, Korean='이 PC의 로컬 거래 폴더와 TCP 주소를 저장합니다. 설정 복원만으로는 폴더 스캔이나 네트워크 연결을 시작하지 않습니다.', English='Save this PC local transaction folder and TCP endpoints. Restoring setup alone never scans the folder or starts a network connection.'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.SetupHint, Korean='이 PC의 공유 폴더와 TCP 주소를 저장합니다. 설정 복원만으로는 폴더 스캔이나 네트워크 연결을 시작하지 않습니다.', English='Save this PC local transaction folder and TCP endpoints. Restoring setup alone never scans the folder or starts a network connection.'}" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -91,7 +92,7 @@
                             <ui:Button x:Name="RefreshHandoffsButton"
                                        Appearance="Secondary"
                                        Icon="{ui:SymbolIcon ArrowSync24}"
-                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Refresh, Korean='Handoff 새로고침', English='Refresh handoffs'}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Refresh, Korean='요청 새로고침', English='Refresh handoffs'}"
                                        Command="{Binding IntegrationExchange.RefreshHandoffsCommand}"
                                        AutomationProperties.AutomationId="RefreshIntegrationHandoffs" />
                         </WrapPanel>
@@ -213,7 +214,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TextBlock FontSize="13" FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Handoffs, Korean='Machine Studio Handoff 목록', English='Machine Studio handoffs'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Handoffs, Korean='Machine Studio 검사 요청', English='Machine Studio handoffs'}" />
                         <ListBox Grid.Row="1"
                                  Margin="0,8,0,0"
                                  Background="Transparent"
@@ -229,7 +230,7 @@
                                             CornerRadius="4">
                                         <StackPanel>
                                             <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding Title}" />
-                                            <TextBlock Margin="0,3,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Detail}" TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,3,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Detail}" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -249,21 +250,38 @@
                     <StackPanel>
                         <TextBlock FontSize="14" FontWeight="SemiBold"
                                    Text="{views:ThreeDText Key=ThreeD.Exchange.Review, Korean='검토 및 결과', English='Review and result'}" />
+                        <TextBlock Margin="0,12,0,4"
+                                   FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.InputViewer, Korean='수신된 높이 이미지', English='Received Height Image viewer'}" />
+                        <Border MinHeight="420"
+                                Background="{DynamicResource ThreeD.ViewportBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                AutomationProperties.AutomationId="IntegrationHeightImageViewer">
+                            <workbench:HeightImageViewerView DataContext="{Binding Workbench.HeightImageViewer}" />
+                        </Border>
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding IntegrationExchange.SelectedInputArtifactPath}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="IntegrationHeightImageSourcePath" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Text="{Binding IntegrationExchange.SelectedSummary}"
                                    TextWrapping="Wrap"
                                    AutomationProperties.AutomationId="IntegrationSequenceStatus" />
                         <TextBlock Margin="0,14,0,4" FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Transfer, Korean='TCP 거래 전송', English='TCP transaction transfer'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Transfer, Korean='TCP 전송', English='TCP transaction transfer'}" />
                         <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    TextWrapping="Wrap"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.TransferHint, Korean='선택 거래를 상대에게 보내거나, 상대에서 최신 ACK/Result를 다시 받습니다. 전송만으로 검토나 검사는 실행되지 않습니다.', English='Push the selected transaction to the peer or pull its latest ACK/Result. Transfer alone never reviews or runs an inspection.'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.TransferHint, Korean='선택한 요청·검토 응답·검사 결과를 상대에게 전송하거나 최신 응답과 결과를 수신합니다. 전송만으로 검토나 검사는 실행되지 않습니다.', English='Push the selected transaction to the peer or pull its latest ACK/Result. Transfer alone never reviews or runs an inspection.'}" />
                         <WrapPanel Margin="0,9,0,0">
                             <ui:Button Margin="0,0,8,0"
                                        Appearance="Primary"
                                        Icon="{ui:SymbolIcon Send24}"
-                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Push, Korean='선택 거래 보내기', English='Push selected'}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Push, Korean='선택 항목 전송', English='Push selected'}"
                                        Command="{Binding IntegrationExchange.PushSelectedTransactionCommand}"
                                        AutomationProperties.AutomationId="PushIntegrationTransaction" />
                             <ui:Button Appearance="Secondary"
@@ -279,17 +297,17 @@
                                    AutomationProperties.AutomationId="IntegrationTransferStatus" />
                         <Separator Margin="0,16" />
                         <TextBlock Margin="0,14,0,4" FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Acknowledge, Korean='1. Handoff 검토', English='1. Review handoff'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Acknowledge, Korean='1. 검사 요청 검토', English='1. Review handoff'}" />
                         <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    TextWrapping="Wrap"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.AcknowledgeHint, Korean='승인은 계약과 아티팩트를 검증하지만 레시피를 불러오거나 검사를 실행하지 않습니다.', English='Accept validates the contract and artifacts but does not load a recipe or run an inspection.'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.AcknowledgeHint, Korean='승인하면 요청 형식과 입력 데이터를 확인합니다. 레시피를 불러오거나 검사를 실행하지 않습니다.', English='Accept validates the contract and artifacts but does not load a recipe or run an inspection.'}" />
                         <TextBox Margin="0,9,0,0"
                                  MinHeight="54"
                                  Padding="8,6"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  Text="{Binding IntegrationExchange.RejectionReason, UpdateSourceTrigger=PropertyChanged}"
-                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Exchange.RejectionReasonAccessible, Korean='Handoff 거부 사유', English='Handoff rejection reason'}" />
+                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Exchange.RejectionReasonAccessible, Korean='검사 요청 거부 사유', English='Handoff rejection reason'}" />
                         <WrapPanel Margin="0,9,0,0">
                             <ui:Button Margin="0,0,8,0"
                                        Appearance="Primary"
@@ -304,17 +322,33 @@
 
                         <Separator Margin="0,16" />
                         <TextBlock FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Publish, Korean='2. 기존 Run Record 결과 게시', English='2. Publish an existing Run Record result'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.RunInspection, Korean='2. 검사 실행 및 전송 준비', English='2. Run inspection and apply result'}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.RunInspectionHint, Korean='승인된 높이 데이터와 레시피로 3D 검사를 실행하고 판정과 검사 기록을 저장합니다. TCP 전송은 선택 항목 전송 버튼으로 실행하세요.', English='Pass the accepted C3D input and its recipe to the real 3D inspection owner. It computes Pass/Fail, creates a Run Record, and applyes the result to Machine Studio.'}" />
+                        <ui:Button Margin="0,10,0,0"
+                                   HorizontalAlignment="Left"
+                                   Appearance="Primary"
+                                   Icon="{ui:SymbolIcon Play24}"
+                                   Content="{views:ThreeDText Key=ThreeD.Exchange.RunInspectionButton, Korean='검사 실행·전송 준비', English='Run inspection and apply result'}"
+                                   Command="{Binding IntegrationExchange.RunInspectionCommand}"
+                                   AutomationProperties.AutomationId="RunIntegrationInspection" />
+                        <TextBlock Margin="0,14,0,0"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.PublishExistingHint, Korean='기존 검사 기록을 보낼 때는 아래에서 전송할 결과를 준비하세요.', English='Use the compatibility path below only when an existing Run Record must be applied manually.'}" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding IntegrationExchange.CurrentRunRecordSummary}"
                                    TextWrapping="Wrap" />
                         <ui:Button Margin="0,10,0,0"
                                    HorizontalAlignment="Left"
-                                   Appearance="Primary"
+                                   Appearance="Secondary"
                                    Icon="{ui:SymbolIcon Send24}"
-                                   Content="{views:ThreeDText Key=ThreeD.Exchange.PublishResult, Korean='Machine Studio에 결과 게시', English='Publish result to Machine Studio'}"
-                                   Command="{Binding IntegrationExchange.PublishResultCommand}" />
+                                   Content="{views:ThreeDText Key=ThreeD.Exchange.PublishExisting, Korean='기존 기록으로 전송 준비', English='Prepare existing inspection record'}"
+                                   Command="{Binding IntegrationExchange.PublishResultCommand}"
+                                   AutomationProperties.AutomationId="PublishExistingIntegrationResult" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -327,9 +361,41 @@
                 BorderBrush="{DynamicResource ThreeD.InfoBrush}"
                 BorderThickness="1"
                 CornerRadius="4">
-            <TextBlock Foreground="{DynamicResource ThreeD.TextBrush}"
-                       Text="{Binding IntegrationExchange.StatusText}"
-                       TextWrapping="Wrap" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontWeight="SemiBold"
+                               Text="{views:ThreeDText Key=ThreeD.Exchange.OperationState, Korean='TCP 작업 상태:', English='TCP action:'}" />
+                    <TextBlock Margin="6,0,0,0"
+                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                               FontWeight="SemiBold"
+                               Text="{Binding IntegrationExchange.TcpOperationStateText}"
+                               AutomationProperties.AutomationId="IntegrationTcpOperationState" />
+                </StackPanel>
+                <ui:Button Grid.RowSpan="2"
+                           Grid.Column="1"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           Appearance="Secondary"
+                           Icon="{ui:SymbolIcon Dismiss24}"
+                           Content="{views:ThreeDText Key=ThreeD.Exchange.CancelTcpAction, Korean='현재 작업 취소', English='Cancel current action'}"
+                           Command="{Binding IntegrationExchange.CancelTcpOperationCommand}"
+                           AutomationProperties.AutomationId="CancelIntegrationTcpOperation"
+                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Exchange.CancelTcpActionAccessible, Korean='현재 Integration Exchange TCP 작업 취소', English='Cancel the current Integration Exchange TCP action'}" />
+                <TextBlock Grid.Row="1"
+                           Margin="0,4,0,0"
+                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                           Text="{Binding IntegrationExchange.StatusText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.AutomationId="IntegrationTcpOperationStatus" />
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

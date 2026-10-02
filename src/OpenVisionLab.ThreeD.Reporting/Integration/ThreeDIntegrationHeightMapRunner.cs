@@ -18,8 +18,9 @@ public sealed record ThreeDHeightMapInspectionRequest(
 /// <summary>
 /// Explicit 3D consumer path for a v2 Handoff whose source is a C3D raw-height
 /// artifact. The raw values are materialized into an immutable snapshot and
-/// passed to the existing Vision SDK height-map inspection boundary. No image
-/// projection is used as a substitute for the height buffer.
+/// passed to the existing Vision SDK height-map inspection boundary. The
+/// display-only image preview is published separately from the raw height
+/// buffer and is never used as a substitute for inspection input.
 /// </summary>
 public static class ThreeDIntegrationHeightMapRunner
 {
@@ -215,6 +216,7 @@ public static class ThreeDIntegrationHeightMapRunner
             transactionDirectory,
             $".3d-run-record-input-{Guid.NewGuid():N}.json");
         string? projectionResultPath = null;
+        ThreeDIntegrationEvidenceArtifact? imagePreview = null;
         var runRecord = CreateRunRecord(
             runId,
             handoff,
@@ -242,23 +244,35 @@ public static class ThreeDIntegrationHeightMapRunner
                     projectionResult);
             }
 
+            imagePreview = ThreeDHeightImagePreviewArtifact.CreateTemporary(
+                handoff,
+                transactionDirectory,
+                cancellationToken);
+            var additionalEvidence = new List<ThreeDIntegrationEvidenceArtifact>
+            {
+                imagePreview
+            };
+            if (projectionResultPath is not null)
+            {
+                additionalEvidence.Add(new(
+                    ThreeDCoordinateProjectionContract.ResultEvidenceRole,
+                    ThreeDCoordinateProjectionContract.ResultEvidenceArtifactId,
+                    projectionResultPath,
+                    "artifacts/coordinate-projection-result.json"));
+            }
+
             return ThreeDIntegrationV2Exchange.PublishCompletedResult(
                 exchangeRoot,
                 transactionId,
                 consumerBuild,
                 runRecordPath,
-                projectionResultPath is null
-                    ? null
-                    : [new ThreeDIntegrationEvidenceArtifact(
-                        ThreeDCoordinateProjectionContract.ResultEvidenceRole,
-                        ThreeDCoordinateProjectionContract.ResultEvidenceArtifactId,
-                        projectionResultPath,
-                        "artifacts/coordinate-projection-result.json")]);
+                additionalEvidence);
         }
         finally
         {
             TryDeleteFile(runRecordPath);
             TryDeleteFile(projectionResultPath);
+            TryDeleteFile(imagePreview?.SourcePath);
         }
     }
 

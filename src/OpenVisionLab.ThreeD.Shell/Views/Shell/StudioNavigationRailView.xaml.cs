@@ -49,8 +49,7 @@ public partial class StudioNavigationRailView : UserControl
     public bool HasAccessibleUtilityRoutes =>
         !string.IsNullOrWhiteSpace(AutomationProperties.GetName(RecipeManagerButton))
         && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(ToolLabsMenuButton))
-        && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(ResetLayoutButton))
-        && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(LanguageSelector));
+        && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(ResetLayoutButton));
 
     public void ApplyResponsiveWidthForVerification(double width) =>
         UpdateResponsiveState(width);
@@ -80,7 +79,7 @@ public partial class StudioNavigationRailView : UserControl
     private void UpdateResponsiveState(double width)
     {
         IsCompact = width < CompactWindowWidth;
-        Width = IsCompact ? 60 : 140;
+        Width = IsCompact ? 86 : 108;
     }
 
     private void OpenRecipeManagerButton_Click(object sender, RoutedEventArgs args) =>

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -18,8 +19,13 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
     private readonly InspectionWorkspaceSelectionSession workspaceSelection;
     private readonly ThreeDLocalization localization;
     private readonly Func<(bool IsReady, string Path)> getSource;
+    private readonly Func<(bool IsActive, string? Path)> getInspectionInput;
+    private readonly Func<string?, string?> getInputBackgroundId;
     private readonly Func<IReadOnlyList<ToolWorkbenchRenderableC3DTarget>> getRenderableTargets;
     private readonly Func<(string A, string B, string C)> getCompareSlots;
+    private readonly Func<string?, C3DSignedHeightDeltaArtifact?> getSignedDeltaOutput;
+    private readonly Func<C3DSignedHeightDeltaArtifact, bool> showSignedDeltaOutput;
+    private readonly Action clearSignedDeltaOutput;
     private readonly ToolWorkbenchViewerWorkspaceEventCoordinator sessionEventCoordinator;
     private readonly RelayCommand setSingleViewerLayoutCommand;
     private readonly RelayCommand splitViewerVerticallyCommand;
@@ -27,9 +33,15 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
     private readonly RelayCommand popOutViewerCommand;
     private readonly RelayCommand focusViewerWorkspaceSlotCommand;
     private readonly RelayCommand openHeightImageCommand;
+    private readonly RelayCommand showHeightImageOnlyCommand;
     private readonly RelayCommand clearMainViewerPinCommand;
     private readonly RelayCommand clearAuxiliaryViewerPinCommand;
     private readonly RelayCommand toggleViewerCameraLinkCommand;
+    private readonly RelayCommand setInspectionDataViewCommand;
+    private readonly RelayCommand showOutputCompareViewerCommand;
+    private ViewerInspectionDataView inspectionDataView = ViewerInspectionDataView.Input;
+    private bool isOutputCompareViewerActive;
+    private ViewerWorkspaceLayout? layoutBeforeOutputCompare;
 
     public ViewerWorkspaceViewModel(
         ViewerWorkspaceSession viewerWorkspace,
@@ -37,14 +49,24 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
         ThreeDLocalization localization,
         Func<(bool IsReady, string Path)> getSource,
         Func<IReadOnlyList<ToolWorkbenchRenderableC3DTarget>> getRenderableTargets,
-        Func<(string A, string B, string C)> getCompareSlots)
+        Func<(string A, string B, string C)> getCompareSlots,
+        Func<string?, C3DSignedHeightDeltaArtifact?> getSignedDeltaOutput,
+        Func<C3DSignedHeightDeltaArtifact, bool> showSignedDeltaOutput,
+        Action clearSignedDeltaOutput,
+        Func<(bool IsActive, string? Path)>? getInspectionInput = null,
+        Func<string?, string?>? getInputBackgroundId = null)
     {
         this.viewerWorkspace = viewerWorkspace ?? throw new ArgumentNullException(nameof(viewerWorkspace));
         this.workspaceSelection = workspaceSelection ?? throw new ArgumentNullException(nameof(workspaceSelection));
         this.localization = localization ?? throw new ArgumentNullException(nameof(localization));
         this.getSource = getSource ?? throw new ArgumentNullException(nameof(getSource));
+        this.getInspectionInput = getInspectionInput ?? (() => (false, null));
+        this.getInputBackgroundId = getInputBackgroundId ?? (_ => null);
         this.getRenderableTargets = getRenderableTargets ?? throw new ArgumentNullException(nameof(getRenderableTargets));
         this.getCompareSlots = getCompareSlots ?? throw new ArgumentNullException(nameof(getCompareSlots));
+        this.getSignedDeltaOutput = getSignedDeltaOutput ?? throw new ArgumentNullException(nameof(getSignedDeltaOutput));
+        this.showSignedDeltaOutput = showSignedDeltaOutput ?? throw new ArgumentNullException(nameof(showSignedDeltaOutput));
+        this.clearSignedDeltaOutput = clearSignedDeltaOutput ?? throw new ArgumentNullException(nameof(clearSignedDeltaOutput));
 
         setSingleViewerLayoutCommand = new RelayCommand(
             _ => SetViewerWorkspaceLayout(ViewerWorkspaceLayout.Single));
@@ -59,6 +81,9 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
             _ => CanOpenAuxiliaryViewer());
         openHeightImageCommand = new RelayCommand(
             _ => OpenHeightImage(),
+            _ => GetViewerWorkspaceCandidate(HeightImageViewerContentId) is not null);
+        showHeightImageOnlyCommand = new RelayCommand(
+            _ => ShowHeightImageOnly(),
             _ => GetViewerWorkspaceCandidate(HeightImageViewerContentId) is not null);
         clearMainViewerPinCommand = new RelayCommand(
             _ => viewerWorkspace.ClearMainContent(),
@@ -81,27 +106,47 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
                                  slotId,
                                  ViewerWorkspaceSession.AuxiliarySlotId,
                                  StringComparison.OrdinalIgnoreCase)));
+        setInspectionDataViewCommand = new RelayCommand(
+            parameter => SetInspectionDataView((ViewerInspectionDataView)parameter!),
+            parameter => parameter is ViewerInspectionDataView
+                && workspaceSelection.SelectedStepId is not null);
+        showOutputCompareViewerCommand = new RelayCommand(
+            _ => ShowOutputCompareViewer(),
+            _ => CanShowOutputCompareViewer);
         sessionEventCoordinator = new ToolWorkbenchViewerWorkspaceEventCoordinator(
             viewerWorkspace,
             OnViewerWorkspacePropertyChanged);
+        workspaceSelection.PropertyChanged += OnWorkspaceSelectionPropertyChanged;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? OutputCompareViewerRequested;
 
     public IReadOnlyList<ViewerWorkspaceCandidateItem> ViewerWorkspaceCandidates
     {
         get
         {
             var candidates = new List<ViewerWorkspaceCandidateItem>();
-            var source = getSource();
-            if (source.IsReady && File.Exists(source.Path))
+            if (getInspectionInput() is { IsActive: true } inspection)
             {
+                if (!string.IsNullOrWhiteSpace(inspection.Path) && File.Exists(inspection.Path))
+                {
+                    candidates.Add(new("inspection.input", Path.GetFileName(inspection.Path), ViewerWorkspaceCandidateKind.ThreeDArtifact, inspection.Path, "C3D", localization.Resolve("ThreeD.Inspection.Input", "검사 입력", "Inspection input"), false));
+                    candidates.Add(new(HeightImageViewerContentId, localization.HeightImage, ViewerWorkspaceCandidateKind.HeightImage, inspection.Path, "C3D", localization.Resolve("ThreeD.Inspection.Input", "검사 입력", "Inspection input"), false));
+                }
+                return candidates;
+            }
+            var source = getSource();
+            if (source.IsReady && File.Exists(source.Path) || HasEffectiveSignedDeltaOutput)
+            {
+                var signedDeltaOutput = inspectionDataView != ViewerInspectionDataView.Input
+                    && HasEffectiveSignedDeltaOutput;
                 candidates.Add(new ViewerWorkspaceCandidateItem(
                     HeightImageViewerContentId,
                     localization.HeightImage,
                     ViewerWorkspaceCandidateKind.HeightImage,
                     source.Path,
-                    "HeightField / native grid",
+                    signedDeltaOutput ? "SignedDeltaHeightField" : "HeightField / native grid",
                     "Ready",
                     true));
             }
@@ -126,10 +171,13 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
             .Where(candidate => candidate.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact)
             .ToArray();
 
-    public bool IsViewerCameraLinked => viewerWorkspace.IsCameraLinked;
+    public bool IsViewerCameraLinked => !isOutputCompareViewerActive
+        && inspectionDataView == ViewerInspectionDataView.Input
+        && viewerWorkspace.IsCameraLinked;
 
-    public bool CanLinkViewerCameras =>
-        viewerWorkspace.HasAuxiliarySlot
+    public bool CanLinkViewerCameras => !isOutputCompareViewerActive
+        && inspectionDataView == ViewerInspectionDataView.Input
+        && viewerWorkspace.HasAuxiliarySlot
         && GetViewerWorkspaceCandidate(viewerWorkspace.AuxiliaryContentId)?.Kind
             == ViewerWorkspaceCandidateKind.ThreeDArtifact;
 
@@ -137,6 +185,35 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
         viewerWorkspace.IsCameraLinked
             ? localization.ViewerCameraUnlink
             : localization.ViewerCameraLink;
+
+    public bool CanShowOutputCompareViewer
+    {
+        get
+        {
+            var (slotAId, slotBId, _) = getCompareSlots();
+            if (!string.IsNullOrWhiteSpace(slotAId)
+                && string.Equals(slotAId, slotBId, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var slotA = GetMainViewerCandidate(slotAId);
+            var slotB = GetMainViewerCandidate(slotBId);
+            if (slotA is not null && slotB is not null
+                && string.Equals(slotA.Id, slotB.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return isOutputCompareViewerActive
+                || HasInspectionStep
+                || slotA is not null && slotB is not null;
+        }
+    }
+
+    public bool IsOutputCompareViewerActive => !getInspectionInput().IsActive && isOutputCompareViewerActive;
+    public string MainViewerSlotLabel => IsOutputCompareViewerActive ? "A" : localization.ViewerMainSlot;
+    public string AuxiliaryViewerSlotLabel => IsOutputCompareViewerActive ? "B" : localization.ViewerAuxiliarySlot;
 
     public string ViewerCameraLinkSummary =>
         viewerWorkspace.IsCameraLinked
@@ -181,31 +258,95 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
         }
     }
 
-    public string ViewerWorkspaceLayoutSummary => viewerWorkspace.Layout switch
+    public string ViewerWorkspaceLayoutSummary => EffectiveViewerLayout switch
     {
+        ViewerWorkspaceLayout.HeightImageOnly => localization.HeightImage,
         ViewerWorkspaceLayout.SplitVertical => localization.ViewerSplitVertical,
         ViewerWorkspaceLayout.SplitHorizontal => localization.ViewerSplitHorizontal,
         ViewerWorkspaceLayout.PopOut => localization.ViewerPopOut,
         _ => localization.ViewerSingle
     };
-    public bool IsSingleViewerLayout => viewerWorkspace.Layout == ViewerWorkspaceLayout.Single;
-    public bool IsSplitVerticalViewerLayout => viewerWorkspace.Layout == ViewerWorkspaceLayout.SplitVertical;
-    public bool IsSplitHorizontalViewerLayout => viewerWorkspace.Layout == ViewerWorkspaceLayout.SplitHorizontal;
-    public bool IsPopOutViewerLayout => viewerWorkspace.Layout == ViewerWorkspaceLayout.PopOut;
+    public bool IsSingleViewerLayout => EffectiveViewerLayout == ViewerWorkspaceLayout.Single;
+    public bool IsHeightImageOnlyViewerLayout => EffectiveViewerLayout == ViewerWorkspaceLayout.HeightImageOnly;
+    public bool IsSplitVerticalViewerLayout => EffectiveViewerLayout == ViewerWorkspaceLayout.SplitVertical
+        && !isOutputCompareViewerActive
+        && inspectionDataView == ViewerInspectionDataView.Input;
+    public bool IsSplitHorizontalViewerLayout => EffectiveViewerLayout == ViewerWorkspaceLayout.SplitHorizontal;
+    public bool IsPopOutViewerLayout => EffectiveViewerLayout == ViewerWorkspaceLayout.PopOut;
 
     public string AuxiliaryViewerSummary =>
         GetViewerWorkspaceCandidate(viewerWorkspace.AuxiliaryContentId) is { } candidate
-            ? $"{candidate.DisplayName} | {candidate.Contract}"
+            ? $"{candidate.DisplayName} | {localization.ContractLabel(candidate.Contract)}"
             : viewerWorkspace.IsAuxiliaryContentPinned
                 ? $"{localization.ViewerPinnedUnavailable} | {viewerWorkspace.AuxiliaryContentId}"
             : localization.ViewerAuxiliaryNoOutput;
 
     public string MainViewerSummary =>
         GetMainViewerCandidate(viewerWorkspace.MainContentId) is { } candidate
-            ? $"{candidate.DisplayName} | {candidate.Contract}"
+            ? $"{candidate.DisplayName} | {localization.ContractLabel(candidate.Contract)}"
             : viewerWorkspace.IsMainContentPinned
                 ? $"{localization.ViewerPinnedUnavailable} | {viewerWorkspace.MainContentId}"
                 : localization.ViewerMainNoOutput;
+
+    public ViewerInspectionDataView InspectionDataView => inspectionDataView;
+    public bool IsInspectionInputView => getInspectionInput().IsActive || !isOutputCompareViewerActive && inspectionDataView == ViewerInspectionDataView.Input;
+    public bool IsInspectionOutputView => !getInspectionInput().IsActive && !isOutputCompareViewerActive && inspectionDataView == ViewerInspectionDataView.Output;
+    public bool IsInspectionInputOutputView => !getInspectionInput().IsActive && !isOutputCompareViewerActive && inspectionDataView == ViewerInspectionDataView.InputOutput;
+    public bool HasInspectionStep => !getInspectionInput().IsActive && workspaceSelection.SelectedStepId is not null;
+    public bool HasEffectiveSignedDeltaOutput => !getInspectionInput().IsActive && !isOutputCompareViewerActive
+        && getSignedDeltaOutput(workspaceSelection.SelectedOutputEntityId) is not null;
+    public bool CanEditMainViewerPin => !getInspectionInput().IsActive && !HasInspectionStep && !isOutputCompareViewerActive;
+    public bool CanEditAuxiliaryViewerPin => !getInspectionInput().IsActive && !isOutputCompareViewerActive
+        && inspectionDataView != ViewerInspectionDataView.InputOutput;
+    public ViewerWorkspaceLayout EffectiveViewerLayout => getInspectionInput().IsActive ? viewerWorkspace.Layout : isOutputCompareViewerActive
+        ? ViewerWorkspaceLayout.SplitVertical
+        : inspectionDataView switch
+    {
+        ViewerInspectionDataView.Output => HasEffectiveSignedDeltaOutput
+            ? ViewerWorkspaceLayout.HeightImageOnly
+            : ViewerWorkspaceLayout.Single,
+        ViewerInspectionDataView.InputOutput => ViewerWorkspaceLayout.SplitVertical,
+        _ => viewerWorkspace.Layout
+    };
+    public string EffectiveMainViewerContentId => getInspectionInput().IsActive
+        ? GetMainViewerCandidate("inspection.input")?.Id ?? string.Empty
+        : isOutputCompareViewerActive
+        ? GetMainViewerCandidate(getCompareSlots().A)?.Id ?? string.Empty
+        : HasInspectionStep
+        ? inspectionDataView == ViewerInspectionDataView.Output
+            ? GetMainViewerCandidate(workspaceSelection.SelectedOutputEntityId)?.Id ?? string.Empty
+            : GetMainViewerCandidate(workspaceSelection.SelectedInputEntityId)?.Id
+                ?? GetMainViewerCandidate(getInputBackgroundId(workspaceSelection.SelectedInputEntityId))?.Id ?? string.Empty
+        : viewerWorkspace.MainContentId;
+    public string EffectiveAuxiliaryViewerContentId => getInspectionInput().IsActive
+        ? GetViewerWorkspaceCandidate(HeightImageViewerContentId)?.Id ?? string.Empty
+        : isOutputCompareViewerActive
+        ? GetMainViewerCandidate(getCompareSlots().B)?.Id ?? string.Empty
+        : inspectionDataView == ViewerInspectionDataView.InputOutput
+        ? HasEffectiveSignedDeltaOutput
+            ? HeightImageViewerContentId
+            : GetMainViewerCandidate(workspaceSelection.SelectedOutputEntityId)?.Id ?? string.Empty
+        : inspectionDataView == ViewerInspectionDataView.Output
+            ? HasEffectiveSignedDeltaOutput ? HeightImageViewerContentId : string.Empty
+            : viewerWorkspace.AuxiliaryContentId;
+    public bool HasEffectiveMainGeometry => EffectiveMainViewerContentId.Length > 0;
+    public bool HasEffectiveOutputGeometry =>
+        HasEffectiveSignedDeltaOutput
+        || GetMainViewerCandidate(workspaceSelection.SelectedOutputEntityId) is not null;
+    public string EffectiveMainViewerSummary =>
+        GetMainViewerCandidate(EffectiveMainViewerContentId) is { } candidate
+            ? isOutputCompareViewerActive
+                ? $"{candidate.DisplayName} | {localization.ContractLabel(candidate.Contract)} | {localization.SelectedToolOutputStateLabel(candidate.State)}"
+                : $"{candidate.DisplayName} | {localization.ContractLabel(candidate.Contract)}"
+            : inspectionDataView == ViewerInspectionDataView.Output
+                ? localization.NoCurrentDisplayableOutput
+                : localization.ViewerMainNoOutput;
+    public string EffectiveAuxiliaryViewerSummary =>
+        GetViewerWorkspaceCandidate(EffectiveAuxiliaryViewerContentId) is { } candidate
+            ? isOutputCompareViewerActive
+                ? $"{candidate.DisplayName} | {localization.ContractLabel(candidate.Contract)} | {localization.SelectedToolOutputStateLabel(candidate.State)}"
+                : $"{candidate.DisplayName} | {localization.ContractLabel(candidate.Contract)}"
+            : localization.NoCurrentDisplayableOutput;
 
     public ICommand SetSingleViewerLayoutCommand => setSingleViewerLayoutCommand;
     public ICommand SplitViewerVerticallyCommand => splitViewerVerticallyCommand;
@@ -213,11 +354,193 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
     public ICommand PopOutViewerCommand => popOutViewerCommand;
     public ICommand FocusViewerWorkspaceSlotCommand => focusViewerWorkspaceSlotCommand;
     public ICommand OpenHeightImageCommand => openHeightImageCommand;
+    public ICommand ShowHeightImageOnlyCommand => showHeightImageOnlyCommand;
     public ICommand ClearMainViewerPinCommand => clearMainViewerPinCommand;
     public ICommand ClearAuxiliaryViewerPinCommand => clearAuxiliaryViewerPinCommand;
     public ICommand ToggleViewerCameraLinkCommand => toggleViewerCameraLinkCommand;
+    public ICommand SetInspectionDataViewCommand => setInspectionDataViewCommand;
+    public ICommand ShowOutputCompareViewerCommand => showOutputCompareViewerCommand;
 
-    public void Dispose() => sessionEventCoordinator.Dispose();
+    public void Dispose()
+    {
+        workspaceSelection.PropertyChanged -= OnWorkspaceSelectionPropertyChanged;
+        sessionEventCoordinator.Dispose();
+    }
+
+    private void SetInspectionDataView(ViewerInspectionDataView next)
+    {
+        var wasCompareActive = isOutputCompareViewerActive;
+        if (inspectionDataView == next && !wasCompareActive)
+        {
+            return;
+        }
+
+        LeaveOutputCompareViewer();
+        inspectionDataView = next;
+        SynchronizeSignedDeltaOutput();
+        if (next != ViewerInspectionDataView.Input)
+        {
+            viewerWorkspace.SetCameraLinked(false);
+        }
+        NotifyInspectionDataViewChanged();
+    }
+
+    public void RefreshOutputCompareSlots()
+    {
+        OnPropertyChanged(nameof(CanShowOutputCompareViewer));
+        if (isOutputCompareViewerActive && !CanShowOutputCompareViewer)
+        {
+            LeaveOutputCompareViewer();
+            NotifyInspectionDataViewChanged();
+            return;
+        }
+
+        showOutputCompareViewerCommand.RaiseCanExecuteChanged();
+        if (isOutputCompareViewerActive)
+        {
+            NotifyInspectionDataViewChanged();
+        }
+    }
+
+    private void ShowOutputCompareViewer()
+    {
+        if (!CanShowOutputCompareViewer)
+        {
+            return;
+        }
+
+        if (isOutputCompareViewerActive)
+        {
+            LeaveOutputCompareViewer();
+            NotifyInspectionDataViewChanged();
+            RaiseViewerWorkspaceCanExecuteChanged();
+            return;
+        }
+
+        SetInspectionDataView(ViewerInspectionDataView.Input);
+        layoutBeforeOutputCompare = viewerWorkspace.Layout;
+        isOutputCompareViewerActive = true;
+        viewerWorkspace.SetLayout(ViewerWorkspaceLayout.SplitVertical);
+        NotifyInspectionDataViewChanged();
+        RaiseViewerWorkspaceCanExecuteChanged();
+
+        OutputCompareViewerRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void LeaveOutputCompareViewer()
+    {
+        if (!isOutputCompareViewerActive)
+        {
+            return;
+        }
+
+        isOutputCompareViewerActive = false;
+        if (layoutBeforeOutputCompare is { } layout)
+        {
+            viewerWorkspace.SetLayout(layout);
+        }
+        layoutBeforeOutputCompare = null;
+    }
+
+    private void OnWorkspaceSelectionPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(InspectionWorkspaceSelectionSession.SelectedStepId))
+        {
+            LeaveOutputCompareViewer();
+            inspectionDataView = ViewerInspectionDataView.Input;
+            clearSignedDeltaOutput();
+            setInspectionDataViewCommand.RaiseCanExecuteChanged();
+        }
+        else if (args.PropertyName == nameof(InspectionWorkspaceSelectionSession.SelectedInputEntityId)
+                 && isOutputCompareViewerActive)
+        {
+            LeaveOutputCompareViewer();
+            inspectionDataView = ViewerInspectionDataView.Input;
+            clearSignedDeltaOutput();
+        }
+
+        if (args.PropertyName == nameof(InspectionWorkspaceSelectionSession.SelectedOutputEntityId)
+            && inspectionDataView != ViewerInspectionDataView.Input)
+        {
+            SynchronizeSignedDeltaOutput();
+        }
+
+        if (args.PropertyName is nameof(InspectionWorkspaceSelectionSession.SelectedStepId)
+            or nameof(InspectionWorkspaceSelectionSession.SelectedInputEntityId)
+            or nameof(InspectionWorkspaceSelectionSession.SelectedOutputEntityId))
+        {
+            NotifyInspectionDataViewChanged();
+        }
+    }
+
+    public void RefreshInspectionFileContext()
+    {
+        NotifyInspectionDataViewChanged();
+        OnPropertyChanged(nameof(MainViewerCandidates));
+        RaiseViewerWorkspaceCanExecuteChanged();
+        showOutputCompareViewerCommand.RaiseCanExecuteChanged();
+    }
+
+    public void RefreshInspectionDataView()
+    {
+        if (inspectionDataView != ViewerInspectionDataView.Input)
+        {
+            SynchronizeSignedDeltaOutput();
+        }
+        else if (!HasEffectiveSignedDeltaOutput)
+        {
+            clearSignedDeltaOutput();
+        }
+        NotifyInspectionDataViewChanged();
+    }
+
+    private void SynchronizeSignedDeltaOutput()
+    {
+        if (inspectionDataView != ViewerInspectionDataView.Input
+            && getSignedDeltaOutput(workspaceSelection.SelectedOutputEntityId) is { } output
+            && showSignedDeltaOutput(output))
+        {
+            return;
+        }
+        clearSignedDeltaOutput();
+    }
+
+    private void NotifyInspectionDataViewChanged()
+    {
+        OnPropertyChanged(nameof(ViewerWorkspaceCandidates));
+        OnPropertyChanged(nameof(InspectionDataView));
+        OnPropertyChanged(nameof(CanShowOutputCompareViewer));
+        OnPropertyChanged(nameof(IsInspectionInputView));
+        OnPropertyChanged(nameof(IsInspectionOutputView));
+        OnPropertyChanged(nameof(IsInspectionInputOutputView));
+        OnPropertyChanged(nameof(IsOutputCompareViewerActive));
+        OnPropertyChanged(nameof(MainViewerSlotLabel));
+        OnPropertyChanged(nameof(AuxiliaryViewerSlotLabel));
+        OnPropertyChanged(nameof(HasInspectionStep));
+        OnPropertyChanged(nameof(HasEffectiveSignedDeltaOutput));
+        OnPropertyChanged(nameof(CanEditMainViewerPin));
+        OnPropertyChanged(nameof(CanEditAuxiliaryViewerPin));
+        OnPropertyChanged(nameof(EffectiveViewerLayout));
+        OnPropertyChanged(nameof(EffectiveMainViewerContentId));
+        OnPropertyChanged(nameof(EffectiveAuxiliaryViewerContentId));
+        OnPropertyChanged(nameof(HasEffectiveMainGeometry));
+        OnPropertyChanged(nameof(HasEffectiveOutputGeometry));
+        OnPropertyChanged(nameof(EffectiveMainViewerSummary));
+        OnPropertyChanged(nameof(EffectiveAuxiliaryViewerSummary));
+        OnPropertyChanged(nameof(AuxiliaryViewerSummary));
+        OnPropertyChanged(nameof(ViewerWorkspaceLayoutSummary));
+        OnPropertyChanged(nameof(IsSingleViewerLayout));
+        OnPropertyChanged(nameof(IsHeightImageOnlyViewerLayout));
+        OnPropertyChanged(nameof(IsSplitVerticalViewerLayout));
+        OnPropertyChanged(nameof(IsSplitHorizontalViewerLayout));
+        OnPropertyChanged(nameof(IsPopOutViewerLayout));
+        OnPropertyChanged(nameof(IsViewerCameraLinked));
+        OnPropertyChanged(nameof(CanLinkViewerCameras));
+        OnPropertyChanged(nameof(ViewerCameraLinkLabel));
+        OnPropertyChanged(nameof(ViewerCameraLinkSummary));
+        toggleViewerCameraLinkCommand.RaiseCanExecuteChanged();
+        showOutputCompareViewerCommand.RaiseCanExecuteChanged();
+    }
 
     public ViewerWorkspaceCandidateItem? GetViewerWorkspaceCandidate(string? contentId) =>
         ViewerWorkspaceCandidates.FirstOrDefault(candidate =>
@@ -229,6 +552,7 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
 
     private void SetViewerWorkspaceLayout(ViewerWorkspaceLayout layout)
     {
+        SetInspectionDataView(ViewerInspectionDataView.Input);
         var available = ViewerWorkspaceCandidates;
         var preferred = GetPreferredViewerWorkspaceContentId(
             available,
@@ -264,6 +588,7 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
 
     private void OpenHeightImage()
     {
+        SetInspectionDataView(ViewerInspectionDataView.Input);
         if (!viewerWorkspace.TryOpenAuxiliaryContent(
                 HeightImageViewerContentId,
                 ViewerWorkspaceCandidates.Select(candidate => candidate.Id)))
@@ -271,6 +596,20 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
             return;
         }
 
+        workspaceSelection.FocusViewerSlot(viewerWorkspace.FocusedSlotId);
+        RaiseViewerWorkspaceCanExecuteChanged();
+    }
+
+    private void ShowHeightImageOnly()
+    {
+        SetInspectionDataView(ViewerInspectionDataView.Input);
+        if (GetViewerWorkspaceCandidate(HeightImageViewerContentId) is null)
+        {
+            return;
+        }
+
+        viewerWorkspace.PinAuxiliaryContent(HeightImageViewerContentId);
+        viewerWorkspace.SetLayout(ViewerWorkspaceLayout.HeightImageOnly);
         workspaceSelection.FocusViewerSlot(viewerWorkspace.FocusedSlotId);
         RaiseViewerWorkspaceCanExecuteChanged();
     }
@@ -331,13 +670,16 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
         OnPropertyChanged(nameof(MainViewerCandidates));
         OnPropertyChanged(nameof(MainViewerSummary));
         OnPropertyChanged(nameof(AuxiliaryViewerSummary));
+        NotifyInspectionDataViewChanged();
         RaiseViewerWorkspaceCanExecuteChanged();
     }
 
     private void OnViewerWorkspacePropertyChanged(PropertyChangedEventArgs args)
     {
+        NotifyInspectionDataViewChanged();
         OnPropertyChanged(nameof(ViewerWorkspaceLayoutSummary));
         OnPropertyChanged(nameof(IsSingleViewerLayout));
+        OnPropertyChanged(nameof(IsHeightImageOnlyViewerLayout));
         OnPropertyChanged(nameof(IsSplitVerticalViewerLayout));
         OnPropertyChanged(nameof(IsSplitHorizontalViewerLayout));
         OnPropertyChanged(nameof(IsPopOutViewerLayout));
@@ -385,8 +727,11 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
             OnPropertyChanged(nameof(AuxiliaryViewerSummary));
             OnPropertyChanged(nameof(MainViewerCandidates));
             OnPropertyChanged(nameof(ViewerWorkspaceCandidates));
+            OnPropertyChanged(nameof(MainViewerContentId));
+            OnPropertyChanged(nameof(AuxiliaryViewerContentId));
             OnPropertyChanged(nameof(ViewerCameraLinkLabel));
             OnPropertyChanged(nameof(ViewerCameraLinkSummary));
+            NotifyInspectionDataViewChanged();
         }
     }
 
@@ -396,6 +741,7 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
         splitViewerHorizontallyCommand.RaiseCanExecuteChanged();
         popOutViewerCommand.RaiseCanExecuteChanged();
         openHeightImageCommand.RaiseCanExecuteChanged();
+        showHeightImageOnlyCommand.RaiseCanExecuteChanged();
         focusViewerWorkspaceSlotCommand.RaiseCanExecuteChanged();
         clearMainViewerPinCommand.RaiseCanExecuteChanged();
         clearAuxiliaryViewerPinCommand.RaiseCanExecuteChanged();
@@ -411,4 +757,11 @@ internal sealed class ViewerWorkspaceViewModel : INotifyPropertyChanged, IDispos
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public enum ViewerInspectionDataView
+{
+    Input,
+    Output,
+    InputOutput
 }

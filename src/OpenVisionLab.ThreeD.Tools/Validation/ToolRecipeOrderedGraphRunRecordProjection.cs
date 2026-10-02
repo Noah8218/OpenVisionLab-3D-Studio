@@ -71,7 +71,10 @@ public static class ToolRecipeOrderedGraphRunRecordProjection
                         semanticEvidence.SdkPackageVersion)
                     : null,
                 Timing = CreateToolTiming(step.Result.Elapsed.TotalMilliseconds),
-                CompletenessGrid = ValidateCompletenessGrid(recipeStep, step)
+                CompletenessGrid = ValidateCompletenessGrid(recipeStep, step),
+                ConnectedRegionGate = ValidateConnectedRegionGate(recipeStep, step),
+                SignedDeltaBackgroundSubtraction = ValidateSignedDeltaBackgroundSubtraction(recipeStep, step),
+                SignedDeltaSidecar = ValidateSignedDeltaSidecar(recipeStep, step)
             };
         }).ToArray();
     }
@@ -156,4 +159,103 @@ public static class ToolRecipeOrderedGraphRunRecordProjection
                     elapsedMilliseconds)
             ],
             "Existing ToolResult elapsed observation; no additional execution.");
+
+    private static C3DSignedHeightDeltaArtifact? ValidateSignedDeltaBackgroundSubtraction(
+        ToolRecipeStep recipeStep,
+        ToolRecipeOrderedGraphStepResult step)
+    {
+        var output = step.SignedDeltaBackgroundSubtraction;
+        if (output is null)
+        {
+            if (string.Equals(recipeStep.ToolId, C3DSignedHeightDeltaRecipePolicy.ToolId, StringComparison.Ordinal)
+                && step.Result.Status is not (ResultStatus.Error or ResultStatus.NotRun))
+            {
+                throw new InvalidDataException(
+                    $"Signed delta output for successful step '{recipeStep.Id}' is missing.");
+            }
+
+            return null;
+        }
+
+        if (step.Result.Status is ResultStatus.Error or ResultStatus.NotRun)
+        {
+            return null;
+        }
+
+        var valid = string.Equals(recipeStep.ToolId, C3DSignedHeightDeltaRecipePolicy.ToolId, StringComparison.Ordinal)
+            && string.Equals(recipeStep.OutputEntityId, output.OutputEntityId, StringComparison.Ordinal)
+            && string.Equals(step.OutputContentSha256, output.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            && output.TryValidate(out _)
+            && string.Equals(recipeStep.InputEntityIds.ElementAtOrDefault(0), output.CurrentSourceEntityId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(recipeStep.Parameters?.SingleOrDefault(parameter => parameter.Name == C3DSignedHeightDeltaRecipePolicy.BackgroundEntityIdParameterName)?.Value, output.BackgroundEntityId, StringComparison.OrdinalIgnoreCase);
+        if (!valid)
+        {
+            throw new InvalidDataException(
+                $"Signed delta output for step '{recipeStep.Id}' is incomplete or incompatible with ordered Run evidence.");
+        }
+
+        return output;
+    }
+
+    private static ToolRecipeSignedDeltaSidecarReference? ValidateSignedDeltaSidecar(
+        ToolRecipeStep recipeStep,
+        ToolRecipeOrderedGraphStepResult step)
+    {
+        var reference = recipeStep.SignedDeltaSidecar;
+        if (reference is null)
+        {
+            return null;
+        }
+
+        if (!reference.TryValidateContract(
+                recipeStep.Id,
+                recipeStep.ToolId,
+                recipeStep.OutputEntityId,
+                step.SignedDeltaBackgroundSubtraction,
+                out var message))
+        {
+            throw new InvalidDataException(
+                $"Signed-delta sidecar reference for step '{recipeStep.Id}' is invalid: {message}");
+        }
+
+        return reference;
+    }
+
+    private static C3DConnectedRegionGateOutput? ValidateConnectedRegionGate(
+        ToolRecipeStep recipeStep,
+        ToolRecipeOrderedGraphStepResult step)
+    {
+        var output = step.ConnectedRegionGate;
+        if (output is null)
+        {
+            if (string.Equals(recipeStep.ToolId, "connected-region-gate", StringComparison.Ordinal)
+                && step.Result.Status is not (ResultStatus.Error or ResultStatus.NotRun))
+            {
+                throw new InvalidDataException(
+                    $"Connected Region Coverage/Height Gate output for successful step '{recipeStep.Id}' is missing.");
+            }
+
+            return null;
+        }
+
+        if (step.Result.Status is ResultStatus.Error or ResultStatus.NotRun)
+        {
+            return null;
+        }
+
+        var valid = string.Equals(recipeStep.ToolId, "connected-region-gate", StringComparison.Ordinal)
+            && string.Equals(recipeStep.OutputEntityId, output.OutputEntityId, StringComparison.Ordinal)
+            && string.Equals(step.OutputContentSha256, output.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            && output.TryValidate(out _)
+            && string.Equals(recipeStep.InputEntityIds.ElementAtOrDefault(0), output.RawSourceEntityId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(recipeStep.InputEntityIds.ElementAtOrDefault(1), output.DetectionEntityId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(recipeStep.InputEntityIds.ElementAtOrDefault(2), output.RegionArtifactId, StringComparison.OrdinalIgnoreCase);
+        if (!valid)
+        {
+            throw new InvalidDataException(
+                $"Connected Region Coverage/Height Gate output for step '{recipeStep.Id}' is incomplete or incompatible with ordered Run evidence.");
+        }
+
+        return output;
+    }
 }

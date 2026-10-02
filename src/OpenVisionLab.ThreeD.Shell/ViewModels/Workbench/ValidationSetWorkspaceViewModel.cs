@@ -879,7 +879,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         }
         if (message.Equals("Recipe source grid identity is incomplete.", StringComparison.Ordinal))
         {
-            return "레시피 소스의 그리드 식별 정보가 완전하지 않습니다.";
+            return "레시피 입력 데이터의 그리드 식별 정보가 완전하지 않습니다.";
         }
 
         return message;

@@ -15,6 +15,8 @@ internal static class C3DHeightDifferenceEdgeGoldenVerification
             Check("inclusive-threshold", VerifyInclusiveThreshold),
             Check("strongest-per-scanline", VerifyStrongest),
             Check("tie-lowest-start-index", VerifyTie),
+            Check("candidate-evidence-boundary", VerifyCandidateEvidenceBoundary),
+            Check("candidate-evidence-validation", VerifyCandidateEvidenceValidation),
             Check("missing-pairs-skipped", VerifyMissing),
             Check("within-selection-boundary", VerifyBoundary),
             Check("controlled-output-failures", VerifyControlledOutputFailures),
@@ -124,6 +126,59 @@ internal static class C3DHeightDifferenceEdgeGoldenVerification
             4);
         return (evaluation.Output?.Points.All(point => point.FirstColumn == 0 && point.SignedDelta == 4) == true,
             Evidence(evaluation));
+    }
+
+    private static (bool Passed, string Evidence) VerifyCandidateEvidenceBoundary()
+    {
+        var evaluation = Evaluate(
+            4,
+            3,
+            [1, 1, 5, 5, 1, 1, 5, 5, 1, 1, 5, 5],
+            new ToolRecipeGridRectangle(0, 0, 3, 4),
+            C3DHeightDifferenceComparisonAxis.AcrossColumns,
+            C3DHeightDifferencePolarity.Rising,
+            4);
+        var evidence = evaluation.Output?.CandidateEvidence;
+        return (evidence?.Policy == C3DHeightDifferenceEdgeCandidateEvidence.StrongestPerScanlinePolicy
+            && evidence.TopCandidateCount == 3
+            && evidence.SecondCandidateCount == 0
+            && !evidence.HasNumericTopAndSecond
+            && evidence.Limitation.Contains("second-best", StringComparison.OrdinalIgnoreCase),
+            Evidence(evaluation) + $";candidateEvidence={evidence?.Summary}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyCandidateEvidenceValidation()
+    {
+        try
+        {
+            _ = C3DHeightDifferenceEdgePointSet.Create(
+                "derived.edgepoints.invalid-candidates",
+                "source.synthetic",
+                new string('A', 64),
+                "derived.filtered.01",
+                new string('B', 64),
+                "selection.fixture",
+                new ToolRecipeGridRectangle(0, 0, 3, 3),
+                "raw-height",
+                "frame.c3d-grid-index",
+                C3DHeightDifferenceComparisonAxis.AcrossColumns,
+                C3DHeightDifferencePolarity.Rising,
+                1,
+                [new C3DHeightDifferenceEdgePoint(0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0)],
+                new C3DHeightDifferenceEdgeDiagnostics(1, 1, 0, 1, 0, 1, 1, 1),
+                "fixture",
+                new C3DHeightDifferenceEdgeCandidateEvidence(
+                    C3DHeightDifferenceEdgeCandidateEvidence.StrongestPerScanlinePolicy,
+                    "fixture",
+                    1,
+                    1,
+                    "invalid second candidate"));
+            return (false, "invalid StrongestPerScanline evidence was accepted");
+        }
+        catch (InvalidDataException exception)
+        {
+            return (true, exception.Message);
+        }
     }
 
     private static (bool Passed, string Evidence) VerifyMissing()

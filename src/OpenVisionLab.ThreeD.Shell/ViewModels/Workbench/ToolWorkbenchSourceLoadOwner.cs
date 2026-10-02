@@ -15,6 +15,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 internal sealed class ToolWorkbenchSourceLoadOwner : IDisposable
 {
     private readonly ThreeDLocalization localization;
+    private readonly Func<bool> isRecipeMutationBlocked;
     private readonly Action<string> notifyPropertyChanged;
     private readonly Action<string, string> appendLog;
     private readonly RelayCommand loadC3DSourceCommand;
@@ -30,18 +31,20 @@ internal sealed class ToolWorkbenchSourceLoadOwner : IDisposable
 
     public ToolWorkbenchSourceLoadOwner(
         ThreeDLocalization localization,
+        Func<bool> isRecipeMutationBlocked,
         Action<string> notifyPropertyChanged,
         Action<string, string> appendLog)
     {
         this.localization = localization ?? throw new ArgumentNullException(nameof(localization));
+        this.isRecipeMutationBlocked = isRecipeMutationBlocked ?? throw new ArgumentNullException(nameof(isRecipeMutationBlocked));
         this.notifyPropertyChanged = notifyPropertyChanged ?? throw new ArgumentNullException(nameof(notifyPropertyChanged));
         this.appendLog = appendLog ?? throw new ArgumentNullException(nameof(appendLog));
         loadC3DSourceCommand = new RelayCommand(
             _ => LoadC3DSourceRequested?.Invoke(this, EventArgs.Empty),
-            _ => !IsLoading);
+            _ => CanStartImport());
         import3DDataCommand = new RelayCommand(
             _ => Import3DDataRequested?.Invoke(this, EventArgs.Empty),
-            _ => !IsLoading);
+            _ => CanStartImport());
         cancelC3DSourceLoadCommand = new RelayCommand(
             _ => CancelC3DSourceLoadRequested?.Invoke(this, EventArgs.Empty),
             _ => IsLoading);
@@ -60,6 +63,17 @@ internal sealed class ToolWorkbenchSourceLoadOwner : IDisposable
         }
 
         localization.PropertyChanged -= OnLocalizationChanged;
+    }
+
+    public void RefreshCommandStates()
+    {
+        if (Volatile.Read(ref disposalState) != 0)
+        {
+            return;
+        }
+
+        loadC3DSourceCommand.RaiseCanExecuteChanged();
+        import3DDataCommand.RaiseCanExecuteChanged();
     }
 
     public ICommand LoadC3DSourceCommand => loadC3DSourceCommand;
@@ -197,10 +211,11 @@ internal sealed class ToolWorkbenchSourceLoadOwner : IDisposable
         notifyPropertyChanged(nameof(IsLoading));
         notifyPropertyChanged(nameof(ProgressPercent));
         notifyPropertyChanged(nameof(LoadStatus));
-        loadC3DSourceCommand.RaiseCanExecuteChanged();
-        import3DDataCommand.RaiseCanExecuteChanged();
+        RefreshCommandStates();
         cancelC3DSourceLoadCommand.RaiseCanExecuteChanged();
     }
+
+    private bool CanStartImport() => !IsLoading && !isRecipeMutationBlocked();
 
     private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {

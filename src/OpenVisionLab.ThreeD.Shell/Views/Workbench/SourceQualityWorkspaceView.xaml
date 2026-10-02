@@ -43,7 +43,7 @@
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.SourceQuality}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="9.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding SourceName}"
                                            TextTrimming="CharacterEllipsis"
@@ -55,14 +55,14 @@
                                     VerticalAlignment="Top"
                                     Background="{DynamicResource ThreeD.CommandBarBrush}"
                                     CornerRadius="2">
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                            Text="{Binding State}" />
                             </Border>
                         </Grid>
                         <TextBlock Margin="0,7,0,0"
-                                   FontSize="9.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceQualityHint}"
                                    TextWrapping="Wrap" />
@@ -70,7 +70,7 @@
                                 Padding="7,4"
                                 Background="{DynamicResource ThreeD.CommandBarBrush}"
                                 CornerRadius="2">
-                            <TextBlock FontSize="9"
+                            <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.PassBrush}"
                                        Text="{Binding Localization.SourceQualityViewOnly}"
@@ -88,14 +88,26 @@
                         Visibility="{Binding HasGridDiagnostics, Converter={StaticResource BoolToVisibilityConverter}}"
                         AutomationProperties.AutomationId="SourceQualityGridDiagnostics">
                     <StackPanel>
-                        <TextBlock FontSize="10.5"
+                        <TextBlock FontSize="12"
                                    FontWeight="SemiBold"
                                    Text="{Binding Localization.SourceQualityGridDiagnostics}" />
                         <TextBlock Margin="0,3,0,0"
-                                   FontSize="9"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding GridDiagnosticsSummary}"
                                    TextWrapping="Wrap" />
+                        <Expander Margin="0,7,0,0" Header="{views:ThreeDText Key=ThreeD.SourceQuality.CheckDetails, Korean='검사 항목', English='Check details'}"
+                                  AutomationProperties.AutomationId="SourceQualityGridDiagnosticsDetails">
+                            <Expander.Style>
+                                <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+                                    <Setter Property="IsExpanded" Value="False" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasGridDiagnosticError}" Value="True">
+                                            <Setter Property="IsExpanded" Value="True" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Expander.Style>
                         <ItemsControl Margin="0,7,0,0"
                                       ItemsSource="{Binding GridDiagnostics}"
                                       AutomationProperties.AutomationId="SourceQualityGridDiagnosticItems">
@@ -138,13 +150,13 @@
                                                         </Style>
                                                     </ui:SymbolIcon.Style>
                                                 </ui:SymbolIcon>
-                                                <TextBlock FontSize="9.5"
+                                                <TextBlock FontSize="12"
                                                            FontWeight="SemiBold"
                                                            Text="{Binding Title}"
                                                            TextWrapping="Wrap" />
                                             </DockPanel>
                                             <TextBlock Margin="23,3,0,0"
-                                                       FontSize="8.5"
+                                                       FontSize="12"
                                                        FontWeight="SemiBold"
                                                        Text="{Binding State}">
                                                 <TextBlock.Style>
@@ -159,12 +171,12 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                             <TextBlock Margin="23,2,0,0"
-                                                       FontSize="8.5"
+                                                       FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                        Text="{Binding Detail}"
                                                        TextWrapping="Wrap" />
                                             <TextBlock Margin="23,3,0,0"
-                                                       FontSize="8"
+                                                       FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding Evidence}"
                                                        TextWrapping="Wrap"
@@ -174,6 +186,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </Expander>
                     </StackPanel>
                 </Border>
 
@@ -191,13 +204,13 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock MinWidth="0"
-                                       FontSize="10.5"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding Localization.SourceAcquisitionProvenanceTitle}"
                                        TextWrapping="Wrap" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
-                                       FontSize="9"
+                                       FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding SelectedAcquisitionStateOption.Label}">
                                 <TextBlock.Style>
@@ -213,12 +226,12 @@
                             </TextBlock>
                         </Grid>
                         <TextBlock Margin="0,4,0,0"
-                                   FontSize="9"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionProvenanceHint}"
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,7,0,2"
-                                   FontSize="9"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionState}" />
                         <ComboBox ItemsSource="{Binding AcquisitionStateOptions}"
@@ -227,7 +240,7 @@
                                   AutomationProperties.AutomationId="SourceAcquisitionProvenanceState"
                                   AutomationProperties.Name="{Binding Localization.SourceAcquisitionProvenanceTitle}" />
                         <TextBlock Margin="0,7,0,2"
-                                   FontSize="9"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionEvidence}" />
                         <TextBox MinHeight="42"
@@ -241,7 +254,7 @@
                                  AutomationProperties.AutomationId="SourceAcquisitionEvidence"
                                  AutomationProperties.Name="{Binding Localization.SourceAcquisitionEvidence}" />
                         <TextBlock Margin="0,7,0,2"
-                                   FontSize="9"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionLimitations}" />
                         <TextBox MinHeight="50"
@@ -255,7 +268,7 @@
                                   AutomationProperties.AutomationId="SourceAcquisitionLimitations"
                                   AutomationProperties.Name="{Binding Localization.SourceAcquisitionLimitations}" />
                         <TextBlock Margin="0,7,0,1"
-                                   FontSize="9"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionLimitationsHint}"
                                    TextWrapping="Wrap" />
@@ -310,11 +323,11 @@
                                 CornerRadius="3"
                                 AutomationProperties.AutomationId="SourceAcquisitionDirectionEditor">
                             <StackPanel>
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.SourceAcquisitionDirectionTitle}" />
                                 <TextBlock Margin="0,6,0,2"
-                                           FontSize="9"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.SourceAcquisitionDirectionState}" />
                                 <ComboBox ItemsSource="{Binding AcquisitionDirectionStateOptions}"
@@ -329,20 +342,20 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock FontSize="9"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding Localization.SourceAcquisitionDirectionConvention}" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="9.5"
+                                                   FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding AcquisitionDirectionConvention}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock FontSize="9"
+                                        <TextBlock FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding Localization.SourceAcquisitionDirectionFrame}" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="9.5"
+                                                   FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding AcquisitionDirectionFrame}"
                                                    TextTrimming="CharacterEllipsis"
@@ -350,7 +363,7 @@
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Margin="0,7,0,2"
-                                           FontSize="9"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.SourceAcquisitionDirectionVector}" />
                                 <Grid IsEnabled="{Binding IsAcquisitionDirectionAvailable}">
@@ -380,14 +393,14 @@
                                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.SourceQuality.Direction.ZAccessible, Korean='방향 Z 성분', English='Z direction component'}" />
                                 </Grid>
                                 <TextBlock Margin="0,5,0,0"
-                                           FontSize="8.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding AcquisitionDirectionPersistenceSummary}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                         <TextBlock Margin="0,5,0,0"
-                                   FontSize="8.5"
+                                   FontSize="12"
                                    Text="{Binding AcquisitionDraftMessage}"
                                    TextWrapping="Wrap">
                             <TextBlock.Style>
@@ -417,12 +430,12 @@
                                     AutomationProperties.Name="{Binding Localization.SourceAcquisitionReset}" />
                         </WrapPanel>
                         <TextBlock Margin="0,6,0,0"
-                                   FontSize="8.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding AcquisitionPersistenceSummary}"
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,3,0,0"
-                                   FontSize="8.5"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionBoundary}"
                                    TextWrapping="Wrap" />
@@ -437,7 +450,7 @@
                         CornerRadius="4"
                         Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock FontSize="10.5"
+                        <TextBlock FontSize="12"
                                    FontWeight="SemiBold"
                                    Text="{Binding Localization.SourceQualityLoading}" />
                         <ProgressBar Height="6"
@@ -453,7 +466,7 @@
                         BorderThickness="1"
                         CornerRadius="4"
                         Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock FontSize="9.5"
+                    <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.WarningBrush}"
                                Text="{Binding Error}"
                                TextWrapping="Wrap" />
@@ -461,7 +474,7 @@
 
                 <StackPanel Margin="0,8,0,0"
                             Visibility="{Binding HasReport, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock FontSize="10.5"
+                    <TextBlock FontSize="12"
                                FontWeight="SemiBold"
                                Text="{views:ThreeDText Key=ThreeD.SourceQuality.GridCoverage, Korean='그리드 및 유효성', English='Grid &amp; coverage'}" />
                     <Grid Margin="0,6,0,0">
@@ -475,14 +488,14 @@
                         </Grid.RowDefinitions>
                         <Border Style="{StaticResource QualityCardStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{views:ThreeDText Key=ThreeD.SourceQuality.Grid, Korean='원본 그리드', English='Native grid'}" />
                                 <TextBlock Margin="0,2,0,0"
                                            FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding GridValue}" />
-                                <TextBlock FontSize="8.5"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
                                     <Run Text="{Binding CellCountValue, Mode=OneWay}" />
                                     <Run Text=" cells" />
@@ -491,11 +504,11 @@
                         </Border>
                         <Border Grid.Column="1" Style="{StaticResource QualityCardStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{views:ThreeDText Key=ThreeD.SourceQuality.Valid, Korean='유효 셀', English='Valid cells'}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="11"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource ThreeD.PassBrush}"
                                            Text="{Binding ValidValue}" />
@@ -503,11 +516,11 @@
                         </Border>
                         <Border Grid.Row="1" Style="{StaticResource QualityCardStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{views:ThreeDText Key=ThreeD.SourceQuality.Missing, Korean='누락 셀', English='Missing cells'}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="11"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding MissingValue}" />
@@ -515,11 +528,11 @@
                         </Border>
                         <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource QualityCardStyle}">
                             <StackPanel>
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{views:ThreeDText Key=ThreeD.SourceQuality.Mask, Korean='누락 마스크', English='Missing mask'}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="9.5"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding MaskSummary}"
                                            TextTrimming="CharacterEllipsis"
@@ -535,7 +548,7 @@
                                  Foreground="{DynamicResource ThreeD.PassBrush}" />
 
                     <TextBlock Margin="0,12,0,0"
-                               FontSize="10.5"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Text="{views:ThreeDText Key=ThreeD.SourceQuality.HeightStatistics, Korean='높이 통계 및 분포', English='Height statistics &amp; distribution'}" />
                     <Border Margin="0,6,6,0"
@@ -551,20 +564,20 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock FontSize="9"
+                                    <TextBlock FontSize="12"
                                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                Text="{views:ThreeDText Key=ThreeD.SourceQuality.Range, Korean='원시 높이 범위', English='Raw-height range'}" />
                                     <TextBlock Margin="0,2,0,0"
-                                               FontSize="10.5"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding HeightRangeValue}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock FontSize="9"
+                                    <TextBlock FontSize="12"
                                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                Text="{views:ThreeDText Key=ThreeD.SourceQuality.Mean, Korean='평균', English='Mean'}" />
                                     <TextBlock Margin="0,2,0,0"
-                                               FontSize="10.5"
+                                               FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding HeightMeanValue}" />
                                 </StackPanel>
@@ -590,14 +603,14 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <TextBlock Margin="0,3,0,0"
-                                       FontSize="8.5"
+                                       FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{Binding DistributionSummary}" />
                         </StackPanel>
                     </Border>
 
                     <TextBlock Margin="0,12,0,0"
-                               FontSize="10.5"
+                               FontSize="12"
                                FontWeight="SemiBold"
                                Text="{views:ThreeDText Key=ThreeD.SourceQuality.Channels, Korean='사용 가능한 채널', English='Available channels'}" />
                     <ItemsControl Margin="0,6,6,0" ItemsSource="{Binding Channels}">
@@ -615,12 +628,12 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock FontSize="9.5"
+                                        <TextBlock FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding Name}" />
                                         <TextBlock Grid.Column="1"
                                                    Margin="6,0,0,0"
-                                                   FontSize="8.5"
+                                                   FontSize="12"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding State}">
                                             <TextBlock.Style>
@@ -636,7 +649,7 @@
                                         </TextBlock>
                                         <TextBlock Grid.Column="2"
                                                    Margin="8,0,0,0"
-                                                   FontSize="8.5"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Evidence}"
                                                    TextTrimming="CharacterEllipsis"
@@ -657,45 +670,45 @@
                                 BorderThickness="1"
                                 CornerRadius="3">
                             <StackPanel>
-                                <TextBlock FontSize="9"
+                                <TextBlock FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding SourceIdentitySummary}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           FontSize="8.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding SourceSha256}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,5,0,0"
-                                           FontSize="9.5"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            Text="{Binding CoordinateSummary}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="8.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding CoordinateConvention}" />
                                 <TextBlock Margin="0,7,0,0"
-                                           FontSize="9"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{views:ThreeDText Key=ThreeD.SourceQuality.MeasurementState, Korean='높이 단위 상태', English='Height unit state'}" />
                                 <TextBlock Margin="0,2,0,0"
-                                           FontSize="10"
+                                           FontSize="12"
                                            FontWeight="SemiBold"
                                            AutomationProperties.AutomationId="SourceQualityMeasurementState"
                                            Text="{Binding MeasurementState}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           FontSize="8.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            AutomationProperties.AutomationId="SourceQualityMeasurementEvidence"
                                            Text="{Binding MeasurementEvidenceSummary}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,3,0,0"
-                                           FontSize="8.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            AutomationProperties.AutomationId="SourceQualityMeasurementCalibration"
                                            Text="{Binding MeasurementCalibrationSummary}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,5,0,0"
-                                           FontSize="8.5"
+                                           FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Provenance}"
                                            TextWrapping="Wrap" />

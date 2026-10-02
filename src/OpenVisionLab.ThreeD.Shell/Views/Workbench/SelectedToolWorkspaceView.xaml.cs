@@ -7,9 +7,17 @@ namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
 public partial class SelectedToolWorkspaceView : UserControl
 {
+    public static readonly DependencyProperty IsLabPresentationProperty = DependencyProperty.Register(nameof(IsLabPresentation), typeof(bool), typeof(SelectedToolWorkspaceView), new PropertyMetadata(false));
+
     public SelectedToolWorkspaceView()
     {
         InitializeComponent();
+    }
+
+    public bool IsLabPresentation
+    {
+        get => (bool)GetValue(IsLabPresentationProperty);
+        set => SetValue(IsLabPresentationProperty, value);
     }
 
     public bool IsFailureCorrectionContextVisible =>
@@ -34,13 +42,33 @@ public partial class SelectedToolWorkspaceView : UserControl
             SelectedToolSetupSecondRoiButton,
             SelectedToolSetupApplyRoiButton,
             SelectedToolSetupApplyParametersButton,
-            SelectedToolSetupPreviewButton,
         }.Count(button => button.Visibility == Visibility.Visible);
 
-    public bool CommitPendingParameterEdit(out string message) =>
-        StepPropertyGrid.CommitPendingEdit(out message);
+    public bool CommitPendingParameterEdit(out string message)
+    {
+        if (StepPropertyGrid.CommitPendingEdit(out message)) return true;
+        RevealParameterSettings();
+        return false;
+    }
 
-    public void BringOutputIntoView() => OutputSection.BringIntoView();
+    private void OnShowParameterSettingsClicked(object sender, RoutedEventArgs args) => RevealParameterSettings();
+
+    public void RevealParameterSettings()
+    {
+        EditorAllTab.IsChecked = true;
+        ParametersExpander.IsExpanded = true;
+        ShowAdvancedSamples.IsChecked = true;
+        UpdateLayout();
+        ParametersExpander.BringIntoView();
+        StepPropertyGrid.FocusInvalidEditor();
+    }
+
+    public void BringOutputIntoView()
+    {
+        SettingsDetails.IsExpanded = true;
+        UpdateLayout();
+        OutputSection.BringIntoView();
+    }
 
     public bool HasThicknessRepeatGridAuthoringControls =>
         ThicknessRepeatGridPanel is not null;
@@ -48,9 +76,26 @@ public partial class SelectedToolWorkspaceView : UserControl
     public bool HasExplicitAuthoringActions =>
         SelectedToolActionBar is not null
         && PreviewActionButton is not null
-        && PublishActionButton is not null
-        && CancelPreviewActionButton is not null
-        && SaveRecipeActionButton is not null;
+        && CancelPreviewActionButton is not null;
+
+    public bool HasVisibleInspectionContext =>
+        SelectedToolInspectionContext.IsVisible
+        && InspectionContextInputName.IsVisible
+        && InspectionContextMainDisplay.IsVisible
+        && !string.IsNullOrWhiteSpace(InspectionContextStepId.Text)
+        && !string.IsNullOrWhiteSpace(InspectionContextInputName.Text)
+        && !string.IsNullOrWhiteSpace(InspectionContextInputId.Text)
+        && !string.IsNullOrWhiteSpace(InspectionContextMainDisplay.Text)
+        && !string.IsNullOrWhiteSpace(InspectionContextMainDisplayId.Text)
+        && InspectionContextRegions.Items.Count > 0
+        && InspectionContextRegions.Items
+            .Cast<SelectedToolRegionItem>()
+            .All(region => !string.IsNullOrWhiteSpace(region.Label)
+                           && !string.IsNullOrWhiteSpace(region.State)
+                           && !string.IsNullOrWhiteSpace(region.SelectionId));
+
+    public string InspectionContextState =>
+        $"step={InspectionContextStepId.Text}; input={InspectionContextInputName.Text}|{InspectionContextInputId.Text}; main={InspectionContextMainDisplay.Text}|{InspectionContextMainDisplayId.Text}; regions={InspectionContextRegions.Items.Count}; detailsExpanded={InspectionContextDetails.IsExpanded}";
 
     public bool HasExclusiveWorkspaceSurface =>
         !(SourceQualityWorkspace.IsVisible
@@ -66,6 +111,35 @@ public partial class SelectedToolWorkspaceView : UserControl
 
     public void BringThicknessRepeatGridIntoView() =>
         ThicknessRepeatGridPanel.BringIntoView();
+
+    private void OnSelectedToolStepSelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (EditorAllTab is not null)
+        {
+            EditorAllTab.IsChecked = true;
+        }
+    }
+
+    private void OnEditorPageChecked(object sender, RoutedEventArgs args)
+    {
+        if (!IsLoaded || sender is not RadioButton { Tag: string page })
+        {
+            return;
+        }
+
+        if (page is "All" or "Judgment" or "Region" or "Detail")
+        {
+            ParametersExpander.IsExpanded = true;
+        }
+        if (page is "All" or "Region")
+        {
+            RegionsExpander.IsExpanded = true;
+        }
+
+        UpdateLayout();
+        StepPropertyGrid.ScrollToTop();
+        SelectedToolScrollViewer.ScrollToTop();
+    }
 
     private void CollectVisibleText(
         DependencyObject owner,

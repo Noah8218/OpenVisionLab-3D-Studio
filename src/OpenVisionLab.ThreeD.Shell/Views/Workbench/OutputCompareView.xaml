@@ -34,7 +34,7 @@
                                    Text="{Binding Localization.OutputCompareTitle}" />
                         <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   FontSize="10"
+                                   FontSize="12"
                                    Text="{Binding Localization.OutputCompareDetail}"
                                    TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -47,7 +47,7 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1"
                         CornerRadius="3">
-                    <TextBlock FontSize="9.5"
+                    <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                Text="{Binding ArtifactRegistrySummary}" />
                 </Border>
@@ -62,7 +62,7 @@
                     CornerRadius="3"
                     Visibility="{Binding HasPreparationQualityComparisonSummary, Converter={StaticResource BoolToVisibilityConverter}}"
                     AutomationProperties.Name="{Binding PreparationQualityComparisonSummary}">
-                <TextBlock FontSize="9.5"
+                <TextBlock FontSize="12"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                            Text="{Binding PreparationQualityComparisonSummary}"
                            TextWrapping="Wrap" />
@@ -102,7 +102,7 @@
                                     <Border Padding="5,2"
                                             Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                             CornerRadius="2">
-                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="A" />
+                                        <TextBlock FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="A" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="7,0,0,0">
                                         <ComboBox
@@ -112,7 +112,7 @@
                                                   SelectedValue="{Binding CompareSlotAArtifactId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OutputCompare.SlotAAccessible, Korean='비교 슬롯 A 출력', English='Compare slot A output'}" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="9"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding CompareSlotASummary}"
                                                    TextTrimming="CharacterEllipsis"
@@ -123,7 +123,7 @@
                                                 CornerRadius="2"
                                                 Visibility="{Binding HasCompareSlotAQualitySummary, Converter={StaticResource BoolToVisibilityConverter}}"
                                                 AutomationProperties.Name="{Binding CompareSlotAQualitySummary}">
-                                            <TextBlock FontSize="9"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                        Text="{Binding CompareSlotAQualitySummary}"
                                                        TextWrapping="Wrap" />
@@ -164,7 +164,7 @@
                                     <Border Padding="5,2"
                                             Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                             CornerRadius="2">
-                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="B" />
+                                        <TextBlock FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="B" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="7,0,0,0">
                                         <ComboBox
@@ -174,7 +174,7 @@
                                                   SelectedValue="{Binding CompareSlotBArtifactId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OutputCompare.SlotBAccessible, Korean='비교 슬롯 B 출력', English='Compare slot B output'}" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="9"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding CompareSlotBSummary}"
                                                    TextTrimming="CharacterEllipsis"
@@ -185,7 +185,7 @@
                                                 CornerRadius="2"
                                                 Visibility="{Binding HasCompareSlotBQualitySummary, Converter={StaticResource BoolToVisibilityConverter}}"
                                                 AutomationProperties.Name="{Binding CompareSlotBQualitySummary}">
-                                            <TextBlock FontSize="9"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                        Text="{Binding CompareSlotBQualitySummary}"
                                                        TextWrapping="Wrap" />
@@ -226,7 +226,7 @@
                                     <Border Padding="5,2"
                                             Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                             CornerRadius="2">
-                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="C" />
+                                        <TextBlock FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="C" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="7,0,0,0">
                                         <ComboBox
@@ -236,7 +236,7 @@
                                                   SelectedValue="{Binding CompareSlotCArtifactId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OutputCompare.SlotCAccessible, Korean='비교 슬롯 C 출력', English='Compare slot C output'}" />
                                         <TextBlock Margin="0,2,0,0"
-                                                   FontSize="9"
+                                                   FontSize="12"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding CompareSlotCSummary}"
                                                    TextTrimming="CharacterEllipsis"
@@ -247,7 +247,7 @@
                                                 CornerRadius="2"
                                                 Visibility="{Binding HasCompareSlotCQualitySummary, Converter={StaticResource BoolToVisibilityConverter}}"
                                                 AutomationProperties.Name="{Binding CompareSlotCQualitySummary}">
-                                            <TextBlock FontSize="9"
+                                            <TextBlock FontSize="12"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                        Text="{Binding CompareSlotCQualitySummary}"
                                                        TextWrapping="Wrap" />

@@ -31,11 +31,27 @@ public sealed record ToolRecipeHeightMeasurementOutput(
     ToolResult Result,
     string EvidenceSummary,
     C3DCompletenessGridMetricOutput? CompletenessGrid = null,
-    string? SemanticFingerprint = null);
+    string? SemanticFingerprint = null,
+    C3DConnectedRegionGateOutput? ConnectedRegionGate = null);
 
 public sealed record ToolRecipeHeightMeasurementEvaluation(
     ToolResult Result,
-    ToolRecipeHeightMeasurementOutput? Output);
+    ToolRecipeHeightMeasurementOutput? Output,
+    ToolRecipeHeightMeasurementFailure? Failure = null);
+
+public enum ToolRecipeHeightMeasurementFailureReason
+{
+    ExecutionError,
+    InsufficientReferenceSamples,
+    InsufficientMeasurementSamples
+}
+
+public sealed record ToolRecipeHeightMeasurementFailure(
+    ToolRecipeHeightMeasurementFailureReason Reason,
+    int? ReferenceSampleCount = null,
+    int? MeasurementSampleCount = null,
+    int? RequiredReferenceSampleCount = null,
+    int? RequiredMeasurementSampleCount = null);
 
 /// <summary>
 /// Typed adapters that let scalar and plane-relative measurements participate as ordinary steps
@@ -125,12 +141,13 @@ public static class ToolRecipeHeightMeasurementExecution
         var step = prepared!.Step;
         ToolResult result;
         string evidence;
+        ToolRecipeHeightMeasurementFailure? failure = null;
         C3DCompletenessGridMetricOutput? completenessGrid = null;
         if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
         {
             var profile = C3DCompletenessGridProfile.FromRecipeParameters(
                 step.Parameters ?? []);
-            var presencePolicy =
+            var presencePolicy = step.AcceptanceLimitsConfigured == false ? null :
                 C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
                     step.Parameters ?? []);
             var evaluation = C3DCompletenessGridRule.Evaluate(
@@ -153,7 +170,9 @@ public static class ToolRecipeHeightMeasurementExecution
             {
                 return new ToolRecipeHeightMeasurementEvaluation(
                     evaluation.Result,
-                    null);
+                    null,
+                    new ToolRecipeHeightMeasurementFailure(
+                        ToolRecipeHeightMeasurementFailureReason.ExecutionError));
             }
 
             completenessGrid = evaluation.Output;
@@ -192,6 +211,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 prepared.Unit));
             result = evaluation.Result;
             evidence = $"H-axis thickness mean {evaluation.Mean:G6} | min {evaluation.Minimum:G6} | max {evaluation.Maximum:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0} finite samples";
+            failure = CreateThicknessFailure(evaluation, minimumSamples);
         }
         else if (string.Equals(step.ToolId, "warpage", StringComparison.Ordinal))
         {
@@ -397,6 +417,7 @@ public static class ToolRecipeHeightMeasurementExecution
             }
         }
 
+        result = step.ApplyAcceptancePolicy(result);
         var hash = completenessGrid?.ContentSha256
             ?? CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
         var semanticFingerprint = CalculateSemanticFingerprint(
@@ -417,7 +438,34 @@ public static class ToolRecipeHeightMeasurementExecution
             evidence,
             completenessGrid,
             semanticFingerprint);
-        return new ToolRecipeHeightMeasurementEvaluation(result, output);
+        failure ??= result.Status == ResultStatus.Error
+            ? new ToolRecipeHeightMeasurementFailure(
+                ToolRecipeHeightMeasurementFailureReason.ExecutionError)
+            : null;
+        return new ToolRecipeHeightMeasurementEvaluation(result, output, failure);
+    }
+
+    private static ToolRecipeHeightMeasurementFailure? CreateThicknessFailure(
+        DualSurfaceThicknessEvaluation evaluation,
+        int requiredSampleCount)
+    {
+        if (evaluation.Result.Status != ResultStatus.Error)
+        {
+            return null;
+        }
+
+        const int requiredReferenceSampleCount = 3;
+        var reason = evaluation.ReferenceSampleCount < requiredReferenceSampleCount
+            ? ToolRecipeHeightMeasurementFailureReason.InsufficientReferenceSamples
+            : evaluation.MeasurementSampleCount < requiredSampleCount
+                ? ToolRecipeHeightMeasurementFailureReason.InsufficientMeasurementSamples
+                : ToolRecipeHeightMeasurementFailureReason.ExecutionError;
+        return new ToolRecipeHeightMeasurementFailure(
+            reason,
+            evaluation.ReferenceSampleCount,
+            evaluation.MeasurementSampleCount,
+            requiredReferenceSampleCount,
+            requiredSampleCount);
     }
 
     /// <summary>
@@ -1152,6 +1200,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 canonical.Append('|').Append(point.Locator.Row).Append(',').Append(point.Locator.Column);
             }
         }
+        if (step.AcceptanceLimitsConfigured is { } configured) canonical.Append("|acceptanceLimitsConfigured=").Append(configured);
         foreach (var parameter in step.Parameters.OrderBy(parameter => parameter.Name, StringComparer.Ordinal))
         {
             canonical.Append('|').Append(parameter.Name).Append('=').Append(parameter.Value);

@@ -79,13 +79,24 @@ public sealed partial class ToolWorkbenchViewModel
             SourceSession.SourceBinding),
         ArtifactRegistry.ToArray(),
         [
+            .. PipelineSteps.Where(step => step.ToolId == "filter").Select(step =>
+            {
+                var published = filterExecutionOwner.GetPublishedOutput(step.OutputEntityId);
+                var current = string.Equals(filterPreviewOutput?.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase);
+                return new ToolWorkbenchRenderableC3DPreparationSnapshot("filter",
+                    current ? filterPreviewOutput : published?.Output,
+                    current ? CurrentFilterPreviewPath : published?.Path,
+                    current ? HasCurrentFilterPreview : published is not null,
+                    current && IsFilterPreviewStale,
+                    current ? IsFilterPreviewPublished : published is not null);
+            }),
             new ToolWorkbenchRenderableC3DPreparationSnapshot(
-                "filter",
-                filterPreviewOutput,
-                CurrentFilterPreviewPath,
-                HasCurrentFilterPreview,
-                IsFilterPreviewStale,
-                IsFilterPreviewPublished),
+                "height-threshold-background-removal",
+                CurrentHeightThresholdPreviewOutput,
+                CurrentHeightThresholdPreviewPath,
+                HasCurrentHeightThresholdPreview,
+                IsHeightThresholdPreviewStale,
+                IsHeightThresholdPreviewPublished),
             new ToolWorkbenchRenderableC3DPreparationSnapshot(
                 "remove-outlier-pixels",
                 CurrentRemoveOutlierPreviewOutput,
@@ -142,6 +153,7 @@ public sealed partial class ToolWorkbenchViewModel
         Localization.RoiCropQualityDeltaEvidence,
         Localization.LevelSurfaceQualityDeltaEvidence,
         Localization.DomainMaskQualityDeltaEvidence,
+        Localization.FilterQualityDeltaEvidence,
         Localization.RemoveOutlierQualityDeltaEvidence,
         Localization.FilterQualityDeltaEvidence,
         Localization.FlowPortDeclaredDetailFormat,
@@ -157,6 +169,7 @@ public sealed partial class ToolWorkbenchViewModel
         Localization.RoiCropArtifactDetailFormat,
         Localization.LevelSurfaceArtifactDetailFormat,
         Localization.FilterArtifactDetailFormat,
+        Localization.HeightThresholdArtifactDetailFormat,
         Localization.HeightDifferenceEdgeArtifactDetailFormat,
         Localization.LineFitArtifactDetailFormat,
         Localization.TwoPointLineArtifactDetailFormat,
@@ -168,6 +181,8 @@ public sealed partial class ToolWorkbenchViewModel
         Localization.XyzAffineApplyArtifactDetailFormat,
         Localization.RegridHeightFieldArtifactDetailFormat,
         Localization.MeasurementArtifactDetailFormat,
+        CurrentMeasurementOutput is { } statusOutput ? MeasurementResultStatusLabel(statusOutput.Result) : string.Empty,
+        CurrentMeasurementOutput is { } messageOutput ? MeasurementResultMessage(messageOutput.Result) : string.Empty,
         Localization.ResultStatusLabel,
         new ToolWorkbenchArtifactPreview<OpenVisionLab.ThreeD.Data.C3DHeightFieldSnapshot>(
             CurrentRoiCropPreviewOutput,
@@ -185,6 +200,10 @@ public sealed partial class ToolWorkbenchViewModel
             CurrentConnectedRegionArtifact,
             IsConnectedRegionPreviewStale,
             IsConnectedRegionPreviewPublished),
+        new ToolWorkbenchArtifactPreview<C3DGridDomainArtifact>(
+            CurrentGridPolygonDomainArtifact,
+            IsGridPolygonDomainPreviewStale,
+            IsGridPolygonDomainPreviewPublished),
         new ToolWorkbenchArtifactPreview<OpenVisionLab.ThreeD.Data.C3DHeightFieldSnapshot>(
             CurrentDomainMaskPreviewOutput,
             IsDomainMaskPreviewStale,
@@ -193,6 +212,11 @@ public sealed partial class ToolWorkbenchViewModel
             CurrentEditableRegionArtifact,
             IsEditableRegionPreviewStale,
             IsEditableRegionPreviewPublished),
+        new ToolWorkbenchHeightThresholdArtifactPreview(
+            CurrentHeightThresholdPreviewOutput,
+            CurrentHeightThresholdPreviewEvidence,
+            IsHeightThresholdPreviewStale,
+            IsHeightThresholdPreviewPublished),
         new ToolWorkbenchRemoveOutlierArtifactPreview(
             CurrentRemoveOutlierPreviewOutput,
             CurrentRemoveOutlierMask,
@@ -224,10 +248,20 @@ public sealed partial class ToolWorkbenchViewModel
             CurrentRegridHeightFieldOutput,
             IsRegridHeightFieldPreviewStale,
             IsRegridHeightFieldPreviewPublished),
+        new ToolWorkbenchArtifactPreview<C3DPhysicalEdgeGapFlushResult>(
+            CurrentPhysicalEdgeGapFlushOutput,
+            IsPhysicalEdgeGapFlushPreviewStale,
+            IsPhysicalEdgeGapFlushPreviewPublished),
         new ToolWorkbenchArtifactPreview<OpenVisionLab.ThreeD.Tools.ToolRecipeHeightMeasurementOutput>(
             CurrentMeasurementOutput,
             IsMeasurementPreviewStale,
-            IsMeasurementPreviewPublished));
+            IsMeasurementPreviewPublished),
+        new ToolWorkbenchArtifactPreview<C3DSignedHeightDeltaArtifact>(
+            CurrentSignedDeltaPreviewOutput,
+            IsSignedDeltaPreviewStale,
+            IsSignedDeltaPreviewPublished),
+        outputEntityId => filterExecutionOwner.GetPublishedOutput(outputEntityId)?.Output,
+        outputEntityId => TryGetPublishedHeightDifferenceEdgeOutput(outputEntityId, out var output) ? output : null);
 
     private void RebuildArtifactRegistryAndNavigator() => artifactNavigatorOwner.Rebuild();
 

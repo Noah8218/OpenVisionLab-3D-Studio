@@ -140,8 +140,8 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
 
     public string WorkspaceStatus => L("오프라인 교정 작업공간", "Offline calibration workspace");
     public string UnitFrameStatus => loadedStudy is null
-        ? L("선언 단위: 미설정 | 프레임: 미설정", "Declared unit: not set | Frame: not set")
-        : L($"선언 단위: {loadedStudy.Input.Unit} | 프레임: {loadedStudy.Input.FrameId}", $"Declared unit: {loadedStudy.Input.Unit} | Frame: {loadedStudy.Input.FrameId}");
+        ? L("선언 단위: 미설정 | 좌표계: 미설정", "Declared unit: not set | Frame: not set")
+        : L($"선언 단위: {loadedStudy.Input.Unit} | 좌표계: {loadedStudy.Input.FrameId}", $"Declared unit: {loadedStudy.Input.Unit} | Frame: {loadedStudy.Input.FrameId}");
     public string CalibrationStatus => L("교정: 활성 프로파일 없음", "Calibration: no active profile");
     public string ActiveProfileStatus => L("활성 교정 프로파일 없음", "No active calibration profile");
     public string SelectedProfileStatus => L("선택된 프로파일 없음", "No profile selected");
@@ -190,7 +190,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
     public string HeightTargetEmptyState => L("높이 타깃 없음", "No height target loaded");
     public string AlignmentTargetEmptyState => L("정렬 타깃 없음", "No alignment target loaded");
     public string EmptyRepeatabilityRunsText => L("반복 실행 없음", "No repeatability runs");
-    public string EmptyEvidenceText => L("계산 증거 없음", "No calculation evidence");
+    public string EmptyEvidenceText => L("계산 정보 없음", "No calculation evidence");
     public string EmptyProfilesText => L("교정 프로파일 없음", "No calibration profiles");
     public string ProfileNameValue => loadedStudy?.Input.StudyId ?? L("미설정", "Not set");
     public string SensorIdentityValue => L("미설정", "Not set");
@@ -210,7 +210,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
         ? Format(acceptance.MaximumRange, loadedStudy.Input.Unit)
         : L("미설정", "Not configured");
     public string RepeatabilityCalculationMessage => evaluation?.Result.Message ?? repeatabilityOperationStatus;
-    public string ProfileLifecycleSummary => L("초안  >  계산됨  >  검증됨  >  활성", "Draft  >  Calculated  >  Validated  >  Active");
+    public string ProfileLifecycleSummary => L("작성 중  >  계산 완료  > 검증 완료  >  사용 중", "Draft  >  Calculated  >  Validated  >  Active");
     public string SelectedRepeatabilityRunSummary => SelectedRepeatabilityRun is null
         ? L("선택된 반복 실행 없음", "No repeatability run selected")
         : L($"실행 {SelectedRepeatabilityRun.RunNumber} | {SelectedRepeatabilityRun.RunId} | {SelectedRepeatabilityRun.ValueText} | {SelectedRepeatabilityRun.Status}", $"Run {SelectedRepeatabilityRun.RunNumber} | {SelectedRepeatabilityRun.RunId} | {SelectedRepeatabilityRun.ValueText} | {SelectedRepeatabilityRun.Status}");

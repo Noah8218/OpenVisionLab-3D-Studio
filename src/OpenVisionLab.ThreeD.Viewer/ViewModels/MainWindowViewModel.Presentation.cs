@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel
     public void UseC3DHeightDeviationRuleSmokeScene()
     {
         UseC3DSmokeScene();
+        SampleResultOverlayVisible = true;
         MeasurementVisible = false;
         MeasurementSummary = "C3D rule preview uses raw height statistics.";
         ResultOverlayVisible = true;
@@ -75,6 +76,7 @@ public sealed partial class MainWindowViewModel
 
     private void ClearOutputArtifactsForDisabledPolicy()
     {
+        SampleResultOverlayVisible = false;
         ClearC3DHeightDeviationPreview();
         ClearThicknessPreview();
         ClearWarpagePreview();

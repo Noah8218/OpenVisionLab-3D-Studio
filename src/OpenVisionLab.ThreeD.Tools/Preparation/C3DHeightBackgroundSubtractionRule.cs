@@ -20,6 +20,10 @@ public sealed record C3DHeightBackgroundSubtractionEvaluation(
     C3DHeightFieldSnapshot? Output,
     C3DHeightBackgroundSubtractionEvidence? Evidence);
 
+public sealed record C3DSignedHeightDeltaEvaluation(
+    ToolResult Result,
+    C3DSignedHeightDeltaArtifact? Output);
+
 /// <summary>
 /// Strict Studio adapter for SDK-owned current-minus-saved-background
 /// subtraction. Studio owns C3D identity, raw-height policy, derived lineage,
@@ -28,6 +32,106 @@ public sealed record C3DHeightBackgroundSubtractionEvaluation(
 public static class C3DHeightBackgroundSubtractionRule
 {
     public const string ToolName = "C3D Saved Background Subtraction";
+    public const string SignedDeltaToolName = "C3D Signed Delta Background Subtraction";
+
+    /// <summary>
+    /// Evaluates the same SDK current-minus-background arithmetic as the
+    /// legacy C3D route, but keeps finite zero as a valid output sample. This
+    /// is deliberately a separate artifact contract because the C3D binary
+    /// codec reserves finite zero for missing data.
+    /// </summary>
+    public static C3DSignedHeightDeltaEvaluation EvaluateSignedDelta(
+        C3DHeightBackgroundSubtractionInput input,
+        CancellationToken cancellationToken = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            Validate(input);
+            cancellationToken.ThrowIfCancellationRequested();
+            var sdkResult = new SdkTool().Execute(
+                ToSdk(input.Current),
+                ToSdk(input.SavedBackground),
+                new SdkOptions { Mode = SdkMode.CurrentMinusSavedBackground },
+                cancellationToken);
+            if (!sdkResult.Success || sdkResult.Output is null)
+            {
+                throw new InvalidDataException(sdkResult.Message);
+            }
+
+            ValidateSdkOutput(sdkResult.Output, input.Current);
+            var values = sdkResult.Output.CopyValues();
+            var output = C3DSignedHeightDeltaArtifact.Create(
+                input.StepId,
+                input.OutputEntityId,
+                input.Current.EntityId,
+                input.Current.ContentSha256,
+                input.Current.RootSourceSha256,
+                input.Current.ByteLength,
+                input.SavedBackground.EntityId,
+                input.SavedBackground.ContentSha256,
+                input.SavedBackground.RootSourceSha256,
+                input.SavedBackground.ByteLength,
+                input.Current.Unit,
+                input.Current.FrameId,
+                input.Current.Width,
+                input.Current.Height,
+                input.Current.GridOriginColumn,
+                input.Current.GridOriginRow,
+                values,
+                sdkResult.CurrentValidSampleCount,
+                sdkResult.BackgroundValidSampleCount,
+                sdkResult.PairedValidSampleCount,
+                sdkResult.MissingEitherSampleCount,
+                sdkResult.ZeroDeltaSampleCount,
+                sdkResult.PositiveDeltaSampleCount,
+                sdkResult.NegativeDeltaSampleCount,
+                $"{input.StepId}:C3DSignedHeightDelta:policy={C3DSignedHeightDeltaRecipePolicy.SubtractionPolicyName}:grid={C3DSignedHeightDeltaRecipePolicy.GridPolicyName}:missing={C3DSignedHeightDeltaRecipePolicy.MissingValuePolicyName}:zero={C3DSignedHeightDeltaRecipePolicy.ZeroDeltaPolicyName}:current={input.Current.ContentSha256}:background={input.SavedBackground.ContentSha256}");
+            stopwatch.Stop();
+            return new(
+                new ToolResult(
+                    SignedDeltaToolName,
+                    ResultStatus.Pass,
+                    "Completed missing-safe signed current-minus-background subtraction; finite zero remains a valid delta and missing cells remain NaN.",
+                    stopwatch.Elapsed,
+                    [
+                        new Metric("Current valid sample count", MetricKind.Count, output.CurrentValidSampleCount, "count"),
+                        new Metric("Background valid sample count", MetricKind.Count, output.BackgroundValidSampleCount, "count"),
+                        new Metric("Paired valid sample count", MetricKind.Count, output.PairedValidSampleCount, "count"),
+                        new Metric("Missing either-input sample count", MetricKind.Count, output.MissingEitherSampleCount, "count"),
+                        new Metric("Zero delta sample count", MetricKind.Count, output.ZeroDeltaSampleCount, "count"),
+                        new Metric("Positive delta sample count", MetricKind.Count, output.PositiveDeltaSampleCount, "count"),
+                        new Metric("Negative delta sample count", MetricKind.Count, output.NegativeDeltaSampleCount, "count"),
+                        new Metric("Output valid sample count", MetricKind.Count, output.OutputValidSampleCount, "count", ResultStatus.Pass),
+                        new Metric("Output missing sample count", MetricKind.Count, output.OutputMissingSampleCount, "count")
+                    ],
+                    [
+                        new Overlay(
+                            $"signed-delta.{output.OutputEntityId}",
+                            OverlayKind.ColorMap,
+                            $"Signed background delta: {output.PairedValidSampleCount:N0} paired cell(s)",
+                            ResultStatus.Pass,
+                            output.OutputEntityId)
+                    ]),
+                output);
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            throw;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+            or InvalidDataException
+            or InvalidOperationException
+            or OverflowException)
+        {
+            stopwatch.Stop();
+            return new(
+                new ToolResult(SignedDeltaToolName, ResultStatus.Error, exception.Message, stopwatch.Elapsed, [], []),
+                null);
+        }
+    }
 
     public static C3DHeightBackgroundSubtractionEvaluation Evaluate(
         C3DHeightBackgroundSubtractionInput input,

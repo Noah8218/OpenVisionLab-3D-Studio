@@ -15,6 +15,17 @@ using OpenVisionLab.ThreeD.Shell.Dialogs;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
 
+public enum ThreeDIntegrationTcpOperationState
+{
+    Idle,
+    Running,
+    Cancelling,
+    Succeeded,
+    Cancelled,
+    TimedOut,
+    Failed,
+}
+
 public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
     private readonly Func<string?> runRecordPathProvider;
@@ -22,8 +33,10 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     private readonly ThreeDIntegrationSharedKeySession sharedKeySession = new();
     private readonly ThreeDIntegrationTransactionWorkflow transactionWorkflow;
     private readonly Func<IntegrationApplicationIdentity>? producerIdentityProvider;
+    private readonly TcpIntegrationOptions? tcpOptions;
     private readonly object tcpOperationGate = new();
     private ThreeDIntegrationTcpTransport? tcpListener;
+    private ThreeDIntegrationCancellationCoordinator? tcpCancellationCoordinator;
     private CancellationTokenSource? tcpOperationCancellation;
     private Task? tcpOperationTask;
     private Task? disposalTask;
@@ -36,14 +49,20 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     private string tcpPeerPortText = "45102";
     private bool isTcpListening;
     private bool isTcpBusy;
+    private ThreeDIntegrationTcpOperationState tcpOperationState;
     private string tcpListenerStatusText = L("TcpStopped", "TCP 수신 중지됨", "TCP listener stopped");
     private string sharedKeyStatusText = string.Empty;
     private string lastTcpTransferText = L("NoTcpTransfer", "TCP 전송 기록이 없습니다.", "No TCP transfer has run.");
     private string rejectionReason = string.Empty;
     private string statusText = L("Restore", "설정을 복원했습니다. 폴더를 스캔하거나 작업을 실행하지 않았습니다.", "Setup restored. No folder was scanned and no action was run.");
-    private string selectedSummary = L("ChooseRefresh", "새로고침을 눌러 Machine Studio Handoff를 찾으세요.", "Choose Refresh to find Machine Studio handoffs.");
-    private string currentRunRecordSummary = L("NoRunRecord", "선택한 Run Record가 없습니다.", "No Run Record is selected.");
+    private string selectedSummary = L("ChooseRefresh", "새로고침을 눌러 Machine Studio 검사 요청을 찾으세요.", "Choose Refresh to find Machine Studio handoffs.");
+    private string currentRunRecordSummary = L("NoRunRecord", "선택한 검사 기록이 없습니다.", "No Run Record is selected.");
+    private string selectedInputArtifactPath = string.Empty;
+    private string selectedInputArtifactId = string.Empty;
+    private string selectedInputUnit = string.Empty;
+    private string selectedInputFrameId = string.Empty;
     private ThreeDIntegrationTransactionItem? selectedTransaction;
+    private bool isInspectionBusy;
 
     public ThreeDIntegrationViewModel(
         Func<string?> runRecordPathProvider,
@@ -73,6 +92,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         RefreshHandoffsCommand = new RelayCommand(_ => RefreshHandoffs(), _ => !IsTcpBusy);
         AcceptCommand = new RelayCommand(_ => AcceptSelected(), _ => CanReviewSelected);
         RejectCommand = new RelayCommand(_ => RejectSelected(), _ => CanReviewSelected);
+        RunInspectionCommand = new RelayCommand(_ => RunInspection(), _ => CanRunInspection);
         PublishResultCommand = new RelayCommand(_ => PublishResult(), _ => CanPublishSelectedResult);
         StartTcpListenerCommand = new RelayCommand(
             async _ => await StartTcpListenerAsync(),
@@ -89,17 +109,22 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         PullSelectedTransactionCommand = new RelayCommand(
             async _ => await PullSelectedTransactionAsync(),
             _ => !IsTcpBusy && SelectedTransaction is not null);
+        CancelTcpOperationCommand = new RelayCommand(
+            _ => CancelTcpOperation(),
+            _ => CanCancelTcpOperation);
         SyncRunRecord();
     }
 
     internal ThreeDIntegrationViewModel(
         Func<string?> runRecordPathProvider,
         string settingsPath,
-        Func<IntegrationApplicationIdentity> producerIdentityProvider)
+        Func<IntegrationApplicationIdentity> producerIdentityProvider,
+        TcpIntegrationOptions? tcpOptions = null)
         : this(runRecordPathProvider, settingsPath)
     {
         this.producerIdentityProvider = producerIdentityProvider
             ?? throw new ArgumentNullException(nameof(producerIdentityProvider));
+        this.tcpOptions = tcpOptions;
     }
 
     internal void SetDialogHost(IThreeDIntegrationDialogHost host) =>
@@ -109,6 +134,13 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
 
     internal bool IsDisposed => Volatile.Read(ref disposedState) != 0;
 
+    // Verification-only delay used by the disposable cross-process smoke host.
+    // It keeps the cancellation coordinator's active-run window open without
+    // changing the normal inspection workflow.
+    internal int SmokePreInspectionDelayMilliseconds { get; set; }
+    internal string? SmokePreInspectionReadyFilePath { get; set; }
+    internal bool SmokeForceExecutionError { get; set; }
+
     public ObservableCollection<ThreeDIntegrationTransactionItem> Transactions { get; } = [];
     public RelayCommand BrowseExchangeRootCommand { get; }
     public RelayCommand SaveSetupCommand { get; }
@@ -117,12 +149,14 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     public RelayCommand RefreshHandoffsCommand { get; }
     public RelayCommand AcceptCommand { get; }
     public RelayCommand RejectCommand { get; }
+    public RelayCommand RunInspectionCommand { get; }
     public RelayCommand PublishResultCommand { get; }
     public RelayCommand StartTcpListenerCommand { get; }
     public RelayCommand StopTcpListenerCommand { get; }
     public RelayCommand PingTcpPeerCommand { get; }
     public RelayCommand PushSelectedTransactionCommand { get; }
     public RelayCommand PullSelectedTransactionCommand { get; }
+    public RelayCommand CancelTcpOperationCommand { get; }
 
     public string ExchangeRoot
     {
@@ -188,6 +222,30 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
 
     public bool CanEditTcpSetup => !IsTcpListening && !IsTcpBusy;
 
+    public ThreeDIntegrationTcpOperationState TcpOperationState
+    {
+        get => tcpOperationState;
+        private set
+        {
+            if (SetField(ref tcpOperationState, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TcpOperationStateText)));
+            }
+        }
+    }
+
+    public string TcpOperationStateText => TcpOperationState switch
+    {
+        ThreeDIntegrationTcpOperationState.Idle => L("TcpStateIdle", "대기", "Idle"),
+        ThreeDIntegrationTcpOperationState.Running => L("TcpStateRunning", "실행 중", "Running"),
+        ThreeDIntegrationTcpOperationState.Cancelling => L("TcpStateCancelling", "취소 중", "Cancelling"),
+        ThreeDIntegrationTcpOperationState.Succeeded => L("TcpStateSucceeded", "완료", "Succeeded"),
+        ThreeDIntegrationTcpOperationState.Cancelled => L("TcpStateCancelled", "취소됨", "Cancelled"),
+        ThreeDIntegrationTcpOperationState.TimedOut => L("TcpStateTimedOut", "시간 초과", "Timed out"),
+        ThreeDIntegrationTcpOperationState.Failed => L("TcpStateFailed", "실패", "Failed"),
+        _ => TcpOperationState.ToString(),
+    };
+
     public string TcpListenerStatusText
     {
         get => tcpListenerStatusText;
@@ -224,6 +282,30 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         private set => SetField(ref currentRunRecordSummary, value);
     }
 
+    public string SelectedInputArtifactPath
+    {
+        get => selectedInputArtifactPath;
+        private set => SetField(ref selectedInputArtifactPath, value ?? string.Empty);
+    }
+
+    public string SelectedInputArtifactId
+    {
+        get => selectedInputArtifactId;
+        private set => SetField(ref selectedInputArtifactId, value ?? string.Empty);
+    }
+
+    public string SelectedInputUnit
+    {
+        get => selectedInputUnit;
+        private set => SetField(ref selectedInputUnit, value ?? string.Empty);
+    }
+
+    public string SelectedInputFrameId
+    {
+        get => selectedInputFrameId;
+        private set => SetField(ref selectedInputFrameId, value ?? string.Empty);
+    }
+
     public ThreeDIntegrationTransactionItem? SelectedTransaction
     {
         get => selectedTransaction;
@@ -233,12 +315,13 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             {
                 return;
             }
+            RefreshSelectedInputArtifact();
             SelectedSummary = value is null
-                ? L("NoSelection", "선택한 Machine Studio Handoff가 없습니다.", "No Machine Studio handoff is selected.")
+                ? L("NoSelection", "선택한 Machine Studio 검사 요청이 없습니다.", "No Machine Studio handoff is selected.")
                 : string.Format(
                     L(
                         "SelectedFormat",
-                        "거래 {0:D} | {1} | {2} | {3} | {4}",
+                        "항목 {0:D} | {1} | {2} | {3} | {4}",
                         "Transaction {0:D} | {1} | {2} | {3} | {4}"),
                     value.TransactionId,
                     value.ProjectId,
@@ -247,6 +330,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                     value.ResultSummary);
             AcceptCommand.RaiseCanExecuteChanged();
             RejectCommand.RaiseCanExecuteChanged();
+            RunInspectionCommand.RaiseCanExecuteChanged();
             PublishResultCommand.RaiseCanExecuteChanged();
             PushSelectedTransactionCommand.RaiseCanExecuteChanged();
             PullSelectedTransactionCommand.RaiseCanExecuteChanged();
@@ -257,8 +341,88 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         !IsTcpBusy
         && SelectedTransaction is { CanInspectInThreeD: true, HasAcknowledgement: false, HasResult: false };
 
+    private void RefreshSelectedInputArtifact()
+    {
+        // Clear the path first so the host cancels an in-flight load before any
+        // new metadata is published. The integration viewer never mutates the
+        // active recipe/source state; it only displays the selected transaction.
+        SelectedInputArtifactPath = string.Empty;
+        SelectedInputArtifactId = string.Empty;
+        SelectedInputUnit = string.Empty;
+        SelectedInputFrameId = string.Empty;
+
+        if (SelectedTransaction is not { CanInspectInThreeD: true }
+            || SelectedTransaction.SchemaVersion != IntegrationContractSchema.V2
+            || string.IsNullOrWhiteSpace(ExchangeRoot))
+        {
+            return;
+        }
+
+        try
+        {
+            var root = Path.GetFullPath(ExchangeRoot);
+            var handoff = ThreeDIntegrationV2Exchange.ReadHandoff(
+                root,
+                SelectedTransaction.TransactionId);
+            var source = handoff.Context.Artifacts.SingleOrDefault(artifact =>
+                string.Equals(
+                    artifact.Role,
+                    IntegrationArtifactRoles.InspectionSource,
+                    StringComparison.Ordinal));
+            if (source is null)
+            {
+                return;
+            }
+
+            var transactionRoot = Path.Combine(
+                root,
+                IntegrationTransactionLayout.TransactionsDirectoryName,
+                SelectedTransaction.TransactionId.ToString("D"));
+            var fullRoot = Path.GetFullPath(transactionRoot)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            var fullPath = Path.GetFullPath(Path.Combine(
+                transactionRoot,
+                source.RelativePath.Replace('/', Path.DirectorySeparatorChar)));
+            if (!fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase)
+                || !File.Exists(fullPath))
+            {
+                return;
+            }
+
+            SelectedInputArtifactId = string.IsNullOrWhiteSpace(source.ArtifactId)
+                ? "integration-source"
+                : source.ArtifactId;
+            SelectedInputUnit = handoff.Context.Unit;
+            SelectedInputFrameId = handoff.Context.FrameId;
+            // Publish the path last so a consumer observing this property sees
+            // a complete metadata tuple for one transaction.
+            SelectedInputArtifactPath = fullPath;
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or InvalidOperationException
+            or IntegrationContractException)
+        {
+            // Discovery and selection must remain non-destructive. The existing
+            // status projection reports malformed/unavailable transactions.
+        }
+    }
+
     private bool CanPublishSelectedResult =>
         !IsTcpBusy
+        && SelectedTransaction is
+        {
+            CanInspectInThreeD: true,
+            HasAcknowledgement: true,
+            HasResult: false,
+            AcknowledgementStatus: IntegrationAcknowledgementStatus.Accepted
+        };
+
+    private bool CanRunInspection =>
+        !IsTcpBusy
+        && !isInspectionBusy
         && SelectedTransaction is
         {
             CanInspectInThreeD: true,
@@ -271,8 +435,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     {
         var path = runRecordPathProvider();
         CurrentRunRecordSummary = string.IsNullOrWhiteSpace(path)
-            ? L("NoRunRecordDetail", "선택한 Run Record가 없습니다. 게시 전에 Run Record를 열거나 실행을 완료하세요.", "No Run Record is selected. Open or complete a Run Record before publishing.")
-            : string.Format(L("RunRecordFormat", "선택한 Run Record: {0}", "Selected Run Record: {0}"), path);
+            ? L("NoRunRecordDetail", "선택한 검사 기록이 없습니다. 전송할 결과를 준비하려면 검사 기록을 열거나 검사를 완료하세요.", "No Run Record is selected. Open or complete a Run Record before publishing.")
+            : string.Format(L("RunRecordFormat", "선택한 검사 기록: {0}", "Selected Run Record: {0}"), path);
     }
 
     public void SetSessionSharedKey(string? encodedKey)
@@ -353,7 +517,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             TcpPeerPortText = tcp.PeerPort.ToString(CultureInfo.InvariantCulture);
             StatusText = L(
                 "Saved",
-                "교환 폴더와 TCP 주소를 저장했습니다. 공유 키는 저장하지 않으며 수신 시작, 새로고침, 검토는 각각 별도의 명시적 작업입니다.",
+                "교환 폴더와 TCP 주소를 저장했습니다. 공유 키는 저장하지 않으며 수신 시작, 새로고침, 검토는 각각 별도의 작업입니다.",
                 "Exchange folder and TCP endpoints saved. The shared key is not saved; listening, refresh, and review remain separate explicit actions.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
@@ -376,7 +540,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             Transactions.Clear();
             SelectedTransaction = null;
             LastTcpTransferText = L("NoTcpTransfer", "TCP 전송 기록이 없습니다.", "No TCP transfer has run.");
-            StatusText = L("Reset", "교환 설정을 초기화했습니다. 네트워크 또는 Handoff 작업은 실행하지 않았습니다.", "Exchange setup reset. No network or handoff action was run.");
+            StatusText = L("Reset", "교환 설정을 초기화했습니다. 네트워크 또는 검사 요청 작업은 실행하지 않았습니다.", "Exchange setup reset. No network or handoff action was run.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -397,8 +561,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             SelectedTransaction = Transactions.FirstOrDefault(item => item.TransactionId == preferredTransactionId)
                 ?? Transactions.FirstOrDefault();
             StatusText = Transactions.Count == 0
-                ? L("NoneFound", "Machine Studio Handoff를 찾지 못했습니다.", "No Machine Studio handoff was found.")
-                : string.Format(L("FoundFormat", "Handoff {0}개를 찾았습니다. 활성 레시피에는 아무것도 불러오지 않았습니다.", "Found {0} handoff(s). Nothing was loaded into the active recipe."), Transactions.Count);
+                ? L("NoneFound", "Machine Studio 검사 요청을 찾지 못했습니다.", "No Machine Studio handoff was found.")
+                : string.Format(L("FoundFormat", "검사 요청 {0}개를 찾았습니다. 활성 레시피에는 아무것도 불러오지 않았습니다.", "Found {0} handoff(s). Nothing was loaded into the active recipe."), Transactions.Count);
             return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
@@ -417,7 +581,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     {
         if (string.IsNullOrWhiteSpace(RejectionReason))
         {
-            StatusText = L("ReasonRequired", "이 Handoff를 거절하기 전에 사유를 입력하세요.", "Enter a rejection reason before rejecting this handoff.");
+            StatusText = L("ReasonRequired", "이 검사 요청을 거절하기 전에 사유를 입력하세요.", "Enter a rejection reason before rejecting this handoff.");
             return;
         }
         RunReviewAction(RejectionReason.Trim());
@@ -433,8 +597,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             var status = transactionWorkflow.Review(root, selected, rejectionReason);
             RefreshHandoffs(selected.TransactionId);
             StatusText = status == IntegrationAcknowledgementStatus.Accepted
-                ? L("Accepted", "ACK를 로컬 거래에 기록했습니다. 레시피를 불러오거나 검사를 실행하지 않았습니다. TCP 상대에게 돌려보내려면 선택 거래 보내기를 누르세요.", "ACK recorded in the local transaction. No recipe was loaded and no inspection was run. Choose Push selected transaction to return it to the TCP peer.")
-                : L("Rejected", "거절 ACK를 로컬 거래에 기록했습니다. TCP 상대에게 돌려보내려면 선택 거래 보내기를 누르세요.", "Rejected ACK recorded in the local transaction. Choose Push selected transaction to return it to the TCP peer.");
+                ? L("Accepted", "승인 응답을 저장했습니다. 레시피를 불러오거나 검사를 실행하지 않았습니다. 상대에게 보내려면 선택 항목 전송을 누르세요.", "ACK recorded in the local transaction. No recipe was loaded and no inspection was run. Choose Push selected transaction to return it to the TCP peer.")
+                : L("Rejected", "거부 응답을 저장했습니다. 상대에게 보내려면 선택 항목 전송을 누르세요.", "Rejected ACK recorded in the local transaction. Choose Push selected transaction to return it to the TCP peer.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
         {
@@ -458,7 +622,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             StatusText = string.Format(
                 L(
                     "PublishedFormat",
-                    "결과 준비됨: {0} | Run {1}. TCP 상대에게 돌려보내려면 선택 거래 보내기를 누르세요.",
+                    "결과 준비됨: {0} | 검사 {1}. 상대에게 보내려면 선택 항목 전송을 누르세요.",
                     "Result prepared: {0} | Run {1}. Choose Push selected transaction to return it to the TCP peer."),
                 published.Outcome,
                 published.RunId);
@@ -466,6 +630,90 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
         {
             StatusText = exception.Message;
+        }
+    }
+
+    private void RunInspection()
+    {
+        if (!CanRunInspection)
+        {
+            return;
+        }
+
+        isInspectionBusy = true;
+        RunInspectionCommand.RaiseCanExecuteChanged();
+        try
+        {
+            var selected = SelectedTransaction
+                ?? throw new InvalidOperationException("Choose an accepted ThreeD handoff first.");
+            var root = RequireSavedRoot();
+            var cancellationCoordinator = tcpCancellationCoordinator;
+            var published = cancellationCoordinator is null
+                ? transactionWorkflow.RunInspection(
+                    root,
+                    selected,
+                    CancellationToken.None,
+                    SmokeForceExecutionError)
+                : cancellationCoordinator.RunWithCancellation(
+                    selected.TransactionId,
+                    cancellationToken =>
+                    {
+                        if (SmokePreInspectionDelayMilliseconds > 0)
+                        {
+                            if (SmokePreInspectionReadyFilePath is { Length: > 0 } readyPath)
+                            {
+                                var fullReadyPath = Path.GetFullPath(readyPath);
+                                Directory.CreateDirectory(Path.GetDirectoryName(fullReadyPath)!);
+                                File.WriteAllText(fullReadyPath, selected.TransactionId.ToString("D"));
+                            }
+
+                            Task.Delay(
+                                    SmokePreInspectionDelayMilliseconds,
+                                    cancellationToken)
+                                .GetAwaiter()
+                                .GetResult();
+                        }
+
+                        return transactionWorkflow.RunInspection(
+                            root,
+                            selected,
+                            cancellationToken,
+                            SmokeForceExecutionError);
+                    },
+                    cancelledResult => new ThreeDIntegrationPublishedResult(
+                        cancelledResult.Outcome.ToString(),
+                        cancelledResult.RunId));
+            RefreshHandoffs(selected.TransactionId);
+            StatusText = string.Equals(
+                    published.Outcome,
+                    IntegrationInspectionOutcome.ExecutionError.ToString(),
+                    StringComparison.Ordinal)
+                ? L(
+                    "InspectionFailed",
+                    "3D 검사 실행 오류가 기록되었습니다. Machine Studio에 오류 결과를 보내려면 선택 항목 전송을 누르세요.",
+                    "A 3D inspection execution error was recorded. Push the Failed/ExecutionError Result to Machine Studio from the selected transaction.")
+                : published.RunId is null
+                ? L(
+                    "InspectionCancelled",
+                    "3D 검사가 취소되었습니다. Machine Studio에 취소 결과를 보내려면 선택 항목 전송을 누르세요.",
+                    "3D inspection was cancelled. Push the selected transaction to return the cancelled Result to Machine Studio.")
+                : string.Format(
+                    L(
+                        "InspectionCompletedFormat",
+                        "3D 검사 완료: {0} | 검사 {1}. Machine Studio에 보내려면 선택 항목 전송을 누르세요.",
+                        "3D inspection completed: {0} | Run {1}. Choose Push selected transaction to return the result to Machine Studio."),
+                    published.Outcome,
+                    published.RunId);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
+        {
+            StatusText = exception.Message;
+        }
+        finally
+        {
+            isInspectionBusy = false;
+            RunInspectionCommand.RaiseCanExecuteChanged();
+            PublishResultCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -484,9 +732,14 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             var settings = RequireSavedTcpSettings();
             var key = AcquireSharedKey();
             ThreeDIntegrationTcpTransport? listener = null;
+            ThreeDIntegrationCancellationCoordinator? cancellationCoordinator = null;
             try
             {
-                listener = new ThreeDIntegrationTcpTransport(settings.ExchangeRoot, key);
+                listener = new ThreeDIntegrationTcpTransport(settings.ExchangeRoot, key, tcpOptions);
+                cancellationCoordinator = new ThreeDIntegrationCancellationCoordinator(
+                    settings.ExchangeRoot,
+                    ResolveProducerIdentity());
+                listener.CancellationRequested += cancellationCoordinator.HandleCancellationRequestedAsync;
                 var endpoint = await listener.StartListeningAsync(
                     settings.ListenAddress,
                     settings.ListenPort,
@@ -500,13 +753,15 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
 
                     tcpListener = listener;
                     listener = null;
+                    tcpCancellationCoordinator = cancellationCoordinator;
+                    cancellationCoordinator = null;
                     IsTcpListening = true;
                     TcpListenerStatusText = string.Format(
                         L("TcpListeningFormat", "TCP 수신 중: {0}", "TCP listening: {0}"),
                         endpoint);
                     StatusText = L(
                         "TcpStarted",
-                        "TCP 수신을 시작했습니다. 수신만으로 ACK, 레시피 로드, Preview, Publish, Run 또는 Result를 실행하지 않습니다.",
+                        "TCP 수신을 시작했습니다. 요청을 받아도 검토 응답, 레시피 열기, 미리보기, 결과 적용, 검사 또는 결과 저장은 자동으로 실행되지 않습니다.",
                         "TCP listening started. Receipt alone never ACKs, loads a recipe, Previews, Publishes, Runs, or creates a Result.");
                 }
             }
@@ -517,6 +772,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 {
                     await listener.DisposeAsync();
                 }
+                cancellationCoordinator?.Dispose();
             }
         });
 
@@ -526,6 +782,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         {
             var listener = tcpListener;
             tcpListener = null;
+            var cancellationCoordinator = tcpCancellationCoordinator;
+            tcpCancellationCoordinator = null;
             try
             {
                 if (listener is not null)
@@ -535,6 +793,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             }
             finally
             {
+                cancellationCoordinator?.Dispose();
                 IsTcpListening = false;
                 TcpListenerStatusText = L(
                     "TcpStopped",
@@ -560,12 +819,12 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         {
             StatusText = L(
                 "ChooseTransferTransaction",
-                "보낼 거래를 먼저 선택하세요.",
+                "보낼 항목을 먼저 선택하세요.",
                 "Choose a transaction to push first.");
             return Task.CompletedTask;
         }
         return RunTcpTransferAsync(
-            L("TcpPushing", "선택 거래를 보내는 중입니다.", "Pushing selected transaction."),
+            L("TcpPushing", "선택 항목을 보내는 중입니다.", "Pushing selected transaction."),
             (exchange, endpoint, cancellationToken) =>
                 exchange.PushTransactionAsync(
                     endpoint,
@@ -581,12 +840,12 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         {
             StatusText = L(
                 "ChooseTransferTransaction",
-                "받을 거래를 먼저 선택하세요.",
+                "받을 항목을 먼저 선택하세요.",
                 "Choose a transaction to pull first.");
             return Task.CompletedTask;
         }
         return RunTcpTransferAsync(
-            L("TcpPulling", "선택 거래를 받는 중입니다.", "Pulling selected transaction."),
+            L("TcpPulling", "선택 항목을 받는 중입니다.", "Pulling selected transaction."),
             (exchange, endpoint, cancellationToken) =>
                 exchange.PullTransactionAsync(
                     endpoint,
@@ -613,7 +872,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 {
                     await using var exchange = new ThreeDIntegrationTcpTransport(
                         settings.ExchangeRoot,
-                        key);
+                        key,
+                        tcpOptions);
                     var receipt = await operation(
                         exchange,
                         new TcpIntegrationEndpoint(settings.PeerHost, settings.PeerPort),
@@ -622,7 +882,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                         CultureInfo.CurrentCulture,
                         L(
                             "TcpTransferFormat",
-                            "{0} 완료 | 상대 {1} | 거래 {2} | 파일 {3} | 바이트 {4:N0} | 멱등 {5}",
+                            "{0} 완료 | 상대 {1} | 항목 {2} | 파일 {3} | 바이트 {4:N0} | 중복 전송 {5}",
                             "{0} complete | peer {1} | transaction {2} | files {3} | bytes {4:N0} | idempotent {5}"),
                         receipt.Operation,
                         receipt.PeerApplicationId,
@@ -634,7 +894,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                     {
                         if (!RefreshHandoffs(transactionId))
                         {
-                            return;
+                            throw new InvalidDataException(StatusText);
                         }
                     }
                     StatusText = LastTcpTransferText;
@@ -666,13 +926,14 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 return Task.CompletedTask;
             }
 
-            IsTcpBusy = true;
-            StatusText = busyStatus;
             cancellation = new CancellationTokenSource();
             completion = new TaskCompletionSource<object?>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             tcpOperationCancellation = cancellation;
             tcpOperationTask = completion.Task;
+            TcpOperationState = ThreeDIntegrationTcpOperationState.Running;
+            StatusText = busyStatus;
+            IsTcpBusy = true;
         }
 
         return RunTcpOperationAndCompleteAsync(operation, cancellation, completion);
@@ -703,17 +964,42 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         try
         {
             await operation(cancellation.Token);
+            TcpOperationState = ThreeDIntegrationTcpOperationState.Succeeded;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
+            TcpOperationState = ThreeDIntegrationTcpOperationState.Cancelled;
             StatusText = L(
                 "TcpCancelled",
                 "TCP 작업을 취소했습니다.",
                 "TCP action cancelled.");
         }
+        catch (OperationCanceledException)
+        {
+            TcpOperationState = ThreeDIntegrationTcpOperationState.TimedOut;
+            StatusText = L(
+                "TcpTimedOut",
+                "TCP 작업 시간이 초과되었습니다. 주소와 상대 상태를 확인한 뒤 다시 시도하세요.",
+                "TCP action timed out. Check the endpoint and peer, then try again.");
+        }
+        catch (TimeoutException)
+        {
+            TcpOperationState = ThreeDIntegrationTcpOperationState.TimedOut;
+            StatusText = L(
+                "TcpTimedOut",
+                "TCP 작업 시간이 초과되었습니다. 주소와 상대 상태를 확인한 뒤 다시 시도하세요.",
+                "TCP action timed out. Check the endpoint and peer, then try again.");
+        }
         catch (Exception exception)
         {
-            StatusText = exception.Message;
+            TcpOperationState = ThreeDIntegrationTcpOperationState.Failed;
+            StatusText = string.Format(
+                CultureInfo.CurrentCulture,
+                L(
+                    "TcpFailedFormat",
+                    "TCP 작업 실패: {0} 주소와 설정을 확인한 뒤 다시 시도하세요.",
+                    "TCP action failed: {0} Check the endpoint and setup, then try again."),
+                exception.Message);
         }
         finally
         {
@@ -728,6 +1014,38 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             }
             cancellation.Dispose();
             completion.TrySetResult(null);
+        }
+    }
+
+    private bool CanCancelTcpOperation
+    {
+        get
+        {
+            lock (tcpOperationGate)
+            {
+                return !IsDisposed
+                    && IsTcpBusy
+                    && tcpOperationCancellation is { IsCancellationRequested: false };
+            }
+        }
+    }
+
+    private void CancelTcpOperation()
+    {
+        lock (tcpOperationGate)
+        {
+            if (!CanCancelTcpOperation || tcpOperationCancellation is null)
+            {
+                return;
+            }
+
+            TcpOperationState = ThreeDIntegrationTcpOperationState.Cancelling;
+            StatusText = L(
+                "TcpCancelling",
+                "현재 TCP 작업을 취소하는 중입니다.",
+                "Cancelling the current TCP action.");
+            tcpOperationCancellation.Cancel();
+            CancelTcpOperationCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -798,11 +1116,15 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             }
 
             ThreeDIntegrationTcpTransport? listener;
+            ThreeDIntegrationCancellationCoordinator? cancellationCoordinator;
             lock (tcpOperationGate)
             {
                 listener = tcpListener;
                 tcpListener = null;
+                cancellationCoordinator = tcpCancellationCoordinator;
+                tcpCancellationCoordinator = null;
             }
+            cancellationCoordinator?.Dispose();
             if (listener is not null)
             {
                 await listener.DisposeAsync().ConfigureAwait(false);
@@ -955,12 +1277,14 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         RefreshHandoffsCommand.RaiseCanExecuteChanged();
         AcceptCommand.RaiseCanExecuteChanged();
         RejectCommand.RaiseCanExecuteChanged();
+        RunInspectionCommand.RaiseCanExecuteChanged();
         PublishResultCommand.RaiseCanExecuteChanged();
         StartTcpListenerCommand.RaiseCanExecuteChanged();
         StopTcpListenerCommand.RaiseCanExecuteChanged();
         PingTcpPeerCommand.RaiseCanExecuteChanged();
         PushSelectedTransactionCommand.RaiseCanExecuteChanged();
         PullSelectedTransactionCommand.RaiseCanExecuteChanged();
+        CancelTcpOperationCommand.RaiseCanExecuteChanged();
     }
 
     private static int ParsePort(string value, string name)

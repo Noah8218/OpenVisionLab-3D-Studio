@@ -21,6 +21,7 @@ internal static partial class PrivacySafeSupportBundleWriter
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
         Converters = { new JsonStringEnumConverter() }
     };
 

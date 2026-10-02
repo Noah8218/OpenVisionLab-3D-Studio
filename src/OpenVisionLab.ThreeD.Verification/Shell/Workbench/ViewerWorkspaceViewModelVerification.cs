@@ -38,13 +38,18 @@ internal static class ViewerWorkspaceViewModelVerification
             var sourcePath = Path.Combine(reportDirectory, "missing-native-grid.c3d");
             IReadOnlyList<ToolWorkbenchRenderableC3DTarget> targets = [];
             (string A, string B, string C) compareSlots = ("output.a", "output.b", "output.c");
+            (bool IsActive, string? Path) inspectionInput = (false, null);
             using var owner = new ViewerWorkspaceViewModel(
                 session,
                 selection,
                 localization,
                 () => (sourceReady, sourcePath),
                 () => targets,
-                () => compareSlots);
+                () => compareSlots,
+                _ => null,
+                _ => false,
+                () => { },
+                () => inspectionInput);
             var notifications = new List<string?>();
             owner.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
             var commandNotifications = 0;
@@ -53,6 +58,36 @@ internal static class ViewerWorkspaceViewModelVerification
             Check("construction leaves source, selection, and layout unchanged",
                 selection.Current == initialSelection && session.Layout == ViewerWorkspaceLayout.Single
                 && session.MainContentId.Length == 0 && session.AuxiliaryContentId.Length == 0);
+            compareSlots = (string.Empty, string.Empty, string.Empty);
+            owner.RefreshOutputCompareSlots();
+            Check("selected step can open A/B compare with both output slots empty",
+                owner.ShowOutputCompareViewerCommand.CanExecute(null)
+                && owner.CanShowOutputCompareViewer
+                && owner.EffectiveMainViewerContentId.Length == 0
+                && owner.EffectiveAuxiliaryViewerContentId.Length == 0);
+            owner.ShowOutputCompareViewerCommand.Execute(null);
+            Check("opening empty A/B compare changes only Viewer presentation",
+                owner.IsOutputCompareViewerActive
+                && owner.EffectiveViewerLayout == ViewerWorkspaceLayout.SplitVertical
+                && owner.EffectiveMainViewerContentId.Length == 0
+                && owner.EffectiveAuxiliaryViewerContentId.Length == 0
+                && selection.Current == initialSelection
+                && compareSlots == (string.Empty, string.Empty, string.Empty));
+            owner.ShowOutputCompareViewerCommand.Execute(null);
+            selection.ClearRecipeSelection();
+            Check("empty A/B compare closes and disables without a selected inspection step",
+                !owner.IsOutputCompareViewerActive
+                && !owner.CanShowOutputCompareViewer
+                && !owner.ShowOutputCompareViewerCommand.CanExecute(null)
+                && session.Layout == ViewerWorkspaceLayout.Single);
+            selection.SynchronizeTool(
+                initialSelection.SelectedStepId,
+                initialSelection.SelectedInputEntityId,
+                initialSelection.ActiveRegionRole,
+                initialSelection.SelectedRegionId,
+                initialSelection.SelectedOutputEntityId);
+            compareSlots = ("output.a", "output.b", "output.c");
+            owner.RefreshOutputCompareSlots();
             Check("empty inputs disable auxiliary, native image, and camera commands",
                 !owner.SplitViewerVerticallyCommand.CanExecute(null)
                 && !owner.SplitViewerHorizontallyCommand.CanExecute(null)
@@ -90,6 +125,7 @@ internal static class ViewerWorkspaceViewModelVerification
                 && owner.ViewerWorkspaceCandidates[0].SourcePath == sourcePath
                 && owner.MainViewerCandidates.All(item => item.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact)
                 && owner.OpenHeightImageCommand.CanExecute(null));
+            session.SetLayout(ViewerWorkspaceLayout.Single);
             session.ResetContentPins();
             owner.SplitViewerVerticallyCommand.Execute(null);
             Check("opening split from single prefers native image without changing selected output",
@@ -171,16 +207,48 @@ internal static class ViewerWorkspaceViewModelVerification
             owner.ReconcileViewerWorkspaceContents();
             Check("missing compare slots fall back to first available artifact", owner.AuxiliaryViewerContentId == "output.a");
 
+            var inspectionPath = Path.Combine(reportDirectory, "inspection-display-only.c3d");
+            File.WriteAllBytes(inspectionPath, [1]);
+            var teachingPins = (session.MainContentId, session.AuxiliaryContentId, session.Layout);
+            var teachingSummary = owner.MainViewerSummary;
+            var teachingSelection = selection.Current;
+            var teachingCandidates = owner.ViewerWorkspaceCandidates.Select(candidate => candidate.Id).ToArray();
+            inspectionInput = (true, inspectionPath);
+            owner.RefreshInspectionFileContext();
+            Check("inspection input resolves both viewers without loading it as the authored source",
+                owner.ViewerWorkspaceCandidates.Count == 2
+                && owner.ViewerWorkspaceCandidates.All(candidate => candidate.SourcePath == inspectionPath && !candidate.IsSource)
+                && owner.GetMainViewerCandidate(owner.EffectiveMainViewerContentId)?.SourcePath == inspectionPath
+                && owner.GetViewerWorkspaceCandidate(owner.EffectiveAuxiliaryViewerContentId)?.SourcePath == inspectionPath
+                && !owner.HasInspectionStep && !owner.CanShowOutputCompareViewer
+                && owner.IsInspectionInputView && !owner.HasEffectiveSignedDeltaOutput);
+            inspectionInput = (true, null);
+            owner.RefreshInspectionFileContext();
+            Check("empty inspection selection hides the teaching geometry and preserves teaching pins",
+                owner.ViewerWorkspaceCandidates.Count == 0
+                && !owner.HasEffectiveMainGeometry && owner.EffectiveAuxiliaryViewerContentId.Length == 0
+                && teachingPins == (session.MainContentId, session.AuxiliaryContentId, session.Layout));
+            inspectionInput = (true, Path.Combine(reportDirectory, "missing-inspection-input.c3d"));
+            owner.RefreshInspectionFileContext();
+            Check("missing inspection input cannot fall back to a teaching artifact", owner.ViewerWorkspaceCandidates.Count == 0);
+            inspectionInput = (false, null);
+            owner.RefreshInspectionFileContext();
+            Check("returning to teaching restores its candidate and selection identities",
+                owner.HasInspectionStep && owner.MainViewerSummary == teachingSummary
+                && owner.ViewerWorkspaceCandidates.Select(candidate => candidate.Id).SequenceEqual(teachingCandidates)
+                && teachingPins == (session.MainContentId, session.AuxiliaryContentId, session.Layout)
+                && selection.Current == teachingSelection);
+
             notifications.Clear();
             var beforeLocalizationSelection = selection.Current;
             owner.RefreshLocalization(new PropertyChangedEventArgs(nameof(ThreeDLocalization.HeightImage)));
             Check("localization refresh notifies all translated presentation properties without selection changes",
-                notifications.SequenceEqual(new[]
+                new[]
                 {
                     nameof(owner.ViewerWorkspaceLayoutSummary), nameof(owner.MainViewerSummary), nameof(owner.AuxiliaryViewerSummary),
                     nameof(owner.MainViewerCandidates), nameof(owner.ViewerWorkspaceCandidates),
                     nameof(owner.ViewerCameraLinkLabel), nameof(owner.ViewerCameraLinkSummary)
-                }) && selection.Current == beforeLocalizationSelection);
+                }.All(notifications.Contains) && selection.Current == beforeLocalizationSelection);
             notifications.Clear();
             owner.RefreshLocalization(new PropertyChangedEventArgs("UnrelatedCaption"));
             Check("unrelated localization properties do not refresh viewer bindings", notifications.Count == 0);

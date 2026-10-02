@@ -1,23 +1,156 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Shell.StudioHeaderView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:app="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell">
     <UserControl.Resources>
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+        <ControlTemplate x:Key="R19TopMenuItemTemplate" TargetType="MenuItem">
+            <Grid SnapsToDevicePixels="True">
+                <Border x:Name="TopLevelMenuItemBorder"
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="2">
+                    <ContentPresenter x:Name="HeaderContent"
+                                      ContentSource="Header"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True" />
+                </Border>
+                <Popup x:Name="PART_Popup"
+                       AllowsTransparency="True"
+                       Focusable="False"
+                       Placement="Bottom"
+                       PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                       StaysOpen="False"
+                       IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                    <Border Padding="4"
+                            Background="{DynamicResource ThreeD.PanelBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1">
+                        <ScrollViewer CanContentScroll="True"
+                                      KeyboardNavigation.DirectionalNavigation="Cycle">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"
+                                            KeyboardNavigation.TabNavigation="Cycle" />
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="Background"
+                            Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="BorderBrush"
+                            Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="BorderBrush"
+                            Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsSubmenuOpen" Value="True">
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="Background"
+                            Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                    <Setter TargetName="TopLevelMenuItemBorder"
+                            Property="BorderBrush"
+                            Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="HeaderContent" Property="Opacity" Value="0.55" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="R19TopMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Template" Value="{StaticResource R19TopMenuItemTemplate}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
     </UserControl.Resources>
 
-    <shell:StudioTitleBarView
-        TitleText="OpenVisionLab 3D Studio"
-        SubtitleText="{Binding Localization.StudioSubtitle}"
-        RecipeText="{Binding Workbench.RecipeName}"
-        SourceContextText="{Binding Workbench.SourceContextSummary}"
-        SourceQualityStatusText="{Binding Workbench.CurrentSourceQualitySummary}"
-        SourceQualityStatusToolTip="{Binding Workbench.CurrentSourceQualityDetail}"
-        SourceQualityStatusKind="{Binding Workbench.CurrentSourceQualityStatusKind}"
-        IsSourceQualityStatusVisible="{Binding Workbench.IsCurrentSourceQualityStatusVisible}"
-        AlignmentStatusText="{Binding Workbench.AlignmentStatusSummary}"
-        RecipeStateText="{Binding Workbench.LocalizedRecipeStateSummary}"
-        IsRecipeContextVisible="{Binding IsWorkbenchWorkspaceSelected}"
-        StatusText="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+    <StackPanel>
+        <shell:StudioTitleBarView
+            TitleText="OpenVisionLab 3D Studio"
+            RecipeText="{Binding Workbench.HeaderRecipeText}"
+            RecipeStateText="{Binding Workbench.LocalizedRecipeStateSummary}"
+            SourceQualityStatusText="{Binding Workbench.CurrentSourceHeaderStatusText}"
+            SourceQualityStatusToolTip="{Binding Workbench.CurrentSourceHeaderStatusDetail}"
+            SourceQualityStatusKind="{Binding Workbench.CurrentSourceQualityStatusKind}"
+            IsSourceQualityStatusVisible="{Binding Workbench.IsCurrentSourceHeaderStatusVisible}"
+            IsRecipeContextVisible="{Binding IsWorkbenchWorkspaceSelected}"
+            StatusText="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+        <Border Height="34" Background="{DynamicResource ThreeD.CommandBarBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsRecipeActionsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ui:Button x:Name="LoadTeachingInputHeaderButton"
+                               MinHeight="32"
+                               Padding="9,5"
+                               Margin="0,0,6,0"
+                               CornerRadius="5"
+                               Content="{app:ThreeDText Key=ThreeD.R19.LoadInput, Korean='3D 입력 불러오기', English='Load 3D input'}"
+                               Icon="{ui:SymbolIcon FolderOpen24}"
+                               Command="{Binding Workbench.LoadC3DSourceCommand}"
+                               ToolTip="Ctrl+Shift+O"
+                               Visibility="{Binding IsAuthoringWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}"
+                               AutomationProperties.AutomationId="LoadTeachingInputButton"
+                               AutomationProperties.Name="{app:ThreeDText Key=ThreeD.R19.LoadInput, Korean='3D 입력 불러오기', English='Load 3D input'}" />
+                    <ui:Button x:Name="SaveTeachingRecipeHeaderButton"
+                               MinHeight="32"
+                               Padding="9,5"
+                               Margin="0,0,6,0"
+                               CornerRadius="5"
+                               Content="{app:ThreeDText Key=ThreeD.R19.SaveRecipe, Korean='레시피 저장', English='Save recipe'}"
+                               Icon="{ui:SymbolIcon Save24}"
+                               Command="{Binding Workbench.SaveTeachingRecipeCommand}"
+                               ToolTip="Ctrl+S"
+                               AutomationProperties.AutomationId="SaveTeachingRecipeHeaderButton"
+                               AutomationProperties.Name="{app:ThreeDText Key=ThreeD.R19.SaveRecipe, Korean='레시피 저장', English='Save recipe'}" />
+                </StackPanel>
+                <Menu VerticalAlignment="Stretch" Background="Transparent" Foreground="{DynamicResource ThreeD.TextBrush}" AutomationProperties.AutomationId="StudioMainMenu">
+                    <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.FileMenu, Korean='_파일', English='_File'}">
+                        <MenuItem Header="{Binding Localization.NewRecipe}" Command="{Binding Workbench.NewTeachingRecipeCommand}" InputGestureText="Ctrl+N" />
+                        <MenuItem Header="{Binding Localization.OpenExistingRecipe}" Command="{Binding Workbench.OpenTeachingRecipeCommand}" InputGestureText="Ctrl+O" />
+                        <MenuItem Header="{Binding Localization.RecipeManager}" Click="OpenRecipeManager_Click" AutomationProperties.AutomationId="HeaderRecipeManager" />
+                        <Separator />
+                        <MenuItem Header="{Binding Localization.Save}" Command="{Binding Workbench.SaveTeachingRecipeCommand}" InputGestureText="Ctrl+S" />
+                        <MenuItem Header="{Binding Localization.SaveAs}" Command="{Binding Workbench.SaveTeachingRecipeAsCommand}" InputGestureText="Ctrl+Shift+S" />
+                        <MenuItem Header="{Binding Localization.RecipeInfoEdit}" Command="{Binding Workbench.OpenRecipeInfoEditorCommand}" AutomationProperties.AutomationId="OpenRecipeInfoEditor" />
+                    </MenuItem>
+                    <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.TeachMenu, Korean='_티칭', English='_Teaching'}">
+                        <MenuItem Header="{Binding Localization.Teach}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Teach}" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.LoadInput, Korean='3D 입력 불러오기', English='Load 3D input'}" Command="{Binding Workbench.LoadC3DSourceCommand}" InputGestureText="Ctrl+Shift+O" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.RunTool, Korean='선택 도구 실행', English='Run selected tool'}" Command="{Binding Workbench.RunSelectedStepCommand}" InputGestureText="F5" />
+                        <MenuItem Header="{Binding Localization.Cancel}" Command="{Binding Workbench.CancelSelectedPreviewCommand}" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.RestoreLastTool, Korean='마지막 삭제 도구 복구', English='Restore last removed tool'}" Command="{Binding Workbench.RestoreLastRemovedStepCommand}" AutomationProperties.AutomationId="RestoreLastRemovedTool" />
+                    </MenuItem>
+                    <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.InspectMenu, Korean='_검사', English='_Inspection'}">
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.Navigation.Validate, Korean='검사', English='Inspection'}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Inspect}" AutomationProperties.AutomationId="OpenInspectionWorkspaceButton" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.RunRecipe, Korean='현재 레시피 실행', English='Run current recipe'}" Command="{Binding Workbench.RunCurrentRecipeCommand}" InputGestureText="Ctrl+F5" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.Inspection.RetryRecordSave, Korean='기록 저장 재시도', English='Retry record save'}" Command="{Binding Workbench.RetryOrderedRunRecordSaveCommand}" AutomationProperties.AutomationId="RetryOrderedRunRecordSave" />
+                        <MenuItem Header="{Binding Localization.ResultsWorkspaceTitle}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Review}" />
+                    </MenuItem>
+                    <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.ViewMenu, Korean='_보기', English='_View'}">
+                        <MenuItem Header="{Binding Localization.ResultsWorkspaceTitle}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Review}" />
+                        <MenuItem Header="{Binding Localization.AdvancedLayout}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Expert}" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.ResetLayout, Korean='레이아웃 초기화', English='Reset layout'}" Click="ResetLayout_Click" />
+                    </MenuItem>
+                    <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.ToolsMenu, Korean='_도구', English='_Tools'}">
+                        <MenuItem Header="{Binding Localization.Calibrate}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Calibrate}" />
+                    </MenuItem>
+                    <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.HelpMenu, Korean='_도움말', English='_Help'}">
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.UiGuide, Korean='화면 사용 안내', English='Workspace guide'}" Command="{Binding OpenUiContractCommand}" />
+                    </MenuItem>
+                </Menu>
+            </DockPanel>
+        </Border>
+    </StackPanel>
 </UserControl>
