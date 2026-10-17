@@ -78,7 +78,7 @@ public partial class SelectedToolWorkspaceView : UserControl
             RevealParameterSettings();
             return false;
         }
-        if (AcceptancePropertyGrid.IsVisible && !AcceptancePropertyGrid.CommitPendingEdit(out message))
+        if (AcceptancePropertyGrid.Visibility == Visibility.Visible && !AcceptancePropertyGrid.CommitPendingEdit(out message))
         {
             EditorJudgmentTab.IsChecked = true;
             AcceptanceLimitsExpander.IsExpanded = true;

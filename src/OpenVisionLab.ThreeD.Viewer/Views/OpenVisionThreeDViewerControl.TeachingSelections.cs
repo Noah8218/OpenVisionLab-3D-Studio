@@ -176,10 +176,18 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void SetSelectedTeachingSelection(string? selectionId)
     {
-        if (viewModel.SetSelectedTeachingSelection(selectionId))
+        var previousUpdate = updatingTeachingSelection;
+        bool changed;
+        updatingTeachingSelection = true;
+        try
         {
-            RenderNow();
+            changed = viewModel.SetSelectedTeachingSelection(selectionId);
         }
+        finally
+        {
+            updatingTeachingSelection = previousUpdate;
+        }
+        if (changed) RenderNow();
     }
 
     private void TeachingRoiDisplayHeightOffset_LostFocus(object sender, RoutedEventArgs e)

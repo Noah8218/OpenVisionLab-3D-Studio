@@ -19,6 +19,7 @@ public partial class App : Application
 
         if (ShellVerificationCommandRouter.IsVerificationRequest(e.Args))
         {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
             ShellVerificationCommandRouter.Run(e.Args, Shutdown);
             return;
         }

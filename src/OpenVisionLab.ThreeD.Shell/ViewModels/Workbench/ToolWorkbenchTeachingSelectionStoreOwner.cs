@@ -158,14 +158,12 @@ internal sealed class ToolWorkbenchTeachingSelectionStoreOwner : INotifyProperty
     public void RefreshCompatibleSelections(
         ToolWorkbenchTeachingSelectionRequirement? requirement)
     {
-        AvailableCompatibleSelections.Clear();
-        foreach (var selection in Selections.Where(selection =>
-                     ToolWorkbenchTeachingSelectionPolicy.MatchesRequirement(
-                         selection,
-                         requirement)
-                     && IsCurrent(selection)))
+        var compatible = Selections.Where(selection =>
+            ToolWorkbenchTeachingSelectionPolicy.MatchesRequirement(selection, requirement) && IsCurrent(selection)).ToArray();
+        if (!AvailableCompatibleSelections.SequenceEqual(compatible, ReferenceEqualityComparer.Instance))
         {
-            AvailableCompatibleSelections.Add(selection);
+            AvailableCompatibleSelections.Clear();
+            foreach (var selection in compatible) AvailableCompatibleSelections.Add(selection);
         }
 
         if (SelectedCompatibleSelection is null

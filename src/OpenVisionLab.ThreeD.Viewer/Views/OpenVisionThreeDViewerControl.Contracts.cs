@@ -625,6 +625,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
+        // Selection notifications describe intermediate ROI state; its public setter renders the final state synchronously.
+        if (updatingTeachingSelection) return;
+
         if (pointerInputRegressionActive && interactionTelemetry.IsHandlingMouseMove)
         {
             interactionTelemetry.RecordImmediateMouseMoveRender();

@@ -33,6 +33,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
     private CancellationTokenSource? previewCancellation;
     private ToolRecipeHeightMeasurementOutput? previewOutput;
     private string? previewExecutionFingerprint;
+    private (string Context, string Message)? readyRawMeasurement;
     private ToolWorkbenchExecutionBlocker? executionBlocker;
     private bool isPreviewRunning;
     private bool isPreviewStale;
@@ -107,6 +108,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             ref previewCancellation,
             null);
         CancelAndDispose(currentCancellation);
+        lock (previewStateGate) readyRawMeasurement = null;
         previewOutput = null;
         previewExecutionFingerprint = null;
         completedResults.Clear();
@@ -367,15 +369,54 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
                 out _);
         }
 
-        return ToolRecipeHeightMeasurementExecution.TryPrepare(
-            createDocument(),
-            step.Id,
-            GetCurrentCroppedHeightField(),
-            GetCurrentTransformedHeightField(),
-            GetCurrentEditableRegion(),
-            GetRecipeDirectory(),
-            out _,
-            out _);
+        return TryPrepareMeasurementReadiness(step, out _);
+    }
+
+    private bool TryPrepareMeasurementReadiness(ToolWorkbenchPipelineStepItem step, out string message)
+    {
+        var document = createDocument();
+        var cropped = GetCurrentCroppedHeightField();
+        var transformed = GetCurrentTransformedHeightField();
+        var region = GetCurrentEditableRegion();
+        var directory = GetRecipeDirectory();
+        string? context = null;
+        if (region is null && string.Equals(document.Source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            && step.InputEntityIds.Count > 0 && string.Equals(step.InputEntityIds[0], document.Source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var path = Path.IsPathFullyQualified(document.Source.Path)
+                    ? Path.GetFullPath(document.Source.Path)
+                    : Path.GetFullPath(Path.Combine(directory ?? Environment.CurrentDirectory, document.Source.Path));
+                context = JsonSerializer.Serialize(new { Document = document, StepId = step.Id, SourcePath = path });
+                (string Context, string Message)? previous;
+                lock (previewStateGate) previous = readyRawMeasurement;
+                if (previous is { } ready && ready.Context == context)
+                {
+                    // Reuse successful readiness only after verifying current bytes, including same-size/timestamp replacements.
+                    using var stream = new FileStream(
+                        path, FileMode.Open, FileAccess.Read, FileShare.Read,
+                        64 * 1024, FileOptions.SequentialScan);
+                    if (stream.Length == document.Source.ByteLength
+                        && string.Equals(Convert.ToHexString(SHA256.HashData(stream)), document.Source.ContentSha256, StringComparison.OrdinalIgnoreCase))
+                    {
+                        message = ready.Message;
+                        return true;
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                // Let full preparation preserve its existing validation order and error contract.
+                context = null;
+            }
+        }
+
+        var result = ToolRecipeHeightMeasurementExecution.TryPrepare(
+            document, step.Id, cropped, transformed, region, directory,
+            out _, out message);
+        lock (previewStateGate) readyRawMeasurement = result && context is not null && !IsDisposed ? (context, message) : null;
+        return result;
     }
 
     public bool CanPublish()
@@ -557,15 +598,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
             }
             else
             {
-                isReady = ToolRecipeHeightMeasurementExecution.TryPrepare(
-                    createDocument(),
-                    step.Id,
-                    GetCurrentCroppedHeightField(),
-                    GetCurrentTransformedHeightField(),
-                    GetCurrentEditableRegion(),
-                    GetRecipeDirectory(),
-                    out _,
-                    out message);
+                isReady = TryPrepareMeasurementReadiness(step, out message);
             }
             if (isReady)
             {

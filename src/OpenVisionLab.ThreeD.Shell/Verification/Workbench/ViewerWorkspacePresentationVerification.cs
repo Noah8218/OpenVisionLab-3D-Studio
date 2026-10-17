@@ -715,6 +715,8 @@ internal static class ViewerWorkspacePresentationVerification
                 .Single(binding => binding.Key == System.Windows.Input.Key.D4 && binding.Modifiers == System.Windows.Input.ModifierKeys.Control);
             Check("V5 loaded workspace keyboard command inherits the actual Workbench owner",
                 ReferenceEquals(workspaceLayoutKey.Command, authoredWorkbench.SetFourViewerLayoutCommand), $"command={workspaceLayoutKey.Command}");
+            layoutTestWindow.Activate();
+            layoutTestWindow.Dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(layoutTestWindow.UpdateLayout));
             mainPresentationBar.Presentation.OpenDisplaySettingsCommand.Execute(null);
             mainPresentationBar.Presentation.IsBandedHeightColor = true;
             layoutTestWindow.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(layoutTestWindow.UpdateLayout));
@@ -733,6 +735,13 @@ internal static class ViewerWorkspacePresentationVerification
                 !bandSelector.IsDropDownOpen && viewerDisplaySettingsPopup.IsOpen && mainPresentationBar.Presentation.IsDisplaySettingsOpen
                 && Equals(bandSelector.SelectedItem, bandCountBeforeEscape) && !authoredWorkbench.IsDirty,
                 $"dropdown={bandSelector.IsDropDownOpen};popup={viewerDisplaySettingsPopup.IsOpen};band={bandSelector.SelectedItem}");
+            layoutTestWindow.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, PresentationSource.FromVisual(layoutTestWindow), 0, System.Windows.Input.Key.Escape)
+                { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent });
+            layoutTestWindow.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(layoutTestWindow.UpdateLayout));
+            Check("V5 second Escape closes its parent popup and restores automatic dismissal",
+                !viewerDisplaySettingsPopup.IsOpen && !mainPresentationBar.Presentation.IsDisplaySettingsOpen
+                && !viewerDisplaySettingsPopup.StaysOpen && Equals(bandSelector.SelectedItem, bandCountBeforeEscape)
+                && !authoredWorkbench.IsDirty, $"popup={viewerDisplaySettingsPopup.IsOpen};staysOpen={viewerDisplaySettingsPopup.StaysOpen};band={bandSelector.SelectedItem}");
             mainPresentationBar.Presentation.IsContinuousHeightColor = true;
             mainPresentationBar.Presentation.CloseDisplaySettingsCommand.Execute(null);
             Check("D40 pane role labels project actual input identity without changing candidates or execution",
@@ -818,12 +827,27 @@ internal static class ViewerWorkspacePresentationVerification
                 mainViewer.SetSelectedTeachingSelection(null);
                 Check("D70 unchanged cleared ROI selection skips synchronous render", roiDrawCount == drawBefore && cubeViewModel.SelectedTeachingSelectionId is null, $"drawDelta={roiDrawCount - drawBefore}");
                 mainViewer.SetSelectedTeachingSelection("selection.pad-01.reference-roi");
-                Check("D70 changed ROI selection renders without inspection", roiDrawCount > drawBefore && cubeViewModel.SelectedTeachingSelectionId == "selection.pad-01.reference-roi" && mainViewer.HostState.Inspection.PublishedResultCount == 0, $"drawDelta={roiDrawCount - drawBefore}");
+                Check("D70 changed ROI selection renders its final state once without inspection", roiDrawCount == drawBefore + 1 && cubeViewModel.SelectedTeachingSelectionId == "selection.pad-01.reference-roi" && mainViewer.HostState.Inspection.PublishedResultCount == 0, $"drawDelta={roiDrawCount - drawBefore}");
                 drawBefore = roiDrawCount;
                 mainViewer.SetSelectedTeachingSelection("SELECTION.PAD-01.REFERENCE-ROI");
                 Check("D70 case-equivalent ROI selection skips synchronous render", roiDrawCount == drawBefore && cubeViewModel.SelectedTeachingSelectionId == "selection.pad-01.reference-roi", $"drawDelta={roiDrawCount - drawBefore}");
                 mainViewer.SetSelectedTeachingSelection(null);
-                Check("D70 clearing ROI selection renders the restored state", roiDrawCount > drawBefore && cubeViewModel.SelectedTeachingSelectionId is null, $"drawDelta={roiDrawCount - drawBefore}");
+                Check("D70 clearing ROI selection renders the restored state once", roiDrawCount == drawBefore + 1 && cubeViewModel.SelectedTeachingSelectionId is null, $"drawDelta={roiDrawCount - drawBefore}");
+                PropertyChangedEventHandler rejectSelectionObserver = (_, args) =>
+                {
+                    if (args.PropertyName == nameof(OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel.SelectedTeachingRoiDisplayHeightOffset))
+                        throw new InvalidOperationException("Owned selection observer failure");
+                };
+                var selectionObserverFailed = false;
+                cubeViewModel.PropertyChanged += rejectSelectionObserver;
+                try { mainViewer.SetSelectedTeachingSelection("selection.pad-01.reference-roi"); }
+                catch (InvalidOperationException exception) when (exception.Message == "Owned selection observer failure") { selectionObserverFailed = true; }
+                finally { cubeViewModel.PropertyChanged -= rejectSelectionObserver; }
+                drawBefore = roiDrawCount;
+                mainViewer.SetSelectedTeachingSelection(null);
+                Check("selection rendering recovers synchronously after a throwing notification observer",
+                    selectionObserverFailed && roiDrawCount == drawBefore + 1 && cubeViewModel.SelectedTeachingSelectionId is null
+                    && mainViewer.HostState.Inspection.PublishedResultCount == 0, $"observerFailed={selectionObserverFailed};drawDelta={roiDrawCount - drawBefore}");
             }
             finally
             {
@@ -924,8 +948,8 @@ internal static class ViewerWorkspacePresentationVerification
                 mainViewer.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(mainViewer.UpdateLayout));
                 var projectionBounds = cubeProjection.TransformToAncestor((Grid)mainViewer.FindName("ViewportSurface")).TransformBounds(new Rect(cubeProjection.RenderSize));
                 var homeBounds = cubeHome.TransformToAncestor((Grid)mainViewer.FindName("ViewportSurface")).TransformBounds(new Rect(cubeHome.RenderSize));
-                Check("D41 long English orthographic/reset captions remain visible on one row",
-                    ((TextBlock)mainViewer.FindName("CubeOrthographicCaption")).Text == "Orthographic"
+                Check("D41 English projection/reset captions follow the compact contract on one row",
+                    ((TextBlock)mainViewer.FindName("CubeOrthographicCaption")).Text == "Ortho"
                     && cubeHome.Content as string == OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.Resolve("ThreeD.Viewer.HomeView", "초기화", "Home")
                     && cubeProjectionButtons.ActualHeight == 20 && projectionBounds.Top == homeBounds.Top
                     && projectionBounds.Left >= 0 && homeBounds.Right <= nativeViewport.ActualWidth,
@@ -1621,7 +1645,7 @@ internal static class ViewerWorkspacePresentationVerification
                 var profileState = mainViewer.HostState.Profile;
                 var liveCursor = mainViewer.LinkedHeightCursor!.Value;
                 var liveReadout = (TextBlock)chartCanvas.Children.OfType<Border>().Single(border => AutomationProperties.GetAutomationId(border) == "ProfileCursorReadout").Child;
-                var expectedReadout = $"{profileState.GridDistanceCells.ToString("0.0", CultureInfo.InvariantCulture)} 셀 · {liveCursor.RawHeight.ToString("0.000", CultureInfo.InvariantCulture)}";
+                var expectedReadout = $"{profileState.GridDistanceCells.ToString("0.0", CultureInfo.InvariantCulture)} 셀 · {liveCursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture)}";
                 Check($"D57 actual host cursor reaches the drawer readout at {drawerSize.Width}x{drawerSize.Height}",
                     profileState.LinkedCursorRawHeight == liveCursor.RawHeight && profileState.LinkedCursorDistanceCells == profileState.GridDistanceCells
                     && chartFixture.DrawerCursorSummary == expectedReadout && liveReadout.Text == expectedReadout,
@@ -1829,8 +1853,18 @@ internal static class ViewerWorkspacePresentationVerification
                 };
                 try
                 {
+                    void SelectSettingsTab(string name)
+                    {
+                        ((RadioButton)settingsView.FindName(name)).SetCurrentValue(ToggleButton.IsCheckedProperty, true);
+                        settingsTestWindow.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(settingsTestWindow.UpdateLayout));
+                    }
                     Progress("before independent settings view attach");
                     settingsTestWindow.Show();
+                    SelectSettingsTab("EditorDetailTab");
+                    SelectSettingsTab("DetailIoTab");
+                    settingsView.BringOutputIntoView();
+                    settingsTestWindow.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(settingsTestWindow.UpdateLayout));
+                    Progress($"settings I/O fixture: detail={((RadioButton)settingsView.FindName("EditorDetailTab")).IsChecked};io={((RadioButton)settingsView.FindName("DetailIoTab")).IsChecked};expanded={((Expander)settingsView.FindName("SettingsDetails")).IsExpanded}");
                     OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop.AppendWindowMonitorEvidence(settingsTestWindow, monitorReport);
                     Progress("before preview await");
                     WaitForPresentationTask(previewWorkbench.SelectedToolWorkspace.DataInputs.Single().Preview!.ObservedLoadTask);
@@ -1843,7 +1877,7 @@ internal static class ViewerWorkspacePresentationVerification
                     var previewSha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(previewWorkbench.Source.Path)));
                     Check("v3 Input shows one identified native map while preserving both typed ROI slots",
                         settingsInput.Preview?.Frame?.SourceContentSha256 == previewSha
-                        && previewImage.Source is BitmapSource bitmap && bitmap.PixelWidth == settingsInput.Preview.Frame.Width
+                        && previewImage.IsVisible && previewImage.Source is BitmapSource bitmap && bitmap.PixelWidth == settingsInput.Preview.Frame.Width
                         && bitmap.PixelHeight == settingsInput.Preview.Frame.Height && inputPicker.SelectedValue as string == previewInputs[0]
                         && previewWorkbench.SelectedToolWorkspace.Inputs.Count == 3 && previewWorkbench.SelectedToolWorkspace.Regions.Count == 2
                         && previewWorkbench.SelectedToolWorkspace.CurrentOutput?.HasExecutionResult == false
@@ -1856,9 +1890,11 @@ internal static class ViewerWorkspacePresentationVerification
                     var pickerBounds = inputPicker.TransformToAncestor(settingsView).TransformBounds(new Rect(inputPicker.RenderSize));
                     Check("v3 settings inputs are rendered above the separate action footer",
                         settingsScroller.IsVisible && inputPicker.IsVisible && settingsActions.IsVisible
-                        && scrollBounds.Bottom <= actionBounds.Top + 1 && pickerBounds.Top >= scrollBounds.Top
-                        && pickerBounds.Bottom <= scrollBounds.Bottom && Grid.GetRow(settingsActions) == 3,
+                        && scrollBounds.Bottom <= actionBounds.Top + 1 && pickerBounds.Top >= 0
+                        && pickerBounds.Bottom <= scrollBounds.Top + 1 && !settingsScroller.IsAncestorOf(inputPicker)
+                        && Grid.GetRow(settingsActions) == 3,
                         $"scroll={scrollBounds};action={actionBounds};input={pickerBounds}");
+                    SelectSettingsTab("EditorRegionTab");
                     var appliedRoiColumn = OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<TextBox>(settingsView).Single(editor => AutomationProperties.GetAutomationId(editor) == "AppliedRoiColumn");
                     var appliedRoiRow = OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<TextBox>(settingsView).Single(editor => AutomationProperties.GetAutomationId(editor) == "AppliedRoiRow");
                     var appliedRoiWidth = OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<TextBox>(settingsView).Single(editor => AutomationProperties.GetAutomationId(editor) == "AppliedRoiColumnCount");
@@ -1880,8 +1916,10 @@ internal static class ViewerWorkspacePresentationVerification
                         var columnBounds = appliedRoiColumn.TransformToAncestor(settingsView).TransformBounds(new Rect(appliedRoiColumn.RenderSize));
                         var rowBounds = appliedRoiRow.TransformToAncestor(settingsView).TransformBounds(new Rect(appliedRoiRow.RenderSize));
                         var widthBounds = appliedRoiWidth.TransformToAncestor(settingsView).TransformBounds(new Rect(appliedRoiWidth.RenderSize));
-                        Check($"v3 ROI fields retain HTML 30px rows and 10px column gaps at {viewWidth}px",
-                            roiFields.All(editor => Math.Abs(editor.ActualHeight - 30) < 0.25 && Math.Abs(editor.ActualWidth - expectedFieldWidth) < 0.25)
+                        var verticalBar = (ScrollBar)settingsScroller.Template.FindName("PART_VerticalScrollBar", settingsScroller);
+                        var fieldWidthWithGutter = expectedFieldWidth - verticalBar.ActualWidth / 2;
+                        Check($"ROI fields retain equal 30px rows and 10px gaps beside the approved scrollbar gutter at {viewWidth}px",
+                            roiFields.All(editor => Math.Abs(editor.ActualHeight - 30) < 0.25 && Math.Abs(editor.ActualWidth - fieldWidthWithGutter) < 0.25)
                             && Math.Abs(rowBounds.Left - columnBounds.Right - 10) < 0.25
                             && Math.Abs(widthBounds.Top - columnBounds.Top - 59.4) < 0.25,
                             $"field={appliedRoiColumn.ActualWidth:F2}x{appliedRoiColumn.ActualHeight:F2};gap={rowBounds.Left - columnBounds.Right:F2};rowDelta={widthBounds.Top - columnBounds.Top:F2}");
@@ -1891,6 +1929,8 @@ internal static class ViewerWorkspacePresentationVerification
                     OpenVisionLab.ThreeD.Viewer.Rendering.WpfScreenshotCapture.Save(
                         OpenVisionLab.ThreeD.Viewer.Rendering.WpfScreenshotCapture.Capture(settingsView).Bitmap,
                         Path.ChangeExtension(reportPath, ".settings-input-290.png"));
+                    SelectSettingsTab("EditorDetailTab");
+                    SelectSettingsTab("DetailIoTab");
                     previewStep.InputEntityIdsText = string.Join("; ", new[] { previewInputs[1], previewInputs[1], previewInputs[2] });
                     settingsTestWindow.Dispatcher.Invoke(DispatcherPriority.Loaded, new Action(settingsTestWindow.UpdateLayout));
                     Check("v3 a non-map input clears previous thumbnail pixels before recovery",
@@ -1924,6 +1964,8 @@ internal static class ViewerWorkspacePresentationVerification
                         && !previewWorkbench.IsOrderedRunRunning && !previewWorkbench.IsSelectedStepPreviewRunning,
                         $"route={previewStep.InputEntityIdsText};pending={previewWorkbench.HasPendingFlowConnection};feedback={previewWorkbench.FlowConnectionMessage}");
 
+                    SelectSettingsTab("EditorJudgmentTab");
+                    SelectSettingsTab("EditorAllTab");
                     var conditionsGrid = (RecipeStepPropertyGridHost)settingsView.FindName("StepPropertyGrid");
                     var acceptanceGrid = (RecipeStepPropertyGridHost)settingsView.FindName("AcceptancePropertyGrid");
                     var advancedSamples = (CheckBox)settingsView.FindName("ShowAdvancedSamples");
@@ -1951,6 +1993,7 @@ internal static class ViewerWorkspacePresentationVerification
                     var originalParameters = previewStep.Parameters.ToDictionary(parameter => parameter.Name, parameter => parameter.Value);
                     foreach (var gridAndField in new[] { (conditionsGrid, nameof(ThicknessStepProperties.MinimumValidSampleCount)), (acceptanceGrid, nameof(ThicknessStepProperties.MinimumThickness)) })
                     {
+                        SelectSettingsTab(ReferenceEquals(gridAndField.Item1, conditionsGrid) ? "EditorAllTab" : "EditorJudgmentTab");
                         var numericEditor = OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<TextBox>(gridAndField.Item1)
                             .Single(editor => AutomationProperties.GetAutomationId(editor) == gridAndField.Item2);
                         numericEditor.BringIntoView();
@@ -1960,11 +2003,12 @@ internal static class ViewerWorkspacePresentationVerification
                         settingsTestWindow.Dispatcher.Invoke(DispatcherPriority.Render, new Action(settingsTestWindow.UpdateLayout));
                         Check($"v3 malformed {gridAndField.Item2} exposes the Teaching draft footer", applyParameters.IsVisible, $"visible={applyParameters.IsVisible};pending={previewWorkbench.HasPendingStepParameterChanges}");
                         applyParameters.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                        var parametersPreserved = previewStep.Parameters.All(parameter => originalParameters[parameter.Name] == parameter.Value);
+                        var editRejected = !settingsView.CommitPendingParameterEdit(out _);
                         Check($"v3 shared Apply rejects malformed {gridAndField.Item2} without mutating recipe or executing",
                             Validation.GetHasError(numericEditor) && previewWorkbench.HasPendingStepParameterChanges
-                            && previewStep.Parameters.All(parameter => originalParameters[parameter.Name] == parameter.Value)
-                            && !settingsView.CommitPendingParameterEdit(out _) && !previewWorkbench.IsOrderedRunRunning && !previewWorkbench.IsSelectedStepPreviewRunning,
-                            $"error={Validation.GetHasError(numericEditor)};pending={previewWorkbench.HasPendingStepParameterChanges};status={previewWorkbench.StepParameterEditStatus}");
+                            && parametersPreserved && editRejected && !previewWorkbench.IsOrderedRunRunning && !previewWorkbench.IsSelectedStepPreviewRunning,
+                            $"error={Validation.GetHasError(numericEditor)};pending={previewWorkbench.HasPendingStepParameterChanges};preserved={parametersPreserved};rejected={editRejected};acceptanceVisible={acceptanceGrid.IsVisible};parameters={string.Join(';', previewStep.Parameters.Select(parameter => parameter.Name + '=' + parameter.Value))};status={previewWorkbench.StepParameterEditStatus}");
                         numericEditor.SetCurrentValue(TextBox.TextProperty, originalParameters[gridAndField.Item2]);
                         if (!gridAndField.Item1.CommitPendingEdit(out var recoveredMessage)) throw new InvalidOperationException(recoveredMessage);
                     }
@@ -2669,6 +2713,7 @@ internal static class ViewerWorkspacePresentationVerification
             layoutTestWindow?.Close();
             summary = $"Viewer workspace presentation verification: Fail after {passed} checks: {exception.Message}";
             lines.Add(summary);
+            lines.Add(exception.ToString());
             WriteReport(reportPath, lines);
             return false;
         }

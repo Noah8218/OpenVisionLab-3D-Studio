@@ -94,6 +94,38 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && workbench.PreviewSelectedStepCommand.CanExecute(null),
                 string.Join(" -> ", thickness.InputEntityIds));
 
+            var readinessSourceBytes = File.ReadAllBytes(sourcePath);
+            var readinessTimestamp = File.GetLastWriteTimeUtc(sourcePath);
+            var readinessActions = workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
+            var readinessDirty = workbench.IsDirty;
+            var readinessWarm = workbench.PreviewSelectedStepCommand.CanExecute(null) && workbench.PreviewSelectedStepCommand.CanExecute(null);
+            bool changedBytesRejected;
+            try
+            {
+                File.Copy(changedSourcePath, sourcePath, overwrite: true);
+                File.SetLastWriteTimeUtc(sourcePath, readinessTimestamp);
+                changedBytesRejected = !workbench.PreviewSelectedStepCommand.CanExecute(null);
+            }
+            finally
+            {
+                File.WriteAllBytes(sourcePath, readinessSourceBytes);
+                File.SetLastWriteTimeUtc(sourcePath, readinessTimestamp);
+            }
+            Check("warm measurement readiness rejects same-size and same-timestamp source replacement and recovers",
+                readinessWarm && changedBytesRejected && workbench.PreviewSelectedStepCommand.CanExecute(null)
+                && workbench.IsDirty == readinessDirty && readinessActions == workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run"),
+                $"warm={readinessWarm};changedBytesRejected={changedBytesRejected}");
+            var lockedReadinessRejected = false;
+            using (var sourceLock = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                try { lockedReadinessRejected = !workbench.PreviewSelectedStepCommand.CanExecute(null); }
+                catch (IOException) { lockedReadinessRejected = true; }
+            }
+            Check("warm measurement readiness cannot approve a locked source and recovers after release",
+                lockedReadinessRejected && workbench.PreviewSelectedStepCommand.CanExecute(null)
+                && readinessActions == workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run"),
+                $"lockedRejected={lockedReadinessRejected};recovered={workbench.PreviewSelectedStepCommand.CanExecute(null)}");
+
             var thicknessMinimumValidSamples = thickness.Parameters.Single(parameter =>
                 parameter.Name == "MinimumValidSampleCount");
             thicknessMinimumValidSamples.Value = "9";

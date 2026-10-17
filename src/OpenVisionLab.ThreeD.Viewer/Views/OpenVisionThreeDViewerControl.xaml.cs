@@ -197,6 +197,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private string lastC3DDisplayListBuildReason = "none";
     private string pendingC3DDisplayListBuildReason = "initial";
     private readonly C3DSourceApplyRenderState c3dSourceApplyRenderState = new();
+    private bool updatingTeachingSelection;
     private readonly OpenGLResourceRetirementTelemetry openGLResourceRetirementTelemetry = new();
     private readonly OpenGLResourceRetirementCoordinator openGLResourceRetirement;
     private Point lastMousePosition;

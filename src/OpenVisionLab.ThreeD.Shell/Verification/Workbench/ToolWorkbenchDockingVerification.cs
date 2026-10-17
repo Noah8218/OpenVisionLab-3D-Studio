@@ -2423,7 +2423,32 @@ internal static class ToolWorkbenchDockingVerification
         var selected = workbench.SelectedValidationSetSample;
         var runAt = workbench.ValidationSetLastRunAt;
         var recipePath = workbench.RecipePath;
+        var applicationControlBrushBefore = app.TryFindResource(SystemColors.ControlBrushKey);
         Track();
+        Check("validation floating chrome resolves the existing semantic brushes locally",
+            ReferenceEquals(child.TryFindResource(SystemColors.ControlBrushKey), app.FindResource("ThreeD.CommandBarBrush"))
+            && ReferenceEquals(child.TryFindResource(SystemColors.ControlTextBrushKey), app.FindResource("ThreeD.TextBrush"))
+            && ReferenceEquals(child.TryFindResource(SystemColors.ControlDarkBrushKey), app.FindResource("ThreeD.DividerBrush"))
+            && ReferenceEquals(child.TryFindResource(SystemColors.GrayTextBrushKey), app.FindResource("ThreeD.DisabledBrush"))
+            && ReferenceEquals(child.TryFindResource(SystemColors.HighlightBrushKey), app.FindResource("ThreeD.AccentBrush")), "five native template keys; no copied palette");
+        Check("floating theme leaves application resources unchanged", ReferenceEquals(applicationControlBrushBefore, app.TryFindResource(SystemColors.ControlBrushKey)), "window-local resources only");
+        var floatingTheme = new ResourceDictionary { Source = new Uri("/AvalonDock;component/Themes/generic.xaml", UriKind.Relative) };
+        child.Style = (Style)floatingTheme[typeof(AvalonDock.Controls.LayoutAnchorableFloatingWindowControl)];
+        StudioLayoutController.ApplyFloatingCaptionGlyphs(child);
+        var chromeBorder = (Border)child.Template.FindName("WindowBorder", child);
+        var caption = ((Grid)chromeBorder.Child).Children.OfType<Grid>().First();
+        var captionButtons = caption.Children.OfType<ButtonBase>().ToArray();
+        foreach (var button in captionButtons) button.ApplyTemplate();
+        app.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.DataBind);
+        Check("floating caption preserves the four original glyph alpha masks with readable foreground",
+            captionButtons.Length == 4 && captionButtons.All(button => button.Content is Border { OpacityMask: ImageBrush, Background: SolidColorBrush foreground }
+                && foreground.Color == ((SolidColorBrush)app.FindResource(button.IsEnabled ? "ThreeD.TextBrush" : "ThreeD.DisabledBrush")).Color), "original13px glyph masks; current enabled/disabled semantic foreground");
+        child.IsEnabled = false;
+        app.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.DataBind);
+        Check("floating caption disabled glyphs follow the semantic disabled foreground",
+            captionButtons.All(button => button.Content is Border { Background: SolidColorBrush foreground }
+                && foreground.Color == ((SolidColorBrush)app.FindResource("ThreeD.DisabledBrush")).Color), $"unshown template bindings; enabled={string.Join(',', captionButtons.Select(button => button.IsEnabled))};foreground={string.Join(',', captionButtons.Select(button => (button.Content as Border)?.Background))};no forced pressed state");
+        child.IsEnabled = true;
         Complete(new Rect(0, 0, 1920, 1032));
         Check("initial Wide overflow clamps within independent workarea", child.Left == 350 && child.Top == 316 && child.Width == 1570 && child.Height == 300, $"bounds={child.Left},{child.Top},{child.Width},{child.Height};expected=350,316,1570,300");
         child.Left = 2200;

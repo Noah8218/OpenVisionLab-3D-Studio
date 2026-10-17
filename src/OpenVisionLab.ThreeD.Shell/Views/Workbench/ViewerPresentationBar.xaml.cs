@@ -121,8 +121,18 @@ public partial class ViewerPresentationBar : UserControl
         if (args.Key != Key.Escape) return;
         if (ViewerHeightBandCountSelector.IsDropDownOpen)
         {
-            ViewerHeightBandCountSelector.SetCurrentValue(ComboBox.IsDropDownOpenProperty, false);
-            Keyboard.Focus(ViewerHeightBandCountSelector);
+            // Closing the nested popup releases mouse capture; keep its parent open while focus returns.
+            var staysOpen = ViewerDisplaySettingsPopup.StaysOpen;
+            try
+            {
+                ViewerDisplaySettingsPopup.SetCurrentValue(System.Windows.Controls.Primitives.Popup.StaysOpenProperty, true);
+                ViewerHeightBandCountSelector.SetCurrentValue(ComboBox.IsDropDownOpenProperty, false);
+                Keyboard.Focus(ViewerHeightBandCountSelector);
+            }
+            finally
+            {
+                ViewerDisplaySettingsPopup.SetCurrentValue(System.Windows.Controls.Primitives.Popup.StaysOpenProperty, staysOpen);
+            }
             args.Handled = true;
             return;
         }

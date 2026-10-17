@@ -164,13 +164,30 @@ internal sealed class StudioLayoutController : IDisposable
     internal void TrackInitialValidationFloat(LayoutFloatingWindowControl child)
     {
         if (disposed || initialValidationFloats.ContainsKey(child) || !workbenchView.DockWorkspace.IsValidationEvidenceFloatingWindow(child.Model)) return;
+        // AvalonDock's default floating chrome reads system keys outside the docked View tree.
+        foreach (var (systemKey, semanticKey) in new[]
+        {
+            (SystemColors.ControlBrushKey, "ThreeD.CommandBarBrush"),
+            (SystemColors.ControlDarkBrushKey, "ThreeD.DividerBrush"),
+            (SystemColors.ControlTextBrushKey, "ThreeD.TextBrush"),
+            (SystemColors.GrayTextBrushKey, "ThreeD.DisabledBrush"),
+            (SystemColors.HighlightBrushKey, "ThreeD.AccentBrush")
+        })
+        {
+            if (window.TryFindResource(semanticKey) is System.Windows.Media.Brush brush) child.Resources[systemKey] = brush;
+        }
+        child.SetResourceReference(System.Windows.Controls.Control.ForegroundProperty, "ThreeD.TextBrush");
         initialValidationFloats.Add(child, null);
         child.SourceInitialized += OnInitialFloatingSourceInitialized;
         child.Loaded += OnInitialFloatingLoaded;
         if (new WindowInteropHelper(child).Handle != IntPtr.Zero) OnInitialFloatingSourceInitialized(child, EventArgs.Empty);
         child.Closed += OnInitialFloatingClosed;
         FloatingDragState.AddValueChanged(child, OnInitialFloatingDragChanged);
-        if (child.IsLoaded) QueueInitialValidationFloat(child);
+        if (child.IsLoaded)
+        {
+            ApplyFloatingCaptionGlyphs(child);
+            QueueInitialValidationFloat(child);
+        }
     }
 
     private void OnInitialFloatingSourceInitialized(object? sender, EventArgs args)
@@ -188,7 +205,36 @@ internal sealed class StudioLayoutController : IDisposable
         source.AddHook(hook);
     }
 
-    private void OnInitialFloatingLoaded(object sender, RoutedEventArgs args) => QueueInitialValidationFloat((LayoutFloatingWindowControl)sender);
+    private void OnInitialFloatingLoaded(object sender, RoutedEventArgs args)
+    {
+        var child = (LayoutFloatingWindowControl)sender;
+        ApplyFloatingCaptionGlyphs(child);
+        QueueInitialValidationFloat(child);
+    }
+
+    internal static void ApplyFloatingCaptionGlyphs(LayoutFloatingWindowControl child)
+    {
+        child.ApplyTemplate();
+        if (child.Template?.FindName("WindowBorder", child) is not System.Windows.Controls.Border { Child: System.Windows.Controls.Grid chrome }) return;
+        var caption = chrome.Children.OfType<System.Windows.Controls.Grid>().FirstOrDefault();
+        if (caption is null) return;
+        foreach (var button in caption.Children.OfType<System.Windows.Controls.Primitives.ButtonBase>())
+        {
+            if (button.Content is not System.Windows.Controls.Image { Source: { } source }) continue;
+            var glyph = new System.Windows.Controls.Border
+            {
+                Width = source.Width, Height = source.Height,
+                OpacityMask = new System.Windows.Media.ImageBrush(source) { Stretch = System.Windows.Media.Stretch.Uniform }
+            };
+            var glyphStyle = new Style(typeof(System.Windows.Controls.Border));
+            glyphStyle.Setters.Add(new Setter(System.Windows.Controls.Border.BackgroundProperty, new System.Windows.Data.Binding(nameof(System.Windows.Controls.Control.Foreground)) { Source = button }));
+            var disabled = new DataTrigger { Binding = new System.Windows.Data.Binding(nameof(UIElement.IsEnabled)) { Source = button }, Value = false };
+            disabled.Setters.Add(new Setter(System.Windows.Controls.Border.BackgroundProperty, new DynamicResourceExtension("ThreeD.DisabledBrush")));
+            glyphStyle.Triggers.Add(disabled);
+            glyph.Style = glyphStyle;
+            button.Content = glyph;
+        }
+    }
 
     private void OnInitialFloatingDragChanged(object? sender, EventArgs args)
     {

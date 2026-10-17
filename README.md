@@ -113,13 +113,25 @@ A separate SDK checkout is not required.
 
 ## Version
 
-Current version: `v0.7.0-dev`
+Current version: `v0.7.1-dev`
 
 This project uses explicit version numbers. This version is a development
 source snapshot. Viewer Host API `1.2` adds optional C3D texture operations and
 retains the existing construction and inspection contracts.
 
+Tool selection can still pause the interface. Some native dialog recovery,
+floating-panel and held-button states remain unverified in this development
+snapshot.
+
 ### Recent version history
+
+#### `v0.7.1-dev` (2026-10-17)
+
+- Reduced repeated C3D measurement readiness preparation and unnecessary teaching
+  selection list updates.
+- Corrected selected-ROI redraws, parameter validation and nested display popups.
+- Preserved Graphite resources in floating panels and corrected verification
+  failure exit codes.
 
 #### `v0.7.0-dev` (2026-10-17)
 
@@ -177,11 +189,6 @@ retains the existing construction and inspection contracts.
 - Consolidated Shell workflow, dialog, persistence, startup and smoke-test
   resource ownership.
 - Separated viewer loading, rendering resources, caches, transforms and colors.
-
-#### `v0.5.0-dev` (2026-09-04)
-
-- Improved asynchronous cancellation, UI-thread dispatch and resource cleanup.
-- Added the Verification project and independent viewer consumer path.
 
 ## License
 

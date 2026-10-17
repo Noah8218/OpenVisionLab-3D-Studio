@@ -88,6 +88,28 @@ internal static class TeachingSelectionOwnershipVerification
             && store.IsCurrent(stored),
             $"stored={store.Selections.Count};compatible={store.AvailableCompatibleSelections.Count}");
 
+        var compatibleNotifications = 0;
+        store.AvailableCompatibleSelections.CollectionChanged += (_, _) => compatibleNotifications++;
+        var retainedCompatible = store.SelectedCompatibleSelection;
+        store.RefreshCompatibleSelections(requirement);
+        Check("unchanged compatible choices retain selection without collection resets",
+            compatibleNotifications == 0 && ReferenceEquals(retainedCompatible, store.SelectedCompatibleSelection),
+            $"notifications={compatibleNotifications};retained={ReferenceEquals(retainedCompatible, store.SelectedCompatibleSelection)}");
+        frameId = "frame.changed";
+        store.RefreshCompatibleSelections(requirement);
+        var staleChoicesRemoved = store.AvailableCompatibleSelections.Count == 0 && store.SelectedCompatibleSelection is null;
+        frameId = "frame.fixture";
+        store.RefreshCompatibleSelections(requirement);
+        Check("compatible projection rechecks changed frames and recovers current choices",
+            staleChoicesRemoved && store.AvailableCompatibleSelections.Count == 1 && store.SelectedCompatibleSelection?.Id == selection.Id,
+            $"staleRemoved={staleChoicesRemoved};restored={store.AvailableCompatibleSelections.Count}");
+        var equalReplacement = store.Selections.Single() with { };
+        store.Upsert(equalReplacement);
+        store.RefreshCompatibleSelections(requirement);
+        Check("equal-valued replacement refreshes compatible item identity",
+            ReferenceEquals(store.AvailableCompatibleSelections.Single(), equalReplacement),
+            $"newReference={ReferenceEquals(store.AvailableCompatibleSelections.Single(), equalReplacement)}");
+
         var appliedChanged = 0;
         store.AppliedSelectionsChanged += (_, _) => appliedChanged++;
         store.NotifyAppliedSelectionsChanged();
