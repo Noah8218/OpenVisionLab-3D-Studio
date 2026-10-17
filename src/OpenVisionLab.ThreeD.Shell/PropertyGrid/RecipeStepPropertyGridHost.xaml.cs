@@ -14,6 +14,30 @@ namespace OpenVisionLab.ThreeD.Shell.PropertyGrid;
 public partial class RecipeStepPropertyGridHost : UserControl
 {
     private DispatcherOperation? selectedObjectRefreshOperation;
+    private DispatcherOperation? parameterPageLayoutOperation;
+    private FrameworkElement[] pagedParameterFields = [];
+    private int selectedParameterPage;
+    private int primaryParameterPage;
+    private int detailedParameterPage;
+    private bool updatingParameterPages;
+
+    private static readonly DependencyPropertyKey VisiblePropertyCountPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(VisiblePropertyCount), typeof(int), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(0));
+
+    public static readonly DependencyProperty VisiblePropertyCountProperty = VisiblePropertyCountPropertyKey.DependencyProperty;
+
+    private static readonly DependencyPropertyKey HasValidationErrorsPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(HasValidationErrors), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty HasValidationErrorsProperty = HasValidationErrorsPropertyKey.DependencyProperty;
+
+    private static readonly DependencyProperty InitialEditorTextProperty = DependencyProperty.RegisterAttached(
+        "InitialEditorText", typeof(string), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(null));
+
+    private static readonly DependencyPropertyKey IsEditedValuePropertyKey = DependencyProperty.RegisterAttachedReadOnly(
+        "IsEditedValue", typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty IsEditedValueProperty = IsEditedValuePropertyKey.DependencyProperty;
 
     public static readonly DependencyProperty SelectedObjectProperty = DependencyProperty.Register(
         nameof(SelectedObject),
@@ -30,10 +54,73 @@ public partial class RecipeStepPropertyGridHost : UserControl
     public static readonly DependencyProperty ShowAdvancedParametersProperty = DependencyProperty.Register(
         nameof(ShowAdvancedParameters), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(true, OnSelectedObjectChanged));
 
+    public static readonly DependencyProperty AcceptanceParametersOnlyProperty = DependencyProperty.Register(
+        nameof(AcceptanceParametersOnly), typeof(bool?), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(null, OnSelectedObjectChanged));
+
+    public static readonly DependencyProperty IsCompactPresentationProperty = DependencyProperty.Register(
+        nameof(IsCompactPresentation), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(false, OnCompactPresentationChanged));
+
+    public static readonly DependencyProperty PrimaryParametersOnlyProperty = DependencyProperty.Register(
+        nameof(PrimaryParametersOnly), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(false, OnPrimaryParametersOnlyChanged));
+
+    public static readonly DependencyProperty IsPagedPresentationProperty = DependencyProperty.Register(
+        nameof(IsPagedPresentation), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(false, OnPrimaryParametersOnlyChanged));
+
+    public static readonly DependencyProperty CanEditValuesProperty = DependencyProperty.Register(
+        nameof(CanEditValues), typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(true));
+
+    public bool CanEditValues
+    {
+        get => (bool)GetValue(CanEditValuesProperty);
+        set => SetValue(CanEditValuesProperty, value);
+    }
+
+    public static readonly DependencyProperty IsOnParameterPageProperty = DependencyProperty.RegisterAttached(
+        "IsOnParameterPage", typeof(bool), typeof(RecipeStepPropertyGridHost), new PropertyMetadata(true));
+
+    public static bool GetIsOnParameterPage(DependencyObject owner) => (bool)owner.GetValue(IsOnParameterPageProperty);
+    public static void SetIsOnParameterPage(DependencyObject owner, bool value) => owner.SetValue(IsOnParameterPageProperty, value);
+
+    public bool IsPagedPresentation
+    {
+        get => (bool)GetValue(IsPagedPresentationProperty);
+        set => SetValue(IsPagedPresentationProperty, value);
+    }
+
+    public bool PrimaryParametersOnly
+    {
+        get => (bool)GetValue(PrimaryParametersOnlyProperty);
+        set => SetValue(PrimaryParametersOnlyProperty, value);
+    }
+
+    private static void OnPrimaryParametersOnlyChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        var host = (RecipeStepPropertyGridHost)owner;
+        if (args.Property == PrimaryParametersOnlyProperty)
+        {
+            if ((bool)args.OldValue) host.primaryParameterPage = host.selectedParameterPage;
+            else host.detailedParameterPage = host.selectedParameterPage;
+            host.selectedParameterPage = (bool)args.NewValue ? host.primaryParameterPage : host.detailedParameterPage;
+        }
+        host.WrapPropertyContent();
+    }
+
+    public bool IsCompactPresentation
+    {
+        get => (bool)GetValue(IsCompactPresentationProperty);
+        set => SetValue(IsCompactPresentationProperty, value);
+    }
+
     public bool ShowAdvancedParameters
     {
         get => (bool)GetValue(ShowAdvancedParametersProperty);
         set => SetValue(ShowAdvancedParametersProperty, value);
+    }
+
+    public bool? AcceptanceParametersOnly
+    {
+        get => (bool?)GetValue(AcceptanceParametersOnlyProperty);
+        set => SetValue(AcceptanceParametersOnlyProperty, value);
     }
 
     public RecipeStepPropertyGridHost()
@@ -62,7 +149,11 @@ public partial class RecipeStepPropertyGridHost : UserControl
         set => SetValue(PropertyValueChangedCommandProperty, value);
     }
 
-    public int VisiblePropertyCount => InnerGrid.Properties?.Count ?? 0;
+    public int VisiblePropertyCount => (int)GetValue(VisiblePropertyCountProperty);
+
+    public bool HasValidationErrors => (bool)GetValue(HasValidationErrorsProperty);
+
+    public static bool GetIsEditedValue(DependencyObject editor) => (bool)editor.GetValue(IsEditedValueProperty);
 
     public int MatchingPropertyCount => InnerGrid.Properties?.Count(property => property.MatchesFilter) ?? 0;
 
@@ -82,7 +173,9 @@ public partial class RecipeStepPropertyGridHost : UserControl
         InnerGrid.UpdateLayout();
         var editors = FindVisualChildren<Control>(InnerGrid).Where(control => control.IsVisible && control.IsEnabled && control.Focusable
             && control is TextBox { IsReadOnly: false } or ComboBox or ToggleButton).ToArray();
-        var target = editors.FirstOrDefault(Validation.GetHasError) ?? editors.FirstOrDefault();
+        var invalid = IsPagedPresentation ? FindVisualChildren<Control>(InnerGrid).FirstOrDefault(Validation.GetHasError) : null;
+        if (invalid is not null) ShowParameterEditorPage(invalid);
+        var target = invalid ?? editors.FirstOrDefault(Validation.GetHasError) ?? editors.FirstOrDefault();
         if (target is null) return false;
         target.BringIntoView();
         return target.Focus();
@@ -120,6 +213,7 @@ public partial class RecipeStepPropertyGridHost : UserControl
             toggle.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
         }
 
+        RefreshValidationState();
         if (FindVisualChildren<FrameworkElement>(InnerGrid).FirstOrDefault(Validation.GetHasError) is { } invalidEditor)
         {
             FocusInvalidEditor();
@@ -128,7 +222,7 @@ public partial class RecipeStepPropertyGridHost : UserControl
             return false;
         }
 
-        if (Keyboard.FocusedElement is UIElement focused && focused.IsKeyboardFocusWithin)
+        if (InnerGrid.IsKeyboardFocusWithin && Keyboard.FocusedElement is UIElement focused)
         {
             focused.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
         }
@@ -140,6 +234,7 @@ public partial class RecipeStepPropertyGridHost : UserControl
     private static void OnSelectedObjectChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         var host = (RecipeStepPropertyGridHost)sender;
+        if (args.Property == SelectedObjectProperty) host.selectedParameterPage = host.primaryParameterPage = host.detailedParameterPage = 0;
         if (host.IsLoaded)
         {
             host.QueueSelectedObjectRefresh();
@@ -150,14 +245,55 @@ public partial class RecipeStepPropertyGridHost : UserControl
         }
     }
 
+    private static void OnCompactPresentationChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        var host = (RecipeStepPropertyGridHost)owner;
+        host.ApplyCompactPresentation();
+        if (host.IsLoaded) host.QueueSelectedObjectRefresh();
+        else if (host.InnerGrid is not null) host.RefreshSelectedObject();
+    }
+
+    private void ApplyCompactPresentation()
+    {
+        if (PropertySearchRow is null || InnerGrid is null) return;
+        PropertySearchRow.Visibility = !IsCompactPresentation && VisiblePropertyCount > 6 ? Visibility.Visible : Visibility.Collapsed;
+        InnerGrid.PropertyNameColumnWidth = new GridLength(IsCompactPresentation ? 104 : 128);
+        InnerGrid.EditorColumnMinWidth = IsCompactPresentation ? 80 : 140;
+        if (IsCompactPresentation)
+        {
+            InnerGrid.SetCurrentValue(UIElement.FocusableProperty, false);
+            InnerGrid.SetCurrentValue(Control.IsTabStopProperty, false);
+            InnerGrid.SetCurrentValue(Control.TemplateProperty, (ControlTemplate)Resources["CompactParameterGridTemplate"]);
+            InnerGrid.SetCurrentValue(Control.FontFamilyProperty, (FontFamily)Resources["CompactParameterFont"]);
+            InnerGrid.SetCurrentValue(Control.FontSizeProperty, 13d);
+        }
+        else
+        {
+            InnerGrid.ClearValue(UIElement.FocusableProperty);
+            InnerGrid.ClearValue(Control.IsTabStopProperty);
+            InnerGrid.ClearValue(Control.TemplateProperty);
+            InnerGrid.ClearValue(Control.FontFamilyProperty);
+            InnerGrid.ClearValue(Control.FontSizeProperty);
+            if (InnerGrid.Layout is { } layout)
+            {
+                layout.ClearValue(UIElement.FocusableProperty);
+                layout.ClearValue(Control.IsTabStopProperty);
+                layout.ClearValue(Control.TemplateProperty);
+            }
+        }
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
+        ApplyCompactPresentation();
         OpenVisionLanguageService.LanguageChanged += OnLanguageChanged;
         RefreshSelectedObject();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
+        parameterPageLayoutOperation?.Abort();
+        parameterPageLayoutOperation = null;
         selectedObjectRefreshOperation?.Abort();
         selectedObjectRefreshOperation = null;
         OpenVisionLanguageService.LanguageChanged -= OnLanguageChanged;
@@ -196,18 +332,103 @@ public partial class RecipeStepPropertyGridHost : UserControl
         InnerGrid.SelectedObject = null;
         if (SelectedObject is not null)
         {
-            InnerGrid.SelectedObject = LocalizedPropertyGridObject.Create(SelectedObject, ShowAdvancedParameters);
+            InnerGrid.SelectedObject = LocalizedPropertyGridObject.Create(SelectedObject, ShowAdvancedParameters, AcceptanceParametersOnly);
         }
-        PropertySearchRow.Visibility = VisiblePropertyCount > 6 ? Visibility.Visible : Visibility.Collapsed;
+        SetValue(VisiblePropertyCountPropertyKey, InnerGrid.Properties?.Count ?? 0);
+        PropertySearchRow.Visibility = !IsCompactPresentation && VisiblePropertyCount > 6 ? Visibility.Visible : Visibility.Collapsed;
         if (PropertySearchRow.Visibility == Visibility.Collapsed) PropertyFilterBox.SetCurrentValue(TextBox.TextProperty, string.Empty);
         InnerGrid.UpdateLayout();
         WrapPropertyContent();
+        RefreshValidationState();
     }
 
     private void OnReadOnlyEditorsLoaded(object sender, RoutedEventArgs args) => WrapPropertyContent();
 
+    private void ConfigureParameterPages()
+    {
+        if (ParameterPageSelector is null) return;
+        if (!IsCompactPresentation || !IsPagedPresentation)
+        {
+            foreach (var field in pagedParameterFields) SetIsOnParameterPage(field, true);
+            pagedParameterFields = [];
+            ParameterPageNavigation.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var fields = FindVisualChildren<System.Windows.Controls.WpfPropertyGrid.PropertyContainer>(InnerGrid).Cast<FrameworkElement>().ToArray();
+        foreach (var field in fields) SetIsOnParameterPage(field, true);
+        pagedParameterFields = fields.Where(field => field.Visibility == Visibility.Visible).ToArray();
+        var pageCount = (pagedParameterFields.Length + 2) / 3;
+        selectedParameterPage = Math.Clamp(selectedParameterPage, 0, Math.Max(0, pageCount - 1));
+        updatingParameterPages = true;
+        ParameterPageSelector.ItemsSource = Enumerable.Range(0, pageCount)
+            .Select(page => $"{page * 3 + 1}–{Math.Min((page + 1) * 3, pagedParameterFields.Length)} / {pagedParameterFields.Length}").ToArray();
+        ParameterPageSelector.SelectedIndex = selectedParameterPage;
+        ParameterPageNavigation.Visibility = pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+        updatingParameterPages = false;
+        ApplyParameterPage();
+    }
+
+    private void ApplyParameterPage()
+    {
+        for (var index = 0; index < pagedParameterFields.Length; index++)
+            SetIsOnParameterPage(pagedParameterFields[index], index / 3 == selectedParameterPage);
+    }
+
+    private void OnParameterPageSelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (updatingParameterPages || ParameterPageSelector.SelectedIndex < 0) return;
+        selectedParameterPage = ParameterPageSelector.SelectedIndex;
+        ApplyParameterPage();
+        ScrollToTop();
+    }
+
+    private void ShowParameterEditorPage(DependencyObject editor)
+    {
+        var index = Array.FindIndex(pagedParameterFields, field => ReferenceEquals(field, editor) || field.IsAncestorOf(editor));
+        if (index < 0) return;
+        ParameterPageSelector.SetCurrentValue(Selector.SelectedIndexProperty, index / 3);
+        ApplyParameterPage();
+        UpdateLayout();
+    }
+
+    private void OnShowInvalidParameterClick(object sender, RoutedEventArgs args) => FocusInvalidEditor();
+
     private void WrapPropertyContent()
     {
+        if (IsCompactPresentation)
+        {
+            if (InnerGrid.Layout is System.Windows.Controls.WpfPropertyGrid.Design.AlphabeticalLayout layout)
+            {
+                layout.SetCurrentValue(UIElement.FocusableProperty, false);
+                layout.SetCurrentValue(Control.IsTabStopProperty, false);
+                layout.SetCurrentValue(Control.TemplateProperty, (ControlTemplate)Resources["CompactParameterLayoutTemplate"]);
+            }
+            InnerGrid.UpdateLayout();
+            foreach (var items in FindVisualChildren<System.Windows.Controls.WpfPropertyGrid.Design.PropertyItemsLayout>(InnerGrid))
+            {
+                items.SetCurrentValue(ItemsControl.ItemsPanelProperty, (ItemsPanelTemplate)Resources[AcceptanceParametersOnly == true ? "CompactAcceptanceColumnPanel" : "CompactParameterColumnPanel"]);
+                items.SetCurrentValue(MarginProperty, AcceptanceParametersOnly == true ? new Thickness(-5, 0, -5, 0) : new Thickness());
+            }
+            InnerGrid.UpdateLayout();
+            foreach (var field in FindVisualChildren<System.Windows.Controls.WpfPropertyGrid.PropertyContainer>(InnerGrid))
+            {
+                field.SetCurrentValue(UIElement.FocusableProperty, false);
+                field.SetCurrentValue(Control.IsTabStopProperty, false);
+                field.SetCurrentValue(Control.TemplateProperty, (ControlTemplate)Resources["CompactParameterFieldTemplate"]);
+                field.SetCurrentValue(StyleProperty, (Style)Resources["CompactParameterContainerStyle"]);
+                field.SetCurrentValue(MarginProperty, AcceptanceParametersOnly == true ? new Thickness(5, 0, 5, 8) : new Thickness(0, 0, 0, 8));
+            }
+            InnerGrid.UpdateLayout();
+            foreach (var editor in FindVisualChildren<TextBox>(InnerGrid).Where(editor =>
+                editor.GetBindingExpression(TextBox.TextProperty)?.DataItem is System.Windows.Controls.WpfPropertyGrid.PropertyItemValue))
+            {
+                editor.SetCurrentValue(StyleProperty, (Style)Resources["CompactParameterTextBoxStyle"]);
+                if (editor.GetValue(InitialEditorTextProperty) is null) editor.SetValue(InitialEditorTextProperty, editor.Text);
+            }
+            foreach (var editor in FindVisualChildren<CheckBox>(InnerGrid).Where(editor =>
+                editor.GetBindingExpression(ToggleButton.IsCheckedProperty)?.DataItem is System.Windows.Controls.WpfPropertyGrid.PropertyItemValue))
+                editor.SetCurrentValue(StyleProperty, (Style)Resources["CompactParameterCheckBoxStyle"]);
+        }
         EnsureNumericEditorValidation();
         foreach (var caption in FindVisualChildren<TextBlock>(InnerGrid).Where(text => text.GetType().Name == "PropertyNameTextBlock"))
         {
@@ -216,6 +437,12 @@ public partial class RecipeStepPropertyGridHost : UserControl
         }
         foreach (var combo in FindVisualChildren<ComboBox>(InnerGrid))
         {
+            if (IsCompactPresentation)
+            {
+                combo.SetCurrentValue(StyleProperty, (Style)Resources["CompactParameterComboBoxStyle"]);
+                if (combo.DataContext is System.Windows.Controls.WpfPropertyGrid.PropertyItemValue && combo.GetValue(InitialEditorTextProperty) is null)
+                    combo.SetValue(InitialEditorTextProperty, Convert.ToString(combo.SelectedValue, CultureInfo.InvariantCulture));
+            }
             combo.SetCurrentValue(ItemsControl.ItemTemplateProperty, (DataTemplate)Resources["LocalizedEnumOptionTemplate"]);
             if (combo.IsEnabled)
             {
@@ -235,6 +462,13 @@ public partial class RecipeStepPropertyGridHost : UserControl
             textBox.SetCurrentValue(TextBox.TextWrappingProperty, TextWrapping.Wrap);
             textBox.SetCurrentValue(HeightProperty, double.NaN);
         }
+        parameterPageLayoutOperation?.Abort();
+        // Visibility bindings must settle before the existing fields are grouped.
+        parameterPageLayoutOperation = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            parameterPageLayoutOperation = null;
+            ConfigureParameterPages();
+        });
     }
 
     private void EnsureNumericEditorValidation()
@@ -283,6 +517,7 @@ public partial class RecipeStepPropertyGridHost : UserControl
         }
 
         CommitFocusedEditor(focusedElement);
+        RefreshValidationState();
 
         var direction = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
             ? FocusNavigationDirection.Previous
@@ -302,15 +537,41 @@ public partial class RecipeStepPropertyGridHost : UserControl
     private void OnInnerGridLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs args)
     {
         if (args.OriginalSource is UIElement editor) CommitFocusedEditor(editor);
+        RefreshValidationState();
     }
 
     private void OnInnerGridEditorTextChanged(object sender, TextChangedEventArgs args)
     {
-        if (args.OriginalSource is TextBox { IsKeyboardFocused: true } editor
-            && editor.GetBindingExpression(TextBox.TextProperty) is not null
-            && PropertyValueChangedCommand?.CanExecute(null) == true)
-            PropertyValueChangedCommand.Execute(null);
+        if (args.OriginalSource is not TextBox { IsKeyboardFocused: true } editor
+            || editor.GetBindingExpression(TextBox.TextProperty) is not { } expression) return;
+        if (IsCompactPresentation)
+        {
+            // Validate the displayed draft without changing its source or commit timing.
+            expression.ValidateWithoutUpdate();
+            if (editor.GetValue(InitialEditorTextProperty) is string initial)
+                editor.SetValue(IsEditedValuePropertyKey, !string.Equals(initial, editor.Text, StringComparison.Ordinal));
+            RefreshValidationState();
+        }
+        if (PropertyValueChangedCommand?.CanExecute(null) == true) PropertyValueChangedCommand.Execute(null);
     }
+
+    private void OnInnerGridEditorSelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (args.OriginalSource is ListBox { IsEnabled: true, IsKeyboardFocusWithin: true, TemplatedParent: TextBox choiceEditor }
+            && choiceEditor.GetBindingExpression(TextBox.TextProperty) is { DataItem: System.Windows.Controls.WpfPropertyGrid.PropertyItemValue } choiceBinding)
+        {
+            choiceBinding.UpdateSource();
+            if (choiceEditor.GetValue(InitialEditorTextProperty) is string initialChoice)
+                choiceEditor.SetValue(IsEditedValuePropertyKey, !string.Equals(initialChoice, choiceEditor.Text, StringComparison.Ordinal));
+            if (PropertyValueChangedCommand?.CanExecute(null) == true) PropertyValueChangedCommand.Execute(null);
+        }
+        if (IsCompactPresentation && args.OriginalSource is ComboBox { IsEnabled: true } editor
+            && editor.DataContext is System.Windows.Controls.WpfPropertyGrid.PropertyItemValue && editor.GetValue(InitialEditorTextProperty) is string initial)
+            editor.SetValue(IsEditedValuePropertyKey, !string.Equals(initial, Convert.ToString(editor.SelectedValue, CultureInfo.InvariantCulture), StringComparison.Ordinal));
+    }
+
+    private void RefreshValidationState() => SetValue(HasValidationErrorsPropertyKey,
+        FindVisualChildren<FrameworkElement>(InnerGrid).Any(Validation.GetHasError));
 
     private bool TryMoveFocusWithinPropertyGrid(
         UIElement focusedElement,

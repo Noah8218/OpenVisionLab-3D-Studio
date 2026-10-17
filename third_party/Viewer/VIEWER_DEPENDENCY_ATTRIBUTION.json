@@ -5,7 +5,7 @@
     "project": "src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj",
     "targetFramework": "net10.0-windows",
     "rid": "win-x64",
-    "hostApiVersion": "1.1",
+    "hostApiVersion": "1.2",
     "manifestFilesMustBeCovered": true,
     "attributionFile": "THIRD-PARTY-NOTICES.txt",
     "manifestField": "dependencyAttributionFile"
@@ -13,8 +13,8 @@
   "evidence": {
     "dependencyClosure": "src/OpenVisionLab.ThreeD.Viewer/obj/project.assets.json",
     "bundleManifest": "viewer-dll-manifest.json",
-    "packageEvidence": "Regenerate local package and bundle verification evidence for each exact build.",
-    "scope": "Current source dependency closure; this record is not legal advice or public-release approval."
+    "packageEvidence": "scripts/verify-vision-sdk-package.ps1",
+    "scope": "Dependency provenance for source builds; a particular binary requires its own bundle manifest."
   },
   "components": [
     {
@@ -23,7 +23,7 @@
       "origin": {
         "kind": "repository-project",
         "path": "src/OpenVisionLab.ThreeD.Viewer",
-        "version": "0.5.6-dev",
+        "version": "0.7.0-dev",
         "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
       },
       "license": {
@@ -43,7 +43,7 @@
       "origin": {
         "kind": "repository-project",
         "path": "src/OpenVisionLab.Localization",
-        "version": "0.5.6-dev",
+        "version": "0.7.0-dev",
         "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
       },
       "license": {
@@ -62,7 +62,7 @@
       "origin": {
         "kind": "repository-project",
         "path": "src/OpenVisionLab.ThreeD.Core",
-        "version": "0.5.6-dev",
+        "version": "0.7.0-dev",
         "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
       },
       "license": {
@@ -81,7 +81,7 @@
       "origin": {
         "kind": "repository-project",
         "path": "src/OpenVisionLab.ThreeD.Data",
-        "version": "0.5.6-dev",
+        "version": "0.7.0-dev",
         "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
       },
       "license": {
@@ -100,7 +100,7 @@
       "origin": {
         "kind": "repository-project",
         "path": "src/OpenVisionLab.ThreeD.Presentation",
-        "version": "0.5.6-dev",
+        "version": "0.7.0-dev",
         "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
       },
       "license": {
@@ -119,7 +119,7 @@
       "origin": {
         "kind": "repository-project",
         "path": "src/OpenVisionLab.ThreeD.Tools",
-        "version": "0.5.6-dev",
+        "version": "0.7.0-dev",
         "sourceCommit": "see viewer-dll-manifest.json gitCommit for each bundle"
       },
       "license": {
@@ -188,11 +188,11 @@
       "origin": {
         "kind": "vendored-nuget-package",
         "packageId": "OpenVisionLab.Vision3D",
-        "packageVersion": "3.0.1-dev.20260829.normal-preparation.1",
-        "packageSha256": "E0A2EB2021EB041D93225D00EEF71F028BD79CE3BA7F9CF27F539634F8D506A2",
-        "packageSha512": "fqm2gG9Dmo3jeS2Th9ko1+cJcNh4D19/J4uEAdZSttY3WU0uSynnIKPr+6Eth3uSVu+UaNcLiuYXrihcV3vuRQ==",
+        "packageVersion": "3.3.0-dev.20261017.physical-edge-gap-flush.1",
+        "packageSha256": "941D301325485083C8DD54E71033DD8DE232E56C1B76EEDE95574EEE0B9327AB",
+        "packageSha512": "saLMOCtk3P4tm/Nmi7bh/VEHuLMSuwwCQ/JZS1Qe3YogYlmhpweVj/stxZOPFGpT2ZrdwsHjRUuHi+v5iI3fAg==",
         "sourceRepository": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK",
-        "sourceCommit": "6da3bcf521efb88681a17e4a7b23a091e7fcbacf"
+        "sourceCommit": "456eb2af7a62962144757d967538594fde79e481"
       },
       "license": {
         "spdx": "MIT",
@@ -202,6 +202,28 @@
       },
       "payloads": [
         "OpenVisionLab.Vision3D.dll"
+      ]
+    },
+    {
+      "id": "OpenVisionLab.Compute",
+      "delivery": "bundle",
+      "origin": {
+        "kind": "vendored-nuget-package",
+        "packageId": "OpenVisionLab.Compute",
+        "packageVersion": "3.3.0-dev.20261017.physical-edge-gap-flush.1",
+        "packageSha256": "02E25FE1D9DC6CDF9A0295A1C575FDDFA107B40D123C82071113ABF7E78D1E51",
+        "packageSha512": "uLbG5GBzKRdgBSczZ7EP38IMd+YmPP5Zi79ukvMEJt0HpW1wwjyhfbQoRKXpekJ/cxSyljtwLnf3n8/u+fLbsg==",
+        "sourceRepository": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK",
+        "sourceCommit": "456eb2af7a62962144757d967538594fde79e481"
+      },
+      "license": {
+        "spdx": "MIT",
+        "source": "package:LICENSE",
+        "notice": "package:NOTICE",
+        "metadata": "https://licenses.nuget.org/MIT"
+      },
+      "payloads": [
+        "OpenVisionLab.Compute.dll"
       ]
     },
     {

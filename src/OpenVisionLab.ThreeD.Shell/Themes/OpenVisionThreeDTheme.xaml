@@ -7,10 +7,23 @@
         its independent scientific color scale.
     -->
     <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#15191E" />
+    <SolidColorBrush x:Key="ThreeD.StudioChromeBrush" Color="#12161A" />
+    <SolidColorBrush x:Key="ThreeD.RailBackgroundBrush" Color="#13171B" />
+    <SolidColorBrush x:Key="ThreeD.RailSelectedBrush" Color="#1F2D2D" />
+    <SolidColorBrush x:Key="ThreeD.RailSelectedTextBrush" Color="#C7ECE5" />
+    <SolidColorBrush x:Key="ThreeD.SoftDividerBrush" Color="#2A323B" />
+    <SolidColorBrush x:Key="ThreeD.DockHeaderBrush" Color="#181D23" />
     <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#1B2128" />
     <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#252D36" />
+    <SolidColorBrush x:Key="ThreeD.DataPopupSurfaceBrush" Color="#20272F" />
+    <SolidColorBrush x:Key="ThreeD.DataPopupBorderBrush" Color="#4E5D6B" />
+    <SolidColorBrush x:Key="ThreeD.DataMutedTextBrush" Color="#8B98A6" />
+    <SolidColorBrush x:Key="ThreeD.DataCardSurfaceBrush" Color="#1A2027" />
+    <SolidColorBrush x:Key="ThreeD.DataThumbnailSurfaceBrush" Color="#0F1317" />
+    <SolidColorBrush x:Key="ThreeD.DataThumbnailBorderBrush" Color="#33404C" />
     <SolidColorBrush x:Key="ThreeD.DialogBackdropBrush" Color="#CC03070C" />
     <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#1B2128" />
+    <SolidColorBrush x:Key="ThreeD.ExecutionBarBrush" Color="#171C21" />
     <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#252D36" />
     <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#37424E" />
     <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#E4E9EF" />
@@ -32,6 +45,14 @@
     <SolidColorBrush x:Key="ThreeD.PrimaryButtonTextBrush" Color="#11171B" />
     <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#243C3C" />
     <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#A2DFD4" />
+    <SolidColorBrush x:Key="ThreeD.InspectionErrorTextBrush" Color="#F5A86B" />
+    <SolidColorBrush x:Key="ThreeD.InspectionSummarySurfaceBrush" Color="#1D242B" />
+    <SolidColorBrush x:Key="ThreeD.InspectionStateTrackBrush" Color="#28313A" />
+    <SolidColorBrush x:Key="ThreeD.InspectionPassSegmentBrush" Color="#5E9C76" />
+    <SolidColorBrush x:Key="ThreeD.InspectionFailSegmentBrush" Color="#C9686C" />
+    <SolidColorBrush x:Key="ThreeD.InspectionErrorSegmentBrush" Color="#C98450" />
+    <SolidColorBrush x:Key="ThreeD.InspectionCancelledSegmentBrush" Color="#59636E" />
+    <SolidColorBrush x:Key="ThreeD.InspectionUntestedSegmentBrush" Color="#3A444F" />
     <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#91D1A8" />
     <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#F1C27A" />
     <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#F29D9F" />
@@ -442,9 +463,9 @@
     <Style x:Key="ThreeD.WindowControlButtonStyle"
            TargetType="{x:Type Button}"
            BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Width" Value="34" />
-        <Setter Property="Height" Value="28" />
-        <Setter Property="Margin" Value="2,0,0,0" />
+        <Setter Property="Width" Value="46" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Margin" Value="0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.PanelHeaderTextBrush}" />
@@ -822,4 +843,20 @@
                 </Trigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
+    <!-- Used only by the flow and tool-settings panes: reserve scrollbar space. -->
+    <Style x:Key="NonOverlappingScrollViewerStyle" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid Background="{TemplateBinding Background}" ClipToBounds="True">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Grid.Row="0" Grid.Column="0" Margin="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" CanContentScroll="{TemplateBinding CanContentScroll}" />
+                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Row="0" Grid.Column="1" Width="14" Orientation="Vertical" Minimum="0" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Row="1" Grid.Column="0" Height="14" Orientation="Horizontal" Minimum="0" Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}" Value="{Binding HorizontalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

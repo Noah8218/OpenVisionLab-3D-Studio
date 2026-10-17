@@ -53,6 +53,10 @@ internal static class HeightImageViewportVerification
 
     private static async Task VerifyOnStaAsync(string reportPath, List<(string Name, bool Passed, string Detail)> checks)
     {
+        var application = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        application.Resources.MergedDictionaries.Add(new global::Wpf.Ui.Markup.ThemesDictionary { Theme = global::Wpf.Ui.Appearance.ApplicationTheme.Dark });
+        application.Resources.MergedDictionaries.Add(new global::Wpf.Ui.Markup.ControlsDictionary());
+        application.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/OpenVisionLab.ThreeD.Shell;component/Themes/OpenVisionThreeDTheme.xaml") });
         await VerifyLinkedCursorOverlayAsync(reportPath, checks);
         using var model = new HeightImageViewerViewModel(ThreeDLocalization.Shared, new SharedHeightCursorSession());
         var view = new HeightImageViewerView { DataContext = model };
@@ -120,11 +124,29 @@ internal static class HeightImageViewportVerification
             await Load("source.viewport.first");
             ShellWindowNativeInterop.AppendWindowMonitorEvidence(window, reportPath + ".monitor.txt");
             CheckFit("NewInputFits");
+            var legendContainer = (Grid)view.FindName("HeightImageHeightLegend");
+            var legendControl = legendContainer.Children.OfType<OpenVisionLab.ThreeD.Presentation.Controls.HeightLegendRangeBar>().Single();
+            var legendTrack = (Canvas)legendControl.FindName("Track");
+            var legendHandle = (System.Windows.Controls.Primitives.Thumb)legendControl.FindName("UpperHandle");
+            checks.Add(("InteractiveLegendFitsReservedColumn", legendControl.ActualWidth <= legendContainer.ActualWidth + 0.1
+                && legendTrack.ActualWidth == 26 && legendTrack.ActualHeight > 0 && legendHandle.IsVisible && legendHandle.IsEnabled,
+                $"container={legendContainer.ActualWidth};control={legendControl.ActualWidth};track={legendTrack.RenderSize};handle={legendHandle.RenderSize}"));
             await Preserve("OverlayRefreshPreservesViewport", () => model.SetCompletenessCellOverlays(
                 [new C3DCompletenessCellOverlay("overlay.cell", "A1", new ToolRecipeGridRectangle(100, 120, 80, 100), ResultStatus.Pass)]), redraw: false);
             await Preserve("SelectionPreservesViewport", () => model.SetSelectedCompletenessCellId("A1"), redraw: false);
             checks.Add(("SelectedOverlayUpdated", overlay.Children.OfType<Rectangle>().Any(shape => shape.StrokeThickness == 5), "selected cell has the existing selection stroke"));
             await Preserve("PalettePreservesViewport", () => model.SelectedPalette = C3DHeightImagePalette.Grayscale, redraw: true);
+            var frameBeforeMonochrome = model.Frame;
+            var pixelsBeforeMonochrome = model.DisplayFrame!.Bgra32Pixels.ToArray();
+            await Preserve("MonochromePreservesViewport", () => model.SelectedPalette = C3DHeightImagePalette.Monochrome, redraw: true);
+            var monochromePixels = model.DisplayFrame!.Bgra32Pixels.ToArray();
+            checks.Add(("MonochromePreservesSourceAndMissingPixels", ReferenceEquals(frameBeforeMonochrome, model.Frame)
+                && Enumerable.Range(0, values.Length).All(index => double.IsFinite(values[index]) && values[index] != 0.0
+                    ? monochromePixels[index * 4] == 194 && monochromePixels[index * 4 + 1] == 155
+                        && monochromePixels[index * 4 + 2] == 115 && monochromePixels[index * 4 + 3] == 255
+                    : monochromePixels.AsSpan(index * 4, 4).SequenceEqual(pixelsBeforeMonochrome.AsSpan(index * 4, 4))),
+                $"palette={model.DisplayFrame.Palette};source={model.Frame!.SourceContentSha256};missing={model.Frame.MissingCount}"));
+            await Preserve("GrayscaleRecoversAfterMonochrome", () => model.SelectedPalette = C3DHeightImagePalette.Grayscale, redraw: true);
             await Preserve("ManualRangePreservesViewport", () => model.TryApplyManualRange(100, 400), redraw: true);
             await Preserve("InvalidMaskPreservesViewport", () => model.ShowInvalidCells = !model.ShowInvalidCells, redraw: true);
             await Preserve("AutoRangePreservesViewport", () => model.AutoRangeCommand.Execute(null), redraw: true);
@@ -155,6 +177,14 @@ internal static class HeightImageViewportVerification
             model.ActualPixelsCommand.Execute(null);
             await Settle();
             checks.Add(("ActualPixels", model.ZoomPercent == 100 && image.Width == 640 && image.Height == 480, $"zoom={model.ZoomPercent};image={image.Width}x{image.Height}"));
+            model.UpdateHover(2, 1);
+            model.ZoomInCommand.Execute(null);
+            await Settle();
+            var peerCursor = (System.Windows.Shapes.Path)view.FindName("LinkedCursorPeerMarker");
+            checks.Add(("CursorZoomPreservesNativeCellAndGlyphSize", model.ZoomPercent == 125 && Canvas.GetLeft(peerCursor) + peerCursor.Width / 2.0 == 3.125
+                && Canvas.GetTop(peerCursor) + peerCursor.Height / 2.0 == 1.875 && peerCursor.Width == 18 && peerCursor.Height == 18 && peerCursor.StrokeThickness == 1.2,
+                $"zoom={model.ZoomPercent};native={model.LinkedCursorColumn},{model.LinkedCursorRow};peer={peerCursor.Width}x{peerCursor.Height}"));
+            model.ClearHover();
             await ZoomAndPan();
             var oldBitmap = image.Source;
             await Load("source.viewport.second");
@@ -182,8 +212,45 @@ internal static class HeightImageViewportVerification
             window.Width = 470;
             await Settle();
             var status = FindText(view, "HeightImageStatus");
-            checks.Add(("NarrowHeightStatusHasDedicatedRow", status is { ActualWidth: > 400, FontSize: 11, TextWrapping: TextWrapping.Wrap },
+            checks.Add(("NarrowHeightStatusHasDedicatedRow", status is { ActualWidth: > 400, FontSize: 12, TextWrapping: TextWrapping.Wrap },
                 $"width={status?.ActualWidth};text={status?.Text}"));
+            view.UseEmbeddedChrome = true;
+            view.SelectionContext = "Pad 1 Thickness · 기준 평면 ROI 열 128, 행 156, 너비 50, 높이 144 · 긴 선택 문맥";
+            var coordinateText = (TextBlock)view.FindName("HeightImageCoordinateText");
+            var cursorScroll = (ScrollViewer)view.FindName("HeightImageCursorScroller");
+            var cursorFooter = (Border)view.FindName("HeightImageCursorStatus");
+            var selectionContext = (TextBlock)view.FindName("HeightImageSelectionContext");
+            foreach (var width in new[] { 320.0, 486.0 })
+            {
+                view.Width = width;
+                window.Width = width + 32;
+                model.UpdateHover(639, 479);
+                await Settle();
+                checks.Add(($"FooterNormalSingleLine{width:0}", coordinateText.Text == "X 639 · Y 639 · Z 479"
+                    && coordinateText.ActualHeight <= 14.5 && cursorScroll.ScrollableHeight <= 1 && cursorFooter.ActualHeight == 24,
+                    $"view={view.ActualWidth};text={coordinateText.Text};height={coordinateText.ActualHeight};scroll={cursorScroll.ScrollableHeight}"));
+                checks.Add(($"FooterKeepsFullUnitContract{width:0}", model.CursorCoordinateSummary == "X 639 · Y 639 raw-height · Z 479"
+                    && model.LegendUnit == "raw-height" && selectionContext.TextTrimming == TextTrimming.CharacterEllipsis
+                    && cursorScroll.Focusable && cursorScroll.VerticalScrollBarVisibility == ScrollBarVisibility.Auto,
+                    $"full={model.CursorCoordinateSummary};unit={model.LegendUnit};context={selectionContext.TextTrimming}"));
+            }
+            await model.EnsureSourceAsync(sourcePath, "source.footer.long", "raw-height", "frame.c3d-grid-index",
+                _ => Task.FromResult(C3DHeightFieldSnapshot.CreateForVerification("source.footer.long", 5, 4, Enumerable.Repeat(-1234567.75, 20).ToArray())));
+            foreach (var width in new[] { 320.0, 486.0 })
+            {
+                view.Width = width;
+                window.Width = width + 32;
+                model.UpdateHover(4, 1);
+                await Settle();
+                var bounds = coordinateText.TransformToAncestor(cursorFooter).TransformBounds(new Rect(coordinateText.RenderSize));
+                checks.Add(($"FooterLongValueSingleLine{width:0}", coordinateText.Text == "X 4 · Y -1234567.75 · Z 1"
+                    && coordinateText.ActualHeight <= 14.5 && cursorScroll.ScrollableHeight <= 1 && bounds.Right <= cursorFooter.ActualWidth,
+                    $"text={coordinateText.Text};height={coordinateText.ActualHeight};right={bounds.Right};footer={cursorFooter.ActualWidth};scroll={cursorScroll.ScrollableHeight}"));
+            }
+            model.ClearHover();
+            await Settle();
+            checks.Add(("FooterEmptyRecoversPlaceholders", coordinateText.Text == "X — · Y — · Z —" && coordinateText.ActualHeight <= 14.5
+                && cursorScroll.ScrollableHeight <= 1, $"text={coordinateText.Text};height={coordinateText.ActualHeight};scroll={cursorScroll.ScrollableHeight}"));
         }
         finally
         {
@@ -202,8 +269,8 @@ internal static class HeightImageViewportVerification
         var view = new HeightImageViewerView { DataContext = model };
         var image = (Image)view.FindName("HeightImage");
         var overlay = (Canvas)view.FindName("LinkedCursorOverlay");
-        var vertical = (System.Windows.Shapes.Line)view.FindName("LinkedCursorVerticalLine");
-        var horizontal = (System.Windows.Shapes.Line)view.FindName("LinkedCursorHorizontalLine");
+        var marker = (System.Windows.Shapes.Ellipse)view.FindName("LinkedCursorMarker");
+        var peer = (System.Windows.Shapes.Path)view.FindName("LinkedCursorPeerMarker");
         try
         {
             foreach (var state in new (string Name, double Width, double Height)[]
@@ -220,15 +287,39 @@ internal static class HeightImageViewportVerification
                 image.Width = state.Width;
                 image.Height = state.Height;
                 model.UpdateHover(2, 1);
-                checks.Add(($"{state.Name}CursorHidden", overlay.Visibility == Visibility.Collapsed
-                    && double.IsFinite(vertical.X1) && double.IsFinite(horizontal.Y1), $"image={image.Width}x{image.Height};overlay={overlay.Visibility}"));
+                checks.Add(($"{state.Name}CursorHidden", overlay.Visibility == Visibility.Collapsed,
+                    $"image={image.Width}x{image.Height};overlay={overlay.Visibility}"));
                 model.ActualPixelsCommand.Execute(null);
                 checks.Add(($"{state.Name}CursorRecovers", overlay.Visibility == Visibility.Visible
-                    && image.Width == 4 && image.Height == 3 && vertical.X1 == 2.5 && horizontal.Y1 == 1.5,
-                    $"image={image.Width}x{image.Height};cursor={vertical.X1},{horizontal.Y1}"));
+                    && image.Width == 4 && image.Height == 3 && Canvas.GetLeft(peer) + peer.Width / 2.0 == 2.5 && Canvas.GetTop(peer) + peer.Height / 2.0 == 1.5,
+                    $"image={image.Width}x{image.Height};cursor={Canvas.GetLeft(peer) + peer.Width / 2.0},{Canvas.GetTop(peer) + peer.Height / 2.0}"));
             }
+            checks.Add(("HeightCursorFromOtherViewUsesPeerGlyph", model.LinkedCursorOrigin == SharedHeightCursorOrigin.HeightImage
+                && !image.IsMouseOver && marker.Visibility == Visibility.Collapsed && peer.Visibility == Visibility.Visible,
+                "unloaded view is a peer; physical own-pointer glyph verified separately"));
+            shared.Update(SharedHeightCursorOrigin.ThreeDViewer, model.Frame!.SourceContentSha256, 1, 2, 7, true);
+            checks.Add(("ThreeDCursorUsesPeerGlyph", model.LinkedCursorOrigin == SharedHeightCursorOrigin.ThreeDViewer
+                && marker.Visibility == Visibility.Collapsed && peer.Visibility == Visibility.Visible,
+                $"origin={model.LinkedCursorOrigin};peer={peer.Visibility}"));
+            model.UpdateHover(2, 1);
+            checks.Add(("CursorOriginChangesAtSameCell", model.LinkedCursorOrigin == SharedHeightCursorOrigin.HeightImage
+                && Canvas.GetLeft(peer) + peer.Width / 2.0 == 2.5 && Canvas.GetTop(peer) + peer.Height / 2.0 == 1.5,
+                $"origin={model.LinkedCursorOrigin};cell={model.LinkedCursorColumn},{model.LinkedCursorRow}"));
+            shared.Update(SharedHeightCursorOrigin.HeightImage, model.Frame.SourceContentSha256, 1, 2, double.NaN, false);
+            checks.Add(("MissingCursorPreservesUnavailableHeight", !model.LinkedCursorIsValid && model.CursorCoordinateSummary.Contains("Y —")
+                && overlay.Visibility == Visibility.Visible && peer.Visibility == Visibility.Visible,
+                model.CursorCoordinateSummary));
+            shared.Update(SharedHeightCursorOrigin.ThreeDViewer, "other-source", 1, 2, 7, true);
+            checks.Add(("WrongSourceCursorHidden", model.LinkedCursorOrigin == SharedHeightCursorOrigin.None && overlay.Visibility == Visibility.Collapsed,
+                $"origin={model.LinkedCursorOrigin};overlay={overlay.Visibility}"));
+            shared.Update(SharedHeightCursorOrigin.ThreeDViewer, model.Frame.SourceContentSha256, 1, 2, 7, true);
+
             model.ClearHover();
-            checks.Add(("ClearedCursorHidden", overlay.Visibility == Visibility.Collapsed, $"overlay={overlay.Visibility}"));
+            checks.Add(("HeightLeavePreservesThreeDCursor", model.LinkedCursorOrigin == SharedHeightCursorOrigin.ThreeDViewer && overlay.Visibility == Visibility.Visible,
+                $"origin={model.LinkedCursorOrigin};overlay={overlay.Visibility}"));
+            shared.Clear();
+            checks.Add(("ClearedCursorHidden", model.LinkedCursorOrigin == SharedHeightCursorOrigin.None && overlay.Visibility == Visibility.Collapsed,
+                $"origin={model.LinkedCursorOrigin};overlay={overlay.Visibility}"));
         }
         finally
         {

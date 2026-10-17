@@ -261,7 +261,8 @@ public sealed partial class ToolWorkbenchViewModel
             IsSignedDeltaPreviewStale,
             IsSignedDeltaPreviewPublished),
         outputEntityId => filterExecutionOwner.GetPublishedOutput(outputEntityId)?.Output,
-        outputEntityId => TryGetPublishedHeightDifferenceEdgeOutput(outputEntityId, out var output) ? output : null);
+        outputEntityId => TryGetPublishedHeightDifferenceEdgeOutput(outputEntityId, out var output) ? output : null,
+        SourceQuality.Report);
 
     private void RebuildArtifactRegistryAndNavigator() => artifactNavigatorOwner.Rebuild();
 
@@ -283,6 +284,12 @@ public sealed record ToolWorkbenchArtifactItem(
     string NodeKind)
 {
     public SourceQualityDelta? PreparationQualityDelta { get; init; }
+    public double? Minimum { get; init; }
+    public double? Maximum { get; init; }
+    public long? ValidSampleCount { get; init; }
+    public long? MissingSampleCount { get; init; }
+    public int? GridWidth { get; init; }
+    public int? GridHeight { get; init; }
     public bool HasContentHash => ContentSha256.Length == 64;
     public string HashShortSuffix => HasContentHash ? $" | SHA {ContentSha256[..12]}" : string.Empty;
 }

@@ -19,6 +19,7 @@ internal sealed class C3DGpuBufferSet
     private const uint GlUnsignedInt = 0x1405;
     private const uint GlVertexArray = 0x8074;
     private const uint GlColorArray = 0x8076;
+    private const uint GlTextureCoordArray = 0x8078;
     private const int VertexStrideBytes = 6 * sizeof(float);
     private const int ColorOffsetBytes = 3 * sizeof(float);
 
@@ -63,7 +64,7 @@ internal sealed class C3DGpuBufferSet
         float[] interleavedVertices,
         C3DHeightGridRenderProxy renderProxy,
         out C3DGpuBufferSet? result,
-        out string failure)
+        out string failure, float[]? textureCoordinates = null)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentNullException.ThrowIfNull(interleavedVertices);
@@ -75,7 +76,9 @@ internal sealed class C3DGpuBufferSet
                 nameof(interleavedVertices));
         }
 
-        var ids = new uint[6];
+        if (textureCoordinates is not null && textureCoordinates.Length != renderProxy.Points.Length * 2)
+            throw new ArgumentException("C3D texture coordinates require one UV pair per render point.", nameof(textureCoordinates));
+        var ids = new uint[textureCoordinates is null ? 6 : 7];
         try
         {
             gl.GenBuffers(ids.Length, ids);
@@ -90,9 +93,10 @@ internal sealed class C3DGpuBufferSet
             Upload(gl, GlElementArrayBuffer, ids[3], renderProxy.InteractionGridEdgeIndices);
             Upload(gl, GlElementArrayBuffer, ids[4], renderProxy.CoarseInteractionGridEdgeIndices);
             Upload(gl, GlElementArrayBuffer, ids[5], renderProxy.SurfaceEdgeIndices);
+            if (textureCoordinates is not null) Upload(gl, GlArrayBuffer, ids[6], textureCoordinates);
 
             var uploadedBytes = checked(
-                (long)interleavedVertices.Length * sizeof(float)
+                (long)interleavedVertices.Length * sizeof(float) + (long)(textureCoordinates?.Length ?? 0) * sizeof(float)
                 + ((long)renderProxy.TriangleIndices.Length
                     + renderProxy.GridEdgeIndices.Length
                     + renderProxy.InteractionGridEdgeIndices.Length
@@ -139,9 +143,9 @@ internal sealed class C3DGpuBufferSet
         return deleted;
     }
 
-    public void DrawPoints(OpenGL gl, float pointSize)
+    public void DrawPoints(OpenGL gl, float pointSize, bool textured = false)
     {
-        BeginVertexArrays(gl, usePointColors: true);
+        BeginVertexArrays(gl, usePointColors: !textured, textured);
         try
         {
             gl.PointSize(pointSize);
@@ -150,11 +154,11 @@ internal sealed class C3DGpuBufferSet
         }
         finally
         {
-            EndVertexArrays(gl, usedPointColors: true);
+            EndVertexArrays(gl, usedPointColors: !textured, textured);
         }
     }
 
-    public void DrawWireframe(OpenGL gl, C3DWireframeLodLevel lodLevel)
+    public void DrawWireframe(OpenGL gl, C3DWireframeLodLevel lodLevel, bool textured = false)
     {
         var (bufferId, indexCount) = lodLevel switch
         {
@@ -163,10 +167,10 @@ internal sealed class C3DGpuBufferSet
             _ => (bufferIds[2], PreciseGridIndexCount)
         };
 
-        DrawIndexed(gl, OpenGL.GL_LINES, bufferId, indexCount, usePointColors: true);
+        DrawIndexed(gl, OpenGL.GL_LINES, bufferId, indexCount, usePointColors: !textured, textured);
     }
 
-    public void DrawSurface(OpenGL gl, bool withEdges)
+    public void DrawSurface(OpenGL gl, bool withEdges, bool textured = false)
     {
         if (withEdges)
         {
@@ -181,7 +185,7 @@ internal sealed class C3DGpuBufferSet
                 OpenGL.GL_TRIANGLES,
                 bufferIds[1],
                 TriangleIndexCount,
-                usePointColors: true);
+                usePointColors: !textured, textured);
         }
         finally
         {
@@ -196,6 +200,7 @@ internal sealed class C3DGpuBufferSet
             return;
         }
 
+        if (textured) gl.Disable(0x0DE1);
         gl.Enable(OpenGL.GL_BLEND);
         gl.BlendFunc(OpenGL.GL_SRC_ALPHA, OpenGL.GL_ONE_MINUS_SRC_ALPHA);
         gl.Color(0.02, 0.05, 0.08, 0.32);
@@ -211,6 +216,7 @@ internal sealed class C3DGpuBufferSet
         finally
         {
             gl.Disable(OpenGL.GL_BLEND);
+            if (textured) gl.Enable(0x0DE1);
         }
     }
 
@@ -219,9 +225,9 @@ internal sealed class C3DGpuBufferSet
         uint primitive,
         uint indexBuffer,
         int indexCount,
-        bool usePointColors)
+        bool usePointColors, bool textured = false)
     {
-        BeginVertexArrays(gl, usePointColors);
+        BeginVertexArrays(gl, usePointColors, textured);
         try
         {
             gl.BindBuffer(GlElementArrayBuffer, indexBuffer);
@@ -230,15 +236,22 @@ internal sealed class C3DGpuBufferSet
         finally
         {
             gl.BindBuffer(GlElementArrayBuffer, 0);
-            EndVertexArrays(gl, usePointColors);
+            EndVertexArrays(gl, usePointColors, textured);
         }
     }
 
-    private void BeginVertexArrays(OpenGL gl, bool usePointColors)
+    private void BeginVertexArrays(OpenGL gl, bool usePointColors, bool textured)
     {
         gl.BindBuffer(GlArrayBuffer, bufferIds[0]);
         gl.EnableClientState(GlVertexArray);
         gl.VertexPointer(3, GlFloat, VertexStrideBytes, IntPtr.Zero);
+        if (textured)
+        {
+            gl.Color(1.0, 1.0, 1.0);
+            gl.BindBuffer(GlArrayBuffer, bufferIds[6]);
+            gl.EnableClientState(GlTextureCoordArray);
+            gl.TexCoordPointer(2, GlFloat, 2 * sizeof(float), IntPtr.Zero);
+        }
         if (usePointColors)
         {
             gl.EnableClientState(GlColorArray);
@@ -246,13 +259,14 @@ internal sealed class C3DGpuBufferSet
         }
     }
 
-    private static void EndVertexArrays(OpenGL gl, bool usedPointColors)
+    private static void EndVertexArrays(OpenGL gl, bool usedPointColors, bool textured)
     {
         if (usedPointColors)
         {
             gl.DisableClientState(GlColorArray);
         }
 
+        if (textured) gl.DisableClientState(GlTextureCoordArray);
         gl.DisableClientState(GlVertexArray);
         gl.BindBuffer(GlArrayBuffer, 0);
     }

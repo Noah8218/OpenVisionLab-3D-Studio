@@ -15,7 +15,8 @@ internal static class RoiCropWorkbenchVerification
         var lines = new List<string> { "OpenVisionLab 3D ROI / Crop Workbench verification" };
         var passed = 0;
         var total = 0;
-        var root = Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", "RoiCropWorkbench", Guid.NewGuid().ToString("N"));
+        var previousArtifactRoot = Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        var root = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "roi-crop-fixtures", Guid.NewGuid().ToString("N"));
 
         void Check(string name, bool condition, string detail)
         {
@@ -27,6 +28,7 @@ internal static class RoiCropWorkbenchVerification
         try
         {
             Directory.CreateDirectory(root);
+            Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", root);
             var sourcePath = Path.Combine(root, "source.c3d");
             CreateSource().SaveC3D(sourcePath);
             var sourceBytesBefore = File.ReadAllBytes(sourcePath);
@@ -42,7 +44,7 @@ internal static class RoiCropWorkbenchVerification
             var recipePath = Path.Combine(root, "roi-crop.ov3d-recipe.json");
             ToolRecipeDocumentStore.Save(recipePath, document);
 
-            var workbench = new ToolWorkbenchViewModel();
+            using var workbench = new ToolWorkbenchViewModel();
             Check(
                 "catalog exposes typed crop preparation",
                 workbench.Tools.Any(tool => tool.Id == "roi-crop"
@@ -115,7 +117,8 @@ internal static class RoiCropWorkbenchVerification
             Check(
                 "ROI / Crop Preview publishes complete C3D bytes",
                 displayPath is not null
-                && previewBytes.Length > 0,
+                && previewBytes.Length > 0
+                && Path.GetFullPath(displayPath).StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase),
                 displayPath ?? "missing preview path");
             Check(
                 "ROI / Crop Preview cleans temporary siblings",
@@ -278,6 +281,7 @@ internal static class RoiCropWorkbenchVerification
         }
         finally
         {
+            Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", previousArtifactRoot);
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
 

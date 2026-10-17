@@ -32,6 +32,10 @@ internal static class ShellViewerHostCoordinatorVerification
         }
 
         var dispatcher = Dispatcher.CurrentDispatcher;
+        var validationPlan = ShellViewerHostPolicy.Resolve(ShellWorkspaceMode.Validate, teachingCaptureActive: true);
+        Check("Validation retains the canonical Workbench Viewer host",
+            validationPlan.Target == ShellViewerHostTarget.Workbench && !validationPlan.CancelTeachingCapture,
+            validationPlan.ToString());
         var mode = ShellWorkspaceMode.Expert;
         var closed = false;
         var expertShown = 0;

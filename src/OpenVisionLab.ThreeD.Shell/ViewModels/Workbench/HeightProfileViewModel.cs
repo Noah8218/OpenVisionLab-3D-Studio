@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 
@@ -16,11 +17,15 @@ public sealed class HeightProfileViewModel : INotifyPropertyChanged, IDisposable
         nameof(ProfileVisible),
         nameof(ProfileBodyVisible),
         nameof(ProfileHasEndpoints),
+        nameof(ProfileHasInput),
+        nameof(ProfileAllSamplesMissing),
         nameof(ProfileIsPicking),
         nameof(ProfileGridDistance),
+        nameof(ProfileDrawerGridDistance),
         nameof(ProfileHeightDelta),
         nameof(ProfileSummary),
         nameof(ProfileEndpointSummary),
+        nameof(ProfileFooterEndpointSummary),
         nameof(ProfileRange),
         nameof(ProfilePathData),
         nameof(ProfileValidSampleCount),
@@ -30,7 +35,10 @@ public sealed class HeightProfileViewModel : INotifyPropertyChanged, IDisposable
         nameof(ProfileLinkedCursorY),
         nameof(ProfileLinkedCursorMarkerLeft),
         nameof(ProfileLinkedCursorMarkerTop),
-        nameof(ProfileLinkedCursorSummary)
+        nameof(ProfileLinkedCursorSummary),
+        nameof(ProfileDrawerLinkedCursorSummary),
+        nameof(ProfileState),
+        nameof(ProfileIsCollapsed)
     ];
 
     private IOpenVisionThreeDViewerHost? viewerHost;
@@ -55,9 +63,14 @@ public sealed class HeightProfileViewModel : INotifyPropertyChanged, IDisposable
     public bool ProfileVisible => Profile.Visible;
     public bool ProfileBodyVisible => Profile.Visible && !Profile.IsCollapsed;
     public bool ProfileHasEndpoints => Profile.HasEndpoints;
+    public bool ProfileHasInput => viewerHost?.HostState.C3DSampleVisible == true;
+    public bool ProfileAllSamplesMissing => Profile.HasEndpoints && Profile.ValidSampleCount == 0;
     public bool ProfileIsPicking => Profile.IsPicking;
-    public string ProfileGridDistance => Profile.GridDistance;
+    public bool ProfileIsCollapsed => Profile.Visible && Profile.IsCollapsed;
+    public string ProfileGridDistance => Profile.HasEndpoints ? Profile.GridDistanceCells.ToString("0.#", CultureInfo.InvariantCulture) : Profile.GridDistance;
+    public string ProfileDrawerGridDistance => Profile.HasEndpoints ? Profile.GridDistanceCells.ToString("0.0", CultureInfo.InvariantCulture) : Profile.GridDistance;
     public string ProfileHeightDelta => Profile.HeightDelta;
+    public ViewerHostProfileState ProfileState => Profile;
 
     private bool CanExecute(ViewerHeightProfileAction action) => action switch
     {
@@ -70,6 +83,10 @@ public sealed class HeightProfileViewModel : INotifyPropertyChanged, IDisposable
     public string ProfileSummary => Profile.Summary;
 
     public string ProfileEndpointSummary => Profile.EndpointSummary;
+
+    public string ProfileFooterEndpointSummary => Profile.HasEndpoints
+        ? $"A {Profile.FirstColumn}, {Profile.FirstRow}  B {Profile.SecondColumn}, {Profile.SecondRow}"
+        : string.Empty;
 
     public string ProfileRange => Profile.Range;
 
@@ -90,6 +107,10 @@ public sealed class HeightProfileViewModel : INotifyPropertyChanged, IDisposable
     public double ProfileLinkedCursorMarkerTop => Profile.LinkedCursorMarkerTop;
 
     public string ProfileLinkedCursorSummary => Profile.LinkedCursorSummary;
+
+    public string ProfileDrawerLinkedCursorSummary => Profile.LinkedCursorVisible && double.IsFinite(Profile.LinkedCursorRawHeight) && double.IsFinite(Profile.LinkedCursorDistanceCells)
+        ? $"{Profile.LinkedCursorDistanceCells.ToString("0.0", CultureInfo.InvariantCulture)}{ThreeDLocalization.Shared.Resolve("ThreeD.Profile.Cells", " 셀", " cells")} · {Profile.LinkedCursorRawHeight.ToString("0.##", CultureInfo.InvariantCulture)}"
+        : string.Empty;
 
     public void Dispose()
     {
@@ -114,12 +135,13 @@ public sealed class HeightProfileViewModel : INotifyPropertyChanged, IDisposable
 
     private void OnHostStateChanged(object? sender, ViewerHostStateChangedEventArgs args)
     {
-        if (isDisposed || args.PropertyName != nameof(ViewerHostState.Profile))
+        if (isDisposed || (args.PropertyName != nameof(ViewerHostState.Profile) && args.PropertyName != nameof(ViewerHostState.C3DSampleVisible)))
         {
             return;
         }
 
         profileActionCommand.RaiseCanExecuteChanged();
+        traceCursorCommand.RaiseCanExecuteChanged();
         foreach (var propertyName in BindingPropertyNames)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

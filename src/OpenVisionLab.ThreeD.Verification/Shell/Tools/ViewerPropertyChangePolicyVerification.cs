@@ -407,7 +407,7 @@ internal static class ViewerPropertyChangePolicyVerification
         Check(
             "host state projects C3D thickness evidence display snapshot",
             thicknessEvidenceState.Visible
-            && thicknessEvidenceState.Summary.Contains("mean 1.250", StringComparison.Ordinal)
+            && thicknessEvidenceState.Summary.Contains("mean 1.25", StringComparison.Ordinal)
             && thicknessEvidenceState.Details.Contains("row 1, column 2", StringComparison.Ordinal)
             && Math.Abs(thicknessEvidenceState.Mean - 1.25) < 0.001
             && Math.Abs(thicknessEvidenceState.MinimumMeasured - 0.50) < 0.001

@@ -112,7 +112,7 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
 
     public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No residual evidence until Preview completes."
-        : $"{previewOutput.OutputRole} | P2V {previewOutput.PeakToValleyRawHeight:G6} raw-height | RMS {previewOutput.RmsRawHeightResidual:G6} | {previewOutput.ValidSampleCount:N0} valid samples";
+        : $"{previewOutput.OutputRole} | P2V {previewOutput.PeakToValleyRawHeight:0.##} raw-height | RMS {previewOutput.RmsRawHeightResidual:0.##} | {previewOutput.ValidSampleCount:N0} valid samples";
 
     public bool TryGetPublishedOutput(
         string outputEntityId,

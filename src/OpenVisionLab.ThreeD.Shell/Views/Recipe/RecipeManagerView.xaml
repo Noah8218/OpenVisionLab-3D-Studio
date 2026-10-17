@@ -496,7 +496,6 @@
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                             <TextBlock x:Name="RecipeSectionsTitle" FontSize="14" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeSectionsTitle, Korean='레시피 구성', English='Recipe structure'}" />
-                            <TextBlock x:Name="RecipeSectionsHint" Grid.Row="1" Margin="0,10,0,8" Text="{i18n:ThreeDText Key=ThreeD.R19.RecipeSectionsHint, Korean='저장된 설정 보기 · 수정은 티칭에서', English='Review saved settings · edit in teaching'}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
                             <ListBox x:Name="RecipeBrowserSections"
                                      Grid.Row="2"
                                      SelectedValuePath="Tag"

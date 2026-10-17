@@ -86,7 +86,7 @@ public sealed partial class MainWindowViewModel
             $"Profile: {sourceName} section | row {rowIndex} | samples {sampleCount}");
         SectionProfileRange = string.Create(
             CultureInfo.InvariantCulture,
-            $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
+            $"Range: min {min:0.##}, max {max:0.##}, mean {mean:0.##} raw-height");
         SectionProfilePathData = string.IsNullOrWhiteSpace(pathData) ? "M 0,30 L 240,30" : pathData;
 
         if (SelectedSelectionMode == "Section Plane")
@@ -106,7 +106,7 @@ public sealed partial class MainWindowViewModel
             $"Height map: {sourceWidth} x {sourceHeight} C3D | rendered {renderedPoints:N0} points");
         HeightMapRange = string.Create(
             CultureInfo.InvariantCulture,
-            $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
+            $"Range: min {min:0.##}, max {max:0.##}, mean {mean:0.##} raw-height");
     }
 
     public void ClearHeightMap()
@@ -193,7 +193,7 @@ public sealed partial class MainWindowViewModel
 
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nActual: {input.ActualSource.Name}\nNominal: {input.NominalSource.Name}\nDirection: {NominalActualComparisonInput.Direction}\nTolerance: [{NominalActual.LowerTolerance:G6}, {NominalActual.UpperTolerance:G6}] {input.Unit}\nFrame: {input.FrameId}\nAlignment: {input.AlignmentId}\n{RecipeOutputPolicySummary}");
+            $"Recipe: {recipeFileName}\nActual: {input.ActualSource.Name}\nNominal: {input.NominalSource.Name}\nDirection: {NominalActualComparisonInput.Direction}\nTolerance: [{NominalActual.LowerTolerance:0.##}, {NominalActual.UpperTolerance:0.##}] {input.Unit}\nFrame: {input.FrameId}\nAlignment: {input.AlignmentId}\n{RecipeOutputPolicySummary}");
     }
 
     private static string FormatNominalActualSource(
@@ -204,7 +204,7 @@ public sealed partial class MainWindowViewModel
     private static string FormatModelTransform(ModelTransform transform) =>
         string.Create(
             CultureInfo.InvariantCulture,
-            $"T({transform.TranslateX:F3}, {transform.TranslateY:F3}, {transform.TranslateZ:F3}) | R({transform.RotateXDegrees:F1}, {transform.RotateYDegrees:F1}, {transform.RotateZDegrees:F1}) | S {transform.Scale:F3}");
+            $"T({transform.TranslateX:0.##}, {transform.TranslateY:0.##}, {transform.TranslateZ:0.##}) | R({transform.RotateXDegrees:F1}, {transform.RotateYDegrees:F1}, {transform.RotateZDegrees:F1}) | S {transform.Scale:0.##}");
 
     private static bool ModelTransformIsIdentity(ModelTransform transform) =>
         transform.TranslateX == 0.0
@@ -220,39 +220,39 @@ public sealed partial class MainWindowViewModel
         var thicknessLine = ThicknessConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nThickness limits: [{ThicknessMinimum:F3}, {ThicknessMaximum:F3}] {ThicknessUnit}")
+                $"\nThickness limits: [{ThicknessMinimum:0.##}, {ThicknessMaximum:0.##}] {ThicknessUnit}")
             : string.Empty;
         var warpageLine = WarpageConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nWarpage P2V limit: {WarpageMaximumPeakToValley:F3} {WarpageUnit}")
+                $"\nWarpage P2V limit: {WarpageMaximumPeakToValley:0.##} {WarpageUnit}")
             : string.Empty;
         var flatnessLine = PlaneFlatnessConfigured
-            ? string.Create(CultureInfo.InvariantCulture, $"\nFlatness tolerance: {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}")
+            ? string.Create(CultureInfo.InvariantCulture, $"\nFlatness tolerance: {PlaneFlatnessTolerance:0.##} {PlaneFlatnessUnit}")
             : string.Empty;
         var pointPairLine = PointPairDimensionsConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nDimensions expected: D {PointPairExpectedDistance:F3}, W {PointPairExpectedWidth:F3} {PointPairDimensionsUnit}, A {PointPairExpectedAngleDegrees:F3} deg")
+                $"\nDimensions expected: D {PointPairExpectedDistance:0.##}, W {PointPairExpectedWidth:0.##} {PointPairDimensionsUnit}, A {PointPairExpectedAngleDegrees:0.##} deg")
             : string.Empty;
         var gapFlushLine = GapFlushConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nGap / Flush expected: {GapFlushExpectedGap:F3} {GapFlushGapUnit}, {GapFlushExpectedFlush:F3} {GapFlushFlushUnit}")
+                $"\nGap / Flush expected: {GapFlushExpectedGap:0.##} {GapFlushGapUnit}, {GapFlushExpectedFlush:0.##} {GapFlushFlushUnit}")
             : string.Empty;
         var volumeLine = VolumeConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nVolume expected net: {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} {VolumeUnit}")
+                $"\nVolume expected net: {VolumeExpectedNet:0.##} +/- {VolumeTolerance:0.##} {VolumeUnit}")
             : string.Empty;
         var crossSectionLine = CrossSectionConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nCross-section expected: width {CrossSectionExpectedWidth:F3} {CrossSectionWidthUnit}, height {CrossSectionExpectedHeightRange:F3} {CrossSectionHeightUnit}")
+                $"\nCross-section expected: width {CrossSectionExpectedWidth:0.##} {CrossSectionWidthUnit}, height {CrossSectionExpectedHeightRange:0.##} {CrossSectionHeightUnit}")
             : string.Empty;
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{thicknessLine}{warpageLine}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}{crossSectionLine}\n{RecipeOutputPolicySummary}");
+            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:0.##} {RecipeSourceUnit}{thicknessLine}{warpageLine}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}{crossSectionLine}\n{RecipeOutputPolicySummary}");
     }
 
     private void RefreshRecipeParameterSummary()
@@ -268,7 +268,7 @@ public sealed partial class MainWindowViewModel
         var flatnessLine = PlaneFlatnessConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nReference ROI ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}) half ({PlaneFlatnessReferenceHalfWidth:F3}, {PlaneFlatnessReferenceHalfDepth:F3})")
+                $"\nReference ROI ({PlaneFlatnessReferenceCenterX:0.##}, {PlaneFlatnessReferenceCenterZ:0.##}) half ({PlaneFlatnessReferenceHalfWidth:0.##}, {PlaneFlatnessReferenceHalfDepth:0.##})")
             : string.Empty;
         var pointPairLine = pointPairFirstReference is not null && pointPairSecondReference is not null
             ? $"\nPoint pair {pointPairFirstReference.Id} ({pointPairFirstReference.Row}, {pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row}, {pointPairSecondReference.Column})"
@@ -276,14 +276,14 @@ public sealed partial class MainWindowViewModel
         var volumeLine = VolumeConfigured
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"\nVolume reference ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}); measurement ({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3})")
+                $"\nVolume reference ({PlaneFlatnessReferenceCenterX:0.##}, {PlaneFlatnessReferenceCenterZ:0.##}); measurement ({RecipeRoiLeftCenterX:0.##}, {RecipeRoiLeftCenterZ:0.##})")
             : string.Empty;
         var crossSectionLine = CrossSectionConfigured
             ? $"\nCross-section row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn}"
             : string.Empty;
         RecipeParameterSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){thicknessLine}{warpageLine}{flatnessLine}{pointPairLine}{volumeLine}{crossSectionLine}");
+            $"Transform T({RecipeTransformTranslateX:0.##}, {RecipeTransformTranslateY:0.##}, {RecipeTransformTranslateZ:0.##}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:0.##}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:0.##}, {RecipeRoiLeftCenterZ:0.##}) R({RecipeRoiRightCenterX:0.##}, {RecipeRoiRightCenterZ:0.##}){thicknessLine}{warpageLine}{flatnessLine}{pointPairLine}{volumeLine}{crossSectionLine}");
     }
 
     private void SetThicknessParameter(ref int storage, int value, string propertyName, string invalidationReason)
@@ -391,7 +391,7 @@ public sealed partial class MainWindowViewModel
     }
 
     private static string FormatVector(Vector3 point) =>
-        string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
+        string.Create(CultureInfo.InvariantCulture, $"({point.X:0.##}, {point.Y:0.##}, {point.Z:0.##})");
 
     private static double CoerceFinite(double value, double fallback) =>
         double.IsFinite(value) ? value : fallback;

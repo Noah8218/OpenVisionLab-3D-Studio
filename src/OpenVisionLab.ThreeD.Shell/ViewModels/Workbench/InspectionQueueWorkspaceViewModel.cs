@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Windows.Input;
 using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -36,7 +38,8 @@ public enum InspectionQueueRunScope
     Selected,
     All,
     Checked,
-    Remaining
+    Remaining,
+    FailedAndError
 }
 
 public sealed record InspectionQueueRunOutcome(
@@ -44,7 +47,10 @@ public sealed record InspectionQueueRunOutcome(
     InspectionRunRecord? Record,
     string? RecordPath,
     string Message,
-    bool RecordSaveFailed = false);
+    bool RecordSaveFailed = false)
+{
+    public IReadOnlyDictionary<string, HeightMeasurementColorSnapshot> MeasurementColors { get; init; } = new Dictionary<string, HeightMeasurementColorSnapshot>();
+}
 
 public sealed record InspectionQueueExportRow(
     int Order,
@@ -83,10 +89,14 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     private readonly RelayCommand checkVisibleCommand;
     private readonly RelayCommand uncheckVisibleCommand;
     private readonly RelayCommand clearSearchCommand;
+    private readonly RelayCommand setStatusFilterCommand;
+    private readonly RelayCommand setVisibleCheckedCommand;
     private readonly RelayCommand runSelectedCommand;
     private readonly RelayCommand runAllCommand;
     private readonly RelayCommand runCheckedCommand;
     private readonly RelayCommand runRemainingCommand;
+    private readonly RelayCommand runScopeCommand;
+    private InspectionQueueRunScope selectedRunScope = InspectionQueueRunScope.Checked;
     private readonly RelayCommand stopCommand;
     private readonly RelayCommand openRunRecordCommand;
     private readonly RelayCommand openPreviousRunRecordCommand;
@@ -99,6 +109,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     private (string Path, string Sha256)? recipeContext;
     private InspectionQueueSampleItem? selectedSample;
     private InspectionQueueStepResultItem? selectedStepResult;
+    private InspectionQueueOutputResultItem? selectedOutputResult;
     private InspectionQueueStatusFilter statusFilter;
     private bool showOnlyFailedSteps;
     private string searchText = string.Empty;
@@ -144,10 +155,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         checkVisibleCommand = new RelayCommand(_ => SetVisibleChecked(true), _ => CanEditQueue && visibleSamples.Count > 0);
         uncheckVisibleCommand = new RelayCommand(_ => SetVisibleChecked(false), _ => CanEditQueue && visibleSamples.Count > 0);
         clearSearchCommand = new RelayCommand(_ => SearchText = string.Empty, _ => !string.IsNullOrEmpty(SearchText));
+        setStatusFilterCommand = new RelayCommand(parameter => SetStatusFilter(parameter as string), _ => !IsDisposed);
+        setVisibleCheckedCommand = new RelayCommand(parameter => SetVisibleChecked(parameter is true), _ => CanEditQueue && visibleSamples.Count > 0);
         runSelectedCommand = new RelayCommand(_ => StartRun(InspectionQueueRunScope.Selected), _ => CanRun(InspectionQueueRunScope.Selected));
         runAllCommand = new RelayCommand(_ => StartRun(InspectionQueueRunScope.All), _ => CanRun(InspectionQueueRunScope.All));
         runCheckedCommand = new RelayCommand(_ => StartRun(InspectionQueueRunScope.Checked), _ => CanRun(InspectionQueueRunScope.Checked));
         runRemainingCommand = new RelayCommand(_ => StartRun(InspectionQueueRunScope.Remaining), _ => CanRun(InspectionQueueRunScope.Remaining));
+        runScopeCommand = new RelayCommand(_ => StartRun(SelectedRunScope), _ => CanRun(SelectedRunScope));
         stopCommand = new RelayCommand(_ => Stop(), _ => IsRunning);
         openRunRecordCommand = new RelayCommand(
             _ => OpenRunRecordRequested?.Invoke(this, new InspectionQueueRunRecordRequestEventArgs(SelectedSample!.RunRecordPath!)),
@@ -189,10 +203,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     public ICommand CheckVisibleCommand => checkVisibleCommand;
     public ICommand UncheckVisibleCommand => uncheckVisibleCommand;
     public ICommand ClearSearchCommand => clearSearchCommand;
+    public ICommand SetStatusFilterCommand => setStatusFilterCommand;
+    public ICommand SetVisibleCheckedCommand => setVisibleCheckedCommand;
     public ICommand RunSelectedCommand => runSelectedCommand;
     public ICommand RunAllCommand => runAllCommand;
     public ICommand RunCheckedCommand => runCheckedCommand;
     public ICommand RunRemainingCommand => runRemainingCommand;
+    public ICommand RunScopeCommand => runScopeCommand;
     public ICommand StopCommand => stopCommand;
     public ICommand OpenRunRecordCommand => openRunRecordCommand;
     public ICommand OpenPreviousRunRecordCommand => openPreviousRunRecordCommand;
@@ -210,6 +227,10 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     public bool IsIdle => !IsRunning;
     public bool HasSamples => samples.Count > 0;
     public bool HasVisibleSamples => visibleSamples.Count > 0;
+    public bool AreVisibleSamplesChecked => visibleSamples.Count > 0 && visibleSamples.All(item => item.IsChecked);
+    public string EmptyQueueText => HasSamples
+        ? Localize("검색·상태 필터에 맞는 파일이 없습니다.", "No files match the search and status filter.")
+        : Localize("검사할 파일이나 폴더를 추가하세요.", "Add files or a folder to inspect.");
     public bool HasSelectedSample => SelectedSample is not null;
     public bool ShowOnlyFailedSteps
     {
@@ -220,10 +241,49 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             showOnlyFailedSteps = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(VisibleStepResults));
+            OnPropertyChanged(nameof(VisibleOutputResults));
+            OnPropertyChanged(nameof(SelectedResultNotice));
         }
     }
     public IReadOnlyList<InspectionQueueStepResultItem> VisibleStepResults =>
         (SelectedSample?.Steps ?? []).Where(item => !ShowOnlyFailedSteps || item.Status == nameof(ResultStatus.Fail)).ToArray();
+    public IReadOnlyList<InspectionQueueOutputResultItem> VisibleOutputResults => VisibleStepResults.SelectMany(step => step.Outputs).ToArray();
+    public string SelectedResultNotice => SelectedSample is not { } sample
+        ? Localize("결과를 볼 파일을 선택하세요.", "Select a file to view its results.")
+        : sample.Steps.Count == 0
+            ? sample.State == InspectionQueueItemState.Untested
+                ? Localize("미검사 · 검사 버튼을 눌러 실행하세요.", "Untested · use Inspect to run this file.")
+                : $"{sample.StateText} · {sample.Message}"
+            : ShowOnlyFailedSteps && VisibleStepResults.Count == 0
+                ? Localize("선택 파일에 NG 단계가 없습니다.", "The selected file has no failed steps.") : string.Empty;
+    public IReadOnlyList<InspectionQueueMeasurementSummary> MeasurementSummaries
+    {
+        get
+        {
+            var groups = samples.Where(sample => sample.Record is not null)
+                .SelectMany(sample => (sample.Record!.Steps ?? []).SelectMany(step => step.Metrics
+                    .Where(metric => metric.Status.HasValue)
+                    .Select(metric => (step, metric, point: InspectionQueueMeasurementPoint.FromRecord(sample, step, metric),
+                        settings: step.SemanticFingerprint ?? sample.Record.Recipe.Sha256))))
+                .GroupBy(item => (item.step.Id, item.metric.Name, item.metric.Kind, item.metric.Unit, item.settings)).ToArray();
+            return groups.Select(group =>
+            {
+                var values = group.Where(item => item.step.Status != ResultStatus.Error && double.IsFinite(item.metric.Value))
+                    .Select(item => item.metric.Value).ToArray();
+                return new InspectionQueueMeasurementSummary(group.First().step.ToolName, group.Key.Name, group.Key.Unit,
+                    group.Count(item => item.step.Status != ResultStatus.Error && item.metric.Status == ResultStatus.Pass),
+                    group.Count(item => item.step.Status != ResultStatus.Error && item.metric.Status == ResultStatus.Fail),
+                    group.Count(item => item.step.Status == ResultStatus.Error), values.Length == 0 ? null : values.Min(),
+                    values.Length == 0 ? null : values.Sum(value => value / values.Length), values.Length == 0 ? null : values.Max())
+                {
+                    StepId = group.Key.Id, Kind = group.Key.Kind, SettingsIdentity = group.Key.settings,
+                    HasMultipleSettings = groups.Count(other => other.Key.Id == group.Key.Id && other.Key.Name == group.Key.Name
+                        && other.Key.Kind == group.Key.Kind && other.Key.Unit == group.Key.Unit) > 1,
+                    Points = Array.AsReadOnly(group.Select(item => item.point).ToArray())
+                };
+            }).ToArray();
+        }
+    }
     public bool IsStatusFilterAll => statusFilter == InspectionQueueStatusFilter.All;
     public bool IsStatusFilterUntested => statusFilter == InspectionQueueStatusFilter.Untested;
     public bool IsStatusFilterPass => statusFilter == InspectionQueueStatusFilter.Pass;
@@ -233,6 +293,25 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     public bool IsStatusFilterCancelled => statusFilter == InspectionQueueStatusFilter.Cancelled;
     public int AllCount => samples.Count;
     public int CheckedCount => samples.Count(item => item.IsChecked);
+    public InspectionQueueRunScope SelectedRunScope
+    {
+        get => selectedRunScope;
+        set
+        {
+            if (!Enum.IsDefined(value) || IsRunning || selectedRunScope == value) return;
+            selectedRunScope = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(RunScopeTargetCount));
+            OnPropertyChanged(nameof(RunScopeLabel));
+            runScopeCommand.RaiseCanExecuteChanged();
+        }
+    }
+    public int RunScopeTargetCount => GetTargets(SelectedRunScope).Count;
+    public string RunScopeLabel => Localize($"{SelectedRunScope switch { InspectionQueueRunScope.Selected => "선택", InspectionQueueRunScope.All => "전체", InspectionQueueRunScope.Checked => "체크", InspectionQueueRunScope.Remaining => "남은 파일", _ => "NG·오류만" }} {RunScopeTargetCount}개 검사",
+        $"Inspect {RunScopeTargetCount} {SelectedRunScope switch { InspectionQueueRunScope.Selected => "selected", InspectionQueueRunScope.All => "all", InspectionQueueRunScope.Checked => "checked", InspectionQueueRunScope.Remaining => "remaining", _ => "NG/error" }}");
+    public int RemainingCount => GetTargets(InspectionQueueRunScope.Remaining).Count;
+    public string RunRemainingLabel => Localize($"남은 파일 {RemainingCount}", $"Remaining files {RemainingCount}");
+    public string InspectionBasisText => recipeContext is { } context ? Path.GetFileName(context.Path) : SavedRecipeText;
     public string RunCheckedLabel => Localize($"체크한 {CheckedCount}개 검사", $"Inspect {CheckedCount} checked");
     public int PassCount => Count(InspectionQueueItemState.Pass);
     public int FailCount => Count(InspectionQueueItemState.Fail);
@@ -240,9 +319,14 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     public int ErrorCount => Count(InspectionQueueItemState.Error);
     public int CancelledCount => Count(InspectionQueueItemState.Cancelled);
     public int UntestedCount => Count(InspectionQueueItemState.Untested);
+    public int RunningCount => Count(InspectionQueueItemState.Running);
+    public int ProcessedCount => PassCount + FailCount + WarningCount + ErrorCount;
+    public string ProcessedCountText => Localize($"검사 완료 {ProcessedCount} / {AllCount}", $"Inspected {ProcessedCount} / {AllCount}");
+    public string PassRateText => ProcessedCount == 0 ? "—%" : (100d * PassCount / ProcessedCount).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+    public string ProcessingSummaryText => Localize($"처리 {ProcessedCount}/{AllCount} · 체크 {CheckedCount}", $"Processed {ProcessedCount}/{AllCount} · checked {CheckedCount}");
     public string CountsText => Localize(
-        $"전체 {AllCount} · 체크 {CheckedCount} · 통과 {PassCount} · NG {FailCount} · 주의 {WarningCount} · 오류 {ErrorCount} · 취소 {CancelledCount} · 미검사 {UntestedCount}",
-        $"All {AllCount} · checked {CheckedCount} · pass {PassCount} · fail {FailCount} · warning {WarningCount} · error {ErrorCount} · cancelled {CancelledCount} · untested {UntestedCount}");
+        $"전체 {AllCount} · 체크 {CheckedCount} · 통과 {PassCount} · NG {FailCount} · 주의 {WarningCount} · 오류 {ErrorCount} · 취소 {CancelledCount} · 미검사 {UntestedCount} · 검사 중 {RunningCount}",
+        $"All {AllCount} · checked {CheckedCount} · pass {PassCount} · fail {FailCount} · warning {WarningCount} · error {ErrorCount} · cancelled {CancelledCount} · untested {UntestedCount} · running {RunningCount}");
     public string SavedRecipeText => getRecipePath() is { Length: > 0 } path && File.Exists(path)
         ? Path.GetFileName(path)
         : Localize("저장된 레시피 없음", "No saved recipe");
@@ -287,10 +371,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             if (selectedSample is not null) selectedSample.IsSelected = false;
             selectedSample = value;
             SelectedStepResult = null;
+            SelectedOutputResult = null;
             if (selectedSample is not null) selectedSample.IsSelected = true;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedSample));
             OnPropertyChanged(nameof(VisibleStepResults));
+            OnPropertyChanged(nameof(VisibleOutputResults));
+            OnPropertyChanged(nameof(SelectedResultNotice));
             SelectedSampleChanged?.Invoke(this, new InspectionQueueSelectionChangedEventArgs(value));
             RefreshCommands();
         }
@@ -317,6 +404,24 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             if (ReferenceEquals(selectedStepResult, value)) return;
             if (value is not null && SelectedSample?.Steps.Contains(value) != true) return;
             selectedStepResult = value;
+            if (!ReferenceEquals(selectedOutputResult?.Step, value))
+            {
+                selectedOutputResult = value?.Outputs.FirstOrDefault();
+                OnPropertyChanged(nameof(SelectedOutputResult));
+            }
+            OnPropertyChanged();
+        }
+    }
+
+    public InspectionQueueOutputResultItem? SelectedOutputResult
+    {
+        get => selectedOutputResult;
+        set
+        {
+            if (ReferenceEquals(selectedOutputResult, value)) return;
+            if (value is not null && SelectedSample?.Steps.Any(step => step.Outputs.Contains(value)) != true) return;
+            selectedOutputResult = value;
+            if (value is not null) SelectedStepResult = value.Step;
             OnPropertyChanged();
         }
     }
@@ -429,8 +534,11 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         UpdateProgress();
         OnPropertyChanged(nameof(RecipeReadinessText));
         OnPropertyChanged(nameof(SavedRecipeText));
+        OnPropertyChanged(nameof(InspectionBasisText));
         OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(VisibleStepResults));
+        OnPropertyChanged(nameof(VisibleOutputResults));
+        OnPropertyChanged(nameof(SelectedResultNotice));
         OnPropertyChanged(nameof(HasPendingRecordSave));
         foreach (var item in samples) item.RefreshResultPresentation();
     }
@@ -443,8 +551,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         OnPropertyChanged(nameof(IsIdle));
         OnPropertyChanged(nameof(RecipeReadinessText));
         OnPropertyChanged(nameof(SavedRecipeText));
+        OnPropertyChanged(nameof(InspectionBasisText));
         OnPropertyChanged(nameof(RunCheckedLabel));
+        OnPropertyChanged(nameof(RunScopeTargetCount));
+        OnPropertyChanged(nameof(RunScopeLabel));
         OnPropertyChanged(nameof(VisibleStepResults));
+        OnPropertyChanged(nameof(VisibleOutputResults));
+        OnPropertyChanged(nameof(SelectedResultNotice));
         addFilesCommand.RaiseCanExecuteChanged();
         addFolderCommand.RaiseCanExecuteChanged();
         removeSelectedCommand.RaiseCanExecuteChanged();
@@ -453,10 +566,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         checkVisibleCommand.RaiseCanExecuteChanged();
         uncheckVisibleCommand.RaiseCanExecuteChanged();
         clearSearchCommand.RaiseCanExecuteChanged();
+        setStatusFilterCommand.RaiseCanExecuteChanged();
+        setVisibleCheckedCommand.RaiseCanExecuteChanged();
         runSelectedCommand.RaiseCanExecuteChanged();
         runAllCommand.RaiseCanExecuteChanged();
         runCheckedCommand.RaiseCanExecuteChanged();
         runRemainingCommand.RaiseCanExecuteChanged();
+        runScopeCommand.RaiseCanExecuteChanged();
         stopCommand.RaiseCanExecuteChanged();
         openRunRecordCommand.RaiseCanExecuteChanged();
         openPreviousRunRecordCommand.RaiseCanExecuteChanged();
@@ -568,26 +684,26 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
                     return;
                 }
 
-                var input = validateInput(document, item.SourcePath);
-                if (!input.IsCompatible)
-                {
-                    item.SetError(input.Message);
-                    completedRunTargetCount++;
-                    UpdateProgress();
-                    continue;
-                }
-
-                item.SetRunning();
-                SelectedSample = item;
                 try
                 {
+                    var input = validateInput(document, item.SourcePath);
+                    if (!input.IsCompatible)
+                    {
+                        item.SetError(input.Message);
+                        completedRunTargetCount++;
+                        UpdateProgress();
+                        continue;
+                    }
+
+                    item.SetRunning();
+                    SelectedSample = item;
                     var outcome = await runInput(document, recipePath, item.SourcePath);
                     if (IsDisposed) return;
                     if (outcome.RecordSaveFailed)
                     {
                         pendingRecordSample = item;
                         pendingRecordDocument = document;
-                        item.SetPendingRecord(outcome.Record, outcome.Message, document);
+                        item.SetPendingRecord(outcome.Record, outcome.Message, document, outcome.MeasurementColors);
                         SummaryText = Localize($"검사 중단 · 계산 결과를 보존했습니다. 기록 저장 재시도가 필요합니다. {outcome.Message}", $"Inspection stopped · calculation retained. Retry saving its Run Record. {outcome.Message}");
                         SelectedSampleChanged?.Invoke(this, new InspectionQueueSelectionChangedEventArgs(item));
                         return;
@@ -607,7 +723,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
                     }
                     else
                     {
-                        item.SetRecord(outcome.Record, outcome.RecordPath, document);
+                        item.SetRecord(outcome.Record, outcome.RecordPath, document, outcome.MeasurementColors);
                     }
 
                     if (ReferenceEquals(SelectedSample, item))
@@ -695,6 +811,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         InspectionQueueRunScope.Selected => SelectedSample is { } selected ? [selected] : [],
         InspectionQueueRunScope.All => samples.ToArray(),
         InspectionQueueRunScope.Checked => samples.Where(item => item.IsChecked).ToArray(),
+        InspectionQueueRunScope.FailedAndError => samples.Where(item => item.State is InspectionQueueItemState.Fail or InspectionQueueItemState.Error).ToArray(),
         _ => samples.Where(item => item.State is InspectionQueueItemState.Untested
             or InspectionQueueItemState.Cancelled
             or InspectionQueueItemState.Error).ToArray()
@@ -750,11 +867,11 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             var outcome = retryRecordSave();
             if (outcome.RecordSaveFailed || outcome.Record is null || outcome.RecordPath is null)
             {
-                item.SetPendingRecord(outcome.Record, outcome.Message, pendingRecordDocument);
+                item.SetPendingRecord(outcome.Record, outcome.Message, pendingRecordDocument, outcome.MeasurementColors);
                 SummaryText = outcome.Message;
                 return;
             }
-            item.SetRecord(outcome.Record, outcome.RecordPath, pendingRecordDocument);
+            item.SetRecord(outcome.Record, outcome.RecordPath, pendingRecordDocument, outcome.MeasurementColors);
             pendingRecordSample = null;
             pendingRecordDocument = null;
             completedRunTargetCount++;
@@ -762,6 +879,12 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             SetLocalizedSummary("기록을 저장했습니다. 남은 파일은 직접 실행하세요.", "Run Record saved. Explicitly inspect remaining files to continue.");
             SelectedSampleChanged?.Invoke(this, new InspectionQueueSelectionChangedEventArgs(SelectedSample));
             RefreshCounts();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException
+            or ArgumentException or InvalidOperationException or NotSupportedException or OverflowException)
+        {
+            item.SetPendingRecord(item.Record, exception.Message, pendingRecordDocument, item.MeasurementColors);
+            SummaryText = exception.Message;
         }
         finally
         {
@@ -820,10 +943,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
 
     private void OnSamplePropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(InspectionQueueSampleItem.Steps)) OnPropertyChanged(nameof(MeasurementSummaries));
         if (ReferenceEquals(sender, SelectedSample) && args.PropertyName == nameof(InspectionQueueSampleItem.Steps))
         {
             SelectedStepResult = null;
             OnPropertyChanged(nameof(VisibleStepResults));
+            OnPropertyChanged(nameof(VisibleOutputResults));
+            OnPropertyChanged(nameof(SelectedResultNotice));
         }
         if (args.PropertyName == nameof(InspectionQueueSampleItem.IsChecked))
         {
@@ -843,14 +969,26 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         OnPropertyChanged(nameof(AllCount));
         OnPropertyChanged(nameof(CheckedCount));
         OnPropertyChanged(nameof(RunCheckedLabel));
+        OnPropertyChanged(nameof(RunScopeTargetCount));
+        OnPropertyChanged(nameof(RunScopeLabel));
+        OnPropertyChanged(nameof(RemainingCount));
+        OnPropertyChanged(nameof(RunRemainingLabel));
         OnPropertyChanged(nameof(PassCount));
         OnPropertyChanged(nameof(FailCount));
         OnPropertyChanged(nameof(WarningCount));
         OnPropertyChanged(nameof(ErrorCount));
         OnPropertyChanged(nameof(CancelledCount));
         OnPropertyChanged(nameof(UntestedCount));
+        OnPropertyChanged(nameof(RunningCount));
+        OnPropertyChanged(nameof(ProcessedCountText));
+        OnPropertyChanged(nameof(PassRateText));
+        OnPropertyChanged(nameof(ProcessedCount));
+        OnPropertyChanged(nameof(ProcessingSummaryText));
+        OnPropertyChanged(nameof(AreVisibleSamplesChecked));
+        OnPropertyChanged(nameof(EmptyQueueText));
         OnPropertyChanged(nameof(CountsText));
         OnPropertyChanged(nameof(HasSamples));
+        OnPropertyChanged(nameof(MeasurementSummaries));
     }
 
     private int Count(InspectionQueueItemState state) => samples.Count(item => item.State == state);
@@ -867,6 +1005,9 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         }
         OnPropertyChanged(nameof(VisibleSamples));
         OnPropertyChanged(nameof(HasVisibleSamples));
+        OnPropertyChanged(nameof(AreVisibleSamplesChecked));
+        OnPropertyChanged(nameof(EmptyQueueText));
+        setVisibleCheckedCommand.RaiseCanExecuteChanged();
         checkVisibleCommand.RaiseCanExecuteChanged();
         uncheckVisibleCommand.RaiseCanExecuteChanged();
     }
@@ -1021,11 +1162,14 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
         {
             if (ReferenceEquals(record, value)) return;
             record = value;
+            if (value is null) MeasurementColors = new Dictionary<string, HeightMeasurementColorSnapshot>();
             OnPropertyChanged();
             OnPropertyChanged(nameof(RunId));
             OnPropertyChanged(nameof(RecordedAtText));
             OnPropertyChanged(nameof(RecipeRevision));
             OnPropertyChanged(nameof(InputSha256));
+            OnPropertyChanged(nameof(ElapsedMilliseconds));
+            OnPropertyChanged(nameof(ElapsedText));
         }
     }
     public IReadOnlyList<InspectionQueueStepResultItem> Steps
@@ -1037,6 +1181,8 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+    public double? ElapsedMilliseconds => Record is { ElapsedMilliseconds: var elapsed } && double.IsFinite(elapsed) && elapsed >= 0 ? elapsed : null;
+    public string ElapsedText => ElapsedMilliseconds is { } elapsed ? (elapsed / 1000).ToString("0.00", CultureInfo.InvariantCulture) + " s" : "—";
     public string RunId => Record?.RunId ?? string.Empty;
     public string StateText => state switch
     {
@@ -1050,6 +1196,8 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
         _ => state.ToString()
     };
     public string StatusSummary => string.IsNullOrWhiteSpace(Message) ? StateText
+        : Record is null && Message is "실행을 기다립니다." or "Waiting for explicit Run."
+            ? $"{StateText} · {localize("실행을 기다립니다.", "Waiting for explicit Run.")}"
         : Record is not null && Steps.Count > 0 && Message == $"Executed {Steps.Count} authored typed step(s) in recipe order."
             ? $"{StateText} · {localize($"{Steps.Count}단계 검사 완료", Steps.Count == 1 ? "1 step inspected" : $"{Steps.Count} steps inspected")}"
             : $"{StateText} · {Message}";
@@ -1082,9 +1230,13 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
         Message = string.Empty;
     }
 
-    public void SetRecord(InspectionRunRecord value, string path, ToolRecipeDocument? document = null)
+    public IReadOnlyDictionary<string, HeightMeasurementColorSnapshot> MeasurementColors { get; private set; } = new Dictionary<string, HeightMeasurementColorSnapshot>();
+
+    public void SetRecord(InspectionRunRecord value, string path, ToolRecipeDocument? document = null,
+        IReadOnlyDictionary<string, HeightMeasurementColorSnapshot>? measurementColors = null)
     {
         Record = value;
+        MeasurementColors = measurementColors ?? new Dictionary<string, HeightMeasurementColorSnapshot>();
         RunRecordPath = Path.GetFullPath(path);
         Steps = (value.Steps ?? []).Select(step => InspectionQueueStepResultItem.FromRecord(
             step, document?.Steps.FirstOrDefault(authored => authored.Id == step.Id))).ToArray();
@@ -1107,9 +1259,11 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
         State = InspectionQueueItemState.Error;
     }
 
-    public void SetPendingRecord(InspectionRunRecord? value, string reason, ToolRecipeDocument? document)
+    public void SetPendingRecord(InspectionRunRecord? value, string reason, ToolRecipeDocument? document,
+        IReadOnlyDictionary<string, HeightMeasurementColorSnapshot>? measurementColors = null)
     {
         Record = value;
+        MeasurementColors = measurementColors ?? new Dictionary<string, HeightMeasurementColorSnapshot>();
         RunRecordPath = null;
         Steps = (value?.Steps ?? []).Select(step => InspectionQueueStepResultItem.FromRecord(step, document?.Steps.FirstOrDefault(authored => authored.Id == step.Id))).ToArray();
         Message = reason;
@@ -1129,6 +1283,77 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
+public sealed record InspectionQueueMeasurementSummary(string ToolName, string MetricName, string Unit,
+    int PassCount, int FailCount, int ErrorCount, double? Minimum, double? Mean, double? Maximum)
+{
+    public string StepId { get; init; } = string.Empty;
+    public MetricKind Kind { get; init; }
+    public string SettingsIdentity { get; init; } = string.Empty;
+    public bool HasMultipleSettings { get; init; }
+    public IReadOnlyList<InspectionQueueMeasurementPoint> Points { get; init; } = [];
+    public string OutputLabel => string.IsNullOrEmpty(Unit) ? MetricName : $"{MetricName} ({Unit})";
+    public string SettingsLabel => SettingsIdentity.Length > 10 ? SettingsIdentity[..10] : SettingsIdentity;
+    private bool HasSharedRange => Points.Count > 0 && Points.Select(point => (point.LowerLimit, point.UpperLimit)).Distinct().Count() == 1;
+    public double? LowerLimit => HasSharedRange ? Points[0].LowerLimit : null;
+    public double? UpperLimit => HasSharedRange ? Points[0].UpperLimit : null;
+    public string RangeText => InspectionQueueMeasurementPoint.FormatRange(LowerLimit, UpperLimit, Unit);
+}
+
+public sealed record InspectionQueueMeasurementPoint(int Order, string FileName, string SourcePath, string RunId,
+    double? Value, ResultStatus Status, string Unit, double? LowerLimit, double? UpperLimit)
+{
+    public string ValueText => Value?.ToString("0.##", CultureInfo.InvariantCulture) ?? "—";
+    public string StatusLabel => ThreeDLocalization.Shared.ResultStatusLabel(Status);
+    public string RangeText => FormatRange(LowerLimit, UpperLimit, Unit);
+
+    internal static InspectionQueueMeasurementPoint FromRecord(InspectionQueueSampleItem sample, InspectionRunStepResult step, InspectionRunMetric metric)
+    {
+        var (lower, upper) = ReadRecordedRange(step, metric.Name, metric.Kind, metric.Unit);
+        return new(sample.Order, sample.FileName, sample.SourcePath, sample.Record!.RunId,
+            step.Status != ResultStatus.Error && double.IsFinite(metric.Value) ? metric.Value : null,
+            step.Status == ResultStatus.Error ? ResultStatus.Error : metric.Status!.Value, metric.Unit, lower, upper);
+    }
+
+    internal static (double? Lower, double? Upper) ReadRecordedRange(InspectionRunStepResult step, string name, MetricKind kind, string unit)
+    {
+        var primary = ToolWorkbenchViewModel.SelectPrimaryMeasurementMetric(step.ToolId,
+            step.Metrics.Select(item => new Metric(item.Name, item.Kind, item.Value, item.Unit, item.Status)).ToArray());
+        double? Bound(string name)
+        {
+            var candidates = step.Metrics.Where(item => item.Name == name && item.Unit == unit && item.Kind == kind).ToArray();
+            return candidates.Length > 0 && candidates.All(item => double.IsFinite(item.Value) && item.Value == candidates[0].Value) ? candidates[0].Value : null;
+        }
+        double? lower = null, upper = null;
+        if (step.Message != ToolRecipeStep.UnconfiguredAcceptanceMessage)
+        {
+            if (primary?.Name == name && primary.Kind == kind && primary.Unit == unit
+                && Bound("LowerLimit") is { } recordedLower && Bound("UpperLimit") is { } recordedUpper && recordedLower <= recordedUpper)
+            {
+                lower = recordedLower;
+                upper = recordedUpper;
+            }
+            else
+            {
+                var upperName = (step.ToolId, name) switch
+                {
+                    ("warpage", "PeakToValley") => "MaximumPeakToValley",
+                    ("warpage", "Rms") => "MaximumRms",
+                    ("plane-flatness", "Flatness") => "MaximumFlatness",
+                    ("datum-plane-raw-height-deviation", "PeakToValleyRawHeight") => "MaximumPeakToValleyRawHeight",
+                    _ => null
+                };
+                if (upperName is not null) upper = Bound(upperName);
+            }
+        }
+        return (lower, upper);
+    }
+
+    internal static string FormatRange(double? lower, double? upper, string unit, string format = "0.##") => lower is { } minimum && upper is { } maximum
+        ? $"{minimum.ToString(format, CultureInfo.InvariantCulture)}–{maximum.ToString(format, CultureInfo.InvariantCulture)} {unit}".TrimEnd()
+        : lower is { } oneLower ? $"≥ {oneLower.ToString(format, CultureInfo.InvariantCulture)} {unit}".TrimEnd()
+        : upper is { } oneUpper ? $"≤ {oneUpper.ToString(format, CultureInfo.InvariantCulture)} {unit}".TrimEnd() : "—";
+}
+
 public sealed record InspectionQueueStepResultItem(
     int Order,
     string StepId,
@@ -1144,6 +1369,8 @@ public sealed record InspectionQueueStepResultItem(
     private ToolResult? PresentationResult { get; init; }
     private string ToolId { get; init; } = string.Empty;
     private IReadOnlyList<ToolRecipeParameter> ExecutionParameters { get; init; } = [];
+    internal bool IsUnjudged => Message == ToolRecipeStep.UnconfiguredAcceptanceMessage;
+    public IReadOnlyList<InspectionQueueOutputResultItem> Outputs { get; private set; } = [];
 
     public int DisplayOrder => Order + 1;
     public string Value { get; init; } = "—";
@@ -1157,7 +1384,7 @@ public sealed record InspectionQueueStepResultItem(
         var metrics = step.Metrics.Select(metric => new Metric(metric.Name, metric.Kind, metric.Value, metric.Unit, metric.Status)).ToArray();
         var result = new ToolResult(step.ToolName, step.Status, step.Message, TimeSpan.Zero, metrics, []);
         var primary = ToolWorkbenchViewModel.SelectPrimaryMeasurementMetric(step.ToolId, metrics);
-        return new(
+        var item = new InspectionQueueStepResultItem(
             step.RecipeIndex,
             step.Id,
             authoredStep?.ToolName ?? step.ToolName,
@@ -1165,7 +1392,7 @@ public sealed record InspectionQueueStepResultItem(
             step.Status.ToString(),
             step.Message,
             string.Join(" · ", step.Metrics.Select(metric =>
-                $"{metric.Name}: {metric.Value.ToString("G17", System.Globalization.CultureInfo.InvariantCulture)} {metric.Unit}".TrimEnd())),
+                $"{metric.Name}: {metric.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} {metric.Unit}".TrimEnd())),
             string.Join(" · ", step.Overlays.Select(overlay => overlay.Label)),
             step.OutputContentSha256 ?? string.Empty,
             step.ElapsedMilliseconds)
@@ -1177,8 +1404,45 @@ public sealed record InspectionQueueStepResultItem(
                 ? $"{primary.Name}{Environment.NewLine}{primary.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture)}" : "—",
             Unit = primary?.Unit ?? string.Empty
         };
+        var judged = metrics.Where(metric => metric.Status.HasValue).ToArray();
+        var outputs = judged.Length > 0 ? judged : primary is not null ? [primary] : Array.Empty<Metric>();
+        item.Outputs = outputs.Length == 0 ? [new(item, null, true)]
+            : outputs.Select((metric, index) =>
+            {
+                var (lower, upper) = InspectionQueueMeasurementPoint.ReadRecordedRange(step, metric.Name, metric.Kind, metric.Unit);
+                return new InspectionQueueOutputResultItem(item, metric, ReferenceEquals(metric, primary))
+                {
+                    IsFirstOutput = index == 0,
+                    RecordedLimits = InspectionQueueMeasurementPoint.FormatRange(lower, upper, metric.Unit, "R")
+                };
+            }).ToArray();
+        return item;
     }
 }
+
+public sealed record InspectionQueueOutputResultItem(InspectionQueueStepResultItem Step, Metric? Measurement, bool IsPrimary)
+{
+    internal string RecordedLimits { get; init; } = "—";
+    public bool IsFirstOutput { get; init; } = true;
+    public string OrderLabel => IsFirstOutput ? DisplayOrder.ToString("00", CultureInfo.InvariantCulture) : string.Empty;
+    public string ToolLabel => IsFirstOutput ? ToolName : string.Empty;
+    public string CauseLabel => IsFirstOutput ? DisplayMessage : string.Empty;
+    public int DisplayOrder => Step.DisplayOrder;
+    public string ToolName => Step.ToolName;
+    public string OutputName => Measurement?.Name ?? "—";
+    public string Unit => Measurement?.Unit ?? string.Empty;
+    public string Value => Step.Status != nameof(ResultStatus.Error) && Measurement is { } metric && double.IsFinite(metric.Value)
+        ? metric.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture) : "—";
+    public string ValueWithUnit => string.IsNullOrEmpty(Unit) ? Value : $"{Value} {Unit}";
+    public string Limits => IsPrimary || Step.IsUnjudged ? Step.Limits : RecordedLimits;
+    public string DisplayLimits => RecordedLimits == "—" ? Limits : RecordedLimits;
+    public string Status => Step.Status == nameof(ResultStatus.Error) || Step.IsUnjudged
+        ? Step.Status : Measurement?.Status?.ToString() ?? Step.Status;
+    public string StatusLabel => Status == Step.Status ? Step.StatusLabel
+        : ThreeDLocalization.Shared.ResultStatusLabel(Measurement!.Status!.Value);
+    public string DisplayMessage => Step.DisplayMessage;
+}
+
 
 public sealed class InspectionQueueRunRecordRequestEventArgs(string path) : EventArgs
 {

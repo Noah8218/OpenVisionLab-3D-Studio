@@ -25,5 +25,6 @@ public readonly record struct ViewerCameraState(
         && double.IsFinite(OrthographicHeight)
         && OrthographicHeight > 0.0
         && ProjectionMode is ViewerProjectionMode.Perspective
-            or ViewerProjectionMode.TopOrthographic;
+            or ViewerProjectionMode.TopOrthographic
+            or ViewerProjectionMode.Orthographic;
 }

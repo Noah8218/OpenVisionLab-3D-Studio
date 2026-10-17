@@ -1,4 +1,7 @@
 using System.IO;
+using System.Diagnostics;
+using System.Globalization;
+using OpenVisionLab.ThreeD.Presentation.Models;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -178,6 +181,66 @@ internal static class ShellHeightImageDisplayRangeSmoke
                 ]);
         }
 
+        return passed;
+    }
+
+    public static async Task<bool> MeasureLatencyAsync(string reportPath, ToolWorkbenchViewModel workbench,
+        OpenVisionThreeDViewerControl viewer, Dispatcher dispatcher)
+    {
+        var image = workbench.HeightImageViewer;
+        var dirty = workbench.IsDirty;
+        var logs = workbench.RunLog.Count;
+        var output = workbench.CurrentMeasurementOutput;
+        await workbench.EnsureHeightImageSourceAsync();
+        workbench.SplitViewerVerticallyCommand.Execute(null);
+        workbench.AuxiliaryViewerContentId = ToolWorkbenchViewModel.HeightImageViewerContentId;
+        workbench.MainViewerPane.SetKindCommand.Execute(ViewerPaneKind.ThreeD);
+        workbench.AuxiliaryViewerPane.SetKindCommand.Execute(ViewerPaneKind.Height);
+        await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var lines = new List<string> { "FS-V08|actual Shell EXE|command-to-OpenGL Finish and next WPF composition event|no physical scanout claim" };
+        var valid = image.Frame is { Width: 1280, Height: 840 } && viewer.IsVisible;
+        var samples = new List<double>();
+        var releaseSamples = new List<double>();
+        var deferredCorrectly = true;
+        if (image.Frame is { } frame)
+        {
+            lines.Add($"Source|width={frame.Width}|height={frame.Height}|sha256={frame.SourceContentSha256}");
+            for (var index = 0; index < 12; index++)
+            {
+                image.UseAutoRange();
+                await viewer.CompleteHeightDisplayFrameForSmokeAsync();
+                var before = image.DisplayPixelSha256;
+                var initialRender = viewer.HeightColorRenderStateForSmoke;
+                image.HeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Begin));
+                var maximum = frame.Minimum + (frame.Maximum - frame.Minimum) * (0.92 - index * 0.02);
+                var started = Stopwatch.GetTimestamp();
+                image.HeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Upper, maximum));
+                var completed = await viewer.CompleteHeightDisplayFrameForSmokeAsync();
+                var milliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+                var deferred = viewer.HeightColorRenderStateForSmoke;
+                deferredCorrectly &= deferred.Deferred && deferred.Minimum == initialRender.Minimum && deferred.Maximum == initialRender.Maximum;
+                var releaseStarted = Stopwatch.GetTimestamp();
+                image.HeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Commit));
+                var released = await viewer.CompleteHeightDisplayFrameForSmokeAsync();
+                var releaseMilliseconds = Stopwatch.GetElapsedTime(releaseStarted).TotalMilliseconds;
+                releaseSamples.Add(releaseMilliseconds);
+                var committed = viewer.HeightColorRenderStateForSmoke;
+                valid &= released && !committed.Deferred && committed.Maximum == maximum;
+                var linked = viewer.HostState.Presentation.C3DHeightColorMaximumRaw == maximum;
+                var changed = before != image.DisplayPixelSha256;
+                valid &= completed && linked && changed;
+                samples.Add(milliseconds);
+                lines.Add(FormattableString.Invariant($"Sample|index={index}|milliseconds={milliseconds:R}|releaseMilliseconds={releaseMilliseconds:R}|deferred={deferred.Deferred}|linked={linked}|pixelChanged={changed}|completed={completed}"));
+            }
+        }
+        image.UseAutoRange();
+        await viewer.CompleteHeightDisplayFrameForSmokeAsync();
+        valid &= workbench.IsDirty == dirty && workbench.RunLog.Count == logs && ReferenceEquals(output, workbench.CurrentMeasurementOutput);
+        var maximumLatency = samples.Count == 0 ? double.PositiveInfinity : samples.Max();
+        var passed = valid && deferredCorrectly;
+        lines.Add(FormattableString.Invariant($"Summary|pass={passed}|boundary={valid}|samples={samples.Count}|maximumMs={maximumLatency:R}|targetMs=100|targetMet={maximumLatency <= 100}|fallbackDeferred={deferredCorrectly}|maximumReleaseMs={(releaseSamples.Count == 0 ? double.NaN : releaseSamples.Max()):R}|dirty={dirty}->{workbench.IsDirty}|logs={logs}->{workbench.RunLog.Count}"));
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        File.WriteAllLines(reportPath, lines);
         return passed;
     }
 

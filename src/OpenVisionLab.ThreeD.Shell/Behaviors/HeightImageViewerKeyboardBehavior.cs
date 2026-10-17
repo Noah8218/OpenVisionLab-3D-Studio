@@ -2,6 +2,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
+using OpenVisionLab.ThreeD.Presentation.Controls;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Behaviors;
 
@@ -23,6 +26,8 @@ public static class HeightImageViewerKeyboardBehavior
 
     public static readonly DependencyProperty CancelRoiCommandProperty =
         RegisterCommandProperty("CancelRoiCommand");
+
+    public static readonly DependencyProperty CancelProfileCommandProperty = RegisterCommandProperty("CancelProfileCommand");
 
     public static readonly DependencyProperty DeleteRoiCommandProperty =
         RegisterCommandProperty("DeleteRoiCommand");
@@ -59,6 +64,10 @@ public static class HeightImageViewerKeyboardBehavior
 
     public static ICommand? GetCancelRoiCommand(DependencyObject element) =>
         (ICommand?)element.GetValue(CancelRoiCommandProperty);
+
+    public static void SetCancelProfileCommand(DependencyObject element, ICommand? value) => element.SetValue(CancelProfileCommandProperty, value);
+
+    public static ICommand? GetCancelProfileCommand(DependencyObject element) => (ICommand?)element.GetValue(CancelProfileCommandProperty);
 
     public static void SetDeleteRoiCommand(DependencyObject element, ICommand? value) =>
         element.SetValue(DeleteRoiCommandProperty, value);
@@ -102,9 +111,18 @@ public static class HeightImageViewerKeyboardBehavior
         Key key,
         ModifierKeys modifiers)
     {
-        if (originalSource is TextBoxBase or ComboBox)
+        for (var current = originalSource as DependencyObject; current is not null; current = current is Visual or System.Windows.Media.Media3D.Visual3D
+            ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
         {
-            return false;
+            if (current is TextBoxBase or PasswordBox or ComboBox or Slider or HeightLegendRangeBar) return false;
+            if (ReferenceEquals(current, element)) break;
+        }
+
+        if (key == Key.Escape && modifiers == ModifierKeys.None && GetCancelProfileCommand(element) is { } profileCommand
+            && profileCommand.CanExecute(ViewerHeightProfileAction.Cancel))
+        {
+            profileCommand.Execute(ViewerHeightProfileAction.Cancel);
+            return true;
         }
 
         var command = ResolveCommand(element, key, modifiers);
@@ -171,7 +189,6 @@ public static class HeightImageViewerKeyboardBehavior
             (ModifierKeys.None, Key.Escape) => GetCancelRoiCommand(element),
             (ModifierKeys.None, Key.Delete) => GetDeleteRoiCommand(element),
             (ModifierKeys.None, Key.F) => GetFitCommand(element),
-            (ModifierKeys.None, Key.D1 or Key.NumPad1) => GetActualPixelsCommand(element),
             (ModifierKeys.None or ModifierKeys.Shift, Key.Add or Key.OemPlus) => GetZoomInCommand(element),
             (ModifierKeys.None or ModifierKeys.Shift, Key.Subtract or Key.OemMinus) => GetZoomOutCommand(element),
             (ModifierKeys.Control, Key.R) => GetAutoRangeCommand(element),

@@ -68,7 +68,6 @@ public partial class RecipeManagerView : UserControl
             RecipeSectionsPanel.Padding = new Thickness(8, 4, 8, 4);
             RecipeSectionsPanel.BorderThickness = new Thickness(0, 0, 0, 1);
             RecipeSectionsTitle.Visibility = Visibility.Collapsed;
-            RecipeSectionsHint.Visibility = Visibility.Collapsed;
             RecipeBrowserSections.ItemsPanel = (ItemsPanelTemplate)FindResource("RecipeBrowserCompactSectionsPanel");
         }
         else
@@ -92,7 +91,6 @@ public partial class RecipeManagerView : UserControl
             RecipeSectionsPanel.Padding = new Thickness(12, 10, 12, 10);
             RecipeSectionsPanel.BorderThickness = new Thickness(0, 0, 1, 0);
             RecipeSectionsTitle.Visibility = Visibility.Visible;
-            RecipeSectionsHint.Visibility = Visibility.Visible;
             RecipeBrowserSections.ItemsPanel = (ItemsPanelTemplate)FindResource("RecipeBrowserWideSectionsPanel");
         }
     }

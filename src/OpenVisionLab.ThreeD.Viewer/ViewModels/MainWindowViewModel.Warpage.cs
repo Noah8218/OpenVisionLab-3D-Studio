@@ -156,7 +156,7 @@ public sealed partial class MainWindowViewModel
         WarpageSummary = "Warpage ROI teaching: click one C3D grid location.";
         WarpageDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Current grid ROI row {WarpageRoiRow}, column {WarpageRoiColumn}, size {WarpageRoiRowCount} x {WarpageRoiColumnCount} | P2V limit {WarpageMaximumPeakToValley:F3} {WarpageUnit}");
+            $"Current grid ROI row {WarpageRoiRow}, column {WarpageRoiColumn}, size {WarpageRoiRowCount} x {WarpageRoiColumnCount} | P2V limit {WarpageMaximumPeakToValley:0.##} {WarpageUnit}");
         SelectionSummary = WarpageSummary;
         MeasurementSummary = WarpageDetails;
         ViewerStatus = "Warpage ROI teaching: click the C3D surface to place the ROI";
@@ -190,7 +190,7 @@ public sealed partial class MainWindowViewModel
             $"Warpage ROI taught: row {WarpageRoiRow}, column {WarpageRoiColumn}, size {WarpageRoiRowCount} x {WarpageRoiColumnCount}");
         WarpageDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Anchor cell ({row}, {column}) | best-fit residual P2V limit {WarpageMaximumPeakToValley:F3} {WarpageUnit} | frame {WarpageFrameId}");
+            $"Anchor cell ({row}, {column}) | best-fit residual P2V limit {WarpageMaximumPeakToValley:0.##} {WarpageUnit} | frame {WarpageFrameId}");
         SelectedSelectionMode = WarpageRoiSelectionMode;
         SelectedEntity = "C3D Warpage ROI";
         SelectionOverlayVisible = true;
@@ -272,10 +272,10 @@ public sealed partial class MainWindowViewModel
         WarpageValidSampleCount = evaluation.ValidSampleCount;
         WarpageSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Warpage: {evaluation.Result.Status} | P2V {evaluation.PeakToValley:F3} / {WarpageMaximumPeakToValley:F3} {WarpageUnit} | RMS {evaluation.Rms:F3}");
+            $"Warpage: {evaluation.Result.Status} | P2V {evaluation.PeakToValley:0.##} / {WarpageMaximumPeakToValley:0.##} {WarpageUnit} | RMS {evaluation.Rms:0.##}");
         WarpageDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Best-fit ROI row {evaluation.Roi.Row}, column {evaluation.Roi.Column}, size {evaluation.Roi.RowCount} x {evaluation.Roi.ColumnCount} | valid {evaluation.ValidSampleCount:N0} | residual {evaluation.MinimumResidual:F3}..{evaluation.MaximumResidual:F3} {WarpageUnit} | package {evaluation.PackageResultStatus}/{evaluation.PackageErrorCode} | declared scalar, uncalibrated");
+            $"Best-fit ROI row {evaluation.Roi.Row}, column {evaluation.Roi.Column}, size {evaluation.Roi.RowCount} x {evaluation.Roi.ColumnCount} | valid {evaluation.ValidSampleCount:N0} | residual {evaluation.MinimumResidual:0.##}..{evaluation.MaximumResidual:0.##} {WarpageUnit} | package {evaluation.PackageResultStatus}/{evaluation.PackageErrorCode} | declared scalar, uncalibrated");
 
         inspectionSession.Activate(ViewerInspectionKind.C3DWarpage);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));

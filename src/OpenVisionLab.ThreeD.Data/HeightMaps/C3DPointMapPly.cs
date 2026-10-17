@@ -108,6 +108,67 @@ public static class C3DPointMapPly
 
 public static class C3DPointMapPalette
 {
+    public static IReadOnlyList<(double Offset, (double R, double G, double B) Color)> DisplayStops(
+        double minimum, double maximum, double dataMinimum, double dataMaximum, string palette, HeightDisplayOptions options)
+    {
+        if (options.ColorStyle == "tolerance" && options.Measurement is not null)
+            return [(0, (79 / 255d, 139 / 255d, 232 / 255d)), (1d / 3, (79 / 255d, 139 / 255d, 232 / 255d)),
+                (1d / 3, (145 / 255d, 209 / 255d, 168 / 255d)), (2d / 3, (145 / 255d, 209 / 255d, 168 / 255d)),
+                (2d / 3, (229 / 255d, 83 / 255d, 75 / 255d)), (1, (229 / 255d, 83 / 255d, 75 / 255d))];
+        var low = Math.Min(minimum, dataMinimum);
+        var high = Math.Max(maximum, dataMaximum);
+        if (!double.IsFinite(low) || !double.IsFinite(high) || low >= high) return [(0, DisplayColor(minimum, minimum, maximum, palette, options))];
+        var stops = new List<(double, (double, double, double))>();
+        void Add(double value, double sample) => stops.Add(((value - low) / (high - low), DisplayColor(sample, minimum, maximum, palette, options)));
+        Add(low, low);
+        if (low < minimum) Add(minimum, low);
+        if (options.ColorStyle == "bands")
+        {
+            for (var index = 0; index < options.BandCount; index++)
+            {
+                var sample = minimum + (maximum - minimum) * (index + 0.5) / options.BandCount;
+                Add(minimum + (maximum - minimum) * index / options.BandCount, sample);
+                Add(minimum + (maximum - minimum) * (index + 1) / options.BandCount, sample);
+            }
+        }
+        else
+        {
+            var positions = palette == "ColorVisionAssist" ? new[] { 0d, .25, .5, .75, 1d }
+                : palette == "Thermal" ? new[] { 0d, 1d / 3, 2d / 3, 1d } : new[] { 0d, .5, 1d };
+            foreach (var position in positions)
+            {
+                var value = minimum + (maximum - minimum) * position;
+                Add(value, value);
+            }
+        }
+        if (high > maximum) Add(maximum, high);
+        Add(high, high);
+        return stops;
+    }
+
+    public static (double R, double G, double B) DisplayColor(double value, double minimum, double maximum, string palette, HeightDisplayOptions options, int sampleIndex = -1)
+    {
+        var normalized = maximum > minimum ? (value - minimum) / (maximum - minimum) : 0.5;
+        if (options.ColorStyle == "tolerance")
+        {
+            var measured = options.Measurement;
+            var sample = measured is not null && sampleIndex >= 0 && sampleIndex < measured.Values.Length
+                ? measured.Values.Span[sampleIndex] : sampleIndex < 0 ? value : double.NaN;
+            if (double.IsFinite(sample))
+                return sample < (measured?.LowerLimit ?? minimum) ? (79 / 255.0, 139 / 255.0, 232 / 255.0)
+                    : sample > (measured?.UpperLimit ?? maximum) ? (229 / 255.0, 83 / 255.0, 75 / 255.0) : (145 / 255.0, 209 / 255.0, 168 / 255.0);
+        }
+        if (options.HighlightOutside && (normalized < 0 || normalized > 1))
+            return normalized < 0 ? (106 / 255.0, 75 / 255.0, 196 / 255.0) : (240 / 255.0, 79 / 255.0, 208 / 255.0);
+        normalized = Math.Clamp(normalized, 0, 1);
+        if (options.ColorStyle == "bands") normalized = (Math.Min(Math.Floor(normalized * options.BandCount), options.BandCount - 1) + 0.5) / options.BandCount;
+        if (palette == "Grayscale") return (normalized, normalized, normalized);
+        if (palette == "ColorVisionAssist") return ColorVisionAssist(normalized);
+        if (palette == "Solid") return (0.62, 0.82, 1.0);
+        if (palette == "Thermal") return (Math.Clamp(normalized * 3, 0, 1), Math.Clamp(normalized * 3 - 1, 0, 1), Math.Clamp(normalized * 3 - 2, 0, 1));
+        return Height(normalized);
+    }
+
     public static (double R, double G, double B) Height(double value)
     {
         var t = Math.Clamp(value, 0.0, 1.0);
@@ -151,6 +212,28 @@ public static class C3DPointMapPalette
             byte.MaxValue,
             byte.MaxValue,
             ToByte((normalized - 2.0 / 3.0) * 3.0));
+    }
+
+    public static (double R, double G, double B) ColorVisionAssist(double value)
+    {
+        var position = Normalize(value) * 4;
+        var (first, second) = position switch
+        {
+            < 1 => ((0.0, 32.0, 77.0), (65.0, 77.0, 107.0)),
+            < 2 => ((65.0, 77.0, 107.0), (124.0, 123.0, 120.0)),
+            < 3 => ((124.0, 123.0, 120.0), (188.0, 175.0, 111.0)),
+            _ => ((188.0, 175.0, 111.0), (255.0, 234.0, 70.0))
+        };
+        var fraction = position - Math.Min(3, Math.Floor(position));
+        return ((first.Item1 + (second.Item1 - first.Item1) * fraction) / 255,
+            (first.Item2 + (second.Item2 - first.Item2) * fraction) / 255,
+            (first.Item3 + (second.Item3 - first.Item3) * fraction) / 255);
+    }
+
+    public static (byte R, byte G, byte B) ColorVisionAssistBytes(double value)
+    {
+        var color = ColorVisionAssist(value);
+        return (ToByte(color.R), ToByte(color.G), ToByte(color.B));
     }
 
     private static double Normalize(double value) =>

@@ -587,12 +587,10 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
         }
 
         var development = samples
-            .Where(sample => sample.Role is
-                ToolRecipeValidationSampleRole.Good
-                or ToolRecipeValidationSampleRole.Bad)
+            .Where(sample => sample.HasExpectation && sample.IsAdjustment)
             .Select(sample => new ToolRecipeValidationSampleInput(
                 sample.SourcePath,
-                sample.Role))
+                sample.DevelopmentRole) { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage })
             .ToArray();
         if (development.Length == 0)
         {
@@ -707,10 +705,10 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
         }
         var heldOut = samples
             .Where(sample =>
-                sample.Role == ToolRecipeValidationSampleRole.HeldOut)
+                sample.IsHeldOut)
             .Select(sample => new ToolRecipeValidationSampleInput(
                 sample.SourcePath,
-                ToolRecipeValidationSampleRole.HeldOut))
+                ToolRecipeValidationSampleRole.HeldOut) { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage })
             .ToArray();
         if (heldOut.Length == 0)
         {
@@ -954,8 +952,12 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             return;
         }
 
-        var evidence =
-            ToolRecipeThresholdCorrectionEvidenceStore.LoadForRecipe(recipePath);
+        LoadCorrectionEvidence(document, ToolRecipeThresholdCorrectionEvidenceStore.LoadForRecipe(recipePath));
+    }
+
+    public void LoadCorrectionEvidence(ToolRecipeDocument document, ToolRecipeThresholdCorrectionEvidence? evidence)
+    {
+        if (IsDisposed) return;
         if (evidence is null)
         {
             return;

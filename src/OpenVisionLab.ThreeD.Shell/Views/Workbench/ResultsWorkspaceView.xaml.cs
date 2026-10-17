@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Threading;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -33,6 +34,15 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             typeof(ResultsWorkspaceView),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty IsDedicatedResultsLayoutProperty =
+        DependencyProperty.Register(nameof(IsDedicatedResultsLayout), typeof(bool), typeof(ResultsWorkspaceView), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty IsAuthoringLayoutProperty =
+        DependencyProperty.Register(nameof(IsAuthoringLayout), typeof(bool), typeof(ResultsWorkspaceView), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty DockPaneCommandsProperty = DependencyProperty.Register(
+        nameof(DockPaneCommands), typeof(object), typeof(ResultsWorkspaceView), new PropertyMetadata(null));
+
     public ResultsWorkspaceView()
     {
         InitializeComponent();
@@ -58,9 +68,11 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             return;
         }
 
+        TeachingDetailsButton.IsChecked = false;
         Loaded -= OnLoaded;
         SizeChanged -= OnSizeChanged;
         OutputCompareWorkspace.Dispose();
+        DrawerHeightProfile.Dispose();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
@@ -78,26 +90,48 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
     internal void ApplyResponsiveLayout(double availableHeight)
     {
         var compact = availableHeight > 0 && availableHeight < 720;
+        var dedicated = IsDedicatedResultsLayout;
+        ResultsHistoryColumn.Width = new GridLength(dedicated ? 280 : 0);
+        ResultsHistoryPanel.Visibility = dedicated ? Visibility.Visible : Visibility.Collapsed;
         IsCompactLayout = compact;
-        ResultsWorkspaceHeader.Visibility = Visibility.Visible;
-        ResultsWorkspaceHeader.Padding = compact ? new Thickness(10, 4, 10, 4) : new Thickness(16, 10, 16, 10);
-        ResultsWorkspaceDetail.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        ResultsWorkspaceHeader.Visibility = dedicated ? Visibility.Visible : Visibility.Collapsed;
+        ResultsWorkspaceHeader.Padding = new Thickness(10, 4, 10, 4);
         AdvancedDiagnosticsButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        ResultsSectionHost.RowDefinitions[0].Height = compact ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-        ResultsSectionHost.RowDefinitions[1].Height = compact ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
-        Grid.SetRow(ResultsSectionNavigation, compact ? 1 : 0);
-        Grid.SetRow(ResultsWorkspaceContent, compact ? 0 : 1);
-        ResultsSectionNavigation.Padding = compact ? new Thickness(8, 2, 8, 2) : new Thickness(10);
-        ResultsSectionNavigation.BorderThickness = compact ? new Thickness(0, 1, 0, 0) : new Thickness(0, 0, 1, 0);
-        RunRecordNavigation.Margin = compact ? new Thickness(0, 0, 8, 0) : new Thickness(0, 0, 12, 6);
-        OutputCompareNavigation.Margin = compact ? new Thickness(0, 0, 8, 0) : new Thickness(0, 0, 12, 6);
-        ReportsNavigation.Margin = compact ? new Thickness(0) : new Thickness(0, 0, 0, 6);
-        RunRecordNavigation.Padding = compact ? new Thickness(8, 3, 8, 3) : new Thickness(10, 8, 10, 8);
-        OutputCompareNavigation.Padding = compact ? new Thickness(8, 3, 8, 3) : new Thickness(10, 8, 10, 8);
-        ReportsNavigation.Padding = compact ? new Thickness(8, 3, 8, 3) : new Thickness(10, 8, 10, 8);
-        ResultsImmutableNotice.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        RunRecordReview.Margin = compact ? new Thickness(8, 2, 8, 2) : new Thickness(12, 4, 12, 12);
+        ResultsSectionHost.RowDefinitions[0].Height = GridLength.Auto;
+        ResultsSectionHost.RowDefinitions[1].Height = new GridLength(1, GridUnitType.Star);
+        Grid.SetRow(ResultsSectionNavigation, 0);
+        Grid.SetRow(ResultsWorkspaceContent, 1);
+        ResultsSectionNavigation.Padding = new Thickness(6, 0, IsAuthoringLayout ? 4 : 6, 0);
+        ResultsSectionNavigation.BorderThickness = new Thickness(0, 0, 0, 1);
+        RunRecordNavigation.Margin = OutputCompareNavigation.Margin = ReportsNavigation.Margin = new Thickness(0);
+        RunRecordNavigation.Padding = OutputCompareNavigation.Padding = ReportsNavigation.Padding = new Thickness(0);
+        ResultsImmutableNotice.Visibility = Visibility.Collapsed;
+        RunRecordReview.Margin = new Thickness(8, 2, 8, 2);
         RunRecordReview.ApplyResponsiveLayout(availableHeight);
+    }
+
+    private void OnTeachingDetailKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Escape) return;
+        TeachingDetailsButton.IsChecked = false;
+        args.Handled = true;
+    }
+
+    private void OnSummaryDetailsLayoutChanged(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement content) return;
+        DependencyObject? parent = VisualTreeHelper.GetParent(content);
+        while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
+        if (parent is not ScrollViewer { ViewportWidth: > 0 } viewport) return;
+        var inset = Math.Max(0, content.TransformToAncestor(viewport).Transform(new Point()).X + viewport.HorizontalOffset);
+        var available = Math.Max(0, viewport.ViewportWidth - inset);
+        if (Math.Abs(content.MaxWidth - available) > .5) content.MaxWidth = available;
+    }
+
+    public object? DockPaneCommands
+    {
+        get => GetValue(DockPaneCommandsProperty);
+        set => SetValue(DockPaneCommandsProperty, value);
     }
 
     public ResultsWorkspaceSection ActiveSection
@@ -110,6 +144,18 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
     {
         get => (bool)GetValue(IsCompactLayoutProperty);
         private set => SetValue(IsCompactLayoutProperty, value);
+    }
+
+    public bool IsDedicatedResultsLayout
+    {
+        get => (bool)GetValue(IsDedicatedResultsLayoutProperty);
+        set => SetValue(IsDedicatedResultsLayoutProperty, value);
+    }
+
+    public bool IsAuthoringLayout
+    {
+        get => (bool)GetValue(IsAuthoringLayoutProperty);
+        set => SetValue(IsAuthoringLayoutProperty, value);
     }
 
     public ICommand? SelectSectionCommand
@@ -140,7 +186,9 @@ public partial class ResultsWorkspaceView : UserControl, IDisposable
             AdvancedDiagnosticsButton.CommandParameter) == true;
 
     public bool HasOperatorSummaryAndCorrectionRoute =>
-        OperatorResultSummary.Visibility == Visibility.Visible
+        IsDedicatedResultsLayout
+        ? HistoryDashboard.HasOperatorSummaryAndCorrectionRoute
+        : OperatorResultSummary.Visibility == Visibility.Visible
         && !string.IsNullOrWhiteSpace(OperatorDecisionValue.Text)
         && !string.IsNullOrWhiteSpace(OperatorAffectedStepsValue.Text)
         && ResultsFixInTeachButton.IsTabStop

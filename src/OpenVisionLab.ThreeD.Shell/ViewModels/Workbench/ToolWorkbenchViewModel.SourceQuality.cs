@@ -41,7 +41,7 @@ public sealed partial class ToolWorkbenchViewModel
                             : "Unavailable";
 
     public bool IsCurrentSourceHeaderStatusVisible =>
-        !IsInspectionFileView && IsCurrentSourceQualityStatusVisible
+        !IsReadOnlySampleView && IsCurrentSourceQualityStatusVisible
         && !string.Equals(CurrentSourceQualityStatusKind, "Pass", StringComparison.Ordinal);
 
     public string CurrentSourceHeaderStatusText

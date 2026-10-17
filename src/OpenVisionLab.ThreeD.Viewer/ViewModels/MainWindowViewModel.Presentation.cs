@@ -9,11 +9,21 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    internal bool TrySetTeachingResultLabels(IReadOnlyList<ViewerTeachingResultLabel> labels)
+    {
+        if (labels is null || labels.Any(label => label is null || !label.IsValid)) return false;
+        var snapshot = labels.ToArray();
+        if (!teachingResultLabels.SequenceEqual(snapshot)) SetField(ref teachingResultLabels, snapshot, nameof(TeachingResultLabels));
+        return true;
+    }
+
+
     public void UseC3DHeightDeviationRuleSmokeScene()
     {
         UseC3DSmokeScene();
@@ -173,7 +183,7 @@ public sealed partial class MainWindowViewModel
             throw new ArgumentOutOfRangeException(nameof(zoomScale));
         }
 
-        if (ProjectionMode == ViewerProjectionMode.TopOrthographic)
+        if (IsOrthographicView)
         {
             OrthographicHeight = Math.Clamp(OrthographicHeight * zoomScale, 0.01, 100000.0);
             UpdateCameraStatus();
@@ -199,8 +209,8 @@ public sealed partial class MainWindowViewModel
     public void UpdateCameraStatus()
     {
         var modelUnit = NominalActual.InputsReady ? NominalActual.Unit : "unitless";
-        BottomStatus = ProjectionMode == ViewerProjectionMode.TopOrthographic
-            ? $"Model units: {modelUnit} | View: Top orthographic | height {OrthographicHeight:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})"
+        BottomStatus = IsOrthographicView
+            ? $"Model units: {modelUnit} | View: {(IsTopOrthographicView ? "Top orthographic" : "Orthographic")} | height {OrthographicHeight:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})"
             : $"Model units: {modelUnit} | View: Perspective | Camera: yaw {YawDegrees:F1}, pitch {PitchDegrees:F1}, distance {CameraDistance:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})";
         CameraChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -412,7 +422,7 @@ public sealed partial class MainWindowViewModel
 
         LazTwoPointAcceptanceSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"LAZ/LAS acceptance: {status} | distance {TwoPointDistance:F3} vs {LazTwoPointExpectedDistance:F3} +/- {LazTwoPointDistanceTolerance:F3} model | height delta {TwoPointRawHeightDelta:F3} vs {LazTwoPointExpectedHeightDelta:F3} +/- {LazTwoPointHeightDeltaTolerance:F3} {lazTwoPointPreviewHeightUnit}");
+            $"LAZ/LAS acceptance: {status} | distance {TwoPointDistance:0.##} vs {LazTwoPointExpectedDistance:0.##} +/- {LazTwoPointDistanceTolerance:0.##} model | height delta {TwoPointRawHeightDelta:0.##} vs {LazTwoPointExpectedHeightDelta:0.##} +/- {LazTwoPointHeightDeltaTolerance:0.##} {lazTwoPointPreviewHeightUnit}");
 
         if (lazTwoPointPreviewFirst is { } first && lazTwoPointPreviewSecond is { } second)
         {
@@ -566,10 +576,10 @@ public sealed partial class MainWindowViewModel
         DeviationLegendStatus = statusText;
         DeviationLegendPeak = peak is null
             ? "Peak: none"
-            : string.Create(CultureInfo.InvariantCulture, $"{(flatness is null ? "Peak" : "Flatness")}: {peak.Value:F3} {unit}");
+            : string.Create(CultureInfo.InvariantCulture, $"{(flatness is null ? "Peak" : "Flatness")}: {peak.Value:0.##} {unit}");
         DeviationLegendTolerance = tolerance is null
             ? "Tolerance: none"
-            : string.Create(CultureInfo.InvariantCulture, $"Tolerance: +/- {tolerance.Value:F3} {unit}");
+            : string.Create(CultureInfo.InvariantCulture, $"Tolerance: +/- {tolerance.Value:0.##} {unit}");
         DeviationLegendScale = flatness is null
             ? "Scale: 0 = mean, 1 = peak deviation"
             : "Scale: signed deviation to ROI reference plane";
@@ -608,13 +618,13 @@ public sealed partial class MainWindowViewModel
         }
 
         var metric = result.Metrics.FirstOrDefault(metric => metric.Status is not null) ?? result.Metrics.First();
-        return $"Preview: {result.ToolName}: {result.Status}\n{result.Message}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nOverlays: {result.Overlays.Count}";
+        return $"Preview: {result.ToolName}: {result.Status}\n{result.Message}\nMetric: {metric.Name} = {metric.Value:0.##} {metric.Unit}\nOverlays: {result.Overlays.Count}";
     }
 
     private static string FormatPublishedResult(ResultEntity result)
     {
         var metric = result.Metrics.First();
-        return $"{result.Name}: {result.Status}\nSource: {result.SourceEntityId}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nLayer: published result";
+        return $"{result.Name}: {result.Status}\nSource: {result.SourceEntityId}\nMetric: {metric.Name} = {metric.Value:0.##} {metric.Unit}\nLayer: published result";
     }
 
 }

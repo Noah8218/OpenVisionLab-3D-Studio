@@ -1,5 +1,6 @@
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
+using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
 
 internal sealed class ToolWorkbenchTeachingCaptureSession
@@ -17,6 +18,14 @@ internal sealed class ToolWorkbenchTeachingCaptureSession
     public bool IsAdditionalLevelSurfaceReference { get; private set; }
 
     public ToolRecipeGridRectangle GridRectangleDraft { get; private set; } = new(0, 0, 0, 0);
+
+    public string GridRectangleColumnText { get; private set; } = "0";
+
+    public string GridRectangleRowText { get; private set; } = "0";
+
+    public string GridRectangleColumnCountText { get; private set; } = "0";
+
+    public string GridRectangleRowCountText { get; private set; } = "0";
 
     public ToolRecipeGridCircle GridCircleDraft { get; private set; } = new(0, 0, 0);
 
@@ -47,6 +56,19 @@ internal sealed class ToolWorkbenchTeachingCaptureSession
     public void SetGridRectangleDraft(ToolRecipeGridRectangle? rectangle)
     {
         GridRectangleDraft = rectangle ?? new ToolRecipeGridRectangle(0, 0, 0, 0);
+        SetGridRectangleText(
+            GridRectangleDraft.Column.ToString(CultureInfo.InvariantCulture),
+            GridRectangleDraft.Row.ToString(CultureInfo.InvariantCulture),
+            GridRectangleDraft.ColumnCount.ToString(CultureInfo.InvariantCulture),
+            GridRectangleDraft.RowCount.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public void SetGridRectangleText(string column, string row, string columnCount, string rowCount)
+    {
+        GridRectangleColumnText = column;
+        GridRectangleRowText = row;
+        GridRectangleColumnCountText = columnCount;
+        GridRectangleRowCountText = rowCount;
     }
 
     public void SetGridCircleDraft(ToolRecipeGridCircle? circle)

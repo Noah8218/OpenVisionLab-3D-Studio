@@ -73,6 +73,7 @@
             </Grid.ColumnDefinitions>
 
             <shellViews:StudioNavigationRailView
+                x:Name="StudioNavigationRail"
                 Grid.Column="0"
                 RecipeManagerRequested="OpenRecipeManagerRequested"
                 LayoutResetRequested="ResetStudioLayoutRequested"
@@ -140,13 +141,13 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Mean, Korean='평균', English='Mean'}" />
-                                    <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:0.##}}" />
                                     <TextBlock Grid.Row="1" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Minimum, Korean='최소', English='Minimum'}" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:0.##}}" />
                                     <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Maximum, Korean='최대', English='Maximum'}" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:0.##}}" />
                                     <TextBlock Grid.Row="3" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Range, Korean='범위', English='Range'}" />
-                                    <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:0.##}}" />
                                     <TextBlock Grid.Row="4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.ValidSamples, Korean='유효 샘플', English='Valid samples'}" />
                                     <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessValidSampleCount, StringFormat={}{0:N0}}" />
                                 </Grid>
@@ -485,11 +486,11 @@
                                     <WrapPanel>
                                         <StackPanel Width="82" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Lower, Korean='하한', English='Lower'}" />
-                                            <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="82" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Upper, Korean='상한', English='Upper'}" />
-                                            <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="82" Margin="0,0,0,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.MinSamples, Korean='최소 샘플', English='Min Samples'}" />
@@ -519,27 +520,27 @@
                                     <WrapPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedDistance, Korean='기준 거리', English='Exp D'}" />
-                                            <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.DistanceTolerance, Korean='거리 공차', English='Tol D'}" />
-                                            <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedWidth, Korean='기준 폭', English='Exp W'}" />
-                                            <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.WidthTolerance, Korean='폭 공차', English='Tol W'}" />
-                                            <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedAngle, Korean='기준 각도', English='Exp A'}" />
-                                            <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,0,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.AngleTolerance, Korean='각도 공차', English='Tol A'}" />
-                                            <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
@@ -564,19 +565,19 @@
                                     <WrapPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedGap, Korean='기준 갭', English='Exp Gap'}" />
-                                            <TextBox Text="{Binding GapFlushExpectedGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding GapFlushExpectedGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.GapTolerance, Korean='갭 공차', English='Tol Gap'}" />
-                                            <TextBox Text="{Binding GapFlushGapTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding GapFlushGapTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedFlush, Korean='기준 단차', English='Exp Flush'}" />
-                                            <TextBox Text="{Binding GapFlushExpectedFlush, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding GapFlushExpectedFlush, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,0,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.FlushTolerance, Korean='단차 공차', English='Tol Flush'}" />
-                                            <TextBox Text="{Binding GapFlushFlushTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding GapFlushFlushTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
@@ -599,11 +600,11 @@
                                     <WrapPanel>
                                         <StackPanel Width="94" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedNet, Korean='기준 순체적', English='Expected Net'}" />
-                                            <TextBox Text="{Binding VolumeExpectedNet, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding VolumeExpectedNet, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="94" Margin="0,0,0,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Tolerance, Korean='공차', English='Tolerance'}" />
-                                            <TextBox Text="{Binding VolumeTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding VolumeTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
@@ -637,19 +638,19 @@
                                     <WrapPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedWidth, Korean='기준 폭', English='Exp Width'}" />
-                                            <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.WidthTolerance, Korean='폭 공차', English='Tol Width'}" />
-                                            <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedHeight, Korean='기준 높이', English='Exp Height'}" />
-                                            <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,0,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HeightTolerance, Korean='높이 공차', English='Tol Height'}" />
-                                            <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
@@ -668,23 +669,23 @@
                                     <WrapPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.CenterX, Korean='중심 X', English='Center X'}" />
-                                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.CenterZ, Korean='중심 Z', English='Center Z'}" />
-                                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
-                                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
-                                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,0,6">
                                             <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Tolerance, Korean='공차', English='Tolerance'}" />
-                                            <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
@@ -735,19 +736,19 @@
                                     <WrapPanel>
                                         <StackPanel Width="78" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedDistance, Korean='기준 거리', English='Exp D'}" />
-                                            <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.DistanceTolerance, Korean='거리 공차', English='Tol D'}" />
-                                            <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="78" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedHeight, Korean='기준 높이', English='Exp H'}" />
-                                            <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                         <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HeightTolerance, Korean='높이 공차', English='Tol H'}" />
-                                            <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                            <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                         </StackPanel>
                                     </WrapPanel>
                                 </StackPanel>
@@ -777,15 +778,15 @@
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="T X" />
-                                        <TextBox Text="{Binding RecipeTransformTranslateX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeTransformTranslateX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="T Y" />
-                                        <TextBox Text="{Binding RecipeTransformTranslateY, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeTransformTranslateY, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="T Z" />
-                                        <TextBox Text="{Binding RecipeTransformTranslateZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeTransformTranslateZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="R X" />
@@ -801,45 +802,45 @@
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Scale, Korean='배율', English='Scale'}" />
-                                        <TextBox Text="{Binding RecipeTransformScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeTransformScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.RoiLeft, Korean='왼쪽 ROI', English='ROI Left'}" />
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C X" />
-                                        <TextBox Text="{Binding RecipeRoiLeftCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiLeftCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C Z" />
-                                        <TextBox Text="{Binding RecipeRoiLeftCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiLeftCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
-                                        <TextBox Text="{Binding RecipeRoiLeftHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiLeftHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
-                                        <TextBox Text="{Binding RecipeRoiLeftHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiLeftHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.RoiRight, Korean='오른쪽 ROI', English='ROI Right'}" />
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C X" />
-                                        <TextBox Text="{Binding RecipeRoiRightCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiRightCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C Z" />
-                                        <TextBox Text="{Binding RecipeRoiRightCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiRightCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
-                                        <TextBox Text="{Binding RecipeRoiRightHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiRightHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
-                                        <TextBox Text="{Binding RecipeRoiRightHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        <TextBox Text="{Binding RecipeRoiRightHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                                     </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Margin="0,2,0,0"
@@ -955,13 +956,13 @@
                                                         <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
                                                     <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Mean, Korean='평균', English='Mean'}" />
-                                                    <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:0.##}}" />
                                                     <TextBlock Grid.Row="1" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Minimum, Korean='최소', English='Minimum'}" />
-                                                    <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:0.##}}" />
                                                     <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Maximum, Korean='최대', English='Maximum'}" />
-                                                    <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:0.##}}" />
                                                     <TextBlock Grid.Row="3" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Range, Korean='범위', English='Range'}" />
-                                                    <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:0.##}}" />
                                                     <TextBlock Grid.Row="4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.ValidSamples, Korean='유효 샘플', English='Valid samples'}" />
                                                     <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessValidSampleCount, StringFormat={}{0:N0}}" />
                                                 </Grid>
@@ -1529,26 +1530,32 @@
 
         <Border x:Name="StudioBottomStatus"
                 Grid.Row="2"
-                MinHeight="30"
-                Padding="10,4"
-                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                Padding="10,0"
+                Background="{DynamicResource ThreeD.StudioChromeBrush}"
                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                 BorderThickness="0,1,0,0"
                 AutomationProperties.AutomationId="StudioBottomStatus"
                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Shell.BottomStatusAccessible, Korean='OpenVisionLab 3D Studio 상태', English='OpenVisionLab 3D Studio status'}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Height" Value="24" />
+                    <Style.Triggers><DataTrigger Binding="{Binding IsCompact, ElementName=StudioNavigationRail}" Value="True"><Setter Property="Height" Value="22" /></DataTrigger></Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" />
                     <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Margin="0,0,10,0"
                            VerticalAlignment="Center"
-                           FontSize="10.5"
+                           FontSize="12"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                           Text="{Binding InspectionStageNavigationStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                           TextWrapping="Wrap"
-                           ToolTip="{Binding InspectionStageNavigationStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                           Text="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}"
                            AutomationProperties.LiveSetting="Polite" />
                 <Border Grid.Column="1"
                         Margin="0,5"
@@ -1556,13 +1563,14 @@
                 <TextBlock Grid.Column="2"
                            Margin="10,0,0,0"
                            VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           FontSize="10.5"
+                           FontSize="12"
                            Foreground="{DynamicResource ThreeD.InfoBrush}"
-                           Text="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                           TextWrapping="Wrap"
-                           ToolTip="{Binding StatusText, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                           Text="{Binding Workbench.SourceContractSummary}"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Workbench.SourceContractSummary}"
                            AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{Binding Workbench.LocalizedRecipeStateSummary}" AutomationProperties.AutomationId="StudioFooterRecipeState" />
             </Grid>
         </Border>
     </Grid>

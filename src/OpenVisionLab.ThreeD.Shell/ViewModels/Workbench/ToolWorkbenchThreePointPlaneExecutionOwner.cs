@@ -231,7 +231,7 @@ internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner : IDisposable
             }
 
             step.State = "Preview ready";
-            SetSummary($"Preview ready | {SelectionSummary} | oriented normal {evaluation.Output.NormalX:G4}, {evaluation.Output.NormalY:G4}, {evaluation.Output.NormalZ:G4} | no fit or OK/NG");
+            SetSummary($"Preview ready | {SelectionSummary} | oriented normal {evaluation.Output.NormalX:0.##}, {evaluation.Output.NormalY:0.##}, {evaluation.Output.NormalZ:0.##} | no fit or OK/NG");
             if (IsCurrentPreview(currentCancellation))
             {
                 appendLog("Preview", $"3-Point Plane Preview ready: {evaluation.Output.ContentSha256}.");

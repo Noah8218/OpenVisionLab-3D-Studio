@@ -219,7 +219,7 @@ internal sealed class ToolWorkbenchTwoPointLineExecutionOwner : IDisposable
             previewStep = step;
             previewContext = context;
             step.State = "Preview ready";
-            SetSummary($"Preview ready | {SelectionSummary} | segment {evaluation.Output.SegmentLength:G6} source-coordinate | no fitting or OK/NG");
+            SetSummary($"Preview ready | {SelectionSummary} | segment {evaluation.Output.SegmentLength:0.##} source-coordinate | no fitting or OK/NG");
             if (!IsCurrentPreview(currentCancellation))
             {
                 return false;

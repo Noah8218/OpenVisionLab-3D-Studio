@@ -83,6 +83,7 @@ internal sealed class ShellSmokeCommandLineOptions
         GetValue("--smoke-source-acquisition-provenance-state");
     public string? SourceAcquisitionProvenancePopupScreenshotPath =>
         GetValue("--smoke-source-acquisition-provenance-popup-screenshot");
+    public string? HeightLegendLatencyReportPath => GetValue("--smoke-height-legend-latency-report");
     public string? HeightImagePaletteSmoke => GetValue("--smoke-height-image-palette");
     public string? HeightImageDisplayRangeSmokeReportPath =>
         GetValue("--smoke-height-image-display-range-report");
@@ -106,6 +107,7 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? PreparationPresetAssistantSmoke =>
         GetValue("--smoke-preparation-preset-assistant");
     public string? WorkbenchInteractionReportPath => GetValue("--smoke-workbench-interaction-report");
+    public string? PerformanceMatrixReportPath => GetValue("--smoke-performance-matrix-report");
     public string? SurfaceMatchCollectionPath =>
         GetValue("--smoke-surface-match-collection");
     public string? SurfaceMatchCollectionPopupScreenshotPath =>
@@ -205,6 +207,7 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool SoftwareRendering => HasFlag("--smoke-software-rendering");
     public bool UseLeftmostVirtualScreenOrigin =>
         HasFlag("--shell-smoke-leftmost");
+    public bool KeepTestWindowOnTop => HasFlag("--shell-smoke-topmost");
 
     public (int Width, int Height)? WindowSize =>
         int.TryParse(GetValue("--shell-smoke-width"), out var width)
@@ -263,6 +266,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || RunRecordComparisonPath is not null
         || SourceAcquisitionProvenanceSmokeState is not null
         || SourceAcquisitionProvenancePopupScreenshotPath is not null
+        || HeightLegendLatencyReportPath is not null
         || HeightImageDisplayRangeSmoke
         || HeightImagePaletteStateEvidenceDirectory is not null
         || SharedHeightHoverSmoke
@@ -286,6 +290,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || ValidationThresholdAssistantDisabledSmoke
         || WorkbenchRunLogSmoke
         || WorkbenchInteractionReportPath is not null
+        || PerformanceMatrixReportPath is not null
         || SurfaceMatchCollectionPath is not null;
 
     private bool HasFlag(string name) => arguments.HasFlag(name);

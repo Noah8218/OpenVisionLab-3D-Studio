@@ -33,6 +33,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         Cancelled
     }
 
+    private bool isRecipeSaving;
+    private string recipeSaveFailure = string.Empty;
     private readonly ToolWorkbenchRunLogOwner runLogOwner;
     private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner;
     private readonly ToolWorkbenchHeightThresholdExecutionOwner heightThresholdExecutionOwner;
@@ -111,6 +113,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private double lastRecipeRefreshMilliseconds;
     private bool suppressRecipeRefresh;
     private bool deferSelectedStepStateRefresh;
+    private int workspaceProjectionUpdateDepth;
+    private bool workspaceProjectionPending;
     private bool isRecipeInfoEditorVisible;
     private string recipeInfoCategoryDraft = string.Empty;
     private string recipeInfoInspectionTargetDraft = string.Empty;
@@ -163,16 +167,16 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             RefreshSurfaceMatchExperimentState);
         WorkspaceSelection = new InspectionWorkspaceSelectionSession();
         ViewerWorkspace = new ViewerWorkspaceSession();
-        InitializeViewerWorkspace();
         SharedHeightCursor = new SharedHeightCursorSession();
         HeightImageViewer = new HeightImageViewerViewModel(
             ThreeDLocalization.Shared,
             SharedHeightCursor);
+        InitializeViewerWorkspace();
         RecipePreviewViewer = new HeightImageViewerViewModel(
             ThreeDLocalization.Shared,
             new SharedHeightCursorSession());
         ThicknessRepeatGrid = new ThicknessRepeatGridAuthoringSession();
-        SelectedToolWorkspace = new SelectedToolWorkspaceViewModel(WorkspaceSelection);
+        SelectedToolWorkspace = new SelectedToolWorkspaceViewModel(WorkspaceSelection, EnsureSelectedToolPreviewAsync, IsFlowOutputAvailable, IsFlowInputCompatible);
         editorSessionEventCoordinator = new ToolWorkbenchEditorSessionEventCoordinator(
             WorkspaceSelection,
             OnInspectionWorkspaceSelectionChanged,
@@ -234,7 +238,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             args => OrderedRunCompleted?.Invoke(this, args),
             () => OrderedRunInvalidated?.Invoke(this, EventArgs.Empty),
             (document, sourcePath) => TryGetInspectionInputCapability(document, sourcePath),
-            () => RecipeSession.SavedSha256);
+            () => RecipeSession.SavedSha256,
+            runLogOwner.AppendExecution);
         filterExecutionOwner = new ToolWorkbenchFilterExecutionOwner(
             CanShowFilterSource,
             ShowFilterSource,
@@ -663,8 +668,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             AppendLog,
             step => CreateDocument().CreateStepExecutionContext(step.Id),
             () => { OnPropertyChanged(nameof(IsSelectedStepPreviewRunning)); RefreshSelectedToolWorkspaceProjection(); },
-            () => !IsRecipeMutationBlocked && !IsInspectionFileView,
-            CaptureSelectedToolOutputEvidence);
+            () => !IsRecipeMutationBlocked && !IsReadOnlySampleView && !IsTeachingSelectionCaptureActive,
+            CaptureSelectedToolOutputEvidence,
+            RecordSelectedExecution);
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
         orientedBoxEventCoordinator = CreateOrientedBoxEventCoordinator();
@@ -849,6 +855,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             CancelSourceQualityUiNotification,
             new IDisposable[]
             {
+                SelectedToolWorkspace,
                 HeightImageViewer,
                 RecipePreviewViewer,
                 SourceQuality,
@@ -868,6 +875,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     {
         if (lifetimeCoordinator?.IsDisposed == true) return;
         lastRemovedStep = null;
+        appliedStepParameters.Clear();
+        teachingResultComparisons.Clear();
         if (inspectionQueueWorkspace is not null)
         {
             inspectionQueueWorkspace.PropertyChanged -= OnInspectionQueuePropertyChanged;
@@ -1007,6 +1016,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     public ObservableCollection<ToolWorkbenchValidationItem> ValidationMessages { get; } = [];
 
     public ObservableCollection<ToolWorkbenchLogItem> RunLog => runLogOwner.Entries;
+    public ReadOnlyObservableCollection<ToolWorkbenchExecutionLogItem> ExecutionLog => runLogOwner.ExecutionEntries;
 
     public ICommand NewTeachingRecipeCommand { get; }
     public ICommand AddSelectedToolCommand { get; }
@@ -1114,32 +1124,40 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             CancelThicknessRepeatGridForSelectionChange();
             MarkPhysicalEdgeGapFlushPreviewStaleIfNeeded();
             var started = Stopwatch.GetTimestamp();
-            selectedPipelineStep = value;
-            twoPointLineExecutionOwner?.OnStepSelectionChanged();
-            heightMeasurementExecutionOwner?.RestoreSelectedResult();
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSelectedPipelineStep));
-            OnPropertyChanged(nameof(SelectedPipelineStepTitle));
-            NotifySelectedStepFlowProblemChanged();
-            OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
-            OnPropertyChanged(nameof(SelectedRouteInputIds));
-            OnPropertyChanged(nameof(SelectedRouteOutputId));
-            OnPropertyChanged(nameof(IsSelectedToolLabAvailable));
-            OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
-            OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
-            OnPropertyChanged(nameof(IsSelectedStepSurfaceMatch));
-            OnPropertyChanged(nameof(IsSelectedStepGridPolygonDomain));
-            OnPropertyChanged(nameof(IsSurfaceMatchExperimentVisible));
-            NotifySourceQualityWorkspaceState();
-            openSelectedToolLabCommand.RaiseCanExecuteChanged();
-            RefreshSelectedStepPropertyDraft();
-            RefreshPreparationPresetCommands();
-            if (!deferSelectedStepStateRefresh)
+            workspaceProjectionUpdateDepth++;
+            try
             {
-                RefreshTeachingSelectionContext();
-                RefreshSelectedStepExecutionState();
-                RefreshStepCommands();
-                RefreshNavigatorSelection();
+                selectedPipelineStep = value;
+                twoPointLineExecutionOwner?.OnStepSelectionChanged();
+                heightMeasurementExecutionOwner?.RestoreSelectedResult();
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedPipelineStep));
+                OnPropertyChanged(nameof(SelectedPipelineStepTitle));
+                NotifySelectedStepFlowProblemChanged();
+                OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
+                OnPropertyChanged(nameof(SelectedRouteInputIds));
+                OnPropertyChanged(nameof(SelectedRouteOutputId));
+                OnPropertyChanged(nameof(IsSelectedToolLabAvailable));
+                OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
+                OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
+                OnPropertyChanged(nameof(IsSelectedStepSurfaceMatch));
+                OnPropertyChanged(nameof(IsSelectedStepGridPolygonDomain));
+                OnPropertyChanged(nameof(IsSurfaceMatchExperimentVisible));
+                NotifySourceQualityWorkspaceState();
+                openSelectedToolLabCommand.RaiseCanExecuteChanged();
+                RefreshSelectedStepPropertyDraft();
+                RefreshPreparationPresetCommands();
+                if (!deferSelectedStepStateRefresh)
+                {
+                    RefreshTeachingSelectionContext();
+                    RefreshSelectedStepExecutionState();
+                    RefreshStepCommands();
+                    RefreshNavigatorSelection();
+                }
+            }
+            finally
+            {
+                CompleteWorkspaceProjectionUpdate();
             }
             lastStepSelectionMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             OnPropertyChanged(nameof(LastStepSelectionMilliseconds));
@@ -1221,11 +1239,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             OnPropertyChanged(nameof(HasRecipeIdentity));
             OnPropertyChanged(nameof(LocalizedRecipePathSummary));
             openRecipeInfoEditorCommand.RaiseCanExecuteChanged();
+            recipeSaveFailure = string.Empty;
             OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
+            NotifyHeaderRecipeState();
         }
     }
 
     public bool IsDirty => RecipeSession.IsDirty;
+    public bool IsRecipeSaving => isRecipeSaving;
+    public bool HasRecipeSaveFailure => recipeSaveFailure.Length > 0;
+    public bool IsHeaderRecipeModified => IsDirty || IsValidationSetDefinitionDirty;
+    public string HeaderRecipeMetaText => Localize($"도구 {PipelineSteps.Count}", $"{PipelineSteps.Count} tools");
+    public string HeaderRecipeSaveStateText => IsRecipeSaving ? Localize("저장 중", "Saving") : HasRecipeSaveFailure ? Localize("저장 실패", "Save failed") : IsDirty ? Localize("조건 미저장", "Conditions unsaved") : IsValidationSetDefinitionDirty ? Localize("샘플 미저장", "Samples unsaved") : HasRecipeIdentity ? Localization.Saved : Localization.Unsaved;
+    public string HeaderRecipeDetailText => $"{HeaderRecipeText}\n{HeaderRecipeMetaText}\n{LocalizedRecipeStateSummary}" + (HasRecipeSaveFailure ? $"\n{recipeSaveFailure}" : string.Empty);
 
     public bool IsRecipeInfoEditorVisible
     {
@@ -1397,7 +1423,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         || IsMeasurementPreviewRunning
         || IsPhysicalEdgeGapFlushPreviewRunning;
 
-    public bool CanSaveTeachingRecipe => !HasPendingOrderedRunRecordSave && RecipeSession.StorageValidation.IsValid
+    public bool CanSaveTeachingRecipe => !IsRecipeSaving && !HasPendingOrderedRunRecordSave && RecipeSession.StorageValidation.IsValid
         && RecipeSession.SourceBindingErrors.Count == 0;
 
     public bool IsTeachingRecipeExecutionReady => RecipeSession.Validation.IsValid
@@ -1628,7 +1654,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
     public string TeachingGridCircleSourceFrameSummary =>
         IsTeachingGridCircleDraftValid
-            ? $"Center X/column {TeachingGridCircleCenterColumn}, Z/row {TeachingGridCircleCenterRow} | radius {TeachingGridCircleRadius:G6} cells | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
+            ? $"Center X/column {TeachingGridCircleCenterColumn}, Z/row {TeachingGridCircleCenterRow} | radius {TeachingGridCircleRadius:0.##} cells | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
             : "Circular source-grid footprint unavailable until the center and radius are valid.";
 
     public int TeachingGridRectangleRow
@@ -1655,6 +1681,30 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         set => teachingSelectionCaptureOwner.GridRectangleColumnCount = value;
     }
 
+    public string TeachingGridRectangleColumnText
+    {
+        get => teachingSelectionCaptureOwner.GridRectangleColumnText;
+        set => teachingSelectionCaptureOwner.GridRectangleColumnText = value;
+    }
+
+    public string TeachingGridRectangleRowText
+    {
+        get => teachingSelectionCaptureOwner.GridRectangleRowText;
+        set => teachingSelectionCaptureOwner.GridRectangleRowText = value;
+    }
+
+    public string TeachingGridRectangleColumnCountText
+    {
+        get => teachingSelectionCaptureOwner.GridRectangleColumnCountText;
+        set => teachingSelectionCaptureOwner.GridRectangleColumnCountText = value;
+    }
+
+    public string TeachingGridRectangleRowCountText
+    {
+        get => teachingSelectionCaptureOwner.GridRectangleRowCountText;
+        set => teachingSelectionCaptureOwner.GridRectangleRowCountText = value;
+    }
+
     public bool IsTeachingGridRectangleDraftValid =>
         teachingSelectionCaptureOwner.IsGridRectangleDraftValid;
 
@@ -1662,7 +1712,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     {
         get
         {
-            return teachingSelectionCaptureOwner.GridRectangleValidationSummary;
+            return teachingSelectionCaptureOwner.GetGridRectangleValidationSummary(OpenVisionLanguageService.CurrentLanguage != OpenVisionLanguage.English);
         }
     }
 
@@ -1743,6 +1793,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
         OnPropertyChanged(nameof(TeachingGridRectangleSourceFrameSummary));
+        OnPropertyChanged(nameof(TeachingGridRectangleValidationSummary));
         OnPropertyChanged(nameof(TeachingGridPolygonSourceFrameSummary));
         OnPropertyChanged(nameof(OrderedRunStatus));
         OnPropertyChanged(nameof(OrderedRunCapabilitySummary));
@@ -1844,31 +1895,39 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
         var sourcePathChanged = !string.Equals(Source.Path, fullPath, StringComparison.OrdinalIgnoreCase);
         stageStart = Stopwatch.GetTimestamp();
-        if (sourcePathChanged)
+        workspaceProjectionUpdateDepth++;
+        try
         {
-            ClearFilterPreview("Source changed; Preview is required.");
-            ClearHeightThresholdPreview(
-                "Source changed; Height Threshold Background Removal Preview is required.");
-            ClearSignedDeltaBackgroundSubtractionPreview(
-                "Source changed; Signed Delta Background Subtraction Preview is required.");
-            ClearRemoveOutlierPreview(
-                "Source changed; Remove Outlier Pixels Preview is required.");
-            ClearConnectedRegionPreview(
-                "Source changed; Connected Region Preview is required.");
-            ClearGridPolygonDomainPreview(
-                "Source changed; Grid Polygon Domain Preview is required.");
-            ClearDomainMaskPreview(
-                "Source changed; Domain / Mask Preview is required.");
-            ClearEditableRegionPreview(
-                "Source changed; Editable Region Preview is required.");
-            ClearLevelSurfacePreview(
-                "Source changed; Level Surface Preview is required.");
-            ClearRoiCropPreview(
-                "Source changed; ROI / Crop Preview is required.");
-            ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
-            ClearThreePointPlanePreview("Source changed; 3-Point Plane Preview is required.");
-            ClearMeasurementPreview("Source changed; measurement Preview is required.");
-            ClearPhysicalEdgeGapFlushPreview("Source changed; physical-edge Gap / Flush Preview is required.");
+            if (sourcePathChanged)
+            {
+                ClearFilterPreview("Source changed; Preview is required.");
+                ClearHeightThresholdPreview(
+                    "Source changed; Height Threshold Background Removal Preview is required.");
+                ClearSignedDeltaBackgroundSubtractionPreview(
+                    "Source changed; Signed Delta Background Subtraction Preview is required.");
+                ClearRemoveOutlierPreview(
+                    "Source changed; Remove Outlier Pixels Preview is required.");
+                ClearConnectedRegionPreview(
+                    "Source changed; Connected Region Preview is required.");
+                ClearGridPolygonDomainPreview(
+                    "Source changed; Grid Polygon Domain Preview is required.");
+                ClearDomainMaskPreview(
+                    "Source changed; Domain / Mask Preview is required.");
+                ClearEditableRegionPreview(
+                    "Source changed; Editable Region Preview is required.");
+                ClearLevelSurfacePreview(
+                    "Source changed; Level Surface Preview is required.");
+                ClearRoiCropPreview(
+                    "Source changed; ROI / Crop Preview is required.");
+                ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
+                ClearThreePointPlanePreview("Source changed; 3-Point Plane Preview is required.");
+                ClearMeasurementPreview("Source changed; measurement Preview is required.");
+                ClearPhysicalEdgeGapFlushPreview("Source changed; physical-edge Gap / Flush Preview is required.");
+            }
+        }
+        finally
+        {
+            CompleteWorkspaceProjectionUpdate();
         }
         clearPreviewMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
 
@@ -1958,6 +2017,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         var metadataChanged = RecipeSession.SetMetadata(category, target, description);
         var schemaChanged = (category is not null || target is not null || description is not null)
             && RecipeSession.SchemaVersion != ToolRecipeDocument.CurrentSchemaVersion
+            && RecipeSession.SchemaVersion != ToolRecipeDocument.AcceptanceLimitsSchemaVersion
             && RecipeSession.SetSchemaVersion(ToolRecipeDocument.RecipeMetadataSchemaVersion);
         if (metadataChanged || schemaChanged)
         {
@@ -1988,6 +2048,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
     public bool TrySaveTeachingRecipe(string path, out string message)
     {
+        if (IsRecipeSaving)
+        {
+            message = Localize("레시피를 저장 중입니다.", "The recipe is being saved.");
+            return false;
+        }
         if (HasPendingOrderedRunRecordSave)
         {
             message = Localize("검사 기록 저장을 재시도한 뒤 레시피를 저장하세요.", "Retry saving the inspection Run Record before saving the recipe.");
@@ -2014,13 +2079,40 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             return false;
         }
 
+        isRecipeSaving = true;
+        recipeSaveFailure = string.Empty;
+        NotifyHeaderRecipeState();
+        var saveBackups = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var primarySaveStarted = false;
+        var primarySaveCommitted = false;
+        var retainSaveBackups = false;
         try
         {
             var fullPath = Path.GetFullPath(path);
-            var signedDeltaSidecar = signedDeltaBackgroundExecutionOwner.PersistPublishedSidecar(fullPath);
-            ToolRecipeDocumentStore.Save(fullPath, CreateDocument(fullPath, signedDeltaSidecar), out var savedSha256);
-            SaveValidationSetDefinition(fullPath);
+            // A later sidecar failure must not leave a new recipe with old sample definitions.
+            foreach (var savePath in new[] { fullPath, ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(fullPath), ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(fullPath) })
+            {
+                var backupPath = File.Exists(savePath) ? savePath + ".save-backup-" + Guid.NewGuid().ToString("N") : null;
+                saveBackups.Add(savePath, backupPath);
+                if (backupPath is not null) File.Copy(savePath, backupPath);
+            }
+            primarySaveStarted = true;
+            string savedSha256;
+            if (!IsDirty && RecipeSession.SavedSha256 is { } currentSha && string.Equals(RecipePath, fullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                using var savedRecipe = File.OpenRead(fullPath);
+                if (!Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(savedRecipe)).Equals(currentSha, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(Localize("저장된 레시피 파일이 변경되었습니다. 다시 연 뒤 저장하세요.", "The saved recipe changed outside this session. Reopen it before saving."));
+                savedSha256 = currentSha;
+            }
+            else
+            {
+                var signedDeltaSidecar = signedDeltaBackgroundExecutionOwner.PersistPublishedSidecar(fullPath);
+                ToolRecipeDocumentStore.Save(fullPath, CreateDocument(fullPath, signedDeltaSidecar), out savedSha256);
+            }
+            SaveValidationSetDefinition(fullPath, markClean: false);
             SaveValidationThresholdCorrectionEvidence(fullPath);
+            primarySaveCommitted = true;
             if (RecipePath is { } previousPath && !string.Equals(previousPath, fullPath, StringComparison.OrdinalIgnoreCase)) EndStepRemovalHistory();
             RecipePath = fullPath;
             connectedRegionExecutionOwner.PersistPublishedArtifactIfPossible();
@@ -2030,6 +2122,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             levelSurfaceExecutionOwner.PersistPublishedArtifactIfPossible();
             roiCropExecutionOwner.PersistPublishedArtifactIfPossible();
             RecipeSession.AcceptSavedIdentity(savedSha256);
+            SetValidationSetDefinitionDirty(false);
             SetDirty(false);
             RecordRecentRecipe(fullPath);
             message = $"Teaching recipe saved: {Path.GetFileName(fullPath)}";
@@ -2039,8 +2132,49 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException)
         {
             message = exception.Message;
+            if (primarySaveStarted && !primarySaveCommitted)
+            {
+                foreach (var (savePath, backupPath) in saveBackups)
+                {
+                    try
+                    {
+                        if (backupPath is null)
+                        {
+                            if (File.Exists(savePath)) File.Delete(savePath);
+                        }
+                        else if (!File.Exists(savePath) || !File.ReadAllBytes(savePath).SequenceEqual(File.ReadAllBytes(backupPath)))
+                        {
+                            File.Move(backupPath, savePath, overwrite: true);
+                        }
+                    }
+                    catch (Exception rollbackException) when (rollbackException is IOException or UnauthorizedAccessException)
+                    {
+                        retainSaveBackups = true;
+                        message += Environment.NewLine + Localize("저장 파일을 복원하지 못했습니다: ", "Could not restore the save file: ") + savePath
+                            + Environment.NewLine + Localize("복구 사본: ", "Recovery copy: ") + (backupPath ?? "—");
+                        AppendLog("Error", $"Recipe save rollback failed | path={savePath} | backup={backupPath} | error={rollbackException.Message}");
+                    }
+                }
+            }
+            recipeSaveFailure = message;
             AppendLog("Error", $"Teaching recipe save failed: {message}");
             return false;
+        }
+        finally
+        {
+            if (!retainSaveBackups)
+            {
+                foreach (var backupPath in saveBackups.Values.OfType<string>())
+                {
+                    try { if (File.Exists(backupPath)) File.Delete(backupPath); }
+                    catch (Exception cleanupException) when (cleanupException is IOException or UnauthorizedAccessException)
+                    {
+                        AppendLog("Warning", $"Recipe save backup cleanup failed | path={backupPath} | error={cleanupException.Message}");
+                    }
+                }
+            }
+            isRecipeSaving = false;
+            NotifyHeaderRecipeState();
         }
     }
 
@@ -2056,6 +2190,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         {
             var fullPath = Path.GetFullPath(path);
             var document = ResolveRelativeSourcePath(ToolRecipeDocumentStore.Load(fullPath, out var savedSha256), fullPath);
+            // Read and validate every required sidecar before replacing the current session.
+            var validationDefinition = ToolRecipeValidationSetDefinitionStore.LoadForRecipe(fullPath);
+            var correctionEvidence = ToolRecipeThresholdCorrectionEvidenceStore.LoadForRecipe(fullPath);
+            if (correctionEvidence is not null
+                && string.Equals(correctionEvidence.RecipeSourceSha256, document.Source.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(correctionEvidence.RecipeName, document.Name, StringComparison.Ordinal))
+            {
+                _ = ToolRecipeThresholdCandidateParameterMapper.ApplyProposal(document, correctionEvidence.Proposal);
+            }
             if (!signedDeltaBackgroundExecutionOwner.TryLoadPublishedSidecar(
                     fullPath,
                     document,
@@ -2087,10 +2230,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             editableRegionExecutionOwner.RestorePublishedArtifact();
             levelSurfaceExecutionOwner.RestorePublishedArtifact();
             roiCropExecutionOwner.RestorePublishedArtifact();
-            LoadValidationSetDefinition(fullPath, document);
-            LoadValidationThresholdCorrectionEvidence(fullPath, document);
+            LoadValidationSetDefinition(document, validationDefinition);
+            LoadValidationThresholdCorrectionEvidence(document, correctionEvidence);
             RecipeSession.AcceptSavedIdentity(savedSha256);
             SetDirty(false);
+            recipeSaveFailure = string.Empty;
+            NotifyHeaderRecipeState();
             RecordRecentRecipe(fullPath);
             ToolSearchText = string.Empty;
             teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
@@ -2144,6 +2289,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             PipelineSteps.Clear();
             SelectedPipelineStep = null;
             RecipePath = null;
+            recipeSaveFailure = string.Empty;
         }, markDirty: false);
         SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
@@ -2153,6 +2299,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         ToolSearchText = string.Empty;
         OnPropertyChanged(nameof(RecipeSchemaVersion));
         teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
+        runLogOwner.ClearExecutionEntries();
         AppendLog("Teach", "New empty teaching recipe created. Select a C3D source before adding an inspection step.");
     }
 
@@ -2790,14 +2937,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             return;
         }
 
-        var candidateSteps = document.Steps.ToArray();
-        candidateSteps[targetIndex] = candidateSteps[targetIndex] with
-        {
-            InputEntityIds = candidateInputs.ToArray()
-        };
-        var baselineErrors = ToolRecipeValidator.Validate(document).Errors;
-        var candidateErrors = ToolRecipeValidator.Validate(document with { Steps = candidateSteps }).Errors;
-        if (HasAdditionalValidationErrors(baselineErrors, candidateErrors))
+        if (!IsFlowInputCompatible(document, targetIndex, candidateInputs))
         {
             flowConnectionFeedback = FlowConnectionFeedback.Rejected;
             RefreshFlowConnectionCommands();
@@ -2805,10 +2945,29 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         }
 
         step.InputEntityIdsText = string.Join("; ", candidateInputs);
+        RememberAppliedStepChange(step, document, Localize("입력 연결", "Input connection") + $" {string.Join("; ", existingInputs)} → {string.Join("; ", candidateInputs)}");
         SelectedPipelineStep = step;
         pendingFlowOutputEntityId = null;
         flowConnectionFeedback = FlowConnectionFeedback.Saved;
         RefreshFlowConnectionCommands();
+    }
+
+    private bool IsFlowInputCompatible(ToolWorkbenchFlowInputItem port, string outputId)
+    {
+        var index = PipelineSteps.IndexOf(port.Step);
+        if (index < 0 || port.Index < 0 || port.Index >= port.Step.FlowInputs.Count) return false;
+        var inputs = port.Step.InputEntityIds.ToList();
+        while (inputs.Count <= port.Index) inputs.Add(string.Empty);
+        inputs[port.Index] = outputId;
+        return IsFlowInputCompatible(CreateDocument(), index, inputs);
+    }
+
+    private static bool IsFlowInputCompatible(ToolRecipeDocument document, int stepIndex, IReadOnlyList<string> inputs)
+    {
+        var steps = document.Steps.ToArray();
+        steps[stepIndex] = steps[stepIndex] with { InputEntityIds = inputs.ToArray() };
+        return !HasAdditionalValidationErrors(ToolRecipeValidator.Validate(document).Errors,
+            ToolRecipeValidator.Validate(document with { Steps = steps }).Errors);
     }
 
     private void CancelFlowConnection()
@@ -2931,7 +3090,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
         var snapshot = removed.Step;
         var restored = new ToolWorkbenchPipelineStepItem(snapshot.Id, removed.Tool, string.Join("; ", snapshot.InputEntityIds), snapshot.OutputEntityId,
-            snapshot.Parameters, snapshot.ToolName, snapshot.DualRoiRouting, snapshot.OutputEnabled, acceptanceLimitsConfigured: snapshot.AcceptanceLimitsConfigured);
+            snapshot.Parameters, snapshot.ToolName, snapshot.DualRoiRouting, snapshot.OutputEnabled, acceptanceLimitsConfigured: snapshot.AcceptanceLimitsConfigured, group: snapshot.Group);
         foreach (var selection in removed.Selections) teachingSelectionStoreOwner.Upsert(selection);
         SubscribeStep(restored);
         PipelineSteps.Insert(Math.Min(removed.Index, PipelineSteps.Count), restored);
@@ -3171,6 +3330,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
     private void RemoveTeachingSelection(ToolRecipeSelection selection)
     {
+        var before = CreateDocument();
         var step = SelectedPipelineStep;
         var wasDualRoi = IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion;
         var removedMeasurementRole = wasDualRoi && isPlaneFlatnessMeasurementRole;
@@ -3208,6 +3368,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         MarkMeasurementPreviewStaleIfNeeded();
         RefreshTeachingSelectionContext();
         teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
+        if (step is not null) RememberAppliedStepChange(step, before, Localize("영역 삭제", "Region removed") + " · " + AppliedSelectionSummary(selection));
         AppendLog(
             "Teach",
             $"Selection deleted | step={step?.Id ?? "(none)"} | role={(removedMeasurementRole ? "measurement" : wasDualRoi ? "reference" : "selection")} | selection={selection.Id} | geometry={ToolWorkbenchTeachingSelectionPolicy.FormatSelectionGeometryForLog(selection)} | route={string.Join(';', step?.InputEntityIds ?? [])}.");
@@ -3231,6 +3392,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             return;
         }
 
+        var before = CreateDocument();
         MutateRecipe(() =>
         {
             var isDualRoi = IsSelectedStepDualRoiMeasurement;
@@ -3252,6 +3414,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         MarkDomainMaskPreviewStaleIfUpstreamChanged();
         RefreshTeachingSelectionContext();
         AdvancePlaneFlatnessTeachingRole();
+        RememberAppliedStepChange(SelectedPipelineStep, before, Localize("기존 영역 연결", "Existing region linked") + " · " + AppliedSelectionSummary(selection));
         AppendLog("Teach", $"Routed existing selection '{selection.Name}' to {SelectedPipelineStep.ToolName}.");
     }
 
@@ -3262,6 +3425,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             return;
         }
 
+        var before = CreateDocument();
+        var previous = teachingSelectionStoreOwner.Find(selection.Id);
         MutateRecipe(() =>
         {
             teachingSelectionStoreOwner.Upsert(selection);
@@ -3292,6 +3457,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             MarkLandmarkCorrespondencePreviewStaleIfNeeded();
         }
         RefreshTeachingSelectionContext();
+        RememberAppliedStepChange(SelectedPipelineStep, before, Localize("영역", "Region") + " "
+            + (previous is null ? Localize("없음", "None") : AppliedSelectionSummary(previous))
+            + " → " + AppliedSelectionSummary(selection));
     }
 
     private void ValidateTeachingRecipe()
@@ -3331,90 +3499,102 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         bool captureOpenedSourceIdentity)
     {
         if (HasPendingOrderedRunRecordSave) return;
-        if (captureOpenedSourceIdentity) EndStepRemovalHistory();
-        selectedStepExecutionOwner.ClearCompletedResults();
-        ClearFilterPreview(previewStatus);
-        ClearHeightThresholdPreview(previewStatus);
-        ClearRemoveOutlierPreview(previewStatus);
-        ClearConnectedRegionPreview(previewStatus);
-        ClearGridPolygonDomainPreview(previewStatus);
-        ClearDomainMaskPreview(previewStatus);
-        ClearEditableRegionPreview(previewStatus);
-        ClearLevelSurfacePreview(previewStatus);
-        ClearRoiCropPreview(previewStatus);
-        ClearPhysicalEdgeGapFlushPreview(previewStatus);
-        if (markDirty)
+        workspaceProjectionUpdateDepth++;
+        try
         {
-            ClearMeasurementPreview(previewStatus);
-        }
-        if (captureOpenedSourceIdentity)
-        {
-            CaptureOpenedSourceIdentity(document.Source);
-        }
-        MutateRecipe(() =>
-        {
-            RecipeSession.SetSchemaVersion(document.SchemaVersion);
-            RecipeName = document.Name;
-            RecipeSession.SetMetadata(document.Category, document.InspectionTarget, document.Description);
-            Source.Id = document.Source.Id;
-            Source.Name = document.Source.Name;
-            Source.Format = document.Source.Format;
-            Source.Unit = document.Source.Unit;
-            Source.FrameId = document.Source.FrameId;
-            Source.Path = document.Source.Path;
-            Source.MeasurementEvidence = document.Source.MeasurementEvidence;
-            Source.SensorId = document.Source.SensorId;
-            SourceSession.SetSourceAcquisitionProvenance(document.Source.AcquisitionProvenance);
-
-            referenceCatalogOwner.ReplaceAll(document.References);
-
-            teachingSelectionStoreOwner.ReplaceAll(document.Selections ?? []);
-
-            foreach (var existing in PipelineSteps)
+            if (captureOpenedSourceIdentity) EndStepRemovalHistory();
+            appliedStepParameters.Clear();
+            teachingResultComparisons.Clear();
+            NotifyStepParameterHistory();
+            selectedStepExecutionOwner.ClearCompletedResults();
+            ClearFilterPreview(previewStatus);
+            ClearHeightThresholdPreview(previewStatus);
+            ClearRemoveOutlierPreview(previewStatus);
+            ClearConnectedRegionPreview(previewStatus);
+            ClearGridPolygonDomainPreview(previewStatus);
+            ClearDomainMaskPreview(previewStatus);
+            ClearEditableRegionPreview(previewStatus);
+            ClearLevelSurfacePreview(previewStatus);
+            ClearRoiCropPreview(previewStatus);
+            ClearPhysicalEdgeGapFlushPreview(previewStatus);
+            if (markDirty)
             {
-                UnsubscribeStep(existing);
+                ClearMeasurementPreview(previewStatus);
             }
-
-            PipelineSteps.Clear();
-            foreach (var sourceStep in document.Steps)
+            if (captureOpenedSourceIdentity)
             {
-                var importedOutputContract = ToolRecipePrimaryInputContract.GetProducedContract(sourceStep.ToolId);
-                var definition = Tools.FirstOrDefault(tool => string.Equals(tool.Id, sourceStep.ToolId, StringComparison.OrdinalIgnoreCase))
-                    ?? new ToolWorkbenchToolItem(
-                        "Imported",
+                CaptureOpenedSourceIdentity(document.Source);
+            }
+            MutateRecipe(() =>
+            {
+                RecipeSession.SetSchemaVersion(document.SchemaVersion);
+                RecipeName = document.Name;
+                RecipeSession.SetMetadata(document.Category, document.InspectionTarget, document.Description);
+                Source.Id = document.Source.Id;
+                Source.Name = document.Source.Name;
+                Source.Format = document.Source.Format;
+                Source.Unit = document.Source.Unit;
+                Source.FrameId = document.Source.FrameId;
+                Source.Path = document.Source.Path;
+                Source.MeasurementEvidence = document.Source.MeasurementEvidence;
+                Source.SensorId = document.Source.SensorId;
+                SourceSession.SetSourceAcquisitionProvenance(document.Source.AcquisitionProvenance);
+
+                referenceCatalogOwner.ReplaceAll(document.References);
+
+                teachingSelectionStoreOwner.ReplaceAll(document.Selections ?? []);
+
+                foreach (var existing in PipelineSteps)
+                {
+                    UnsubscribeStep(existing);
+                }
+
+                PipelineSteps.Clear();
+                foreach (var sourceStep in document.Steps)
+                {
+                    var importedOutputContract = ToolRecipePrimaryInputContract.GetProducedContract(sourceStep.ToolId);
+                    var definition = Tools.FirstOrDefault(tool => string.Equals(tool.Id, sourceStep.ToolId, StringComparison.OrdinalIgnoreCase))
+                        ?? new ToolWorkbenchToolItem(
+                            "Imported",
+                            sourceStep.ToolName,
+                            sourceStep.ToolId,
+                            sourceStep.MinimumInputCount,
+                            "Imported input",
+                            string.IsNullOrWhiteSpace(importedOutputContract)
+                                ? "Imported output"
+                                : importedOutputContract,
+                            "Imported teaching step with no local catalog adapter.",
+                            []);
+                    var item = new ToolWorkbenchPipelineStepItem(
+                        sourceStep.Id,
+                        definition,
+                        string.Join("; ", sourceStep.InputEntityIds),
+                        sourceStep.OutputEntityId,
+                        sourceStep.Parameters,
                         sourceStep.ToolName,
-                        sourceStep.ToolId,
-                        sourceStep.MinimumInputCount,
-                        "Imported input",
-                        string.IsNullOrWhiteSpace(importedOutputContract)
-                            ? "Imported output"
-                            : importedOutputContract,
-                        "Imported teaching step with no local catalog adapter.",
-                        []);
-                var item = new ToolWorkbenchPipelineStepItem(
-                    sourceStep.Id,
-                    definition,
-                    string.Join("; ", sourceStep.InputEntityIds),
-                    sourceStep.OutputEntityId,
-                    sourceStep.Parameters,
-                    sourceStep.ToolName,
-                    sourceStep.DualRoiRouting,
-                    sourceStep.OutputEnabled,
-                    sourceStep.SignedDeltaSidecar,
-                    sourceStep.AcceptanceLimitsConfigured);
-                SubscribeStep(item);
-                PipelineSteps.Add(item);
-            }
+                        sourceStep.DualRoiRouting,
+                        sourceStep.OutputEnabled,
+                        sourceStep.SignedDeltaSidecar,
+                        sourceStep.AcceptanceLimitsConfigured,
+                        sourceStep.Group);
+                    SubscribeStep(item);
+                    PipelineSteps.Add(item);
+                }
 
-            SelectedPipelineStep = string.IsNullOrWhiteSpace(selectedStepId)
-                ? PipelineSteps.FirstOrDefault()
-                : PipelineSteps.FirstOrDefault(step =>
-                    string.Equals(step.Id, selectedStepId, StringComparison.OrdinalIgnoreCase))
-                  ?? PipelineSteps.FirstOrDefault();
-        }, markDirty);
-        SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
-        OnPropertyChanged(nameof(SourceAcquisitionProvenance));
-        OnPropertyChanged(nameof(RecipeSchemaVersion));
+                SelectedPipelineStep = string.IsNullOrWhiteSpace(selectedStepId)
+                    ? PipelineSteps.FirstOrDefault()
+                    : PipelineSteps.FirstOrDefault(step =>
+                        string.Equals(step.Id, selectedStepId, StringComparison.OrdinalIgnoreCase))
+                      ?? PipelineSteps.FirstOrDefault();
+            }, markDirty);
+            SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
+            OnPropertyChanged(nameof(SourceAcquisitionProvenance));
+            OnPropertyChanged(nameof(RecipeSchemaVersion));
+        }
+        finally
+        {
+            CompleteWorkspaceProjectionUpdate();
+        }
     }
 
     private ToolRecipeDocument CreateDocument() => CreateDocument(documentPath: null);
@@ -3460,7 +3640,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 && string.Equals(step.ToolId, C3DSignedHeightDeltaRecipePolicy.ToolId, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(step.Id, persistedSignedDeltaSidecar.StepId, StringComparison.OrdinalIgnoreCase)
                     ? persistedSignedDeltaSidecar
-                    : null, step.AcceptanceLimitsConfigured)).ToArray(),
+                    : null, step.AcceptanceLimitsConfigured, step.Group)).ToArray(),
             string.Equals(RecipeSession.SchemaVersion, ToolRecipeDocument.LegacySchemaVersion, StringComparison.Ordinal)
                 && Selections.Count == 0
                     ? null
@@ -3591,106 +3771,116 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         }
 
         var refreshStarted = Stopwatch.GetTimestamp();
-        suppressRecipeRefresh = true;
+        workspaceProjectionUpdateDepth++;
         try
         {
-            for (var index = 0; index < PipelineSteps.Count; index++)
+            suppressRecipeRefresh = true;
+            try
             {
-                PipelineSteps[index].Order = (index + 1).ToString("00");
+                for (var index = 0; index < PipelineSteps.Count; index++)
+                {
+                    PipelineSteps[index].Order = (index + 1).ToString("00");
+                }
             }
+            finally
+            {
+                suppressRecipeRefresh = false;
+            }
+
+            var stageStarted = Stopwatch.GetTimestamp();
+            RefreshSourceIdentityState();
+            var document = CreateDocument();
+            RecipeSession.SetValidation(
+                ToolRecipeValidator.Validate(document),
+                ToolRecipeValidator.ValidateForStorage(document),
+                ValidateSelectionSourceBindings());
+            lastRecipeValidationMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
+
+            stageStarted = Stopwatch.GetTimestamp();
+            ValidationMessages.Clear();
+            foreach (var error in RecipeSession.Validation.Errors)
+            {
+                ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
+            }
+
+            foreach (var warning in RecipeSession.Validation.Warnings)
+            {
+                ValidationMessages.Add(new ToolWorkbenchValidationItem("Warning", warning));
+            }
+
+            foreach (var error in RecipeSession.SourceBindingErrors)
+            {
+                ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
+            }
+
+            foreach (var error in SourceSession.SourceIdentityErrors)
+            {
+                ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
+            }
+
+            RebuildEntities();
+            RefreshTeachingSelectionContext();
+            OrientedBoxEditor.Synchronize(document.Source, SourceSession.SourceBinding, Selections);
+            lastRecipeEntityRebuildMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
+
+            stageStarted = Stopwatch.GetTimestamp();
+            RefreshFilterExecutionState();
+            RefreshHeightThresholdExecutionState();
+            RefreshSignedDeltaBackgroundSubtractionExecutionState();
+            RefreshRemoveOutlierExecutionState();
+            RefreshConnectedRegionExecutionState();
+            RefreshGridPolygonDomainExecutionState();
+            RefreshEditableRegionExecutionState();
+            RefreshLevelSurfaceExecutionState();
+            RefreshRoiCropExecutionState();
+            RefreshHeightDifferenceEdgeExecutionState();
+            RefreshTwoPointLineExecutionState();
+            RefreshThreePointPlaneExecutionState();
+            RefreshDatumPlaneDeviationExecutionState();
+            RefreshLineFitExecutionState();
+            RefreshLineIntersectionExecutionState();
+            RefreshLandmarkCorrespondenceExecutionState();
+            RefreshXYZAffineSolveExecutionState();
+            RefreshXYZAffineApplyExecutionState();
+            RefreshRegridHeightFieldExecutionState();
+            RefreshSurfaceMatchExperimentState();
+            RefreshMeasurementExecutionState();
+            RefreshAdapterCoverage();
+            RefreshValidationSetCapability();
+            lastRecipeExecutionStateMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
+
+            stageStarted = Stopwatch.GetTimestamp();
+            OnPropertyChanged(nameof(ValidationSummary));
+            OnPropertyChanged(nameof(CanSaveTeachingRecipe));
+            OnPropertyChanged(nameof(IsTeachingRecipeExecutionReady));
+            OnPropertyChanged(nameof(IsRecipeSaveBlocked));
+            OnPropertyChanged(nameof(CanOpenRecipeInfoEditor));
+            OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
+            OnPropertyChanged(nameof(PipelineEmptyHint));
+            OnPropertyChanged(nameof(IsPipelineEmpty));
+            OnPropertyChanged(nameof(HasPipelineSteps));
+            OnPropertyChanged(nameof(IsPipelineReviewExpanded));
+            OnPropertyChanged(nameof(RecipeStateSummary));
+            NotifyFirstRecipeUx();
+            OnPropertyChanged(nameof(SourceContextSummary));
+            OnPropertyChanged(nameof(AlignmentStatusSummary));
+            RefreshThicknessRepeatGroupPresentation();
+            ((RelayCommand)SaveTeachingRecipeCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)SaveTeachingRecipeAsCommand).RaiseCanExecuteChanged();
+            openRecipeInfoEditorCommand.RaiseCanExecuteChanged();
+            NotifyProposedToolRouteChanged();
+            addSelectedToolCommand.RaiseCanExecuteChanged();
+            RefreshStepCommands();
+            inspectionQueueWorkspace?.RefreshCommands();
+            lastRecipeNotificationMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
         }
         finally
         {
-            suppressRecipeRefresh = false;
+            var projectionStarted = Stopwatch.GetTimestamp();
+            CompleteWorkspaceProjectionUpdate();
+            lastRecipeNotificationMilliseconds += Stopwatch.GetElapsedTime(projectionStarted).TotalMilliseconds;
+            lastRecipeRefreshMilliseconds = Stopwatch.GetElapsedTime(refreshStarted).TotalMilliseconds;
         }
-
-        var stageStarted = Stopwatch.GetTimestamp();
-        RefreshSourceIdentityState();
-        var document = CreateDocument();
-        RecipeSession.SetValidation(
-            ToolRecipeValidator.Validate(document),
-            ToolRecipeValidator.ValidateForStorage(document),
-            ValidateSelectionSourceBindings());
-        lastRecipeValidationMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
-
-        stageStarted = Stopwatch.GetTimestamp();
-        ValidationMessages.Clear();
-        foreach (var error in RecipeSession.Validation.Errors)
-        {
-            ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
-        }
-
-        foreach (var warning in RecipeSession.Validation.Warnings)
-        {
-            ValidationMessages.Add(new ToolWorkbenchValidationItem("Warning", warning));
-        }
-
-        foreach (var error in RecipeSession.SourceBindingErrors)
-        {
-            ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
-        }
-
-        foreach (var error in SourceSession.SourceIdentityErrors)
-        {
-            ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
-        }
-
-        RebuildEntities();
-        RefreshTeachingSelectionContext();
-        OrientedBoxEditor.Synchronize(document.Source, SourceSession.SourceBinding, Selections);
-        lastRecipeEntityRebuildMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
-
-        stageStarted = Stopwatch.GetTimestamp();
-        RefreshFilterExecutionState();
-        RefreshHeightThresholdExecutionState();
-        RefreshSignedDeltaBackgroundSubtractionExecutionState();
-        RefreshRemoveOutlierExecutionState();
-        RefreshConnectedRegionExecutionState();
-        RefreshGridPolygonDomainExecutionState();
-        RefreshEditableRegionExecutionState();
-        RefreshLevelSurfaceExecutionState();
-        RefreshRoiCropExecutionState();
-        RefreshHeightDifferenceEdgeExecutionState();
-        RefreshTwoPointLineExecutionState();
-        RefreshThreePointPlaneExecutionState();
-        RefreshDatumPlaneDeviationExecutionState();
-        RefreshLineFitExecutionState();
-        RefreshLineIntersectionExecutionState();
-        RefreshLandmarkCorrespondenceExecutionState();
-        RefreshXYZAffineSolveExecutionState();
-        RefreshXYZAffineApplyExecutionState();
-        RefreshRegridHeightFieldExecutionState();
-        RefreshSurfaceMatchExperimentState();
-        RefreshMeasurementExecutionState();
-        RefreshAdapterCoverage();
-        RefreshValidationSetCapability();
-        lastRecipeExecutionStateMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
-
-        stageStarted = Stopwatch.GetTimestamp();
-        OnPropertyChanged(nameof(ValidationSummary));
-        OnPropertyChanged(nameof(CanSaveTeachingRecipe));
-        OnPropertyChanged(nameof(IsTeachingRecipeExecutionReady));
-        OnPropertyChanged(nameof(IsRecipeSaveBlocked));
-        OnPropertyChanged(nameof(CanOpenRecipeInfoEditor));
-        OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
-        OnPropertyChanged(nameof(PipelineEmptyHint));
-        OnPropertyChanged(nameof(IsPipelineEmpty));
-        OnPropertyChanged(nameof(HasPipelineSteps));
-        OnPropertyChanged(nameof(IsPipelineReviewExpanded));
-        OnPropertyChanged(nameof(RecipeStateSummary));
-        NotifyFirstRecipeUx();
-        OnPropertyChanged(nameof(SourceContextSummary));
-        OnPropertyChanged(nameof(AlignmentStatusSummary));
-        RefreshThicknessRepeatGroupPresentation();
-        ((RelayCommand)SaveTeachingRecipeCommand).RaiseCanExecuteChanged();
-        ((RelayCommand)SaveTeachingRecipeAsCommand).RaiseCanExecuteChanged();
-        openRecipeInfoEditorCommand.RaiseCanExecuteChanged();
-        NotifyProposedToolRouteChanged();
-        addSelectedToolCommand.RaiseCanExecuteChanged();
-        RefreshStepCommands();
-        inspectionQueueWorkspace?.RefreshCommands();
-        lastRecipeNotificationMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
-        lastRecipeRefreshMilliseconds = Stopwatch.GetElapsedTime(refreshStarted).TotalMilliseconds;
     }
 
     private void RebuildEntities()
@@ -3969,6 +4159,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 nameof(TeachingGridRectangleRowCount),
             nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumnCount) =>
                 nameof(TeachingGridRectangleColumnCount),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumnText) =>
+                nameof(TeachingGridRectangleColumnText),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleRowText) =>
+                nameof(TeachingGridRectangleRowText),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleColumnCountText) =>
+                nameof(TeachingGridRectangleColumnCountText),
+            nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleRowCountText) =>
+                nameof(TeachingGridRectangleRowCountText),
             nameof(ToolWorkbenchTeachingSelectionCaptureOwner.IsGridRectangleDraftValid) =>
                 nameof(IsTeachingGridRectangleDraftValid),
             nameof(ToolWorkbenchTeachingSelectionCaptureOwner.GridRectangleValidationSummary) =>
@@ -4052,6 +4250,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
         OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
         OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
+        NotifyPlaneFlatnessTeachingState();
         RefreshStepCommands();
         RefreshSelectedToolWorkspaceProjection();
         RefreshHeightImageRoiProjection();
@@ -4214,6 +4413,21 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             or nameof(ToolWorkbenchPipelineStepItem.InputContractDisplay)
             or nameof(ToolWorkbenchPipelineStepItem.OutputContractDisplay)
             or nameof(ToolWorkbenchPipelineStepItem.FlowInputs)
+            or nameof(ToolWorkbenchPipelineStepItem.PrimaryFlowInput)
+            or nameof(ToolWorkbenchPipelineStepItem.SecondaryFlowInputs)
+            or nameof(ToolWorkbenchPipelineStepItem.CollapsedPrimaryInputLabel)
+            or nameof(ToolWorkbenchPipelineStepItem.CollapsedOutputSummary)
+            or nameof(ToolWorkbenchPipelineStepItem.FlowRepeatGroupAnchor)
+            or nameof(ToolWorkbenchPipelineStepItem.IsFlowRepeatGroupMember)
+            or nameof(ToolWorkbenchPipelineStepItem.IsFlowRepeatGroupLead)
+            or nameof(ToolWorkbenchPipelineStepItem.IsFlowRepeatGroupLast)
+            or nameof(ToolWorkbenchPipelineStepItem.FlowRepeatGroupCount)
+            or nameof(ToolWorkbenchPipelineStepItem.FlowRepeatGroupOrderRange)
+            or nameof(ToolWorkbenchPipelineStepItem.FlowRepeatGroupLabel)
+            or nameof(ToolWorkbenchPipelineStepItem.HasLongFlowName)
+            or nameof(ToolWorkbenchPipelineStepItem.CollapsedInputSummary)
+            or nameof(ToolWorkbenchPipelineStepItem.OutputPreviewFrame)
+            or nameof(ToolWorkbenchPipelineStepItem.HasOutputPreview)
             or nameof(ToolWorkbenchPipelineStepItem.InputSummary)
             or nameof(ToolWorkbenchPipelineStepItem.ResultValueSummary)
             or nameof(ToolWorkbenchPipelineStepItem.OutputPortState)
@@ -4310,10 +4524,25 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
         OnPropertyChanged(nameof(RecipeStateSummary));
         OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
+        NotifyHeaderRecipeState();
+        NotifyOrderedRunState();
+    }
+
+    private void NotifyHeaderRecipeState()
+    {
+        ((RelayCommand)SaveTeachingRecipeCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)SaveTeachingRecipeAsCommand).RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(IsRecipeSaving));
+        OnPropertyChanged(nameof(HasRecipeSaveFailure));
+        OnPropertyChanged(nameof(IsHeaderRecipeModified));
+        OnPropertyChanged(nameof(HeaderRecipeMetaText));
+        OnPropertyChanged(nameof(HeaderRecipeSaveStateText));
+        OnPropertyChanged(nameof(HeaderRecipeDetailText));
     }
 
     private void RefreshStepCommands()
     {
+        NotifyStepParameterHistory();
         inspectionQueueWorkspace?.RefreshTeachingInputCommand();
         removeSelectedStepCommand.RaiseCanExecuteChanged();
         restoreLastRemovedStepCommand.RaiseCanExecuteChanged();
@@ -4385,6 +4614,29 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
     internal void AppendLog(string category, string message)
         => runLogOwner.Append(category, message);
+
+    private void RecordSelectedExecution(ToolWorkbenchPipelineStepItem step, bool publish, ResultStatus? status, string detail, string reason, bool wasCanceled)
+    {
+        if (!PipelineSteps.Contains(step)) return;
+        var action = publish ? Localize("선택 도구 실행", "Run selected tool") : Localize("미리보기", "Preview");
+        var unjudged = status is null && (CurrentMeasurementOutput is { } measurement
+            && string.Equals(measurement.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+            && measurement.Result.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage
+            || step.ToolId == "datum-plane-raw-height-deviation" && CurrentDatumPlaneDeviationResult?.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage);
+        var statusText = wasCanceled ? Localize("취소", "Canceled")
+            : status is { } resultStatus ? Localization.ResultStatusLabel(resultStatus)
+                : unjudged ? Localize("미판정", "Unjudged") : Localize("완료", "Completed");
+        if (status == ResultStatus.Pass) statusText = "OK";
+        else if (status == ResultStatus.Fail) statusText = "NG";
+        var hasReason = !string.IsNullOrWhiteSpace(reason) && reason != "—";
+        var resultDetail = status == ResultStatus.Error && hasReason ? reason : detail;
+        var message = wasCanceled || status is null && !unjudged || status == ResultStatus.Error
+            ? $"{step.ToolName} {statusText}" + (string.IsNullOrWhiteSpace(resultDetail) ? string.Empty : $" · {resultDetail}")
+            : $"{step.ToolName}" + (string.IsNullOrWhiteSpace(detail) ? string.Empty : $" {detail}") + $" · {statusText}";
+        if (status is ResultStatus.Fail or ResultStatus.Warning or ResultStatus.NotRun && hasReason) message += $" · {reason}";
+        if (!publish) message = $"{action} · {message}";
+        runLogOwner.AppendExecution(message, status, wasCanceled);
+    }
 
     private string GetActiveTeachingRoleName() =>
         IsSelectedStepDualRoiMeasurement

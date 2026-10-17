@@ -1,0 +1,311 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.RecipeDataView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             x:Name="DataRoot"
+             AutomationProperties.AutomationId="RecipeDataView">
+    <UserControl.Style>
+        <Style TargetType="UserControl">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="FontFamily" Value="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" /></DataTrigger></Style.Triggers>
+        </Style>
+    </UserControl.Style>
+    <UserControl.Resources>
+        <workbench:HeightImageFrameConverter x:Key="GalleryFrameConverter" />
+        <SolidColorBrush x:Key="GalleryDeviationBrush" Color="#F2B35E" />
+        <Style x:Key="GalleryButtonFocus" TargetType="Control"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control"><Border Margin="-3" BorderThickness="2" BorderBrush="{DynamicResource ThreeD.FocusBrush}" CornerRadius="4" /></ControlTemplate></Setter.Value></Setter></Style>
+        <Style x:Key="GalleryLegacyButtonFocus" TargetType="Control"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control"><Border Margin="-2" BorderThickness="2" BorderBrush="{DynamicResource ThreeD.FocusBrush}" CornerRadius="4" /></ControlTemplate></Setter.Value></Setter></Style>
+        <Style x:Key="GalleryHintStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /><Setter Property="TextWrapping" Value="NoWrap" /><Setter Property="TextTrimming" Value="CharacterEllipsis" /><Setter Property="LineHeight" Value="16.675" /><Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="TextTrimming" Value="None" /><Setter Property="LineHeight" Value="Auto" /><Setter Property="LineStackingStrategy" Value="MaxHeight" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="GalleryTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="LineHeight" Value="17.4" /><Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="LineHeight" Value="Auto" /><Setter Property="LineStackingStrategy" Value="MaxHeight" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="GalleryMetadataStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /><Setter Property="LineHeight" Value="15.95" /><Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" /><Setter Property="LineHeight" Value="Auto" /><Setter Property="LineStackingStrategy" Value="MaxHeight" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="GalleryButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" /><Setter Property="Height" Value="22" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" /><Setter Property="FocusVisualStyle" Value="{StaticResource GalleryButtonFocus}" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="Cursor" Value="Arrow" /></Trigger>
+            </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="FocusVisualStyle" Value="{StaticResource GalleryLegacyButtonFocus}" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="GalleryStepButtonStyle" TargetType="Button" BasedOn="{StaticResource GalleryButtonStyle}">
+            <Setter Property="Margin" Value="2,0,0,0" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Margin" Value="0" /></DataTrigger></Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="GalleryLegacyPopupContent">
+            <StackPanel MaxWidth="384"><TextBlock Text="{Binding PlacementTarget.DataContext.DisplayName, RelativeSource={RelativeSource AncestorType=ToolTip}}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                        <Rectangle Width="384" Height="252"><Rectangle.Fill><VisualBrush Visual="{Binding PlacementTarget.Content, RelativeSource={RelativeSource AncestorType=ToolTip}}" Stretch="Uniform" /></Rectangle.Fill></Rectangle>
+                                        <TextBlock Text="{Binding PlacementTarget.DataContext.Availability, RelativeSource={RelativeSource AncestorType=ToolTip}}" TextWrapping="Wrap" />
+                                    </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="GalleryTeachingPopupContent">
+            <StackPanel Width="288">
+                                        <Rectangle Width="288" Height="189" RadiusX="5" RadiusY="5"><Rectangle.Fill><VisualBrush Visual="{Binding PlacementTarget.Content.Children[0], RelativeSource={RelativeSource AncestorType=ToolTip}}" Stretch="Uniform" /></Rectangle.Fill></Rectangle>
+                                        <Grid Margin="0,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Ellipse Width="8" Height="8" Margin="0,0,5,0" VerticalAlignment="Center"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{DynamicResource ThreeD.AccentBrush}" /><Style.Triggers><DataTrigger Binding="{Binding PlacementTarget.DataContext.Contract, RelativeSource={RelativeSource AncestorType=ToolTip}}" Value="SignedDeltaHeightField"><Setter Property="Fill" Value="{StaticResource GalleryDeviationBrush}" /></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse>
+                                            <TextBlock Grid.Column="1" Text="{Binding PlacementTarget.DataContext.GalleryName, RelativeSource={RelativeSource AncestorType=ToolTip}}" TextTrimming="CharacterEllipsis" FontSize="12.5" FontWeight="650" LineHeight="18.125" LineStackingStrategy="BlockLineHeight" />
+                                        </Grid>
+                                        <TextBlock Margin="0,2,0,0" Text="{Binding PlacementTarget.DataContext.GalleryPreviewSummary, RelativeSource={RelativeSource AncestorType=ToolTip}}" TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="16.675" LineStackingStrategy="BlockLineHeight" />
+                                        <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Data.PreviewDisplayHint, Korean='클릭 활성 창 · Shift 다른 창', English='Click active pane · Shift other pane'}" FontSize="11" Foreground="{DynamicResource ThreeD.DataMutedTextBrush}" LineHeight="15.95" LineStackingStrategy="BlockLineHeight" />
+                                    </StackPanel>
+        </DataTemplate>
+        <Style x:Key="GalleryPopupStyle" TargetType="ToolTip" BasedOn="{StaticResource {x:Type ToolTip}}">
+            <Setter Property="ContentTemplate" Value="{StaticResource GalleryLegacyPopupContent}" />
+            <Style.Triggers><DataTrigger Binding="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                <Setter Property="ContentTemplate" Value="{StaticResource GalleryTeachingPopupContent}" />
+                <Setter Property="Width" Value="306" /><Setter Property="MaxWidth" Value="306" /><Setter Property="Padding" Value="8" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Background" Value="{DynamicResource ThreeD.DataPopupSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DataPopupBorderBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+            <Setter Property="FontFamily" Value="{Binding PlacementTarget.FontFamily, RelativeSource={RelativeSource Self}}" /><Setter Property="HasDropShadow" Value="False" /><Setter Property="Placement" Value="Custom" /><Setter Property="CustomPopupPlacementCallback" Value="{x:Static workbench:RecipeDataView.GalleryPreviewPlacement}" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToolTip"><Border x:Name="GalleryPopupSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}"><Border.Effect><DropShadowEffect Color="Black" BlurRadius="34" ShadowDepth="14" Opacity="0.5" /></Border.Effect><ContentPresenter /></Border></ControlTemplate></Setter.Value></Setter>
+            </DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="GalleryThumbnailStyle" TargetType="Button" BasedOn="{StaticResource GalleryButtonStyle}">
+            <Setter Property="Width" Value="96" /><Setter Property="Height" Value="63" /><Setter Property="Background" Value="{DynamicResource ThreeD.DataThumbnailSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DataThumbnailBorderBrush}" /><Setter Property="VerticalAlignment" Value="Top" /><Setter Property="ToolTipService.IsEnabled" Value="{Binding CanShowInViewer}" /><Setter Property="ToolTipService.InitialShowDelay" Value="320" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="ThumbnailSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="4"><ContentPresenter /></Border><ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ThumbnailSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter TargetName="ThumbnailSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentPressedBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /></Trigger>
+            </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Background" Value="{DynamicResource ThreeD.ViewportBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /><Setter Property="ToolTipService.IsEnabled" Value="True" /><Setter Property="ToolTipService.ShowOnDisabled" Value="True" /><Setter Property="ToolTipService.InitialShowDelay" Value="{Binding Source={x:Static ToolTipService.InitialShowDelayProperty}, Path=DefaultMetadata.DefaultValue}" /></DataTrigger></Style.Triggers>
+        </Style>
+
+                    <DataTemplate x:Key="LegacyGalleryCard">
+                        <Border Margin="0,0,0,6" Padding="6" CornerRadius="6" BorderThickness="1" AutomationProperties.AutomationId="RecipeDataGalleryCard" AutomationProperties.Name="{Binding DisplayName}">
+                            <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible" /><Setter Property="Background" Value="{DynamicResource ThreeD.DataCardSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.SoftDividerBrush}" /><Style.Triggers>
+                                <DataTrigger Binding="{Binding IsImageData}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                <DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" /></DataTrigger>
+                                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False" /><Condition Binding="{Binding IsShownInViewer}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /><Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" /></MultiDataTrigger>
+                            </Style.Triggers></Style></Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border x:Name="GalleryShownMarker" Grid.ColumnSpan="2" Width="3" Margin="-6,-6,0,-6" HorizontalAlignment="Left" CornerRadius="4,0,0,4" Background="{DynamicResource ThreeD.AccentBrush}" IsHitTestVisible="False"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsShownInViewer}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Border.Style></Border>
+                                <Button x:Name="GalleryThumbnail" Style="{StaticResource GalleryThumbnailStyle}"
+                                        Command="{Binding DataContext.ShowDisplayedOutputInViewerCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" CommandParameter="{Binding}" Tag="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}, FallbackValue=True}" AutomationProperties.AutomationId="RecipeDataThumbnail" AutomationProperties.Name="{Binding DisplayName}">
+                                    <Grid>
+                                        <TextBlock FontSize="10.5" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Data.NoPreview, Korean='미리 보기 없음', English='No preview'}" /><Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="Declared"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Data.RunToDisplay, Korean='실행하면 표시', English='Run to display'}" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding State}" Value="Stale"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Data.RunAgain, Korean='다시 실행 필요', English='Run again'}" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" /></DataTrigger>
+                                        </Style.Triggers></Style></TextBlock.Style></TextBlock>
+                                        <Image x:Name="GalleryInputImage" Stretch="UniformToFill"><Image.Source><MultiBinding Converter="{StaticResource GalleryFrameConverter}">
+                                            <Binding Path="DataContext.HeightImageViewer.DisplayFrame" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" /><Binding Path="DataContext.HeightImageViewer.Frame.SourceContentSha256" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" />
+                                            <Binding Path="Artifact.ContentSha256" /><Binding Path="CanShowInViewer" />
+                                        </MultiBinding></Image.Source></Image>
+                                        <Image x:Name="GalleryCurrentImage" Stretch="UniformToFill"><Image.Source><MultiBinding Converter="{StaticResource GalleryFrameConverter}">
+                                            <Binding Path="DataContext.MainViewerPane.HeightImage.DisplayFrame" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" /><Binding Path="DataContext.MainViewerPane.HeightImage.Frame.SourceContentSha256" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" />
+                                            <Binding Path="Artifact.ContentSha256" /><Binding Path="CanShowInViewer" />
+                                        </MultiBinding></Image.Source></Image>
+                                        <Image x:Name="GalleryOutputImage" Stretch="UniformToFill"><Image.Source><MultiBinding Converter="{StaticResource GalleryFrameConverter}">
+                                            <Binding Path="PipelineStep.OutputPreviewFrame" /><Binding Path="PipelineStep.OutputEntityId" /><Binding Path="Id" />
+                                            <Binding Path="CanShowInViewer" /><Binding Path="IsImageData" />
+                                        </MultiBinding></Image.Source></Image>
+                                    </Grid>
+                                    <Button.ToolTip><ToolTip Style="{StaticResource GalleryPopupStyle}" Content="{Binding}" Opened="OnGalleryToolTipOpened" Closed="OnGalleryToolTipClosed" /></Button.ToolTip>
+                                </Button>
+                                <Grid Grid.Column="1" Margin="8,0,0,0">
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition x:Name="GalleryContractRow" Height="43.95" /></Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Ellipse x:Name="GalleryTypeMarker" Width="8" Height="8" Margin="0,0,5,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                                        <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{DynamicResource ThreeD.AccentBrush}" /><Style.Triggers>
+                                            <DataTrigger Binding="{Binding Contract}" Value="SignedDeltaHeightField"><Setter Property="Fill" Value="{StaticResource GalleryDeviationBrush}" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                        </Style.Triggers></Style></Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource GalleryTitleStyle}" Text="{Binding DisplayName}" />
+                                </Grid>
+                                <TextBlock Grid.Row="1" Margin="0,1,0,0" Style="{StaticResource GalleryMetadataStyle}" Text="{Binding StateDisplay}" />
+                                <StackPanel Grid.Row="2" Margin="0,3,0,0" VerticalAlignment="Bottom">
+                                    <Grid x:Name="GalleryTeachingContract">
+                                        <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="GalleryContractLabel" Style="{StaticResource GalleryMetadataStyle}" Text="{Binding ContractDisplay}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock x:Name="GalleryUnit" Grid.Column="1" Style="{StaticResource GalleryMetadataStyle}" TextWrapping="NoWrap"><Run Text=" · " /><Run Text="{Binding Artifact.Unit, Mode=OneWay}" /></TextBlock>
+                                    </Grid>
+                                    <TextBlock x:Name="GalleryLegacyContract"><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource GalleryMetadataStyle}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style><Run Text="{Binding ContractDisplay, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Artifact.Unit, Mode=OneWay}" /></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                        <Button Style="{StaticResource GalleryButtonStyle}" Command="{Binding DataContext.ShowDisplayedOutputInViewerCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" CommandParameter="{Binding}"
+                                                ToolTip="{Binding DataContext.Localization.ShowInViewer, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" AutomationProperties.Name="{Binding DataContext.Localization.ShowInViewer, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}"><ui:SymbolIcon Symbol="Eye24" FontSize="14" /></Button>
+                                        <Button Style="{StaticResource GalleryStepButtonStyle}" Command="{Binding DataContext.FocusDisplayedOutputStepCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" CommandParameter="{Binding}"
+                                                ToolTip="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" AutomationProperties.Name="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}"><ui:SymbolIcon Symbol="FlowchartCircle24" FontSize="14" /></Button>
+                                    </StackPanel>
+                                </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <DataTemplate.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter TargetName="GalleryContractRow" Property="Height" Value="*" /><Setter TargetName="GalleryContractRow" Property="MinHeight" Value="63" /></DataTrigger></DataTemplate.Triggers>
+                    </DataTemplate>
+
+
+                    <DataTemplate x:Key="TeachingGalleryCard">
+                        <Border Margin="0,0,0,6" Padding="6" CornerRadius="6" BorderThickness="1" AutomationProperties.AutomationId="RecipeDataGalleryCard" AutomationProperties.Name="{Binding GalleryName}">
+                            <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible" /><Setter Property="Background" Value="{DynamicResource ThreeD.DataCardSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.SoftDividerBrush}" /><Style.Triggers>
+                                <DataTrigger Binding="{Binding IsGalleryData}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                <DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" /></DataTrigger>
+                                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False" /><Condition Binding="{Binding IsShownInGallery}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /><Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" /></MultiDataTrigger>
+                            <DataTrigger Binding="{Binding IsRelatedToSelectedStep}" Value="True"><Setter Property="Background" Value="#1C2629" /><Setter Property="BorderBrush" Value="#3D5F5D" /></DataTrigger></Style.Triggers></Style></Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border x:Name="GalleryShownMarker" Grid.ColumnSpan="2" Width="3" Margin="-6,-6,0,-6" HorizontalAlignment="Left" CornerRadius="4,0,0,4" Background="{DynamicResource ThreeD.AccentBrush}" IsHitTestVisible="False"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsShownInGallery}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Border.Style></Border>
+                                <Button x:Name="GalleryThumbnail" Style="{StaticResource GalleryThumbnailStyle}"
+                                        IsEnabled="{Binding CanShowInViewer}" behaviors:GalleryDisplayBehavior.ActivePaneCommand="{Binding DataContext.ShowGalleryInActivePaneCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" behaviors:GalleryDisplayBehavior.OtherPaneCommand="{Binding DataContext.ShowGalleryInOtherPaneCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" behaviors:GalleryDisplayBehavior.CommandParameter="{Binding}" Tag="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}, FallbackValue=True}" AutomationProperties.AutomationId="RecipeDataThumbnail" AutomationProperties.Name="{Binding DisplayName}">
+                                    <Grid>
+                                    <Grid x:Name="GalleryThumbnailPixels">
+                                        <TextBlock FontSize="10.5" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Data.NoPreview, Korean='미리 보기 없음', English='No preview'}" /><Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="Declared"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Data.RunToDisplay, Korean='실행하면 표시', English='Run to display'}" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding State}" Value="Stale"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Data.RunAgain, Korean='다시 실행 필요', English='Run again'}" /></DataTrigger>
+                                            <DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" /></DataTrigger>
+                                        </Style.Triggers></Style></TextBlock.Style></TextBlock>
+                                        <Image x:Name="GalleryInputImage" Stretch="UniformToFill"><Image.Source><MultiBinding Converter="{StaticResource GalleryFrameConverter}">
+                                            <Binding Path="DataContext.HeightImageViewer.DisplayFrame" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" /><Binding Path="DataContext.HeightImageViewer.Frame.SourceContentSha256" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" />
+                                            <Binding Path="Artifact.ContentSha256" /><Binding Path="CanShowInViewer" />
+                                        </MultiBinding></Image.Source></Image>
+                                        <Image x:Name="GalleryCurrentImage" Stretch="UniformToFill"><Image.Source><MultiBinding Converter="{StaticResource GalleryFrameConverter}">
+                                            <Binding Path="DataContext.MainViewerPane.HeightImage.DisplayFrame" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" /><Binding Path="DataContext.MainViewerPane.HeightImage.Frame.SourceContentSha256" RelativeSource="{RelativeSource AncestorType=workbench:RecipeDataView}" />
+                                            <Binding Path="Artifact.ContentSha256" /><Binding Path="CanShowInViewer" />
+                                        </MultiBinding></Image.Source></Image>
+                                        <Image x:Name="GalleryOutputImage" Stretch="UniformToFill"><Image.Source><MultiBinding Converter="{StaticResource GalleryFrameConverter}">
+                                            <Binding Path="PipelineStep.OutputPreviewFrame" /><Binding Path="PipelineStep.OutputEntityId" /><Binding Path="Id" />
+                                            <Binding Path="CanShowInViewer" /><Binding Path="IsImageData" />
+                                        </MultiBinding></Image.Source></Image>
+                                    </Grid><Border Margin="3" Padding="4,0" CornerRadius="3" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#E011171B" IsHitTestVisible="False">
+<Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding GalleryRole}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Border.Style>
+<TextBlock Text="{Binding GalleryRole}" Foreground="#BFE3DC" FontSize="10" FontWeight="SemiBold" LineHeight="15" LineStackingStrategy="BlockLineHeight" />
+</Border></Grid>
+                                    <Button.ToolTip><ToolTip Style="{StaticResource GalleryPopupStyle}" Content="{Binding}" Opened="OnGalleryToolTipOpened" Closed="OnGalleryToolTipClosed" /></Button.ToolTip>
+                                </Button>
+                                <Grid Grid.Column="1" Margin="8,0,0,0">
+<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="43.61" /></Grid.RowDefinitions>
+<Grid Margin="0,0,0,1"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+<Ellipse x:Name="GalleryTypeMarker" Width="8" Height="8" Margin="0,0,5,0" VerticalAlignment="Center" IsHitTestVisible="False"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{DynamicResource ThreeD.AccentBrush}" /><Style.Triggers>
+<DataTrigger Binding="{Binding Contract}" Value="SignedDeltaHeightField"><Setter Property="Fill" Value="{StaticResource GalleryDeviationBrush}" /></DataTrigger>
+<DataTrigger Binding="{Binding Contract}" Value="ConnectedRegionArtifact"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+<DataTrigger Binding="{Binding Contract}" Value="EditableRegionArtifact"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+</Style.Triggers></Style></Ellipse.Style></Ellipse>
+<Rectangle Width="8" Height="8" Margin="0,0,5,0" VerticalAlignment="Center" Fill="#B192E8" IsHitTestVisible="False"><Rectangle.Style><Style TargetType="Rectangle"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Contract}" Value="ConnectedRegionArtifact"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Contract}" Value="EditableRegionArtifact"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Rectangle.Style></Rectangle>
+<TextBlock Grid.Column="1" Text="{Binding GalleryName}" Style="{StaticResource GalleryTitleStyle}" />
+</Grid>
+<TextBlock Grid.Row="1" Margin="0,0,0,1" Text="{Binding GalleryMetadata}" ToolTip="{Binding GalleryIdentitySummary}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Style="{StaticResource GalleryMetadataStyle}" />
+<StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+<Button Margin="0,0,2,0" Style="{StaticResource GalleryButtonStyle}" Command="{Binding DataContext.ShowGalleryInLeftPaneCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" CommandParameter="{Binding}" ToolTip="{Binding GalleryLeftLabel}" AutomationProperties.AutomationId="RecipeDataShowLeft" AutomationProperties.Name="{Binding GalleryLeftLabel}">
+<ui:SymbolIcon Symbol="PanelLeft24" FontSize="14" />
+</Button>
+<Button Style="{StaticResource GalleryButtonStyle}" Command="{Binding DataContext.ShowGalleryInRightPaneCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" CommandParameter="{Binding}" ToolTip="{Binding GalleryRightLabel}" AutomationProperties.AutomationId="RecipeDataShowRight" AutomationProperties.Name="{Binding GalleryRightLabel}">
+<ui:SymbolIcon Symbol="PanelRight24" FontSize="14" />
+</Button>
+</StackPanel>
+</Grid>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Border Padding="10,6" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1">
+            <TextBlock Style="{StaticResource GalleryHintStyle}"
+                       Text="{views:ThreeDText Key=ThreeD.Data.GalleryHint, Korean='흐름 순서 · 이미지를 누르면 뷰어에 표시 · 마우스를 올리면 크게', English='Flow order · Click an image to show it in the viewer · Hover to enlarge'}" />
+        </Border>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8" AutomationProperties.AutomationId="RecipeDataGalleryScroll">
+            <ItemsControl x:Name="RecipeDataGallery" ItemsSource="{Binding DisplayedOutputs}">
+<ItemsControl.Style><Style TargetType="ItemsControl"><Setter Property="ItemTemplate" Value="{StaticResource TeachingGalleryCard}" /><Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="ItemTemplate" Value="{StaticResource LegacyGalleryCard}" /></DataTrigger></Style.Triggers></Style></ItemsControl.Style>
+            </ItemsControl>
+        </ScrollViewer>
+        <Expander x:Name="TeachingDataInformation" Grid.Row="2" IsExpanded="False" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,1,0,0">
+<Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Expander.Style>
+<Expander.Template><ControlTemplate TargetType="Expander"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><StackPanel>
+<ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalContentAlignment="Left" Padding="10,7" FocusVisualStyle="{StaticResource GalleryButtonFocus}" AutomationProperties.AutomationId="RecipeDataInformationToggle" AutomationProperties.Name="입력 · ROI 정보">
+<ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border x:Name="InformationHeader" Padding="{TemplateBinding Padding}" Background="Transparent"><StackPanel Orientation="Horizontal"><TextBlock FontSize="12" x:Name="InformationArrow" Text="▸" Margin="0,0,6,0" /><TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Data.Information, Korean='입력 · ROI 정보', English='Input and ROI information'}" /></StackPanel></Border><ControlTemplate.Triggers>
+<Trigger Property="IsChecked" Value="True"><Setter TargetName="InformationArrow" Property="Text" Value="▾" /></Trigger>
+<Trigger Property="IsMouseOver" Value="True"><Setter TargetName="InformationHeader" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
+<Trigger Property="IsPressed" Value="True"><Setter TargetName="InformationHeader" Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /></Trigger>
+<Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger>
+</ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template>
+</ToggleButton>
+<ContentPresenter x:Name="InformationBody" Visibility="Collapsed" />
+</StackPanel></Border><ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="InformationBody" Property="Visibility" Value="Visible" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Expander.Template>
+<ScrollViewer MaxHeight="210" Padding="10,2,10,10" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
+<TextBlock FontSize="12" Text="{Binding Source.Name}" TextWrapping="Wrap" LineHeight="19.2" LineStackingStrategy="BlockLineHeight" />
+<TextBlock FontSize="12" TextWrapping="Wrap" LineHeight="19.2" LineStackingStrategy="BlockLineHeight"><Run Text="{Binding SourceQuality.Report.Grid.Width, Mode=OneWay, FallbackValue=—}" /><Run Text=" × " /><Run Text="{Binding SourceQuality.Report.Grid.Height, Mode=OneWay, FallbackValue=—}" /><Run Text=" · " /><Run Text="{Binding Source.Unit, Mode=OneWay}" /></TextBlock>
+<TextBlock FontSize="12" Text="{Binding SourceContractSummary}" TextWrapping="Wrap" LineHeight="19.2" LineStackingStrategy="BlockLineHeight" />
+<TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Data.RoiHint, Korean='ROI는 뷰어에서 선택하고 도구 설정에서 연결합니다.', English='Select an ROI in the viewer and connect it in tool settings.'}" TextWrapping="Wrap" LineHeight="19.2" LineStackingStrategy="BlockLineHeight" />
+</StackPanel></ScrollViewer>
+</Expander>
+        <Expander x:Name="RecipeDataInformation" Grid.Row="2" Header="{views:ThreeDText Key=ThreeD.Data.Information, Korean='입력 · ROI 정보', English='Input and ROI information'}" IsExpanded="False" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" FontSize="12">
+<Expander.Style><Style TargetType="Expander"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsTeachingGallery, RelativeSource={RelativeSource AncestorType=workbench:RecipeDataView}}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Expander.Style>
+    <TabControl x:Name="RecipeDataTabs" MaxHeight="310" Background="{DynamicResource ThreeD.PanelBrush}" BorderThickness="0" Padding="6">
+        <TabItem Header="{views:ThreeDText Key=ThreeD.Data.Input, Korean='입력', English='Input'}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="4,8">
+                    <TextBlock FontWeight="SemiBold" Text="{Binding Source.Name}" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,6,0,0" Text="{Binding Source.Path}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                    <TextBlock Margin="0,8,0,0" Text="{Binding LocalizedSourceReadinessSummary}" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,4,0,0" Text="{Binding SourceContractSummary}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                    <ui:Button Margin="0,12,0,0" HorizontalAlignment="Left" Content="{Binding Localization.OpenSourceQuality}" Icon="{ui:SymbolIcon DataHistogram24}" Command="{Binding SelectSourceQualityCommand}" />
+                    <ui:Button Margin="0,6,0,0" HorizontalAlignment="Left" Content="{Binding Localization.Open3DMap}" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding LoadC3DSourceCommand}" />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="ROI">
+            <Grid Margin="4,8">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                    <Run Text="ROI " /><Run Text="{Binding Selections.Count, Mode=OneWay}" />
+                </TextBlock>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="RecipeDataRegions" ItemsSource="{Binding Selections}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,6" Padding="8" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="Wrap" />
+                                        <ui:Button Margin="0,6,0,0" HorizontalAlignment="Right" Padding="6,3" Content="{views:ThreeDText Key=ThreeD.Data.ConnectRegion, Korean='연결 시작', English='Start connection'}" Icon="{ui:SymbolIcon ArrowFlowUpRight24}"
+                                                   Command="{Binding DataContext.BeginFlowConnectionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Id}"
+                                                   AutomationProperties.AutomationId="RecipeDataRegionOutput" AutomationProperties.Name="{Binding Name}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </TabItem>
+        <TabItem Header="{views:ThreeDText Key=ThreeD.Data.Output, Korean='출력', English='Outputs'}">
+            <ScrollViewer Margin="4,8" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding DisplayedOutputs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,6" Padding="8" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,4,0,0" Text="{Binding StateDisplay}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.AccentBrush}" />
+                                    <TextBlock Margin="0,3,0,0" Text="{Binding ContractDisplay}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                    <TextBlock Margin="0,3,0,0" Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                    <WrapPanel Margin="0,6,0,0">
+                                        <ui:Button Padding="6,3" Margin="0,0,4,4" Content="{Binding DataContext.Localization.ShowInViewer, RelativeSource={RelativeSource AncestorType=UserControl}}" Icon="{ui:SymbolIcon Eye24}"
+                                                   Command="{Binding DataContext.ShowDisplayedOutputInViewerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                        <ui:Button Padding="6,3" Margin="0,0,4,4" Content="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=UserControl}}" Icon="{ui:SymbolIcon FlowchartCircle24}"
+                                                   Command="{Binding DataContext.FocusDisplayedOutputStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
+        </Expander>
+    </Grid>
+</UserControl>

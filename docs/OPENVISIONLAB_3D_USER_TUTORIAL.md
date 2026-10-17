@@ -40,6 +40,25 @@ Viewing and display controls do not change inspection parameters. Apply or
 cancel an ROI candidate explicitly. If a tool reports an incomplete region,
 finish or repair that region before executing the tool.
 
+## Add a 2D texture image
+
+1. Display the intended C3D height-map source in the 3D pane.
+2. Open **Color and height display** (the palette button).
+3. Under **2D texture image**, choose a single-frame PNG, JPEG, BMP, or TIFF
+   aligned to the complete height-map frame.
+4. Keep the image's top-left origin: image columns follow height-map columns
+   and image rows follow height-map rows. The viewer maps source sample centres
+   across the whole image; it does not register, crop, or infer physical pitch.
+5. Use **Show texture** to switch back to height colours, or **Remove** to detach
+   the image. The scalar colour legend is hidden while the texture is shown.
+
+The texture is a display preference for the same recipe and source. Reopening
+checks the source identity, grid dimensions, and image bytes. If the file has
+changed or is missing, select the intended image again. Removing the association
+provides the reset path. These actions never run a tool or change raw height,
+ROI, or result data. Displayed numbers use at most two decimal places while
+calculations and saved numeric values retain their precision.
+
 ## Save, reopen, and repeat
 
 Save a copy before changing the sample recipe. Keep the saved recipe, source,
@@ -62,6 +81,5 @@ from tuning data.
 - Unexpected physical tolerance: check units and calibration evidence;
   do not infer millimetres from the sample's raw-height values.
 
-The current interface's native input, GPU, scaling, and operational qualification
-boundary is stated in [README](../README.md). This guide is a usage route, not a
-claim that every machine and runtime state has been verified.
+See the [C3D display notes](../README.md#3d-viewing-and-textures) for texture
+and sample-data limitations.

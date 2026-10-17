@@ -22,23 +22,14 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="260" />
         </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Subtitle, Korean='XYZ 어파인 적용 도구 실험실', English='Apply XYZ Affine Tool Lab'}"
-                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Status, Korean='A1 적용됨 | A2 점군', English='A1 Applied | A2 Cloud'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Subtitle, Korean='XYZ 어파인 적용 도구 실험실', English='Apply XYZ Affine Tool Lab'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
             <Grid>
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <Grid Grid.ColumnSpan="2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Symbol="ArrowSync24" />
-                    <StackPanel Grid.Column="1">
-                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Title, Korean='A2 | 원본 높이 데이터에 전체 XYZ 어파인 적용', English='A2 | Apply full-XYZ affine to raw C3D'}" />
-                        <TextBlock MaxWidth="740" HorizontalAlignment="Left" TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.Detail, Korean='변경 불가능한 원본 높이 데이터와 순서가 유지된 변환 점군을 비교합니다. 출력 보기는 표시만 자동 맞춤하며 재그리드나 물리 스케일을 추론하지 않습니다.', English='Compare the immutable raw C3D with an ordered TransformedPointCloud. The output viewer auto-fits reference coordinates for display only; it does not re-grid or infer physical scale.'}" />
-                    </StackPanel>
-                </Grid>
-                <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewPointCloud, Korean='점군 미리보기', English='Preview point cloud'}" Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewTip, Korean='원본 높이 데이터를 한 번 검증하고 현재 적용된 3D 변환 행렬을 재그리드 없이 적용합니다.', English='Verify the raw C3D once and apply the current Applied AffineTransform3D without re-gridding'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.PreviewAction, Korean='XYZ 어파인 적용 미리보기', English='Preview Apply XYZ Affine'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshViews, Korean='보기 새로고침', English='Refresh views'}" Icon="{ui:SymbolIcon ArrowSync24}"
@@ -88,7 +79,7 @@
                         <StackPanel>
                             <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DocumentCheckmark24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.A2Evidence, Korean='A2 정보', English='A2 evidence'}" /></DockPanel>
                             <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyUpstreamSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
-                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                            <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding AffineApplyExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                             <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
                             <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineApplyOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
                         </StackPanel>

@@ -96,6 +96,15 @@ internal static class ToolRecipeWorkbenchStageNavigationVerification
             $"canExecute={command.CanExecuteCount};executions={command.ExecutionCount};parameter={command.LastParameter ?? "null"}"));
 
         command.ResetMetrics();
+        view.ActivateValidationSet();
+        checks.Add((
+            "validation-set-forwards-validation-mode",
+            command.CanExecuteCount == 1
+                && command.ExecutionCount == 1
+                && command.LastParameter is ShellWorkspaceMode.Validate,
+            $"canExecute={command.CanExecuteCount};executions={command.ExecutionCount};parameter={command.LastParameter ?? "null"}"));
+
+        command.ResetMetrics();
         command.CanExecuteValue = false;
         view.ActivateProblems();
         checks.Add((

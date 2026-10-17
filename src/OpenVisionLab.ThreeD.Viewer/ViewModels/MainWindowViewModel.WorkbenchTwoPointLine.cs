@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
         workbenchTwoPointLine = output;
         isWorkbenchTwoPointLinePublished = isPublished;
         var state = isPublished ? "Published" : "Preview - not published";
-        SelectionSummary = $"{state} 2-Point Line | {output.OutputRole} | segment {output.SegmentLength:G6} source-coordinate | {output.ContentSha256[..12]}";
+        SelectionSummary = $"{state} 2-Point Line | {output.OutputRole} | segment {output.SegmentLength:0.##} source-coordinate | {output.ContentSha256[..12]}";
         ViewerStatus = isPublished ? "Published ordered 2-Point Line construction" : "Ordered 2-Point Line Preview - not published";
         OnPropertyChanged(nameof(WorkbenchTwoPointLine));
         OnPropertyChanged(nameof(IsWorkbenchTwoPointLinePublished));

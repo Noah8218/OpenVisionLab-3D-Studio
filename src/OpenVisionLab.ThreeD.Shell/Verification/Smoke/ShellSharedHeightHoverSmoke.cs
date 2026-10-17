@@ -1,7 +1,10 @@
 using System.IO;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
@@ -40,6 +43,12 @@ internal static class ShellSharedHeightHoverSmoke
         var beforePreviewRunning = workbench.IsSelectedStepPreviewRunning;
         var beforeOutput = workbench.CurrentMeasurementOutput;
         var beforeCamera = viewer.CaptureCameraState();
+        var viewport = (FrameworkElement)viewer.FindName("Viewport");
+        var footer = (Border)viewer.FindName("ViewerBottomStatus");
+        var viewerCoordinates = ShellSmokeArtifacts.FindVisualDescendants<TextBlock>(viewer)
+            .Single(candidate => System.Windows.Automation.AutomationProperties.GetAutomationId(candidate) == "ViewerCoordinateStatus");
+        var viewportOwner = Window.GetWindow(viewer) as System.Windows.Media.Visual ?? viewer;
+        var beforeViewport = viewport.TransformToAncestor(viewportOwner).TransformBounds(new Rect(viewport.RenderSize));
 
         await heightImage.EnsureSourceAsync(
             source.Path,
@@ -56,6 +65,11 @@ internal static class ShellSharedHeightHoverSmoke
             return false;
         }
 
+        await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var beforeViewerCoordinates = viewerCoordinates.Text;
+        var beforePickCoordinate = viewer.HostState.Selection.PickCoordinate;
+        var coordinateConverter = (System.Windows.Data.IValueConverter)viewer.Resources["ViewerRuntimeTextConverter"];
+        var expectedFallbackCoordinate = coordinateConverter.Convert(beforePickCoordinate, typeof(string), null!, System.Globalization.CultureInfo.InvariantCulture).ToString()!;
         heightImage.UpdateHover(requestedColumn, requestedRow);
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         var fromHeightImagePassed =
@@ -97,6 +111,12 @@ internal static class ShellSharedHeightHoverSmoke
             && heightImage.LinkedCursorRow == requestedRow
             && heightImage.LinkedCursorColumn == requestedColumn
             && heightImage.HoverSummary.Contains("3D", StringComparison.Ordinal);
+        var coordinatePassed = heightImage.CursorCoordinateSummary.Contains($"X {requestedColumn:N0}", StringComparison.Ordinal)
+            && heightImage.CursorCoordinateSummary.Contains($"Z {requestedRow:N0}", StringComparison.Ordinal)
+            && heightImage.CursorCoordinateSummary.Contains(requestedCell.RawHeight.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
+        var viewerCoordinatePassed = viewerCoordinates.Text.Contains($"X {requestedColumn:N0}", StringComparison.Ordinal)
+            && viewerCoordinates.Text.Contains($"Z {requestedRow:N0}", StringComparison.Ordinal)
+            && viewerCoordinates.Text.Contains(requestedCell.RawHeight.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
 
         var missingCell = FindFirstMissingCell(frame);
         var missingPassed = false;
@@ -116,6 +136,8 @@ internal static class ShellSharedHeightHoverSmoke
                 && missingColumn == missing.Column
                 && heightImage.HasLinkedCursor
                 && !heightImage.LinkedCursorIsValid
+                && heightImage.CursorCoordinateSummary.Contains("Y —", StringComparison.Ordinal)
+                && viewerCoordinates.Text.Contains("Y —", StringComparison.Ordinal)
                 && heightImage.HoverSummary.Contains(
                     workbench.Localization.HeightImageMissingValue,
                     StringComparison.Ordinal);
@@ -125,9 +147,54 @@ internal static class ShellSharedHeightHoverSmoke
             requestedRow,
             requestedColumn);
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        workbench.SharedHeightCursor.Clear();
+        await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var clearPassed = !heightImage.HasLinkedCursor
+            && heightImage.CursorCoordinateSummary == "X — · Y — · Z —"
+            && viewer.LinkedHeightCursor is null
+            && viewerCoordinates.Text.EndsWith(expectedFallbackCoordinate, StringComparison.Ordinal)
+            && viewport.TransformToAncestor(viewportOwner).TransformBounds(new Rect(viewport.RenderSize)) == beforeViewport;
+        var clearedViewerCoordinates = viewerCoordinates.Text;
+        var clearedViewerCursor = viewer.LinkedHeightCursor;
+        workbench.SharedHeightCursor.Update(SharedHeightCursorOrigin.HeightImage, "other-source", requestedRow, requestedColumn, requestedCell.RawHeight, true);
+        await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var staleSourcePassed = !heightImage.HasLinkedCursor
+            && heightImage.CursorCoordinateSummary == "X — · Y — · Z —"
+            && viewer.LinkedHeightCursor is null
+            && viewerCoordinates.Text.EndsWith(expectedFallbackCoordinate, StringComparison.Ordinal);
+        var staleViewerCoordinates = viewerCoordinates.Text;
+        viewerPublished = viewer.TryPublishC3DGridHoverForSmoke(requestedRow, requestedColumn) && viewerPublished;
+        await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         await Task.Delay(120);
 
+        var workspace = ShellSmokeArtifacts.FindVisualDescendants<ViewerWorkspaceView>(viewportOwner)
+            .Single(candidate => ReferenceEquals(candidate.MainViewerContent, viewer));
+        var workspaceScroll = (ScrollViewer)workspace.FindName("ViewerWorkspaceScroll");
+        var heightView = ShellSmokeArtifacts.FindVisualDescendants<HeightImageViewerView>(workspace)
+            .Single(candidate => ReferenceEquals(candidate.DataContext, heightImage));
+        var heightScroll = (ScrollViewer)heightView.FindName("ImageScrollViewer");
+        var heightFooter = (Border)heightView.FindName("HeightImageCursorStatus");
+        var workspaceBounds = workspace.TransformToAncestor(viewportOwner).TransformBounds(new Rect(workspace.RenderSize));
+        heightImage.ActualPixelsCommand.Execute(null);
+        await dispatcher.InvokeAsync(() => workspace.UpdateLayout(), DispatcherPriority.ContextIdle);
+        var pixelExtentWidth = heightScroll.ExtentWidth;
+        var pixelViewportWidth = heightScroll.ViewportWidth;
+        var actualPixelsLayoutPassed = pixelExtentWidth == frame.Width
+            && pixelViewportWidth < frame.Width
+            && workspaceScroll.ScrollableHeight <= 1
+            && viewport.TransformToAncestor(viewportOwner).TransformBounds(new Rect(viewport.RenderSize)) == beforeViewport
+            && footer.TransformToAncestor(viewportOwner).TransformBounds(new Rect(footer.RenderSize)).Bottom <= workspaceBounds.Bottom + 1
+            && heightFooter.TransformToAncestor(viewportOwner).TransformBounds(new Rect(heightFooter.RenderSize)).Bottom <= workspaceBounds.Bottom + 1;
+        heightImage.FitCommand.Execute(null);
+        await dispatcher.InvokeAsync(() => workspace.UpdateLayout(), DispatcherPriority.ContextIdle);
+        var fitRecoveryPassed = workspaceScroll.ScrollableHeight <= 1
+            && heightScroll.ExtentWidth <= heightScroll.ViewportWidth + 1
+            && heightScroll.ExtentHeight <= heightScroll.ViewportHeight + 1
+            && viewport.TransformToAncestor(viewportOwner).TransformBounds(new Rect(viewport.RenderSize)) == beforeViewport;
+
         var afterCamera = viewer.CaptureCameraState();
+        var afterViewport = viewport.TransformToAncestor(viewportOwner).TransformBounds(new Rect(viewport.RenderSize));
+        var layoutPassed = beforeViewport == afterViewport && footer.ActualHeight == 52;
         var boundaryPassed =
             workbench.IsDirty == beforeDirty
             && workbench.PipelineSteps.Count == beforeStepCount
@@ -136,11 +203,19 @@ internal static class ShellSharedHeightHoverSmoke
             && workbench.IsSelectedStepPreviewRunning == beforePreviewRunning
             && ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput)
             && beforeCamera == afterCamera;
+        boundaryPassed &= viewer.HostState.Selection.PickCoordinate == beforePickCoordinate;
         var passed =
             fromHeightImagePassed
             && fromThreeDPassed
             && missingPassed
             && viewerPublished
+            && coordinatePassed
+            && viewerCoordinatePassed
+            && layoutPassed
+            && clearPassed
+            && staleSourcePassed
+            && actualPixelsLayoutPassed
+            && fitRecoveryPassed
             && boundaryPassed;
 
         if (!string.IsNullOrWhiteSpace(reportPath))
@@ -157,6 +232,9 @@ internal static class ShellSharedHeightHoverSmoke
                     $"FromHeightImage|pass={fromHeightImagePassed}|row={requestedRow}|column={requestedColumn}|rawHeight={requestedCell.RawHeight:R}|viewerMarker={viewer.LinkedHeightCursor is not null}",
                     $"FromThreeD|pass={fromThreeDPassed}|row={heightImage.LinkedCursorRow}|column={heightImage.LinkedCursorColumn}|summary={heightImage.HoverSummary}",
                     $"Missing|pass={missingPassed}|row={missingCell?.Row}|column={missingCell?.Column}|state={workbench.Localization.HeightImageMissingValue}",
+                    $"CursorLayout|pass={layoutPassed}|before={beforeViewport}|after={afterViewport}|footerHeight={footer.ActualHeight}|coordinates={heightImage.CursorCoordinateSummary}|coordinatePass={coordinatePassed}|viewerCoordinates={viewerCoordinates.Text}|viewerCoordinatePass={viewerCoordinatePassed}",
+                    $"CursorRecovery|clearPass={clearPassed}|staleSourcePass={staleSourcePassed}|restored={viewerPublished}|before={beforeViewerCoordinates}|expectedFallback={expectedFallbackCoordinate}|cleared={clearedViewerCoordinates}|clearedCursor={clearedViewerCursor}|stale={staleViewerCoordinates}|pickPreserved={viewer.HostState.Selection.PickCoordinate == beforePickCoordinate}",
+                    $"ImageZoomLayout|actualPixelsPass={actualPixelsLayoutPassed}|pixelExtentWidth={pixelExtentWidth}|pixelViewportWidth={pixelViewportWidth}|fitRecoveryPass={fitRecoveryPassed}|outerScrollHeight={workspaceScroll.ScrollableHeight}|viewport={afterViewport}",
                     $"Boundary|pass={boundaryPassed}|dirty={beforeDirty}->{workbench.IsDirty}|steps={beforeStepCount}->{workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{workbench.Selections.Count}|logs={beforeLogCount}->{workbench.RunLog.Count}|previewRunning={beforePreviewRunning}->{workbench.IsSelectedStepPreviewRunning}|outputSame={ReferenceEquals(workbench.CurrentMeasurementOutput, beforeOutput)}|cameraSame={beforeCamera == afterCamera}"
                 ]);
         }

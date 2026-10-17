@@ -29,13 +29,13 @@ public sealed partial class MainWindowViewModel
         var status = isPublished ? "Published" : "Preview - not published";
         SelectionSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{status} Landmark Correspondence | {anchors.Count}/4 corner anchors | source volume {output.SourceNormalizedTetrahedronVolume:F6} | reference volume {output.ReferenceNormalizedTetrahedronVolume:F6}");
+            $"{status} Landmark Correspondence | {anchors.Count}/4 corner anchors | source volume {output.SourceNormalizedTetrahedronVolume:0.##} | reference volume {output.ReferenceNormalizedTetrahedronVolume:0.##}");
         ViewerStatus = isPublished
             ? "Published landmark correspondence evidence; no affine transform was calculated"
             : "Landmark correspondence Preview - not published";
         LandmarkCorrespondenceHudSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Correspondence {status} | 4 source anchors | {output.ReferenceFrameId} | min volume {output.MinimumNormalizedTetrahedronVolume:G4}");
+            $"Correspondence {status} | 4 source anchors | {output.ReferenceFrameId} | min volume {output.MinimumNormalizedTetrahedronVolume:0.##}");
         OnPropertyChanged(nameof(WorkbenchLandmarkCorrespondenceAnchors));
         OnPropertyChanged(nameof(WorkbenchLandmarkCorrespondence));
         OnPropertyChanged(nameof(IsWorkbenchLandmarkCorrespondencePublished));

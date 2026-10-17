@@ -14,6 +14,11 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var eye = GetCameraPosition();
         var target = GetCameraTarget();
+        var direction = Vector3.Normalize(eye - target);
+        var up = CameraMath.CameraUp(eye, target);
+        OrientationCubeCamera.Position = new System.Windows.Media.Media3D.Point3D(direction.X * 4, direction.Y * 4, direction.Z * 4);
+        OrientationCubeCamera.LookDirection = new System.Windows.Media.Media3D.Vector3D(-direction.X, -direction.Y, -direction.Z);
+        OrientationCubeCamera.UpDirection = new System.Windows.Media.Media3D.Vector3D(up.X, up.Y, up.Z);
         SetOrientationAxis(
             OrientationXAxis,
             OrientationXLabel,

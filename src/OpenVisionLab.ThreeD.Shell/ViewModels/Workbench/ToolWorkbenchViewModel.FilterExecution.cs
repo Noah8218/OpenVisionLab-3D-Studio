@@ -496,7 +496,7 @@ public sealed partial class ToolWorkbenchViewModel
             double.IsFinite(candidate.Value));
         var metricSummary = metric is null
             ? Localize("측정값 없음", "no finite metric")
-            : $"{metric.Name} {metric.Value:G6} {metric.Unit}".TrimEnd();
+            : $"{metric.Name} {metric.Value:0.##} {metric.Unit}".TrimEnd();
         var outputHash = string.IsNullOrWhiteSpace(finalStep?.OutputContentSha256)
             ? "(none)"
             : finalStep.OutputContentSha256[..Math.Min(

@@ -212,6 +212,15 @@ internal static class SourceQualityWorkspaceVerification
                 source.EntityId,
                 source.Unit,
                 source.FrameId);
+            var sourcePreview = viewModel.PreviewFrame;
+            var previewBitmap = sourcePreview is null ? null : OpenVisionLab.ThreeD.Shell.Views.Workbench.HeightImageFrameConverter.CreateBitmap(sourcePreview);
+            var previewPixels = sourcePreview is null ? [] : new byte[sourcePreview.Stride * sourcePreview.Height];
+            previewBitmap?.CopyPixels(previewPixels, sourcePreview!.Stride, 0);
+            Check("source thumbnail uses the identified grid pixels without changing the source", sourcePreview is { Width: 4, Height: 3 }
+                && previewBitmap is { IsFrozen: true, PixelWidth: 4, PixelHeight: 3 }
+                && previewPixels.AsSpan().SequenceEqual(sourcePreview.Bgra32Pixels.Span)
+                && source.ContentSha256 == streamedSnapshot.ContentSha256,
+                $"grid={sourcePreview?.Width}x{sourcePreview?.Height};bitmap={previewBitmap?.PixelWidth}x{previewBitmap?.PixelHeight};frozen={previewBitmap?.IsFrozen};bytes={previewPixels.Length}");
 
             Check(
                 "report-becomes-ready",
@@ -451,6 +460,7 @@ internal static class SourceQualityWorkspaceVerification
                 $"kind={workbench.CurrentSourceQualityStatusKind},summary={workbench.CurrentSourceQualitySummary},detail={workbench.CurrentSourceQualityDetail.Replace(Environment.NewLine, " | ")}");
 
             viewModel.Clear();
+            Check("clearing source quality clears the source thumbnail", viewModel.PreviewFrame is null, $"preview={viewModel.PreviewFrame is not null}");
             Check(
                 "clear-removes-stale-report",
                 !viewModel.HasReport

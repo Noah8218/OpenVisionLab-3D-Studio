@@ -3,10 +3,14 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Text.Json;
 using System.Windows.Input;
 using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Data;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -19,6 +23,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
 {
     private readonly Func<ToolRecipeDocument> createDocument;
     private readonly Func<string> getRecipeName;
+    private readonly Func<bool> getRecipeDirty;
     private readonly Func<string?> getRecipePath;
     private readonly Func<string> getSourcePath;
     private readonly Func<bool> isSourceReady;
@@ -33,6 +38,14 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private readonly ToolWorkbenchValidationSetExecutionOwner validationSetExecutionOwner;
     private ToolWorkbenchValidationSetEventCoordinator validationSetEventCoordinator = null!;
     private int disposalState;
+    private readonly object previewGate = new();
+    private readonly SynchronizationContext? previewContext = SynchronizationContext.Current
+        ?? (System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread) is { } dispatcher ? new System.Windows.Threading.DispatcherSynchronizationContext(dispatcher) : null);
+    private readonly Func<string, CancellationToken, Task<BitmapSource>>? previewLoader;
+    private CancellationTokenSource? previewCancellation;
+    private int previewGeneration;
+    private IReadOnlyDictionary<string, BitmapSource> mismatchPreviews = new Dictionary<string, BitmapSource>(StringComparer.OrdinalIgnoreCase);
+    private Task previewTask = Task.CompletedTask;
     private ToolWorkbenchValidationSetDefinitionOwner
         validationSetDefinitionOwner = null!;
     private ToolWorkbenchValidationSetReviewOwner validationSetReviewOwner = null!;
@@ -46,6 +59,13 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private RelayCommand setValidationSampleRoleCommand = null!;
     private string validationSetSummary = string.Empty;
     private string validationSetCapability = string.Empty;
+    private DateTimeOffset? validationSetLastRunAt;
+    private string validationSetLastRunName = string.Empty;
+    private string? validationSetLastCalculationKey;
+    private bool validationSetLastRunUnsaved;
+    private bool isValidationSetStale;
+    private bool validationSetWasCanceled;
+    private string validationSetRunFailure = string.Empty;
     private bool isValidationEvidenceExpanded;
     private bool isValidationThresholdExpanded;
     private ValidationFailureCorrectionContext? activeValidationFailureCorrectionContext;
@@ -63,10 +83,14 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         ToolWorkbenchStepPropertySession stepPropertySession,
         Action<string, string> appendLog,
         Func<string, string, string> localize,
-        Func<ResultStatus, string> localizeStatus)
+        Func<ResultStatus, string> localizeStatus,
+        Func<bool>? getRecipeDirty = null,
+        Func<string, CancellationToken, Task<BitmapSource>>? previewLoader = null)
     {
+        this.previewLoader = previewLoader;
         this.createDocument = createDocument;
         this.getRecipeName = getRecipeName;
+        this.getRecipeDirty = getRecipeDirty ?? (() => false);
         this.getRecipePath = getRecipePath;
         this.getSourcePath = getSourcePath;
         this.isSourceReady = isSourceReady;
@@ -95,6 +119,26 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
 
     public ReadOnlyObservableCollection<ValidationSetSampleRow> ValidationSetSamples =>
         validationSetReviewOwner.ValidationSetSamples;
+
+    public IReadOnlyList<ValidationMatrixColumn> ValidationMatrixColumns => validationSetReviewOwner.ValidationMatrixColumns;
+    public IReadOnlyList<ValidationTableColumn> ValidationTableColumns => validationSetReviewOwner.ValidationTableColumns;
+    public IReadOnlyList<ValidationSetSampleRow> ValidationMismatchSamples => validationSetReviewOwner.ValidationMismatchSamples;
+    public IReadOnlyDictionary<string, BitmapSource> ValidationMismatchPreviews => mismatchPreviews;
+    internal Task ValidationMismatchPreviewTask => previewTask;
+    public ICommand SelectValidationMismatchSampleCommand => validationSetReviewOwner.SelectValidationMismatchSampleCommand;
+    public ICommand SelectValidationMismatchDistributionCommand => validationSetReviewOwner.SelectValidationMismatchDistributionCommand;
+    public bool HasValidationMismatches => validationSetReviewOwner.HasValidationMismatches;
+    public bool HasValidationResults => validationSetReviewOwner.HasValidationResults;
+    public IReadOnlyList<ValidationDistributionOutput> ValidationDistributionOutputs => validationSetReviewOwner.ValidationDistributionOutputs;
+    public string SelectedValidationDistributionReadout => validationSetReviewOwner.SelectedValidationDistributionReadout;
+    public IReadOnlyList<ValidationThresholdCandidateRow> ValidationDistributionCandidates => ValidationThresholdCandidates.Where(candidate =>
+        SelectedValidationDistributionOutput?.Column is { } column && candidate.Candidate.Scope == ToolRecipeEvidenceScope.StepMetric
+        && candidate.Candidate.OwnerId == column.StepId && candidate.MetricName == column.MetricName && candidate.Unit == column.Unit).ToArray();
+    public ValidationDistributionOutput? SelectedValidationDistributionOutput
+    {
+        get => validationSetReviewOwner.SelectedValidationDistributionOutput;
+        set => validationSetReviewOwner.SelectedValidationDistributionOutput = value;
+    }
 
     public ReadOnlyObservableCollection<ValidationSetStepRow> SelectedValidationSetSteps =>
         validationSetReviewOwner.SelectedValidationSetSteps;
@@ -167,19 +211,31 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     public bool IsValidationSetFilterPass => validationSetReviewOwner.IsValidationSetFilterPass;
     public bool IsValidationSetFilterFail => validationSetReviewOwner.IsValidationSetFilterFail;
     public bool IsValidationSetFilterError => validationSetReviewOwner.IsValidationSetFilterError;
+    public bool IsValidationSetFilterMismatch => validationSetReviewOwner.IsValidationSetFilterMismatch;
+    public bool IsValidationSetFilterFalseReject => validationSetReviewOwner.IsValidationSetFilterFalseReject;
+    public bool IsValidationSetFilterFalseAccept => validationSetReviewOwner.IsValidationSetFilterFalseAccept;
+    public bool IsValidationSetFilterHeldOut => validationSetReviewOwner.IsValidationSetFilterHeldOut;
+    public int ValidationSetAdjustmentCount => validationSetReviewOwner.ValidationSetAdjustmentCount;
+    public int ValidationSetMatchCount => validationSetReviewOwner.ValidationSetMatchCount;
+    public int ValidationSetMismatchCount => validationSetReviewOwner.ValidationSetMismatchCount;
+    public int ValidationSetFalseRejectCount => validationSetReviewOwner.ValidationSetFalseRejectCount;
+    public int ValidationSetFalseAcceptCount => validationSetReviewOwner.ValidationSetFalseAcceptCount;
+    public int ValidationSetAdjustmentErrorCount => validationSetReviewOwner.ValidationSetAdjustmentErrorCount;
+    public int ValidationSetAdjustmentPendingCount => validationSetReviewOwner.ValidationSetAdjustmentPendingCount;
+    public int ValidationSetHeldOutCompletedCount => validationSetReviewOwner.ValidationSetHeldOutCompletedCount;
+    public int ValidationSetHeldOutPendingCount => validationSetReviewOwner.ValidationSetHeldOutPendingCount;
 
     public int ValidationSetAllCount => validationSetDefinitionOwner.Samples.Count;
     public int ValidationSetPassCount => validationSetDefinitionOwner.Samples.Count(row => row.Status == "Pass");
     public int ValidationSetFailCount => validationSetDefinitionOwner.Samples.Count(row => row.Status == "Fail");
     public int ValidationSetErrorCount => validationSetDefinitionOwner.Samples.Count(row => row.Status == "Error");
     public int ValidationSetGoodCount => validationSetDefinitionOwner.Samples.Count(row =>
-        row.Role == ToolRecipeValidationSampleRole.Good);
+        row.IsGood);
     public int ValidationSetBadCount => validationSetDefinitionOwner.Samples.Count(row =>
-        row.Role == ToolRecipeValidationSampleRole.Bad);
+        row.IsBad);
     public int ValidationSetHeldOutCount => validationSetDefinitionOwner.Samples.Count(row =>
-        row.Role == ToolRecipeValidationSampleRole.HeldOut);
-    public bool HasValidationSetIssues => validationSetDefinitionOwner.Samples.Any(row =>
-        row.Status is "Fail" or "Error");
+        row.IsHeldOut);
+    public bool HasValidationSetIssues => validationSetReviewOwner.HasValidationMismatches || validationSetDefinitionOwner.Samples.Any(sample => sample.Status is "Fail" or "Error");
     public bool IsSelectedValidationRoleGood =>
         validationSetReviewOwner.IsSelectedValidationRoleGood;
     public bool IsSelectedValidationRoleBad =>
@@ -217,6 +273,10 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         }
     }
 
+    public bool IsSelectedValidationRoleUnset => SelectedValidationSetSample?.IsUnset == true;
+    public bool IsSelectedValidationUsageAdjustment => SelectedValidationSetSample?.IsAdjustment == true;
+    public int ValidationSetUnsetCount => validationSetDefinitionOwner.Samples.Count(sample => sample.IsUnset);
+    public string ValidationSetDefinitionSaveState => IsValidationSetDefinitionDirty ? Localize("샘플 정의 미저장", "Sample definitions unsaved") : Localize("샘플 정의 저장됨", "Sample definitions saved");
     public bool IsValidationSetDefinitionDirty =>
         validationSetDefinitionOwner.IsValidationSetDefinitionDirty;
 
@@ -282,6 +342,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             if (validationSetSummary == value) return;
             validationSetSummary = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(ValidationSetRunBasisText));
         }
     }
 
@@ -295,6 +356,18 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             OnPropertyChanged();
         }
     }
+
+    public DateTimeOffset? ValidationSetLastRunAt => validationSetLastRunAt;
+    public bool IsValidationSetStale => isValidationSetStale;
+    public string ValidationSetElapsedText => validationSetExecutionOwner.ElapsedText;
+    public string ValidationSetRunBasisText => validationSetLastRunAt is { } at
+        ? Localize($"마지막 검증 {at:yyyy-MM-dd HH:mm:ss} · {validationSetLastRunName}{(validationSetLastRunUnsaved ? " + 저장 전 변경" : "")}",
+            $"Last validation {at:yyyy-MM-dd HH:mm:ss} · {validationSetLastRunName}{(validationSetLastRunUnsaved ? " + unsaved changes" : "")}")
+        : ValidationSetSummary;
+    public string ValidationSetRunNoticeText => !string.IsNullOrEmpty(validationSetRunFailure) ? validationSetRunFailure
+        : validationSetWasCanceled ? validationSetLastRunAt is not null
+            ? Localize("중지됨 · 이전 결과를 유지합니다", "Stopped · previous results retained")
+            : Localize("중지됨 · 완료된 결과가 없습니다", "Stopped · no completed results") : string.Empty;
 
     public string ValidationSetProgressText =>
         validationThresholdWorkflowOwner.ValidationSetProgressText;
@@ -445,9 +518,11 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             _ => !validationSetExecutionOwner.IsDisposed
                  && IsValidationSetRunning);
         setValidationSampleRoleCommand = new RelayCommand(
-            parameter => SetSelectedValidationSampleRole(parameter?.ToString()),
-            _ => validationSetExecutionOwner.CanStart
-                 && SelectedValidationSetSample is not null);
+            SetValidationSampleRole,
+            parameter => validationSetExecutionOwner.CanStart
+                 && (parameter is ValidationSampleRoleChange request
+                     ? validationSetDefinitionOwner.Samples.Contains(request.Sample) && Enum.IsDefined(request.Role)
+                     : SelectedValidationSetSample is not null));
         RefreshValidationSetCapability();
         RefreshValidationSetSummary();
     }
@@ -459,7 +534,11 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             validationThresholdWorkflowOwner,
             args => OnPropertyChanged(args.PropertyName),
             args => OnValidationSetReviewOwnerPropertyChanged(this, args),
-            args => OnPropertyChanged(args.PropertyName));
+            args =>
+            {
+                OnPropertyChanged(args.PropertyName);
+                if (args.PropertyName == nameof(HasValidationThresholdCandidates)) OnPropertyChanged(nameof(ValidationDistributionCandidates));
+            });
 
     private void AddCurrentSourceToValidationSet()
     {
@@ -501,17 +580,36 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         ValidationSetSummary = Localize(
             $"{validationSetDefinitionOwner.Samples.Count}개 샘플을 순서대로 실행하고 있습니다.",
             $"Running {validationSetDefinitionOwner.Samples.Count} sample(s) sequentially.");
+        validationSetWasCanceled = false;
+        validationSetRunFailure = string.Empty;
+        OnPropertyChanged(nameof(ValidationSetRunNoticeText));
         try
         {
             var document = createDocument();
+            var startedAt = DateTimeOffset.Now;
+            var capturedName = document.Name;
+            var capturedUnsaved = getRecipeDirty();
+            var capturedKey = CreateValidationCalculationKey(document);
             var samples = validationSetDefinitionOwner.Samples.Select(row =>
                 new ToolRecipeValidationSampleInput(
                     row.SourcePath,
-                    row.Role)).ToArray();
+                    row.DevelopmentRole) { Expectation = row.EffectiveExpectation, Usage = row.EffectiveUsage }).ToArray();
             var result = await validationThresholdWorkflowOwner.AnalyzeAsync(
                 document,
                 samples,
-                ProjectValidationSetResult);
+                result =>
+                {
+                    ProjectValidationSetResult(result, document);
+                    if (result.Samples.Count > 0)
+                    {
+                        validationSetLastRunAt = startedAt;
+                        validationSetLastRunName = capturedName;
+                        validationSetLastRunUnsaved = capturedUnsaved;
+                        validationSetLastCalculationKey = capturedKey;
+                        RefreshValidationRunBasis(createDocument());
+                        OnPropertyChanged(nameof(ValidationSetLastRunAt));
+                    }
+                });
             ValidationSetFilter = ValidationSetStatusFilter.All;
             RefreshValidationSetReviewSamples();
             NotifyValidationSetCountsChanged();
@@ -533,6 +631,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                 return;
             }
 
+            validationSetWasCanceled = true;
+            OnPropertyChanged(nameof(ValidationSetRunNoticeText));
             ValidationSetSummary = Localize(
                 "반복 검증이 취소되었습니다. 작성 중인 레시피와 3D 뷰 입력은 변경되지 않았습니다.",
                 "Repeat validation was canceled. The authored recipe and 3D Viewer input were not changed.");
@@ -554,6 +654,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             ValidationSetSummary = Localize(
                 $"반복 검증을 시작할 수 없습니다: {exception.Message}",
                 $"Validation Set could not start: {exception.Message}");
+            validationSetRunFailure = Localize($"실행 시작 실패: {exception.Message}", $"Could not start: {exception.Message}");
+            OnPropertyChanged(nameof(ValidationSetRunNoticeText));
             appendLog("Validation Set", exception.Message);
         }
         finally
@@ -585,8 +687,9 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         }
     }
 
-    private void ProjectValidationSetResult(ToolRecipeValidationSetResult result)
+    private void ProjectValidationSetResult(ToolRecipeValidationSetResult result, ToolRecipeDocument document)
     {
+        var recipeSteps = document.Steps.Select(step => new ValidationRecipeStepSnapshot(step.Id, step.ToolName, step.Group, step.OutputEnabled)).ToArray();
         validationSetDefinitionOwner.ReplaceExecutionResult(
             result.Samples.Select(sample =>
         {
@@ -606,14 +709,15 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                     metric.Status?.ToString() ?? string.Empty,
                     metric.Status is { } metricStatus
                         ? LocalizeStatus(metricStatus)
-                        : string.Empty)).ToArray(),
+                        : string.Empty,
+                    metric.Value)).ToArray(),
                 step.Overlays.Select(overlay => new ValidationSetOverlayRow(
                     overlay.Kind.ToString(),
                     overlay.Label,
                     overlay.Status?.ToString() ?? string.Empty,
                     overlay.Status is { } overlayStatus
                         ? LocalizeStatus(overlayStatus)
-                        : string.Empty)).ToArray())).ToArray();
+                        : string.Empty)).ToArray()) { ColorSnapshot = step.ColorSnapshot }).ToArray();
             return new ValidationSetSampleRow(
                 sample.Order,
                 sample.SourcePath,
@@ -624,7 +728,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                 sample.Duration.TotalMilliseconds.ToString(
                     "N0",
                     System.Globalization.CultureInfo.InvariantCulture) + " ms",
-                steps);
+                steps, recipeSteps) { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage };
         }));
     }
 
@@ -645,21 +749,20 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         RefreshValidationSetSummary();
     }
 
-    private void SetSelectedValidationSampleRole(string? value)
+    private void SetValidationSampleRole(object? parameter)
     {
+        var sample = parameter is ValidationSampleRoleChange request ? request.Sample : SelectedValidationSetSample;
+        var value = parameter is ValidationSampleRoleChange roleRequest ? roleRequest.Value : parameter?.ToString();
+        var wasSelected = ReferenceEquals(sample, SelectedValidationSetSample);
         var updated = validationSetDefinitionOwner.SetSelectedSampleRole(
-            SelectedValidationSetSample,
+            sample,
             value);
         if (updated is null)
         {
             return;
         }
 
-        SelectedValidationSetSample = validationSetDefinitionOwner.Samples.FirstOrDefault(
-            sample => string.Equals(
-                sample.SourcePath,
-                updated.SourcePath,
-                StringComparison.OrdinalIgnoreCase));
+        if (wasSelected) SelectedValidationSetSample = updated;
         NotifyValidationSetCountsChanged();
         RefreshValidationSetSummary();
         appendLog(
@@ -670,7 +773,91 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private void RefreshValidationSetReviewSamples()
     {
         validationSetReviewOwner.RefreshSamples();
+        RefreshMismatchPreviews();
         OnPropertyChanged(nameof(HasValidationSetSamples));
+    }
+
+    private void RefreshMismatchPreviews()
+    {
+        CancellationTokenSource request;
+        int generation;
+        lock (previewGate)
+        {
+            previewCancellation?.Cancel();
+            generation = ++previewGeneration;
+            if (IsDisposed) return;
+            request = new CancellationTokenSource();
+            previewCancellation = request;
+            mismatchPreviews = new Dictionary<string, BitmapSource>(StringComparer.OrdinalIgnoreCase);
+        }
+        OnPropertyChanged(nameof(ValidationMismatchPreviews));
+        previewTask = LoadMismatchPreviewsAsync(ValidationMismatchSamples.Select(sample => sample.SourcePath).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(), request, generation);
+    }
+
+    private async Task LoadMismatchPreviewsAsync(string[] paths, CancellationTokenSource request, int generation)
+    {
+        var previews = new Dictionary<string, BitmapSource>(StringComparer.OrdinalIgnoreCase);
+        var token = request.Token;
+        try
+        {
+            foreach (var path in paths)
+            {
+                token.ThrowIfCancellationRequested();
+                BitmapSource? preview;
+                try
+                {
+                    preview = previewLoader is not null ? await previewLoader(path, token).ConfigureAwait(false) : await Task.Run(() =>
+                    {
+                        var source = C3DHeightFieldSnapshot.LoadIdentified(path, "validation.preview", "mm", "validation.preview");
+                        var frame = C3DHeightImageFrame.Create(source, token).DefaultDisplayFrame;
+                        var scale = Math.Min(150d / frame.Width, 98d / frame.Height);
+                        var width = Math.Max(1, (int)Math.Round(frame.Width * Math.Min(1, scale)));
+                        var height = Math.Max(1, (int)Math.Round(frame.Height * Math.Min(1, scale)));
+                        var pixels = new byte[width * height * 4];
+                        for (var y = 0; y < height; y++)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            for (var x = 0; x < width; x++)
+                                frame.Bgra32Pixels.Span.Slice((y * frame.Height / height) * frame.Stride + (x * frame.Width / width) * 4, 4).CopyTo(pixels.AsSpan((y * width + x) * 4, 4));
+                        }
+                        var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
+                        bitmap.Freeze();
+                        return bitmap;
+                    }, token).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+                {
+                    preview = null;
+                }
+                token.ThrowIfCancellationRequested();
+                void Publish()
+                {
+                    lock (previewGate)
+                    {
+                        if (IsDisposed || generation != previewGeneration || token.IsCancellationRequested) return;
+                        if (preview is not null) previews[path] = preview;
+                        mismatchPreviews = new Dictionary<string, BitmapSource>(previews, StringComparer.OrdinalIgnoreCase);
+                        OnPropertyChanged(nameof(ValidationMismatchPreviews));
+                    }
+                }
+                if (previewContext is null || ReferenceEquals(SynchronizationContext.Current, previewContext)) Publish();
+                else
+                {
+                    var publication = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    previewContext.Post(_ => { try { Publish(); publication.SetResult(); } catch (Exception exception) { publication.SetException(exception); } }, null);
+                    await publication.Task.WaitAsync(token).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        finally
+        {
+            lock (previewGate)
+            {
+                if (ReferenceEquals(previewCancellation, request)) previewCancellation = null;
+                request.Dispose();
+            }
+        }
     }
 
     private void OnValidationSetReviewOwnerPropertyChanged(
@@ -678,8 +865,11 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         PropertyChangedEventArgs args)
     {
         OnPropertyChanged(args.PropertyName);
+        if (args.PropertyName == nameof(SelectedValidationDistributionOutput)) OnPropertyChanged(nameof(ValidationDistributionCandidates));
         if (args.PropertyName == nameof(SelectedValidationSetSample))
         {
+            OnPropertyChanged(nameof(IsSelectedValidationRoleUnset));
+            OnPropertyChanged(nameof(IsSelectedValidationUsageAdjustment));
             setValidationSampleRoleCommand?.RaiseCanExecuteChanged();
             RefreshValidationThresholdCorrectionCommands();
         }
@@ -697,6 +887,9 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
 
     private void NotifyValidationSetCountsChanged()
     {
+        OnPropertyChanged(nameof(ValidationSetUnsetCount));
+        OnPropertyChanged(nameof(IsSelectedValidationRoleUnset));
+        OnPropertyChanged(nameof(IsSelectedValidationUsageAdjustment));
         OnPropertyChanged(nameof(HasValidationSetSamples));
         OnPropertyChanged(nameof(ValidationSetAllCount));
         OnPropertyChanged(nameof(ValidationSetPassCount));
@@ -725,6 +918,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
 
     private void RefreshValidationSetExecutionState()
     {
+        OnPropertyChanged(nameof(ValidationSetElapsedText));
         OnPropertyChanged(nameof(IsValidationSetRunning));
         OnPropertyChanged(nameof(IsValidationSetIdle));
         addCurrentSourceToValidationSetCommand.RaiseCanExecuteChanged();
@@ -754,11 +948,13 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private void OnValidationSetDefinitionDirtyChanged(bool value)
     {
         OnPropertyChanged(nameof(IsValidationSetDefinitionDirty));
+        OnPropertyChanged(nameof(ValidationSetDefinitionSaveState));
         DefinitionDirtyChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnValidationSetDefinitionChanged(bool resetFilter)
     {
+        if (resetFilter || validationSetDefinitionOwner.Samples.All(sample => sample.Status == "Pending")) ResetValidationRunBasis();
         ClearValidationEvidence();
         if (resetFilter)
         {
@@ -773,8 +969,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         RefreshValidationSetSummary();
     }
 
-    public void SaveValidationSetDefinition(string recipePath) =>
-        validationSetDefinitionOwner.SaveForRecipe(recipePath);
+    public void SaveValidationSetDefinition(string recipePath, bool markClean = true) =>
+        validationSetDefinitionOwner.SaveForRecipe(recipePath, markClean);
 
     public void SaveValidationThresholdCorrectionEvidence(string recipePath) =>
         validationThresholdWorkflowOwner.SaveCorrectionEvidence(recipePath);
@@ -791,13 +987,21 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             recipePath,
             document);
 
+    internal void LoadValidationSetDefinition(ToolRecipeDocument document, ToolRecipeValidationSetDefinition? definition) =>
+        validationSetDefinitionOwner.LoadDefinition(document, definition);
+
+    internal void LoadValidationThresholdCorrectionEvidence(ToolRecipeDocument document, ToolRecipeThresholdCorrectionEvidence? evidence) =>
+        validationThresholdWorkflowOwner.LoadCorrectionEvidence(document, evidence);
+
     private void ClearValidationSetComparePins() =>
         ComparePinsClearRequested?.Invoke(this, EventArgs.Empty);
 
     public void RefreshValidationSetCapability()
     {
         addCurrentSourceToValidationSetCommand?.RaiseCanExecuteChanged();
-        if (ToolRecipeValidationSetExecution.CanExecute(createDocument(), out var message))
+        var document = createDocument();
+        RefreshValidationRunBasis(document);
+        if (ToolRecipeValidationSetExecution.CanExecute(document, out var message))
         {
             ValidationSetCapability = Localize(
                 "현재 레시피의 지원되는 전체 툴 체인을 동일 그리드 C3D 샘플에 안전하게 재바인딩하여 순서대로 실행할 수 있습니다.",
@@ -810,12 +1014,42 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             $"Current recipe coverage: {message}");
     }
 
+    private void ResetValidationRunBasis()
+    {
+        validationSetLastRunAt = null;
+        validationSetLastRunName = string.Empty;
+        validationSetLastCalculationKey = null;
+        validationSetWasCanceled = false;
+        validationSetRunFailure = string.Empty;
+        isValidationSetStale = false;
+        OnPropertyChanged(nameof(ValidationSetLastRunAt));
+        OnPropertyChanged(nameof(IsValidationSetStale));
+        OnPropertyChanged(nameof(ValidationSetRunBasisText));
+        OnPropertyChanged(nameof(ValidationSetRunNoticeText));
+    }
+
+    private static string CreateValidationCalculationKey(ToolRecipeDocument document) => JsonSerializer.Serialize(new
+    {
+        Source = document.Source with { Name = string.Empty },
+        Steps = document.Steps.Where(step => step.OutputEnabled)
+            .Select(step => new { step.Id, Context = document.CreateStepExecutionContext(step.Id) })
+    });
+
+    private void RefreshValidationRunBasis(ToolRecipeDocument document)
+    {
+        isValidationSetStale = validationSetLastCalculationKey is not null
+            && !string.Equals(validationSetLastCalculationKey, CreateValidationCalculationKey(document), StringComparison.Ordinal);
+        OnPropertyChanged(nameof(IsValidationSetStale));
+        OnPropertyChanged(nameof(ValidationSetRunBasisText));
+        OnPropertyChanged(nameof(ValidationSetRunNoticeText));
+    }
+
     private void RefreshValidationSetSummary()
     {
         ValidationSetSummary = validationSetDefinitionOwner.Samples.Count == 0
             ? Localize(
-                "C3D 샘플을 추가하고 기대 역할을 지정한 다음 '샘플 세트 실행'을 선택하세요. 샘플 선택만으로 검사는 실행되지 않습니다.",
-                "Add C3D samples, assign expected roles, then choose Run sample set. Selecting samples never runs inspection.")
+                "C3D 샘플을 추가하고 기대 역할을 지정한 뒤 검증을 실행하세요. 샘플 선택만으로 검사는 실행되지 않습니다.",
+                "Add C3D samples and assign expected roles, then run validation. Selecting samples never runs inspection.")
             : Localize(
                 $"{validationSetDefinitionOwner.Samples.Count}개 샘플 준비됨 · 실행 전",
                 $"{validationSetDefinitionOwner.Samples.Count} sample(s) ready · not run");
@@ -901,6 +1135,12 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             return;
         }
 
+        lock (previewGate)
+        {
+            previewGeneration++;
+            previewCancellation?.Cancel();
+            mismatchPreviews = new Dictionary<string, BitmapSource>(StringComparer.OrdinalIgnoreCase);
+        }
         validationSetEventCoordinator.Dispose();
         validationThresholdWorkflowOwner.Dispose();
         validationSetExecutionOwner.Dispose();

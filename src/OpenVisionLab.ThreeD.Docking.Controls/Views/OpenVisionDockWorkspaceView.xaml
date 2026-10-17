@@ -54,6 +54,38 @@
                             </Border>
                         </Grid>
                         <ControlTemplate.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Model.SelectedContent.ContentId, RelativeSource={RelativeSource Self}}" Value="data-layers" />
+                                    <Condition Binding="{Binding IsRecipeValidationWorkspace, RelativeSource={RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}}" Value="True" />
+                                    <Condition Binding="{Binding IsValidationTabFilterActive, RelativeSource={RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}}" Value="True" />
+                                    <Condition Binding="{Binding ValidationVisibleSupportContentId, RelativeSource={RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}}" Value="{x:Null}" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="PaneTabHeader" Property="MinHeight" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Height" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Padding" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="BorderThickness" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="ClipToBounds" Value="True" />
+                            </MultiDataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Model.SelectedContent.ContentId, RelativeSource={RelativeSource Self}}" Value="evidence-workbench" />
+                                    <Condition Binding="{Binding IsValidationTabFilterActive, RelativeSource={RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}}" Value="True" />
+                                    <Condition Binding="{Binding ValidationVisibleSupportContentId, RelativeSource={RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}}" Value="{x:Null}" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="PaneTabHeader" Property="MinHeight" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Height" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Padding" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="BorderThickness" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="ClipToBounds" Value="True" />
+                            </MultiDataTrigger>
+                            <DataTrigger Binding="{Binding Model.SelectedContent.ContentId, RelativeSource={RelativeSource Self}}" Value="three-d-viewer">
+                                <Setter TargetName="PaneTabHeader" Property="MinHeight" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Height" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="Padding" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="BorderThickness" Value="0" />
+                                <Setter TargetName="PaneTabHeader" Property="ClipToBounds" Value="True" />
+                            </DataTrigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground"
                                         Value="{DynamicResource ThreeD.DisabledBrush}" />
@@ -291,6 +323,26 @@
                             </DataTrigger>
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Model.ContentId, RelativeSource={RelativeSource Self}}" Value="results-workspace" />
+                                    <Condition Binding="{Binding Model.IsFloating, RelativeSource={RelativeSource Self}}" Value="False" />
+                                    <Condition Binding="{Binding IsValidationTabFilterActive, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" Value="True" />
+                                    <Condition Binding="{Binding IsRecipeValidationWorkspace, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="Header" Property="Visibility" Value="Collapsed" />
+                            </MultiDataTrigger>
+                            <DataTrigger Binding="{Binding Model.ContentId, RelativeSource={RelativeSource Self}}" Value="three-d-viewer">
+                                <Setter TargetName="Header" Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Model.ContentId, RelativeSource={RelativeSource Self}}" Value="data-layers" />
+                                    <Condition Binding="{Binding Model.IsFloating, RelativeSource={RelativeSource Self}}" Value="False" />
+                                    <Condition Binding="{Binding IsRecipeValidationWorkspace, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="Header" Property="Visibility" Value="Collapsed" />
+                            </MultiDataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding Model.IsFloating, RelativeSource={RelativeSource Self}}"
                                                Value="True" />
                                     <Condition Binding="{Binding Model.Parent.IsDirectlyHostedInFloatingWindow, RelativeSource={RelativeSource Self}}"
@@ -313,6 +365,9 @@
     </UserControl.Resources>
     <Grid>
         <avalonDock:DockingManager x:Name="workspaceDockingManager"
+                                  GridSplitterWidth="4" GridSplitterHeight="4"
+                                  ContentFloating="DockContentFloating"
+                                  ContentFloated="DockContentFloated"
                                    Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                                    Foreground="{DynamicResource ThreeD.PanelHeaderTextBrush}"
                                    BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
@@ -347,7 +402,18 @@
                                                          AutoHideWidth="320"
                                                          AutoHideMinWidth="240"
                                                          CanHide="True">
-                                <ContentPresenter Content="{Binding DataLayersContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                                <ContentPresenter>
+                                    <ContentPresenter.Style>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Content" Value="{Binding DataLayersContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsRecipeValidationWorkspace, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" Value="True">
+                                                    <Setter Property="Content" Value="{Binding ValidationSamplesContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ContentPresenter.Style>
+                                </ContentPresenter>
                             </avalonDock:LayoutAnchorable>
                         </avalonDock:LayoutAnchorablePane>
                         <avalonDock:LayoutAnchorablePane x:Name="toolInspectorPane"

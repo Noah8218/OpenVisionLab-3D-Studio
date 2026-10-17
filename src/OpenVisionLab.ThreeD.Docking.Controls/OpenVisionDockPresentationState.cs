@@ -43,8 +43,8 @@ public sealed record OpenVisionDockPresentationState(
             LegacyViewer: 3.30),
         new OpenVisionDockLayoutVariant(
             AuthoringSupport: 1.00,
-            AuthoringInspector: 1.188,
-            AuthoringViewer: 1.199,
+            AuthoringInspector: 1.40,
+            AuthoringViewer: 3.30,
             ValidateEvidence: 0.86,
             ValidateViewer: 2.46,
             ResultsEvidence: 0.86,

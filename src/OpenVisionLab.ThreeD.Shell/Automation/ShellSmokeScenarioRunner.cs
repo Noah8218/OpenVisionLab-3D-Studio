@@ -263,6 +263,9 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
             context.Window.Top = top;
         }
 
+        // Explicit local capture option only; never persisted in the layout profile.
+        if (smoke.KeepTestWindowOnTop) context.Window.Topmost = true;
+
         var smokePublishResult = smoke.SmokePublishResult;
         var waitForNominalActualPreview = smoke.WaitForNominalActualPreview
             || context.Viewer.HostState.HasNominalActualInput;
@@ -366,6 +369,13 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
                         context.ShutdownApplication(1);
                     }
 
+                    return;
+                }
+
+                if (smoke.PerformanceMatrixReportPath is { } performanceReportPath)
+                {
+                    var passed = await ShellPerformanceMatrixSmoke.RunAsync(context, performanceReportPath, operation.Token);
+                    if (!context.CommandLineArguments.HasFlag("--smoke-performance-observe")) context.ShutdownApplication(passed ? 0 : 1);
                     return;
                 }
 
@@ -482,6 +492,15 @@ internal sealed class ShellSmokeScenarioRunner : IDisposable
                     }
                     viewerPresentationCameraLinkSmokeSummary =
                         viewerWorkspace.CameraLinkSummary;
+                }
+
+                if (smoke.HeightLegendLatencyReportPath is { } latencyPath
+                    && !await ShellHeightImageDisplayRangeSmoke.MeasureLatencyAsync(latencyPath, context.ViewModel.Workbench,
+                        context.Viewer, context.Window.Dispatcher))
+                {
+                    context.ViewModel.SetViewerSmokeFailed("Height legend completion latency exceeded the FS-V08 target or the native boundary failed.");
+                    context.ShutdownApplication(1);
+                    return;
                 }
 
                 if (smoke.HeightImageDisplayRangeSmoke

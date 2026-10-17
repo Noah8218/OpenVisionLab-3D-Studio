@@ -69,7 +69,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private bool isLazPointCloudLoading;
     private double lazPointCloudLoadProgress;
     private string lazPointCloudLoadStatus = string.Empty;
-    private string measurementSummary = "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)";
+    private string measurementSummary = "Cube width: 2 model units\nExpected center: (0, 0, 0)";
     private string pointCloudPointCount = "(pending)";
     private string c3DSamplePointCount = "(not loaded)";
     private string c3DSampleSummary = "C3D sample hidden";
@@ -94,9 +94,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private IReadOnlyList<SourceQualityChannelAvailability>? lazSourceChannelAvailability;
     private Vector3 lazFitCenter = Vector3.Zero;
     private double lazFitDistance = 220.0;
+    private IReadOnlyList<ViewerTeachingResultLabel> teachingResultLabels = [];
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
-    private string recipeSummary = "Recipe: current C3D height deviation\nSource: Thickness Coupon v1\nTolerance: 1200.000 raw-height";
+    private string recipeSummary = "Recipe: current C3D height deviation\nSource: Thickness Coupon v1\nTolerance: 1200 raw-height";
     private string recipeFileName = "(current)";
     private string recipeSourceName = "Thickness Coupon v1";
     private string recipeSourcePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
@@ -259,7 +260,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private IReadOnlyList<EntityLayer> entityLayers = [];
     private string sceneContractSummary = "(pending)";
     private ModelTransform c3DModelTransform = ModelTransform.Identity;
-    private string transformSummary = "Transform: Identity | T(0.000, 0.000, 0.000) | R(0.0, 0.0, 0.0) | S 1.000";
+    private string transformSummary = "Transform: Identity | T(0, 0, 0) | R(0.0, 0.0, 0.0) | S 1";
     private string alignmentSummary = "Alignment: Not aligned | source frame";
     private string coordinateMappingSummary = "Mapping: source = aligned | raw-height retained";
     private string alignmentWorkflowSummary = "ROI alignment: not applied";
@@ -356,6 +357,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private readonly RelayCommand fitRoiCommand;
     private readonly RelayCommand topViewCommand;
     private readonly RelayCommand perspectiveViewCommand;
+    private readonly RelayCommand setCameraOrientationCommand;
+    private readonly RelayCommand toggleCameraProjectionCommand;
     private readonly RelayCommand openRecipeCommand;
     private readonly RelayCommand resetCommand;
     private readonly RelayCommand saveRecipeCommand;
@@ -402,6 +405,11 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public MainWindowViewModel()
     {
         HeightProfile.Changed += RefreshHeightProfile;
+        C3DTexture.PropertyChanged += (_, _) =>
+        {
+            RefreshC3DHeightDistributionLegend();
+            OnPropertyChanged(nameof(C3DTexture));
+        };
         Display.PropertyChanged += OnDisplayPropertyChanged;
         Display.RenderSettingsChanged += OnDisplayRenderSettingsChanged;
         NominalActual.PropertyChanged += OnNominalActualPropertyChanged;
@@ -418,6 +426,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         perspectiveViewCommand = new RelayCommand(
             _ => PerspectiveViewRequested?.Invoke(this, EventArgs.Empty),
             _ => ProjectionMode != ViewerProjectionMode.Perspective);
+        setCameraOrientationCommand = new RelayCommand(SetCameraOrientation,
+            parameter => parameter is "Top" or "Bottom" or "Front" or "Back" or "Right" or "Left" or "Home");
+        toggleCameraProjectionCommand = new RelayCommand(_ => ToggleCameraProjection(), _ => C3DSampleVisible);
         resetCommand = new RelayCommand(_ => ResetRequested?.Invoke(this, EventArgs.Empty));
         openRecipeCommand = new RelayCommand(_ => OpenRecipeRequested?.Invoke(this, EventArgs.Empty));
         applyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
@@ -480,6 +491,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public string[] SelectionModes { get; } = ["Point", "Move", ProfileSelectionMode, "Two Point Measure", "Plane Distance", "Plane Flatness", ThicknessRoiSelectionMode, WarpageRoiSelectionMode, "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
 
     public ViewerDisplaySettingsViewModel Display { get; } = new();
+    public C3DTextureViewModel C3DTexture { get; } = new();
 
     public NominalActualComparisonViewModel NominalActual { get; } = new();
 
@@ -512,6 +524,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public ICommand FitRoiCommand => fitRoiCommand;
     public ICommand TopViewCommand => topViewCommand;
     public ICommand PerspectiveViewCommand => perspectiveViewCommand;
+    public ICommand SetCameraOrientationCommand => setCameraOrientationCommand;
+    public ICommand ToggleCameraProjectionCommand => toggleCameraProjectionCommand;
     public ICommand OpenRecipeCommand => openRecipeCommand;
     public ICommand PublishResultCommand => publishResultCommand;
     public ICommand ResetCommand => resetCommand;
@@ -790,7 +804,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref measurementVisible, value))
             {
                 MeasurementSummary = value
-                    ? "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)"
+                    ? "Cube width: 2 model units\nExpected center: (0, 0, 0)"
                     : "Measurement overlay hidden";
                 ViewerStatus = value ? "Measurement overlay visible" : "Measurement overlay hidden";
             }
@@ -965,6 +979,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    public IReadOnlyList<ViewerTeachingResultLabel> TeachingResultLabels => teachingResultLabels;
 
     public bool ResultOverlayVisible
     {
@@ -1698,6 +1714,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         fitRoiCommand.RaiseCanExecuteChanged();
         topViewCommand.RaiseCanExecuteChanged();
         perspectiveViewCommand.RaiseCanExecuteChanged();
+        toggleCameraProjectionCommand.RaiseCanExecuteChanged();
         decreaseC3DHeightColorMaximumCommand.RaiseCanExecuteChanged();
         increaseC3DHeightColorMaximumCommand.RaiseCanExecuteChanged();
         decreaseC3DHeightColorMinimumCommand.RaiseCanExecuteChanged();
@@ -1742,9 +1759,37 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
             {
                 SelectionSession.PickCoordinate = value;
                 OnPropertyChanged(nameof(PickCoordinate));
+                OnPropertyChanged(nameof(DisplayedCoordinate));
+                OnPropertyChanged(nameof(DisplayedCoordinateCaption));
             }
         }
     }
+
+    internal C3DGridCursor? LinkedHeightCursor
+    {
+        get => SelectionSession.LinkedHeightCursor;
+        set
+        {
+            if (SelectionSession.LinkedHeightCursor == value) return;
+            SelectionSession.LinkedHeightCursor = value;
+            OnPropertyChanged(nameof(DisplayedCoordinate));
+            OnPropertyChanged(nameof(DisplayedCoordinateCaption));
+        }
+    }
+
+    public string DisplayedCoordinate
+    {
+        get
+        {
+            if (LinkedHeightCursor is not { } cursor) return PickCoordinate;
+            var height = cursor.IsValid ? cursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+            return string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column:N0} · Y {height} raw-height · Z {cursor.Row:N0}");
+        }
+    }
+
+    public string DisplayedCoordinateCaption => LinkedHeightCursor is { } cursor
+        ? string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column}   Y {(cursor.IsValid ? cursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture) : "—")}   Z {cursor.Row}")
+        : PickCoordinate is "(none)" or "" ? "X —   Y —   Z —" : PickCoordinate;
 
     public string LastScreenshotPath
     {
@@ -1875,6 +1920,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
                 CameraSession.ProjectionMode = value;
                 OnPropertyChanged(nameof(ProjectionMode));
                 OnPropertyChanged(nameof(IsTopOrthographicView));
+                OnPropertyChanged(nameof(IsOrthographicView));
                 OnPropertyChanged(nameof(IsPerspectiveView));
                 RefreshCommandCanExecute();
             }
@@ -1882,6 +1928,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool IsTopOrthographicView => ProjectionMode == ViewerProjectionMode.TopOrthographic;
+
+    public bool IsOrthographicView => ProjectionMode is ViewerProjectionMode.TopOrthographic or ViewerProjectionMode.Orthographic;
 
     public bool IsPerspectiveView => ProjectionMode == ViewerProjectionMode.Perspective;
 

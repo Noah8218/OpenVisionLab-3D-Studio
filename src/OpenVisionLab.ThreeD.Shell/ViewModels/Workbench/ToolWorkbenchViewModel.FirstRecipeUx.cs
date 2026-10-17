@@ -326,6 +326,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(LocalizedRecipeSaveBlocker));
         OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
         OnPropertyChanged(nameof(HeaderRecipeText));
+        NotifyHeaderRecipeState();
         firstRecipeSetupOwner?.RefreshPresentation();
     }
 }

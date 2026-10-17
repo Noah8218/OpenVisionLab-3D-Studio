@@ -1,9 +1,11 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.PropertyGrid.RecipeStepPropertyGridHost"
+             x:Name="PropertyGridRoot"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:wpgDesign="clr-namespace:System.Windows.Controls.WpfPropertyGrid.Design;assembly=OpenVisionLab.WpfPropertyGrid.ThreeD"
              xmlns:wpg="clr-namespace:System.Windows.Controls.WpfPropertyGrid;assembly=OpenVisionLab.WpfPropertyGrid.ThreeD"
              AutomationProperties.AutomationId="RecipeStepPropertyGridHost">
     <UserControl.Resources>
@@ -32,6 +34,199 @@
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderTrackBrush" ResourceKey="ThreeD.DividerBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderFillBrush" ResourceKey="ThreeD.AccentBrush" />
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderThumbBrush" ResourceKey="ThreeD.PrimaryTextBrush" />
+
+        <FontFamily x:Key="CompactParameterFont">Segoe UI Variable Text, Segoe UI, Malgun Gothic</FontFamily>
+        <SolidColorBrush x:Key="CompactParameterHoverBorderBrush" Color="#8C9DAE" />
+        <SolidColorBrush x:Key="CompactParameterErrorSurfaceBrush" Color="#2A2226" />
+        <SolidColorBrush x:Key="CompactParameterReadOnlySurfaceBrush" Color="#1C2229" />
+        <ItemsPanelTemplate x:Key="CompactParameterColumnPanel"><StackPanel /></ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="CompactAcceptanceColumnPanel"><UniformGrid Columns="2" /></ItemsPanelTemplate>
+        <ControlTemplate x:Key="CompactParameterGridTemplate" TargetType="{x:Type wpg:PropertyGrid}">
+            <ContentPresenter Content="{TemplateBinding Layout}" ContentSource="Layout" />
+        </ControlTemplate>
+        <ControlTemplate x:Key="CompactParameterLayoutTemplate" TargetType="{x:Type wpgDesign:AlphabeticalLayout}">
+            <wpgDesign:PropertyItemsLayout Background="Transparent" ItemsSource="{Binding BrowsableProperties}" Grid.IsSharedSizeScope="True" Focusable="False" KeyboardNavigation.IsTabStop="False" />
+        </ControlTemplate>
+        <ControlTemplate x:Key="CompactParameterFieldTemplate" TargetType="{x:Type wpg:PropertyContainer}">
+            <StackPanel>
+                <TextBlock FontFamily="{StaticResource CompactParameterFont}" FontSize="12" LineHeight="17.4" LineStackingStrategy="BlockLineHeight" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Margin="0,0,0,4" TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="{Binding Entry.DisplayName, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="KernelSize"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Parameter.KernelSizeCaption, Korean='커널 크기', English='Kernel size'}" /></DataTrigger>
+                                <DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumThickness"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Parameter.MinimumThicknessCaption, Korean='두께 최소', English='Minimum thickness'}" /></DataTrigger>
+                                <DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MaximumThickness"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Parameter.MaximumThicknessCaption, Korean='두께 최대', English='Maximum thickness'}" /></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <wpgDesign:PropertyEditorContentPresenter x:Name="ParameterEditorPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentStringFormat="{TemplateBinding ContentStringFormat}" VerticalAlignment="Top" Focusable="False" KeyboardNavigation.IsTabStop="False" />
+                    <Border x:Name="ParameterSelectionFocusOutline" Margin="-2" BorderThickness="2" CornerRadius="6" BorderBrush="{DynamicResource ThreeD.FocusBrush}" IsHitTestVisible="False">
+                        <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
+                            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=ParameterEditorPresenter}" Value="True" />
+                                <Condition Binding="{Binding Entry.PropertyType.IsEnum, RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
+                                <Condition Binding="{Binding Entry.IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}" Value="False" />
+                                <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
+                            </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
+                        </Style.Triggers></Style></Border.Style>
+                    </Border>
+                    <TextBlock Grid.Column="1" FontFamily="{StaticResource CompactParameterFont}" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Margin="6,0,0,0" VerticalAlignment="Top" Padding="0,7,0,0" Text="{shell:ThreeDText Key=ThreeD.Parameter.SampleCountUnit, Korean='셀', English='cells'}">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="KernelSize"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumValidSampleCount"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumReferenceSampleCount"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumMeasurementSampleCount"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+                <TextBlock Text="{Binding Entry.Description, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+            </StackPanel>
+        </ControlTemplate>
+        <Style x:Key="CompactParameterContainerStyle" TargetType="{x:Type wpg:PropertyContainer}">
+            <Style.Triggers>
+                <Trigger Property="local:RecipeStepPropertyGridHost.IsOnParameterPage" Value="False"><Setter Property="Visibility" Value="Collapsed" /></Trigger>
+                <MultiDataTrigger><MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding PrimaryParametersOnly, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                    <Condition Binding="{Binding Entry.IsReadOnly, RelativeSource={RelativeSource Self}}" Value="True" />
+                </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding PrimaryParametersOnly, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding DataContext.IsSelectedStepRemoveOutlierPixels, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding Entry.Name, RelativeSource={RelativeSource Self}}" Value="Rule" />
+            </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding PrimaryParametersOnly, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding DataContext.IsSelectedStepRemoveOutlierPixels, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding Entry.Name, RelativeSource={RelativeSource Self}}" Value="MinimumValidNeighbors" />
+            </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding PrimaryParametersOnly, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding DataContext.IsSelectedStepRemoveOutlierPixels, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding Entry.Name, RelativeSource={RelativeSource Self}}" Value="MissingValuePolicy" />
+            </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding PrimaryParametersOnly, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding DataContext.IsSelectedStepRemoveOutlierPixels, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding Entry.Name, RelativeSource={RelativeSource Self}}" Value="BoundaryPolicy" />
+            </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+            <MultiDataTrigger><MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding PrimaryParametersOnly, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding DataContext.IsSelectedStepRemoveOutlierPixels, RelativeSource={RelativeSource AncestorType={x:Type local:RecipeStepPropertyGridHost}}}" Value="True" />
+                <Condition Binding="{Binding Entry.Name, RelativeSource={RelativeSource Self}}" Value="OutlierPolicy" />
+            </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <ControlTemplate x:Key="CompactKernelInputTemplate" TargetType="{x:Type TextBox}">
+            <StackPanel>
+            <ListBox x:Name="KernelChoices" SelectedValue="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Content"
+                     BorderThickness="0" Padding="0" Background="Transparent" Foreground="{TemplateBinding Foreground}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled" KeyboardNavigation.TabNavigation="Once"
+                     AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Parameter.KernelSizeCaption, Korean='커널 크기', English='Kernel size'}">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="VerticalContentAlignment" Value="Center" />
+                    <Setter Property="MinHeight" Value="32" /><Setter Property="Margin" Value="0,0,4,0" /><Setter Property="Padding" Value="5,4" />
+                    <Setter Property="Background" Value="{DynamicResource ThreeD.InputBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" /><Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="KernelChoiceSurface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="KernelChoiceSurface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="KernelChoiceSurface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" /><Setter TargetName="KernelChoiceSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="KernelChoiceSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /><Setter TargetName="KernelChoiceSurface" Property="BorderThickness" Value="2" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate></Setter.Value></Setter>
+                </Style></ListBox.ItemContainerStyle>
+                <ListBoxItem Content="3" /><ListBoxItem Content="5" /><ListBoxItem Content="7" />
+            </ListBox>
+            <TextBlock Text="{shell:ThreeDText Key=ThreeD.Parameter.KernelChoiceRequired, Korean='3·5·7 중에서 선택하세요.', English='Choose 3, 5, or 7.'}"
+                       Margin="0,4,0,0" FontSize="12" LineHeight="17.4" LineStackingStrategy="BlockLineHeight" TextWrapping="Wrap"
+                       Foreground="{DynamicResource ThreeD.FailBrush}" AutomationProperties.LiveSetting="Polite">
+                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
+                    <DataTrigger Binding="{Binding SelectedIndex, ElementName=KernelChoices}" Value="-1"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                </Style.Triggers></Style></TextBlock.Style>
+            </TextBlock>
+            </StackPanel>
+        </ControlTemplate>
+        <Style x:Key="CompactParameterTextBoxStyle" TargetType="{x:Type TextBox}">
+            <Setter Property="FontFamily" Value="{StaticResource CompactParameterFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.InputBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+            <Setter Property="SelectionTextBrush" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <Border x:Name="ParameterInputSurface" MinHeight="30" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                <ScrollViewer x:Name="PART_ContentHost" Padding="0" Margin="0" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Border>
+                            <Border x:Name="ParameterFocusOutline" Margin="-2" BorderThickness="2" CornerRadius="6" BorderBrush="{DynamicResource ThreeD.FocusBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
+                            <TextBlock x:Name="ParameterErrorText" Grid.Row="1" Margin="0,4,0,0" FontSize="12" LineHeight="17.4" LineStackingStrategy="BlockLineHeight" Foreground="{DynamicResource ThreeD.FailBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ParameterFocusOutline" Property="Visibility" Value="Visible" /></Trigger>
+                            <Trigger Property="Validation.HasError" Value="True"><Setter TargetName="ParameterErrorText" Property="Visibility" Value="Visible" /><Setter TargetName="ParameterErrorText" Property="Text" Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource TemplatedParent}}" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ParameterFocusOutline" Property="Visibility" Value="Collapsed" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{StaticResource CompactParameterHoverBorderBrush}" /></Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /><Setter Property="ToolTipService.IsEnabled" Value="False" /></Trigger>
+                <Trigger Property="Validation.HasError" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" /><Setter Property="Background" Value="{StaticResource CompactParameterErrorSurfaceBrush}" /><Setter Property="ToolTipService.IsEnabled" Value="False" /></Trigger>
+                <Trigger Property="local:RecipeStepPropertyGridHost.IsEditedValue" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" /></Trigger>
+                <Trigger Property="IsReadOnly" Value="True"><Setter Property="Background" Value="{StaticResource CompactParameterReadOnlySurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.SoftDividerBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Background" Value="{StaticResource CompactParameterReadOnlySurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.SoftDividerBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger>
+
+                <DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource AncestorType={x:Type wpg:PropertyContainer}}}" Value="WindowSize"><Setter Property="Template" Value="{StaticResource CompactKernelInputTemplate}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource AncestorType={x:Type wpg:PropertyContainer}}}" Value="KernelSize"><Setter Property="Template" Value="{StaticResource CompactKernelInputTemplate}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="CompactParameterCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Width" Value="16" /><Setter Property="Height" Value="16" /><Setter Property="MinHeight" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Left" /><Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.InputBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InputBorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
+                <Grid>
+                    <Border x:Name="ParameterCheckSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="3" />
+                    <Path x:Name="ParameterCheckMark" Data="M 3,8 L 6,11 L 12,4" Stroke="{TemplateBinding Foreground}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" />
+                    <Border x:Name="ParameterCheckFocusOutline" Margin="-2" BorderBrush="{DynamicResource ThreeD.FocusBrush}" BorderThickness="2" CornerRadius="5" Visibility="Collapsed" IsHitTestVisible="False" />
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="ParameterCheckMark" Property="Visibility" Value="Visible" /><Setter TargetName="ParameterCheckSurface" Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" /><Setter TargetName="ParameterCheckSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+                    <Trigger Property="IsChecked" Value="{x:Null}"><Setter TargetName="ParameterCheckMark" Property="Visibility" Value="Visible" /><Setter TargetName="ParameterCheckMark" Property="Data" Value="M 4,8 L 12,8" /></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ParameterCheckSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="ParameterCheckSurface" Property="Background" Value="{DynamicResource ThreeD.AccentPressedBrush}" /></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ParameterCheckFocusOutline" Property="Visibility" Value="Visible" /></Trigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ParameterCheckSurface" Property="Background" Value="{StaticResource CompactParameterReadOnlySurfaceBrush}" /><Setter TargetName="ParameterCheckSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter TargetName="ParameterCheckFocusOutline" Property="Visibility" Value="Collapsed" /></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style x:Key="CompactParameterComboBoxStyle" TargetType="{x:Type ComboBox}" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="FontFamily" Value="{StaticResource CompactParameterFont}" /><Setter Property="FontSize" Value="13" /><Setter Property="MinHeight" Value="30" /><Setter Property="Padding" Value="8,4" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Style.Triggers>
+                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True" /><Condition Property="IsEnabled" Value="True" /></MultiTrigger.Conditions><Setter Property="BorderBrush" Value="{StaticResource CompactParameterHoverBorderBrush}" /></MultiTrigger>
+                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsKeyboardFocusWithin" Value="True" /><Condition Property="IsEnabled" Value="True" /></MultiTrigger.Conditions><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></MultiTrigger>
+                <MultiTrigger><MultiTrigger.Conditions><Condition Property="local:RecipeStepPropertyGridHost.IsEditedValue" Value="True" /><Condition Property="IsEnabled" Value="True" /></MultiTrigger.Conditions><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" /></MultiTrigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /></Trigger>
+            </Style.Triggers>
+        </Style>
 
         <local:PropertyGridOptionTextConverter x:Key="PropertyGridOptionText" />
         <DataTemplate x:Key="LocalizedEnumOptionTemplate">
@@ -88,6 +283,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid x:Name="PropertySearchRow" Margin="2,2,2,4">
@@ -124,8 +320,17 @@
                            IsHitTestVisible="False"
                            Symbol="Search24" />
         </Grid>
+        <Grid x:Name="ParameterPageNavigation" Grid.Row="1" Margin="0,0,0,10" Visibility="Collapsed" AutomationProperties.AutomationId="ParameterPageNavigation">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Settings.ParameterRange, Korean='설정값', English='Parameters'}" />
+            <ComboBox x:Name="ParameterPageSelector" Grid.Column="1" MinHeight="30" Padding="7,3" SelectionChanged="OnParameterPageSelectionChanged" AutomationProperties.AutomationId="ParameterPageSelector" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Settings.ParameterRangeSelect, Korean='표시할 설정값 범위', English='Parameter range to display'}" />
+            <Button Grid.Column="2" Margin="6,0,0,0" Padding="6,3" Click="OnShowInvalidParameterClick" Content="{shell:ThreeDText Key=ThreeD.Settings.ShowInvalidParameter, Korean='오류 위치', English='Show error'}" AutomationProperties.AutomationId="ShowInvalidParameter">
+                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasValidationErrors, ElementName=PropertyGridRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Button.Style>
+            </Button>
+        </Grid>
         <wpg:PropertyGrid x:Name="InnerGrid"
-                          Grid.Row="1"
+                          IsEnabled="{Binding CanEditValues, ElementName=PropertyGridRoot}"
+                          Grid.Row="2"
                           Background="{DynamicResource ThreeD.PanelBrush}"
                           BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                           Foreground="{DynamicResource ThreeD.TextBrush}"
@@ -135,6 +340,7 @@
                           PreviewKeyDown="OnInnerGridPreviewKeyDown"
                           LostKeyboardFocus="OnInnerGridLostKeyboardFocus"
                           TextBox.TextChanged="OnInnerGridEditorTextChanged"
+                          Selector.SelectionChanged="OnInnerGridEditorSelectionChanged"
                           Loaded="OnReadOnlyEditorsLoaded"
                           PropertyFilterVisibility="Collapsed"
                           PropertyNameColumnWidth="128"

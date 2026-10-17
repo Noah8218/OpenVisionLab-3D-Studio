@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -28,8 +29,11 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
+    public static readonly DependencyProperty WorkspaceSelectionCaptionProperty = DependencyProperty.Register(nameof(WorkspaceSelectionCaption), typeof(string), typeof(OpenVisionThreeDViewerControl), new PropertyMetadata(string.Empty));
+    public string WorkspaceSelectionCaption { get => (string)GetValue(WorkspaceSelectionCaptionProperty); set => SetValue(WorkspaceSelectionCaptionProperty, value); }
     private readonly SharpGlRenderContextLifetime renderContextLifetime = new();
     private EventHandler<ViewerHostStateChangedEventArgs>? hostStateChanged;
+    private ContentControl? workspaceHeaderHost;
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -41,6 +45,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         languageRefresh.Cancel();
         sourceUnloadCancellation.MarkLoaded();
         viewerEventSubscription.Attach();
+        if (Viewport.OpenGL.RenderContextProvider is { RenderContextHandle: var handle } && handle != IntPtr.Zero)
+            Viewport.RenderTrigger = RenderTrigger.TimerBased;
         UpdateOrientationTriad();
         RequestVisibleFrame();
     }
@@ -53,6 +59,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         languageRefresh.Cancel();
+        Viewport.RenderTrigger = RenderTrigger.Manual;
         sourceUnloadCancellation.ScheduleAfterUnload();
 
         visibleFrameRequests.Invalidate();
@@ -102,7 +109,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             return;
         }
 
+        if (dispatcherAccess) Viewport.RenderTrigger = RenderTrigger.Manual;
         ViewerLocalizationScope.Detach(this, clearAttachedProperties: dispatcherAccess);
+        CancelPendingSourceAutoFit();
         viewerLifetimeCancellation.Cancel();
         nominalActualComparisonCoordinator.Dispose();
         recipeLoadWorkflow.Dispose();
@@ -115,6 +124,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (dispatcherAccess)
         {
+            ReleaseWorkspaceHeader();
             try
             {
                 Viewport.ReleaseMouseCapture();
@@ -191,7 +201,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             try
             {
-                Viewport.RenderTrigger = RenderTrigger.TimerBased;
+                Viewport.RenderTrigger = RenderTrigger.Manual;
             }
             catch (InvalidOperationException)
             {
@@ -217,6 +227,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void ClearManagedDataReferencesAfterDispose()
     {
         c3dSample = null;
+        viewModel.C3DTexture.ReleaseImage();
         c3dRenderProxyCache.Clear();
         c3dRenderPositionCache.Clear();
         importedMesh = null;
@@ -235,7 +246,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         twoPointFirst = null;
         twoPointSecond = null;
         viewModel.HeightProfile.Attach(null);
-        linkedHeightCursor = null;
+        viewModel.LinkedHeightCursor = null;
         lastPublishedThreeDGridHover = null;
         planeReferenceMeasurement = null;
         planeFlatnessEvaluation = null;
@@ -243,6 +254,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         teachingOrientedBoxDragStart = null;
         teachingGridRectangleDragStart = null;
         teachingGridRectangleAutomaticHeights.Clear();
+        teachingResultCaptionCache.Clear();
+        TeachingResultCaptions.Children.Clear();
         workbenchOverlayRenderer.Clear();
         ClearSurfaceMatchRenderData();
     }
@@ -266,6 +279,74 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         get => (bool)GetValue(SidePanelsVisibleProperty);
         set => SetValue(SidePanelsVisibleProperty, value);
+    }
+
+    public void SetWorkspaceHeaderHost(ContentControl? headerHost, bool compact)
+    {
+        VerifyHostDispatcherAccess(nameof(SetWorkspaceHeaderHost));
+        if (IsDisposed) return;
+        if (!ReferenceEquals(workspaceHeaderHost, headerHost))
+        {
+            ReleaseWorkspaceHeader();
+            if (headerHost is not null)
+            {
+                ViewerToolbarActions.Children.Remove(ViewerViewMenu);
+                ViewerViewMenu.SetBinding(DataContextProperty, new Binding(nameof(DataContext)) { Source = this });
+                ViewerViewMenu.Margin = new Thickness(0);
+                ViewerViewMenu.MinHeight = 0;
+                ViewerViewMenu.Height = 28;
+                ViewerViewMenuRoot.MinHeight = 28;
+                ViewerToolbarActions.Visibility = Visibility.Collapsed;
+                ViewerAdvancedToolbar.SetBinding(VisibilityProperty, new Binding(nameof(MainWindowViewModel.IsLazPointCloudLoading)) { Converter = (IValueConverter)Resources["BoolToVisibilityConverter"] });
+                workspaceHeaderHost = headerHost;
+                headerHost.Content = ViewerViewMenu;
+            }
+        }
+        var cubeSize = headerHost is null ? 92 : compact ? 80 : 92;
+        OrientationCubePanel.Width = cubeSize;
+        OrientationCubeViewport.Height = headerHost is null ? 80 : cubeSize;
+        CubeProjectionToggle.Height = CubeHomeButton.Height = headerHost is null ? 22 : 20;
+        if (headerHost is null)
+        {
+            CubeProjectionToggle.ClearValue(MinHeightProperty);
+            CubeHomeButton.ClearValue(MinHeightProperty);
+        }
+        else
+        {
+            CubeProjectionToggle.MinHeight = CubeHomeButton.MinHeight = 20;
+        }
+        UpdateViewportChromeLayout();
+    }
+
+    private void OnViewportChromeSizeChanged(object sender, SizeChangedEventArgs e) => UpdateViewportChromeLayout();
+
+    private void UpdateViewportChromeLayout()
+    {
+        if (ViewportSurface is null || ViewerHeightLegend is null || OrientationCubePanel is null || ViewportSurface.ActualHeight <= 0) return;
+        var plotHeight = Math.Clamp(ViewportSurface.ActualHeight * 0.32, 90, 200);
+        var cubeHeight = OrientationCubeViewport.Height + Math.Max(CubeProjectionButtons.ActualHeight, CubeProjectionToggle.Height) + 4;
+        // 머리글 40px, 스크롤 정보 60px, 위아래 간격 32px를 확보한다.
+        var plotRoom = ViewportSurface.ActualHeight - cubeHeight - 132;
+        ViewerHeightLegendRangeBar.IsCompactLayout = plotRoom < 90;
+        ViewerHeightLegendRangeBar.PlotHeight = new GridLength(Math.Max(90, Math.Min(plotHeight, plotRoom)));
+        ViewerHeightLegend.Margin = new Thickness(0, 0, ViewportSurface.ActualHeight < cubeHeight + ViewerHeightLegend.ActualHeight + 20 ? OrientationCubePanel.Width + 20 : 12, 12);
+    }
+
+    private void ReleaseWorkspaceHeader()
+    {
+        if (workspaceHeaderHost is null) return;
+        ViewerViewMenuRoot.IsSubmenuOpen = false;
+        workspaceHeaderHost.Content = null;
+        workspaceHeaderHost = null;
+        ViewerToolbarActions.Children.Add(ViewerViewMenu);
+        ViewerViewMenu.ClearValue(DataContextProperty);
+        ViewerViewMenu.ClearValue(MinHeightProperty);
+        ViewerViewMenu.ClearValue(HeightProperty);
+        ViewerViewMenuRoot.ClearValue(MinHeightProperty);
+        ViewerViewMenu.Margin = new Thickness(4, 0, 0, 0);
+        ViewerToolbarActions.Visibility = Visibility.Visible;
+        BindingOperations.ClearBinding(ViewerAdvancedToolbar, VisibilityProperty);
+        ViewerAdvancedToolbar.ClearValue(VisibilityProperty);
     }
 
     /// <summary>
@@ -371,6 +452,50 @@ public sealed partial class OpenVisionThreeDViewerControl
         return hostOperations.TrySetC3DSampleVisible(visible);
     }
 
+    public bool TrySetSelectedGeometryStyle(string geometryStyle)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetSelectedGeometryStyle));
+        return hostOperations.TrySetSelectedGeometryStyle(geometryStyle);
+    }
+
+    public bool TrySetFloorGridVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetFloorGridVisible));
+        return hostOperations.TrySetFloorGridVisible(visible);
+    }
+
+    public bool TryLoadC3DTexture(string path)
+    {
+        VerifyHostDispatcherAccess(nameof(TryLoadC3DTexture));
+        return !IsDisposed && viewModel.C3DSampleVisible && viewModel.C3DTexture.TryLoad(path);
+    }
+
+    public bool TrySetC3DTextureVisible(bool visible)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetC3DTextureVisible));
+        return !IsDisposed && viewModel.C3DTexture.SetVisible(visible);
+    }
+
+    public bool TryClearC3DTexture()
+    {
+        VerifyHostDispatcherAccess(nameof(TryClearC3DTexture));
+        if (IsDisposed) return false;
+        viewModel.C3DTexture.Clear();
+        return true;
+    }
+
+    public IReadOnlyDictionary<string, OpenVisionLab.ThreeD.Data.HeightTextureImageSettings> CaptureC3DTextureSettings()
+    {
+        VerifyHostDispatcherAccess(nameof(CaptureC3DTextureSettings));
+        return viewModel.C3DTexture.CaptureSettings();
+    }
+
+    public void RestoreC3DTextureSettings(IReadOnlyDictionary<string, OpenVisionLab.ThreeD.Data.HeightTextureImageSettings>? settings)
+    {
+        VerifyHostDispatcherAccess(nameof(RestoreC3DTextureSettings));
+        if (!IsDisposed) viewModel.C3DTexture.RestoreSettings(settings);
+    }
+
     public bool TrySetSelectedColorMap(string colorMap)
     {
         VerifyHostDispatcherAccess(nameof(TrySetSelectedColorMap));
@@ -387,6 +512,12 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         VerifyHostDispatcherAccess(nameof(TrySetResultOverlayVisible));
         return hostOperations.TrySetResultOverlayVisible(visible);
+    }
+
+    public bool TrySetTeachingResultLabels(IReadOnlyList<ViewerTeachingResultLabel> labels)
+    {
+        VerifyHostDispatcherAccess(nameof(TrySetTeachingResultLabels));
+        return hostOperations.TrySetTeachingResultLabels(labels);
     }
 
     public bool TrySetMeasurementVisible(bool visible)
@@ -435,6 +566,48 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         VerifyHostDispatcherAccess(nameof(TrySetC3DHeightEmphasis));
         return hostOperations.TrySetC3DHeightEmphasis(emphasis);
+    }
+
+    public bool TryApplyHeightDisplayOptions(OpenVisionLab.ThreeD.Data.HeightDisplayOptions options, double? minimum = null, double? maximum = null)
+    {
+        VerifyHostDispatcherAccess(nameof(TryApplyHeightDisplayOptions));
+        return hostOperations.TryApplyHeightDisplayOptions(options, minimum, maximum);
+    }
+
+    public bool TryApplyLinkedHeightDisplayState(OpenVisionLab.ThreeD.Data.HeightDisplayOptions options, double minimum, double maximum)
+    {
+        VerifyHostDispatcherAccess(nameof(TryApplyLinkedHeightDisplayState));
+        return hostOperations.TryApplyLinkedHeightDisplayState(options, minimum, maximum);
+    }
+
+    public void SetHeightMeasurementColor(HeightMeasurementColorSnapshot? snapshot)
+    {
+        VerifyHostDispatcherAccess(nameof(SetHeightMeasurementColor));
+        hostOperations.SetHeightMeasurementColor(snapshot);
+    }
+
+    public void SetHeightDisplayContext(string workspace, string mapId, string mapName)
+    {
+        VerifyHostDispatcherAccess(nameof(SetHeightDisplayContext));
+        hostOperations.SetHeightDisplayContext(workspace, mapId, mapName);
+    }
+
+    public void SetHeightDisplayLinked(bool linked)
+    {
+        VerifyHostDispatcherAccess(nameof(SetHeightDisplayLinked));
+        hostOperations.SetHeightDisplayLinked(linked);
+    }
+
+    public IReadOnlyDictionary<string, string> CaptureHeightDisplayModes()
+    {
+        VerifyHostDispatcherAccess(nameof(CaptureHeightDisplayModes));
+        return hostOperations.CaptureHeightDisplayModes();
+    }
+
+    public void RestoreHeightDisplayModes(IReadOnlyDictionary<string, string> modes)
+    {
+        VerifyHostDispatcherAccess(nameof(RestoreHeightDisplayModes));
+        hostOperations.RestoreHeightDisplayModes(modes);
     }
 
     public int SmokeExitCode => smokeScenario.ExitCode;
@@ -591,6 +764,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (IsDisposed)
         {
+            return;
+        }
+
+        if (!viewerEventSubscription.IsAttached)
+        {
+            // Height/Section can keep this Host while its 3D surface is unloaded.
+            hostStateCoordinator.Notify(args.PropertyName);
             return;
         }
 

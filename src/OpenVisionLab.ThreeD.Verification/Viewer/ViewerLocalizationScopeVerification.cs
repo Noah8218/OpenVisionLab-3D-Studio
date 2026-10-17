@@ -86,31 +86,48 @@ internal static class ViewerLocalizationScopeVerification
                 $"tooltip={menu?.ToolTip}");
 
             Drain(dispatcher);
-            var footer = (StackPanel)((Border)((DockPanel)control.Content).Children.OfType<Border>().Single(border => DockPanel.GetDock(border) == Dock.Bottom)).Child;
-            var roiRun = footer.Children.OfType<TextBlock>().Single(text => AutomationProperties.GetAutomationId(text) == "ViewerSelectedRoiStatus").Inlines.OfType<Run>().Last();
-            var coordinateRun = footer.Children.OfType<TextBlock>().Single(text => AutomationProperties.GetAutomationId(text) == "ViewerCoordinateStatus").Inlines.OfType<Run>().Last();
+            var footer = (DockPanel)((Border)control.FindName("ViewerBottomStatus")).Child;
+            var roiCaption = footer.Children.OfType<TextBlock>().Single();
+            var coordinateRun = ((TextBlock)((ScrollViewer)control.FindName("ViewerCoordinateScroll")).Content).Inlines.OfType<Run>().Single();
             var viewModel = (MainWindowViewModel)control.DataContext;
             var rawRoiBefore = viewModel.SelectedTeachingGridRectangleSummary;
             var rawCoordinateBefore = viewModel.PickCoordinate;
-            var roiTextBefore = roiRun.Text;
+            var roiTextBefore = roiCaption.Text;
             var coordinateTextBefore = coordinateRun.Text;
+            viewModel.SetTwoPointMeasurement(new System.Numerics.Vector3(1, 2, 3), 2, new System.Numerics.Vector3(4, 6, 3), 6);
+            var densityBefore = viewModel.SelectedRenderDensity;
+            var densityNotifications = 0;
+            System.ComponentModel.PropertyChangedEventHandler densityHandler = (_, args) =>
+            {
+                if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity)) densityNotifications++;
+            };
+            viewModel.PropertyChanged += densityHandler;
             localization.RaiseLanguageChanged();
+            viewModel.PropertyChanged -= densityHandler;
             Drain(dispatcher);
+            Check(
+                "language refresh preserves render density without requesting a source reload",
+                densityNotifications == 0 && viewModel.SelectedRenderDensity == densityBefore,
+                $"density={viewModel.SelectedRenderDensity};notifications={densityNotifications}");
+            Check(
+                "language refresh retains a completed measurement without executing inspection",
+                viewModel.TwoPointMeasurementVisible && viewModel.TwoPointDistance == 5
+                    && viewModel.TwoPointRawHeightDelta == 4 && control.HostState.Inspection.PublishedResultCount == 0,
+                $"visible={viewModel.TwoPointMeasurementVisible};distance={viewModel.TwoPointDistance};heightDelta={viewModel.TwoPointRawHeightDelta};published={control.HostState.Inspection.PublishedResultCount}");
             Check(
                 "static ViewerText refreshes after provider language change",
                 menu?.ToolTip is string refreshed && refreshed == "custom:ThreeD.Viewer.ViewCommands:rev1",
                 $"tooltip={menu?.ToolTip}|revision={localization.Revision}");
 
             Check(
-                "footer ROI and coordinate text follow language revision without changing raw state or executing",
-                roiTextBefore.EndsWith(":rev0", StringComparison.Ordinal)
-                && coordinateTextBefore.EndsWith(":rev0", StringComparison.Ordinal)
-                && roiRun.Text.EndsWith(":rev1", StringComparison.Ordinal)
+                "footer coordinate follows language revision while the source ROI caption and raw state remain unchanged",
+                coordinateTextBefore.EndsWith(":rev0", StringComparison.Ordinal)
+                && roiCaption.Text == roiTextBefore
                 && coordinateRun.Text.EndsWith(":rev1", StringComparison.Ordinal)
                 && viewModel.SelectedTeachingGridRectangleSummary == rawRoiBefore
                 && viewModel.PickCoordinate == rawCoordinateBefore
                 && control.HostState.Inspection.PublishedResultCount == 0,
-                $"roi={roiTextBefore}->{roiRun.Text};coordinate={coordinateTextBefore}->{coordinateRun.Text};published={control.HostState.Inspection.PublishedResultCount}");
+                $"roi={roiTextBefore}->{roiCaption.Text};coordinate={coordinateTextBefore}->{coordinateRun.Text};published={control.HostState.Inspection.PublishedResultCount}");
 
             Check(
                 "runtime converter retains the same provider",

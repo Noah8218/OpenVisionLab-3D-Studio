@@ -99,7 +99,7 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner : IDispo
         : $"Output SHA-256 {previewOutput.ContentSha256}";
     public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No correspondence evidence until Preview completes."
-        : $"{previewOutput.Pairs.Count} pairs | source rank {previewOutput.SourceRank}/4 | reference rank {previewOutput.ReferenceRank}/4 | normalized volume {previewOutput.SourceNormalizedTetrahedronVolume:G6} / {previewOutput.ReferenceNormalizedTetrahedronVolume:G6}";
+        : $"{previewOutput.Pairs.Count} pairs | source rank {previewOutput.SourceRank}/4 | reference rank {previewOutput.ReferenceRank}/4 | normalized volume {previewOutput.SourceNormalizedTetrahedronVolume:0.##} / {previewOutput.ReferenceNormalizedTetrahedronVolume:0.##}";
 
     public string UpstreamSummary
     {

@@ -16,7 +16,9 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 public sealed partial class ToolWorkbenchViewModel
 {
     private bool isSynchronizingInspectionWorkspace;
+    private readonly Dictionary<string, (IReadOnlyList<Metric> Metrics, string SourceIdentity, string Value, string Unit, string Status, string? Previous)> teachingResultComparisons = new(StringComparer.Ordinal);
     private RelayCommand selectWorkspaceInputCommand = null!;
+    private RelayCommand chooseWorkspaceInputCommand = null!;
     private RelayCommand selectWorkspaceRegionCommand = null!;
     private RelayCommand selectWorkspaceOutputCommand = null!;
     private RelayCommand fitWorkspaceRegionCommand = null!;
@@ -29,6 +31,16 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsInspectionQueueRunning => inspectionQueueWorkspace?.IsRunning == true;
     public ResettableObservableCollection<TeachingMeasurementResultItem> TeachingResults { get; } = [];
     public bool HasTeachingResults => TeachingResults.Count > 0;
+    private string TeachingResultSourceIdentity => $"{Source.Id}|{Source.Unit}|{Source.FrameId}|{SourceSession.SourceBinding?.ContentSha256}";
+    public bool HasSelectedToolResultComparison => SelectedPipelineStep is { } step && teachingResultComparisons.TryGetValue(step.Id, out var comparison)
+        && comparison.SourceIdentity == TeachingResultSourceIdentity && comparison.Previous is not null;
+    public string SelectedToolResultComparisonText => HasSelectedToolResultComparison && SelectedPipelineStep is { } step
+        && teachingResultComparisons.TryGetValue(step.Id, out var comparison)
+        ? $"{comparison.Previous} → {comparison.Value} {comparison.Unit} · {comparison.Status}"
+            + (SelectedTeachingResult?.IsCurrent == false ? " · " + Localize("다시 실행 필요", "Run again") : string.Empty) : Localize("변경 전 결과 없음", "No earlier result");
+    public IReadOnlyList<TeachingResultSummaryItem> TeachingResultSummary => TeachingResults.GroupBy(row => row.State)
+        .Select(group => new TeachingResultSummaryItem(group.Key, group.First().StatusText, group.First().StatusIcon,
+            group.Select(row => row.Step.Id).Distinct(StringComparer.Ordinal).Count())).ToArray();
     public TeachingMeasurementResultItem? SelectedTeachingResult
     {
         get => TeachingResults.FirstOrDefault(item => ReferenceEquals(item.Step, SelectedPipelineStep));
@@ -43,6 +55,7 @@ public sealed partial class ToolWorkbenchViewModel
         ?? SelectedToolWorkspace.Inputs.FirstOrDefault();
     public SelectedToolOutputItem? ViewerInspectionOutput => SelectedToolWorkspace.CurrentOutput;
     public ICommand SelectWorkspaceInputCommand => selectWorkspaceInputCommand;
+    public ICommand ChooseWorkspaceInputCommand => chooseWorkspaceInputCommand;
     public ICommand SelectWorkspaceRegionCommand => selectWorkspaceRegionCommand;
     public ICommand SelectWorkspaceOutputCommand => selectWorkspaceOutputCommand;
     public ICommand FitWorkspaceRegionCommand => fitWorkspaceRegionCommand;
@@ -158,7 +171,11 @@ public sealed partial class ToolWorkbenchViewModel
             orderedRunExecutionOwner.Record,
             orderedRunExecutionOwner.RecordPath,
             orderedRunExecutionOwner.Summary,
-            orderedRunExecutionOwner.HasPendingRecordSave);
+            orderedRunExecutionOwner.HasPendingRecordSave)
+        {
+            MeasurementColors = orderedRunExecutionOwner.Result?.Steps.Where(step => step.ColorSnapshot is not null)
+                .ToDictionary(step => step.StepId, step => step.ColorSnapshot!) ?? new Dictionary<string, HeightMeasurementColorSnapshot>()
+        };
     }
 
     private void OnInspectionQueuePropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -186,8 +203,46 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshFlowConnectionCommands();
     }
 
+    private bool CanChooseWorkspaceInput(SelectedToolInputChoice choice) =>
+        CanEditFlowConnection && !IsReadOnlySampleView && !HasPendingFlowConnection && choice.IsAvailable
+        && ReferenceEquals(choice.Port.Step, SelectedPipelineStep) && PipelineSteps.Contains(choice.Port.Step)
+        && IsFlowOutputAvailable(choice.EntityId)
+        && IsFlowInputCompatible(choice.Port, choice.EntityId)
+        && !string.Equals(choice.Port.Step.InputEntityIds.ElementAtOrDefault(choice.Port.Index), choice.EntityId, StringComparison.OrdinalIgnoreCase);
+
+    private Task EnsureSelectedToolPreviewAsync(HeightImageViewerViewModel image, string entityId)
+    {
+        if (GetRenderableSignedDeltaArtifact(entityId) is { } delta)
+        {
+            image.ShowSignedDeltaArtifactIfChanged(delta);
+            return Task.CompletedTask;
+        }
+        var target = renderableC3DCatalogOwner.GetTarget(entityId);
+        if (target is not { IsDisplayable: true })
+        {
+            image.ClearSource();
+            return Task.CompletedTask;
+        }
+        var artifact = ArtifactRegistry.FirstOrDefault(item => string.Equals(item.Id, entityId, StringComparison.OrdinalIgnoreCase));
+        return target.IsSource
+            ? image.EnsureSourceAsync(target.C3DPath, entityId, artifact?.Unit ?? Source.Unit, artifact?.FrameId ?? Source.FrameId, GetOrLoadDecodedC3DSourceAsync)
+            : image.EnsureSourceAsync(target.C3DPath, entityId, artifact?.Unit ?? string.Empty, artifact?.FrameId ?? string.Empty);
+    }
+
     private void InitializeInspectionWorkspace()
     {
+        chooseWorkspaceInputCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is not SelectedToolInputChoice choice || !CanChooseWorkspaceInput(choice)) return;
+                BeginFlowConnection(choice.EntityId);
+                ConnectFlowOutput(choice.Port);
+                if (HasPendingFlowConnection)
+                {
+                    pendingFlowOutputEntityId = null;
+                    RefreshFlowConnectionCommands();
+                }
+            }, parameter => parameter is SelectedToolInputChoice choice && CanChooseWorkspaceInput(choice));
         selectWorkspaceInputCommand = new RelayCommand(
             parameter =>
             {
@@ -314,8 +369,23 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshSelectedToolWorkspaceProjection();
     }
 
+    private void CompleteWorkspaceProjectionUpdate()
+    {
+        if (--workspaceProjectionUpdateDepth == 0 && workspaceProjectionPending)
+        {
+            workspaceProjectionPending = false;
+            RefreshSelectedToolWorkspaceProjection();
+        }
+    }
+
     private void RefreshSelectedToolWorkspaceProjection()
     {
+        // Execution owners still refresh synchronously; project their final state once per outer update.
+        if (workspaceProjectionUpdateDepth > 0)
+        {
+            workspaceProjectionPending = true;
+            return;
+        }
         OnPropertyChanged(nameof(IsSelectedStepAcceptanceLimitsUnconfigured));
         configureSelectedStepAcceptanceLimitsCommand?.RaiseCanExecuteChanged();
         SelectedToolWorkspace.Refresh(new SelectedToolWorkspaceProjection(
@@ -368,9 +438,9 @@ public sealed partial class ToolWorkbenchViewModel
                 var parameters = run.ReboundDocument.Steps.First(item => item.Id == executed.StepId).Parameters;
                 var current = !IsOrderedRunRunning && !HasPendingStepParameterChanges && !IsSelectedStepPreviewRunning;
                 rows.Add(new(step, current ? MeasurementResultStatusLabel(executed.Result)
-                    : Localize("이전 결과 · 다시 실행 필요", "Previous result · Run again"), value, metric?.Unit ?? string.Empty,
+                    : Localize("이전 결과 · 다시 실행 필요", "Previous result · Run again"), value, metric?.Unit ?? "raw-height",
                     MeasurementLimitSummary(step.ToolId, executed.Result, parameters), current ? MeasurementResultMessage(executed.Result)
-                        : Localize("이전 입력 또는 조건의 결과", "Result from previous input or conditions"), current, executed.Result.Metrics));
+                        : Localize("이전 입력 또는 조건의 결과", "Result from previous input or conditions"), current, executed.Result.Metrics) { ExecutionStatus = executed.Result.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage ? null : executed.Result.Status, RecordedAt = orderedRunExecutionOwner.Record?.RecordedAtUtc });
             }
         }
         foreach (var step in PipelineSteps.Where(step => !rows.Any(row => ReferenceEquals(row.Step, step))))
@@ -384,7 +454,7 @@ public sealed partial class ToolWorkbenchViewModel
                 ? $"{value.Name}: {value.Value.ToString("R", CultureInfo.InvariantCulture)}" : "—",
                 metric?.Unit ?? output.Unit, MeasurementLimitSummary(step.ToolId, output.Result, heightMeasurementExecutionOwner.GetCompletedParameters(step)),
                 current ? MeasurementResultMessage(output.Result) : Localize("이전 입력 또는 조건의 결과", "Result from previous input or conditions"),
-                current, output.Result.Metrics));
+                current, output.Result.Metrics) { ExecutionStatus = output.Result.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage ? null : output.Result.Status });
         }
         foreach (var step in PipelineSteps.Where(step => !rows.Any(row => ReferenceEquals(row.Step, step))))
         {
@@ -393,7 +463,7 @@ public sealed partial class ToolWorkbenchViewModel
             current &= !ReferenceEquals(step, SelectedPipelineStep) || !HasPendingStepParameterChanges;
             rows.Add(new(step, current ? output.ResultStatus : Localize("이전 결과 · 다시 실행 필요", "Previous result · Run again"),
                 output.Value, output.Unit, output.LimitSummary,
-                current ? output.Reason : Localize("이전 입력 또는 조건의 결과", "Result from previous input or conditions"), current, []));
+                current ? output.Reason : Localize("이전 입력 또는 조건의 결과", "Result from previous input or conditions"), current, []) { OutputLabel = output.ValueLabel });
         }
         rows.Sort((first, second) => PipelineSteps.IndexOf(first.Step).CompareTo(PipelineSteps.IndexOf(second.Step)));
         foreach (var step in PipelineSteps)
@@ -405,8 +475,22 @@ public sealed partial class ToolWorkbenchViewModel
                 ? metric.Value.ToString(failed ? "R" : "G6", CultureInfo.InvariantCulture) : row?.Value ?? string.Empty;
             step.UpdateResultPresentation(row is null ? string.Empty : $"{value} {row.Unit}".Trim(), row?.Status ?? string.Empty, row?.IsCurrent == true, failed);
         }
-        TeachingResults.ReplaceAll(rows);
+        foreach (var row in rows.Where(row => row.IsCurrent && row.Metrics.Count > 0))
+        {
+            if (teachingResultComparisons.TryGetValue(row.Step.Id, out var previous) && previous.SourceIdentity == TeachingResultSourceIdentity && ReferenceEquals(previous.Metrics, row.Metrics)) continue;
+            var oldValue = teachingResultComparisons.TryGetValue(row.Step.Id, out previous) && previous.SourceIdentity == TeachingResultSourceIdentity && previous.Unit == row.Unit ? previous.Value : null;
+            teachingResultComparisons[row.Step.Id] = (row.Metrics, TeachingResultSourceIdentity, row.Value, row.Unit, row.Status, oldValue);
+        }
+        OnPropertyChanged(nameof(HasSelectedToolResultComparison));
+        OnPropertyChanged(nameof(SelectedToolResultComparisonText));
+        TeachingResults.ReplaceAll(rows.Select(row => row with
+        {
+            Sequence = PipelineSteps.IndexOf(row.Step) + 1,
+            IsSelectedTool = ReferenceEquals(row.Step, SelectedPipelineStep),
+            DisplayedOutput = DisplayedOutputs.FirstOrDefault(output => string.Equals(output.Id, row.Step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+        }));
         OnPropertyChanged(nameof(HasTeachingResults));
+        OnPropertyChanged(nameof(TeachingResultSummary));
         OnPropertyChanged(nameof(SelectedTeachingResult));
     }
 
@@ -551,7 +635,8 @@ public sealed partial class ToolWorkbenchViewModel
         if (IsSelectedStepDatumPlaneDeviation && CurrentDatumPlaneDeviationOutput is { } datum && CurrentDatumPlaneDeviationResult is { } datumResult)
             return new SelectedToolOutputEvidence("P2V", datum.PeakToValleyRawHeight.ToString("R", CultureInfo.InvariantCulture), datum.Unit,
                 datumResult.Status.ToString(), $"≤ {datum.MaximumPeakToValleyRawHeight.ToString("R", CultureInfo.InvariantCulture)} {datum.Unit}", datumResult.Message,
-                HasExecutionResult: !IsDatumPlaneDeviationPreviewRunning);
+                HasExecutionResult: !IsDatumPlaneDeviationPreviewRunning)
+            { ExecutionStatus = datumResult.Message == ToolRecipeStep.UnconfiguredAcceptanceMessage ? null : datumResult.Status };
         if (IsSelectedStepSignedDeltaBackgroundSubtraction
             && CurrentSignedDeltaPreviewOutput is { } signedDelta)
         {
@@ -567,7 +652,7 @@ public sealed partial class ToolWorkbenchViewModel
                 Localization.SelectedToolSignedDeltaLabel,
                 value,
                 "count",
-                $"{status} · {Localization.EvidenceOnlyOutput}",
+                $"{status} · {(GetRenderableSignedDeltaArtifact(signedDelta.OutputEntityId) is not null ? Localization.DisplayableHeightImageData : Localization.NoCurrentDisplayableOutput)}",
                 HasExecutionResult: !IsSignedDeltaPreviewRunning);
         }
 
@@ -699,7 +784,7 @@ public sealed partial class ToolWorkbenchViewModel
         var reason = HasCurrentMeasurementPreview
             ? MeasurementResultMessage(measurementOutput.Result)
             : Localize("이전 입력 또는 조건의 결과", "Result from previous input or conditions");
-        return primaryMetric is null
+        var outputEvidence = primaryMetric is null
             ? new SelectedToolOutputEvidence(
                 Localization.SelectedToolOutputValueLabel,
                 "\u2014",
@@ -714,6 +799,7 @@ public sealed partial class ToolWorkbenchViewModel
                 measurementStatus,
                 limitSummary,
                 reason);
+        return outputEvidence with { ExecutionStatus = HasCurrentMeasurementPreview && measurementOutput.Result.Message != ToolRecipeStep.UnconfiguredAcceptanceMessage ? measurementOutput.Result.Status : null };
     }
 
     private ToolWorkbenchDisplayedOutputItem? ResolveDisplayedOutput(SelectedToolOutputItem? output) =>

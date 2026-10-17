@@ -35,10 +35,10 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
     public bool IsCameraLinked => cameraLinked;
     public string FocusedSlotId => focusedSlotId;
     public bool HasAuxiliarySlot => layout is ViewerWorkspaceLayout.SplitVertical
-        or ViewerWorkspaceLayout.SplitHorizontal or ViewerWorkspaceLayout.PopOut;
+        or ViewerWorkspaceLayout.SplitHorizontal or ViewerWorkspaceLayout.PopOut or ViewerWorkspaceLayout.Four;
     public bool IsHeightImageOnly => layout == ViewerWorkspaceLayout.HeightImageOnly;
     public bool IsInlineSplit =>
-        layout is ViewerWorkspaceLayout.SplitVertical or ViewerWorkspaceLayout.SplitHorizontal;
+        layout is ViewerWorkspaceLayout.SplitVertical or ViewerWorkspaceLayout.SplitHorizontal or ViewerWorkspaceLayout.Four;
     public bool IsPopOut => layout == ViewerWorkspaceLayout.PopOut;
     public bool IsMainFocused => string.Equals(focusedSlotId, MainSlotId, StringComparison.Ordinal);
     public bool IsAuxiliaryFocused =>
@@ -320,5 +320,6 @@ public enum ViewerWorkspaceLayout
     HeightImageOnly,
     SplitVertical,
     SplitHorizontal,
-    PopOut
+    PopOut,
+    Four
 }

@@ -56,6 +56,8 @@ internal static class ToolRecipeLabeledValidationRunnerVerification
                 && root.GetProperty("schemaVersion").GetString() == "1.1"
                 && validationSet.GetProperty("sampleCount").GetInt32() == 3
                 && executionSamples.GetArrayLength() == 3
+                && executionSamples.EnumerateArray().All(sample => sample.GetProperty("steps").EnumerateArray()
+                    .All(step => !step.TryGetProperty("colorSnapshot", out _)))
                 && evidence.GetProperty("goodSampleCount").GetInt32() == 1
                 && evidence.GetProperty("badSampleCount").GetInt32() == 1
                 && evidence.GetProperty("heldOutSampleCount").GetInt32() == 1,

@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260829.normal-preparation.1.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261017.physical-edge-gap-flush.1.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260829.normal-preparation.1.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261017.physical-edge-gap-flush.1.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -74,8 +74,9 @@ try {
     }
 
     $namespaceManager = [System.Xml.XmlNamespaceManager]::new($nuspec.NameTable)
-    $namespaceManager.AddNamespace("n", "http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd")
+    $namespaceManager.AddNamespace("n", $nuspec.DocumentElement.NamespaceURI)
     $metadata = $nuspec.SelectSingleNode("/n:package/n:metadata", $namespaceManager)
+    if ($null -eq $metadata) { throw "OpenVisionLab Vision SDK package nuspec metadata is incomplete." }
     $repository = $metadata.SelectSingleNode("n:repository", $namespaceManager)
     if ($null -eq $metadata -or $null -eq $repository) {
         throw "OpenVisionLab Vision SDK package nuspec metadata is incomplete."
@@ -84,9 +85,44 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.0.1-dev.20260829.normal-preparation.1" -or $sourceCommit -ne "6da3bcf521efb88681a17e4a7b23a091e7fcbacf") {
+    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.3.0-dev.20261017.physical-edge-gap-flush.1" -or $sourceCommit -ne "456eb2af7a62962144757d967538594fde79e481") {
         throw "OpenVisionLab Vision SDK package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
+
+    $computeVersion = "3.3.0-dev.20261017.physical-edge-gap-flush.1"
+    $computeDependency = $metadata.SelectSingleNode("n:dependencies/n:group/n:dependency[@id='OpenVisionLab.Compute']", $namespaceManager)
+    if ($null -eq $computeDependency -or [string]$computeDependency.version -ne $computeVersion) {
+        throw "Vision3D must declare the pinned OpenVisionLab.Compute dependency."
+    }
+    $computeName = "OpenVisionLab.Compute.$computeVersion.nupkg"
+    $computePath = Join-Path (Split-Path -Parent $resolvedPackagePath) $computeName
+    $computeChecksum = Get-Content -LiteralPath ($computePath + ".sha256") -Raw
+    $computeExpected = [regex]::Match($computeChecksum, "(?im)\b([A-F0-9]{64})\b")
+    $computeActual = (Get-FileHash -LiteralPath $computePath -Algorithm SHA256).Hash.ToUpperInvariant()
+    if (-not $computeExpected.Success -or $computeExpected.Groups[1].Value.ToUpperInvariant() -ne $computeActual) {
+        throw "OpenVisionLab.Compute package SHA-256 mismatch or missing checksum."
+    }
+    $computeArchive = [System.IO.Compression.ZipFile]::OpenRead($computePath)
+    try {
+        foreach ($requiredEntry in @("OpenVisionLab.Compute.nuspec", "LICENSE", "NOTICE", "README.md", "lib/netstandard2.0/OpenVisionLab.Compute.dll", "lib/netstandard2.0/OpenVisionLab.Compute.xml")) {
+            if (@($computeArchive.Entries.FullName) -notcontains $requiredEntry) {
+                throw "OpenVisionLab.Compute package is missing required entry: $requiredEntry"
+            }
+        }
+        $computeEntry = $computeArchive.GetEntry("OpenVisionLab.Compute.nuspec")
+        $computeReader = [System.IO.StreamReader]::new($computeEntry.Open())
+        try { [xml]$computeSpec = $computeReader.ReadToEnd() }
+        finally { $computeReader.Dispose() }
+        $computeNamespace = [System.Xml.XmlNamespaceManager]::new($computeSpec.NameTable)
+        $computeNamespace.AddNamespace("n", $computeSpec.DocumentElement.NamespaceURI)
+        $computeMetadata = $computeSpec.SelectSingleNode("/n:package/n:metadata", $computeNamespace)
+        $computeRepository = $computeMetadata.SelectSingleNode("n:repository", $computeNamespace)
+        if ([string]$computeMetadata.id -ne "OpenVisionLab.Compute" -or [string]$computeMetadata.version -ne $computeVersion -or [string]$computeRepository.commit -ne $sourceCommit) {
+            throw "OpenVisionLab.Compute package identity or committed source mismatch."
+        }
+    }
+    finally { $computeArchive.Dispose() }
+    Write-Output "VisionSdkDependency|pass=True|id=OpenVisionLab.Compute|version=$computeVersion|sourceCommit=$sourceCommit|sha256=$computeActual|target=netstandard2.0"
 
     Write-VerificationReport "VisionSdkPackage|pass=True|id=$id|version=$version|sourceCommit=$sourceCommit|sha256=$actualHash|target=netstandard2.0"
 }

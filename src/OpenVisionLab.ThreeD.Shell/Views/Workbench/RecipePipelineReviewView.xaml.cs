@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
@@ -19,6 +20,11 @@ public enum RecipeReviewPresentationMode
 public partial class RecipePipelineReviewView : UserControl
 {
     private readonly ControlTemplate standardReviewTabsTemplate;
+    private readonly DataGridColumn[] standardValidationColumns;
+    private readonly Style standardValidationRowStyle;
+    private readonly Style? standardValidationHeaderStyle;
+    private readonly Style? standardValidationCellStyle;
+    private readonly double standardValidationFontSize;
     private RecipeReviewPresentationMode presentationMode;
     private RecipePipelineReviewValidationViewModel? validationWorkspace;
     private int inspectionReturnTabIndex;
@@ -30,6 +36,21 @@ public partial class RecipePipelineReviewView : UserControl
         typeof(IEnumerable),
         typeof(RecipePipelineReviewView),
         new PropertyMetadata(null));
+
+    public static readonly DependencyProperty IsValidationSamplesExternalProperty = DependencyProperty.Register(
+        nameof(IsValidationSamplesExternal), typeof(bool), typeof(RecipePipelineReviewView), new PropertyMetadata(false, OnValidationSamplesExternalChanged));
+
+    public static readonly DependencyProperty IsRunHistoryExternalProperty = DependencyProperty.Register(
+        nameof(IsRunHistoryExternal), typeof(bool), typeof(RecipePipelineReviewView), new PropertyMetadata(false, OnRunHistoryExternalChanged));
+
+    public static readonly DependencyProperty DockPaneCommandsProperty = DependencyProperty.Register(
+        nameof(DockPaneCommands), typeof(object), typeof(RecipePipelineReviewView), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ValidationMatrixColumnsProperty = DependencyProperty.Register(
+        nameof(ValidationMatrixColumns), typeof(IReadOnlyList<ValidationMatrixColumn>), typeof(RecipePipelineReviewView), new PropertyMetadata(null, OnValidationMatrixColumnsChanged));
+
+    public static readonly DependencyProperty ValidationTableColumnsProperty = DependencyProperty.Register(
+        nameof(ValidationTableColumns), typeof(IReadOnlyList<ValidationTableColumn>), typeof(RecipePipelineReviewView), new PropertyMetadata(null, OnValidationMatrixColumnsChanged));
 
     public static readonly DependencyProperty RunRecordSummaryProperty = DependencyProperty.Register(
         nameof(RunRecordSummary),
@@ -47,12 +68,113 @@ public partial class RecipePipelineReviewView : UserControl
     {
         InitializeComponent();
         standardReviewTabsTemplate = ReviewTabs.Template;
+        standardValidationColumns = ValidationSamplesGrid.Columns.ToArray();
+        standardValidationRowStyle = ValidationSamplesGrid.RowStyle;
+        standardValidationHeaderStyle = ValidationSamplesGrid.ColumnHeaderStyle;
+        standardValidationCellStyle = ValidationSamplesGrid.CellStyle;
+        standardValidationFontSize = ValidationSamplesGrid.FontSize;
+        SetBinding(ValidationMatrixColumnsProperty, new Binding("ValidationMatrixColumns"));
+        SetBinding(ValidationTableColumnsProperty, new Binding("ValidationTableColumns"));
         ReviewTabs.SelectionChanged += ReviewTabs_SelectionChanged;
         SizeChanged += RecipePipelineReviewView_SizeChanged;
         DataContextChanged += RecipePipelineReviewView_DataContextChanged;
     }
 
     public RecipeReviewPresentationMode PresentationMode => presentationMode;
+
+    public bool IsValidationSamplesExternal
+    {
+        get => (bool)GetValue(IsValidationSamplesExternalProperty);
+        set => SetValue(IsValidationSamplesExternalProperty, value);
+    }
+
+    public bool IsRunHistoryExternal
+    {
+        get => (bool)GetValue(IsRunHistoryExternalProperty);
+        set => SetValue(IsRunHistoryExternalProperty, value);
+    }
+
+    public object? DockPaneCommands
+    {
+        get => GetValue(DockPaneCommandsProperty);
+        set => SetValue(DockPaneCommandsProperty, value);
+    }
+
+    public IReadOnlyList<ValidationMatrixColumn> ValidationMatrixColumns => (IReadOnlyList<ValidationMatrixColumn>?)GetValue(ValidationMatrixColumnsProperty) ?? [];
+    public IReadOnlyList<ValidationTableColumn> ValidationTableColumns => (IReadOnlyList<ValidationTableColumn>?)GetValue(ValidationTableColumnsProperty) ?? [];
+
+    private static void OnValidationMatrixColumnsChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args) =>
+        ((RecipePipelineReviewView)owner).ApplyValidationMatrixColumns();
+
+    private void ApplyValidationMatrixColumns()
+    {
+        if (ValidationSamplesGrid is null || standardValidationColumns is null) return;
+        ValidationSamplesGrid.Columns.Clear();
+        var matrix = IsValidationSamplesExternal && presentationMode == RecipeReviewPresentationMode.Validation && ValidationSection == ValidationWorkspaceSection.Results;
+        ValidationSamplesGrid.RowStyle = matrix ? (Style)Resources["ValidationMatrixRowStyle"] : standardValidationRowStyle;
+        ValidationSamplesGrid.ColumnHeaderStyle = matrix ? (Style)Resources["ValidationMatrixHeaderStyle"] : standardValidationHeaderStyle;
+        ValidationSamplesGrid.CellStyle = matrix ? (Style)Resources["ValidationMatrixGridCellStyle"] : standardValidationCellStyle;
+        ValidationSamplesGrid.FontSize = matrix ? 12.5 : standardValidationFontSize;
+        ValidationSamplesPane.SetResourceReference(Border.BackgroundProperty, matrix ? "ThreeD.PanelBrush" : "ThreeD.PanelAlternateBrush");
+        if (!matrix)
+        {
+            foreach (var column in standardValidationColumns) ValidationSamplesGrid.Columns.Add(column);
+            standardValidationColumns[2].Width = new DataGridLength(1.5, DataGridLengthUnitType.Star);
+            ValidationMatrixSummary.Visibility = Visibility.Collapsed;
+            ValidationMatrixHeaderActions.Visibility = Visibility.Collapsed;
+            return;
+        }
+        ValidationMatrixSummary.SetBinding(VisibilityProperty, new Binding("HasValidationResults") { Converter = (IValueConverter)Resources["BooleanToVisibilityConverter"] });
+        ValidationMatrixHeaderActions.Visibility = Visibility.Visible;
+        ValidationSamplesGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = ThreeDLocalization.Shared.Resolve("ThreeD.Column.Sample", "샘플", "Sample"), Width = 180,
+            Binding = new Binding(nameof(ValidationSetSampleRow.FileName)), ElementStyle = (Style)Resources["ValidationMatrixFileStyle"]
+        });
+        foreach (var (key, korean, english, template) in new[]
+        {
+            ("Expected", "기대", "Expected", "ValidationMatrixExpectedTemplate"),
+            ("Result", "결과", "Result", "ValidationMatrixStatusTemplate"),
+            ("Agreement", "비교", "Comparison", "ValidationMatrixAgreementTemplate")
+        })
+            ValidationSamplesGrid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = ThreeDLocalization.Shared.Resolve("ThreeD.Column." + key, korean, english), Width = DataGridLength.Auto,
+                MinWidth = key == "Expected" ? 62 : 82, CellTemplate = (DataTemplate)Resources[template]
+            });
+        foreach (var column in ValidationTableColumns)
+        {
+            if (column.Members is not null)
+            {
+                var members = new FrameworkElementFactory(typeof(ItemsControl));
+                members.SetValue(StyleProperty, Resources["ValidationGroupCellStyle"]);
+                members.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(".") { Converter = (ValidationMatrixValueConverter)Resources["ValidationMatrixDisplayValue"], ConverterParameter = column });
+                ValidationSamplesGrid.Columns.Add(new DataGridTemplateColumn
+                {
+                    Header = column.Header, Width = DataGridLength.Auto, MinWidth = 90,
+                    CellTemplate = new DataTemplate { VisualTree = members }
+                });
+                continue;
+            }
+            ValidationSamplesGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = column.Header,
+                Width = DataGridLength.SizeToHeader, MinWidth = 130,
+                Binding = new Binding(".") { Converter = (ValidationMatrixValueConverter)Resources["ValidationMatrixDisplayValue"], ConverterParameter = column.Metric },
+                ElementStyle = (Style)Resources["ValidationMatrixDisplayCellStyle"]
+            });
+        }
+        ValidationSamplesGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = ThreeDLocalization.Shared.Resolve("ThreeD.Column.Cause", "원인", "Cause"), Width = DataGridLength.Auto, MinWidth = 220,
+            Binding = new Binding(nameof(ValidationSetSampleRow.Message)), ElementStyle = (Style)Resources["ValidationMatrixEvidenceStyle"]
+        });
+    }
+
+    private static void OnRunHistoryExternalChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is RecipePipelineReviewView view && view.RunRecordActionPanel is not null) view.ApplyResponsiveLayout(view.ActualHeight);
+    }
 
     public bool IsDedicatedValidationWorkspace =>
         presentationMode == RecipeReviewPresentationMode.Validation
@@ -113,6 +235,14 @@ public partial class RecipePipelineReviewView : UserControl
     public void SetPresentationMode(RecipeReviewPresentationMode mode)
     {
         var previousMode = presentationMode;
+        if (mode == RecipeReviewPresentationMode.Results)
+        {
+            BindingOperations.ClearBinding(ReviewTabs, Selector.SelectedIndexProperty);
+        }
+        else if (previousMode == RecipeReviewPresentationMode.Results)
+        {
+            ReviewTabs.SetBinding(Selector.SelectedIndexProperty, new Binding("SelectedReviewTabIndex") { Mode = BindingMode.TwoWay });
+        }
         if (mode == RecipeReviewPresentationMode.Inspection
             && previousMode != RecipeReviewPresentationMode.Inspection)
         {
@@ -141,7 +271,7 @@ public partial class RecipePipelineReviewView : UserControl
         {
             case RecipeReviewPresentationMode.Validation:
                 SelectReviewTab(4);
-                SetValidationSection(ValidationWorkspaceSection.Samples);
+                SetValidationSection(IsValidationSamplesExternal ? ValidationWorkspaceSection.Results : ValidationWorkspaceSection.Samples);
                 break;
             case RecipeReviewPresentationMode.Results:
                 RestoreStandardValidationLayout();
@@ -159,6 +289,8 @@ public partial class RecipePipelineReviewView : UserControl
                 }
                 break;
         }
+
+        ApplyExternalSamplesPresentation();
 
         ApplyResponsiveLayout(ActualHeight);
     }
@@ -333,6 +465,88 @@ public partial class RecipePipelineReviewView : UserControl
 
         ApplyValidationPrimaryLayout();
         ApplyThresholdSection(section);
+        ApplyExternalSamplesPresentation();
+    }
+
+    private static void OnValidationSamplesExternalChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is RecipePipelineReviewView view && view.ReviewTabs is not null)
+        {
+            if (view.IsValidationSamplesExternal && view.ValidationSection == ValidationWorkspaceSection.Samples)
+            {
+                view.SetValidationSection(ValidationWorkspaceSection.Results);
+            }
+            view.ApplyValidationSectionLayout();
+        }
+    }
+
+    private void ApplyExternalSamplesPresentation()
+    {
+        var external = IsValidationSamplesExternal && presentationMode == RecipeReviewPresentationMode.Validation;
+        ValidationHeaderLeading.Visibility = external ? Visibility.Visible : Visibility.Collapsed;
+        ValidationSamplesNavigation.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        ValidationHeldOutNavigation.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        ValidationAdvancedNavigation.Visibility = external ? Visibility.Visible : Visibility.Collapsed;
+        ValidationRunActions.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        RunCurrentRecipeButton.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        ValidationCurrentRecipeStatus.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        ValidationSetHeader.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+        ReviewSurface.Padding = new Thickness(external || presentationMode == RecipeReviewPresentationMode.Inspection ? 0 : 12);
+        ReviewSurface.BorderThickness = presentationMode == RecipeReviewPresentationMode.Inspection ? new Thickness(0) : new Thickness(0, 1, 0, 0);
+        if (presentationMode == RecipeReviewPresentationMode.Inspection)
+        {
+            ReviewTabs.Padding = new Thickness(0);
+            ReviewTabs.BorderThickness = new Thickness(0);
+        }
+        else
+        {
+            ReviewTabs.ClearValue(Control.PaddingProperty);
+            ReviewTabs.ClearValue(Control.BorderThicknessProperty);
+        }
+        ValidationWorkspaceNavigation.Margin = new Thickness(0, 0, 0, external ? 0 : 8);
+        ValidationWorkspaceNavigation.Padding = external ? new Thickness(6, 0, 4, 0) : new Thickness(8, 6, 8, 6);
+        ValidationWorkspaceNavigation.BorderThickness = external ? new Thickness(0) : new Thickness(1);
+        ValidationWorkspaceNavigation.CornerRadius = new CornerRadius(external ? 0 : 4);
+        ValidationWorkspaceNavigation.SetResourceReference(Border.BackgroundProperty, external ? "ThreeD.DockHeaderBrush" : "ThreeD.PanelAlternateBrush");
+        if (external)
+        {
+            ValidationWorkspaceNavigation.Height = 34;
+        }
+        else
+        {
+            ValidationWorkspaceNavigation.ClearValue(HeightProperty);
+        }
+        ValidationWorkspaceContent.Margin = new Thickness(0, external ? 0 : 8, 0, 0);
+        ValidationRedesignContent.Visibility = external && ValidationSection is ValidationWorkspaceSection.Failures or ValidationWorkspaceSection.Thresholds ? Visibility.Visible : Visibility.Collapsed;
+        ValidationMismatchCardsHost.Visibility = external && ValidationSection == ValidationWorkspaceSection.Failures ? Visibility.Visible : Visibility.Collapsed;
+        ValidationDistributionWorkspace.Visibility = external && ValidationSection == ValidationWorkspaceSection.Thresholds ? Visibility.Visible : Visibility.Collapsed;
+        BindActiveSelector(ValidationMismatchCards, nameof(ToolWorkbenchViewModel.SelectedValidationSetSample), ValidationMismatchCardsHost.IsVisible || ValidationMismatchCardsHost.Visibility == Visibility.Visible);
+        BindActiveSelector(ValidationDistributionOutputs, nameof(ToolWorkbenchViewModel.SelectedValidationDistributionOutput), ValidationDistributionWorkspace.Visibility == Visibility.Visible);
+        BindActiveSelector(ValidationDistributionCandidates, nameof(ToolWorkbenchViewModel.SelectedValidationThresholdCandidate), ValidationDistributionWorkspace.Visibility == Visibility.Visible);
+        if (external)
+        {
+            ValidationSamplesGuidance.Visibility = Visibility.Collapsed;
+            ValidationSampleRoleBar.Visibility = Visibility.Collapsed;
+            ValidationResultsFilterBar.Visibility = Visibility.Collapsed;
+            ValidationReviewActions.Visibility = Visibility.Collapsed;
+            ValidationSetPrimaryGrid.Visibility = ValidationSection == ValidationWorkspaceSection.Results ? Visibility.Visible : Visibility.Collapsed;
+            ValidationFailureOperatorSummary.Visibility = Visibility.Collapsed;
+            ValidationEvidenceExpander.IsExpanded = false;
+            ValidationEvidenceExpander.Visibility = Visibility.Collapsed;
+            if (ValidationSection == ValidationWorkspaceSection.Thresholds) ValidationThresholdExpander.Visibility = Visibility.Collapsed;
+        }
+        ApplyValidationMatrixColumns();
+    }
+
+    private static void BindActiveSelector(Selector selector, string path, bool active)
+    {
+        // Hidden result lists must not clear canonical selection or an active candidate review.
+        if (active && !BindingOperations.IsDataBound(selector, Selector.SelectedItemProperty)) selector.SetBinding(Selector.SelectedItemProperty, new Binding(path) { Mode = BindingMode.TwoWay });
+        else if (!active && BindingOperations.IsDataBound(selector, Selector.SelectedItemProperty))
+        {
+            BindingOperations.ClearBinding(selector, Selector.SelectedItemProperty);
+            selector.SetCurrentValue(Selector.SelectedItemProperty, null);
+        }
     }
 
     private void RecipePipelineReviewView_DataContextChanged(
@@ -348,6 +562,10 @@ public partial class RecipePipelineReviewView : UserControl
         if (validationWorkspace is not null)
         {
             validationWorkspace.PropertyChanged += ValidationWorkspace_PropertyChanged;
+            if (IsValidationSamplesExternal && presentationMode == RecipeReviewPresentationMode.Validation && ValidationSection == ValidationWorkspaceSection.Samples)
+            {
+                SetValidationSection(ValidationWorkspaceSection.Results);
+            }
         }
 
         ApplyValidationSectionLayout();
@@ -447,9 +665,6 @@ public partial class RecipePipelineReviewView : UserControl
             && availableHeight > 0
             && availableHeight < 360;
         RunRecordHeader.Visibility = compactResults ? Visibility.Collapsed : Visibility.Visible;
-        RunRecordDetailText.Visibility = compactResults
-            ? Visibility.Collapsed
-            : Visibility.Visible;
         RunRecordHeader.Margin = compactResults
             ? new Thickness(4, 0, 4, 3)
             : new Thickness(4, 0, 4, 6);
@@ -469,7 +684,7 @@ public partial class RecipePipelineReviewView : UserControl
         RunRecordActions.Margin = compactResults
             ? new Thickness(4, 1, 4, 3)
             : new Thickness(4, 1, 4, 7);
-        RunRecordActionPanel.Visibility = compactResults
+        RunRecordActionPanel.Visibility = compactResults || IsRunHistoryExternal
             ? Visibility.Collapsed
             : Visibility.Visible;
         RunRecordComparisonPanel.Margin = compactResults
@@ -485,6 +700,27 @@ public partial class RecipePipelineReviewView : UserControl
             return;
         }
 
+        if (IsValidationSamplesExternal)
+        {
+            var matrix = ValidationSection == ValidationWorkspaceSection.Results;
+            ValidationSamplesPane.Visibility = matrix ? Visibility.Visible : Visibility.Collapsed;
+            ValidationSamplesTitle.Visibility = Visibility.Collapsed;
+            ValidationSamplesPane.Padding = new Thickness(0);
+            ValidationSamplesPane.BorderThickness = new Thickness(0);
+            ValidationRecordPane.Visibility = ValidationSection == ValidationWorkspaceSection.Failures ? Visibility.Visible : Visibility.Collapsed;
+            ValidationSamplesColumn.Width = new GridLength(1, GridUnitType.Star);
+            ValidationPrimaryGapColumn.Width = new GridLength(0);
+            ValidationRecordColumn.Width = new GridLength(0);
+            Grid.SetColumn(ValidationSamplesPane, 0);
+            Grid.SetColumnSpan(ValidationSamplesPane, 3);
+            Grid.SetColumn(ValidationRecordPane, 0);
+            Grid.SetColumnSpan(ValidationRecordPane, 3);
+            return;
+        }
+
+        ValidationSamplesTitle.Visibility = Visibility.Visible;
+        ValidationSamplesPane.Padding = new Thickness(6);
+        ValidationSamplesPane.BorderThickness = new Thickness(1);
         var samplesOnly = ValidationSection == ValidationWorkspaceSection.Samples;
         var compactSinglePane = ActualWidth > 0 && ActualWidth < 560;
         var showSamples = samplesOnly

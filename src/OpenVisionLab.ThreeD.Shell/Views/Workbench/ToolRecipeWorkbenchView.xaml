@@ -5,9 +5,33 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             xmlns:models="clr-namespace:OpenVisionLab.ThreeD.Shell.ViewModels.Workbench"
              AutomationProperties.AutomationId="ToolRecipeWorkbench">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="TeachingDataHeaderButton" TargetType="ToggleButton">
+<Setter Property="Width" Value="24" /><Setter Property="Height" Value="24" /><Setter Property="Padding" Value="0" /><Setter Property="Cursor" Value="Hand" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" />
+<Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton"><Border x:Name="HeaderButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers>
+<Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+<Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeaderButtonSurface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
+<Trigger Property="IsPressed" Value="True"><Setter TargetName="HeaderButtonSurface" Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /></Trigger>
+<Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeaderButtonSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
+<Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger>
+</ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+</Style>
+<DataTemplate x:Key="TeachingDataHeader">
+<Border Height="35" Padding="8,0,4,0" Background="{DynamicResource ThreeD.PanelHeaderBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1">
+<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+<StackPanel Orientation="Horizontal" VerticalAlignment="Center"><ui:SymbolIcon Symbol="Image24" FontSize="14" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock Text="{views:ThreeDText Key=ThreeD.Data.Title, Korean='데이터', English='Data'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" />
+<Border Margin="6,0,0,0" Padding="5,1" CornerRadius="8" Background="{DynamicResource ThreeD.PanelAlternateBrush}"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding Tag.IsCompactLayout, RelativeSource={RelativeSource AncestorType=ContentControl}}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding Workbench.GalleryDataCount}" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></Border>
+</StackPanel>
+<ToggleButton Grid.Column="2" Style="{StaticResource TeachingDataHeaderButton}" IsChecked="{Binding Tag.IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=ContentControl}, Mode=OneWay}" Click="OnTeachingDataPinClicked" ToolTip="데이터 패널 고정 또는 접기" AutomationProperties.Name="데이터 패널 고정 또는 접기"><ui:SymbolIcon Symbol="Pin24" FontSize="14" /></ToggleButton>
+<ToggleButton Grid.Column="3" Tag="{Binding Tag, RelativeSource={RelativeSource AncestorType=ContentControl}}" Style="{StaticResource TeachingDataHeaderButton}" Click="OnTeachingDataHeaderAction" ToolTip="데이터 패널 메뉴 또는 닫기" AutomationProperties.Name="데이터 패널 메뉴 또는 닫기">
+<ToggleButton.ContextMenu><ContextMenu><MenuItem Header="접기" Click="OnTeachingDataCollapseClicked" /></ContextMenu></ToggleButton.ContextMenu>
+<ui:SymbolIcon FontSize="14"><ui:SymbolIcon.Style><Style TargetType="ui:SymbolIcon"><Setter Property="Symbol" Value="MoreHorizontal24" /><Style.Triggers><DataTrigger Binding="{Binding Tag.IsCompactLayout, RelativeSource={RelativeSource AncestorType=ContentControl}}" Value="True"><Setter Property="Symbol" Value="Dismiss16" /></DataTrigger></Style.Triggers></Style></ui:SymbolIcon.Style></ui:SymbolIcon>
+</ToggleButton>
+</Grid></Border>
+</DataTemplate>
     </UserControl.Resources>
     <UserControl.InputBindings>
         <KeyBinding Key="N"
@@ -47,130 +71,9 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <Border x:Name="WorkspaceCommandBar"
-                MinHeight="48"
-                Padding="12,6"
-                TextElement.Foreground="{DynamicResource ThreeD.TextBrush}"
-                Background="{DynamicResource ThreeD.CommandBarBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                BorderThickness="0,0,0,1">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsAuthoringWorkspaceSelected}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="130" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel x:Name="WorkspaceContextPanel"
-                            Margin="0,0,14,0"
-                            VerticalAlignment="Center">
-                    <Grid>
-                        <TextBlock FontSize="14"
-                                   FontWeight="SemiBold"
-                                   Text="{Binding Localization.Teach}"
-                                   Visibility="{Binding IsSetupWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <TextBlock FontSize="14"
-                                   FontWeight="SemiBold"
-                                   Text="{Binding Localization.Teach}"
-                                   Visibility="{Binding IsTeachWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <TextBlock FontSize="14"
-                                   FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.Inspect, Korean='검사', English='Inspect'}"
-                                   Visibility="{Binding IsValidateWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <TextBlock FontSize="14"
-                                   FontWeight="SemiBold"
-                                   Text="{Binding Localization.ResultsWorkspaceTitle}"
-                                   Visibility="{Binding IsResultsWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
-                    </Grid>
-                    <Grid Margin="0,2,0,0">
-                        <TextBlock FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{Binding WorkspaceSummary}"
-                                   TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding InspectionStageNavigationStatus}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSetupWorkspaceSelected}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsTeachWorkspaceSelected}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{Binding Workbench.LocalizedSourceReadinessSummary}"
-                                   TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding Workbench.Source.Path}"
-                                   Visibility="{Binding IsAuthoringWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
-                    </Grid>
-                </StackPanel>
-                <StackPanel Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal"
-                            Visibility="{Binding IsValidateWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ui:Button Margin="0,0,5,0"
-                               MinHeight="32"
-                               Padding="9,5"
-                               CornerRadius="5"
-                               Appearance="Primary"
-                               Content="{Binding Workbench.InspectionQueue.RunCheckedLabel}"
-                               Icon="{ui:SymbolIcon PlayCircle24}"
-                               Command="{Binding Workbench.InspectionQueue.RunCheckedCommand}"
-                               ToolTip="{views:ThreeDText Key=ThreeD.Inspection.StartRunTip, Korean='체크된 입력을 저장된 레시피로 순차 검사합니다.', English='Inspect checked inputs sequentially with the saved recipe.'}"
-                               AutomationProperties.AutomationId="StartInspectionQueueRun"
-                               AutomationProperties.Name="{Binding Workbench.InspectionQueue.RunCheckedLabel}"
-                               AutomationProperties.HelpText="{views:ThreeDText Key=ThreeD.Inspection.StartRunTip, Korean='체크된 입력을 저장된 레시피로 순차 검사합니다.', English='Inspect checked inputs sequentially with the saved recipe.'}" />
-                    <ui:Button Margin="0,0,5,0"
-                               MinHeight="32"
-                               Padding="9,5"
-                               CornerRadius="5"
-                               Content="{views:ThreeDText Key=ThreeD.Inspection.Stop, Korean='중지', English='Stop'}"
-                               Icon="{ui:SymbolIcon Dismiss24}"
-                               Command="{Binding Workbench.InspectionQueue.StopCommand}"
-                               Visibility="{Binding Workbench.IsInspectionQueueRunning, Converter={StaticResource BoolToVisibilityConverter}}"
-                               AutomationProperties.AutomationId="StopInspectionQueueRun"
-                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.Stop, Korean='중지', English='Stop'}" />
-                    <ui:Button
-                               MinHeight="32"
-                               Padding="9,5"
-                               CornerRadius="5"
-                               Content="{Binding Localization.ResultsWorkspaceTitle}"
-                               Icon="{ui:SymbolIcon DataHistogram24}"
-                               Command="{Binding SelectWorkspaceCommand}"
-                               CommandParameter="{x:Static views:ShellWorkspaceMode.Review}"
-                               AutomationProperties.AutomationId="OpenInspectionResultsButton"
-                               AutomationProperties.Name="{Binding Localization.ResultsWorkspaceTitle}" />
-                </StackPanel>
-                <StackPanel Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal"
-                            Visibility="{Binding IsResultsWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ui:Button Margin="0,0,5,0"
-                               Padding="8,4"
-                               Content="{Binding Localization.Teach}"
-                               Icon="{ui:SymbolIcon Edit24}"
-                               Command="{Binding SelectWorkspaceCommand}"
-                               CommandParameter="{x:Static views:ShellWorkspaceMode.Teach}"
-                               AutomationProperties.Name="{Binding Localization.Teach}" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <dock:OpenVisionDockWorkspaceView Grid.Row="1"
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <dock:OpenVisionDockWorkspaceView Grid.Column="0"
                                       x:Name="DockWorkspace"
                                       ToolLibraryTitle="{Binding Localization.ToolLibrary}"
                                       CompactToolLibraryTitle="{views:ThreeDText Key=ThreeD.Workspace.CompactToolLibrary, Korean='도구 추가', English='Add Tool'}"
@@ -182,6 +85,8 @@
                                       CompactToolInspectorTitle="{views:ThreeDText Key=ThreeD.Workspace.CompactSelectedTool, Korean='도구 설정', English='Tool Settings'}"
                                       EvidenceTitle="{Binding Localization.PipelineValidation}"
                                       ValidationEvidenceTitle="{views:ThreeDText Key=ThreeD.Inspection.InputFiles, Korean='검사 파일', English='Inspection files'}"
+                                      ValidationSamplesTitle="{Binding Workbench.Localization.ValidationSetSamples}"
+                                      RecipeValidationResultsTitle="{views:ThreeDText Key=ThreeD.Validation.ResultsTitle, Korean='검증 결과', English='Validation results'}"
                                       OutputCompareTitle="{Binding Localization.OutputCompare}"
                                       DisplayedOutputsTitle="{Binding Localization.DisplayedOutputs}"
                                       LinkedViewTitle="{Binding Localization.SessionLog}"
@@ -190,19 +95,174 @@
                                       IntersectionEvidenceTitle="{Binding Localization.IntersectionEvidence}"
                                       CorrespondenceEvidenceTitle="{Binding Localization.CorrespondenceEvidence}"
                                       IsOutputCompareViewerActive="{Binding Workbench.IsOutputCompareViewerActive}"
+                                      IsActivityLogSelected="{Binding ResultsWorkspace.IsLogSelected}"
+                                      IsSectionSelected="{Binding ResultsWorkspace.IsSectionSelected}"
                                       IsBottomPaneExpanded="False">
         <dock:OpenVisionDockWorkspaceView.DataLayersContent>
             <workbench:RecipeChainView DataContext="{Binding Workbench}" />
         </dock:OpenVisionDockWorkspaceView.DataLayersContent>
 
+        <dock:OpenVisionDockWorkspaceView.ValidationSamplesContent>
+            <workbench:ValidationSamplesView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.ValidationSamplesContent>
+
         <dock:OpenVisionDockWorkspaceView.ViewerContent>
             <Grid Background="{DynamicResource ThreeD.PanelBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Border Background="{DynamicResource ThreeD.CommandBarBrush}"
+                <Border Height="44" Padding="10,0"
+                        Background="{DynamicResource ThreeD.ExecutionBarBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsValidateWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="ValidationExecutionBar">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Border AutomationProperties.AutomationId="ValidationTeachingIdentity" Padding="10,3" CornerRadius="14" VerticalAlignment="Center"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                            <Border.Style><Style TargetType="Border"><Setter Property="MaxWidth" Value="360" /><Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True"><Setter Property="MaxWidth" Value="280" /></DataTrigger></Style.Triggers></Style></Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Width="14" Height="14" Margin="0,0,6,0" Symbol="ClipboardTaskListLtr24" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Text="{views:ThreeDText Key=ThreeD.Validation.CurrentTeaching, Korean='현재 티칭 조건', English='Current teaching'}" />
+                                </StackPanel>
+                                <TextBlock AutomationProperties.AutomationId="ValidationRecipeName" Grid.Column="1" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center"
+                                           Text="{Binding Workbench.HeaderRecipeText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.HeaderRecipeText}" />
+                                <TextBlock AutomationProperties.AutomationId="ValidationTeachingSaveState" Grid.Column="2" Margin="6,0,0,0" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{Binding Workbench.Localization.Saved}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Workbench.HasRecipeIdentity}" Value="False"><Setter Property="Text" Value="{Binding Workbench.Localization.Unsaved}" /></DataTrigger>
+                                                <DataTrigger Binding="{Binding Workbench.IsDirty}" Value="True"><Setter Property="Text" Value="{Binding Workbench.Localization.Modified}" /></DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                        <Grid Grid.Column="1" Margin="8,0">
+                            <Grid Visibility="{Binding Workbench.IsValidationSetIdle, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Margin="0,0,8,0" Padding="7,2" CornerRadius="10" VerticalAlignment="Center" Background="{DynamicResource ThreeD.WarningSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.WarningBrush}" BorderThickness="1"
+                                        Visibility="{Binding Workbench.IsValidationSetStale, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="ValidationStaleBasis" ToolTip="{Binding Workbench.ValidationSetRunBasisText}">
+                                    <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,6,0" Symbol="Warning16" Foreground="{DynamicResource ThreeD.WarningBrush}" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{views:ThreeDText Key=ThreeD.Validation.StaleBasis, Korean='이전 검증 · 티칭이 바뀜', English='Previous validation · teaching changed'}" /></StackPanel>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock AutomationProperties.AutomationId="ValidationIdleSummary" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               Text="{Binding Workbench.ValidationSetRunBasisText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.ValidationSetRunBasisText}" />
+                                    <TextBlock AutomationProperties.AutomationId="ValidationRunNotice" FontSize="11" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{Binding Workbench.ValidationSetRunNoticeText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.ValidationSetRunNoticeText}">
+                                        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Workbench.ValidationSetRunNoticeText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                            <Grid HorizontalAlignment="Right" AutomationProperties.AutomationId="ValidationRunningProgress" Visibility="{Binding Workbench.IsValidationSetRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock AutomationProperties.AutomationId="ValidationProgressText" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding Workbench.ValidationSetProgressText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.ValidationSetProgressText}">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="MaxWidth" Value="320" /><Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True"><Setter Property="MaxWidth" Value="180" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                                <ProgressBar AutomationProperties.AutomationId="ValidationProgress" Grid.Column="1" Height="6" Margin="8,0,0,0" VerticalAlignment="Center" Maximum="100" Value="{Binding Workbench.ValidationSetProgress, Mode=OneWay}">
+                                    <ProgressBar.Style>
+                                        <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                                            <Setter Property="Width" Value="180" />
+                                            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                            <Setter Property="BorderThickness" Value="0" />
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True"><Setter Property="Width" Value="110" /></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </ProgressBar.Style>
+                                </ProgressBar>
+                                <TextBlock Grid.Column="2" Margin="8,0,0,0" FontFamily="Consolas" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Workbench.ValidationSetElapsedText}" AutomationProperties.AutomationId="ValidationElapsed" />
+                            </Grid>
+                        </Grid>
+                        <ui:Button Grid.Column="2" Height="30" Padding="10,4" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Appearance="Primary" Icon="{ui:SymbolIcon Play20}"
+                                   Command="{Binding Workbench.RunValidationSetCommand}" ToolTip="{Binding Workbench.Localization.ValidationSetRunAllHint}"
+                                   Visibility="{Binding Workbench.IsValidationSetIdle, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   AutomationProperties.AutomationId="RunValidationWorkspaceSet" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Validation.Run, Korean='검증 실행', English='Run validation'}">
+                            <StackPanel Orientation="Horizontal"><TextBlock Text="{views:ThreeDText Key=ThreeD.Validation.Run, Korean='검증 실행', English='Run validation'}" /><TextBlock Margin="6,0,0,0" FontWeight="SemiBold" Text="{Binding Workbench.ValidationSetAllCount}" /></StackPanel>
+                        </ui:Button>
+                        <ui:Button Grid.Column="2" Height="30" Padding="10,4" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Icon="{ui:SymbolIcon Stop20}"
+                                   Content="{views:ThreeDText Key=ThreeD.Validation.Stop, Korean=중지, English=Stop}" Command="{Binding Workbench.CancelValidationSetCommand}"
+                                   Visibility="{Binding Workbench.IsValidationSetRunning, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   AutomationProperties.AutomationId="CancelValidationWorkspaceSet" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Validation.Stop, Korean=중지, English=Stop}" />
+                    </Grid>
+                </Border>
+                <Border Grid.Row="1" Height="44" Padding="10,0"
+                        Background="{DynamicResource ThreeD.ExecutionBarBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsInspectWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="InspectionExecutionBar">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Border Padding="10,3" CornerRadius="14" VerticalAlignment="Center"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" AutomationProperties.AutomationId="InspectionBasisIdentity">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="MaxWidth" Value="300" />
+                                    <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True"><Setter Property="MaxWidth" Value="200" /></DataTrigger></Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Width="14" Height="14" Margin="0,0,6,0" Symbol="ClipboardTaskListLtr24" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Text="{views:ThreeDText Key=ThreeD.Inspection.Basis, Korean='검사 기준', English='Inspection basis'}" />
+                                </StackPanel>
+                                <TextBlock AutomationProperties.AutomationId="InspectionBasisName" Grid.Column="1" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center"
+                                           Text="{Binding Workbench.InspectionQueue.InspectionBasisText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.InspectionQueue.InspectionBasisText}" />
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    Visibility="{Binding Workbench.IsDirty, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="InspectionUnsavedTeaching">
+                            <Border Padding="6,3" CornerRadius="10" Background="{DynamicResource ThreeD.WarningSurfaceBrush}">
+                                <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{views:ThreeDText Key=ThreeD.Inspection.UnsavedTeaching, Korean='티칭 변경 미저장', English='Unsaved teaching changes'}" />
+                            </Border>
+                            <ui:Button Height="28" Margin="6,0,0,0" Padding="7,0" Icon="{ui:SymbolIcon Save20}" Content="{Binding Workbench.Localization.Save}"
+                                       Command="{Binding Workbench.SaveTeachingRecipeCommand}" AutomationProperties.AutomationId="SaveInspectionTeaching" />
+                        </StackPanel>
+                        <Grid Grid.Column="2" Margin="8,0">
+                            <TextBlock FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextTrimming="CharacterEllipsis"
+                                       Text="{Binding Workbench.InspectionQueue.RecipeReadinessText}" ToolTip="{Binding Workbench.InspectionQueue.RecipeReadinessText}"
+                                       Visibility="{Binding Workbench.InspectionQueue.IsIdle, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="InspectionIdleReadiness" />
+                            <Grid Visibility="{Binding Workbench.InspectionQueue.IsRunning, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="InspectionRunningProgress">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextTrimming="CharacterEllipsis"
+                                           Text="{Binding Workbench.InspectionQueue.ProgressText}" ToolTip="{Binding Workbench.InspectionQueue.ProgressText}" AutomationProperties.AutomationId="InspectionProgressText" />
+                                <ProgressBar Grid.Column="1" Height="6" Margin="8,0,0,0" VerticalAlignment="Center" Maximum="100" Value="{Binding Workbench.InspectionQueue.ProgressPercent, Mode=OneWay}"
+                                             AutomationProperties.AutomationId="InspectionProgress" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.Progress, Korean='파일 검사 진행', English='Inspection progress'}">
+                                    <ProgressBar.Style>
+                                        <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                                            <Setter Property="Width" Value="180" />
+                                            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                            <Setter Property="BorderThickness" Value="0" />
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True"><Setter Property="Width" Value="110" /></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </ProgressBar.Style>
+                                </ProgressBar>
+                            </Grid>
+                        </Grid>
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding Workbench.InspectionQueue.IsIdle, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ComboBox Height="32" MinWidth="116" Margin="0,0,8,0" SelectedValuePath="Tag" SelectedValue="{Binding Workbench.InspectionQueue.SelectedRunScope, Mode=TwoWay}" IsEnabled="{Binding Workbench.InspectionQueue.IsIdle}" AutomationProperties.AutomationId="InspectionRunScope" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.Scope, Korean='검사 범위', English='Inspection scope'}">
+                                <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.Selected}" Content="{views:ThreeDText Key=ThreeD.Inspection.SelectedScope, Korean='선택', English='Selected'}" />
+                                <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.All}" Content="{views:ThreeDText Key=ThreeD.Inspection.AllScope, Korean='전체', English='All'}" />
+                                <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.Checked}" Content="{views:ThreeDText Key=ThreeD.Inspection.CheckedScope, Korean='체크', English='Checked'}" />
+                                <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.Remaining}" Content="{views:ThreeDText Key=ThreeD.Inspection.RemainingScope, Korean='남은 파일', English='Remaining'}" />
+                                <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.FailedAndError}" Content="{views:ThreeDText Key=ThreeD.Inspection.FailedScope, Korean='NG·오류만', English='NG/error only'}" />
+                            </ComboBox>
+                            <ui:Button Height="32" Padding="10,0" CornerRadius="4" Appearance="Primary" Icon="{ui:SymbolIcon Play20}" Content="{Binding Workbench.InspectionQueue.RunScopeLabel}"
+                                       Command="{Binding Workbench.InspectionQueue.RunScopeCommand}" AutomationProperties.AutomationId="StartInspectionQueueRun" AutomationProperties.Name="{Binding Workbench.InspectionQueue.RunScopeLabel}" />
+                        </StackPanel>
+                        <ui:Button Grid.Column="3" Height="32" Padding="10,0" VerticalAlignment="Center" Icon="{ui:SymbolIcon Stop20}"
+                                   Content="{views:ThreeDText Key=ThreeD.Inspection.Stop, Korean='중지', English='Stop'}" Command="{Binding Workbench.InspectionQueue.StopCommand}"
+                                   Visibility="{Binding Workbench.InspectionQueue.IsRunning, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="StopInspectionQueueRun" />
+                    </Grid>
+                </Border>
+                <Border Grid.Row="2" Background="{DynamicResource ThreeD.CommandBarBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,0,0,1"
                         AutomationProperties.AutomationId="ViewerContextRibbon">
@@ -427,141 +487,16 @@
                         </Border>
                     </Grid>
                 </Border>
-                <workbench:ViewerWorkspaceView Grid.Row="1"
+                <workbench:ViewerWorkspaceView Grid.Row="3"
                                                MainViewerContent="{Binding ViewerContent, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
                                                DataContext="{Binding Workbench}"
                                                Loaded="ViewerWorkspaceSurface_Loaded" />
-            <Border Grid.Row="2" DataContext="{Binding Workbench.InspectionQueue}" Visibility="{Binding DataContext.IsInspectWorkspaceSelected, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}, Converter={StaticResource BoolToVisibilityConverter}}"
-                    Margin="0,7,0,0"
-                    Padding="6"
-                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                    BorderThickness="1"
-                    CornerRadius="3"
-                    AutomationProperties.AutomationId="InspectionSelectedDetails">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Expander Grid.ColumnSpan="2" Header="{views:ThreeDText Key=ThreeD.Inspection.RecordDetails, Korean='기록 상세', English='Record details'}" IsExpanded="False"><StackPanel><StackPanel Grid.ColumnSpan="2">
-                        <TextBlock FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding SelectedSample.SourcePath}"
-                                   Text="{Binding SelectedSample.FileName, TargetNullValue='선택한 파일 없음'}"
-                                   AutomationProperties.AutomationId="InspectionSelectedFile" />
-                        <TextBlock Margin="0,2,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   TextWrapping="Wrap"
-                                   Text="{Binding SelectedSample.SourcePath}"
-                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.InputPath, Korean='검사 입력 경로', English='Inspection input path'}" />
-                        <TextBlock Margin="0,2,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                   TextWrapping="Wrap"
-                                   Text="{Binding SelectedSample.Message}" />
-                        <WrapPanel Margin="0,2,0,0">
-                            <TextBlock Margin="0,0,7,0" FontSize="12"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding SelectedSample.RunId, StringFormat={}{0}}" />
-                            <TextBlock Margin="0,0,7,0" FontSize="12"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding SelectedSample.RecordedAtText}" />
-                            <TextBlock FontSize="12"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="{Binding SelectedSample.RecipeRevision, StringFormat={}{0}}"
-                                       ToolTip="{Binding SelectedSample.RecipeSha256}" />
-                        </WrapPanel>
-                        <TextBlock Margin="0,2,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   TextTrimming="CharacterEllipsis"
-                                   Text="{Binding SelectedSample.InputSha256}"
-                                   ToolTip="{Binding SelectedSample.InputSha256}"
-                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.InputIdentity, Korean='검사 입력 콘텐츠 식별값', English='Inspection input content identity'}" />
-                    </StackPanel>
-                        <WrapPanel Margin="0,5,0,0">
-                        <Button Padding="8,4" Margin="0,0,6,0"
-                                Content="{views:ThreeDText Key=ThreeD.Inspection.OpenRunRecord, Korean='현재 기록 열기', English='Open current record'}"
-                                Command="{Binding OpenRunRecordCommand}"
-                                AutomationProperties.AutomationId="InspectionOpenRunRecord" />
-                        <Button Padding="8,4" Margin="0,0,6,0"
-                                Content="{views:ThreeDText Key=ThreeD.Inspection.OpenPreviousRunRecord, Korean='이전 기록', English='Previous record'}"
-                                Command="{Binding OpenPreviousRunRecordCommand}"
-                                AutomationProperties.AutomationId="InspectionOpenPreviousRecord" />
-                    </WrapPanel></StackPanel></Expander>
-                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2">
-                    <CheckBox Margin="0,6" Content="{views:ThreeDText Key=ThreeD.Inspection.FailedStepsOnly, Korean='NG 항목만', English='NG items only'}"
-                              IsChecked="{Binding ShowOnlyFailedSteps, Mode=TwoWay}"
-                              AutomationProperties.AutomationId="InspectionFailedStepsOnly" />
-                    <DataGrid
-                              Margin="0,4,0,0"
-                              MaxHeight="250"
-                              FontSize="12"
-                              RowDetailsVisibilityMode="VisibleWhenSelected"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              CanUserDeleteRows="False"
-                              IsReadOnly="True"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              ScrollViewer.CanContentScroll="False"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Background="Transparent"
-                              BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                              ItemsSource="{Binding VisibleStepResults}"
-                              SelectedItem="{Binding SelectedStepResult, Mode=TwoWay}"
-                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.StepResults, Korean='선택 파일의 단계 결과', English='Selected input step results'}"
-                              AutomationProperties.AutomationId="InspectionStepResults">
-                        <DataGrid.Resources>
-                            <Style x:Key="InspectionResultCell" TargetType="TextBlock">
-                                <Setter Property="TextWrapping" Value="Wrap" />
-                                <Setter Property="Margin" Value="2,4" />
-                                <Setter Property="VerticalAlignment" Value="Center" />
-                            </Style>
-                        </DataGrid.Resources>
-                        <DataGrid.RowDetailsTemplate>
-                            <DataTemplate>
-                                <Border Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" Padding="8,4">
-                                <Expander Header="{views:ThreeDText Key=ThreeD.Inspection.MeasurementDetails, Korean='측정 상세', English='Measurement details'}">
-                                    <StackPanel TextElement.Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
-                                        <TextBlock Text="{Binding Metrics}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding Overlays}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding StepId, StringFormat=Step: {0}}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding OutputEntityId, StringFormat=Output: {0}}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding OutputSha256}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding DurationMilliseconds, StringFormat={}{0:0.###} ms}" />
-                                    </StackPanel>
-                                </Expander>
-                                </Border>
-                            </DataTemplate>
-                        </DataGrid.RowDetailsTemplate>
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Width="34"
-                                                Header="{views:ThreeDText Key=ThreeD.Inspection.StepNumber, Korean='#', English='#'}"
-                                                Binding="{Binding DisplayOrder}" ElementStyle="{StaticResource InspectionResultCell}" />
-                            <DataGridTextColumn Width="*" MinWidth="100" Header="{views:ThreeDText Key=ThreeD.Inspection.Step, Korean='단계', English='Step'}" Binding="{Binding ToolName}" ElementStyle="{StaticResource InspectionResultCell}" />
-                            <DataGridTextColumn Width="65" Header="{views:ThreeDText Key=ThreeD.Inspection.Status, Korean='상태', English='Status'}" Binding="{Binding StatusLabel}" ElementStyle="{StaticResource InspectionResultCell}" />
-                            <DataGridTextColumn Width="1.2*" MinWidth="120" Header="{views:ThreeDText Key=ThreeD.Inspection.Values, Korean='측정값', English='Measurements'}" Binding="{Binding Value}" ElementStyle="{StaticResource InspectionResultCell}" />
-                            <DataGridTextColumn Width="80" Header="{views:ThreeDText Key=ThreeD.Inspection.Unit, Korean='단위', English='Unit'}" Binding="{Binding Unit}" ElementStyle="{StaticResource InspectionResultCell}" />
-                            <DataGridTextColumn Width="*" MinWidth="100" Header="{views:ThreeDText Key=ThreeD.Inspection.Limits, Korean='규격', English='Limits'}" Binding="{Binding Limits}" ElementStyle="{StaticResource InspectionResultCell}" />
-                            <DataGridTextColumn Width="1.5*" MinWidth="100" Header="{views:ThreeDText Key=ThreeD.Inspection.Message, Korean='내용', English='Message'}" Binding="{Binding DisplayMessage}" ElementStyle="{StaticResource InspectionResultCell}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    </StackPanel>
-                </Grid>
-            </Border>
+
 </Grid>
         </dock:OpenVisionDockWorkspaceView.ViewerContent>
 
         <dock:OpenVisionDockWorkspaceView.ResultsContent>
-            <workbench:ResultsWorkspaceView DataContext="{Binding}" />
+            <workbench:ResultsWorkspaceView DataContext="{Binding}" IsDedicatedResultsLayout="{Binding IsResultsWorkspaceSelected, Mode=OneWay}" IsAuthoringLayout="{Binding IsAuthoringWorkspaceSelected, Mode=OneWay}" />
         </dock:OpenVisionDockWorkspaceView.ResultsContent>
 
         <dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
@@ -570,6 +505,7 @@
 
         <dock:OpenVisionDockWorkspaceView.EvidenceContent>
             <workbench:RecipePipelineReviewView DataContext="{Binding Workbench}"
+                                               IsValidationSamplesExternal="{Binding RunRecordContext.IsValidateWorkspaceSelected, RelativeSource={RelativeSource Self}}"
                                                 RunRecordSteps="{Binding DataContext.InspectionSteps, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
                                                 RunRecordSummary="{Binding DataContext.InspectionStepSummary, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
                                                 RunRecordContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
@@ -603,6 +539,42 @@
             <workbench:LandmarkCorrespondenceEvidenceView />
         </dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
         </dock:OpenVisionDockWorkspaceView>
+            <Border x:Name="TeachingDataDock" Grid.Column="1" Background="{DynamicResource ThreeD.PanelBrush}" Visibility="{Binding IsAuthoringWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+<Border.Style><Style TargetType="Border"><Setter Property="Width" Value="232" /><Style.Triggers>
+<DataTrigger Binding="{Binding IsTeachingDataExpanded, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False"><Setter Property="Width" Value="28" /></DataTrigger>
+<MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Width" Value="28" /></MultiDataTrigger>
+<MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataExpanded, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Width" Value="248" /></MultiDataTrigger>
+</Style.Triggers></Style></Border.Style>
+<Grid>
+<Grid x:Name="TeachingDataInline"><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Visible" /><Style.Triggers>
+<DataTrigger Binding="{Binding IsTeachingDataExpanded, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+<MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger>
+</Style.Triggers></Style></Grid.Style>
+<Grid.RowDefinitions><RowDefinition Height="35" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+<ContentControl Content="{Binding}" ContentTemplate="{StaticResource TeachingDataHeader}" Tag="{Binding RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" />
+<workbench:RecipeDataView x:Name="RecipeDataSurface" Grid.Row="1" />
+</Grid>
+<ToggleButton x:Name="TeachingDataToggle" VerticalAlignment="Top" Height="84" Width="28" IsChecked="{Binding IsTeachingDataExpanded, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}, Mode=TwoWay}" AutomationProperties.AutomationId="TeachingDataToggle" AutomationProperties.Name="데이터">
+<ToggleButton.Style><Style TargetType="ToggleButton" BasedOn="{StaticResource TeachingDataHeaderButton}"><Setter Property="Visibility" Value="Collapsed" /><Setter Property="Background" Value="{DynamicResource ThreeD.PanelHeaderBrush}" /><Style.Triggers>
+<DataTrigger Binding="{Binding IsTeachingDataExpanded, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+<MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
+</Style.Triggers></Style></ToggleButton.Style>
+<TextBlock Text="{views:ThreeDText Key=ThreeD.Data.Title, Korean='데이터', English='Data'}" FontSize="12"><TextBlock.LayoutTransform><RotateTransform Angle="270" /></TextBlock.LayoutTransform></TextBlock>
+</ToggleButton>
+</Grid>
+</Border>
+<Popup x:Name="TeachingDataPopup" PlacementTarget="{Binding ElementName=TeachingDataDock}" Placement="Custom" CustomPopupPlacementCallback="{x:Static workbench:ToolRecipeWorkbenchView.TeachingDataPlacement}" AllowsTransparency="True" StaysOpen="False" Opened="OnTeachingDataPopupOpened" Closed="OnTeachingDataPopupClosed">
+<Popup.Style><Style TargetType="Popup"><Setter Property="IsOpen" Value="False" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions>
+<Condition Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataExpanded, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="True" /><Condition Binding="{Binding IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}" Value="False" /><Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="True" />
+</MultiDataTrigger.Conditions><Setter Property="IsOpen" Value="True" /></MultiDataTrigger></Style.Triggers></Style></Popup.Style>
+<Border x:Name="TeachingDataPopupSurface" Width="250" Height="{Binding ActualHeight, ElementName=TeachingDataDock}" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DataPopupBorderBrush}" BorderThickness="1" CornerRadius="4" KeyDown="OnTeachingDataPopupKeyDown">
+<Grid><Grid.RowDefinitions><RowDefinition Height="35" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+<ContentControl x:Name="TeachingDataPopupHeader" ContentTemplate="{StaticResource TeachingDataHeader}" />
+<workbench:RecipeDataView x:Name="RecipeDataPopupSurface" Grid.Row="1" IsTeachingGallery="True" />
+</Grid>
+</Border>
+</Popup>
+        </Grid>
 
         <Border x:Name="ToolLibraryOverlay"
                 Grid.RowSpan="2"
@@ -718,10 +690,6 @@
                                      Text="{Binding Workbench.RecipeInfoDescriptionDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      AutomationProperties.AutomationId="RecipeInfoDescriptionEditor"
                                      AutomationProperties.Name="{Binding Localization.RecipeInfoDescription}" />
-                            <TextBlock Margin="0,0,0,14"
-                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                       Text="{Binding Localization.RecipeInfoEditDetail}"
-                                       TextWrapping="Wrap" />
                             <TextBlock Margin="0,0,0,0"
                                        Foreground="{DynamicResource ThreeD.FailBrush}"
                                        Text="{Binding Workbench.RecipeInfoEditError}"

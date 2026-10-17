@@ -36,7 +36,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.MatrixMode(OpenGL.GL_PROJECTION);
         gl.LoadIdentity();
         var farPlane = Math.Max(100.0, viewModel.CameraDistance + 300.0);
-        if (viewModel.IsTopOrthographicView)
+        if (viewModel.IsOrthographicView)
         {
             var halfHeight = Math.Max(0.01, viewModel.OrthographicHeight) * 0.5;
             var halfWidth = halfHeight * width / height;
@@ -66,7 +66,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private bool TryProjectWorldPositionToViewport(Vector3 worldPosition, out Point screenPoint)
     {
-        return viewModel.IsTopOrthographicView
+        return viewModel.IsOrthographicView
             ? CameraMath.TryProjectWorldPositionToOrthographicScreen(
                 worldPosition,
                 Viewport.ActualWidth,
@@ -99,10 +99,74 @@ public sealed partial class OpenVisionThreeDViewerControl
         return CameraMath.CameraTarget(viewModel.CameraTargetX, viewModel.CameraTargetY, viewModel.CameraTargetZ);
     }
 
+    private void DrawViewportBackground(OpenGL gl)
+    {
+        var width = Math.Max(1, Viewport.ActualWidth);
+        var height = Math.Max(1, Viewport.ActualHeight);
+        gl.PushAttrib(OpenGL.GL_ALL_ATTRIB_BITS);
+        gl.Disable(OpenGL.GL_DEPTH_TEST);
+        gl.Disable(OpenGL.GL_LIGHTING);
+        gl.Disable(OpenGL.GL_BLEND);
+        gl.MatrixMode(OpenGL.GL_PROJECTION);
+        gl.PushMatrix();
+        gl.LoadIdentity();
+        gl.Ortho(0, width, 0, height, -1, 1);
+        gl.MatrixMode(OpenGL.GL_MODELVIEW);
+        gl.PushMatrix();
+        gl.LoadIdentity();
+        var centerX = width * 0.5;
+        var centerY = height * 0.62;
+        gl.Begin(OpenGL.GL_TRIANGLE_FAN);
+        gl.Color(28 / 255.0, 35 / 255.0, 43 / 255.0);
+        gl.Vertex(centerX, centerY);
+        gl.Color(18 / 255.0, 23 / 255.0, 28 / 255.0);
+        for (var i = 0; i <= 48; i++)
+        {
+            var angle = i * Math.PI * 2 / 48;
+            gl.Vertex(centerX + Math.Cos(angle) * width * 1.2 * 0.62, centerY + Math.Sin(angle) * height * 0.9 * 0.62);
+        }
+        gl.End();
+        gl.Begin(OpenGL.GL_TRIANGLE_STRIP);
+        for (var i = 0; i <= 48; i++)
+        {
+            var angle = i * Math.PI * 2 / 48;
+            gl.Color(18 / 255.0, 23 / 255.0, 28 / 255.0);
+            gl.Vertex(centerX + Math.Cos(angle) * width * 1.2 * 0.62, centerY + Math.Sin(angle) * height * 0.9 * 0.62);
+            gl.Color(15 / 255.0, 19 / 255.0, 23 / 255.0);
+            gl.Vertex(centerX + Math.Cos(angle) * width * 1.2, centerY + Math.Sin(angle) * height * 0.9);
+        }
+        gl.End();
+        gl.PopMatrix();
+        gl.MatrixMode(OpenGL.GL_PROJECTION);
+        gl.PopMatrix();
+        gl.MatrixMode(OpenGL.GL_MODELVIEW);
+        gl.PopAttrib();
+    }
+
+    private int C3DFloorTickStep => c3dSample is { } grid ? Math.Max(1, (int)Math.Ceiling(Math.Max(grid.Width, grid.Height) / 80.0) * 10) : 1;
+
+    private double C3DFloorRawHeight => c3dSample is { } grid
+        ? grid.Min - Math.Max((grid.Max - grid.Min) * 0.06, Math.Max(grid.Width, grid.Height) * grid.HorizontalScale * 0.01 / (C3DHeightGrid.ViewerHeightScale * viewModel.C3DHeightEmphasis))
+        : 0;
+
+    private Vector3 C3DFloorPosition(double row, double column) => CreateC3DGridDisplayPosition(row - 0.5, column - 0.5, C3DFloorRawHeight);
+
     private void DrawGrid(OpenGL gl)
     {
+        if (!viewModel.Display.FloorGridVisible) return;
         gl.LineWidth(1.0f);
         gl.Begin(OpenGL.GL_LINES);
+        if (viewModel.C3DSampleVisible && c3dSample is { } grid)
+        {
+            gl.Color(0.23, 0.30, 0.37);
+            // Ticks denote actual cell boundaries; picking still uses zero-based sample indices.
+            for (var column = 0; column < grid.Width; column += C3DFloorTickStep) DrawFloorLine(C3DFloorPosition(0, column), C3DFloorPosition(grid.Height, column));
+            for (var row = 0; row < grid.Height; row += C3DFloorTickStep) DrawFloorLine(C3DFloorPosition(row, 0), C3DFloorPosition(row, grid.Width));
+            DrawFloorLine(C3DFloorPosition(0, grid.Width), C3DFloorPosition(grid.Height, grid.Width));
+            DrawFloorLine(C3DFloorPosition(grid.Height, 0), C3DFloorPosition(grid.Height, grid.Width));
+            gl.End();
+            return;
+        }
         gl.Color(0.25, 0.29, 0.36);
 
         for (var i = -5; i <= 5; i++)
@@ -114,10 +178,66 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         gl.End();
+
+        void DrawFloorLine(Vector3 first, Vector3 second)
+        {
+            gl.Vertex(first.X, first.Y, first.Z);
+            gl.Vertex(second.X, second.Y, second.Z);
+        }
+    }
+
+    private void UpdateC3DFloorLabels()
+    {
+        ViewerFloorLabels.Visibility = viewModel.Display.FloorGridVisible && viewModel.C3DSampleVisible && c3dSample is not null ? Visibility.Visible : Visibility.Collapsed;
+        foreach (UIElement label in ViewerFloorLabels.Children) label.Visibility = Visibility.Collapsed;
+        if (c3dSample is not { } grid || ViewerFloorLabels.Visibility != Visibility.Visible) return;
+        if (!TryProjectWorldPositionToViewport(C3DFloorPosition(0, grid.Width * 0.5), out var firstRowEdge)
+            || !TryProjectWorldPositionToViewport(C3DFloorPosition(grid.Height, grid.Width * 0.5), out var lastRowEdge)
+            || !TryProjectWorldPositionToViewport(C3DFloorPosition(grid.Height * 0.5, 0), out var firstColumnEdge)
+            || !TryProjectWorldPositionToViewport(C3DFloorPosition(grid.Height * 0.5, grid.Width), out var lastColumnEdge)) return;
+        var rowSide = firstRowEdge.Y > lastRowEdge.Y ? -1 : 1;
+        var columnSide = firstColumnEdge.X < lastColumnEdge.X ? -1 : 1;
+        var rowEdge = rowSide < 0 ? 0 : grid.Height;
+        var columnEdge = columnSide < 0 ? 0 : grid.Width;
+        var inset = Math.Max(grid.Width, grid.Height);
+        var occupied = new List<Rect>();
+        var chromeBounds = new FrameworkElement[] { OrientationCubePanel, ViewerHeightLegend, OrientationTriadPanel }
+            .Where(chrome => chrome.IsVisible).Select(chrome => chrome.TransformToAncestor(ViewportSurface).TransformBounds(new Rect(chrome.RenderSize))).ToArray();
+        var index = 2;
+        Place(ViewerColumnAxisLabel, rowEdge + rowSide * inset * 0.047, grid.Width * 0.5, 0, 8);
+        Place(ViewerRowAxisLabel, grid.Height * 0.5, columnEdge + columnSide * inset * 0.061, -12, 0);
+        for (var column = 0; column <= grid.Width; column += C3DFloorTickStep) Tick(rowEdge + rowSide * inset * 0.02, column, column);
+        for (var row = 0; row <= grid.Height; row += C3DFloorTickStep) Tick(row, columnEdge + columnSide * inset * 0.027, row);
+
+        void Tick(double row, double column, int value)
+        {
+            if (index == ViewerFloorLabels.Children.Count)
+                ViewerFloorLabels.Children.Add(new TextBlock { FontFamily = new FontFamily("Consolas"), FontSize = 10.5, Foreground = new SolidColorBrush(Color.FromArgb(179, 173, 185, 198)) });
+            var text = (TextBlock)ViewerFloorLabels.Children[index++];
+            text.Text = value.ToString(CultureInfo.InvariantCulture);
+            Place(text, row, column);
+        }
+
+        void Place(TextBlock text, double row, double column, double offsetX = 0, double offsetY = 0)
+        {
+            if (!TryProjectWorldPositionToViewport(C3DFloorPosition(row, column), out var point)) return;
+            text.Visibility = Visibility.Hidden;
+            text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var bounds = new Rect(point.X + offsetX - Math.Ceiling(text.DesiredSize.Width) * 0.5, point.Y + offsetY - Math.Ceiling(text.DesiredSize.Height) * 0.5,
+                Math.Ceiling(text.DesiredSize.Width), Math.Ceiling(text.DesiredSize.Height));
+            if (bounds.Left < 2 || bounds.Top < 2 || bounds.Right > Viewport.ActualWidth - 2 || bounds.Bottom > Viewport.ActualHeight - 2) return;
+            if (chromeBounds.Any(chrome => chrome.IntersectsWith(bounds)) || occupied.Any(label => label.IntersectsWith(bounds))) return;
+            Canvas.SetLeft(text, bounds.Left);
+            Canvas.SetTop(text, bounds.Top);
+            text.Visibility = Visibility.Visible;
+            bounds.Inflate(2, 2);
+            occupied.Add(bounds);
+        }
     }
 
     private void DrawAxes(OpenGL gl)
     {
+        if (viewModel.C3DSampleVisible) return;
         gl.LineWidth(2.0f);
         gl.Begin(OpenGL.GL_LINES);
 
@@ -432,59 +552,64 @@ public sealed partial class OpenVisionThreeDViewerControl
             && geometryStyle == ViewerGeometryStyle.Wireframe
             ? interactionWireframeLodLevel
             : C3DWireframeLodLevel.Precise;
-        gl.Disable(GlTexture2D);
-
-        if (TryDrawC3DGpuGeometry(gl, renderProxy, positions, geometryStyle, wireframeLodLevel))
+        c3dTextureDrawing = TryBindC3DTexture(gl);
+        try
         {
-            ReleaseC3DDisplayLists(gl);
-            DrawC3DFrame(gl);
-            return;
-        }
 
-        if (UsesDynamicC3DColor())
-        {
-            ReleaseC3DDisplayLists(gl);
-            DrawC3DGeometry(gl, renderProxy, positions, geometryStyle, wireframeLodLevel);
-            DrawC3DFrame(gl);
-            return;
-        }
+            if (TryDrawC3DGpuGeometry(gl, renderProxy, positions, geometryStyle, wireframeLodLevel))
+            {
+                ReleaseC3DDisplayLists(gl);
+                return;
+            }
 
-        var displayListKey = new C3DDisplayListKey(
-            c3dSample!,
-            c3dRenderPositionCache.CurrentTransform,
-            geometryStyle,
-            viewModel.Display.EffectiveSettings.ColorMap,
-            viewModel.C3DHeightColorMinimumRaw,
-            viewModel.C3DHeightColorMaximumRaw,
-            viewModel.PointSize,
-            viewModel.C3DHeightEmphasis,
-            wireframeLodLevel);
-        if (wireframeLodLevel != C3DWireframeLodLevel.Precise)
-        {
-            DrawCachedC3DGeometry(
-                gl,
-                renderProxy,
-                positions,
+            if (UsesDynamicC3DColor())
+            {
+                ReleaseC3DDisplayLists(gl);
+                DrawC3DGeometry(gl, renderProxy, positions, geometryStyle, wireframeLodLevel);
+                return;
+            }
+
+            var displayListKey = new C3DDisplayListKey(
+                c3dSample!,
+                c3dRenderPositionCache.CurrentTransform,
                 geometryStyle,
-                wireframeLodLevel,
-                displayListKey,
-                ref c3dRenderResources.InteractionDisplayListId,
-                ref c3dRenderResources.InteractionDisplayListKey);
-        }
-        else
-        {
-            DrawCachedC3DGeometry(
-                gl,
-                renderProxy,
-                positions,
-                geometryStyle,
-                C3DWireframeLodLevel.Precise,
-                displayListKey,
-                ref c3dRenderResources.DisplayListId,
-                ref c3dRenderResources.DisplayListKey);
-        }
+                viewModel.Display.EffectiveSettings.ColorMap,
+                viewModel.HeightColorRenderMinimum,
+                viewModel.HeightColorRenderMaximum,
+                viewModel.PointSize,
+                viewModel.C3DHeightEmphasis,
+                wireframeLodLevel) { HeightColorOptions = viewModel.HeightColorOptionsKey, TextureImage = viewModel.C3DTexture.Image, TextureVisible = c3dTextureDrawing };
+            if (wireframeLodLevel != C3DWireframeLodLevel.Precise)
+            {
+                DrawCachedC3DGeometry(
+                    gl,
+                    renderProxy,
+                    positions,
+                    geometryStyle,
+                    wireframeLodLevel,
+                    displayListKey,
+                    ref c3dRenderResources.InteractionDisplayListId,
+                    ref c3dRenderResources.InteractionDisplayListKey);
+            }
+            else
+            {
+                DrawCachedC3DGeometry(
+                    gl,
+                    renderProxy,
+                    positions,
+                    geometryStyle,
+                    C3DWireframeLodLevel.Precise,
+                    displayListKey,
+                    ref c3dRenderResources.DisplayListId,
+                    ref c3dRenderResources.DisplayListKey);
+            }
 
-        DrawC3DFrame(gl);
+        }
+        finally
+        {
+            c3dTextureDrawing = false;
+            gl.Disable(GlTexture2D);
+        }
     }
 
     private void DrawCachedC3DGeometry(
@@ -592,10 +717,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dSample!,
             c3dRenderPositionCache.CurrentTransform,
             viewModel.Display.EffectiveSettings.ColorMap,
-            viewModel.C3DHeightColorMinimumRaw,
-            viewModel.C3DHeightColorMaximumRaw,
+            viewModel.HeightColorRenderMinimum,
+            viewModel.HeightColorRenderMaximum,
             viewModel.C3DHeightEmphasis,
-            UsesDynamicC3DColor() ? planeFlatnessEvaluation : null);
+            UsesDynamicC3DColor() ? planeFlatnessEvaluation : null) { HeightColorOptions = viewModel.HeightColorOptionsKey, TextureImage = viewModel.C3DTexture.Image };
         if (c3dRenderResources.RequiresGpuReplacement(bufferKey))
         {
             if (c3dRenderResources.IsGpuReplacementFailed(bufferKey))
@@ -614,7 +739,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                     interleavedVertices,
                     renderProxy,
                     out var gpuBuffers,
-                    out var failure))
+                    out var failure, viewModel.C3DTexture.Image is null ? null : OpenVisionLab.ThreeD.Viewer.Loading.C3DTextureImage.CreateCoordinates(c3dSample!)))
             {
                 c3dRenderResources.MarkGpuReplacementFailed(bufferKey);
                 c3dGpuTelemetry.RecordFallback(failure);
@@ -637,16 +762,16 @@ public sealed partial class OpenVisionThreeDViewerControl
         switch (geometryStyle)
         {
             case ViewerGeometryStyle.Wireframe when renderProxy.HasSurface:
-                activeGpuBuffers.DrawWireframe(gl, wireframeLodLevel);
+                activeGpuBuffers.DrawWireframe(gl, wireframeLodLevel, c3dTextureDrawing);
                 break;
             case ViewerGeometryStyle.Surface when renderProxy.HasSurface:
-                activeGpuBuffers.DrawSurface(gl, withEdges: false);
+                activeGpuBuffers.DrawSurface(gl, withEdges: false, c3dTextureDrawing);
                 break;
             case ViewerGeometryStyle.SurfaceWithEdges when renderProxy.HasSurface:
-                activeGpuBuffers.DrawSurface(gl, withEdges: true);
+                activeGpuBuffers.DrawSurface(gl, withEdges: true, c3dTextureDrawing);
                 break;
             default:
-                activeGpuBuffers.DrawPoints(gl, (float)viewModel.PointSize);
+                activeGpuBuffers.DrawPoints(gl, (float)viewModel.PointSize, c3dTextureDrawing);
                 break;
         }
 
@@ -664,15 +789,64 @@ public sealed partial class OpenVisionThreeDViewerControl
             return GetPlaneFlatnessColor(position, flatness);
         }
 
-        var heightColorScalar = viewModel.NormalizeC3DHeightColor(point.RawValue);
-        return viewModel.Display.EffectiveSettings.ColorMap switch
+        return viewModel.Display.EffectiveSettings.ColorMap == ViewerColorMap.Deviation
+            ? ViewerColorMapPalette.Deviation(point.DeviationScalar) : viewModel.GetC3DHeightDisplayColor(point.RawValue, point.Row, point.Column);
+    }
+
+    private bool TryBindC3DTexture(OpenGL gl)
+    {
+        gl.Disable(GlTexture2D);
+        if (!viewModel.C3DTexture.IsVisible || viewModel.C3DTexture.Image is not { } image) return false;
+        if (!ReferenceEquals(c3dRenderResources.TextureImage, image))
         {
-            ViewerColorMap.Solid => (0.62, 0.82, 1.0),
-            ViewerColorMap.Grayscale => ViewerColorMapPalette.Grayscale(heightColorScalar),
-            ViewerColorMap.Thermal => ViewerColorMapPalette.Thermal(heightColorScalar),
-            ViewerColorMap.Deviation => ViewerColorMapPalette.Deviation(point.DeviationScalar),
-            _ => C3DPointMapPalette.Height(heightColorScalar)
-        };
+            ReleaseC3DTexture(gl);
+            try
+            {
+                var limit = new int[1];
+                gl.GetInteger(0x0D33, limit); // GL_MAX_TEXTURE_SIZE for this context.
+                if (image.Width > limit[0] || image.Height > limit[0])
+                    throw new InvalidOperationException($"Texture exceeds this viewer's {limit[0]} pixel image limit.");
+                var ids = new uint[1];
+                gl.GenTextures(1, ids);
+                c3dRenderResources.TextureId = ids[0];
+                if (ids[0] == 0) throw new InvalidOperationException("OpenGL did not allocate a texture.");
+                gl.BindTexture(GlTexture2D, ids[0]);
+                gl.TexParameter(GlTexture2D, GlTextureMinFilter, (int)GlLinear);
+                gl.TexParameter(GlTexture2D, GlTextureMagFilter, (int)GlLinear);
+                gl.TexParameter(GlTexture2D, GlTextureWrapS, 0x812F); // GL_CLAMP_TO_EDGE, never tile the image.
+                gl.TexParameter(GlTexture2D, GlTextureWrapT, 0x812F);
+                gl.PixelStore(GlUnpackAlignment, 1);
+                gl.TexImage2D(GlTexture2D, 0, GlRgba, image.Width, image.Height, 0, GlBgra, GlUnsignedByte, image.Pixels);
+                var error = gl.GetError();
+                if (error != OpenGL.GL_NO_ERROR) throw new InvalidOperationException($"Texture upload failed (OpenGL {error}).");
+                c3dRenderResources.TextureImage = image;
+                c3dRenderResources.TextureUploadCount++;
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
+            {
+                ReleaseC3DTexture(gl);
+                viewModel.C3DTexture.ReportRenderFailure(exception.Message);
+                return false;
+            }
+        }
+        gl.BindTexture(GlTexture2D, c3dRenderResources.TextureId);
+        gl.Enable(GlTexture2D);
+        return true;
+    }
+
+    private void ReleaseC3DTexture(OpenGL gl)
+    {
+        if (c3dRenderResources.TextureId != 0)
+        {
+            try
+            {
+                gl.DeleteTextures(1, [c3dRenderResources.TextureId]);
+                c3dRenderResources.TextureReleaseCount++;
+            }
+            catch (InvalidOperationException) { c3dRenderResources.TextureReleaseFailureCount++; }
+        }
+        c3dRenderResources.TextureId = 0;
+        c3dRenderResources.TextureImage = null;
     }
 
     private void ReleaseC3DGpuBuffers(OpenGL gl)
@@ -795,6 +969,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.LineWidth(1.0f);
         if (!usePointColors)
         {
+            gl.Disable(GlTexture2D);
             gl.Enable(OpenGL.GL_BLEND);
             gl.BlendFunc(OpenGL.GL_SRC_ALPHA, OpenGL.GL_ONE_MINUS_SRC_ALPHA);
             gl.Color(0.02, 0.05, 0.08, 0.32);
@@ -816,6 +991,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!usePointColors)
         {
             gl.Disable(OpenGL.GL_BLEND);
+            if (c3dTextureDrawing) gl.Enable(GlTexture2D);
         }
 
         gl.LineWidth(1.0f);
@@ -823,6 +999,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ApplyC3DColor(OpenGL gl, HeightGridPoint point, Vector3 position)
     {
+        if (c3dTextureDrawing && c3dSample is { } source)
+        {
+            var uv = OpenVisionLab.ThreeD.Viewer.Loading.C3DTextureImage.Coordinate(point.Row, point.Column, source.Width, source.Height);
+            gl.Color(1.0, 1.0, 1.0);
+            gl.TexCoord(uv.X, uv.Y);
+            return;
+        }
         if (viewModel.SelectedColorMode == "Deviation"
             && viewModel.PlaneFlatnessVisible
             && planeFlatnessEvaluation is { ReferencePlane: not null } flatness)
@@ -1143,25 +1326,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.End();
     }
 
-    private void DrawC3DFrame(OpenGL gl)
-    {
-        var x = c3dSample!.XHalfExtent;
-        var z = c3dSample.ZHalfExtent;
-        var a = TransformC3DPosition(new Vector3(-x, 0.0f, -z));
-        var b = TransformC3DPosition(new Vector3(x, 0.0f, -z));
-        var c = TransformC3DPosition(new Vector3(x, 0.0f, z));
-        var d = TransformC3DPosition(new Vector3(-x, 0.0f, z));
-
-        gl.LineWidth(1.5f);
-        gl.Color(0.78, 0.86, 0.98);
-        gl.Begin(OpenGL.GL_LINE_LOOP);
-        gl.Vertex(a.X, a.Y, a.Z);
-        gl.Vertex(b.X, b.Y, b.Z);
-        gl.Vertex(c.X, c.Y, c.Z);
-        gl.Vertex(d.X, d.Y, d.Z);
-        gl.End();
-    }
-
     private void DrawImportedMeshFrame(OpenGL gl)
     {
         var mesh = importedMesh!;
@@ -1363,15 +1527,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ApplyPointColor(OpenGL gl, HeightGridPoint point)
     {
-        var heightColorScalar = viewModel.NormalizeC3DHeightColor(point.RawValue);
-        var (r, g, b) = viewModel.SelectedColorMode switch
-        {
-            "Solid" => (0.62, 0.82, 1.0),
-            "Grayscale" => ViewerColorMapPalette.Grayscale(heightColorScalar),
-            "Thermal" => ViewerColorMapPalette.Thermal(heightColorScalar),
-            "Deviation" => ViewerColorMapPalette.Deviation(point.DeviationScalar),
-            _ => C3DPointMapPalette.Height(heightColorScalar)
-        };
+        var (r, g, b) = viewModel.SelectedColorMode == "Deviation"
+            ? ViewerColorMapPalette.Deviation(point.DeviationScalar) : viewModel.GetC3DHeightDisplayColor(point.RawValue, point.Row, point.Column);
 
         gl.Color(r, g, b);
     }

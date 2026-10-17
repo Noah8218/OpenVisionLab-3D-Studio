@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -25,6 +26,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
     private readonly Action<string, string> appendLog;
     private readonly Func<ToolWorkbenchPipelineStepItem, string> captureContext;
     private readonly Func<SelectedToolOutputEvidence> captureOutput;
+    private readonly Action<ToolWorkbenchPipelineStepItem, bool, ResultStatus?, string, string, bool>? recordExecution;
     private readonly Dictionary<ToolWorkbenchPipelineStepItem, (SelectedToolOutputEvidence Output, string Context)> completedResults = [];
     private readonly Action notifyRunningChanged;
     private readonly Func<bool> canStartExecution;
@@ -42,7 +44,8 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
         Func<ToolWorkbenchPipelineStepItem, string>? captureContext = null,
         Action? notifyRunningChanged = null,
         Func<bool>? canStartExecution = null,
-        Func<SelectedToolOutputEvidence>? captureOutput = null)
+        Func<SelectedToolOutputEvidence>? captureOutput = null,
+        Action<ToolWorkbenchPipelineStepItem, bool, ResultStatus?, string, string, bool>? recordExecution = null)
     {
         this.getSelectedStep = getSelectedStep ?? throw new ArgumentNullException(nameof(getSelectedStep));
         this.routes = routes ?? throw new ArgumentNullException(nameof(routes));
@@ -51,6 +54,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
         this.notifyRunningChanged = notifyRunningChanged ?? (() => { });
         this.canStartExecution = canStartExecution ?? (() => true);
         this.captureOutput = captureOutput ?? (() => SelectedToolOutputEvidence.Empty);
+        this.recordExecution = recordExecution;
 
         RunCommand = new RelayCommand(_ => StartCommandPreview(publish: true), _ => CanStartCommandPreview());
         PreviewCommand = new RelayCommand(
@@ -224,25 +228,53 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
     private async Task<bool> ExecuteCommandAsync(ToolWorkbenchPipelineStepItem? step, string context, bool publish)
     {
         var route = activeRoute;
-        if (route is null || step is null || !await route.PreviewAsync())
+        if (route is null || step is null) return false;
+        try
         {
-            return false;
-        }
+            var previewed = await route.PreviewAsync();
+            if (IsDisposed) return false;
+            if (commandCanceled)
+            {
+                recordExecution?.Invoke(step, publish, null, string.Empty, string.Empty, true);
+                return false;
+            }
+            if (!previewed || !ReferenceEquals(step, getSelectedStep()) || !step.OutputEnabled
+                || !string.Equals(context, captureContext(step), StringComparison.Ordinal))
+            {
+                recordExecution?.Invoke(step, publish, ResultStatus.NotRun, string.Empty, string.Empty, false);
+                return false;
+            }
 
-        if (IsDisposed || commandCanceled || !ReferenceEquals(step, getSelectedStep())
-            || !step.OutputEnabled || !string.Equals(context, captureContext(step), StringComparison.Ordinal))
+            var output = captureOutput();
+            if (publish && route.CanPublish())
+            {
+                route.Publish();
+                RememberCompletedResult(step);
+                RecordCommandExecution(step, output, publish);
+                RunCompleted?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                RecordCommandExecution(step, output, publish);
+            }
+            return true;
+        }
+        catch (OperationCanceledException)
         {
-            return false;
+            if (!IsDisposed) recordExecution?.Invoke(step, publish, null, string.Empty, string.Empty, true);
+            throw;
         }
-
-        if (publish && route.CanPublish())
+        catch (Exception exception)
         {
-            route.Publish();
-            RememberCompletedResult(step);
-            RunCompleted?.Invoke(this, EventArgs.Empty);
+            if (!IsDisposed) recordExecution?.Invoke(step, publish, ResultStatus.Error, string.Empty, exception.Message, false);
+            throw;
         }
+    }
 
-        return true;
+    private void RecordCommandExecution(ToolWorkbenchPipelineStepItem step, SelectedToolOutputEvidence output, bool publish)
+    {
+        var detail = output.HasExecutionResult ? $"{output.ValueLabel} {output.Value} {output.Unit}".Trim() : string.Empty;
+        recordExecution?.Invoke(step, publish, output.HasExecutionResult ? output.ExecutionStatus : ResultStatus.NotRun, detail, output.Reason, false);
     }
 
     public void ClearCompletedResults() => completedResults.Clear();

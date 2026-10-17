@@ -23,6 +23,7 @@ public sealed record ToolRecipeOrderedGraphStepResult(
     C3DSignedHeightDeltaArtifact? SignedDeltaBackgroundSubtraction = null)
 {
     public ToolRecipeSemanticIdentityEvidence? SemanticIdentityEvidence { get; init; }
+    public HeightMeasurementColorSnapshot? ColorSnapshot { get; init; }
 }
 
 public sealed record ToolRecipeSemanticIdentityEvidence(
@@ -186,6 +187,7 @@ public static class ToolRecipeOrderedGraphExecution
                         : null,
                     execution.SignedDeltaBackgroundSubtraction)
                 {
+                    ColorSnapshot = (execution.Output as ToolRecipeHeightMeasurementOutput)?.ColorSnapshot,
                     SemanticIdentityEvidence = execution.Output is ToolRecipeHeightMeasurementOutput
                     {
                         SemanticFingerprint: not null

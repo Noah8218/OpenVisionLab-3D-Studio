@@ -1,12 +1,19 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Shell;
 
 public partial class StudioTitleBarView : UserControl
 {
+    public static readonly DependencyProperty MenuContentProperty = DependencyProperty.Register(
+        nameof(MenuContent), typeof(object), typeof(StudioTitleBarView), new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ActionsContentProperty = DependencyProperty.Register(
+        nameof(ActionsContent), typeof(object), typeof(StudioTitleBarView), new PropertyMetadata(null));
+
     public static readonly DependencyProperty TitleTextProperty = DependencyProperty.Register(
         nameof(TitleText),
         typeof(string),
@@ -79,15 +86,51 @@ public partial class StudioTitleBarView : UserControl
         typeof(StudioTitleBarView),
         new PropertyMetadata(false));
 
+    public static readonly DependencyProperty RecipeMetaTextProperty = DependencyProperty.Register(nameof(RecipeMetaText), typeof(string), typeof(StudioTitleBarView), new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty RecipeDetailTextProperty = DependencyProperty.Register(nameof(RecipeDetailText), typeof(string), typeof(StudioTitleBarView), new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty IsRecipeModifiedProperty = DependencyProperty.Register(nameof(IsRecipeModified), typeof(bool), typeof(StudioTitleBarView), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsRecipeSaveFailedProperty = DependencyProperty.Register(nameof(IsRecipeSaveFailed), typeof(bool), typeof(StudioTitleBarView), new PropertyMetadata(false));
+    private static readonly DependencyPropertyKey IsCompactPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsCompact), typeof(bool), typeof(StudioTitleBarView), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsCompactProperty = IsCompactPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey RecipeMaximumWidthPropertyKey = DependencyProperty.RegisterReadOnly(nameof(RecipeMaximumWidth), typeof(double), typeof(StudioTitleBarView), new PropertyMetadata(520.0));
+    public static readonly DependencyProperty RecipeMaximumWidthProperty = RecipeMaximumWidthPropertyKey.DependencyProperty;
+
     public StudioTitleBarView()
     {
         InitializeComponent();
+        SizeChanged += (_, args) =>
+        {
+            var compact = args.NewSize.Width <= 1500;
+            SetValue(IsCompactPropertyKey, compact);
+            SetValue(RecipeMaximumWidthPropertyKey, compact ? 380.0 : 520.0);
+            MinHeight = compact ? 36 : 40;
+        };
     }
+
+    public event EventHandler? RecipeManagerRequested;
+    public bool IsCompact => (bool)GetValue(IsCompactProperty);
+    public double RecipeMaximumWidth => (double)GetValue(RecipeMaximumWidthProperty);
+    public string RecipeMetaText { get => (string)GetValue(RecipeMetaTextProperty); set => SetValue(RecipeMetaTextProperty, value); }
+    public string RecipeDetailText { get => (string)GetValue(RecipeDetailTextProperty); set => SetValue(RecipeDetailTextProperty, value); }
+    public bool IsRecipeModified { get => (bool)GetValue(IsRecipeModifiedProperty); set => SetValue(IsRecipeModifiedProperty, value); }
+    public bool IsRecipeSaveFailed { get => (bool)GetValue(IsRecipeSaveFailedProperty); set => SetValue(IsRecipeSaveFailedProperty, value); }
 
     public string TitleText
     {
         get => (string)GetValue(TitleTextProperty);
         set => SetValue(TitleTextProperty, value);
+    }
+
+    public object? MenuContent
+    {
+        get => GetValue(MenuContentProperty);
+        set => SetValue(MenuContentProperty, value);
+    }
+
+    public object? ActionsContent
+    {
+        get => GetValue(ActionsContentProperty);
+        set => SetValue(ActionsContentProperty, value);
     }
 
     public string SubtitleText
@@ -174,10 +217,12 @@ public partial class StudioTitleBarView : UserControl
             SourceQualityStatusToolTip,
             StringComparison.Ordinal);
 
+    private void RecipeButton_Click(object sender, RoutedEventArgs args) => RecipeManagerRequested?.Invoke(this, EventArgs.Empty);
+
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs args)
     {
         if (args.OriginalSource is DependencyObject source
-            && FindAncestor<Button>(source) is not null)
+            && (FindAncestor<ButtonBase>(source) is not null || FindAncestor<MenuItem>(source) is not null || FindAncestor<ComboBox>(source) is not null))
         {
             return;
         }

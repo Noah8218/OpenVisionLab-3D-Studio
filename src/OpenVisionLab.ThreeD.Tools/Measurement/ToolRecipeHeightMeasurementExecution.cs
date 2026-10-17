@@ -32,7 +32,10 @@ public sealed record ToolRecipeHeightMeasurementOutput(
     string EvidenceSummary,
     C3DCompletenessGridMetricOutput? CompletenessGrid = null,
     string? SemanticFingerprint = null,
-    C3DConnectedRegionGateOutput? ConnectedRegionGate = null);
+    C3DConnectedRegionGateOutput? ConnectedRegionGate = null)
+{
+    public HeightMeasurementColorSnapshot? ColorSnapshot { get; init; }
+}
 
 public sealed record ToolRecipeHeightMeasurementEvaluation(
     ToolResult Result,
@@ -143,6 +146,7 @@ public static class ToolRecipeHeightMeasurementExecution
         string evidence;
         ToolRecipeHeightMeasurementFailure? failure = null;
         C3DCompletenessGridMetricOutput? completenessGrid = null;
+        HeightMeasurementColorSnapshot? colorSnapshot = null;
         if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
         {
             var profile = C3DCompletenessGridProfile.FromRecipeParameters(
@@ -212,6 +216,9 @@ public static class ToolRecipeHeightMeasurementExecution
             result = evaluation.Result;
             evidence = $"H-axis thickness mean {evaluation.Mean:G6} | min {evaluation.Minimum:G6} | max {evaluation.Maximum:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0} finite samples";
             failure = CreateThicknessFailure(evaluation, minimumSamples);
+            if (evaluation.ReferencePlane is { } plane && result.Status is ResultStatus.Pass or ResultStatus.Fail
+                && step.AcceptanceLimitsConfigured != false)
+                colorSnapshot = CreateThicknessColorSnapshot(prepared, plane, minimum, maximum);
         }
         else if (string.Equals(step.ToolId, "warpage", StringComparison.Ordinal))
         {
@@ -437,7 +444,7 @@ public static class ToolRecipeHeightMeasurementExecution
             result,
             evidence,
             completenessGrid,
-            semanticFingerprint);
+            semanticFingerprint) { ColorSnapshot = colorSnapshot };
         failure ??= result.Status == ResultStatus.Error
             ? new ToolRecipeHeightMeasurementFailure(
                 ToolRecipeHeightMeasurementFailureReason.ExecutionError)
@@ -999,6 +1006,25 @@ public static class ToolRecipeHeightMeasurementExecution
 
         error = null;
         return true;
+    }
+
+    private static HeightMeasurementColorSnapshot? CreateThicknessColorSnapshot(PreparedHeightMeasurement prepared,
+        HeightFieldPlaneFitResult plane, double lowerLimit, double upperLimit)
+    {
+        var reconstruction = Reconstruct(prepared, prepared.MeasurementRoi!, prepared.ReferenceGridProfile,
+            SdkReferenceGridCoordinateMode.ReferenceAxes);
+        if (!reconstruction.Success) return null;
+        var values = Enumerable.Repeat(double.NaN, prepared.Values.Length).ToArray();
+        foreach (var sample in reconstruction.Samples)
+        {
+            // Use the same single-precision U/V inputs as the executed thickness adapter.
+            if (!VisionSdkHeightMapInspection.TryCalculateDatumPlaneRawHeightResidual(-plane.SlopeX, 1, -plane.SlopeZ,
+                -plane.Intercept, (float)sample.U, (float)sample.V, sample.Height, out var value)) return null;
+            values[checked(sample.Row * prepared.Width + sample.Column)] = value;
+        }
+        return new HeightMeasurementColorSnapshot(prepared.InputEntityId, prepared.InputContentSha256,
+            CalculateHash(prepared.Step, prepared.InputContentSha256, prepared.Selections), prepared.Width, prepared.Height,
+            values, lowerLimit, upperLimit, prepared.Unit, prepared.Step.ToolName);
     }
 
     private static IReadOnlyList<HeightFieldPlaneSample> CreatePlaneSamples(PreparedHeightMeasurement prepared, C3DGridRoi roi)

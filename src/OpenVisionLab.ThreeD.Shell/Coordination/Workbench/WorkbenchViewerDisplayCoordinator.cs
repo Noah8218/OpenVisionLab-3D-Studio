@@ -20,6 +20,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     private readonly WorkbenchViewerTeachingCoordinator teaching;
     private string? displayedEvidenceSamplePath;
     private bool isInspectionDisplayActive;
+    private bool disposed;
 
     public WorkbenchViewerDisplayCoordinator(
         ShellMainWindowViewModel shell,
@@ -60,10 +61,15 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.InspectionQueue.SelectedSampleChanged += OnInspectionSampleSelected;
         shell.PropertyChanged += OnShellPropertyChanged;
         viewer.WorkbenchLineFitPointSelected += OnWorkbenchLineFitPointSelected;
+        shell.ResultsWorkspace.PropertyChanged += OnResultsWorkspacePropertyChanged;
+        RefreshTeachingResultLabels();
     }
 
     public void Dispose()
     {
+        if (disposed) return;
+        disposed = true;
+        shell.ResultsWorkspace.PropertyChanged -= OnResultsWorkspacePropertyChanged;
         workbench.FilterDisplayRequested -= OnFilterDisplayRequested;
         workbench.ViewerArtifactDisplayRequested -= OnArtifactDisplayRequested;
         workbench.OutputComparePaneRequested -= OnOutputComparePaneRequested;
@@ -89,10 +95,39 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         viewer.WorkbenchLineFitPointSelected -= OnWorkbenchLineFitPointSelected;
     }
 
+    private void RefreshTeachingResultLabels()
+    {
+        if (disposed) return;
+        if (!viewer.Dispatcher.CheckAccess())
+        {
+            viewer.Dispatcher.BeginInvoke(new Action(RefreshTeachingResultLabels));
+            return;
+        }
+        shell.ResultsWorkspace.RefreshTeachingResultLabels(workbench.TeachingResults.ToArray(),
+            workbench.GetCurrentAppliedTeachingSelections(), workbench.RecipePath ?? string.Empty);
+    }
+
+    private void OnResultsWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (!disposed && args.PropertyName == nameof(ResultsWorkspaceViewModel.TeachingResultLabels)) SyncTeachingResultLabels();
+    }
+
+    private void SyncTeachingResultLabels()
+    {
+        if (disposed) return;
+        if (!viewer.Dispatcher.CheckAccess())
+        {
+            viewer.Dispatcher.BeginInvoke(new Action(SyncTeachingResultLabels));
+            return;
+        }
+        viewer.TrySetTeachingResultLabels(shell.IsAuthoringWorkspaceSelected ? shell.ResultsWorkspace.TeachingResultLabels : []);
+    }
+
     private void OnWorkbenchPropertyChanged(
         object? sender,
         PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(ToolWorkbenchViewModel.HasTeachingResults)) RefreshTeachingResultLabels();
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.SelectedValidationSetSample)
             or nameof(ToolWorkbenchViewModel.SelectedValidationSetStep))
         {
@@ -114,26 +149,22 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         object? sender,
         PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(ShellMainWindowViewModel.IsInspectWorkspaceSelected))
+        if (args.PropertyName == nameof(ShellMainWindowViewModel.IsAuthoringWorkspaceSelected)) SyncTeachingResultLabels();
+        if (args.PropertyName != nameof(ShellMainWindowViewModel.IsInspectionWorkspaceSelected)) return;
+        if (shell.IsInspectWorkspaceSelected)
         {
-            workbench.SetInspectionFileView(shell.IsInspectWorkspaceSelected);
-            if (shell.IsInspectWorkspaceSelected)
-            {
-                isInspectionDisplayActive = true;
-                ShowSelectedInspectionSample(workbench.InspectionQueue.SelectedSample);
-            }
+            isInspectionDisplayActive = true;
+            ShowSelectedInspectionSample(workbench.InspectionQueue.SelectedSample);
             return;
         }
 
-        if (args.PropertyName is nameof(ShellMainWindowViewModel.IsValidateWorkspaceSelected)
-            or nameof(ShellMainWindowViewModel.IsResultsWorkspaceSelected))
+        if (shell.IsValidateWorkspaceSelected || shell.IsResultsWorkspaceSelected)
         {
             ShowSelectedValidationEvidence();
             return;
         }
 
-        if (args.PropertyName is nameof(ShellMainWindowViewModel.IsAuthoringWorkspaceSelected)
-            && shell.IsAuthoringWorkspaceSelected)
+        if (shell.IsAuthoringWorkspaceSelected)
         {
             RestoreAuthoredSourceDisplay();
         }
@@ -191,12 +222,24 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
 
     private void ShowSelectedValidationEvidence()
     {
-        if (shell.IsInspectWorkspaceSelected || (!shell.IsValidateWorkspaceSelected && !shell.IsResultsWorkspaceSelected)
-            || workbench.SelectedValidationSetSample is not { } sample
-            || !File.Exists(sample.SourcePath))
+        if (!shell.IsValidateWorkspaceSelected && !shell.IsResultsWorkspaceSelected) return;
+
+        var sample = workbench.SelectedValidationSetSample;
+        if (shell.IsValidateWorkspaceSelected)
         {
-            return;
+            isInspectionDisplayActive = true;
+            shell.ClearCurrentRunEvidenceForRecipeContext();
+            workbench.RefreshValidationSampleView();
+            if (sample is null || !File.Exists(sample.SourcePath))
+            {
+                displayedEvidenceSamplePath = null;
+                viewer.ClearC3DTeachingSource(sample is null ? workbench.Localization.ValidationSetNoSelection : workbench.Localization.SourceMissing);
+                workbench.HeightImageViewer.ClearSource();
+                RefreshViewerSourceState();
+                return;
+            }
         }
+        if (sample is null || !File.Exists(sample.SourcePath)) return;
 
         var fullPath = Path.GetFullPath(sample.SourcePath);
         if (string.Equals(
@@ -211,8 +254,13 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         var label = step is null
             ? $"Evidence | {sample.Status} | {sample.FileName}"
             : $"Evidence | {sample.Status} | {sample.FileName} | {step.ToolName}";
+        workbench.BeginHeightImageSourceLoad();
         if (!viewer.ShowC3DWorkbenchResult(fullPath, label))
         {
+            displayedEvidenceSamplePath = null;
+            viewer.ClearC3DTeachingSource(workbench.Localization.SourceUnreadable);
+            workbench.HeightImageViewer.ClearSource();
+            RefreshViewerSourceState();
             WriteViewerError();
             return;
         }

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Security.Cryptography;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -21,6 +22,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
     private readonly Action<bool> onDefinitionChanged;
     private readonly Action<bool> onDirtyChanged;
     private bool isValidationSetDefinitionDirty;
+    private ToolRecipeValidationSampleDefinition[] savedSamples = [];
 
     public ToolWorkbenchValidationSetDefinitionOwner(
         Func<ToolRecipeDocument> createDocument,
@@ -54,23 +56,21 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
     public void SetValidationSetSources(IEnumerable<string> sourcePaths)
     {
         ArgumentNullException.ThrowIfNull(sourcePaths);
-        var existingRoles = Samples.ToDictionary(
+        var existingSamples = Samples.ToDictionary(
             sample => sample.SourcePath,
-            sample => sample.Role,
+            sample => sample,
             StringComparer.OrdinalIgnoreCase);
         var paths = sourcePaths
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Select(Path.GetFullPath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        if (paths.SequenceEqual(Samples.Select(sample => sample.SourcePath), StringComparer.OrdinalIgnoreCase)) return;
 
-        ReplaceSamples(paths.Select((path, index) => CreatePendingSample(
-            index + 1,
-            path,
-            existingRoles.GetValueOrDefault(
-                path,
-                ToolRecipeValidationSampleRole.Good))));
-        SetDefinitionDirtyCore(true);
+        ReplaceSamples(paths.Select((path, index) => existingSamples.TryGetValue(path, out var previous)
+            ? CreatePendingSample(index + 1, path, previous.DevelopmentRole) with { Expectation = previous.EffectiveExpectation, Usage = previous.EffectiveUsage }
+            : CreatePendingSample(index + 1, path, ToolRecipeValidationSampleRole.HeldOut) with { Expectation = ToolRecipeValidationExpectation.Unset, Usage = ToolRecipeValidationUsage.Adjustment }));
+        RefreshDefinitionDirty();
         onDefinitionChanged(true);
     }
 
@@ -78,16 +78,19 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
         ValidationSetSampleRow? selected,
         string? value)
     {
-        if (selected is null
-            || !Enum.TryParse<ToolRecipeValidationSampleRole>(
-                value,
-                ignoreCase: true,
-                out var role)
-            || !Enum.IsDefined(role)
-            || selected.Role == role)
+        if (selected is null || value is null) return null;
+        var expectation = selected.EffectiveExpectation;
+        var usage = selected.EffectiveUsage;
+        switch (value.ToLowerInvariant())
         {
-            return null;
+            case "good": expectation = ToolRecipeValidationExpectation.Ok; break;
+            case "bad": expectation = ToolRecipeValidationExpectation.Ng; break;
+            case "unset": expectation = ToolRecipeValidationExpectation.Unset; break;
+            case "heldout": usage = selected.IsHeldOut ? ToolRecipeValidationUsage.Adjustment : ToolRecipeValidationUsage.HeldOut; break;
+            case "adjustment": usage = ToolRecipeValidationUsage.Adjustment; break;
+            default: return null;
         }
+        if (selected.EffectiveExpectation == expectation && selected.EffectiveUsage == usage) return null;
 
         var index = Samples.IndexOf(selected);
         if (index < 0)
@@ -97,17 +100,12 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
 
         var updated = selected with
         {
-            Role = role,
-            Status = "Pending",
-            StatusText = localize("대기", "Pending"),
-            Message = localize(
-                "기대 역할이 변경됐습니다. '샘플 세트 실행'을 선택하세요.",
-                "Expected role changed; choose Run sample set."),
-            Duration = string.Empty,
-            Steps = []
+            Role = ToolRecipeValidationSampleDefinition.ResolveDevelopmentRole(expectation, usage),
+            Expectation = expectation,
+            Usage = usage
         };
         Samples[index] = updated;
-        SetDefinitionDirtyCore(true);
+        RefreshDefinitionDirty();
         onDefinitionChanged(false);
         return updated;
     }
@@ -115,7 +113,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
     public void ClearDefinition()
     {
         ReplaceSamples([]);
-        SetDefinitionDirtyCore(true);
+        RefreshDefinitionDirty();
         onDefinitionChanged(true);
     }
 
@@ -171,7 +169,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
         }
     }
 
-    public void SaveForRecipe(string recipePath)
+    public void SaveForRecipe(string recipePath, bool markClean = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(recipePath);
         if (Samples.Count == 0)
@@ -184,11 +182,12 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                 File.Delete(manifestPath);
             }
 
-            SetDefinitionDirtyCore(false);
+            if (markClean) SetDefinitionDirtyCore(false);
             return;
         }
 
-        var sourceHash = createDocument().Source.ContentSha256;
+        var document = createDocument();
+        var sourceHash = document.Source.ContentSha256;
         if (string.IsNullOrWhiteSpace(sourceHash))
         {
             throw new InvalidDataException(
@@ -205,8 +204,12 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                     new ToolRecipeValidationSampleDefinition(
                         index + 1,
                         sample.SourcePath,
-                        sample.Role)).ToArray()));
-        SetDefinitionDirtyCore(false);
+                        sample.DevelopmentRole) { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }).ToArray())
+            {
+                RecipeContentSha256 = File.Exists(recipePath) ? HashFile(recipePath) : null,
+                CalculationContextSha256 = ToolRecipeValidationSetDefinitionStore.CreateCalculationContextSha256(document)
+            });
+        if (markClean) SetDefinitionDirtyCore(false);
     }
 
     public bool LoadForRecipe(
@@ -214,9 +217,12 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
         ToolRecipeDocument document)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(recipePath);
+        return LoadDefinition(document, ToolRecipeValidationSetDefinitionStore.LoadForRecipe(recipePath));
+    }
+
+    public bool LoadDefinition(ToolRecipeDocument document, ToolRecipeValidationSetDefinition? definition)
+    {
         ArgumentNullException.ThrowIfNull(document);
-        var definition =
-            ToolRecipeValidationSetDefinitionStore.LoadForRecipe(recipePath);
         if (definition is null
             || !string.Equals(
                 definition.RecipeSourceSha256,
@@ -236,7 +242,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                 sample.SourcePath,
                 sample.Role,
                 "저장된 역할을 불러왔습니다. 전체 실행을 기다립니다.",
-                "Saved role loaded; waiting for explicit Run All.")));
+                "Saved expectations and use loaded; waiting for explicit Run All.") with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }));
         SetDefinitionDirtyCore(false);
         onDefinitionChanged(true);
         return true;
@@ -269,8 +275,21 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
             string.Empty,
             []);
 
+    private static string HashFile(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    private ToolRecipeValidationSampleDefinition[] CaptureSampleDefinitions() => Samples.Select((sample, index) =>
+        new ToolRecipeValidationSampleDefinition(index + 1, sample.SourcePath, sample.DevelopmentRole)
+        { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }).ToArray();
+
+    private void RefreshDefinitionDirty() => SetDefinitionDirtyCore(!CaptureSampleDefinitions().SequenceEqual(savedSamples));
+
     private void SetDefinitionDirtyCore(bool value)
     {
+        if (!value) savedSamples = CaptureSampleDefinitions();
         if (isValidationSetDefinitionDirty == value)
         {
             return;

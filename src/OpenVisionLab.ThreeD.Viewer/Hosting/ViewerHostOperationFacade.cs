@@ -1,4 +1,5 @@
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Viewer.Hosting;
@@ -142,6 +143,20 @@ internal sealed class ViewerHostOperationFacade
         return viewModel.C3DSampleVisible == visible;
     }
 
+    public bool TrySetSelectedGeometryStyle(string geometryStyle)
+    {
+        if (isDisposed() || string.IsNullOrWhiteSpace(geometryStyle)) return false;
+        viewModel.Display.SelectedGeometryStyle = geometryStyle;
+        return string.Equals(viewModel.Display.SelectedGeometryStyle, geometryStyle, StringComparison.Ordinal);
+    }
+
+    public bool TrySetFloorGridVisible(bool visible)
+    {
+        if (isDisposed()) return false;
+        viewModel.Display.FloorGridVisible = visible;
+        return viewModel.Display.FloorGridVisible == visible;
+    }
+
     public bool TrySetSelectedColorMap(string colorMap)
     {
         if (IsDisposed || string.IsNullOrWhiteSpace(colorMap))
@@ -176,6 +191,13 @@ internal sealed class ViewerHostOperationFacade
 
         viewModel.ResultOverlayVisible = visible;
         return viewModel.ResultOverlayVisible == visible;
+    }
+
+    public bool TrySetTeachingResultLabels(IReadOnlyList<ViewerTeachingResultLabel> labels)
+    {
+        if (IsDisposed || !viewModel.TrySetTeachingResultLabels(labels)) return false;
+        requestVisibleFrame();
+        return true;
     }
 
     public bool TrySetMeasurementVisible(bool visible)
@@ -256,6 +278,34 @@ internal sealed class ViewerHostOperationFacade
 
     public bool TrySetC3DHeightEmphasis(int emphasis) =>
         !IsDisposed && viewModel.TrySetC3DHeightEmphasis(emphasis);
+
+    public bool TryApplyHeightDisplayOptions(HeightDisplayOptions options, double? minimum = null, double? maximum = null) =>
+        !IsDisposed && viewModel.TryApplyHeightDisplayOptions(options, minimum, maximum);
+
+    public bool TryApplyLinkedHeightDisplayState(HeightDisplayOptions options, double minimum, double maximum) =>
+        !IsDisposed && viewModel.TryApplyLinkedHeightDisplayState(options, minimum, maximum);
+
+    public void SetHeightMeasurementColor(HeightMeasurementColorSnapshot? snapshot)
+    {
+        if (!IsDisposed) viewModel.SetHeightMeasurementColor(snapshot);
+    }
+
+    public void SetHeightDisplayContext(string workspace, string mapId, string mapName)
+    {
+        if (!IsDisposed) viewModel.SetHeightDisplayContext(workspace, mapId, mapName);
+    }
+
+    public void SetHeightDisplayLinked(bool linked)
+    {
+        if (!IsDisposed) viewModel.SetHeightDisplayLinked(linked);
+    }
+
+    public IReadOnlyDictionary<string, string> CaptureHeightDisplayModes() => IsDisposed ? new Dictionary<string, string>() : viewModel.CaptureHeightDisplayModes();
+
+    public void RestoreHeightDisplayModes(IReadOnlyDictionary<string, string> modes)
+    {
+        if (!IsDisposed) viewModel.RestoreHeightDisplayModes(modes);
+    }
 
     public void FitAll() => Execute(callbacks.FitAll);
 

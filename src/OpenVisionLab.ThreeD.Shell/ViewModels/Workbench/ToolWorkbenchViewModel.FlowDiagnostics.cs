@@ -24,6 +24,8 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand PreviousRecipeHealthIssueCommand => flowDiagnosticsOwner.PreviousRecipeHealthIssueCommand;
     public ICommand NextRecipeHealthIssueCommand => flowDiagnosticsOwner.NextRecipeHealthIssueCommand;
 
+    public int SourceConsumerCount => PipelineSteps.Count(step => step.InputEntityIds.Contains(Source.Id, StringComparer.OrdinalIgnoreCase));
+
     public string FlowProblemsSummary => flowDiagnosticsOwner.FlowProblemsSummary;
     public bool HasFlowProblems => flowDiagnosticsOwner.HasFlowProblems;
     public ToolWorkbenchFlowPortDiagnosticItem? SelectedStepFlowProblem =>
@@ -45,6 +47,7 @@ public sealed partial class ToolWorkbenchViewModel
         flowDiagnosticsOwner.SelectedRecipeHealthItem;
     public string SelectedRecipeHealthTitle => flowDiagnosticsOwner.SelectedRecipeHealthTitle;
     public string SelectedRecipeHealthDetail => flowDiagnosticsOwner.SelectedRecipeHealthDetail;
+    public string NextRecipeHealthIssueDetail => flowDiagnosticsOwner.NextRecipeHealthIssueDetail;
     public bool CanNavigatePreviousRecipeHealthIssue =>
         flowDiagnosticsOwner.CanNavigatePreviousRecipeHealthIssue;
     public bool CanNavigateNextRecipeHealthIssue =>
@@ -85,7 +88,14 @@ public sealed partial class ToolWorkbenchViewModel
             () => OrientedBoxEditor.IsDraftOpen,
             RefreshTeachingSelectionContext,
             RefreshStepCommands,
-            RefreshNavigatorSelection);
+            RefreshNavigatorSelection,
+            entityId => GetRenderableC3DTarget(entityId) is { IsSource: true, IsDisplayable: true } source
+                && string.Equals(SourceQuality.Report?.Source.Path, source.C3DPath, StringComparison.OrdinalIgnoreCase)
+                    ? SourceQuality.PreviewFrame : null,
+            entityId => GetRenderableC3DTarget(entityId) is { IsSource: false, IsDisplayable: true }
+                ? CreateRenderableC3DCatalogSnapshot().PreparationOutputs.Select(output => output.Output)
+                    .FirstOrDefault(output => string.Equals(output?.EntityId, entityId, StringComparison.OrdinalIgnoreCase))
+                : null);
         flowDiagnosticsEventCoordinator =
             new ToolWorkbenchFlowDiagnosticsEventCoordinator(
                 flowDiagnosticsOwner,
@@ -107,7 +117,11 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private void RebuildFlowPortDiagnostics() => flowDiagnosticsOwner.RebuildFlowPortDiagnostics();
+    private void RebuildFlowPortDiagnostics()
+    {
+        flowDiagnosticsOwner.RebuildFlowPortDiagnostics();
+        OnPropertyChanged(nameof(SourceConsumerCount));
+    }
 
     private void RebuildRecipeHealthProjection() => flowDiagnosticsOwner.RebuildRecipeHealthProjection();
 

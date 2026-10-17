@@ -46,7 +46,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(HeightImageZoomOut), nameof(HeightImageZoomIn),
         nameof(HeightImageCoordinateHint), nameof(HeightImagePanZoomHint), nameof(HeightImageViewOnly),
         nameof(HeightImageMissingValue), nameof(HeightImagePalette), nameof(HeightImagePaletteHeight),
-        nameof(HeightImagePaletteGrayscale), nameof(HeightImagePaletteThermal),
+        nameof(HeightImagePaletteGrayscale), nameof(HeightImagePaletteThermal), nameof(HeightImagePaletteMonochrome),
         nameof(HeightImageAutoRange), nameof(HeightImageManualRange), nameof(HeightImageAutoRangeToolTip),
         nameof(HeightImageRangeMinimum), nameof(HeightImageRangeMaximum), nameof(HeightImageApplyRange),
         nameof(HeightImageApplyRangeToolTip), nameof(HeightImageRangeInvalid),
@@ -561,6 +561,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string HeightImagePaletteHeight => T("ThreeD.Workbench.HeightImagePaletteHeight", "\uB192\uC774", "Height");
     public string HeightImagePaletteGrayscale => T("ThreeD.Workbench.HeightImagePaletteGrayscale", "\uD68C\uC0C9\uC870", "Grayscale");
     public string HeightImagePaletteThermal => T("ThreeD.Workbench.HeightImagePaletteThermal", "\uC5F4\uD654\uC0C1", "Thermal");
+    public string HeightImagePaletteMonochrome => T("ThreeD.Workbench.HeightImagePaletteMonochrome", "\uB2E8\uC0C9", "Monochrome");
     public string HeightImageAutoRange => T("ThreeD.Command.HeightImageAutoRange", "\uC790\uB3D9 \uBC94\uC704", "Auto range");
     public string HeightImageManualRange => T("ThreeD.Workbench.HeightImageManualRange", "\uC218\uB3D9 \uBC94\uC704", "Manual range");
     public string HeightImageAutoRangeToolTip => T("ThreeD.Command.HeightImageAutoRangeToolTip", "\uC804\uCCB4 \uC720\uD6A8 \uB192\uC774\uC758 \uCD5C\uC18C/\uCD5C\uB300\uB85C \uD45C\uC2DC \uBC94\uC704\uB97C \uBCF5\uC6D0\uD569\uB2C8\uB2E4. \uBCF4\uAE30 \uC804\uC6A9\uC785\uB2C8\uB2E4.", "Restore the display range to the full valid-height minimum and maximum. View only.");
@@ -570,8 +571,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string HeightImageApplyRangeToolTip => T("ThreeD.Command.HeightImageApplyRangeToolTip", "\uC785\uB825\uD55C \uCD5C\uC18C/\uCD5C\uB300\uB97C \uB192\uC774 \uC774\uBBF8\uC9C0 \uC0C9\uC0C1\uC5D0\uB9CC \uC801\uC6A9\uD569\uB2C8\uB2E4. \uB370\uC774\uD130\uC640 \uB808\uC2DC\uD53C\uB294 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Apply the entered minimum and maximum to Height Image colors only. Data and recipe stay unchanged.");
     public string HeightImageRangeInvalid => T("ThreeD.Workbench.HeightImageRangeInvalid", "\uC720\uD55C\uD55C \uC22B\uC790\uB97C \uC785\uB825\uD558\uACE0 \uCD5C\uC18C\uB97C \uCD5C\uB300\uBCF4\uB2E4 \uC791\uAC8C \uC124\uC815\uD558\uC138\uC694.", "Enter finite numbers and keep minimum below maximum.");
     public string HeightImageInvalidOverlay => T("ThreeD.Workbench.HeightImageInvalidOverlay", "\uACB0\uCE21 \uC140 \uD45C\uC2DC", "Show missing cells");
-    public string HeightImageInvalidOverlayToolTip => T("ThreeD.Workbench.HeightImageInvalidOverlayToolTip", "\uACB0\uCE21 \uC140\uC744 \uC790\uD64D\uC0C9\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4. \uC6D0\uBCF8 \uB370\uC774\uD130, ROI, \uB808\uC2DC\uD53C\uC640 \uAC80\uC0AC \uACB0\uACFC\uB294 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Show missing cells in magenta. Source data, ROI, recipe, and inspection results remain unchanged.");
-    public string HeightImageInvalidOverlayLegend => T("ThreeD.Workbench.HeightImageInvalidOverlayLegend", "\uC790\uD64D\uC0C9 = \uACB0\uCE21 \uC140", "Magenta = missing cell");
+    public string HeightImageInvalidOverlayToolTip => T("ThreeD.Workbench.HeightImageInvalidOverlayToolTip", "\uACB0\uCE21 \uC140\uC744 \uBE57\uAE08\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4. \uC6D0\uBCF8 \uB370\uC774\uD130, ROI, \uB808\uC2DC\uD53C\uC640 \uAC80\uC0AC \uACB0\uACFC\uB294 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Hatch missing cells. Source data, ROI, recipe, and inspection results remain unchanged.");
+    public string HeightImageInvalidOverlayLegend => T("ThreeD.Workbench.HeightImageInvalidOverlayLegend", "\uBE57\uAE08 = \uACB0\uCE21 \uC140", "Hatch = missing cell");
     public string HeightImageInvalidOverlayHidden => T("ThreeD.Workbench.HeightImageInvalidOverlayHidden", "\uC228\uAE40 = \uACB0\uCE21 \uC140", "Hidden missing cells");
     public string HeightImageInvalidOverlayUnavailable => T("ThreeD.Workbench.HeightImageInvalidOverlayUnavailable", "\uACB0\uCE21 \uC140 \uC815\uBCF4 \uC5C6\uC74C", "Missing-cell information unavailable");
     public string HeightImageViewOnlyShort => T("ThreeD.Workbench.HeightImageViewOnlyShort", "\uBCF4\uAE30 \uC804\uC6A9", "view only");
@@ -660,7 +661,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.Message.SupportBundleExportedFormat",
         "지원용 자료를 저장했습니다: {0}",
         "Support files saved: {0}");
-    public string ResultsWorkspaceTitle => T("ThreeD.Results.Title", "\uACB0\uACFC \uAC80\uD1A0", "Results review");
+    public string ResultsWorkspaceTitle => T("ThreeD.Results.Title", "기록", "Records");
     public string ResultsWorkspaceRunResultTitle => T("ThreeD.Results.RunResultTitle", "\uC2E4\uD589 \uACB0\uACFC", "Run result");
     public string ResultsWorkspaceNoRun => T("ThreeD.Results.NoRun", "\uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uBA74 \uD56D\uBAA9\uBCC4 \uAC12\uACFC \uD310\uC815\uC744 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Run the inspection to see each item's value and decision.");
     public string ResultsWorkspaceItemColumn => T("ThreeD.Results.ItemColumn", "검사 항목", "Inspection item");
@@ -914,16 +915,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "{0} × {1} | source origin ({2}, {3}) | valid {4:N0} | missing {5:N0} | {6} | {7}");
     public string LevelSurfaceArtifactDetailFormat => T(
         "ThreeD.Workbench.LevelSurfaceArtifactDetailFormat",
-        "{0} × {1} | 기준 RMS {2:G6} | 변환 {3} | 레벨 좌표계 {4} | 좌표계 체인 {5} | 품질 {6} {7} | {8} | {9}",
-        "{0} × {1} | reference RMS {2:G6} | transform {3} | level frame {4} | frame chain {5} | quality {6} {7} | {8} | {9}");
+        "{0} × {1} | 기준 RMS {2:0.##} | 변환 {3} | 레벨 좌표계 {4} | 좌표계 체인 {5} | 품질 {6} {7} | {8} | {9}",
+        "{0} × {1} | reference RMS {2:0.##} | transform {3} | level frame {4} | frame chain {5} | quality {6} {7} | {8} | {9}");
     public string FilterArtifactDetailFormat => T(
         "ThreeD.Workbench.FilterArtifactDetailFormat",
         "격자 {0} × {1} | {2} | {3}",
         "grid {0} × {1} | {2} | {3}");
     public string HeightThresholdArtifactDetailFormat => T(
         "ThreeD.Workbench.HeightThresholdArtifactDetailFormat",
-        "격자 {0} × {1} | 임계값 {2:G6} | 유지 {3:N0}개 · 제거 {4:N0}개 | {5}",
-        "grid {0} × {1} | threshold {2:G6} | retained {3:N0} · removed {4:N0} | {5}");
+        "격자 {0} × {1} | 임계값 {2:0.##} | 유지 {3:N0}개 · 제거 {4:N0}개 | {5}",
+        "grid {0} × {1} | threshold {2:0.##} | retained {3:N0} · removed {4:N0} | {5}");
     public string HeightDifferenceEdgeArtifactDetailFormat => T(
         "ThreeD.Workbench.HeightDifferenceEdgeArtifactDetailFormat",
         "포인트 {0:N0}개 | {1}",
@@ -942,20 +943,20 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ordered picks ({0}, {1}) -> ({2}, {3}) -> ({4}, {5}) | {6}");
     public string DatumPlaneDeviationArtifactDetailFormat => T(
         "ThreeD.Workbench.DatumPlaneDeviationArtifactDetailFormat",
-        "{0} | P2V {1:G6} 원시 높이 | 유효 샘플 {2:N0}개 | {3}",
-        "{0} | P2V {1:G6} raw-height | {2:N0} samples | {3}");
+        "{0} | P2V {1:0.##} 원시 높이 | 유효 샘플 {2:N0}개 | {3}",
+        "{0} | P2V {1:0.##} raw-height | {2:N0} samples | {3}");
     public string LineIntersectionArtifactDetailFormat => T(
         "ThreeD.Workbench.LineIntersectionArtifactDetailFormat",
-        "{0} | 간격 {1:G6} | 예각 {2:G6}도",
-        "{0} | gap {1:G6} | acute {2:G6} degrees");
+        "{0} | 간격 {1:0.##} | 예각 {2:0.##}도",
+        "{0} | gap {1:0.##} | acute {2:0.##} degrees");
     public string LandmarkCorrespondenceArtifactDetailFormat => T(
         "ThreeD.Workbench.LandmarkCorrespondenceArtifactDetailFormat",
         "쌍 {0}/4 | 입력 데이터 순위 {1}/4 | 참조 순위 {2}/4 | 대응 정보 전용",
         "{0}/4 pairs | source rank {1}/4 | reference rank {2}/4 | correspondence evidence only");
     public string XyzAffineSolveArtifactDetailFormat => T(
         "ThreeD.Workbench.XyzAffineSolveArtifactDetailFormat",
-        "조건수 {0:G6} | 최대 잔차 {1:G6} | 행렬 정보 전용",
-        "condition {0:G6} | max residual {1:G6} | matrix evidence only");
+        "조건수 {0:0.##} | 최대 잔차 {1:0.##} | 행렬 정보 전용",
+        "condition {0:0.##} | max residual {1:0.##} | matrix evidence only");
     public string XyzAffineApplyArtifactDetailFormat => T(
         "ThreeD.Workbench.XyzAffineApplyArtifactDetailFormat",
         "변환 유효 점 {0:N0}개 | 원본 누락 셀 {1:N0}개 | A3 재격자화 제외",
@@ -979,7 +980,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FocusStep => T("ThreeD.Command.FocusStep", "\uB2E8\uACC4 \uD3EC\uCEE4\uC2A4", "Focus Step");
     public string DisplayedOutputsSummaryFormat => T("ThreeD.Workbench.DisplayedOutputsSummaryFormat", "\uB192\uC774 \uB370\uC774\uD130 {0} | \uCE21\uC815\u00B7\uAC80\uCD9C \uACB0\uACFC {1}", "{0} renderable | {1} evidence-only");
     public string DisplayableC3DData => T("ThreeD.Workbench.DisplayableC3DData", "C3D \uBDF0\uC5B4 \uB370\uC774\uD130 \uC0AC\uC6A9 \uAC00\uB2A5", "C3D viewer data available");
-    public string DisplayableHeightImageData => T("ThreeD.Workbench.DisplayableHeightImageData", "signed-delta \uC774\uBBF8\uC9C0 \uBDF0\uC5B4 \uB370\uC774\uD130 \uC0AC\uC6A9 \uAC00\uB2A5", "Signed-delta image viewer data available");
+    public string DisplayableHeightImageData => T("ThreeD.Workbench.DisplayableHeightImageData", "편차 데이터 표시 가능", "Signed delta display available");
     public string EvidenceOnlyOutput => T("ThreeD.Workbench.EvidenceOnlyOutput", "\uAC80\uD1A0\uC6A9 \uACB0\uACFC \u2014 3D \uD45C\uC2DC \uC5C6\uC74C", "Review result \u2014 no 3D display");
     public string NoCurrentDisplayableOutput => T("ThreeD.Workbench.NoCurrentDisplayableOutput", "\uD604\uC7AC \uD45C\uC2DC \uAC00\uB2A5\uD55C \uACB0\uACFC \uC5C6\uC74C", "No current displayable output");
     public string PinnedSlotsFormat => T("ThreeD.Workbench.PinnedSlotsFormat", "\uBE44\uAD50 \uC2AC\uB86F {0}\uC5D0 \uACE0\uC815", "Pinned to comparison slot {0}");
@@ -1054,8 +1055,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Parameters match the committed recipe. Editing does not run Preview or Publish.");
     public string StepParameterPendingChanges => T(
         "ThreeD.Workbench.StepParameterPendingChanges",
-        "\uC801\uC6A9\uD558\uC9C0 \uC54A\uC740 \uC124\uC815\uAC12 \uBCC0\uACBD\uC785\uB2C8\uB2E4. \uB808\uC2DC\uD53C \uC138\uC158\uC744 \uBCC0\uACBD\uD558\uAE30 \uC804\uC5D0 \uC801\uC6A9\uD558\uAC70\uB098 \uCDE8\uC18C\uD558\uC138\uC694.",
-        "Unapplied parameter changes. Apply or discard before changing recipe sessions.");
+        "\uC124\uC815\uAC12\uC744 \uC801\uC6A9\uD558\uAC70\uB098 \uBCC0\uACBD\uC744 \uCDE8\uC18C\uD558\uC138\uC694.",
+        "Apply or discard the parameter changes.");
     public string StepPropertiesEditDetail => T("ThreeD.Workbench.StepPropertiesEditDetail", "\uD3B8\uC9D1\uC740 \uC791\uC131\uB41C \uB808\uC2DC\uD53C\uB9CC \uBC14\uAFC9\uB2C8\uB2E4. \uC9C0\uC6D0 \uB3C4\uAD6C\uB294 \uBBF8\uB9AC\uBCF4\uAE30\uB85C \uC9C1\uC811 \uC2E4\uD589\uD569\uB2C8\uB2E4.", "Editing changes only the authored recipe. Use Preview explicitly to execute a supported typed step.");
     public string SelectedToolExampleLabel => T("ThreeD.Workbench.SelectedToolExampleLabel", "입력 예시", "Example");
     public string SelectedToolExpectedOverlayLabel => T("ThreeD.Workbench.SelectedToolExpectedOverlayLabel", "예상 오버레이", "Expected overlay");
@@ -1163,6 +1164,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string NoToolSelected => T("ThreeD.Workbench.NoToolSelected", "\uC120\uD0DD\uB41C \uB3C4\uAD6C \uC5C6\uC74C", "No tool selected");
     public string SelectedToolTitleFormat => T("ThreeD.Workbench.SelectedToolTitleFormat", "{0} / {1}", "{0} / {1}");
     public string NoSelectedToolState => T("ThreeD.Workbench.NoSelectedToolState", "\uC120\uD0DD \uC5C6\uC74C", "No selection");
+    public string ViewerReferenceChip => T("ThreeD.Viewer.ReferenceChip", "\uAE30\uC900", "Reference");
+    public string ViewerMeasurementChip => T("ThreeD.Viewer.MeasurementChip", "\uCE21\uC815", "Measure");
+    public string ViewerRowAxis => T("ThreeD.Viewer.RowAxis", "\uD589", "Row");
+    public string ViewerColumnAxis => T("ThreeD.Viewer.ColumnAxis", "\uC5F4", "Col");
+    public string ViewerCellUnit => T("ThreeD.Viewer.Cell", "\uC140", "cell");
     public string SelectedToolGridRectangleFormat => T("ThreeD.Workbench.SelectedToolGridRectangleFormat", "\uC5F4 {0}, \uD589 {1}, \uC5F4 \uAC1C\uC218 {2}, \uD589 \uAC1C\uC218 {3}", "column {0}, row {1}, columns {2}, rows {3}");
     internal (string Name, string Description) TeachingSelectionPresentation(ToolWorkbenchTeachingSelectionRequirement requirement)
     {

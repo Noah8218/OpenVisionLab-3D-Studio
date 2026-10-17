@@ -83,6 +83,7 @@ internal static class ViewerViewModelPropertyChangePolicy
             or nameof(MainWindowViewModel.LazSampleVisible)
             or nameof(MainWindowViewModel.MeasurementVisible)
             or nameof(MainWindowViewModel.DisplaySettingsRevision)
+            or nameof(MainWindowViewModel.C3DTexture)
             or nameof(MainWindowViewModel.C3DHeightColorRangeRevision)
             or nameof(MainWindowViewModel.C3DHeightEmphasis)
             or nameof(MainWindowViewModel.PointSize)

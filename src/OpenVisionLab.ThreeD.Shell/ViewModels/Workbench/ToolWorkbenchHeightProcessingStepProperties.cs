@@ -365,14 +365,14 @@ public sealed class RemoveOutlierPixelsStepProperties
     [Category("Outlier rule")]
     [DisplayName("Window size")]
     [Description("Odd square neighborhood. The center cell is excluded from the local median.")]
-    [PropertyOrder(1)]
+    [PropertyOrder(2)]
     [NumberRange(3, 7, 2)]
     public int WindowSize { get; set; }
 
     [Category("Outlier rule")]
     [DisplayName("Maximum absolute deviation")]
     [Description("A cell is removed only when |center - local median| is strictly greater than this raw-height threshold.")]
-    [PropertyOrder(2)]
+    [PropertyOrder(1)]
     [NumberRange(0.000001, double.MaxValue, 1)]
     public double MaximumAbsoluteDeviation { get; set; }
 

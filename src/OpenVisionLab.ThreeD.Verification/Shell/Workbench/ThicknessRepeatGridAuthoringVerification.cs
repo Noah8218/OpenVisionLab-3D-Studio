@@ -294,6 +294,7 @@ internal static class ThicknessRepeatGridAuthoringVerification
             lines.Add($"Evidence | starter={starterPath}");
             lines.Add($"Evidence | applied={appliedPath}");
             lines.Add($"Evidence | source={exactSourcePath}");
+            VerifyGroupContract(reportDirectory, authored.Draft!.CandidateDocument, exactDocument, exactSourcePath, reopened, Check);
         }
         catch (Exception exception)
         {
@@ -309,6 +310,94 @@ internal static class ThicknessRepeatGridAuthoringVerification
         summary =
             $"Thickness repeat-grid authoring verification: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)";
         return succeeded;
+    }
+
+    private static void VerifyGroupContract(string root, ToolRecipeDocument authored, ToolRecipeDocument exact, string sourcePath, ToolWorkbenchViewModel reopened, Action<string, bool, string> check)
+    {
+        var group = authored.Steps[0].Group;
+        check("actual repeat membership survives Store reload and fresh Workbench reopen", group is not null && group.Name == "Pad"
+            && authored.Steps.All(step => step.Group == group) && reopened.PipelineSteps.All(step => step.Group == group), "stable metadata; existing Apply and cancel checks establish no implicit execution");
+        var legacy = authored with { SchemaVersion = ToolRecipeDocument.AcceptanceLimitsSchemaVersion, Steps = authored.Steps.Select(step => step with { Group = null }).ToArray() };
+        check("legacy schema and group-free execution context preserve metadata exclusion", ToolRecipeValidator.ValidateForStorage(legacy).IsValid
+            && authored.Steps.All(step => authored.CreateStepExecutionContext(step.Id) == legacy.CreateStepExecutionContext(step.Id)), "group name/membership has no execution-context effect");
+        var plainStep = legacy.Steps[0] with { InputEntityIds = [legacy.Source.Id] };
+        var plain = legacy with { Steps = [plainStep], References = [], Selections = [] };
+        var oldContext = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Source = plain.Source with { Name = string.Empty },
+            Steps = new[] { new { plainStep.Id, plainStep.ToolId, ToolName = string.Empty, plainStep.MinimumInputCount, plainStep.InputEntityIds,
+                plainStep.OutputEntityId, plainStep.Parameters, plainStep.DualRoiRouting, plainStep.OutputEnabled, plainStep.SignedDeltaSidecar, plainStep.AcceptanceLimitsConfigured } },
+            Selections = Array.Empty<ToolRecipeSelection>(), References = Array.Empty<ToolRecipeReference>()
+        });
+        check("ungrouped context bytes match the prior explicit step contract", plain.CreateStepExecutionContext(plainStep.Id) == oldContext, "all pre-group property order and null fields retained");
+        var versions = new[] { "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10" };
+        foreach (var version in versions)
+        {
+            var path = Path.Combine(root, $"legacy-schema-{version}.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(path, legacy with { SchemaVersion = version, Steps = [], Selections = null, Category = null, InspectionTarget = null, Description = null });
+            check($"schema {version} remains readable without group migration", ToolRecipeDocumentStore.Load(path).SchemaVersion == version, "legacy document shape and explicit schema retained");
+        }
+        var badNames = authored with { Steps = authored.Steps.Select((step, index) => index == 1 ? step with { Group = new ToolRecipeStepGroup(group!.Id.ToUpperInvariant(), "Conflicting name") } : step).ToArray() };
+        check("group storage boundary rejects conflicting case-insensitive identity and empty descriptors", !ToolRecipeValidator.ValidateForStorage(badNames).IsValid
+            && !ToolRecipeValidator.ValidateForStorage(authored with { Steps = [authored.Steps[0] with { Group = new ToolRecipeStepGroup("", "") }] }).IsValid
+            && !ToolRecipeValidator.ValidateForStorage(legacy with { Steps = authored.Steps }).IsValid
+            && ToolRecipeValidator.ValidateForStorage(authored with { Steps = [null!] }).Errors.Any(error => error.Contains("required", StringComparison.OrdinalIgnoreCase)), "malformed input returns errors, not NullReferenceException");
+        var removed = reopened.PipelineSteps[1];
+        reopened.SelectedPipelineStep = removed;
+        check("member deletion and explicit restore preserve group identity without Run", reopened.ConfirmSelectedStepRemoval(removed.Id)
+            && reopened.PipelineSteps.Count == 7 && reopened.TryRestoreLastRemovedStep(out _)
+            && reopened.PipelineSteps.Count == 8 && reopened.PipelineSteps.Single(step => step.Id == removed.Id).Group == group && !reopened.IsValidationSetRunning,
+            "existing removal snapshot owns restoration");
+
+        var fixtureRoot = Path.Combine(root, "native-group-fixture");
+        Directory.CreateDirectory(fixtureRoot);
+        var inputPath = Path.Combine(fixtureRoot, "coupon.C3D");
+        File.Copy(sourcePath, inputPath, overwrite: true);
+        // Author through the real repeat service, then retain the bundled per-pad authored tolerances.
+        var seed = exact with { Source = exact.Source with { Path = inputPath }, Steps = [exact.Steps[0]],
+            Selections = exact.Selections!.Where(selection => exact.Steps[0].InputEntityIds.Contains(selection.Id)).ToArray() };
+        var named = ThicknessRepeatGridAuthoringService.CreateCandidate(seed, seed.Steps[0].Id, new ThicknessRepeatGridRequest(4, 2, 288, 336, "Pad 두께 {n}")).Draft!.CandidateDocument;
+        var fixture = named with { Name = "Repeated Thickness group parity",
+            Steps = named.Steps.Select((step, index) => step with { Parameters = exact.Steps[index].Parameters }).ToArray() };
+        var groupedPath = Path.Combine(fixtureRoot, "grouped.ov3d-recipe.json");
+        var legacyPath = Path.Combine(fixtureRoot, "legacy.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(groupedPath, fixture);
+        ToolRecipeDocumentStore.Save(legacyPath, fixture with { SchemaVersion = ToolRecipeDocument.AcceptanceLimitsSchemaVersion, Steps = fixture.Steps.Select(step => step with { Group = null }).ToArray() });
+        check("group JSON is explicit and null group fields are absent from legacy JSON", File.ReadAllText(groupedPath).Contains("\"group\"")
+            && !File.ReadAllText(legacyPath).Contains("\"group\"") && ToolRecipeDocumentStore.Load(legacyPath).Steps.All(step => step.Group is null), "old reader rejects new schema; new reader retains old contract");
+        var snapshot = C3DHeightFieldSnapshot.LoadIdentified(inputPath, fixture.Source.Id, fixture.Source.Unit, fixture.Source.FrameId);
+        var values = snapshot.Values.ToArray();
+        var roi = fixture.Selections!.Single(selection => selection.Id == fixture.Steps[0].InputEntityIds[2]).GridRectangle!;
+        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++) values[row * snapshot.Width + column] += 5;
+        var ngPath = Path.Combine(fixtureRoot, "single-member-ng.C3D");
+        C3DHeightFieldSnapshot.CreateForVerification(fixture.Source.Id, snapshot.Width, snapshot.Height, values, snapshot.Unit, snapshot.FrameId).SaveC3D(ngPath);
+        var errorPath = Path.Combine(fixtureRoot, "single-member-missing.C3D");
+        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++) values[row * snapshot.Width + column] = double.NaN;
+        C3DHeightFieldSnapshot.CreateForVerification(fixture.Source.Id, snapshot.Width, snapshot.Height, values, snapshot.Unit, snapshot.FrameId).SaveC3D(errorPath);
+        var roles = new[] { new global::OpenVisionLab.ThreeD.Tools.ToolRecipeValidationSampleInput(inputPath, ToolRecipeValidationSampleRole.Good), new global::OpenVisionLab.ThreeD.Tools.ToolRecipeValidationSampleInput(ngPath, ToolRecipeValidationSampleRole.Bad), new global::OpenVisionLab.ThreeD.Tools.ToolRecipeValidationSampleInput(errorPath, ToolRecipeValidationSampleRole.HeldOut) };
+        foreach (var path in new[] { groupedPath, legacyPath }) ToolRecipeValidationSetDefinitionStore.SaveForRecipe(path,
+            new ToolRecipeValidationSetDefinition(ToolRecipeValidationSetDefinition.CurrentSchemaVersion, fixture.Name, fixture.Source.ContentSha256!,
+                roles.Select((sample, index) => new ToolRecipeValidationSampleDefinition(index + 1, sample.SourcePath, sample.Role)).ToArray()));
+        var execution = global::OpenVisionLab.ThreeD.Tools.ToolRecipeValidationSetExecution.Execute(fixture, roles);
+        File.WriteAllText(Path.Combine(fixtureRoot, "actual-execution.json"), System.Text.Json.JsonSerializer.Serialize(execution, new System.Text.Json.JsonSerializerOptions { WriteIndented = true, NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals }));
+        check("native paired fixtures use actual C3D execution with member NG and Error", execution.Samples.Count == 3
+            && execution.Samples[1].Steps[0].Status == ResultStatus.Fail && execution.Samples[2].Steps[0].Status == ResultStatus.Error,
+            $"grouped={groupedPath};legacy={legacyPath};states={string.Join(',', execution.Samples.Select(sample => sample.Status))};no injected UI result");
+        using var clone = new ToolWorkbenchViewModel(Path.Combine(root, "group-clone-recent.json"));
+        clone.TryOpenTeachingRecipe(groupedPath, out _);
+        clone.BeginCompatibleSourceVariantSetup();
+        clone.FirstRecipeSourcePath = ngPath;
+        clone.IsVariantRoiReuseConfirmed = true;
+        var clonePath = Path.Combine(fixtureRoot, "clone-" + Guid.NewGuid().ToString("N") + ".ov3d-recipe.json");
+        var setup = new ToolWorkbenchFirstRecipeSetup("Group clone", fixtureRoot, ngPath, "", clonePath, IsCompatibleSourceVariant: true);
+        var cloned = clone.TryCreateCompatibleSourceVariant(setup, ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(ngPath), out var cloneMessage);
+        check("existing compatible-source clone preserves group and remains idle", cloned && ToolRecipeDocumentStore.Load(clonePath).Steps.All(step => step.Group == fixture.Steps[0].Group)
+            && !clone.IsValidationSetRunning && !clone.HasCurrentMeasurementPreview, cloneMessage);
+        var disabledPath = Path.Combine(fixtureRoot, "disabled-member.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(disabledPath, fixture with { Steps = fixture.Steps.Select((step, index) => index == 7 ? step with { OutputEnabled = false } : step).ToArray() });
+        check("disabled member survives actual save reload", ToolRecipeDocumentStore.Load(disabledPath).Steps.Count(step => step.OutputEnabled) == 7, disabledPath);
     }
 
     private static string FindRepositoryRoot()

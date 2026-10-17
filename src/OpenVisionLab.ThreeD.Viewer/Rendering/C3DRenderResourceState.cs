@@ -8,6 +8,11 @@ namespace OpenVisionLab.ThreeD.Viewer.Rendering;
 /// </summary>
 internal sealed class C3DRenderResourceState
 {
+    internal uint TextureId;
+    internal OpenVisionLab.ThreeD.Viewer.Loading.C3DTextureImage? TextureImage;
+    internal int TextureUploadCount;
+    internal int TextureReleaseCount;
+    internal int TextureReleaseFailureCount;
     internal uint DisplayListId;
 
     internal C3DDisplayListKey? DisplayListKey;
@@ -27,7 +32,7 @@ internal sealed class C3DRenderResourceState
     internal bool GpuBuffersAvailable { get; private set; }
 
     internal bool HasManagedHandles =>
-        GpuBuffers is not null
+        TextureId != 0 || GpuBuffers is not null
         || DisplayListId != 0
         || InteractionDisplayListId != 0;
 
@@ -96,6 +101,8 @@ internal sealed class C3DRenderResourceState
     /// </summary>
     internal void ResetForOpenGLInitialization()
     {
+        TextureId = 0;
+        TextureImage = null;
         GpuBuffers = null;
         GpuBufferKey = null;
         GpuFailedKey = null;

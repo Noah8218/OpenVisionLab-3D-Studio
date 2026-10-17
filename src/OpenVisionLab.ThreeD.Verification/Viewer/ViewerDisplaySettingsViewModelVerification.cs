@@ -111,7 +111,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
             Check("C3D geometry choices", Sequence(c3dViewModel.AvailableGeometryStyles, "Points", "Wireframe", "Surface", "Surface + Edges"), string.Join(",", c3dViewModel.AvailableGeometryStyles));
             Check(
                 "C3D color choices",
-                Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal"),
+                Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal", "ColorVisionAssist"),
                 string.Join(",", c3dViewModel.AvailableColorMaps));
             Check("C3D current default", c3dViewModel.SelectedGeometryStyle == "Surface" && c3dViewModel.SelectedColorMap == "Height", c3dViewModel.EffectiveSummary);
             Check("C3D geometry selectable", c3dViewModel.CanSelectGeometryStyle, c3dViewModel.CanSelectGeometryStyle.ToString());
@@ -139,6 +139,12 @@ internal static class ViewerDisplaySettingsViewModelVerification
             c3dViewModel.SelectedGeometryStyle = "Points";
             Check("C3D geometry reset", c3dViewModel.SelectedGeometryStyle == "Points" && c3dRenderChanges == 2, c3dViewModel.EffectiveSummary);
 
+            var assistViewModel = new ViewerDisplaySettingsViewModel();
+            assistViewModel.ConfigureC3DHeightGrid(deviationAvailable: false);
+            assistViewModel.SelectedColorMap = "ColorVisionAssist";
+            Check("C3D colour vision assist typed capability", assistViewModel.EffectiveSettings.ColorMap == ViewerColorMap.ColorVisionAssist, assistViewModel.EffectiveSummary);
+            Check("HTML v5 colour vision assist endpoints", C3DPointMapPalette.ColorVisionAssistBytes(0) == ((byte)0, (byte)32, (byte)77)
+                && C3DPointMapPalette.ColorVisionAssistBytes(1) == ((byte)255, (byte)234, (byte)70), "#00204d -> #ffea46");
             c3dViewModel.SelectedColorMap = "Grayscale";
             Check(
                 "C3D grayscale selection",
@@ -165,7 +171,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
             c3dViewModel.ConfigureC3DHeightGrid(deviationAvailable: true);
             Check(
                 "C3D result color capability",
-                Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal", "Deviation"),
+                Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal", "ColorVisionAssist", "Deviation"),
                 string.Join(",", c3dViewModel.AvailableColorMaps));
             c3dViewModel.SelectedColorMap = "Deviation";
             Check("C3D deviation selection", c3dViewModel.SelectedColorMap == "Deviation", c3dViewModel.EffectiveSummary);
@@ -726,14 +732,14 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 locatedRecipe ?? "(none)");
             var sectionProfilePath = C3DSectionProfilePathBuilder.Build(
                 [
-                    new HeightGridPoint(Vector3.Zero, 0.0, 0.0, 1.0f),
-                    new HeightGridPoint(new Vector3(1.0f, 0.0f, 0.0f), 0.0, 0.0, 3.0f)
+                    new HeightGridPoint(Vector3.Zero, 0.0, 0.0, 1.0f, Row: 0, Column: 0),
+                    new HeightGridPoint(new Vector3(1.0f, 0.0f, 0.0f), 0.0, 0.0, 3.0f, Row: 0, Column: 1)
                 ],
                 1.0,
                 3.0);
             Check(
                 "section profile path builder preserves endpoint scaling",
-                sectionProfilePath == "M 0.0,51.0 L 240.0,3.0",
+                sectionProfilePath.Trim() == "M 0.0,51.0 L 240.0,3.0",
                 sectionProfilePath);
             var heightMapPixels = C3DHeightMapRasterizer.CreatePixels(c3dCacheGrid, 16, 8);
             Check(
@@ -1079,7 +1085,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "Ready: generated cube and point cloud loaded");
             Check(
                 "viewer localization Korean runtime",
-                koreanRuntimeStatus == "준비: 생성된 큐브와 포인트 클라우드 로드됨",
+                koreanRuntimeStatus == "준비: 생성된 큐브와 포인트 점군 로드됨",
                 koreanRuntimeStatus);
             Check(
                 "viewer localization preserves technical values",
@@ -1109,7 +1115,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "viewer localization evidence summary",
                 ViewerLocalization.Shared.LocalizeRuntimeText(
                     "Runner/UI contract matched | Status: Fail | Key metric: Peak 1.0 | Evidence: Matched")
-                == "Runner/UI 계약 일치 | 상태: 실패 | 핵심 측정값: 피크 1.0 | 증거: 일치",
+                == "검사·화면 결과 일치 | 상태: 실패 | 핵심 측정값: 피크 1.0 | 정보: 일치",
                 ViewerLocalization.Shared.LocalizeRuntimeText(
                     "Runner/UI contract matched | Status: Fail | Key metric: Peak 1.0 | Evidence: Matched"));
             Check(
@@ -1126,11 +1132,13 @@ internal static class ViewerDisplaySettingsViewModelVerification
             };
             rootViewModel.RefreshLocalizedPresentation();
             Check(
-                "viewer localization refresh notifications",
+                "viewer localization refreshes labels without changing render density",
                 localizedNotifications.Contains(nameof(MainWindowViewModel.ViewerStatus))
                 && localizedNotifications.Contains(nameof(MainWindowViewModel.BottomStatus))
                 && localizedNotifications.Contains(nameof(MainWindowViewModel.CoordinateFrameSummary))
-                && localizedNotifications.Contains(nameof(MainWindowViewModel.SelectedRenderDensity)),
+                && localizedNotifications.Contains(nameof(MainWindowViewModel.RenderDensityModes))
+                && localizedNotifications.Contains(nameof(MainWindowViewModel.RenderDensitySummary))
+                && !localizedNotifications.Contains(nameof(MainWindowViewModel.SelectedRenderDensity)),
                 string.Join(",", localizedNotifications.OrderBy(name => name, StringComparer.Ordinal)));
             OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
 

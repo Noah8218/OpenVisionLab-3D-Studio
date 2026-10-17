@@ -225,6 +225,18 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshThicknessRepeatGroupPresentation()
     {
+        var members = PipelineSteps.Where(step => step.ToolId == "thickness" && IsNumberedThicknessInstance(step.ToolName)).ToArray();
+        // The existing repeat identity is a display group only when its input and ordering agree.
+        var firstIndex = members.Length == 0 ? -1 : PipelineSteps.IndexOf(members[0]);
+        var grouped = members.Length >= 2 && members.Select((step, index) => PipelineSteps.IndexOf(step) == firstIndex + index).All(value => value)
+            && members.Select(step => step.InputEntityIds.FirstOrDefault()).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
+        var anchor = grouped ? members[0] : null;
+        var range = grouped ? $"{members[0].Order}–{members[^1].Order}" : string.Empty;
+        foreach (var step in PipelineSteps)
+        {
+            var member = grouped && members.Contains(step);
+            step.UpdateFlowRepeatGroup(member ? anchor : null, member ? members.Length : 0, member && ReferenceEquals(step, members[^1]), member ? range : string.Empty);
+        }
         OnPropertyChanged(nameof(HasThicknessRepeatGroup));
         OnPropertyChanged(nameof(ThicknessRepeatGroupSummary));
         OnPropertyChanged(nameof(ThicknessRepeatGroupMembers));

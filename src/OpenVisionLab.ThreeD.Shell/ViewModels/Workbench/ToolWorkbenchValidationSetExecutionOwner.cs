@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Diagnostics;
 using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
@@ -18,6 +19,10 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
     private int commandInFlight;
     private int executionGate;
     private int disposalState;
+    private readonly Stopwatch elapsed = new();
+    private readonly object elapsedGate = new();
+    private Timer? elapsedTimer;
+    private int elapsedEpoch;
 
     public ToolWorkbenchValidationSetExecutionOwner(Action onStateChanged)
     {
@@ -25,6 +30,10 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
     }
 
     public bool IsRunning { get; private set; }
+
+    public TimeSpan Elapsed => elapsed.Elapsed;
+
+    public string ElapsedText => $"{(int)Elapsed.TotalMinutes:00}:{Elapsed.Seconds:00}";
 
     public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 
@@ -39,6 +48,7 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
             return;
         }
 
+        StopElapsed();
         var currentCancellation = Interlocked.Exchange(ref cancellation, null);
         CancelAndDispose(currentCancellation);
         IsRunning = false;
@@ -125,6 +135,7 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
                 throw new OperationCanceledException(currentToken);
             }
 
+            StartElapsed(SynchronizationContext.Current);
             SetRunning(true);
             return await Task.Run(
                 () => ToolRecipeValidationSetExecution.Execute(
@@ -136,6 +147,7 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
         }
         finally
         {
+            StopElapsed();
             var currentCancellation = Interlocked.Exchange(ref cancellation, null);
             if (currentCancellation is not null)
             {
@@ -161,6 +173,35 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
         catch (ObjectDisposedException)
         {
             // A concurrent owner disposal already released the token source.
+        }
+    }
+
+    private void StartElapsed(SynchronizationContext? context)
+    {
+        lock (elapsedGate)
+        {
+            if (IsDisposed) return;
+            StopElapsed();
+            elapsed.Restart();
+            if (context is null) return;
+            var epoch = Volatile.Read(ref elapsedEpoch);
+            elapsedTimer = new Timer(_ => context.Post(_ =>
+            {
+                lock (elapsedGate)
+                {
+                    if (!IsDisposed && IsRunning && epoch == Volatile.Read(ref elapsedEpoch)) onStateChanged();
+                }
+            }, null), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+    }
+
+    private void StopElapsed()
+    {
+        lock (elapsedGate)
+        {
+            Interlocked.Increment(ref elapsedEpoch);
+            Interlocked.Exchange(ref elapsedTimer, null)?.Dispose();
+            elapsed.Stop();
         }
     }
 
@@ -207,6 +248,7 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
                 Volatile.Write(ref commandTask, null);
                 Volatile.Write(ref commandObservationTask, null);
                 Interlocked.Exchange(ref commandInFlight, 0);
+                if (!IsDisposed) onStateChanged();
             }
         }
     }

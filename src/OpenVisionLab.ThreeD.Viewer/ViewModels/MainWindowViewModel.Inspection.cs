@@ -69,12 +69,12 @@ public sealed partial class MainWindowViewModel
             ? $"Reference-plane flatness: {evaluation.Result.Status} | {evaluation.Result.Message}"
             : string.Create(
                 CultureInfo.InvariantCulture,
-                $"Reference-plane range: {evaluation.Result.Status} | {evaluation.Flatness:F3} / {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}");
+                $"Reference-plane range: {evaluation.Result.Status} | {evaluation.Flatness:0.##} / {PlaneFlatnessTolerance:0.##} {PlaneFlatnessUnit}");
         PlaneFlatnessDetails = evaluation.ReferencePlane is null
             ? "Reference ROI did not produce a valid fitted plane."
             : string.Create(
                 CultureInfo.InvariantCulture,
-                $"Reference-plane signed min {evaluation.MinimumSignedDistance:F3}, max {evaluation.MaximumSignedDistance:F3}, range {evaluation.Flatness:F3}, absolute peak {absolutePeak:F3}, RMS {evaluation.RootMeanSquareDistance:F3} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0} | GD&T minimum-zone: not computed");
+                $"Reference-plane signed min {evaluation.MinimumSignedDistance:0.##}, max {evaluation.MaximumSignedDistance:0.##}, range {evaluation.Flatness:0.##}, absolute peak {absolutePeak:0.##}, RMS {evaluation.RootMeanSquareDistance:0.##} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0} | GD&T minimum-zone: not computed");
 
         inspectionSession.Activate(ViewerInspectionKind.C3DPlaneFlatness);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
@@ -227,13 +227,13 @@ public sealed partial class MainWindowViewModel
         PointPairAngleDegrees = evaluation.ElevationAngleDegrees;
         PointPairDimensionsSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Point pair: {evaluation.Result.Status} | D {evaluation.Distance:F3}, W {evaluation.PlanarWidth:F3} {PointPairDimensionsUnit}, A {evaluation.ElevationAngleDegrees:F3} deg");
+            $"Point pair: {evaluation.Result.Status} | D {evaluation.Distance:0.##}, W {evaluation.PlanarWidth:0.##} {PointPairDimensionsUnit}, A {evaluation.ElevationAngleDegrees:0.##} deg");
         var referenceSummary = pointPairFirstReference is not null && pointPairSecondReference is not null
             ? $"Refs {pointPairFirstReference.Id} ({pointPairFirstReference.Row},{pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row},{pointPairSecondReference.Column}) | "
             : string.Empty;
         PointPairDimensionsDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"{referenceSummary}Expected D {PointPairExpectedDistance:F3} +/- {PointPairDistanceTolerance:F3}, W {PointPairExpectedWidth:F3} +/- {PointPairWidthTolerance:F3} {PointPairDimensionsUnit} | A {PointPairExpectedAngleDegrees:F3} +/- {PointPairAngleToleranceDegrees:F3} deg");
+            $"{referenceSummary}Expected D {PointPairExpectedDistance:0.##} +/- {PointPairDistanceTolerance:0.##}, W {PointPairExpectedWidth:0.##} +/- {PointPairWidthTolerance:0.##} {PointPairDimensionsUnit} | A {PointPairExpectedAngleDegrees:0.##} +/- {PointPairAngleToleranceDegrees:0.##} deg");
 
         inspectionSession.Activate(ViewerInspectionKind.C3DPointPairDimensions);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
@@ -309,7 +309,7 @@ public sealed partial class MainWindowViewModel
         ThicknessSummary = "Thickness ROI teaching: click one C3D grid location.";
         ThicknessDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Current grid ROI row {ThicknessRoiRow}, column {ThicknessRoiColumn}, size {ThicknessRoiRowCount} x {ThicknessRoiColumnCount} | limits [{ThicknessMinimum:F3}, {ThicknessMaximum:F3}] {ThicknessUnit}");
+            $"Current grid ROI row {ThicknessRoiRow}, column {ThicknessRoiColumn}, size {ThicknessRoiRowCount} x {ThicknessRoiColumnCount} | limits [{ThicknessMinimum:0.##}, {ThicknessMaximum:0.##}] {ThicknessUnit}");
         SelectionSummary = ThicknessSummary;
         MeasurementSummary = ThicknessDetails;
         ViewerStatus = "Thickness ROI teaching: click the C3D surface to place the ROI";
@@ -343,7 +343,7 @@ public sealed partial class MainWindowViewModel
             $"Thickness ROI taught: row {ThicknessRoiRow}, column {ThicknessRoiColumn}, size {ThicknessRoiRowCount} x {ThicknessRoiColumnCount}");
         ThicknessDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Anchor cell ({row}, {column}) | limits [{ThicknessMinimum:F3}, {ThicknessMaximum:F3}] {ThicknessUnit} | frame {ThicknessFrameId}");
+            $"Anchor cell ({row}, {column}) | limits [{ThicknessMinimum:0.##}, {ThicknessMaximum:0.##}] {ThicknessUnit} | frame {ThicknessFrameId}");
         SelectedSelectionMode = ThicknessRoiSelectionMode;
         SelectedEntity = "C3D Thickness ROI";
         SelectionOverlayVisible = true;
@@ -412,10 +412,10 @@ public sealed partial class MainWindowViewModel
         ThicknessAboveUpperLimitCount = evaluation.AboveUpperLimitCount;
         ThicknessSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Thickness: {evaluation.Result.Status} | mean {evaluation.Mean:F3} {ThicknessUnit} | range {evaluation.Range:F3}");
+            $"Thickness: {evaluation.Result.Status} | mean {evaluation.Mean:0.##} {ThicknessUnit} | range {evaluation.Range:0.##}");
         ThicknessDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Grid ROI row {evaluation.Roi.Row}, column {evaluation.Roi.Column}, size {evaluation.Roi.RowCount} x {evaluation.Roi.ColumnCount} | valid {evaluation.ValidSampleCount:N0} | below {evaluation.BelowLowerLimitCount:N0}, above {evaluation.AboveUpperLimitCount:N0} | limits [{ThicknessMinimum:F3}, {ThicknessMaximum:F3}] {ThicknessUnit} | package {evaluation.PackageResultStatus}/{evaluation.PackageErrorCode} | declared scalar, uncalibrated");
+            $"Grid ROI row {evaluation.Roi.Row}, column {evaluation.Roi.Column}, size {evaluation.Roi.RowCount} x {evaluation.Roi.ColumnCount} | valid {evaluation.ValidSampleCount:N0} | below {evaluation.BelowLowerLimitCount:N0}, above {evaluation.AboveUpperLimitCount:N0} | limits [{ThicknessMinimum:0.##}, {ThicknessMaximum:0.##}] {ThicknessUnit} | package {evaluation.PackageResultStatus}/{evaluation.PackageErrorCode} | declared scalar, uncalibrated");
 
         inspectionSession.Activate(ViewerInspectionKind.C3DThickness);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
@@ -544,10 +544,10 @@ public sealed partial class MainWindowViewModel
         GapFlushRightPointCount = evaluation.RightPointCount;
         GapFlushSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Gap / Flush: {evaluation.Result.Status} | gap {evaluation.SignedGap:F3} {GapFlushGapUnit}, flush {evaluation.SignedFlush:F3} {GapFlushFlushUnit}");
+            $"Gap / Flush: {evaluation.Result.Status} | gap {evaluation.SignedGap:0.##} {GapFlushGapUnit}, flush {evaluation.SignedFlush:0.##} {GapFlushFlushUnit}");
         GapFlushDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Signed left-right ROI edges | L {evaluation.LeftPointCount:N0}, R {evaluation.RightPointCount:N0} points | model dY {evaluation.ModelFlush:F3} | expected gap {GapFlushExpectedGap:F3} +/- {GapFlushGapTolerance:F3}, flush {GapFlushExpectedFlush:F3} +/- {GapFlushFlushTolerance:F3}");
+            $"Signed left-right ROI edges | L {evaluation.LeftPointCount:N0}, R {evaluation.RightPointCount:N0} points | model dY {evaluation.ModelFlush:0.##} | expected gap {GapFlushExpectedGap:0.##} +/- {GapFlushGapTolerance:0.##}, flush {GapFlushExpectedFlush:0.##} +/- {GapFlushFlushTolerance:0.##}");
 
         inspectionSession.Activate(ViewerInspectionKind.C3DGapFlush);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
@@ -667,8 +667,8 @@ public sealed partial class MainWindowViewModel
         VolumeNet = evaluation.NetVolume;
         VolumeReferenceSampleCount = evaluation.ReferenceSampleCount;
         VolumeMeasurementSampleCount = evaluation.MeasurementSampleCount;
-        VolumeSummary = string.Create(CultureInfo.InvariantCulture, $"Volume: {evaluation.Result.Status} | net {evaluation.NetVolume:F3} {VolumeUnit}");
-        VolumeDetails = string.Create(CultureInfo.InvariantCulture, $"Above {evaluation.AboveVolume:F3}, below {evaluation.BelowVolume:F3} {VolumeUnit} | expected {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
+        VolumeSummary = string.Create(CultureInfo.InvariantCulture, $"Volume: {evaluation.Result.Status} | net {evaluation.NetVolume:0.##} {VolumeUnit}");
+        VolumeDetails = string.Create(CultureInfo.InvariantCulture, $"Above {evaluation.AboveVolume:0.##}, below {evaluation.BelowVolume:0.##} {VolumeUnit} | expected {VolumeExpectedNet:0.##} +/- {VolumeTolerance:0.##} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
         inspectionSession.Activate(ViewerInspectionKind.C3DVolume);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
         PreviewToolResult = evaluation.Result;
@@ -777,8 +777,8 @@ public sealed partial class MainWindowViewModel
         CrossSectionRawMinimum = evaluation.RawMinimum;
         CrossSectionRawMaximum = evaluation.RawMaximum;
         CrossSectionValidSampleCount = evaluation.ValidSampleCount;
-        CrossSectionSummary = string.Create(CultureInfo.InvariantCulture, $"Cross-section: {evaluation.Result.Status} | width {evaluation.Width:F3} {CrossSectionWidthUnit}, height {evaluation.HeightRange:F3} {CrossSectionHeightUnit}");
-        CrossSectionDetails = string.Create(CultureInfo.InvariantCulture, $"Row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn} | valid {evaluation.ValidSampleCount:N0} | raw {evaluation.RawMinimum:F3}..{evaluation.RawMaximum:F3}");
+        CrossSectionSummary = string.Create(CultureInfo.InvariantCulture, $"Cross-section: {evaluation.Result.Status} | width {evaluation.Width:0.##} {CrossSectionWidthUnit}, height {evaluation.HeightRange:0.##} {CrossSectionHeightUnit}");
+        CrossSectionDetails = string.Create(CultureInfo.InvariantCulture, $"Row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn} | valid {evaluation.ValidSampleCount:N0} | raw {evaluation.RawMinimum:0.##}..{evaluation.RawMaximum:0.##}");
         inspectionSession.Activate(ViewerInspectionKind.C3DCrossSectionDimensions);
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
         PreviewToolResult = evaluation.Result;

@@ -25,9 +25,9 @@ OpenVisionLab Vision SDK packages
 OpenVisionLab.Core 3.0.1-dev.20260823.grid-diagnostics.1 and
 OpenVisionLab.Vision2D 3.0.1-dev.20260823.grid-diagnostics.1 are MIT-licensed
 packages from https://github.com/Noah8218/OpenVisionLab-Vision-SDK at commit
-8be38403d0d00698431d7ffa4de60a63289672c6. OpenVisionLab.Vision3D
-3.0.1-dev.20260829.normal-preparation.1 is MIT-licensed from the same
-repository at commit 6da3bcf521efb88681a17e4a7b23a091e7fcbacf. Their package
+8be38403d0d00698431d7ffa4de60a63289672c6. OpenVisionLab.Vision3D and OpenVisionLab.Compute
+3.3.0-dev.20261017.physical-edge-gap-flush.1 is MIT-licensed from the same
+repository at commit 456eb2af7a62962144757d967538594fde79e481. Their package
 LICENSE and NOTICE files were inspected; package SHA-256 and SHA-512 values
 are recorded in VIEWER_DEPENDENCY_ATTRIBUTION.json.
 

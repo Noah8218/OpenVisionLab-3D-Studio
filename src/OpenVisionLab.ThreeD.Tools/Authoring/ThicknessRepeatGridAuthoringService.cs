@@ -79,6 +79,9 @@ public static class ThicknessRepeatGridAuthoringService
             groupSlug = "thickness-grid";
         }
 
+        var groupIds = document.Steps.Where(step => step.Group is not null).Select(step => step.Group!.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var groupName = request.NamePattern.Replace("{n}", string.Empty, StringComparison.Ordinal).Trim();
+        var group = new ToolRecipeStepGroup(CreateUniqueId($"group.{selectedStep.Id}", groupIds), groupName.Length == 0 ? request.NamePattern : groupName);
         var candidates = new List<ThicknessRepeatGridCandidate>();
         for (var gridRow = 0; gridRow < request.Rows; gridRow++)
         {
@@ -150,6 +153,7 @@ public static class ThicknessRepeatGridAuthoringService
                 {
                     Id = stepId,
                     ToolName = toolName,
+                    Group = group,
                     InputEntityIds =
                     [
                         selectedStep.InputEntityIds[0],

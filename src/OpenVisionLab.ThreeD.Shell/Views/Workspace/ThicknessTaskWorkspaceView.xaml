@@ -83,11 +83,6 @@
                                      Content="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.Warpage, Korean='워페이지', English='Warpage'}"
                                      GroupName="InspectionTask"
                                      IsChecked="{Binding DataContext.IsWarpageTaskSelected, ElementName=TaskWorkspaceRoot, Mode=TwoWay}" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Foreground="#6b7280"
-                                   FontSize="11"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.TaskChangeHint, Korean='작업을 바꾸면 해당 작업의 로컬 레시피를 불러옵니다.', English='Task changes load that task''s explicit local recipe.'}" />
                         <Separator Margin="0,13,0,2" />
                     </StackPanel>
 
@@ -97,10 +92,6 @@
                                    FontWeight="SemiBold"
                                    Foreground="#111827"
                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.ThicknessRoiTeaching, Korean='두께 검사 ROI 티칭', English='Thickness ROI teaching'}" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.ThicknessTeachHint, Korean='두께 ROI와 판정 한계를 지정합니다. 이 작업은 선언된 원시 높이 좌표계를 유지합니다.', English='Choose the thickness ROI and acceptance limits. This slice stays in the declared raw-height frame.'}" />
 
                         <TextBlock Margin="0,18,0,5"
                                    FontWeight="SemiBold"
@@ -160,13 +151,13 @@
                                 <TextBlock FontSize="11"
                                            Foreground="#6b7280"
                                            Text="{i18n:ThreeDText Key=ThreeD.Field.Lower, Korean='하한', English='Lower'}" />
-                                <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,7,7">
                                 <TextBlock FontSize="11"
                                            Foreground="#6b7280"
                                            Text="{i18n:ThreeDText Key=ThreeD.Field.Upper, Korean='상한', English='Upper'}" />
-                                <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,7">
                                 <TextBlock FontSize="11"
@@ -192,10 +183,6 @@
                                    FontWeight="SemiBold"
                                    Foreground="#111827"
                                    Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.ThicknessInspect, Korean='두께 검사', English='Thickness Inspect'}" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.ThicknessInspectHint, Korean='미리보기를 실행해 측정 위치와 상태를 확인한 뒤 결과를 적용하세요.', English='Run Preview explicitly, review the overlay and status, then apply the accepted result.'}" />
                         <TextBlock Margin="0,18,0,5"
                                    FontWeight="SemiBold"
                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.SelectedRoute, Korean='선택한 검사 단계', English='Selected inspection step'}" />
@@ -221,10 +208,6 @@
                                    FontWeight="SemiBold"
                                    Foreground="#111827"
                                    Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.WarpageTeach, Korean='워페이지 ROI 티칭', English='Warpage ROI teaching'}" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.WarpageTeachHint, Korean='검사 ROI 하나를 티칭하고 최적 평면을 맞춘 뒤 선언된 원시 높이 좌표계에서 잔차 P2V를 판정합니다.', English='Teach one inspection ROI, fit one best-fit surface, and accept its residual peak-to-valley in the declared raw-height frame.'}" />
 
                         <Expander Margin="0,12,0,0" Header="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.SourceAndFrame}">
                             <StackPanel Margin="0,5,0,0">
@@ -285,7 +268,7 @@
                                 <TextBlock FontSize="11"
                                            Foreground="#6b7280"
                                            Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.MaximumPeakToValley, Korean='최대 P2V', English='Maximum P2V'}" />
-                                <TextBox Text="{Binding WarpageMaximumPeakToValley, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                <TextBox Text="{Binding WarpageMaximumPeakToValley, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                             </StackPanel>
                             <StackPanel Margin="0,0,0,7">
                                 <TextBlock FontSize="11"
@@ -316,10 +299,6 @@
                                    FontWeight="SemiBold"
                                    Foreground="#111827"
                                    Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.WarpageInspect, Korean='워페이지 검사', English='Warpage Inspect'}" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.WarpageInspectHint, Korean='미리보기를 직접 실행하고 최적 평면 잔차 P2V와 RMS를 검토한 뒤 승인된 결과를 적용합니다.', English='Run Preview explicitly, review best-fit residual P2V and RMS, then apply the accepted result.'}" />
                         <TextBlock Margin="0,18,0,5"
                                    FontWeight="SemiBold"
                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.SelectedRoute, Korean='선택한 검사 단계', English='Selected inspection step'}" />
@@ -344,10 +323,6 @@
                                    FontWeight="SemiBold"
                                    Foreground="#111827"
                                    Text="{i18n:ThreeDText Key=ThreeD.Results.Title, Korean='결과 검토', English='Results review'}" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.ResultReviewReadOnly, Korean='적용된 결과는 여기서 읽기 전용입니다. 레시피를 수정하려면 티칭 또는 검사 화면으로 이동하세요.', English='Applied evidence is read-only here. Return to Teach or Inspect from the workspace navigation to edit a recipe.'}" />
                         <StackPanel Margin="0,18,0,0"
                                     DataContext="{Binding ViewerEditor, ElementName=TaskWorkspaceRoot}">
                             <TextBlock FontWeight="SemiBold"
@@ -359,10 +334,6 @@
                         <Separator Margin="0,14,0,12" />
                         <TextBlock FontWeight="SemiBold"
                                    Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.RunnerReportEvidence, Korean='검사 실행 및 보고서 정보', English='Runner and report evidence'}" />
-                        <TextBlock Margin="0,5,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.ResultReviewEvidenceHint, Korean='이 작업 화면에서 검사를 자동으로 재실행하거나 보고서를 생성하지 않습니다. 실행 기록이 있을 때 고급 검토를 여세요.', English='This task view does not infer a Runner replay or report. Open Expert only when explicit run evidence is available.'}" />
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
@@ -436,10 +407,6 @@
                         <Separator Margin="0,14,0,12" />
                         <TextBlock FontWeight="SemiBold"
                                    Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.PublishRule, Korean='적용 규칙', English='Apply rule'}" />
-                        <TextBlock Margin="0,4,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.PublishRuleHint, Korean='현재 미리보기 결과만 적용한 뒤 결과 검토를 엽니다.', English='Applying uses only the current explicit Preview result and then opens Result Review.'}" />
                     </StackPanel>
 
                     <StackPanel DataContext="{Binding ViewerEditor, ElementName=TaskWorkspaceRoot}"
@@ -491,10 +458,6 @@
                         <Separator Margin="0,14,0,12" />
                         <TextBlock FontWeight="SemiBold"
                                    Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.PublishRule, Korean='적용 규칙', English='Apply rule'}" />
-                        <TextBlock Margin="0,4,0,0"
-                                   Foreground="#6b7280"
-                                   TextWrapping="Wrap"
-                                   Text="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.PublishRuleHint, Korean='현재 미리보기 결과만 적용한 뒤 결과 검토를 엽니다.', English='Applying uses only the current explicit Preview result and then opens Result Review.'}" />
                     </StackPanel>
 
                     <StackPanel DataContext="{Binding ViewerEditor, ElementName=TaskWorkspaceRoot}"

@@ -155,8 +155,8 @@ internal static class ShellSourceQualitySmoke
             MaxTextWidth = Math.Max(1d, text.ActualWidth + tolerance),
             Trimming = TextTrimming.None
         };
-        var isWithinTitleBar = IsWithin(badge, titleBar, tolerance);
-        var isWithinWindow = IsWithin(badge, window, tolerance);
+        var isWithinTitleBar = IsWithin(badge, titleBar, tolerance) && IsWithin(text, titleBar, tolerance);
+        var isWithinWindow = IsWithin(badge, window, tolerance) && IsWithin(text, window, tolerance);
         var textHasFullHeight = text.ActualHeight + tolerance >= formattedText.Height;
         var isVisible = badge.IsVisible
                         && text.IsVisible
@@ -169,6 +169,7 @@ internal static class ShellSourceQualitySmoke
                              && text.TextWrapping == TextWrapping.Wrap
                              && text.TextTrimming == TextTrimming.None
                              && textHasFullHeight
+                             && IsWithin(text, badge, tolerance)
                              && isWithinTitleBar
                              && isWithinWindow;
 

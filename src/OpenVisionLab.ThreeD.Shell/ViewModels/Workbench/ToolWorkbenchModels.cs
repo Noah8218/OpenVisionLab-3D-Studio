@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Shell;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -282,15 +285,28 @@ public sealed class ToolWorkbenchReferenceItem : INotifyPropertyChanged
     }
 }
 
-public sealed record ToolWorkbenchFlowInputItem(ToolWorkbenchPipelineStepItem Step, int Index, string Contract, string EntityId)
+public sealed record ToolWorkbenchFlowInputItem(
+    ToolWorkbenchPipelineStepItem Step, int Index, string Contract, string EntityId,
+    C3DHeightImageDisplayFrame? PreviewFrame = null, ToolRecipeSelection? Selection = null, string? EntityName = null)
 {
     public string Label => Contract.Contains("PointSet", StringComparison.Ordinal) ? ThreeDLocalization.Shared.Resolve("ThreeD.Flow.Points", "선택 점", "Selected points")
-        : Contract.Contains("HeightField", StringComparison.Ordinal) ? ThreeDLocalization.Shared.Resolve("ThreeD.Flow.Height", "높이 데이터", "Height data")
+        : Contract.Contains("HeightField", StringComparison.Ordinal) ? ThreeDLocalization.Shared.Resolve("ThreeD.Flow.Height", "높이 맵", "Height map")
+        : Contract.Contains("GridRectangle", StringComparison.Ordinal) ? ContractDisplay
         : Contract.Contains("LineFeature", StringComparison.Ordinal) ? ThreeDLocalization.Shared.Resolve("ThreeD.Flow.Line", "직선", "Line") + $" {Index + 1}"
         : ThreeDLocalization.Shared.Resolve("ThreeD.Flow.Input", "입력", "Input") + $" {Index + 1}";
     public string ContractDisplay => ThreeDLocalization.Shared.ContractLabel(Contract);
     public bool HasContractDetail => !string.Equals(Label, ContractDisplay, StringComparison.Ordinal);
-    public string AccessibleName => $"{Step.ToolName}. {Label}. {ContractDisplay}. {EntityId}";
+    public string EntityDisplayName => string.IsNullOrWhiteSpace(EntityName) ? EntityId : EntityName;
+    public bool IsConnected => !string.IsNullOrWhiteSpace(EntityId) && EntityName is not null;
+    public bool IsRegionInput => Contract.Contains("GridRectangle", StringComparison.Ordinal) || Contract.Contains("RegionArtifact", StringComparison.Ordinal);
+    public bool HasMapPreview => HasPreview && !IsRegionInput;
+    public bool HasPreview => PreviewFrame is not null;
+    public bool HasSelectionPreview => PreviewFrame is not null && Selection?.GridRectangle is not null;
+    public double SelectionPreviewLeft => Selection?.GridRectangle is { } roi ? 64d * roi.Column / Selection.SourceBinding.GridWidth : 0;
+    public double SelectionPreviewTop => Selection?.GridRectangle is { } roi ? 42d * roi.Row / Selection.SourceBinding.GridHeight : 0;
+    public double SelectionPreviewWidth => Selection?.GridRectangle is { } roi ? 64d * roi.ColumnCount / Selection.SourceBinding.GridWidth : 0;
+    public double SelectionPreviewHeight => Selection?.GridRectangle is { } roi ? 42d * roi.RowCount / Selection.SourceBinding.GridHeight : 0;
+    public string AccessibleName => $"{Step.ToolName}. {Label}. {ContractDisplay}. {EntityDisplayName}. {EntityId}";
 }
 
 public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
@@ -304,6 +320,10 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
     private bool resultIsCurrent;
     private bool resultIsFailure;
     private bool? acceptanceLimitsConfigured;
+    private ToolWorkbenchPipelineStepItem? flowRepeatGroupAnchor;
+    private int flowRepeatGroupCount;
+    private bool isFlowRepeatGroupLast;
+    private string flowRepeatGroupOrderRange = string.Empty;
     private string order = "00";
     private string state = "Taught / pending";
     private string inputPortState = string.Empty;
@@ -315,6 +335,9 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
     private ToolRecipeDualRoiRouting? dualRoiRouting;
     private ToolRecipeSignedDeltaSidecarReference? signedDeltaSidecar;
     private bool outputEnabled = true;
+    private IReadOnlyDictionary<string, C3DHeightImageDisplayFrame> flowPreviews = new Dictionary<string, C3DHeightImageDisplayFrame>();
+    private IReadOnlyDictionary<string, ToolRecipeSelection> flowSelections = new Dictionary<string, ToolRecipeSelection>();
+    private IReadOnlyDictionary<string, string> flowEntityNames = new Dictionary<string, string>();
 
     public ToolWorkbenchPipelineStepItem(
         string id,
@@ -326,7 +349,8 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
         ToolRecipeDualRoiRouting? dualRoiRouting = null,
         bool outputEnabled = true,
         ToolRecipeSignedDeltaSidecarReference? signedDeltaSidecar = null,
-        bool? acceptanceLimitsConfigured = null)
+        bool? acceptanceLimitsConfigured = null,
+        ToolRecipeStepGroup? group = null)
     {
         this.id = id;
         Tool = tool;
@@ -337,6 +361,7 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
         this.signedDeltaSidecar = signedDeltaSidecar;
         this.outputEnabled = outputEnabled;
         this.acceptanceLimitsConfigured = acceptanceLimitsConfigured;
+        Group = group;
         Parameters = new ObservableCollection<ToolWorkbenchParameterItem>(
             parameters is null
                 ? tool.Parameters.Select(parameter => new ToolWorkbenchParameterItem(parameter.Name, parameter.DefaultValue))
@@ -346,12 +371,17 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ToolWorkbenchToolItem Tool { get; }
+    public ToolRecipeStepGroup? Group { get; }
     public string ToolId => Tool.Id;
     public string ToolName
     {
         get => toolName;
-        set => SetField(ref toolName, string.IsNullOrWhiteSpace(value) ? Tool.Name : value.Trim());
+        set
+        {
+            if (SetField(ref toolName, string.IsNullOrWhiteSpace(value) ? Tool.Name : value.Trim())) OnPropertyChanged(nameof(HasLongFlowName));
+        }
     }
+    public bool HasLongFlowName => ToolName.Length > 24;
     public int MinimumInputCount => Tool.MinimumInputCount;
     public string InputContract => Tool.InputContract;
     public string OutputContract => Tool.OutputContract;
@@ -370,6 +400,10 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
             OnPropertyChanged(nameof(InputEntityIds));
             OnPropertyChanged(nameof(InputSummary));
             OnPropertyChanged(nameof(FlowInputs));
+            OnPropertyChanged(nameof(PrimaryFlowInput));
+            OnPropertyChanged(nameof(CollapsedInputSummary));
+            OnPropertyChanged(nameof(SecondaryFlowInputs));
+            OnPropertyChanged(nameof(CollapsedPrimaryInputLabel));
         }
     }
 
@@ -383,9 +417,76 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
             var contracts = InputContract.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             var inputs = InputEntityIds;
             return Enumerable.Range(0, Math.Max(contracts.Length, Math.Max(inputs.Count, MinimumInputCount)))
-                .Select(index => new ToolWorkbenchFlowInputItem(this, index, index < contracts.Length ? contracts[index] : InputContract, index < inputs.Count ? inputs[index] : string.Empty))
+                .Select(index => new ToolWorkbenchFlowInputItem(this, index, index < contracts.Length ? contracts[index] : InputContract,
+                    index < inputs.Count ? inputs[index] : string.Empty,
+                    index < inputs.Count ? flowPreviews.GetValueOrDefault(inputs[index]) : null,
+                    index < inputs.Count ? flowSelections.GetValueOrDefault(inputs[index]) : null,
+                    index < inputs.Count ? flowEntityNames.GetValueOrDefault(inputs[index]) : null))
                 .ToArray();
         }
+    }
+
+    public ToolWorkbenchFlowInputItem? PrimaryFlowInput => FlowInputs.FirstOrDefault();
+    public string CollapsedInputSummary
+    {
+        get
+        {
+            var inputs = FlowInputs;
+            if (inputs.Count <= 1) return inputs.FirstOrDefault()?.ContractDisplay ?? InputContractDisplay;
+            var label = inputs[0].Contract.Contains("HeightField", StringComparison.Ordinal)
+                ? ThreeDLocalization.Shared.Resolve("ThreeD.Flow.HeightMap", "높이 맵", "Height map") : inputs[0].Label;
+            return $"{label} +{inputs.Count - 1}";
+        }
+    }
+    public IReadOnlyList<ToolWorkbenchFlowInputItem> SecondaryFlowInputs => FlowInputs.Skip(1).ToArray();
+    public string CollapsedPrimaryInputLabel => PrimaryFlowInput?.Label ?? InputContractDisplay;
+    public string CollapsedOutputSummary => !string.IsNullOrWhiteSpace(ResultValueSummary) ? ResultValueSummary
+        : OutputContract == "MeasurementResult" ? "—" : OutputContractDisplay;
+    public ToolWorkbenchPipelineStepItem? FlowRepeatGroupAnchor => flowRepeatGroupAnchor;
+    public bool IsFlowRepeatGroupMember => flowRepeatGroupAnchor is not null;
+    public bool IsFlowRepeatGroupLead => ReferenceEquals(flowRepeatGroupAnchor, this);
+    public bool IsFlowRepeatGroupLast => isFlowRepeatGroupLast;
+    public int FlowRepeatGroupCount => flowRepeatGroupCount;
+    public string FlowRepeatGroupOrderRange => flowRepeatGroupOrderRange;
+    public string FlowRepeatGroupLabel => $"{ThreeDLocalization.Shared.Resolve("ThreeD.Flow.Thickness", "두께", "Thickness")} ×{flowRepeatGroupCount}";
+
+    internal void UpdateFlowRepeatGroup(ToolWorkbenchPipelineStepItem? anchor, int count, bool last, string orderRange)
+    {
+        if (ReferenceEquals(flowRepeatGroupAnchor, anchor) && flowRepeatGroupCount == count
+            && isFlowRepeatGroupLast == last && flowRepeatGroupOrderRange == orderRange) return;
+        flowRepeatGroupAnchor = anchor;
+        flowRepeatGroupCount = count;
+        isFlowRepeatGroupLast = last;
+        flowRepeatGroupOrderRange = orderRange;
+        OnPropertyChanged(nameof(FlowRepeatGroupAnchor));
+        OnPropertyChanged(nameof(IsFlowRepeatGroupMember));
+        OnPropertyChanged(nameof(IsFlowRepeatGroupLead));
+        OnPropertyChanged(nameof(IsFlowRepeatGroupLast));
+        OnPropertyChanged(nameof(FlowRepeatGroupCount));
+        OnPropertyChanged(nameof(FlowRepeatGroupOrderRange));
+        OnPropertyChanged(nameof(FlowRepeatGroupLabel));
+    }
+    public C3DHeightImageDisplayFrame? OutputPreviewFrame => flowPreviews.GetValueOrDefault(OutputEntityId);
+    public bool HasOutputPreview => OutputPreviewFrame is not null;
+
+    internal void UpdateFlowPreviews(
+        IReadOnlyDictionary<string, C3DHeightImageDisplayFrame> previews,
+        IReadOnlyDictionary<string, ToolRecipeSelection> selections,
+        IReadOnlyDictionary<string, string> entityNames)
+    {
+        if (flowPreviews.Count == previews.Count && flowPreviews.All(pair => ReferenceEquals(pair.Value, previews.GetValueOrDefault(pair.Key)))
+            && flowSelections.Count == selections.Count && flowSelections.All(pair => Equals(pair.Value, selections.GetValueOrDefault(pair.Key)))
+            && flowEntityNames.Count == entityNames.Count && flowEntityNames.All(pair => pair.Value == entityNames.GetValueOrDefault(pair.Key))) return;
+        flowPreviews = previews;
+        flowSelections = selections;
+        flowEntityNames = entityNames;
+        OnPropertyChanged(nameof(FlowInputs));
+        OnPropertyChanged(nameof(PrimaryFlowInput));
+        OnPropertyChanged(nameof(CollapsedInputSummary));
+        OnPropertyChanged(nameof(SecondaryFlowInputs));
+        OnPropertyChanged(nameof(CollapsedPrimaryInputLabel));
+        OnPropertyChanged(nameof(OutputPreviewFrame));
+        OnPropertyChanged(nameof(HasOutputPreview));
     }
 
     public string InputSummary => string.IsNullOrWhiteSpace(InputEntityIdsText)
@@ -431,8 +532,12 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
             if (acceptanceLimitsConfigured == value) return;
             acceptanceLimitsConfigured = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasConfiguredAcceptanceLimits));
+            OnPropertyChanged(nameof(HasUnconfiguredAcceptanceLimits));
         }
     }
+    public bool HasConfiguredAcceptanceLimits => ToolRecipeStep.RequiresAcceptanceLimits(ToolId) && AcceptanceLimitsConfigured != false;
+    public bool HasUnconfiguredAcceptanceLimits => ToolRecipeStep.RequiresAcceptanceLimits(ToolId) && AcceptanceLimitsConfigured == false;
     public string State
     {
         get => state;
@@ -465,6 +570,7 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
         resultStatusSummary = status;
         resultIsCurrent = isCurrent;
         resultIsFailure = isFailure;
+        OnPropertyChanged(nameof(CollapsedOutputSummary));
         OnPropertyChanged(nameof(FlowNodeStatusLabel));
         OnPropertyChanged(nameof(FlowNodeStatusHasIssue));
         OnPropertyChanged(nameof(FlowNodeStatusIsFailure));
@@ -481,12 +587,12 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
 
             if (InputPortHasIssue)
             {
-                return InputPortDetail;
+                return InputPortState;
             }
 
             if (OutputPortHasIssue)
             {
-                return OutputPortDetail;
+                return OutputPortState;
             }
 
             if (!string.IsNullOrEmpty(resultStatusSummary)) return resultStatusSummary;
@@ -528,6 +634,7 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
         SetField(ref outputPortState, newOutputPortState, nameof(OutputPortState));
         SetField(ref outputPortDetail, newOutputPortDetail, nameof(OutputPortDetail));
         SetField(ref outputPortHasIssue, newOutputPortHasIssue, nameof(OutputPortHasIssue));
+        OnPropertyChanged(nameof(CollapsedOutputSummary));
         OnPropertyChanged(nameof(FlowNodeStatusLabel));
         OnPropertyChanged(nameof(FlowNodeStatusHasIssue));
         OnPropertyChanged(nameof(FlowNodeStatusIsFailure));
@@ -558,6 +665,7 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanonicalStateKey));
         OnPropertyChanged(nameof(CanonicalStateLabel));
         OnPropertyChanged(nameof(CanonicalStateAccessibleName));
+        OnPropertyChanged(nameof(CollapsedOutputSummary));
         OnPropertyChanged(nameof(FlowNodeStatusLabel));
         OnPropertyChanged(nameof(FlowNodeStatusHasIssue));
         OnPropertyChanged(nameof(FlowNodeStatusIsFailure));
@@ -566,11 +674,17 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
     internal void RefreshLocalizedStatePresentation()
     {
         OnPropertyChanged(nameof(InputContractDisplay));
+        OnPropertyChanged(nameof(FlowRepeatGroupLabel));
         OnPropertyChanged(nameof(OutputContractDisplay));
         OnPropertyChanged(nameof(FlowInputs));
+        OnPropertyChanged(nameof(PrimaryFlowInput));
+        OnPropertyChanged(nameof(CollapsedInputSummary));
+        OnPropertyChanged(nameof(SecondaryFlowInputs));
+        OnPropertyChanged(nameof(CollapsedPrimaryInputLabel));
         OnPropertyChanged(nameof(InputSummary));
         OnPropertyChanged(nameof(CanonicalStateLabel));
         OnPropertyChanged(nameof(CanonicalStateAccessibleName));
+        OnPropertyChanged(nameof(CollapsedOutputSummary));
         OnPropertyChanged(nameof(FlowNodeStatusLabel));
     }
 }
@@ -621,4 +735,65 @@ public sealed record TeachingMeasurementResultItem(
     string Limits,
     string Reason,
     bool IsCurrent,
-    IReadOnlyList<Metric> Metrics);
+    IReadOnlyList<Metric> Metrics)
+{
+    public TeachingResultLabelItem ResultLabel { get; init; } = new();
+    public int Sequence { get; init; }
+    public bool IsSelectedTool { get; init; }
+    public string OutputLabel { get; init; } = string.Empty;
+    public DateTimeOffset? RecordedAt { get; init; }
+    public ResultStatus? ExecutionStatus { get; init; }
+    public ToolWorkbenchDisplayedOutputItem? DisplayedOutput { get; init; }
+    public string SequenceText => Sequence > 0 ? Sequence.ToString("00", CultureInfo.InvariantCulture) : string.Empty;
+    private Metric? PrimaryMetric => ToolWorkbenchViewModel.SelectPrimaryMeasurementMetric(Step.ToolId, Metrics);
+    private Metric? Lower => Metrics.FirstOrDefault(metric => metric.Name == "LowerLimit" && double.IsFinite(metric.Value));
+    private Metric? Upper => Metrics.FirstOrDefault(metric => metric.Name == "UpperLimit" && double.IsFinite(metric.Value));
+    public string OutputName => PrimaryMetric is { } metric ? Step.ToolId == "thickness" && metric.Name == "Mean"
+        ? ThreeDLocalization.Shared.Resolve("ThreeD.Results.ThicknessOutput", "두께", "Thickness") : metric.Name : !string.IsNullOrWhiteSpace(OutputLabel) ? OutputLabel : "—";
+    public string DisplayValue => State is "Error" or "오류" ? "—" : PrimaryMetric is { } metric
+        ? double.IsFinite(metric.Value) ? metric.Value.ToString(metric.Kind == MetricKind.Count ? "N0" : "0.##", CultureInfo.InvariantCulture) : "—"
+        : double.TryParse(Value.Contains(':') ? Value[(Value.IndexOf(':') + 1)..] : Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)
+            ? value.ToString("0.##", CultureInfo.InvariantCulture) : Value;
+    public string DisplayLimits => Lower is { } lower && Upper is { } upper && lower.Unit == upper.Unit && lower.Unit == Unit
+        ? $"{lower.Value.ToString("F2", CultureInfo.InvariantCulture)} – {upper.Value.ToString("F2", CultureInfo.InvariantCulture)}" : Limits;
+    public string ValidSamples => Metrics.FirstOrDefault(metric => metric.Name == "ValidSampleCount" && double.IsFinite(metric.Value)) is { } metric
+        ? metric.Value.ToString("N0", CultureInfo.InvariantCulture) : "—";
+    public string RunTime => RecordedAt?.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? "—";
+    public string State => !IsCurrent ? "Previous" : ExecutionStatus?.ToString() ?? Status;
+    public string StatusText => State switch
+    {
+        "Pass" or "통과" => "OK",
+        "Fail" or "실패" => "NG",
+        "Error" => ThreeDLocalization.Shared.Resolve("ThreeD.Results.Error", "오류", "Error"),
+        "Previous" => ThreeDLocalization.Shared.Resolve("ThreeD.Results.Previous", "이전 결과", "Previous"),
+        _ => Status
+    };
+    public string StatusIcon => State switch { "Pass" or "통과" => "✓", "Fail" or "실패" => "×", "Error" => "!", "Previous" => "↻", _ => "–" };
+    public bool HasMarginScale => IsCurrent && PrimaryMetric is { } metric && double.IsFinite(metric.Value)
+        && Lower is { } lower && Upper is { } upper && lower.Unit == metric.Unit && upper.Unit == metric.Unit
+        && upper.Value > lower.Value && double.IsFinite(upper.Value - lower.Value) && State is not ("Error" or "오류");
+    // Screen position on the existing 110px tolerance scale; this never judges a result or computes a new measurement.
+    public double MarginMarkerOffset => HasMarginScale
+        ? Math.Clamp(((PrimaryMetric!.Value - Lower!.Value) / (Upper!.Value - Lower.Value) + .6) / 2.2, 0, 1) * 110 - 1 : 0;
+}
+
+public sealed class TeachingResultLabelItem : INotifyPropertyChanged
+{
+    private ViewerTeachingResultLabel? snapshot;
+    private bool hidden;
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public ViewerTeachingResultLabel? Snapshot => snapshot;
+    public bool CanShow => snapshot is { IsValid: true };
+    public bool IsVisible => CanShow && !hidden;
+
+    internal void Update(ViewerTeachingResultLabel? value, bool isHidden)
+    {
+        snapshot = value;
+        hidden = isHidden;
+        PropertyChanged?.Invoke(this, new(nameof(Snapshot)));
+        PropertyChanged?.Invoke(this, new(nameof(CanShow)));
+        PropertyChanged?.Invoke(this, new(nameof(IsVisible)));
+    }
+}
+
+public sealed record TeachingResultSummaryItem(string State, string StatusText, string StatusIcon, int Count);

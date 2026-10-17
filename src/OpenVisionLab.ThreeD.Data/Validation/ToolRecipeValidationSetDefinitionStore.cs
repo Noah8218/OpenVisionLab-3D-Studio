@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
@@ -28,15 +29,24 @@ public static class ToolRecipeValidationSetDefinitionStore
         ToolRecipeValidationSetDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
+        definition = definition with
+        {
+            SchemaVersion = ToolRecipeValidationSetDefinition.CurrentSchemaVersion,
+            Samples = definition.Samples.Select(sample => sample with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage, Role = sample.DevelopmentRole }).ToArray()
+        };
         Validate(definition);
         var fullRecipePath = Path.GetFullPath(recipePath);
         var recipeDirectory = GetRecipeDirectory(fullRecipePath);
         var portable = definition with
         {
+            SchemaVersion = ToolRecipeValidationSetDefinition.CurrentSchemaVersion,
             Samples = definition.Samples
                 .OrderBy(sample => sample.Order)
                 .Select(sample => sample with
                 {
+                    Role = sample.DevelopmentRole,
+                    Expectation = sample.EffectiveExpectation,
+                    Usage = sample.EffectiveUsage,
                     SourcePath = Path.GetRelativePath(
                         recipeDirectory,
                         Path.GetFullPath(sample.SourcePath))
@@ -67,10 +77,14 @@ public static class ToolRecipeValidationSetDefinitionStore
         var recipeDirectory = GetRecipeDirectory(fullRecipePath);
         return definition with
         {
+            SchemaVersion = ToolRecipeValidationSetDefinition.CurrentSchemaVersion,
             Samples = definition.Samples
                 .OrderBy(sample => sample.Order)
                 .Select(sample => sample with
                 {
+                    Role = sample.DevelopmentRole,
+                    Expectation = sample.EffectiveExpectation,
+                    Usage = sample.EffectiveUsage,
                     SourcePath = Path.IsPathFullyQualified(sample.SourcePath)
                         ? Path.GetFullPath(sample.SourcePath)
                         : Path.GetFullPath(
@@ -80,14 +94,18 @@ public static class ToolRecipeValidationSetDefinitionStore
         };
     }
 
+    public static string CreateCalculationContextSha256(ToolRecipeDocument document) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", document.Steps.Select(step => document.CreateStepExecutionContext(step.Id))))));
+
     public static void Validate(ToolRecipeValidationSetDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        if (definition.SchemaVersion
-                != ToolRecipeValidationSetDefinition.CurrentSchemaVersion
+        if (definition.SchemaVersion is not ("1.0" or ToolRecipeValidationSetDefinition.CurrentSchemaVersion)
             || string.IsNullOrWhiteSpace(definition.RecipeName)
             || string.IsNullOrWhiteSpace(definition.RecipeSourceSha256)
-            || definition.Samples is null)
+            || definition.Samples is null
+            || definition.RecipeContentSha256 is { } recipeSha && (recipeSha.Length != 64 || !recipeSha.All(Uri.IsHexDigit))
+            || definition.CalculationContextSha256 is { } contextSha && (contextSha.Length != 64 || !contextSha.All(Uri.IsHexDigit)))
         {
             throw new InvalidDataException(
                 "Validation Set role manifest identity is incomplete or unsupported.");
@@ -100,6 +118,9 @@ public static class ToolRecipeValidationSetDefinitionStore
             if (sample.Order != expectedOrder++
                 || string.IsNullOrWhiteSpace(sample.SourcePath)
                 || !Enum.IsDefined(sample.Role)
+                || sample.Expectation is { } expectation && !Enum.IsDefined(expectation)
+                || sample.Usage is { } usage && !Enum.IsDefined(usage)
+                || definition.SchemaVersion == ToolRecipeValidationSetDefinition.CurrentSchemaVersion && (sample.Expectation is null || sample.Usage is null)
                 || !paths.Add(sample.SourcePath))
             {
                 throw new InvalidDataException(

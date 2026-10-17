@@ -152,6 +152,9 @@ internal static class SignedDeltaViewerInterchangeVerification
                     && workspace.MainContentId.Length == 0
                     && workspace.AuxiliaryContentId.Length == 0,
                     $"layout={routing.EffectiveViewerLayout};aux={routing.EffectiveAuxiliaryViewerContentId};frame={viewer.Frame?.SourceEntityId};pins={workspace.MainContentId}/{workspace.AuxiliaryContentId}");
+                Check("signed-delta-pane-identifies-output-rather-than-the-input-file", routing.AuxiliaryPane.IsOutputSource
+                    && !routing.AuxiliaryPane.IsInputSource && routing.AuxiliaryPane.SourceName == routing.ViewerWorkspaceCandidates.Single(candidate => candidate.Contract == "SignedDeltaHeightField").DisplayName,
+                    $"name={routing.AuxiliaryPane.SourceName};input={routing.AuxiliaryPane.IsInputSource};output={routing.AuxiliaryPane.IsOutputSource}");
                 routing.SetInspectionDataViewCommand.Execute(ViewerInspectionDataView.InputOutput);
                 Check(
                     "signed-delta-input-output-keeps-distinct-source-and-image-identities",

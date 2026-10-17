@@ -25,6 +25,7 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
     private Task? loadTask;
     private Task? loadObservationTask;
     private SourceQualityReport? report;
+    private C3DHeightImageDisplayFrame? previewFrame;
     private string loadedSourceKey = string.Empty;
     private string error = string.Empty;
     private bool isLoading;
@@ -123,6 +124,7 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
 
     public ThreeDLocalization Localization => localization;
     public SourceQualityReport? Report => report;
+    public C3DHeightImageDisplayFrame? PreviewFrame => previewFrame;
     public bool HasReport => Report is not null;
     public ToolRecipeAcquisitionProvenance AppliedAcquisitionProvenance =>
         acquisitionEditor.AppliedAcquisitionProvenance;
@@ -280,11 +282,11 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         }
         ? string.Create(
             CultureInfo.InvariantCulture,
-            $"{minimum:0.###} \u2026 {maximum:0.###}")
+            $"{minimum:0.##} \u2026 {maximum:0.##}")
         : "\u2014";
 
     public string HeightMeanValue => Report?.Height.Mean is { } mean
-        ? string.Create(CultureInfo.InvariantCulture, $"{mean:0.###}")
+        ? string.Create(CultureInfo.InvariantCulture, $"{mean:0.##}")
         : "\u2014";
 
     public string DistributionSummary => Report?.Height.Distribution is { } distribution
@@ -460,12 +462,20 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         try
         {
             var snapshot = await loadSourceAsync(cancellationToken);
-            var nextReport = await Task.Run(
-                () => C3DSourceQualityAnalyzer.Create(
-                    snapshot,
-                    measurementEvidence: measurementEvidence,
-                    sourceSensorId: sourceSensorId),
-                cancellationToken);
+            var projection = await Task.Run(() =>
+            {
+                var nextReport = C3DSourceQualityAnalyzer.Create(snapshot, measurementEvidence: measurementEvidence, sourceSensorId: sourceSensorId);
+                C3DHeightImageDisplayFrame? preview = null;
+                try
+                {
+                    preview = C3DHeightImageFrame.Create(snapshot).DefaultDisplayFrame;
+                }
+                catch (Exception exception) when (exception is InvalidDataException or ArgumentException or OverflowException)
+                {
+                    // A source can still have a quality report when its grid cannot be displayed.
+                }
+                return (Report: nextReport, Preview: preview);
+            }, cancellationToken);
 
             if (generation != loadGeneration || cancellationToken.IsCancellationRequested)
             {
@@ -473,7 +483,8 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
             }
 
             loadedSourceKey = sourceKey;
-            SetReport(nextReport);
+            previewFrame = projection.Preview;
+            SetReport(projection.Report);
         }
         catch (OperationCanceledException)
         {
@@ -563,6 +574,7 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         }
 
         report = value;
+        if (value is null) previewFrame = null;
         Channels.ReplaceAll(CreateChannelItems(value));
         DistributionBins.ReplaceAll(CreateDistributionBins(value));
         GridDiagnostics.ReplaceAll(CreateGridDiagnosticItems(value));
@@ -714,6 +726,7 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
     private void NotifyReportProperties()
     {
         OnPropertyChanged(nameof(Report));
+        OnPropertyChanged(nameof(PreviewFrame));
         OnPropertyChanged(nameof(HasReport));
         OnPropertyChanged(nameof(IsAvailableOrLoading));
         OnPropertyChanged(nameof(State));

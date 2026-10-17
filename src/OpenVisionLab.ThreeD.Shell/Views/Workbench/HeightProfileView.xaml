@@ -1,98 +1,81 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.HeightProfileView"
+             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:host="clr-namespace:OpenVisionLab.ThreeD.Viewer.Hosting;assembly=OpenVisionLab.ThreeD.Viewer"
-             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              Foreground="{DynamicResource ThreeD.TextBrush}"
+             FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic"
              AutomationProperties.AutomationId="HeightProfileView">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ProfileRuntimeTextConverter" />
+        <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#12171C" />
+        <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#242C35" />
+        <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#8B98A6" />
+        <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#FFD166" />
+        <Style x:Key="ProfileOverlayButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="28" /><Setter Property="Height" Value="24" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="1,0" /><Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <ContextMenu x:Key="ProfileContextMenu" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+            <MenuItem IsEnabled="False" Header="{i18n:ThreeDText Key=ThreeD.Profile.Uncalibrated, Korean='교정 없음', English='No calibration'}" AutomationProperties.AutomationId="ProfileCalibrationStatus" />
+            <Separator />
+            <MenuItem Header="{i18n:ThreeDText Key=ThreeD.Profile.Repick, Korean='다시 선택', English='Repick'}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Repick}" />
+            <MenuItem Header="A ↔ B" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Swap}" />
+            <MenuItem Header="{i18n:ThreeDText Key=ThreeD.Profile.Cancel, Korean='선택 취소', English='Cancel pick'}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Cancel}" />
+            <MenuItem Header="{i18n:ThreeDText Key=ThreeD.Profile.Collapse, Korean='그래프 접기 또는 펼치기', English='Collapse or expand graph'}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.ToggleCollapsed}" />
+            <MenuItem Header="{i18n:ThreeDText Key=ThreeD.Profile.Clear, Korean='측정 지우기', English='Clear measurement'}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Clear}" />
+        </ContextMenu>
     </UserControl.Resources>
-    <Border Padding="10,8" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,1,0,0">
-        <StackPanel>
-            <WrapPanel>
-                <TextBlock Margin="0,3,12,3" VerticalAlignment="Center" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.Profile.Title, Korean='A–B 높이 단면', English='A–B height profile'}" />
-                <Button Margin="3,3,0,3" Padding="7,3" Content="{i18n:ThreeDText Key=ThreeD.Profile.Repick, Korean='다시 선택', English='Repick'}"
-                        Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Repick}" AutomationProperties.AutomationId="ProfileRepick" />
-                <Button Margin="3,3,0,3" Padding="7,3" Content="{i18n:ThreeDText Key=ThreeD.Profile.Reverse, Korean='방향 바꾸기', English='Reverse direction'}"
-                        Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Swap}" AutomationProperties.AutomationId="ProfileSwap" />
-                <Button Margin="3,3,0,3" Padding="7,3" Content="{i18n:ThreeDText Key=ThreeD.Profile.Cancel, Korean='선택 취소', English='Cancel pick'}"
-                        Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Cancel}"
-                        Visibility="{Binding ProfileIsPicking, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="ProfileCancel" />
-                <Button Margin="3,3,0,3" Padding="7,3" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Profile.Collapse, Korean='그래프 접기 또는 펼치기', English='Collapse or expand graph'}"
-                        Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.ToggleCollapsed}" AutomationProperties.AutomationId="ProfileCollapse">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                            <Setter Property="Content" Value="{i18n:ThreeDText Key=ThreeD.Profile.ExpandGraph, Korean='그래프 펼치기', English='Expand graph'}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ProfileBodyVisible}" Value="True">
-                                    <Setter Property="Content" Value="{i18n:ThreeDText Key=ThreeD.Profile.CollapseGraph, Korean='그래프 접기', English='Collapse graph'}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-                <Button Margin="3,3,0,3" Padding="7,3" Content="{i18n:ThreeDText Key=ThreeD.Profile.Clear, Korean='측정 지우기', English='Clear measurement'}"
-                        Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Clear}" AutomationProperties.AutomationId="ProfileClear" />
-            </WrapPanel>
-            <StackPanel Visibility="{Binding ProfileBodyVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                <WrapPanel Margin="0,8,0,2">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                        <TextBlock Text="{i18n:ThreeDText Key=ThreeD.Profile.XyDistance, Korean='XY 거리 ', English='XY distance '}" />
-                        <TextBlock FontWeight="SemiBold" Text="{Binding ProfileGridDistance}" />
-                        <TextBlock Margin="3,0,0,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Profile.Cells, Korean='셀', English='cells'}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,18,4">
-                        <TextBlock Text="{i18n:ThreeDText Key=ThreeD.Profile.SpatialDistance, Korean='3D 거리 ', English='3D distance '}" />
-                        <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Profile.Uncalibrated, Korean='— · 교정 없음', English='— · no calibration'}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="{i18n:ThreeDText Key=ThreeD.Profile.HeightDifference, Korean='높이 차이 ', English='Height difference '}" />
-                        <TextBlock FontWeight="SemiBold" Text="{Binding ProfileHeightDelta}" />
-                        <TextBlock Margin="3,0,0,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Profile.RawHeight, Korean='원시 높이', English='raw height'}" />
-                    </StackPanel>
-                </WrapPanel>
-                <Border Height="94" Padding="6" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3" ClipToBounds="True">
-                    <Viewbox Stretch="Fill">
-                        <Canvas Width="240" Height="54" Background="Transparent" MouseMove="OnTraceMouseMove">
-                            <Line X1="0" Y1="13.5" X2="240" Y2="13.5" Stroke="{DynamicResource ThreeD.DividerBrush}" StrokeThickness="0.5" />
-                            <Line X1="0" Y1="27" X2="240" Y2="27" Stroke="{DynamicResource ThreeD.DividerBrush}" StrokeThickness="0.5" />
-                            <Line X1="0" Y1="40.5" X2="240" Y2="40.5" Stroke="{DynamicResource ThreeD.DividerBrush}" StrokeThickness="0.5" />
-                            <Path Data="{Binding ProfilePathData}" Stroke="{DynamicResource ThreeD.WarningBrush}" StrokeThickness="1.1" StrokeLineJoin="Round" />
-                            <Line X1="{Binding ProfileLinkedCursorX}" X2="{Binding ProfileLinkedCursorX}" Y1="0" Y2="54" Stroke="{DynamicResource ThreeD.InfoBrush}" StrokeThickness="1"
-                                  Visibility="{Binding ProfileLinkedCursorVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
-                            <Ellipse Width="6" Height="6" Canvas.Left="{Binding ProfileLinkedCursorMarkerLeft}" Canvas.Top="{Binding ProfileLinkedCursorMarkerTop}"
-                                     Fill="{DynamicResource ThreeD.InfoBrush}" Visibility="{Binding ProfileLinkedCursorVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        </Canvas>
-                    </Viewbox>
-                </Border>
-                <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.InfoBrush}" TextWrapping="Wrap"
-                           Visibility="{Binding ProfileLinkedCursorVisible, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="ProfileCursorReadout">
-                    <TextBlock.Text>
-                        <MultiBinding Converter="{StaticResource ProfileRuntimeTextConverter}" ConverterParameter="ProfileCursor">
-                            <Binding Path="ProfileLinkedCursorSummary" />
-                            <Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" />
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-                <Grid Margin="0,4,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="A" />
-                    <TextBlock Grid.Column="1" Margin="8,0" TextAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{i18n:ThreeDText Key=ThreeD.Profile.Axis, Korean='가로: XY 거리(셀) · 세로: 높이(원시 높이) · 결측은 끊어서 표시', English='X: XY distance (cells) · Y: raw height · missing cells break the trace'}" TextWrapping="Wrap" />
-                    <TextBlock Grid.Column="2" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="B" />
+    <Border Background="{DynamicResource ThreeD.ViewportBrush}" BorderThickness="0" ContextMenu="{StaticResource ProfileContextMenu}">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <DockPanel x:Name="InlineProfileHeader" Height="30" Margin="8,0">
+                <DockPanel.Style><Style TargetType="DockPanel"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding UseEmbeddedChrome, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></DockPanel.Style>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Style="{StaticResource ProfileOverlayButtonStyle}" ToolTip="{i18n:ThreeDText Key=ThreeD.Profile.Reverse, Korean='방향 바꾸기', English='Reverse direction'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Swap}" AutomationProperties.AutomationId="ProfileSwap"><ui:SymbolIcon Symbol="ArrowSwap24" FontSize="14" /></Button>
+                    <Button Style="{StaticResource ProfileOverlayButtonStyle}" ToolTip="{i18n:ThreeDText Key=ThreeD.Profile.Clear, Korean='측정 지우기', English='Clear measurement'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.Clear}" AutomationProperties.AutomationId="ProfileClear"><ui:SymbolIcon Symbol="Delete24" FontSize="14" /></Button>
+                    <Button Style="{StaticResource ProfileOverlayButtonStyle}" ToolTip="{i18n:ThreeDText Key=ThreeD.Profile.Collapse, Korean='그래프 접기 또는 펼치기', English='Collapse or expand graph'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.ToggleCollapsed}" AutomationProperties.AutomationId="ProfileCollapse"><ui:SymbolIcon Symbol="ChevronDown24" FontSize="14" /></Button>
+                </StackPanel>
+                <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.Profile.Title, Korean='A–B 높이 단면', English='A–B height profile'}" />
+            </DockPanel>
+            <Grid Grid.Row="1" x:Name="ProfileChartBody" ClipToBounds="True">
+                <Grid.Style><Style TargetType="Grid"><Setter Property="Height" Value="112" /><Style.Triggers><DataTrigger Binding="{Binding UseEmbeddedChrome, ElementName=Root}" Value="True"><Setter Property="Height" Value="Auto" /></DataTrigger><DataTrigger Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="True"><Setter Property="TextElement.FontFamily" Value="Segoe UI, Malgun Gothic" /></DataTrigger><DataTrigger Binding="{Binding ProfileBodyVisible}" Value="False"><Setter Property="Height" Value="0" /></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding UseEmbeddedChrome, ElementName=Root}" Value="True" /><Condition Binding="{Binding ProfileBodyVisible}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Height" Value="Auto" /></MultiDataTrigger></Style.Triggers></Style></Grid.Style>
+                <Grid.RowDefinitions><RowDefinition><RowDefinition.Style><Style TargetType="RowDefinition"><Setter Property="Height" Value="26" /><Style.Triggers><DataTrigger Binding="{Binding IsTeachingDrawerCompact, ElementName=Root}" Value="True"><Setter Property="Height" Value="46" /></DataTrigger></Style.Triggers></Style></RowDefinition.Style></RowDefinition><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <DockPanel x:Name="ProfileWideInfo" Margin="58,0,16,0">
+                    <DockPanel.Style><Style TargetType="DockPanel"><Style.Triggers><DataTrigger Binding="{Binding ProfileHasEndpoints}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding IsTeachingDrawerCompact, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="True" /><Condition Binding="{Binding ProfileAllSamplesMissing}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger></Style.Triggers></Style></DockPanel.Style>
+                    <TextBlock DockPanel.Dock="Right" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" VerticalAlignment="Center" Text="{i18n:ThreeDText Key=ThreeD.Profile.DistanceAxis, Korean='가로축: A–B 거리 (셀)', English='X: A–B distance (cells)'}" />
+                    <TextBlock VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" Foreground="#ADB9C6" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProfileRange}">
+                        <Run Text="{i18n:ThreeDText Key=ThreeD.Profile.RawHeight, Korean='높이 (raw)', English='Height (raw)'}" /><Run Text=" · " /><Run Text="{Binding ProfileEndpointSummary, Mode=OneWay}" /><Run Text=" · " /><Run Text="{i18n:ThreeDText Key=ThreeD.Profile.Length, Korean='길이 ', English='Length '}" /><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value="{Binding ProfileGridDistance, Mode=OneWay}" /><Style.Triggers><DataTrigger Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="True"><Setter Property="Text" Value="{Binding ProfileDrawerGridDistance, Mode=OneWay}" /></DataTrigger></Style.Triggers></Style></Run.Style></Run><Run Text="{i18n:ThreeDText Key=ThreeD.Profile.Cells, Korean=' 셀', English=' cells'}" />
+                    </TextBlock>
+                </DockPanel>
+                <Grid x:Name="ProfileCompactInfo" Margin="58,0,16,0">
+                    <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsTeachingDrawerCompact, ElementName=Root}" Value="True" /><Condition Binding="{Binding ProfileHasEndpoints}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="True" /><Condition Binding="{Binding ProfileAllSamplesMissing}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed" /></MultiDataTrigger></Style.Triggers></Style></Grid.Style>
+                    <Grid.RowDefinitions><RowDefinition Height="26" /><RowDefinition Height="20" /></Grid.RowDefinitions>
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#ADB9C6" VerticalAlignment="Center" TextWrapping="Wrap"><Run Text="{i18n:ThreeDText Key=ThreeD.Profile.RawHeight, Korean='높이 (raw)', English='Height (raw)'}" /><Run Text=" · " /><Run Text="{Binding ProfileEndpointSummary, Mode=OneWay}" /></TextBlock>
+                    <DockPanel Grid.Row="1"><TextBlock DockPanel.Dock="Right" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" VerticalAlignment="Center" Text="{i18n:ThreeDText Key=ThreeD.Profile.DistanceAxis, Korean='가로축: A–B 거리 (셀)', English='X: A–B distance (cells)'}" /><TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#ADB9C6" VerticalAlignment="Center"><Run Text="{i18n:ThreeDText Key=ThreeD.Profile.Length, Korean='길이 ', English='Length '}" /><Run Text="{Binding ProfileDrawerGridDistance, Mode=OneWay}" /><Run Text="{i18n:ThreeDText Key=ThreeD.Profile.Cells, Korean=' 셀', English=' cells'}" /></TextBlock></DockPanel>
                 </Grid>
-                <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ProfileEndpointSummary}" TextWrapping="Wrap" />
-                <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ProfileRange}" TextWrapping="Wrap" />
-                <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="{i18n:ThreeDText Key=ThreeD.Profile.PickHint, Korean='뷰에서 A, B 순서로 두 점을 선택하세요. Esc: 선택 취소', English='Pick A, then B in the view. Esc: cancel.'}" TextWrapping="Wrap"
-                           Visibility="{Binding ProfileIsPicking, Converter={StaticResource BoolToVisibilityConverter}}" />
-            </StackPanel>
-        </StackPanel>
+                <Canvas x:Name="ProfileChartCanvas" Grid.Row="1" Background="Transparent" SizeChanged="OnChartSizeChanged" MouseMove="OnTraceMouseMove" MouseLeave="OnTraceMouseLeave" AutomationProperties.AutomationId="ProfileChart" AutomationProperties.Name="{Binding ProfileRange}" Visibility="{Binding ProfileBodyVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock Grid.RowSpan="2" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" TextAlignment="Center" Text="{i18n:ThreeDText Key=ThreeD.Profile.SelectEndpoints, Korean='3D 또는 높이 화면에서 A와 B를 선택하세요.', English='Select A and B in the 3D or height pane.'}">
+                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding UseEmbeddedChrome, ElementName=Root}" Value="True" /><Condition Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="False" /><Condition Binding="{Binding ProfileHasEndpoints}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <TextBlock x:Name="DrawerProfileEmptyMessage" Grid.RowSpan="2" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#ADB9C6" FontSize="13" LineHeight="20" TextWrapping="Wrap" TextAlignment="Center" AutomationProperties.AutomationId="DrawerProfileEmptyMessage">
+                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.Profile.DrawerSelectEndpoints, Korean='단면 도구(S)로 3D 또는 높이 보기에서 A–B를 그리세요', English='Use the section tool (S) to draw A–B in the 3D or height view'}" /><Style.Triggers>
+                        <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="True" /><Condition Binding="{Binding ProfileHasEndpoints}" Value="False" /><Condition Binding="{Binding ProfileIsCollapsed}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
+                        <DataTrigger Binding="{Binding ProfileHasInput}" Value="False"><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.Profile.NoInput, Korean='입력이 없습니다', English='No input'}" /></DataTrigger>
+                        <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding UseTeachingDrawerLayout, ElementName=Root}" Value="True" /><Condition Binding="{Binding ProfileAllSamplesMissing}" Value="True" /><Condition Binding="{Binding ProfileIsCollapsed}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /><Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.Profile.AllMissing, Korean='단면 구간이 모두 결측입니다', English='All samples in this section are missing'}" /></MultiDataTrigger>
+                    </Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <Button Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource ProfileOverlayButtonStyle}" Visibility="{Binding ProfileIsCollapsed, Converter={StaticResource BoolToVisibilityConverter}}" ToolTip="{i18n:ThreeDText Key=ThreeD.Profile.ExpandGraph, Korean='그래프 펼치기', English='Expand graph'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}" Command="{Binding ProfileActionCommand}" CommandParameter="{x:Static host:ViewerHeightProfileAction.ToggleCollapsed}"><ui:SymbolIcon Symbol="ChevronDown24" FontSize="16" /></Button>
+            </Grid>
+            <Border x:Name="ProfileFooter" Grid.Row="2" MinHeight="24" Padding="10,0" Background="#141920" BorderBrush="#2A323B" BorderThickness="0,1,0,0" Visibility="{Binding ShowCoordinateFooter, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ToolTip="{i18n:ThreeDText Key=ThreeD.Profile.Uncalibrated, Korean='교정 없음', English='No calibration'}"><Run Text="A–B " /><Run Text="{Binding ProfileGridDistance, Mode=OneWay}" /><Run Text="{i18n:ThreeDText Key=ThreeD.Profile.Cells, Korean=' 셀', English=' cells'}" /></TextBlock>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="True">
+                        <TextBlock VerticalAlignment="Center" FontFamily="Cascadia Mono, Cascadia Code, Consolas" FontSize="11.5" LineHeight="14" TextWrapping="Wrap" Foreground="#CFE6F5" ToolTip="{Binding ProfileRange}" AutomationProperties.AutomationId="ProfileContextStatus"><Run Text="{Binding ProfileFooterEndpointSummary, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding SelectionContext, ElementName=Root, Mode=OneWay}" /></TextBlock>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
     </Border>
 </UserControl>

@@ -525,10 +525,10 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
         HudSummary = $"Surface Deviation | {result.Status}";
         HudDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Full query: {result.ComparedPointCount:N0} | signed {result.Signed.Minimum:G6}..{result.Signed.Maximum:G6} {result.Input.Unit} | {result.TotalElapsed.TotalSeconds:F1} s");
+            $"Full query: {result.ComparedPointCount:N0} | signed {result.Signed.Minimum:0.##}..{result.Signed.Maximum:0.##} {result.Input.Unit} | {result.TotalElapsed.TotalSeconds:F1} s");
         LegendSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Signed range {result.Signed.Minimum:G6}..{result.Signed.Maximum:G6} {result.Input.Unit} | full-query metrics");
+            $"Signed range {result.Signed.Minimum:0.##}..{result.Signed.Maximum:0.##} {result.Input.Unit} | full-query metrics");
         EvidenceSummary =
             $"Preview only | actual={FormatIdentity(result.Input.ActualSource)} | nominal={FormatIdentity(result.Input.NominalSource)} | query={FormatIdentity(result.Input.QuerySource)}";
         DistributionSummary = string.Create(
@@ -563,7 +563,7 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
             $"Query point #{sample.QueryPointIndex:N0} | {SelectedDeviationToleranceStatus}");
         SelectedDeviationDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"XYZ {FormatVector(sample.Position)} | signed {sample.SignedDeviation:G7} {previewResult.Input.Unit} | unsigned {sample.UnsignedDeviation:G7} {previewResult.Input.Unit} | nearest nominal triangle #{sample.NominalTriangleIndex:N0} | sign {(sample.RobustSignRecovered ? "robust" : "direct")} | actual={previewResult.Input.ActualSource.Id} | query={previewResult.Input.QuerySource.Id}");
+            $"XYZ {FormatVector(sample.Position)} | signed {sample.SignedDeviation:0.##} {previewResult.Input.Unit} | unsigned {sample.UnsignedDeviation:0.##} {previewResult.Input.Unit} | nearest nominal triangle #{sample.NominalTriangleIndex:N0} | sign {(sample.RobustSignRecovered ? "robust" : "direct")} | actual={previewResult.Input.ActualSource.Id} | query={previewResult.Input.QuerySource.Id}");
         OnPropertyChanged(nameof(SelectedDeviation));
         OnPropertyChanged(nameof(HasSelectedDeviation));
         return true;
@@ -882,7 +882,7 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
 
     private static string FormatNumber(double value) =>
         double.IsFinite(value)
-            ? value.ToString("0.###", CultureInfo.InvariantCulture)
+            ? value.ToString("0.##", CultureInfo.InvariantCulture)
             : "n/a";
 
     private static string FormatIdentity(NominalActualFileIdentity identity) =>
@@ -891,5 +891,5 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
     private static string FormatVector(System.Numerics.Vector3 value) =>
         string.Create(
             CultureInfo.InvariantCulture,
-            $"({value.X:F6}, {value.Y:F6}, {value.Z:F6})");
+            $"({value.X:0.##}, {value.Y:0.##}, {value.Z:0.##})");
 }

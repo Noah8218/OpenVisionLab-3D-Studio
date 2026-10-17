@@ -273,6 +273,24 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool HasConfiguredSmokeScreenshot => smokeScenario.ScreenshotPath is not null;
 
+    public (double Minimum, double Maximum, bool Deferred) HeightColorRenderStateForSmoke =>
+        (viewModel.HeightColorRenderMinimum, viewModel.HeightColorRenderMaximum, viewModel.HeightDisplayOptions.IsRangeDragActive);
+
+    public async Task<bool> CompleteHeightDisplayFrameForSmokeAsync()
+    {
+        if (IsDisposed || !Viewport.IsLoaded || !IsVisible) return false;
+        await Dispatcher.InvokeAsync(() =>
+        {
+            RenderNow();
+            Viewport.OpenGL.Finish();
+        }, DispatcherPriority.Render);
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler handler = (_, _) => completion.TrySetResult(true);
+        CompositionTarget.Rendering += handler;
+        try { return await Task.WhenAny(completion.Task, Task.Delay(3000)) == completion.Task; }
+        finally { CompositionTarget.Rendering -= handler; }
+    }
+
     public Task<bool> CaptureConfiguredSmokeViewAsync() => smokeScenario.CaptureConfiguredSmokeViewAsync();
 
     public bool ApplyConfiguredSmokePick()
@@ -470,6 +488,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var middlePressed = false;
         Window? hostWindow = null;
         var originalTopmost = false;
+        var originalWorkspaceContextMenu = WorkspaceContextMenu;
         var initialC3DSource = c3dSample;
         var initialC3DGeometryStyle = viewModel.Display.EffectiveGeometryStyle;
         var initialC3DSourceApplyCount = c3dSourceApplyCount;
@@ -489,6 +508,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             hostWindow.Topmost = true;
             hostWindow.Activate();
             hostWindow.Focus();
+            // This generated-cube fixture checks the standalone menu, including when embedded by Shell.
+            SetCurrentValue(WorkspaceContextMenuProperty, null);
             await Dispatcher.InvokeAsync(() =>
             {
                 viewModel.Reset();
@@ -682,6 +703,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 }
             }
 
+            SetCurrentValue(WorkspaceContextMenuProperty, originalWorkspaceContextMenu);
             if (hostWindow is not null)
             {
                 hostWindow.Topmost = originalTopmost;
@@ -713,7 +735,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && c3dGpuTelemetry.UploadCount == initialC3DGpuUploadCount
                 && !interactionWireframeLodActive
                 && !c3dSourceReloadedDuringInteraction);
-        var passed = pickPassed
+        var workspaceContextMenuRestored = ReferenceEquals(WorkspaceContextMenu, originalWorkspaceContextMenu);
+        var passed = workspaceContextMenuRestored
+            && pickPassed
             && orbitPassed
             && panPassed
             && rightPanPassed
@@ -726,6 +750,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             && routedEventsPassed
             && interactiveRenderPerformancePassed
             && interactionLodPassed;
+        if (!workspaceContextMenuRestored) failure = "The host workspace context menu was not restored after the standalone pointer fixture.";
         if (!passed && string.IsNullOrWhiteSpace(failure))
         {
             failure = CreatePointerInputFailureSummary(
@@ -913,10 +938,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.ScreenshotCommand,
             viewModel.ProfileCommand
         };
-        return (
-            commands.Length == expected.Length
-            && expected.All(expectedCommand => commands.Any(command => ReferenceEquals(command, expectedCommand))),
-            commands.Length);
+        var matchedRequiredCommands = expected.Count(expectedCommand => commands.Any(command => ReferenceEquals(command, expectedCommand)));
+        return (matchedRequiredCommands == expected.Length, matchedRequiredCommands);
     }
 
     private (bool Passed, int CommandCount) InspectViewerTopMenuBindings()
@@ -924,6 +947,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         var commands = ViewerViewMenuRoot.Items
             .OfType<MenuItem>()
             .Select(item => item.Command)
+            .Append(ViewerFitAllButton.Command)
+            .Append(ViewerFitRoiButton.Command)
             .Where(command => command is not null)
             .ToArray();
         var expected = new ICommand[]
@@ -938,11 +963,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.ProfileCommand
         };
         var overlayBoundary = InspectGridRectangleOverlayMenuBoundary();
-        return (
-            commands.Length == expected.Length
-            && expected.All(expectedCommand => commands.Any(command => ReferenceEquals(command, expectedCommand)))
-            && overlayBoundary.Passed,
-            commands.Length);
+        var matchedRequiredCommands = expected.Count(expectedCommand => commands.Any(command => ReferenceEquals(command, expectedCommand)));
+        return (matchedRequiredCommands == expected.Length && overlayBoundary.Passed, matchedRequiredCommands);
     }
 
     private (bool Passed, string Header, string AutomationName) InspectGridRectangleOverlayMenuBoundary()
@@ -960,7 +982,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var header = item.Header?.ToString() ?? string.Empty;
         var automationName = AutomationProperties.GetName(item) ?? string.Empty;
-        var headerClear = header.Contains("Y", StringComparison.Ordinal)
+        var headerClear = header.Contains("ROI", StringComparison.Ordinal)
             && (header.Contains("보기 전용", StringComparison.Ordinal)
                 || header.Contains("view only", StringComparison.OrdinalIgnoreCase));
         var automationNameClear = automationName.Contains("Y", StringComparison.Ordinal)
@@ -979,6 +1001,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var lines = new[]
         {
             "PointerInputRegression",
+            $"MenuScope|pointerFixture=standalone-viewer|restoredHostMenu={(WorkspaceContextMenu is null ? "standalone" : "workspace")}",
             $"Result|pass={result.Passed}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}",
             $"RoutedEvents|pass={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}",
             $"PointerLatency|mouseMoveSamples={result.MouseMoveTimingCount}|handlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|handlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameSamples={result.NextFrameTimingCount}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}",
@@ -993,8 +1016,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             $"DoubleClickFit|pass={result.DoubleClickFitPassed}|before={FormatCameraSnapshot(result.ZoomCamera)}|after={FormatCameraSnapshot(result.DoubleClickFitCamera)}",
             $"ContextMenu|pass={result.ContextMenuPassed}",
             $"InputModes|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|shortRightClick={result.ContextMenuPassed}",
-            $"ContextMenuBindings|pass={result.ContextMenuBindingsPassed}|commands={result.ContextMenuCommandCount}/8",
-            $"TopViewMenuBindings|pass={result.TopViewMenuBindingsPassed}|commands={result.TopViewMenuCommandCount}/8",
+            $"ContextMenuBindings|pass={result.ContextMenuBindingsPassed}|matchedRequiredCommands={result.ContextMenuCommandCount}/8",
+            $"TopViewMenuBindings|pass={result.TopViewMenuBindingsPassed}|matchedRequiredCommands={result.TopViewMenuCommandCount}/8",
             $"GridRectangleOverlayBoundary|pass={overlayBoundary.Passed}|header={CleanContractText(overlayBoundary.Header)}|automationName={CleanContractText(overlayBoundary.AutomationName)}",
             $"Failure|summary={result.Failure}"
         };
@@ -1018,7 +1041,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var result = pointerInputRegressionResult;
-        return $"PointerInputRegression|configured=True|pass={result.Passed}|pick={result.PickPassed}|orbit={result.OrbitPassed}|pan={result.PanPassed}|middlePan={result.PanPassed}|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|rightPanMenuSuppressed={result.RightPanMenuSuppressed}|zoom={result.ZoomPassed}|doubleClickFit={result.DoubleClickFitPassed}|shortRightClick={result.ContextMenuPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}|contextMenuCommands={result.ContextMenuCommandCount}/8|topViewMenuBindings={result.TopViewMenuBindingsPassed}|topViewMenuCommands={result.TopViewMenuCommandCount}/8|routedEvents={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}|mouseMoveHandlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|mouseMoveHandlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|interactiveRenderPass={result.InteractiveRenderPerformancePassed}|interactionLodExpected={result.InteractionLodExpected}|interactionLodPass={result.InteractionLodPassed}|interactionLodActivations={result.InteractionLodActivationCount}|interactionLodMediumTransitions={result.InteractionLodMediumTransitionCount}|interactionLodRestores={result.InteractionLodRestoreCount}|coarseGridEdges={result.CoarseGridEdgeCount}|mediumGridEdges={result.MediumGridEdgeCount}|gpuUploadDelta={result.InteractionGpuUploadDelta}|gpuBufferReady={result.GpuBufferReady}|sourceReloadedDuringInteraction={result.C3DSourceReloadedDuringInteraction}|c3dActive={result.C3DSceneActive}|c3dPoints={result.C3DRenderedPointCount}|renderCacheBuilds={result.C3DDisplayListBuildCount}|lastRenderCacheBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}|failure={CleanContractText(result.Failure)}";
+        return $"PointerInputRegression|configured=True|pass={result.Passed}|pick={result.PickPassed}|orbit={result.OrbitPassed}|pan={result.PanPassed}|middlePan={result.PanPassed}|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|rightPanMenuSuppressed={result.RightPanMenuSuppressed}|zoom={result.ZoomPassed}|doubleClickFit={result.DoubleClickFitPassed}|shortRightClick={result.ContextMenuPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}|contextMenuRequiredCommands={result.ContextMenuCommandCount}/8|topViewMenuBindings={result.TopViewMenuBindingsPassed}|topViewMenuRequiredCommands={result.TopViewMenuCommandCount}/8|routedEvents={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}|mouseMoveHandlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|mouseMoveHandlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|interactiveRenderPass={result.InteractiveRenderPerformancePassed}|interactionLodExpected={result.InteractionLodExpected}|interactionLodPass={result.InteractionLodPassed}|interactionLodActivations={result.InteractionLodActivationCount}|interactionLodMediumTransitions={result.InteractionLodMediumTransitionCount}|interactionLodRestores={result.InteractionLodRestoreCount}|coarseGridEdges={result.CoarseGridEdgeCount}|mediumGridEdges={result.MediumGridEdgeCount}|gpuUploadDelta={result.InteractionGpuUploadDelta}|gpuBufferReady={result.GpuBufferReady}|sourceReloadedDuringInteraction={result.C3DSourceReloadedDuringInteraction}|c3dActive={result.C3DSceneActive}|c3dPoints={result.C3DRenderedPointCount}|renderCacheBuilds={result.C3DDisplayListBuildCount}|lastRenderCacheBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}|failure={CleanContractText(result.Failure)}";
     }
 
 }

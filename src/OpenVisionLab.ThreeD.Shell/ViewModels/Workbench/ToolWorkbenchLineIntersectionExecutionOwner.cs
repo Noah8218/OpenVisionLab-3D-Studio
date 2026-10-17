@@ -97,7 +97,7 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner : IDisposable
 
     public string EvidenceSummary => IsDisposed || previewOutput is null
         ? "No corner evidence until Preview completes."
-        : $"{previewOutput.OutputRole} | gap {previewOutput.ClosestApproachDistance:G6} source-coordinate | acute angle {previewOutput.AcuteAngleDegrees:G6} degrees | support extension {previewOutput.FirstSupportExtension:G6} / {previewOutput.SecondSupportExtension:G6}";
+        : $"{previewOutput.OutputRole} | gap {previewOutput.ClosestApproachDistance:0.##} source-coordinate | acute angle {previewOutput.AcuteAngleDegrees:0.##} degrees | support extension {previewOutput.FirstSupportExtension:0.##} / {previewOutput.SecondSupportExtension:0.##}";
 
     public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 

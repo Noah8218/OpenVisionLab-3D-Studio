@@ -30,9 +30,7 @@
             <RowDefinition Height="280" />
         </Grid.RowDefinitions>
 
-        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Subtitle, Korean='높이차 엣지 도구 실험실', English='Edge Tool Lab'}"
-                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Status, Korean='입력 / 오버레이 비교', English='Input / overlay comparison'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Subtitle, Korean='높이차 엣지 도구 실험실', English='Edge Tool Lab'}" />
 
         <Border Grid.Row="1"
                 Margin="16,16,16,0"
@@ -42,25 +40,12 @@
                 BorderThickness="1"
                 CornerRadius="3">
             <Grid>
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Grid Grid.ColumnSpan="2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <ui:SymbolIcon Width="24"
-                                   Height="24"
-                                   Margin="0,0,9,0"
-                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                   Symbol="PointScan24" />
-                    <StackPanel Grid.Column="1">
-                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
-                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Title, Korean='높이차 엣지 도구 실험실', English='Height Difference Edge Tool Lab'}" />
-                        <TextBlock TextWrapping="Wrap" Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
-                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Edge.Detail, Korean='입력은 적용된 필터 높이 데이터입니다. 검출된 에지 점은 표면 위에 표시합니다.', English='The input is the exact Applied FilteredHeightField. The output is an EdgePointSet overlay, not a second surface.'}" />
-                    </StackPanel>
-                </Grid>
-                <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ui:Button Appearance="Primary" Margin="0,0,6,0"
                                Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
@@ -140,7 +125,7 @@
                                 </DockPanel>
                                 <TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
                                            FontSize="12"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="HeightDifferenceEdgeExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="HeightDifferenceEdgeExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding HeightDifferenceEdgeExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                 <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
                                            FontSize="12"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="HeightDifferenceEdgeOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>

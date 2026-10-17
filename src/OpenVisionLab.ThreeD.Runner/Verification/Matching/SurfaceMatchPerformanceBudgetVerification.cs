@@ -104,9 +104,9 @@ internal static class SurfaceMatchPerformanceBudgetVerification
                 $"bounded={measurements[0].Profile.ExpectedCandidateCount};broad={measurements[1].Profile.ExpectedCandidateCount}"),
             Check(
                 "broad-profile-exercises-larger-workload",
-                measurements[1].OuterMilliseconds.Median
-                    >= measurements[0].OuterMilliseconds.Median * 2.0,
-                $"boundedMedianMs={FormatMilliseconds(measurements[0].OuterMilliseconds.Median)};broadMedianMs={FormatMilliseconds(measurements[1].OuterMilliseconds.Median)};minimumRatio=2.0")
+                measurements.All(measurement => measurement.CandidateCounts.Length == MeasurementCount)
+                && measurements[1].CandidateCounts.Min() > measurements[0].CandidateCounts.Max(),
+                $"boundedCandidates={string.Join(',', measurements[0].CandidateCounts.Distinct())};broadCandidates={string.Join(',', measurements[1].CandidateCounts.Distinct())};measuredRuns={MeasurementCount};boundedMedianMs={FormatMilliseconds(measurements[0].OuterMilliseconds.Median)};broadMedianMs={FormatMilliseconds(measurements[1].OuterMilliseconds.Median)};proof=executed-candidate-counts")
         };
 
         foreach (var measurement in measurements)

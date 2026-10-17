@@ -14,6 +14,7 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
+    private readonly Dictionary<string, Border> teachingResultCaptionCache = new(StringComparer.Ordinal);
     private Point? teachingCapturePointerDownPosition;
     private bool teachingCaptureDragExceeded;
     private TeachingGridRectangleEditMode teachingGridRectangleEditMode;
@@ -132,6 +133,15 @@ public sealed partial class OpenVisionThreeDViewerControl
         RenderNow();
     }
 
+    public void SetTeachingSelectionDisplayFilter(IReadOnlyList<string>? ids)
+    {
+        VerifyHostDispatcherAccess(nameof(SetTeachingSelectionDisplayFilter));
+        if (viewModel.SetTeachingSelectionDisplayFilter(ids))
+        {
+            RenderNow();
+        }
+    }
+
     public void SetRepeatPreviewTeachingSelections(IReadOnlyList<ToolRecipeSelection> selections)
     {
         ArgumentNullException.ThrowIfNull(selections);
@@ -159,14 +169,17 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public void SetSelectedCompletenessCellId(string? cellId)
     {
+        if (string.Equals(viewModel.SelectedCompletenessCellId, cellId, StringComparison.OrdinalIgnoreCase)) return;
         viewModel.SetSelectedCompletenessCellId(cellId);
         RenderNow();
     }
 
     public void SetSelectedTeachingSelection(string? selectionId)
     {
-        viewModel.SetSelectedTeachingSelection(selectionId);
-        RenderNow();
+        if (viewModel.SetSelectedTeachingSelection(selectionId))
+        {
+            RenderNow();
+        }
     }
 
     private void TeachingRoiDisplayHeightOffset_LostFocus(object sender, RoutedEventArgs e)
@@ -478,6 +491,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var selection = viewModel.AppliedTeachingSelections
             .Where(IsSelectionForCurrentC3DGrid)
+            .Where(item => viewModel.IsTeachingSelectionDisplayed(item.Id))
             .Where(item => item.GridRectangle is { } rectangle
                 && IsNearTeachingGridRectangleScreenBoundary(item.Id, rectangle, screenPoint))
             .OrderBy(item => item.GridRectangle!.RowCount * (long)item.GridRectangle.ColumnCount)
@@ -1050,6 +1064,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void DrawTeachingSelectionOverlays(OpenGL gl)
     {
+        UpdateTeachingRoiCaptions();
+        UpdateTeachingResultCaptions();
         if (c3dSample is null)
         {
             TeachingRoiHeightHandleOverlay.Visibility = Visibility.Collapsed;
@@ -1072,20 +1088,24 @@ public sealed partial class OpenVisionThreeDViewerControl
                     isReference ? 0.88 : 0.10);
             }
 
-            foreach (var selection in viewModel.AppliedTeachingSelections.Where(IsSelectionForCurrentC3DGrid))
+            foreach (var selection in viewModel.AppliedTeachingSelections.Where(item => IsSelectionForCurrentC3DGrid(item) && viewModel.IsTeachingSelectionDisplayed(item.Id)))
             {
                 var selected = string.Equals(
                     selection.Id,
                     viewModel.SelectedTeachingSelectionId,
                     StringComparison.OrdinalIgnoreCase);
                 var authoredWhileEditing = selected && viewModel.IsTeachingCaptureActive;
+                var referenceRole = selection.Id.Contains(".reference-roi", StringComparison.OrdinalIgnoreCase);
+                var measurementRole = selection.Id.Contains(".measurement-roi", StringComparison.OrdinalIgnoreCase);
                 DrawTeachingSelection(
                     gl,
                     selection,
-                    authoredWhileEditing ? 0.32 : selected ? 1.00 : 0.10,
-                    authoredWhileEditing ? 0.72 : selected ? 0.82 : 0.90,
-                    authoredWhileEditing ? 1.00 : selected ? 0.12 : 0.88,
-                    selected && !viewModel.IsTeachingCaptureActive);
+                    authoredWhileEditing ? 0.32 : referenceRole ? 92 / 255.0 : measurementRole || selected ? 242 / 255.0 : 181 / 255.0,
+                    authoredWhileEditing ? 0.72 : referenceRole ? 200 / 255.0 : measurementRole || selected ? 179 / 255.0 : 156 / 255.0,
+                    authoredWhileEditing ? 1.00 : referenceRole ? 224 / 255.0 : measurementRole || selected ? 94 / 255.0 : 242 / 255.0,
+                    selected && !viewModel.IsTeachingCaptureActive
+                        && (teachingGridRectangleHoverMode == TeachingGridRectangleEditMode.Height || teachingGridRectangleEditMode == TeachingGridRectangleEditMode.Height),
+                    selected ? 2.0f : 1.2f);
             }
 
             if (TryGetTeachingOrientedBoxDraft(out var orientedBoxDraft)
@@ -1124,6 +1144,82 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         gl.LineWidth(1.0f);
         gl.PointSize(1.0f);
+    }
+
+    private void UpdateTeachingResultCaptions()
+    {
+        var active = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var label in viewModel.TeachingResultLabels)
+        {
+            if (!label.IsVisible || !viewModel.C3DSampleVisible || !IsSelectionForCurrentC3DGrid(label.Anchor)
+                || label.Anchor.GridRectangle is not { } rectangle
+                || !TryGetTeachingGridRectangleScreenCorners(label.Anchor.Id, rectangle, out var topLeft, out var topRight, out _, out _)) continue;
+            var key = $"{label.StepId}|{label.MetricName}";
+            active.Add(key);
+            if (!teachingResultCaptionCache.TryGetValue(key, out var caption))
+            {
+                caption = new Border { CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1), Padding = new Thickness(6, 1, 6, 1),
+                    Child = new TextBlock { FontFamily = new System.Windows.Media.FontFamily("Cascadia Mono"), FontSize = 12, FontWeight = FontWeights.SemiBold } };
+                teachingResultCaptionCache.Add(key, caption);
+                TeachingResultCaptions.Children.Add(caption);
+            }
+            var text = (TextBlock)caption.Child;
+            text.Text = label.Caption;
+            var color = !label.IsCurrent ? System.Windows.Media.Color.FromRgb(242, 179, 94)
+                : label.Status is ResultStatus.Fail or ResultStatus.Error ? System.Windows.Media.Color.FromRgb(242, 157, 159)
+                : label.Status is ResultStatus.Pass ? System.Windows.Media.Color.FromRgb(134, 200, 158)
+                : System.Windows.Media.Color.FromRgb(173, 185, 198);
+            var ink = new System.Windows.Media.SolidColorBrush(color);
+            caption.BorderBrush = ink; text.Foreground = ink;
+            caption.SetResourceReference(Border.BackgroundProperty, "Viewer.Toolbar.SurfaceBrush");
+            caption.Opacity = label.IsCurrent ? 1 : .65;
+            System.Windows.Automation.AutomationProperties.SetName(caption, label.Description);
+            caption.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(caption, Math.Clamp((topLeft.X + topRight.X - caption.DesiredSize.Width) / 2, 4, Math.Max(4, Viewport.ActualWidth - caption.DesiredSize.Width - 4)));
+            Canvas.SetTop(caption, Math.Clamp((topLeft.Y + topRight.Y) / 2 - caption.DesiredSize.Height - 5, 4, Math.Max(4, Viewport.ActualHeight - caption.DesiredSize.Height - 4)));
+            caption.Visibility = Visibility.Visible;
+        }
+        foreach (var key in teachingResultCaptionCache.Keys.Where(key => !active.Contains(key)).ToArray())
+        {
+            TeachingResultCaptions.Children.Remove(teachingResultCaptionCache[key]);
+            teachingResultCaptionCache.Remove(key);
+        }
+    }
+
+    private void UpdateTeachingRoiCaptions()
+    {
+        TeachingReferenceCaption.Visibility = Visibility.Collapsed;
+        TeachingMeasurementCaption.Visibility = Visibility.Collapsed;
+        var id = viewModel.IsTeachingCaptureActive ? viewModel.TeachingCaptureSnapshot.SelectionId : viewModel.SelectedTeachingSelectionId;
+        if (!viewModel.C3DSampleVisible || c3dSample is null || string.IsNullOrEmpty(id)) return;
+        var roleIndex = id.IndexOf(".reference-roi", StringComparison.OrdinalIgnoreCase);
+        if (roleIndex < 0) roleIndex = id.IndexOf(".measurement-roi", StringComparison.OrdinalIgnoreCase);
+        if (roleIndex < 0) return;
+        var prefix = id[..roleIndex];
+        var occupied = new List<Rect>();
+        Place(TeachingReferenceCaption, prefix + ".reference-roi");
+        Place(TeachingMeasurementCaption, prefix + ".measurement-roi");
+
+        void Place(Border caption, string selectionId)
+        {
+            var selection = viewModel.AppliedTeachingSelections.FirstOrDefault(item => string.Equals(item.Id, selectionId, StringComparison.OrdinalIgnoreCase));
+            if (selection?.GridRectangle is not { } rectangle || !IsSelectionForCurrentC3DGrid(selection)
+                || !viewModel.IsTeachingSelectionDisplayed(selection.Id)
+                || !TryGetTeachingGridRectangleScreenCorners(selection.Id, rectangle, out _, out _, out var bottomRight, out var bottomLeft)) return;
+            caption.Visibility = Visibility.Hidden;
+            caption.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var bounds = new Rect((bottomLeft.X + bottomRight.X - caption.DesiredSize.Width) * 0.5,
+                Math.Max(bottomLeft.Y, bottomRight.Y) + 4, caption.DesiredSize.Width, caption.DesiredSize.Height);
+            foreach (var other in occupied)
+                if (other.IntersectsWith(bounds)) bounds.Offset(0, other.Bottom - bounds.Top + 2);
+            if (bounds.Left < 2 || bounds.Top < 2 || bounds.Right > Viewport.ActualWidth - 2 || bounds.Bottom > Viewport.ActualHeight - 2) return;
+            foreach (var chrome in new FrameworkElement[] { OrientationCubePanel, ViewerHeightLegend, OrientationTriadPanel })
+                if (chrome.IsVisible && chrome.TransformToAncestor(ViewportSurface).TransformBounds(new Rect(chrome.RenderSize)).IntersectsWith(bounds)) return;
+            Canvas.SetLeft(caption, bounds.Left);
+            Canvas.SetTop(caption, bounds.Top);
+            caption.Visibility = Visibility.Visible;
+            occupied.Add(bounds);
+        }
     }
 
     private void DrawCompletenessCellOverlays(OpenGL gl)
@@ -1168,6 +1264,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         if (!viewModel.TeachingRoiHeightHandleVisible
             || !TryGetVisibleTeachingGridRectangle(out var selectionId, out var rectangle)
+            || !viewModel.IsTeachingCaptureActive && !viewModel.IsTeachingSelectionDisplayed(selectionId)
             || !TryGetTeachingGridRectangleScreenCorners(
                 selectionId,
                 rectangle,
@@ -1540,7 +1637,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         double red,
         double green,
         double blue,
-        bool showHandles = false)
+        bool showHandles = false,
+        float? lineWidth = null)
     {
         if (selection.GridRectangle is { } rectangle)
         {
@@ -1551,7 +1649,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 green,
                 blue,
                 showHandles,
-                selection.Id);
+                selection.Id,
+                lineWidth);
         }
 
         if (selection.Points is { Count: > 0 } points)
@@ -1755,21 +1854,30 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
         }
 
-        if (showHandles)
         {
             gl.Enable(OpenGL.GL_BLEND);
             gl.BlendFunc(OpenGL.GL_SRC_ALPHA, OpenGL.GL_ONE_MINUS_SRC_ALPHA);
-            gl.Color(red, green, blue, 0.12);
+            gl.Color(red, green, blue, showHandles ? 0.13 : 0.05);
             gl.Begin(OpenGL.GL_QUADS);
             gl.Vertex(topLeft.X, topLeft.Y, topLeft.Z);
             gl.Vertex(topRight.X, topRight.Y, topRight.Z);
             gl.Vertex(bottomRight.X, bottomRight.Y, bottomRight.Z);
             gl.Vertex(bottomLeft.X, bottomLeft.Y, bottomLeft.Z);
             gl.End();
-            gl.Disable(OpenGL.GL_BLEND);
         }
 
-        gl.LineWidth(lineWidth ?? (showHandles ? 4.0f : 2.5f));
+        var outlineWidth = lineWidth ?? (showHandles ? 2.0f : 1.2f);
+        gl.LineWidth(outlineWidth + 2.5f);
+        gl.Color(8 / 255.0, 11 / 255.0, 14 / 255.0, 0.72);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        gl.Vertex(topLeft.X, topLeft.Y, topLeft.Z);
+        gl.Vertex(topRight.X, topRight.Y, topRight.Z);
+        gl.Vertex(bottomRight.X, bottomRight.Y, bottomRight.Z);
+        gl.Vertex(bottomLeft.X, bottomLeft.Y, bottomLeft.Z);
+        gl.End();
+        gl.Disable(OpenGL.GL_BLEND);
+
+        gl.LineWidth(outlineWidth);
         gl.Color(red, green, blue);
         gl.Begin(OpenGL.GL_LINE_LOOP);
         gl.Vertex(topLeft.X, topLeft.Y, topLeft.Z);
@@ -1785,7 +1893,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var center = (topLeft + topRight + bottomRight + bottomLeft) * 0.25f;
-        gl.PointSize(20.0f);
+        gl.PointSize(10.0f);
         gl.Color(0.08, 0.10, 0.13);
         gl.Begin(OpenGL.GL_POINTS);
         gl.Vertex(topLeft.X, topLeft.Y, topLeft.Z);
@@ -1795,7 +1903,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(center.X, center.Y, center.Z);
         gl.End();
 
-        gl.PointSize(16.0f);
+        gl.PointSize(7.0f);
         gl.Color(red, green, blue);
         gl.Begin(OpenGL.GL_POINTS);
         gl.Vertex(topLeft.X, topLeft.Y, topLeft.Z);
@@ -1804,7 +1912,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(bottomLeft.X, bottomLeft.Y, bottomLeft.Z);
         gl.End();
 
-        gl.PointSize(10.0f);
+        gl.PointSize(5.0f);
         gl.Color(1.0, 1.0, 1.0);
         gl.Begin(OpenGL.GL_POINTS);
         gl.Vertex(center.X, center.Y, center.Z);

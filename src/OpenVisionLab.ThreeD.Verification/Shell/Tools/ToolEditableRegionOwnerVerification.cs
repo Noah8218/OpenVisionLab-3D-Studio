@@ -25,7 +25,7 @@ internal static class ToolEditableRegionOwnerVerification
         var passed = 0;
         var total = 0;
         var fullReportPath = Path.GetFullPath(reportPath);
-        var root = CreateVerificationRoot();
+        var root = CreateVerificationRoot(fullReportPath);
         ToolWorkbenchEditableRegionExecutionOwner? owner = null;
         ToolWorkbenchEditableRegionExecutionOwner? restoredOwner = null;
 
@@ -190,18 +190,8 @@ internal static class ToolEditableRegionOwnerVerification
         return total > 0 && passed == total;
     }
 
-    private static string CreateVerificationRoot()
-    {
-        var evidenceRoot = Path.Combine(
-            "D:\\OpenVisionLab-TestData",
-            "OpenVisionLab-3D-Studio",
-            "editable-region-disposal",
-            "runtime",
-            Guid.NewGuid().ToString("N"));
-        return Directory.Exists("D:\\")
-            ? evidenceRoot
-            : Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", "EditableRegionOwner", Guid.NewGuid().ToString("N"));
-    }
+    private static string CreateVerificationRoot(string reportPath) =>
+        Path.Combine(Path.GetDirectoryName(reportPath)!, "editable-region-disposal", Guid.NewGuid().ToString("N"));
 
     private static C3DConnectedRegionArtifact CreateConnectedRegion(C3DHeightFieldSnapshot source) =>
         C3DConnectedRegionArtifact.Create(

@@ -31,7 +31,8 @@ public sealed record ToolRecipeDocument(
     public const string OutputPolicySchemaVersion = "1.8";
     public const string RecipeMetadataSchemaVersion = "1.9";
     public const string AcceptanceLimitsSchemaVersion = "1.10";
-    public const string CurrentSchemaVersion = AcceptanceLimitsSchemaVersion;
+    public const string GroupSchemaVersion = "1.11";
+    public const string CurrentSchemaVersion = GroupSchemaVersion;
 
     /// <summary>Calculation context for one step and its upstream graph, excluding descriptive metadata.</summary>
     public string CreateStepExecutionContext(string stepId)
@@ -61,7 +62,7 @@ public sealed record ToolRecipeDocument(
         {
             Source = Source with { Name = string.Empty },
             Steps = Steps.Where(step => stepIds.Contains(step.Id)).OrderBy(step => step.Id, StringComparer.OrdinalIgnoreCase)
-                .Select(step => step with { ToolName = string.Empty }),
+                .Select(step => step with { ToolName = string.Empty, Group = null }),
             Selections = (Selections ?? []).Where(selection => entityIds.Contains(selection.Id)).OrderBy(selection => selection.Id, StringComparer.OrdinalIgnoreCase)
                 .Select(selection => selection with { Name = string.Empty }),
             References = References.Where(reference => entityIds.Contains(reference.Id)).OrderBy(reference => reference.Id, StringComparer.OrdinalIgnoreCase)
@@ -77,6 +78,7 @@ public sealed record ToolRecipeDocument(
         || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, AcceptanceLimitsSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsOrientedBox3D(string? schemaVersion) =>
@@ -86,6 +88,7 @@ public sealed record ToolRecipeDocument(
         || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, AcceptanceLimitsSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsDualRoiRouting(string? schemaVersion) =>
@@ -94,6 +97,7 @@ public sealed record ToolRecipeDocument(
         || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, AcceptanceLimitsSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsGridCircle(string? schemaVersion) =>
@@ -101,12 +105,14 @@ public sealed record ToolRecipeDocument(
         || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, AcceptanceLimitsSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsGridPolygon(string? schemaVersion) =>
         string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, RecipeMetadataSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, AcceptanceLimitsSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 }
 
@@ -217,7 +223,8 @@ public sealed record ToolRecipeStep(
     ToolRecipeDualRoiRouting? DualRoiRouting = null,
     bool OutputEnabled = true,
     ToolRecipeSignedDeltaSidecarReference? SignedDeltaSidecar = null,
-    bool? AcceptanceLimitsConfigured = null)
+    bool? AcceptanceLimitsConfigured = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ToolRecipeStepGroup? Group = null)
 {
     public static bool RequiresAcceptanceLimits(string toolId) => toolId is "thickness" or "warpage" or "plane-flatness"
         or "datum-plane-raw-height-deviation" or "point-pair-dimensions" or "gap-flush" or "volume"
@@ -236,6 +243,8 @@ public sealed record ToolRecipeStep(
             ? overlay with { Status = ResultStatus.NotRun } : overlay).ToArray()
     };
 }
+
+public sealed record ToolRecipeStepGroup(string Id, string Name);
 
 /// <summary>
 /// Explicit, recipe-relative reference to a published signed-delta evidence

@@ -751,6 +751,215 @@ internal static class ToolRecipeOrderedRunVerification
         return passed == total;
     }
 
+
+    public static bool VerifyEssentialWorkflow(string reportPath, out string summary)
+    {
+        var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        Directory.CreateDirectory(root);
+        var lines = new List<string> { "Boundary|Actual Studio execution and record stores on isolated synthetic C3D; no CU, SDK numerical qualification, grouped judgement or Cp/Cpk." };
+        var passed = 0;
+        var total = 0;
+        void Check(string name, bool condition, string detail)
+        {
+            total++;
+            if (condition) passed++;
+            lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
+            File.AppendAllLines(reportPath + ".progress.txt", [lines[^1]]);
+        }
+        try
+        {
+            var sourcePath = Path.Combine(root, "source.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("source.c3d.height-map", 4, 4,
+                [10, 10, 10, 10, 10, 10, 10, 10, 15, 15, 15, 15, 15, 15, 15, 15]).SaveC3D(sourcePath);
+            var sourceBytes = File.ReadAllBytes(sourcePath);
+            var recipePath = Path.Combine(root, "workflow.ov3d-recipe.json");
+            var document = CreateThicknessDocument(sourcePath, 4.5, 5.5) with { SchemaVersion = ToolRecipeDocument.OutputPolicySchemaVersion };
+            ToolRecipeDocumentStore.Save(recipePath, document);
+            using var shell = CreateShell(root, "workflow", Path.Combine(root, "runs"));
+            var workbench = shell.Workbench;
+            var runs = 0;
+            workbench.OrderedRunCompleted += (_, _) => runs++;
+            Check("recipe Open and source restoration wait for explicit Run", workbench.TryOpenTeachingRecipe(recipePath, out var message)
+                && WaitForSourceQuality(workbench.SourceQuality) is not null && runs == 0 && !workbench.HasOrderedRunResult, message);
+            var step = workbench.PipelineSteps.Single();
+            workbench.SelectPipelineStep(step.Id);
+            var originalParameters = step.Parameters.Select(parameter => (parameter.Name, parameter.Value)).ToArray();
+            var draft = (ThicknessStepProperties)workbench.SelectedStepPropertyDraft!;
+            draft.MaximumThickness = 6.5;
+            workbench.MarkSelectedStepParameterDraftDirtyCommand.Execute(null);
+            Check("Apply records the actual condition without Run", workbench.TryApplySelectedStepParameterDraft(out message)
+                && step.Parameters.Single(parameter => parameter.Name == "MaximumThickness").Value == "6.5" && runs == 0, message);
+            draft = (ThicknessStepProperties)workbench.SelectedStepPropertyDraft!;
+            draft.MaximumThickness = 8.5;
+            workbench.MarkSelectedStepParameterDraftDirtyCommand.Execute(null);
+            workbench.DiscardSelectedStepParameterDraftCommand.Execute(null);
+            Check("explicit Cancel restores the last applied condition", !workbench.HasPendingStepParameterChanges
+                && ((ThicknessStepProperties)workbench.SelectedStepPropertyDraft!).MaximumThickness == 6.5 && runs == 0, workbench.StepParameterEditStatus);
+            workbench.UndoSelectedStepParametersCommand.Execute(null);
+            step = workbench.PipelineSteps.Single();
+            Check("Undo restores the original condition values", step.Parameters.Select(parameter => (parameter.Name, parameter.Value)).SequenceEqual(originalParameters)
+                && !workbench.HasSelectedStepParameterHistory && runs == 0, workbench.StepParameterEditStatus);
+            var reference = workbench.PlaneFlatnessReferenceSelection!;
+            workbench.CapturePlaneFlatnessReferenceRoiCommand.Execute(null);
+            var replacement = reference with { GridRectangle = reference.GridRectangle! with { Row = 1 } };
+            workbench.UpdateTeachingGridRectangleDraft(replacement.GridRectangle);
+            workbench.UpdateTeachingSelectionCaptureState(true, 2, 2, true, "Owned ROI replacement");
+            Check("ROI Apply changes the same region identity without Run", workbench.TryApplyCapturedTeachingSelection(replacement, out message)
+                && workbench.Selections.Single(selection => selection.Id == reference.Id).GridRectangle == replacement.GridRectangle && runs == 0, message);
+            workbench.UndoSelectedStepParametersCommand.Execute(null);
+            Check("ROI Undo restores the complete original region", workbench.Selections.Single(selection => selection.Id == reference.Id) == reference && runs == 0, reference.Id);
+            workbench.SetValidationSetSources([sourcePath]);
+            workbench.SelectedValidationSetSample = workbench.ValidationSetSamples.Single();
+            workbench.SetValidationSampleRoleCommand.Execute("Good");
+            workbench.SetValidationSampleRoleCommand.Execute("HeldOut");
+            Check("Save persists conditions and independent sample use", workbench.TrySaveTeachingRecipe(recipePath, out message)
+                && !workbench.IsDirty && !workbench.IsValidationSetDefinitionDirty && runs == 0, message);
+            Check("explicit Run creates an actual stored record", workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult()
+                && runs == 1 && workbench.CurrentOrderedRunRecordPath is { } path && File.Exists(path), workbench.OrderedRunEvidenceSummary);
+            var recordPath = workbench.CurrentOrderedRunRecordPath!;
+            var record = ReadRecord(recordPath)!;
+            var recordBytes = File.ReadAllBytes(recordPath);
+            Check("record identifies executed source and exact saved recipe bytes", record.Source.Sha256.Equals(ComputeHashBytes(sourceBytes), StringComparison.OrdinalIgnoreCase)
+                && record.Recipe.Sha256.Equals(ComputeHashBytes(File.ReadAllBytes(recipePath)), StringComparison.OrdinalIgnoreCase)
+                && record.Steps?.Count == 1 && record.Steps[0].Metrics.Count > 0, record.RunId);
+            draft = (ThicknessStepProperties)workbench.SelectedStepPropertyDraft!;
+            draft.MaximumThickness = 6.5;
+            workbench.MarkSelectedStepParameterDraftDirtyCommand.Execute(null);
+            workbench.TryApplySelectedStepParameterDraft(out _);
+            Check("later condition edit invalidates the current result and retains stored bytes", !workbench.HasCurrentMeasurementPreview
+                && workbench.TeachingResults.All(row => !row.IsCurrent) && recordBytes.SequenceEqual(File.ReadAllBytes(recordPath)) && runs == 1, record.Recipe.Sha256);
+            Check("new Save does not rewrite historical record or rerun", workbench.TrySaveTeachingRecipe(recipePath, out message)
+                && recordBytes.SequenceEqual(File.ReadAllBytes(recordPath)) && runs == 1
+                && !record.Recipe.Sha256.Equals(ComputeHashBytes(File.ReadAllBytes(recipePath)), StringComparison.OrdinalIgnoreCase), message);
+            Check("reopen restores saved conditions and sample expectation/use without Run", workbench.TryOpenTeachingRecipe(recipePath, out message)
+                && ((ThicknessStepProperties)workbench.SelectedStepPropertyDraft!).MaximumThickness == 6.5
+                && workbench.ValidationSetSamples.Single().IsGood && workbench.ValidationSetSamples.Single().IsHeldOut
+                && !workbench.HasOrderedRunResult && !workbench.IsDirty && !workbench.IsValidationSetDefinitionDirty && runs == 1, message);
+
+            var malformed = Path.Combine(root, "truncated.C3D");
+            File.WriteAllText(malformed, "C3D");
+            var valid = Path.Combine(root, "next-valid.C3D");
+            File.Copy(sourcePath, valid);
+            var queue = workbench.InspectionQueue;
+            queue.AddSources([malformed, valid]);
+            queue.RunAllCommand.Execute(null);
+            if (!SpinWait.SpinUntil(() => !queue.IsRunning, TimeSpan.FromSeconds(20))) throw new TimeoutException("Real malformed-input queue did not complete.");
+            Check("real truncated input is Error and following input gets its own stored result", queue.Samples[0].State == InspectionQueueItemState.Error
+                && queue.Samples[0].Record is null && queue.Samples[1].Record is not null && queue.Samples[1].CanOpenCurrentRunRecord
+                && ReadRecord(queue.Samples[1].RunRecordPath)?.Source.Path == valid, string.Join(',', queue.Samples.Select(item => item.State)));
+            var validRun = queue.Samples[1].RunRecordPath;
+            File.WriteAllBytes(malformed, sourceBytes);
+            queue.RunRemainingCommand.Execute(null);
+            if (!SpinWait.SpinUntil(() => !queue.IsRunning, TimeSpan.FromSeconds(20))) throw new TimeoutException("Real repaired-input retry did not complete.");
+            Check("repair and explicit retry leave the completed file record unchanged", queue.Samples[0].CanOpenCurrentRunRecord
+                && ReadRecord(queue.Samples[0].RunRecordPath)?.Source.Path == malformed && queue.Samples[1].RunRecordPath == validRun
+                && sourceBytes.SequenceEqual(File.ReadAllBytes(sourcePath)) && recordBytes.SequenceEqual(File.ReadAllBytes(recordPath)), queue.SummaryText);
+
+        }
+        catch (Exception exception) { Check("unexpected exception", false, exception.ToString()); }
+        summary = $"EssentialRecipeWorkflow|pass={passed == total}|checks={passed}/{total}";
+        File.WriteAllLines(reportPath, lines.Append(summary));
+        return passed == total;
+    }
+
+
+    public static bool VerifyRealRecordRecovery(string reportPath, out string summary)
+    {
+        var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        Directory.CreateDirectory(root);
+        var lines = new List<string> { "Boundary|Isolated actual Studio Queue record-save failure/retry; separate process from ROI lifecycle." };
+        var total = 0;
+        var passed = 0;
+        void Check(string name, bool condition, string detail)
+        {
+            total++;
+            if (condition) passed++;
+            lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
+            File.AppendAllLines(reportPath + ".progress.txt", [lines[^1]]);
+        }
+        try
+        {
+            var source = Path.Combine(root, "source.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("source.c3d.height-map", 4, 4,
+                [10, 10, 10, 10, 10, 10, 10, 10, 15, 15, 15, 15, 15, 15, 15, 15]).SaveC3D(source);
+            var recipe = Path.Combine(root, "record-recovery.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(recipe, CreateThicknessDocument(source, 4.5, 5.5) with { SchemaVersion = ToolRecipeDocument.OutputPolicySchemaVersion });
+            VerifyRealQueueRecordRecovery(root, recipe, Check);
+        }
+        catch (Exception exception) { Check("unexpected exception", false, exception.ToString()); }
+        summary = $"RealQueueRecordRecovery|pass={passed == total}|checks={passed}/{total}";
+        File.WriteAllLines(reportPath, lines.Append(summary));
+        return passed == total;
+    }
+
+    public static bool VerifyExecutionLog(string reportPath, out string summary)
+    {
+        var root = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "activity-execution");
+        Directory.CreateDirectory(root);
+        var lines = new List<string>();
+        var passed = 0;
+        var total = 0;
+        void Check(string name, bool condition, string detail)
+        {
+            total++;
+            if (condition) passed++;
+            lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
+        }
+        try
+        {
+            var sourcePath = Path.Combine(root, "input.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("source.c3d.height-map", 4, 4,
+                [10, 10, 10, 10, 10, 10, 10, 10, 15, 15, 15, 15, 15, 15, 15, 15]).SaveC3D(sourcePath);
+            foreach (var (expected, minimum, maximum) in new[] { (ResultStatus.Pass, 4.5, 5.5), (ResultStatus.Fail, 6.0, 7.0) })
+            {
+                var path = Path.Combine(root, $"{expected}.ov3d-recipe.json");
+                var document = CreateThicknessDocument(sourcePath, minimum, maximum);
+                ToolRecipeDocumentStore.Save(path, document);
+                using var shell = CreateShell(root, expected.ToString(), Path.Combine(root, "runs"));
+                Check($"{expected} open starts with empty execution display", shell.Workbench.TryOpenTeachingRecipe(path, out var opened)
+                    && shell.Workbench.ExecutionLog.Count == 0 && shell.Workbench.RunLog.Count > 0, opened);
+                _ = WaitForSourceQuality(shell.Workbench.SourceQuality);
+                shell.Workbench.RunSelectedStepCommand.Execute(null);
+                var selectedFinished = SpinWait.SpinUntil(() => !shell.Workbench.IsSelectedStepPreviewRunning, TimeSpan.FromSeconds(5));
+                Check($"Selected {expected} reaches Activity through its real producer", selectedFinished && shell.Workbench.ExecutionLog.Count == 1
+                    && shell.Workbench.ExecutionLog[0].Status == expected && shell.Workbench.CurrentMeasurementOutput?.Result.Status == expected,
+                    $"finished={selectedFinished}; entries={shell.Workbench.ExecutionLog.Count}; actual={shell.Workbench.CurrentMeasurementOutput?.Result.Status}");
+                var expectedSelectedMessage = expected == ResultStatus.Pass ? "Thickness Mean 5 raw-height · OK" : "Thickness Mean 5 raw-height · NG";
+                Check("Selected execution matches the HTML name/value/status order and preserves the measured value",
+                    shell.Workbench.ExecutionLog[0].Message.StartsWith(expectedSelectedMessage, StringComparison.Ordinal)
+                    && (expected != ResultStatus.Fail || shell.Workbench.ExecutionLog[0].Message.EndsWith("기준면과의 높이 차이 중 규격을 벗어난 값이 있습니다.", StringComparison.Ordinal)),
+                    shell.Workbench.ExecutionLog[0].Message);
+                var ran = shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult();
+                Check($"Ordered {expected} agrees with the actual graph result", ran && shell.Workbench.ExecutionLog.Count == 2
+                    && shell.Workbench.ExecutionLog[0].Status == expected && shell.Workbench.CurrentOrderedRunResult?.Status == expected,
+                    $"entries={shell.Workbench.ExecutionLog.Count}; result={shell.Workbench.CurrentOrderedRunResult?.Status}");
+                var expectedCounts = expected == ResultStatus.Pass ? "OK 1 · NG 0 · 오류 0" : "OK 0 · NG 1 · 오류 0";
+                Check("Activity describes the judged result without raw-log categories", shell.Workbench.ExecutionLog[0].Message == $"모든 도구 실행 · {expectedCounts}", shell.Workbench.ExecutionLog[0].Message);
+                var count = shell.Workbench.ExecutionLog.Count;
+                Check("Save does not execute or clear Activity", shell.Workbench.TrySaveTeachingRecipe(path, out var saved)
+                    && shell.Workbench.ExecutionLog.Count == count, saved);
+                Check("Rejected open retains the current job's execution display", !shell.Workbench.TryOpenTeachingRecipe(path + ".missing", out _)
+                    && shell.Workbench.ExecutionLog.Count == count, "Missing isolated recipe.");
+                var rawCount = shell.Workbench.RunLog.Count;
+                Check("Successful reopen retains execution display without a new execution", shell.Workbench.TryOpenTeachingRecipe(path, out _)
+                    && shell.Workbench.ExecutionLog.Count == count && shell.Workbench.RunLog.Count > rawCount, "Matches HTML recipeDialog; full session activity retained.");
+                shell.Workbench.CreateNewTeachingRecipe();
+                Check("New recipe clears only execution display without executing", shell.Workbench.ExecutionLog.Count == 0 && !shell.Workbench.IsOrderedRunRunning
+                    && !shell.Workbench.IsSelectedStepPreviewRunning && shell.Workbench.RunLog.Count > rawCount, "Matches HTML newRecipeDialog; session activity retained.");
+            }
+            var lifecycleDocument = CreateThicknessDocument(sourcePath, 4.5, 5.5);
+            var lifecyclePath = Path.Combine(root, "lifecycle.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(lifecyclePath, lifecycleDocument);
+            Check("Ordered execution still gates, cancels, rejects stale completion, and observes failure",
+                VerifyOrderedRunOwnerLifecycle(lifecycleDocument, lifecyclePath, out var lifecycle), lifecycle);
+        }
+        catch (Exception exception) { Check("Unexpected exception", false, exception.ToString()); }
+        summary = $"TeachingExecutionLog|{(passed == total ? "Pass" : "Fail")}|checks={passed}/{total}";
+        lines.Add(summary);
+        File.WriteAllLines(reportPath, lines);
+        return total > 0 && passed == total;
+    }
+
     private static bool VerifyOrderedRunOwnerLifecycle(
         ToolRecipeDocument document,
         string recipePath,
@@ -801,6 +1010,7 @@ internal static class ToolRecipeOrderedRunVerification
         using var sourceEntered = new ManualResetEventSlim();
         using var releaseSource = new ManualResetEventSlim();
         var completionCount = 0;
+        var cancelledRecords = 0;
         var cancellationOwner = new ToolWorkbenchOrderedRunExecutionOwner(
             () => document,
             _ => (true, "ready"),
@@ -818,7 +1028,8 @@ internal static class ToolRecipeOrderedRunVerification
             (_, _) => { },
             () => { },
             _ => Interlocked.Increment(ref completionCount),
-            () => { });
+            () => { },
+            recordExecution: (_, status, cancelled) => { if (cancelled && status is null) Interlocked.Increment(ref cancelledRecords); });
         var cancellationRun = Task.Run(() => cancellationOwner.RunAsync());
         if (!sourceEntered.Wait(TimeSpan.FromSeconds(5)))
         {
@@ -836,7 +1047,8 @@ internal static class ToolRecipeOrderedRunVerification
             && !cancellationOwner.IsRunning
             && completionCount == 0
             && cancellationOwner.Summary.Contains("canceled", StringComparison.OrdinalIgnoreCase)
-            && cancelCommandWasEnabled;
+            && cancelCommandWasEnabled
+            && cancelledRecords == 1;
 
         using var delayedSourceEntered = new ManualResetEventSlim();
         using var releaseDelayedSource = new ManualResetEventSlim();
@@ -882,6 +1094,7 @@ internal static class ToolRecipeOrderedRunVerification
         delayedOwner.Dispose();
 
         using var commandFailureObserved = new ManualResetEventSlim();
+        var failedRecords = 0;
         var commandFailureOwner = new ToolWorkbenchOrderedRunExecutionOwner(
             () => document,
             _ => (true, "ready"),
@@ -900,12 +1113,14 @@ internal static class ToolRecipeOrderedRunVerification
             },
             () => { },
             _ => { },
-            () => { });
+            () => { },
+            recordExecution: (_, status, cancelled) => { if (!cancelled && status == ResultStatus.Error) Interlocked.Increment(ref failedRecords); });
         var commandWasEnabled = commandFailureOwner.RunCommand.CanExecute(null);
         commandFailureOwner.RunCommand.Execute(null);
         var commandFailureWasObserved = commandFailureObserved.Wait(TimeSpan.FromSeconds(5))
             && !commandFailureOwner.IsRunning
-            && commandFailureOwner.Summary.Contains("failed", StringComparison.OrdinalIgnoreCase);
+            && commandFailureOwner.Summary.Contains("failed", StringComparison.OrdinalIgnoreCase)
+            && failedRecords == 1;
         commandFailureOwner.Dispose();
 
         detail = $"singleFlight={singleFlight};capabilityCalls={capabilityCalls};"
@@ -1539,20 +1754,21 @@ internal static class ToolRecipeOrderedRunVerification
         var runCompleted = shell.Workbench.RunTeachingRecipeAsync()
             .GetAwaiter()
             .GetResult();
+        var failedStatus = shell.StatusText;
+        var failedValidity = shell.ResultsValueValiditySummary;
+        var failedDecision = shell.ResultsOperatorDecisionSummary;
         var failedToPersist = shell.Workbench.CurrentOrderedRunRecordPath is null
             && shell.Workbench.HasOrderedRunResult
-            && shell.StatusText.Contains("Run Record", StringComparison.OrdinalIgnoreCase)
-            && shell.ResultsValueValiditySummary.Contains(
-                "Run Record",
-                StringComparison.OrdinalIgnoreCase)
-            && (shell.ResultsValueValiditySummary.Contains("Error", StringComparison.Ordinal)
-                || shell.ResultsValueValiditySummary.Contains("오류", StringComparison.Ordinal))
-            && shell.ResultsOperatorDecisionSummary.Contains(
-                "Error",
-                StringComparison.Ordinal)
-            && shell.ResultsOperatorDecisionSummary.Contains(
-                "Run Record",
-                StringComparison.OrdinalIgnoreCase);
+            && shell.Workbench.HasPendingOrderedRunRecordSave
+            && (failedStatus.Contains("Run Record", StringComparison.OrdinalIgnoreCase)
+                || failedStatus.Contains("검사 기록", StringComparison.Ordinal))
+            && (failedValidity.Contains("Run Record", StringComparison.OrdinalIgnoreCase)
+                || failedValidity.Contains("검사 기록", StringComparison.Ordinal))
+            && (failedValidity.Contains("Error", StringComparison.Ordinal)
+                || failedValidity.Contains("오류", StringComparison.Ordinal))
+            && failedDecision.Contains("Error", StringComparison.Ordinal)
+            && (failedDecision.Contains("Run Record", StringComparison.OrdinalIgnoreCase)
+                || failedDecision.Contains("검사 기록", StringComparison.Ordinal));
         var calculated = shell.Workbench.CurrentOrderedRunResult;
         var pendingRecord = shell.Workbench.CurrentOrderedRunRecord;
         var recipeBeforeRetry = File.ReadAllBytes(recipePath);
@@ -1592,7 +1808,9 @@ internal static class ToolRecipeOrderedRunVerification
             && recovered.ElapsedMilliseconds == pendingRecord.ElapsedMilliseconds
             && recovered.Steps![0].Metrics.SequenceEqual(pendingRecord.Steps![0].Metrics);
         detail = $"runCompleted={runCompleted};record={(shell.Workbench.CurrentOrderedRunRecordPath ?? "(none)")};"
-            + $"result={shell.Workbench.HasOrderedRunResult};status={shell.StatusText};"
+            + $"result={shell.Workbench.HasOrderedRunResult};status={shell.StatusText};initialStatus={failedStatus};"
+            + $"initialValidity={failedValidity.Replace(Environment.NewLine, " | ")};"
+            + $"initialDecision={failedDecision.Replace(Environment.NewLine, " | ")};"
             + $"operator={shell.ResultsOperatorDecisionSummary.Replace(Environment.NewLine, " | ")};"
             + $"pending={pendingRecord?.RunId};replacementBlocked={blockedReplacement};retryFailurePreserves={retryFailurePreserves};savedOriginal={retrySavedOriginal}";
         return runCompleted && failedToPersist && blockedReplacement && retryFailurePreserves && retrySavedOriginal;
@@ -1621,9 +1839,17 @@ internal static class ToolRecipeOrderedRunVerification
         File.AppendAllText(path, " ");
         check("rejected external recipe edit retains the previous calculation and record", !shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult()
             && count == 1 && ReferenceEquals(previousResult, shell.Workbench.CurrentOrderedRunResult) && ReferenceEquals(previousRecord, shell.Workbench.CurrentOrderedRunRecord), shell.Workbench.OrderedRunCapabilitySummary);
-        shell.Workbench.TrySaveTeachingRecipe(path, out var saveMessage);
-        check("explicit save accepts the current conditions without recalculation", count == 1 && shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
-            && ReferenceEquals(previousResult, shell.Workbench.CurrentOrderedRunResult), saveMessage);
+        var externalBytes = File.ReadAllBytes(path);
+        var rejectedSave = !shell.Workbench.TrySaveTeachingRecipe(path, out var rejectionMessage);
+        check("save rejects external recipe edits without overwriting bytes or calculation", rejectedSave
+            && externalBytes.SequenceEqual(File.ReadAllBytes(path)) && count == 1
+            && ReferenceEquals(previousResult, shell.Workbench.CurrentOrderedRunResult)
+            && ReferenceEquals(previousRecord, shell.Workbench.CurrentOrderedRunRecord), rejectionMessage);
+        File.WriteAllBytes(path, originalBytes);
+        var saved = shell.Workbench.TrySaveTeachingRecipe(path, out var saveMessage);
+        check("explicit save after restoring accepted bytes preserves the calculation", saved && count == 1 && shell.Workbench.RunTeachingRecipeCommand.CanExecute(null)
+            && ReferenceEquals(previousResult, shell.Workbench.CurrentOrderedRunResult)
+            && ReferenceEquals(previousRecord, shell.Workbench.CurrentOrderedRunRecord), saveMessage);
 
         var inject = false;
         var completions = 0;

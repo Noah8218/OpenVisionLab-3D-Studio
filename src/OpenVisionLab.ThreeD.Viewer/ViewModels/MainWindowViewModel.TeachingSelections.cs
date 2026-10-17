@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel
     private ToolRecipeGridCircle? teachingCaptureGridCircle;
     private ToolRecipeGridPolygon? teachingCaptureGridPolygon;
     private IReadOnlyList<ToolRecipeSelection> appliedTeachingSelections = [];
+    private IReadOnlyList<string>? displayedTeachingSelectionIds;
     private IReadOnlyList<ToolRecipeSelection> repeatPreviewTeachingSelections = [];
     private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
     private string? selectedCompletenessCellId;
@@ -24,6 +25,8 @@ public sealed partial class MainWindowViewModel
     internal ToolRecipeSelectionSourceBinding? TeachingCaptureSourceBinding => teachingCaptureRequest?.SourceBinding;
 
     public IReadOnlyList<ToolRecipeSelection> AppliedTeachingSelections => appliedTeachingSelections;
+    public bool IsTeachingSelectionDisplayed(string? id) => displayedTeachingSelectionIds is null
+        || id is not null && displayedTeachingSelectionIds.Contains(id, StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<ToolRecipeSelection> RepeatPreviewTeachingSelections =>
         repeatPreviewTeachingSelections;
     public IReadOnlyList<C3DCompletenessCellOverlay> CompletenessCellOverlays =>
@@ -88,7 +91,7 @@ public sealed partial class MainWindowViewModel
 
     public string SelectedTeachingRoiDisplayHeightSummary =>
         double.IsFinite(selectedTeachingRoiAutomaticRawHeight)
-            ? $"surface {selectedTeachingRoiAutomaticRawHeight:F3} → overlay {SelectedTeachingRoiEffectiveRawHeight:F3} | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0} | view-only"
+            ? $"surface {selectedTeachingRoiAutomaticRawHeight:0.##} → overlay {SelectedTeachingRoiEffectiveRawHeight:0.##} | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0} | view-only"
             : $"surface → overlay | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0} | view-only";
 
     public string SelectedTeachingGridRectangleSummary
@@ -99,6 +102,17 @@ public sealed partial class MainWindowViewModel
             return rectangle is null
                 ? string.Empty
                 : $"row {rectangle.Row}..{rectangle.Row + rectangle.RowCount - 1} | column {rectangle.Column}..{rectangle.Column + rectangle.ColumnCount - 1} | X=column, Z=row";
+        }
+    }
+
+    public string SelectedTeachingGridRectangleCaption
+    {
+        get
+        {
+            if (GetVisibleTeachingGridRectangle() is not { } rectangle) return string.Empty;
+            var name = teachingCaptureRequest?.SelectionName ?? appliedTeachingSelections.FirstOrDefault(selection =>
+                string.Equals(selection.Id, selectedTeachingSelectionId, StringComparison.OrdinalIgnoreCase))?.Name;
+            return $"{name} {rectangle.Column},{rectangle.Row} {rectangle.ColumnCount}x{rectangle.RowCount}";
         }
     }
 
@@ -463,6 +477,18 @@ public sealed partial class MainWindowViewModel
         RefreshSelectedTeachingGridRectangleState();
     }
 
+    internal bool SetTeachingSelectionDisplayFilter(IReadOnlyList<string>? ids)
+    {
+        if (ids is null ? displayedTeachingSelectionIds is null
+            : displayedTeachingSelectionIds is not null && displayedTeachingSelectionIds.SequenceEqual(ids, StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        displayedTeachingSelectionIds = ids?.ToArray();
+        return true;
+    }
+
     internal void SetRepeatPreviewTeachingSelections(IReadOnlyList<ToolRecipeSelection> selections)
     {
         ArgumentNullException.ThrowIfNull(selections);
@@ -492,16 +518,17 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(SelectedCompletenessCellId));
     }
 
-    internal void SetSelectedTeachingSelection(string? selectionId)
+    internal bool SetSelectedTeachingSelection(string? selectionId)
     {
         if (string.Equals(selectedTeachingSelectionId, selectionId, StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return false;
         }
 
         selectedTeachingSelectionId = selectionId;
         OnPropertyChanged(nameof(SelectedTeachingSelectionId));
         RefreshSelectedTeachingGridRectangleState();
+        return true;
     }
 
     internal double GetTeachingRoiDisplayHeightOffset(string? selectionId) =>
@@ -693,8 +720,11 @@ public sealed partial class MainWindowViewModel
 
     private void RefreshSelectedTeachingGridRectangleState()
     {
+        OnPropertyChanged(nameof(HasHeightDisplayRegion));
+        if (heightDisplayOptions.RangeMode == "roi") ApplyAutomaticHeightDisplayRange();
         OnPropertyChanged(nameof(SelectedTeachingGridRectangleVisible));
         OnPropertyChanged(nameof(SelectedTeachingGridRectangleSummary));
+        OnPropertyChanged(nameof(SelectedTeachingGridRectangleCaption));
         OnPropertyChanged(nameof(SelectedTeachingRoiDisplayHeightOffset));
         OnPropertyChanged(nameof(SelectedTeachingRoiAutomaticRawHeight));
         OnPropertyChanged(nameof(SelectedTeachingRoiEffectiveRawHeight));

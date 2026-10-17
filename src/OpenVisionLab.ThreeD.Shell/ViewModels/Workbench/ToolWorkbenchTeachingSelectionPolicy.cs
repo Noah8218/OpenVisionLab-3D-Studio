@@ -214,11 +214,12 @@ internal static class ToolWorkbenchTeachingSelectionPolicy
         ToolRecipeGridRectangle rectangle,
         ToolRecipeSelectionSourceBinding? binding,
         bool isCrossSectionDimensions,
-        out string message)
+        out string message,
+        bool useKorean = false)
     {
         if (binding is null || binding.GridWidth <= 0 || binding.GridHeight <= 0)
         {
-            message = "The selected ROI has no current source-grid identity.";
+            message = useKorean ? "영역의 원본 격자 정보를 확인할 수 없습니다." : "The selected ROI has no current source-grid identity.";
             return false;
         }
         if (rectangle.Row < 0
@@ -226,23 +227,27 @@ internal static class ToolWorkbenchTeachingSelectionPolicy
             || rectangle.RowCount <= 0
             || rectangle.ColumnCount <= 0)
         {
-            message = "Row and column must be zero or greater; width and height must be greater than zero.";
+            message = useKorean
+                ? "시작 행과 열은 0 이상, 행 수와 열 수는 1 이상이어야 합니다."
+                : "Row and column must be zero or greater; width and height must be greater than zero.";
             return false;
         }
         if ((long)rectangle.Row + rectangle.RowCount > binding.GridHeight
             || (long)rectangle.Column + rectangle.ColumnCount > binding.GridWidth)
         {
-            message = $"ROI must stay inside rows 0..{binding.GridHeight - 1} and columns 0..{binding.GridWidth - 1}.";
+            message = useKorean
+                ? $"행 범위 0~{binding.GridHeight - 1}, 열 범위 0~{binding.GridWidth - 1} 안에 지정하세요."
+                : $"ROI must stay inside rows 0..{binding.GridHeight - 1} and columns 0..{binding.GridWidth - 1}.";
             return false;
         }
         if (isCrossSectionDimensions
             && (rectangle.RowCount != 1 || rectangle.ColumnCount < 2))
         {
-            message = "Cross-section Dimensions requires one row and at least two columns.";
+            message = useKorean ? "단면 측정은 한 행과 두 열 이상을 지정하세요." : "Cross-section Dimensions requires one row and at least two columns.";
             return false;
         }
 
-        message = "Valid source-grid footprint. Apply remains explicit and does not run inspection.";
+        message = useKorean ? "적용할 수 있는 영역입니다." : "Valid source-grid footprint. Apply remains explicit and does not run inspection.";
         return true;
     }
 

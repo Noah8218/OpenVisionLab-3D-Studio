@@ -93,17 +93,17 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceEdgeAssessment is { } independent
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"Surface >= {independent.Policy.Surface.MinimumCoverageRatio:P1}, RMSE <= {independent.Policy.Surface.MaximumInlierRmse:G5} | Edge >= {independent.Policy.Edge.MinimumCoverageRatio:P1}, RMSE <= {independent.Policy.Edge.MaximumInlierRmse:G5}")
+                $"Surface >= {independent.Policy.Surface.MinimumCoverageRatio:P1}, RMSE <= {independent.Policy.Surface.MaximumInlierRmse:0.##} | Edge >= {independent.Policy.Edge.MinimumCoverageRatio:P1}, RMSE <= {independent.Policy.Edge.MaximumInlierRmse:0.##}")
             : workbenchSurfaceMatchAssessment is { } assessment
                 ? string.Create(
                     CultureInfo.InvariantCulture,
-                    $"Coverage >= {assessment.Policy.MinimumCoverageRatio:P1} · RMSE <= {assessment.Policy.MaximumInlierRmse:G5}")
+                    $"Coverage >= {assessment.Policy.MinimumCoverageRatio:P1} · RMSE <= {assessment.Policy.MaximumInlierRmse:0.##}")
                 : "Acceptance limits not supplied";
     public string SurfaceMatchRuntimeLabel =>
         workbenchSurfaceMatchRuntime is { } runtime
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"{runtime.Stages.Length} stages · {runtime.TotalMilliseconds:F3} ms")
+                $"{runtime.Stages.Length} stages · {runtime.TotalMilliseconds:0.##} ms")
             : "Runtime not supplied";
     public string SurfaceMatchDecisionBoundaryLabel =>
         workbenchSurfaceEdgeAssessment is not null
@@ -147,7 +147,7 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceMatch?.PoseResult.Coverage.InlierRmse is { } rmse
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"{rmse:G5} {workbenchSurfaceMatch.PoseResult.Pose?.Unit}")
+                $"{rmse:0.##} {workbenchSurfaceMatch.PoseResult.Pose?.Unit}")
             : "Unavailable";
     public string SurfaceMatchEdgeCoverageLabel =>
         workbenchSurfaceEdgeScore is { } score
@@ -159,13 +159,13 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceEdgeScore?.EdgeScore.InlierRmse is { } rmse
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"{rmse:G5} {workbenchSurfaceMatch?.PoseResult.Pose?.Unit}")
+                $"{rmse:0.##} {workbenchSurfaceMatch?.PoseResult.Pose?.Unit}")
             : "Unavailable";
     public string SurfaceMatchPoseLabel =>
         workbenchSurfaceMatch?.PoseResult.Pose is { } pose
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"R {pose.RotationAngleDegrees:F1}° · T {pose.TranslationMagnitude:F3} {pose.Unit}")
+                $"R {pose.RotationAngleDegrees:F1}° · T {pose.TranslationMagnitude:0.##} {pose.Unit}")
             : "Unavailable";
     public string SurfaceMatchModelHashLabel =>
         ShortHash(workbenchSurfaceMatch?.ModelContentSha256);

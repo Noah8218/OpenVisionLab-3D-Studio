@@ -30,7 +30,7 @@ public sealed class ThicknessStepProperties
     [Category("Sampling")]
     [DisplayName("Minimum valid samples")]
     [Description("Minimum finite samples required inside the recipe-owned GridRectangle.")]
-    [PropertyOrder(0)]
+    [PropertyOrder(2)]
     public int MinimumValidSampleCount { get; set; }
 
     [Category("Compatibility")]

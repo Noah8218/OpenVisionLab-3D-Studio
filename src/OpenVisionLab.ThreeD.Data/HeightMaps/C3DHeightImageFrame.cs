@@ -20,6 +20,7 @@ public sealed class C3DHeightImageFrame
 
     private readonly ReadOnlyMemory<double> values;
     private readonly byte[] bgra32Pixels;
+    private double[]? sortedDisplaySamples;
 
     private C3DHeightImageFrame(
         string sourceEntityId,
@@ -97,6 +98,23 @@ public sealed class C3DHeightImageFrame
     public C3DHeightImageDisplayFrame DefaultDisplayFrame { get; }
     public int Stride => checked(Width * 4);
     public ReadOnlyMemory<byte> Bgra32Pixels => bgra32Pixels;
+    private IReadOnlyList<int>? displayHistogramBins;
+    public IReadOnlyList<int> DisplayHistogramBins
+    {
+        get
+        {
+            if (displayHistogramBins is null)
+            {
+                var summary = new OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsTool().Execute(values.ToArray(),
+                    new OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsOptions { ZeroIsMissing = false, BinCount = C3DHeightDistribution.DefaultBinCount });
+                displayHistogramBins = summary.Success ? Array.AsReadOnly(summary.Bins.Select(count => checked((int)count)).ToArray()) : [];
+            }
+            return displayHistogramBins;
+        }
+    }
+    public ReadOnlyMemory<double> DisplayValues => values;
+    public ReadOnlyMemory<double> SortedDisplaySamples => sortedDisplaySamples ??= C3DHeightImageFrame.SortDisplaySamples(values.Span);
+    public bool IsSignedDelta => SourcePath.StartsWith("signed-delta://", StringComparison.Ordinal);
 
     public static C3DHeightImageFrame Create(
         C3DHeightFieldSnapshot source,
@@ -221,6 +239,15 @@ public sealed class C3DHeightImageFrame
         double maximum,
         C3DHeightImageInvalidOverlayMode invalidOverlayMode,
         CancellationToken cancellationToken = default)
+        => CreateDisplayFrame(palette, minimum, maximum, invalidOverlayMode, new HeightDisplayOptions(), cancellationToken);
+
+    public C3DHeightImageDisplayFrame CreateDisplayFrame(
+        C3DHeightImagePalette palette,
+        double minimum,
+        double maximum,
+        C3DHeightImageInvalidOverlayMode invalidOverlayMode,
+        HeightDisplayOptions options,
+        CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(palette))
         {
@@ -249,7 +276,8 @@ public sealed class C3DHeightImageFrame
             minimum,
             maximum,
             invalidOverlayMode,
-            cancellationToken);
+            cancellationToken,
+            options.Sanitize());
         return new C3DHeightImageDisplayFrame(
             Width,
             Height,
@@ -284,6 +312,64 @@ public sealed class C3DHeightImageFrame
         return true;
     }
 
+    // DQ-08: these ranges and counts describe colour mapping, never measurement or verdicts.
+    public static double[] SortDisplaySamples(ReadOnlySpan<double> values)
+    {
+        var sorted = new double[values.Length];
+        var count = 0;
+        foreach (var value in values) if (double.IsFinite(value)) sorted[count++] = value;
+        Array.Resize(ref sorted, count);
+        Array.Sort(sorted);
+        return sorted;
+    }
+
+    public static (double Minimum, double Maximum) GetDistributionDisplayRange(ReadOnlySpan<double> sorted)
+    {
+        if (sorted.IsEmpty) return (double.NaN, double.NaN);
+        var trim = sorted.Length < 20 ? 0 : (int)Math.Round(0.003 * (sorted.Length - 1), MidpointRounding.AwayFromZero);
+        var minimum = sorted[trim];
+        var maximum = sorted[sorted.Length - 1 - trim];
+        return minimum < maximum ? (minimum, maximum) : (sorted[0], sorted[^1]);
+    }
+
+    public static bool TryGetRegionDisplayRange(ReadOnlySpan<double> values, int width, int height, ToolRecipeGridRectangle? rectangle,
+        out double minimum, out double maximum)
+    {
+        minimum = double.PositiveInfinity;
+        maximum = double.NegativeInfinity;
+        if (rectangle is null || width <= 0 || height <= 0 || (long)width * height != values.Length
+            || ToolRecipeGridRectangleGeometry.Validate(rectangle, width, height).Count != 0) return false;
+        for (var row = rectangle.Row; row < rectangle.Row + rectangle.RowCount; row++)
+        for (var column = rectangle.Column; column < rectangle.Column + rectangle.ColumnCount; column++)
+        {
+            var value = values[row * width + column];
+            if (!double.IsFinite(value)) continue;
+            minimum = Math.Min(minimum, value);
+            maximum = Math.Max(maximum, value);
+        }
+        return double.IsFinite(minimum) && double.IsFinite(maximum) && minimum < maximum;
+    }
+
+    public static (double Below, double Above) GetOutsideDisplayPercentages(ReadOnlySpan<double> sorted, double minimum, double maximum)
+    {
+        if (sorted.IsEmpty) return (0, 0);
+        return (FindBound(sorted, minimum, false) * 100.0 / sorted.Length,
+            (sorted.Length - FindBound(sorted, maximum, true)) * 100.0 / sorted.Length);
+    }
+
+    private static int FindBound(ReadOnlySpan<double> sorted, double value, bool upper)
+    {
+        var left = 0;
+        var right = sorted.Length;
+        while (left < right)
+        {
+            var middle = left + (right - left) / 2;
+            if (sorted[middle] < value || upper && sorted[middle] == value) left = middle + 1;
+            else right = middle;
+        }
+        return left;
+    }
+
     private static byte[] RenderPixels(
         ReadOnlySpan<double> values,
         C3DInvalidCellMap invalidCellMap,
@@ -291,12 +377,15 @@ public sealed class C3DHeightImageFrame
         double minimum,
         double maximum,
         C3DHeightImageInvalidOverlayMode invalidOverlayMode,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        HeightDisplayOptions? options = null)
     {
         var pixels = new byte[checked(values.Length * 4)];
         var hasRange = double.IsFinite(minimum)
                        && double.IsFinite(maximum)
                        && maximum > minimum;
+        var hasDisplayStyle = options is { ColorStyle: not "continuous" } || options?.HighlightOutside == true;
+        var paletteName = palette == C3DHeightImagePalette.Monochrome ? "Solid" : palette.ToString();
 
         for (var index = 0; index < values.Length; index++)
         {
@@ -322,12 +411,18 @@ public sealed class C3DHeightImageFrame
             var normalized = hasRange
                 ? (values[index] - minimum) / (maximum - minimum)
                 : 0.5;
-            var color = palette switch
+            (byte R, byte G, byte B) color;
+            if (hasDisplayStyle)
             {
-                C3DHeightImagePalette.Grayscale =>
-                    C3DPointMapPalette.GrayscaleBytes(normalized),
-                C3DHeightImagePalette.Thermal =>
-                    C3DPointMapPalette.ThermalBytes(normalized),
+                var displayColor = C3DPointMapPalette.DisplayColor(values[index], minimum, maximum, paletteName, options!, index);
+                color = ((byte)(displayColor.R * 255), (byte)(displayColor.G * 255), (byte)(displayColor.B * 255));
+            }
+            else color = palette switch
+            {
+                C3DHeightImagePalette.Grayscale => C3DPointMapPalette.GrayscaleBytes(normalized),
+                C3DHeightImagePalette.Thermal => C3DPointMapPalette.ThermalBytes(normalized),
+                C3DHeightImagePalette.ColorVisionAssist => C3DPointMapPalette.ColorVisionAssistBytes(normalized),
+                C3DHeightImagePalette.Monochrome => (R: (byte)115, G: (byte)155, B: (byte)194),
                 _ => C3DPointMapPalette.HeightBytes(normalized)
             };
             pixels[pixelOffset] = color.B;
@@ -345,7 +440,9 @@ public enum C3DHeightImagePalette
 {
     Height,
     Grayscale,
-    Thermal
+    Thermal,
+    Monochrome,
+    ColorVisionAssist
 }
 
 public enum C3DHeightImageInvalidOverlayMode

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using OpenVisionLab;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.PropertyGrid;
 
@@ -11,7 +12,7 @@ internal static class LocalizedPropertyGridObject
         ["OrderedPointsDefineSegment"] = "두 점을 순서대로 연결",
         ["OrderedPointsDefineOrientedPlane"] = "세 점의 순서로 평면 방향 결정",
         ["RawHeightMinusDatumPlanePredictedRawHeight"] = "원시 높이에서 기준면 높이를 뺌",
-        ["Median"] = "중앙값 필터",
+        ["Median"] = "중앙값",
         ["PreserveMask"] = "누락 위치 유지",
         ["AvailableNeighbors"] = "사용 가능한 주변 셀",
         ["KeepAtOrAboveThreshold"] = "임계값 이상 유지",
@@ -80,10 +81,10 @@ internal static class LocalizedPropertyGridObject
         ? value : OptionTranslations.GetValueOrDefault(value, value);
 
 
-    public static object Create(object source, bool includeAdvanced = true) =>
+    public static object Create(object source, bool includeAdvanced = true, bool? acceptanceOnly = null) =>
         Activator.CreateInstance(
             typeof(LocalizedPropertyGridObject<>).MakeGenericType(source.GetType()),
-            source, includeAdvanced)!;
+            source, includeAdvanced, acceptanceOnly)!;
 }
 
 public sealed class PropertyGridOptionTextConverter : System.Windows.Data.IValueConverter
@@ -95,7 +96,7 @@ public sealed class PropertyGridOptionTextConverter : System.Windows.Data.IValue
         System.Windows.Data.Binding.DoNothing;
 }
 
-internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvanced) : CustomTypeDescriptor
+internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvanced, bool? acceptanceOnly) : CustomTypeDescriptor
     where T : class
 {
     internal T Source => source;
@@ -137,6 +138,7 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
             .Where(property => property.Name != "UnmappedParameters"
                 || !Equals(property.GetValue(source), "(none)"))
             .Where(property => includeAdvanced || property.Name is not ("MinimumReferenceSampleCount" or "MinimumMeasurementSampleCount" or "MinimumValidSampleCount" or "MinimumCoverageRatio"))
+            .Where(property => acceptanceOnly is null || acceptanceOnly == (property.Category is "Acceptance" or "Surface acceptance" or "Edge acceptance" or "Gate"))
             .Select(property => new LocalizedPropertyDescriptor(property))
             .ToArray();
         return new PropertyDescriptorCollection(properties, readOnly: true);
@@ -147,16 +149,17 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
     private sealed class LocalizedPropertyDescriptor(PropertyDescriptor property)
         : PropertyDescriptor(property.Name, property.Attributes.Cast<Attribute>().ToArray())
     {
+        private readonly TypeConverter numericConverter = property.PropertyType == typeof(double) ? new DisplayDoubleConverter() : property.Converter;
         public override Type ComponentType => property.ComponentType;
         public override bool IsReadOnly => property.IsReadOnly;
         public override Type PropertyType => property.PropertyType;
         public override string DisplayName => LocalizePropertyName(property.Name, property.DisplayName);
         public override string Category => LocalizeCategory(property.Category);
-        public override string Description => property.Name == "ConstructionPolicy"
-            ? L("지정한 점의 순서로 직선이나 기준면을 정의합니다. 피팅·스냅·보간은 하지 않습니다.", property.Description) : property.Description;
+        public override string Description => LocalizeDescription(property.ComponentType, property.Name, property.Description);
+        public override AttributeCollection Attributes => AttributeCollection.FromExisting(base.Attributes, new DescriptionAttribute(Description));
         public override TypeConverter Converter => property.PropertyType.IsEnum ? new LocalizedEnumConverter(property.PropertyType)
             : property.PropertyType == typeof(string) && (property.IsReadOnly || property.Name is "ComparisonAxis" or "FirstSurfaceSide" or "SecondSurfaceSide" or "SurfaceAggregation" or "AmbiguityPolicy" or "ContactAllowed" or "ToleranceMode")
-                ? new LocalizedStringConverter() : property.Converter;
+                ? new LocalizedStringConverter() : numericConverter;
         public override bool SupportsChangeEvents => property.SupportsChangeEvents;
 
         public override bool CanResetValue(object component) => property.CanResetValue(GetSource(component));
@@ -183,6 +186,27 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
 
         private static T GetSource(object? component) =>
             ((LocalizedPropertyGridObject<T>)component!).Source;
+    }
+
+    private sealed class DisplayDoubleConverter : DoubleConverter
+    {
+        private double? displayedValue;
+        private string? displayedText;
+
+        public override object? ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
+        {
+            if (destinationType != typeof(string) || value is not double number) return base.ConvertTo(context, culture, value, destinationType);
+            displayedValue = number;
+            displayedText = number.ToString("0.##", culture ?? CultureInfo.CurrentCulture);
+            return displayedText;
+        }
+
+        public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+        {
+            // WPG flushes every editor on Apply, including untouched rounded display text.
+            if (value is string text && displayedValue is { } original && string.Equals(text, displayedText, StringComparison.Ordinal)) return original;
+            return base.ConvertFrom(context, culture, value);
+        }
     }
 
     private sealed class LocalizedEnumConverter(Type enumType) : EnumConverter(enumType)
@@ -215,6 +239,96 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
             }
             return base.ConvertFrom(context, culture, value);
         }
+    }
+
+    private static string LocalizeDescription(Type componentType, string name, string fallback)
+    {
+        var description = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English
+            ? string.IsNullOrWhiteSpace(fallback) && name.EndsWith("Tolerance", StringComparison.Ordinal) ? "Allowed difference from the expected value in the declared unit; finite and non-negative." : fallback : name switch
+        {
+            "KernelSize" when componentType == typeof(FilterStepProperties) => "3·5·7 셀, 기본 3. 큰 커널은 잡음을 더 줄이고 작은 형상을 흐리게 합니다.",
+            "WindowSize" when componentType == typeof(RemoveOutlierPixelsStepProperties) => "3·5·7 셀, 기본값: 3. 중심 셀을 빼고 중앙값을 구합니다.",
+            "MaximumAbsoluteDeviation" when componentType == typeof(RemoveOutlierPixelsStepProperties) => "0 초과 · 기본 25(raw-height).\n중앙값 편차가 임계값을 넘으면 제외합니다.",
+            "MinimumValidNeighbors" when componentType == typeof(RemoveOutlierPixelsStepProperties) => "1~(주변 크기²−1) 셀, 기본 3. 이 수보다 적으면 중심 값을 유지합니다.",
+            "Method" when componentType == typeof(FilterStepProperties) => "중앙값 필터. 주변의 유효 높이로 잡음을 줄입니다.",
+            "MissingValuePolicy" when componentType == typeof(FilterStepProperties) || componentType == typeof(RemoveOutlierPixelsStepProperties) => "원본 결측 셀은 결측으로 유지합니다.",
+            "BoundaryPolicy" when componentType == typeof(FilterStepProperties) || componentType == typeof(RemoveOutlierPixelsStepProperties) => "원본 경계 안의 유효 주변 셀만 사용합니다.",
+            "OutlierPolicy" when componentType == typeof(RemoveOutlierPixelsStepProperties) => "이상치로 확인된 셀을 출력에서 결측으로 처리합니다.",
+            "Rule" when componentType == typeof(RemoveOutlierPixelsStepProperties) => "중심 높이와 주변 유효 셀 중앙값의 차이를 비교합니다.",
+            "MinimumThickness" => "입력 높이 단위, 유한한 수. 상한 이하의 포함 하한입니다.",
+            "MaximumThickness" => "입력 높이 단위, 유한한 수. 하한 이상의 포함 상한입니다.",
+            "MinimumReferenceSampleCount" => "3 이상 정수. 기준면 피팅에 필요한 최소 유효 셀 수입니다.",
+            "MinimumMeasurementSampleCount" => "3 이상 정수. 측정 영역에 필요한 최소 유효 셀 수입니다.",
+            "MinimumValidSampleCount" => componentType == typeof(ThicknessStepProperties) ? "1 이상 정수. 영역에 필요한 최소 유효 셀 수입니다." : "3 이상 정수. 영역의 계산에 필요한 최소 유효 셀 수입니다.",
+            "ExpectedGap" => "첫 영역에서 둘째 영역으로 향하는 간격의 기대값입니다.",
+            "GapTolerance" => "기대 간격에서 허용하는 양쪽 차이입니다. 경계값을 포함합니다.",
+            "ExpectedFlush" => "둘째 영역 평균 높이 − 첫 영역 평균 높이의 기대값입니다.",
+            "FlushTolerance" => "기대 단차에서 허용하는 양쪽 차이입니다. 경계값을 포함합니다.",
+            "ConstructionPolicy" => "지정한 점의 순서로 직선이나 기준면을 정의합니다. 피팅·스냅·보간은 하지 않습니다.",
+            "Rows" => "1 이상 정수. 검사 격자 안에 생성할 셀 행 수입니다.",
+            "Columns" => "1 이상 정수. 검사 격자 안에 생성할 셀 열 수입니다.",
+            "XPitchColumns" => "1 이상 격자 열 수. 셀 시작 위치의 열 간격이며 물리 거리가 아닙니다.",
+            "ZPitchRows" => "1 이상 격자 행 수. 셀 시작 위치의 행 간격이며 물리 거리가 아닙니다.",
+            "CellWidthColumns" => "1 이상 격자 열 수. 한 셀이 차지하는 폭입니다.",
+            "CellHeightRows" => "1 이상 격자 행 수. 한 셀이 차지하는 높이입니다.",
+            "CellShape" => "격자 사각형. 셀은 저장된 검사 영역 안에 생성합니다.",
+            "MinimumFiniteCoverageRatio" => "0~1 비율, 경계 포함. 유효 셀 비율이 이 값보다 작으면 통과하지 않습니다.",
+            "MinimumReferenceRelativeMeanRawHeight" => "입력 높이 단위, 유한한 수. 기준 영역 평균을 뺀 셀 평균 높이의 하한입니다.",
+            "MaximumReferenceRelativeMeanRawHeight" => "입력 높이 단위, 유한한 수. 기준 영역 평균을 뺀 셀 평균 높이의 상한입니다.",
+            "GateMode" => "존재 검사는 유효 셀과 평균 높이를 확인하고, 충전 높이 검사는 저장된 기준면 조건도 확인합니다.",
+            "SelectedRegionIndex" => "0 이상 정수. 적용된 연결 영역 목록의 인덱스입니다.",
+            "MinimumMeanHeight" => "입력 높이 단위, 유한한 수. 영역 평균 높이의 포함 하한입니다.",
+            "MaximumMeanHeight" => "입력 높이 단위, 유한한 수. 영역 평균 높이의 포함 상한입니다.",
+            "ReferenceSlopeX" => "유한한 수. X 방향의 입력 높이 기울기이며 교정값이나 피팅 결과를 추정하지 않습니다.",
+            "ReferenceSlopeZ" => "유한한 수. Z 방향의 입력 높이 기울기이며 교정값이나 피팅 결과를 추정하지 않습니다.",
+            "ReferenceIntercept" => "입력 높이 단위, 유한한 수. 저장한 기준면의 높이 절편입니다.",
+            "MaximumPeakToValley" => "입력 높이 단위, 0 초과. 피팅 기준면에 대한 잔차의 최대−최소 허용값입니다.",
+            "MaximumRms" => "입력 높이 단위, 0 초과. 피팅 기준면에 대한 잔차 RMS 허용값입니다.",
+            "MaximumFlatness" => "변환 맵의 기준 단위, 0 초과. 기준면에 대한 부호 있는 거리의 최대−최소 허용값입니다.",
+            "ExpectedDistance" => "변환 맵의 기준 단위, 0 이상. 두 점 사이 XYZ 거리의 기대값입니다.",
+            "DistanceTolerance" => "변환 맵의 기준 단위, 0 이상. 기대 XYZ 거리에서 허용하는 양쪽 차이입니다.",
+            "ExpectedPlanarWidth" => "변환 맵의 기준 단위, 0 이상. 높이 축 성분을 제외한 두 점 사이 거리의 기대값입니다.",
+            "PlanarWidthTolerance" => "변환 맵의 기준 단위, 0 이상. 기대 평면 거리에서 허용하는 양쪽 차이입니다.",
+            "ExpectedElevationAngleDegrees" => "도 단위, 유한한 수. 기준 평면에서 높이 축 방향으로 향하는 부호 있는 각도의 기대값입니다.",
+            "ElevationAngleToleranceDegrees" => "도 단위, 0 이상. 기대 높이각에서 허용하는 양쪽 차이입니다.",
+            "ExpectedNetVolume" => "기준 좌표계 단위의 세제곱, 유한한 수. 피팅 기준면에 대한 부호 있는 순체적의 기대값입니다.",
+            "VolumeTolerance" => "기준 좌표계 단위의 세제곱, 0 이상. 기대 순체적에서 허용하는 양쪽 차이입니다.",
+            "ExpectedWidth" => "변환 맵의 기준 단위, 0 이상. 지정한 행 단면의 첫 유효 셀과 마지막 유효 셀 사이 폭입니다.",
+            "WidthTolerance" => "변환 맵의 기준 단위, 0 이상. 기대 단면 폭에서 허용하는 양쪽 차이입니다.",
+            "ExpectedHeightRange" => "변환 맵의 기준 단위, 0 이상. 지정한 행 단면 높이의 최대−최소 기대값입니다.",
+            "HeightTolerance" => "변환 맵의 기준 단위, 0 이상. 기대 단면 높이 범위에서 허용하는 양쪽 차이입니다.",
+            "MaximumPeakToValleyRawHeight" => "입력 높이 단위, 0 초과. 적용된 수동 기준면에 대한 잔차의 최대−최소 허용값이며 물리 교정값이 아닙니다.",
+            "OutputRole" => "공백이 아닌 결과 역할 이름. 출력의 의미를 식별하며 값을 계산하지 않습니다.",
+            "ResidualPolicy" => "같은 셀의 입력 높이에서 기준면 예측 높이를 뺀 잔차를 사용합니다.",
+            "MinimumAbsoluteNormalY" => "0 초과~1. 기준면 법선의 Y 성분이 작으면 높이를 안전하게 예측할 수 없어 제외합니다.",
+            "SectionId" => "두 에지 입력이 공유하는 지정 단면 ID입니다. 서로 다른 단면의 증거를 섞지 않습니다.",
+            "ComparisonAxis" => "열 또는 행 방향. 지정한 양의 축 방향을 간격의 부호 기준으로 사용합니다.",
+            "FirstSurfaceSide" => "첫 에지의 표면 지지 방향입니다. 해당 에지에 연결된 증거를 선택합니다.",
+            "SecondSurfaceSide" => "둘째 에지의 표면 지지 방향입니다. 해당 에지에 연결된 증거를 선택합니다.",
+            "SurfaceAggregation" => "유효한 대응 쌍의 평균으로 단차를 구합니다. 현재 지원 방식은 유효 쌍 평균입니다.",
+            "MinimumValidPairCount" => "1 이상 정수. 유효 판정에 필요한 대응 스캔선 쌍의 최소 수입니다.",
+            "MinimumCoverageRatio" => "0~1 비율, 경계 포함. 대응 스캔선의 최소 유효 비율입니다.",
+            "MaximumResidual" => "입력의 선언 단위, 유한한 허용값. 피팅된 에지 잔차가 이 값을 넘으면 사용할 수 없습니다.",
+            "MinimumInlierRatio" => "0~1 비율, 경계 포함. 두 에지 각각에 필요한 최소 유효점 비율입니다.",
+            "MinimumInlierScanlineSpan" => "스캔선 수. 각 피팅 에지가 지지해야 하는 최소 스캔 범위입니다.",
+            "AmbiguityPolicy" => "검출 후보가 같거나 비슷하면 모호한 결과로 제외합니다.",
+            "AmbiguityEpsilon" => "0 이상 유한한 수. 후보의 동률 또는 근접 여부를 구분하는 비교 여유입니다.",
+            "ContactAllowed" => "접촉 허용 여부. 허용하지 않으면 간격 0의 접촉 결과를 제외합니다.",
+            "ToleranceMode" => "사용하면 기대값±허용오차로 판정하고, 사용하지 않으면 측정값만 표시합니다.",
+            _ => fallback
+        };
+        var toolId = componentType.Name switch
+        {
+            nameof(ThicknessStepProperties) => "thickness", nameof(CompletenessGridStepProperties) => "completeness-grid",
+            nameof(ConnectedRegionGateStepProperties) => "connected-region-gate", nameof(WarpageStepProperties) => "warpage",
+            nameof(PlaneFlatnessStepProperties) => "plane-flatness", nameof(PointPairDimensionsStepProperties) => "point-pair-dimensions",
+            nameof(GapFlushStepProperties) => "gap-flush", nameof(VolumeStepProperties) => "volume",
+            nameof(CrossSectionDimensionsStepProperties) => "cross-section-dimensions", nameof(DatumPlaneDeviationStepProperties) => "datum-plane-raw-height-deviation",
+            nameof(PhysicalEdgeGapFlushStepProperties) => "physical-edge-gap-flush", _ => null
+        };
+        var defaultValue = toolId is null ? null : ToolWorkbenchToolCatalog.Create().FirstOrDefault(tool => tool.Id == toolId)?.Parameters.FirstOrDefault(parameter => parameter.Name == name)?.DefaultValue;
+        return defaultValue is null ? description : description + (OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.Korean
+            ? $" 기본값: {(defaultValue == "Set explicitly" ? "직접 설정" : defaultValue)}." : $" Default: {defaultValue}.");
     }
 
     private static string LocalizePropertyName(string name, string fallback) =>
@@ -381,8 +495,8 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
                 "SubtractionPolicy" => "높이차 계산",
                 "ZeroDeltaPolicy" => "0 높이차 처리",
                 "Rule" => "제거 방법",
-                "WindowSize" => "주변 셀 범위",
-                "MaximumAbsoluteDeviation" => "최대 절대 높이차",
+                "WindowSize" => "커널 크기",
+                "MaximumAbsoluteDeviation" => "편차 임계값",
                 "MinimumValidNeighbors" => "최소 유효 주변 셀 수",
                 "OutlierPolicy" => "이상값 처리",
                 "Connectivity" => "연결 방향",

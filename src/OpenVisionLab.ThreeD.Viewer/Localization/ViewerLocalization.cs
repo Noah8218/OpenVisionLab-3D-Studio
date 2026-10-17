@@ -629,6 +629,7 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
             "Confidence" => "신뢰도",
             "Signal/Noise" => "신호/잡음",
             "Thermal" => "열화상",
+            "ColorVisionAssist" => "색각 보조",
             "Deviation" => "편차",
             "Balanced" => "균형",
             "Detailed" => "상세",

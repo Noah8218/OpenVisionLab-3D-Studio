@@ -4,6 +4,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -23,6 +24,27 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     private IInputElement? toolLibraryReturnFocus;
     private int toolLibraryStepCountAtOpen;
     private int disposalState;
+    private bool? isCompactDataLayout;
+
+    private static readonly DependencyPropertyKey IsCompactLayoutPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsCompactLayout), typeof(bool), typeof(ToolRecipeWorkbenchView), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty IsCompactLayoutProperty = IsCompactLayoutPropertyKey.DependencyProperty;
+
+    public static readonly DependencyProperty IsTeachingDataPinnedProperty = DependencyProperty.Register(
+        nameof(IsTeachingDataPinned), typeof(bool), typeof(ToolRecipeWorkbenchView), new PropertyMetadata(false));
+
+    public bool IsTeachingDataPinned
+    {
+        get => (bool)GetValue(IsTeachingDataPinnedProperty);
+        set => SetCurrentValue(IsTeachingDataPinnedProperty, value);
+    }
+
+    public static CustomPopupPlacementCallback TeachingDataPlacement { get; } = (popup, target, offset) =>
+        [new(new Point(-popup.Width - 6 + offset.X, offset.Y), PopupPrimaryAxis.Vertical)];
+
+    public static readonly DependencyProperty IsTeachingDataExpandedProperty = DependencyProperty.Register(
+        nameof(IsTeachingDataExpanded), typeof(bool), typeof(ToolRecipeWorkbenchView), new PropertyMetadata(true));
 
     public static readonly DependencyProperty ViewerContentProperty =
         DependencyProperty.Register(
@@ -44,13 +66,27 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         DataContextChanged += OnDataContextChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        SizeChanged += OnWorkbenchSizeChanged;
         SetBinding(
             WorkspaceSelectionCommandProperty,
             new Binding("DataContext.SelectWorkspaceCommand") { Source = this });
         BindStageHostedContext(ToolLibraryDialogContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.DataLayersContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.ValidationSamplesContent, "DataContext.Workbench");
+        if (DockWorkspace.ValidationSamplesContent is ValidationSamplesView samples)
+            samples.SetBinding(ValidationSamplesView.DockPaneCommandsProperty,
+                new Binding(nameof(OpenVisionDockWorkspaceView.DataLayersPaneLayoutItem)) { Source = DockWorkspace });
+        BindStageHostedContext(RecipeDataSurface, "DataContext.Workbench");
+        BindStageHostedContext(RecipeDataPopupSurface, "DataContext.Workbench");
+        TeachingDataPopupHeader.SetBinding(ContentControl.ContentProperty, new Binding("DataContext") { Source = this });
+        TeachingDataPopupHeader.Tag = this;
         BindStageHostedContext(DockWorkspace.ViewerContent, "DataContext");
         BindStageHostedContext(DockWorkspace.ResultsContent, "DataContext");
+        if (DockWorkspace.ResultsContent is ResultsWorkspaceView resultsView)
+        {
+            resultsView.SetBinding(ResultsWorkspaceView.DockPaneCommandsProperty,
+                new Binding(nameof(OpenVisionDockWorkspaceView.ResultsPaneLayoutItem)) { Source = DockWorkspace });
+        }
         BindStageHostedContext(DockWorkspace.ToolInspectorContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.EvidenceContent, "DataContext.Workbench");
         BindStageHostedContext(DockWorkspace.OutputCompareContent, "DataContext.Workbench");
@@ -77,6 +113,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
             pipelineReview = review;
+            review.SetBinding(RecipePipelineReviewView.DockPaneCommandsProperty,
+                new Binding(nameof(OpenVisionDockWorkspaceView.EvidencePaneLayoutItem)) { Source = DockWorkspace });
             review.SetBinding(
                 RecipePipelineReviewView.RunRecordContextProperty,
                 new Binding("DataContext") { Source = this });
@@ -119,7 +157,63 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         DataContextChanged -= OnDataContextChanged;
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
+        SizeChanged -= OnWorkbenchSizeChanged;
     }
+
+    public bool IsTeachingDataExpanded
+    {
+        get => (bool)GetValue(IsTeachingDataExpandedProperty);
+        set => SetCurrentValue(IsTeachingDataExpandedProperty, value);
+    }
+
+    private void OnTeachingDataPinClicked(object sender, RoutedEventArgs args)
+    {
+        if (IsCompactLayout) IsTeachingDataPinned = sender is ToggleButton { IsChecked: true };
+        else IsTeachingDataExpanded = false;
+    }
+
+    private void OnTeachingDataHeaderAction(object sender, RoutedEventArgs args)
+    {
+        if (IsCompactLayout) IsTeachingDataExpanded = false;
+        else if (sender is FrameworkElement { ContextMenu: { } menu } button)
+        {
+            menu.PlacementTarget = button;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void OnTeachingDataCollapseClicked(object sender, RoutedEventArgs args) => IsTeachingDataExpanded = false;
+
+    private void OnTeachingDataPopupOpened(object? sender, EventArgs args)
+    {
+        RecipeDataPopupSurface.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+    }
+
+    private void OnTeachingDataPopupClosed(object? sender, EventArgs args)
+    {
+        if (IsCompactLayout && !IsTeachingDataPinned) IsTeachingDataExpanded = false;
+    }
+
+    private void OnTeachingDataPopupKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Escape || args.Handled) return;
+        IsTeachingDataExpanded = false;
+        TeachingDataToggle.Focus();
+        args.Handled = true;
+    }
+
+    private void OnWorkbenchSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        var compact = (Window.GetWindow(this)?.ActualWidth ?? args.NewSize.Width) < 1500;
+        SetValue(IsCompactLayoutPropertyKey, compact);
+        if (compact != isCompactDataLayout)
+        {
+            isCompactDataLayout = compact;
+            IsTeachingDataExpanded = !compact;
+        }
+    }
+
+    public bool IsCompactLayout => (bool)GetValue(IsCompactLayoutProperty);
 
     public OpenVisionOperatorStage OperatorStage => DockWorkspace.OperatorStage;
 
@@ -141,6 +235,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     public bool HasValidateStageComposition =>
         DockWorkspace.HasValidateStageComposition;
+
+    public bool HasRecipeValidationStageComposition => DockWorkspace.HasRecipeValidationStageComposition;
 
     public int VisibleValidationPaneTabCount =>
         DockWorkspace.VisibleValidationPaneTabCount;
@@ -164,6 +260,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         DataContext is ShellMainWindowViewModel currentShell
         && HasDataContext(ToolLibraryDialogContent, currentShell.Workbench)
         && HasDataContext(DockWorkspace.DataLayersContent, currentShell.Workbench)
+        && HasDataContext(DockWorkspace.ValidationSamplesContent, currentShell.Workbench)
+        && HasDataContext(RecipeDataSurface, currentShell.Workbench)
         && HasDataContext(DockWorkspace.ViewerContent, currentShell)
         && HasDataContext(DockWorkspace.ResultsContent, currentShell)
         && HasDataContext(DockWorkspace.ToolInspectorContent, currentShell.Workbench)
@@ -319,9 +417,6 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     public (bool Collapsed, bool Restored) VerifySupportAutoHideRoundTrip() =>
         DockWorkspace.VerifySupportAutoHideRoundTrip();
 
-    public bool HasVisibleWorkspaceCommandBar =>
-        WorkspaceCommandBar.Visibility == Visibility.Visible;
-
     public bool IsToolInspectorPaneSelected =>
         DockWorkspace.IsToolInspectorPaneSelected;
 
@@ -350,8 +445,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     public bool UsesInspectionWorkspaceV3Composition =>
         DockWorkspace.DataLayersContent is RecipeChainView
         && DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
-        && ViewerWorkspaceSurface is not null
-        && WorkspaceCommandBar is not null;
+        && ViewerWorkspaceSurface is not null;
 
     public bool HasThicknessRepeatGridAuthoringControls =>
         DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
@@ -434,6 +528,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
     private ViewerWorkspaceView? ViewerWorkspaceSurface =>
         viewerWorkspaceSurface ?? FindLogicalChild<ViewerWorkspaceView>(DockWorkspace.ViewerContent);
 
+    internal IReadOnlyDictionary<string, OpenVisionLab.ThreeD.Data.HeightDisplayProfile> CaptureViewerDisplayProfiles() => ViewerWorkspaceSurface?.CaptureDisplayProfiles() ?? new Dictionary<string, OpenVisionLab.ThreeD.Data.HeightDisplayProfile>();
+    internal void RestoreViewerDisplayProfiles(IReadOnlyDictionary<string, OpenVisionLab.ThreeD.Data.HeightDisplayProfile> profiles) => ViewerWorkspaceSurface?.RestoreDisplayProfiles(profiles);
+
     public bool IsViewerPopoutVisible => ViewerWorkspaceSurface?.IsPopoutVisible == true;
 
     public Window? ViewerPopoutWindow => ViewerWorkspaceSurface?.PopoutWindow;
@@ -451,6 +548,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             "height" => shell.Workbench.ShowHeightImageOnlyCommand,
             "vertical" => shell.Workbench.SplitViewerVerticallyCommand,
             "horizontal" => shell.Workbench.SplitViewerHorizontallyCommand,
+            "four" => shell.Workbench.SetFourViewerLayoutCommand,
             "popout" => shell.Workbench.PopOutViewerCommand,
             _ => null
         };
@@ -466,6 +564,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             "height" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.HeightImageOnly,
             "vertical" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitVertical,
             "horizontal" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitHorizontal,
+            "four" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.Four,
             "popout" => shell.Workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.PopOut
                         && ViewerWorkspaceSurface?.IsPopoutVisible == true,
             _ => false
@@ -671,7 +770,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     public void ActivateValidationSet()
     {
-        NavigateToStage(ShellWorkspaceMode.Inspect);
+        NavigateToStage(ShellWorkspaceMode.Validate);
         DockWorkspace.ActivateEvidencePane();
         if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
@@ -821,6 +920,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
+        TeachingDataPopup.SetCurrentValue(Popup.IsOpenProperty, false);
         CancelTeachStageActivation();
         DetachShell();
     }
@@ -942,6 +1042,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         {
             ShellWorkspaceMode.Workbench => OpenVisionOperatorStage.Teach,
             ShellWorkspaceMode.Teach => OpenVisionOperatorStage.Teach,
+            ShellWorkspaceMode.Validate => OpenVisionOperatorStage.Validate,
             ShellWorkspaceMode.Inspect => OpenVisionOperatorStage.Validate,
             ShellWorkspaceMode.Review => OpenVisionOperatorStage.Results,
             _ => OpenVisionOperatorStage.Legacy,
@@ -952,6 +1053,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
             CloseToolLibraryPane(restoreFocus: false);
         }
 
+        DockWorkspace.IsRecipeValidationWorkspace = shell?.IsValidateWorkspaceSelected == true;
         DockWorkspace.SetOperatorStage(stage);
         if (DockWorkspace.EvidenceContent is RecipePipelineReviewView pipelineReview)
         {

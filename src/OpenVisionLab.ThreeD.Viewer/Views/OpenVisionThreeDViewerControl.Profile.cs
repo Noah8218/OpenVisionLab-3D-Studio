@@ -54,7 +54,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!viewModel.ProfileMoveCommand.CanExecute(move)) return false;
         var previous = profileDraggedEndpoint == 1 ? viewModel.HeightProfile.First : viewModel.HeightProfile.Second;
         viewModel.ProfileMoveCommand.Execute(move);
-        UpdateLinkedProfileCursor(linkedHeightCursor);
+        UpdateLinkedProfileCursor(LinkedHeightCursor);
         return previous != (profileDraggedEndpoint == 1 ? viewModel.HeightProfile.First : viewModel.HeightProfile.Second);
     }
 

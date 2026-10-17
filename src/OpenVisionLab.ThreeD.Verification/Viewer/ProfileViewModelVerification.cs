@@ -54,7 +54,9 @@ internal static class ProfileViewModelVerification
                 maximum: 113.0,
                 mean: 107.0,
                 pathData: "M 0,30 L 240,10");
-            Check("P1-P2 metrics and chart state update", viewModel.ProfileValidSampleCount == 9 && viewModel.ProfileMissingSampleCount == 1 && viewModel.ProfilePathData == "M 0,30 L 240,10" && viewModel.ProfileSummary.Contains("ΔH 6.000", StringComparison.Ordinal), $"{viewModel.ProfileSummary}|{viewModel.ProfileRange}");
+            Check("P1-P2 metrics and chart state update", viewModel.ProfileValidSampleCount == 9 && viewModel.ProfileMissingSampleCount == 1 && viewModel.ProfilePathData == "M 0,30 L 240,10" && viewModel.ProfileSummary.Contains("ΔH 6 raw-height", StringComparison.Ordinal), $"{viewModel.ProfileSummary}|{viewModel.ProfileRange}");
+            var numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D44 raw chart bounds are typed and projected", numericState.MinimumRaw == 101 && numericState.MaximumRaw == 113, $"min={numericState.MinimumRaw};max={numericState.MaximumRaw}");
 
             viewModel.SetProfileLinkedCursor(
                 row: 7,
@@ -74,6 +76,8 @@ internal static class ProfileViewModelVerification
                 $"visible={viewModel.ProfileLinkedCursorVisible}|x={viewModel.ProfileLinkedCursorX:R}|y={viewModel.ProfileLinkedCursorY:R}|summary={viewModel.ProfileLinkedCursorSummary}");
 
             viewModel.SetProfileLinkedCursorUnavailable();
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D57 off-trace cursor removes both typed readout values", double.IsNaN(numericState.LinkedCursorRawHeight) && double.IsNaN(numericState.LinkedCursorDistanceCells), "No stale raw height or distance.");
             Check(
                 "Off-trace cursor has no fabricated profile marker",
                 !viewModel.ProfileLinkedCursorVisible
@@ -83,6 +87,8 @@ internal static class ProfileViewModelVerification
 
             viewModel.ClearProfile();
             Check("Profile clear removes live display state", !viewModel.ProfileVisible && viewModel.ProfileValidSampleCount == 0 && viewModel.ProfileMissingSampleCount == 0 && !viewModel.ProfileLinkedCursorVisible && viewModel.ProfileLinkedCursorSummary.Contains("unavailable", StringComparison.Ordinal), viewModel.ProfileSummary);
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D44 cleared chart has no stale numeric bounds", double.IsNaN(numericState.MinimumRaw) && double.IsNaN(numericState.MaximumRaw) && numericState.GridDistanceCells == 0, $"min={numericState.MinimumRaw};max={numericState.MaximumRaw};distance={numericState.GridDistanceCells}");
 
 
             var sourcePath = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "profile-gap.c3d");
@@ -103,6 +109,17 @@ internal static class ProfileViewModelVerification
             Check("A is exact and B must be distinct", profile.Pick(a) && !profile.Pick(a) && profile.IsPicking && profile.Second is null, viewModel.ProfileEndpointSummary);
             Check("B finishes the original full-grid trace", profile.Pick(b) && profile.HasEndpoints && !profile.IsPicking && profile.ExpectedSampleCount == 5 && profile.Samples.Length == 4, $"samples={profile.Samples.Length}/{profile.ExpectedSampleCount}");
             Check("SDK distance uses grid cells and raw height", Math.Abs(profile.GridDistance - 5) < 1e-9 && Math.Abs(profile.HeightDelta - 19) < 1e-9, $"XY={profile.GridDistance};H={profile.HeightDelta}");
+            viewModel.SetProfileLinkedCursor(2, 2, 13, 2, 5, profile.Minimum, profile.Maximum);
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D57 typed cursor uses the exact source sample and trace step", numericState.LinkedCursorRawHeight == source.ReadPoint(2, 2).RawValue && numericState.LinkedCursorDistanceCells == 2.5 && numericState.LinkedCursorSummary == "X 2 · Y 2 · H 13 raw-height", $"raw={numericState.LinkedCursorRawHeight};distance={numericState.LinkedCursorDistanceCells};XYH={numericState.LinkedCursorSummary}");
+            viewModel.SetProfileLinkedCursor(2, 2, double.NaN, 2, 5, profile.Minimum, profile.Maximum);
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D57 invalid cursor clears typed values and valid B recovers", !numericState.LinkedCursorVisible && double.IsNaN(numericState.LinkedCursorRawHeight) && double.IsNaN(numericState.LinkedCursorDistanceCells), "Malformed cursor height remains unavailable.");
+            viewModel.SetProfileLinkedCursor(3, 4, b.RawValue, 4, 5, profile.Minimum, profile.Maximum);
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D57 cursor recovery restores exact B height and full cell distance", numericState.LinkedCursorVisible && numericState.LinkedCursorRawHeight == 20 && numericState.LinkedCursorDistanceCells == 5, $"raw={numericState.LinkedCursorRawHeight};distance={numericState.LinkedCursorDistanceCells}");
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D44 axis values use the exact SDK trace", numericState.MinimumRaw == profile.Minimum && numericState.MaximumRaw == profile.Maximum && numericState.GridDistanceCells == profile.GridDistance, $"min={numericState.MinimumRaw};max={numericState.MaximumRaw};distance={numericState.GridDistanceCells}");
             Check("Missing cells break graph and cursor", viewModel.ProfilePathData.Split(" M ", StringSplitOptions.RemoveEmptyEntries).Length == 2 && profile.GetTracePoint(0.25) is null && profile.GetTracePoint(1) == b, viewModel.ProfilePathData);
             Check("Invalid moves preserve both endpoints", !profile.Move(2, b with { Row = -1 }) && !profile.Move(1, a with { Row = 1, Column = 1, RawValue = float.NaN }) && !profile.Move(2, a) && profile.First == a && profile.Second == b, viewModel.ProfileEndpointSummary);
             profile.SelectEndpoint(1);
@@ -114,12 +131,16 @@ internal static class ProfileViewModelVerification
             profile.Pick(source.ReadPoint(0, 4));
             profile.Cancel();
             Check("Cancel restores the previous pair and collapsed state", profile.First == b && profile.Second == a && profile.IsCollapsed && !profile.IsPicking, viewModel.ProfileEndpointSummary);
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D44 cancel restores chart axes with the measurement", numericState.GridDistanceCells == 5 && numericState.MinimumRaw == profile.Minimum && numericState.MaximumRaw == profile.Maximum && numericState.IsCollapsed, $"min={numericState.MinimumRaw};max={numericState.MaximumRaw};distance={numericState.GridDistanceCells}");
             profile.Attach(C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0));
             Check("Render density cannot change measurement identity", profile.First == b && profile.Second == a && profile.HasEndpoints, profile.SourceSha256 ?? "none");
             profile.Begin();
             profile.Attach(null);
             profile.Cancel();
             Check("Source replacement removes backup and stale measurements", !profile.IsVisible && !profile.HasEndpoints && !profile.IsPicking && profile.Samples.Length == 0 && !viewModel.ProfileVisible, viewModel.ProfileSummary);
+            numericState = ViewerHostStateProjection.From(viewModel).Profile;
+            Check("D57 source replacement releases typed cursor values", double.IsNaN(numericState.LinkedCursorRawHeight) && double.IsNaN(numericState.LinkedCursorDistanceCells), "No cursor values survive source replacement.");
             viewModel.ProfileSourceCommand.Execute(source);
             profile.Begin();
             profile.Pick(a);

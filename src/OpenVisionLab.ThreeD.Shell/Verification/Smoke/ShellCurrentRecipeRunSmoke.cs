@@ -43,7 +43,7 @@ internal sealed class ShellCurrentRecipeRunSmoke
             return Canceled();
         }
 
-        shell.IsValidateWorkspaceSelected = true;
+        shell.IsInspectWorkspaceSelected = true;
         if (!await YieldDispatcherAsync(
                 dispatcher,
                 DispatcherPriority.Render,

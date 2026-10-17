@@ -10,8 +10,14 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// Outputs, and Help sections. Existing recipe, PropertyGrid, capture, artifact,
 /// and execution owners remain authoritative.
 /// </summary>
-public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
+public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDisposable
 {
+    private readonly Dictionary<string, HeightImageViewerViewModel> previews = new(StringComparer.Ordinal);
+    private readonly Func<HeightImageViewerViewModel, string, Task>? loadPreview;
+    private readonly Func<string, bool> isInputAvailable;
+    private readonly Func<ToolWorkbenchFlowInputItem, string, bool> isInputCompatible;
+    private readonly Dictionary<string, string> previewEntities = new(StringComparer.Ordinal);
+    private bool disposed;
     private ToolWorkbenchPipelineStepItem? selectedStep;
     private object? parameterDraft;
     private bool isParameterEditorSupported;
@@ -24,9 +30,14 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
     private string commonState = ThreeDLocalization.Shared.StateLabel(InspectionStepState.Empty);
     private string outputPolicy = ThreeDLocalization.Shared.OutputPolicyLabel(true);
 
-    internal SelectedToolWorkspaceViewModel(InspectionWorkspaceSelectionSession selection)
+    internal SelectedToolWorkspaceViewModel(InspectionWorkspaceSelectionSession selection,
+        Func<HeightImageViewerViewModel, string, Task>? loadPreview = null, Func<string, bool>? isInputAvailable = null,
+        Func<ToolWorkbenchFlowInputItem, string, bool>? isInputCompatible = null)
     {
         Selection = selection;
+        this.loadPreview = loadPreview;
+        this.isInputAvailable = isInputAvailable ?? (_ => false);
+        this.isInputCompatible = isInputCompatible ?? ((_, _) => true);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -40,6 +51,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
     public string State => selectedStep?.State ?? localization.NoSelectedToolState;
 
     public ResettableObservableCollection<SelectedToolInputItem> Inputs { get; } = [];
+    public IEnumerable<SelectedToolInputItem> DataInputs => Inputs.Where(item => !item.IsRegionInput);
     public ResettableObservableCollection<SelectedToolRegionItem> Regions { get; } = [];
     public ResettableObservableCollection<SelectedToolOutputItem> Outputs { get; } = [];
     public SelectedToolOutputItem? CurrentOutput => Outputs.FirstOrDefault(item => item.IsSelected)
@@ -65,6 +77,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
 
     internal void Refresh(SelectedToolWorkspaceProjection projection)
     {
+        if (disposed) return;
         localization = projection.Localization;
         selectedStep = projection.Step;
         parameterDraft = projection.ParameterDraft;
@@ -81,8 +94,16 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
             : projection.Localization.OutputPolicyLabel(true);
 
         Inputs.ReplaceAll(CreateInputs(projection));
+        OnPropertyChanged(nameof(DataInputs));
         Regions.ReplaceAll(CreateRegions(projection));
         Outputs.ReplaceAll(CreateOutputs(projection));
+        var retainedPreviews = Inputs.Select(item => item.Preview).Concat(Outputs.Select(item => item.Preview)).ToHashSet();
+        foreach (var key in previews.Keys.Where(key => !retainedPreviews.Contains(previews[key])).ToArray())
+        {
+            previews[key].Dispose();
+            previews.Remove(key);
+            previewEntities.Remove(key);
+        }
         OnPropertyChanged(nameof(CurrentOutput));
 
         OnPropertyChanged(nameof(SelectedStep));
@@ -100,6 +121,33 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(OutputPolicy));
         OnPropertyChanged(nameof(ActiveRegion));
         OnPropertyChanged(nameof(ActiveRegionPosition));
+    }
+
+    public void Dispose()
+    {
+        if (disposed) return;
+        disposed = true;
+        foreach (var preview in previews.Values) preview.Dispose();
+        previews.Clear();
+        previewEntities.Clear();
+    }
+
+    private HeightImageViewerViewModel? GetPreview(string key, string entityId, string contract)
+    {
+        if (loadPreview is null || !contract.Contains("HeightField", StringComparison.OrdinalIgnoreCase)
+            && !contract.Contains("C3D", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!previews.TryGetValue(key, out var preview))
+        {
+            preview = new HeightImageViewerViewModel(localization, new SharedHeightCursorSession());
+            previews.Add(key, preview);
+        }
+        if (!previewEntities.TryGetValue(key, out var previousEntity) || previousEntity != entityId)
+        {
+            preview.ClearSource();
+            previewEntities[key] = entityId;
+        }
+        preview.StartObservedLoad(() => loadPreview(preview, entityId), exception => preview.ReportSourceFailure(exception.Message));
+        return preview;
     }
 
     private IEnumerable<SelectedToolInputItem> CreateInputs(SelectedToolWorkspaceProjection projection)
@@ -135,8 +183,31 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
                 string.Equals(
                     entityId,
                     Selection.SelectedInputEntityId,
-                    StringComparison.OrdinalIgnoreCase));
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Preview = GetPreview($"input:{index}", entityId, requiredContracts.ElementAtOrDefault(index) ?? string.Empty),
+                Choices = CreateInputChoices(projection, index, entityId).ToArray()
+            };
         }
+    }
+
+    private IEnumerable<SelectedToolInputChoice> CreateInputChoices(SelectedToolWorkspaceProjection projection, int index, string currentEntityId)
+    {
+        if (projection.Step is not { } step || step.FlowInputs.ElementAtOrDefault(index) is not { } port) yield break;
+        foreach (var artifact in projection.Artifacts)
+        {
+            var isCurrent = string.Equals(artifact.Id, currentEntityId, StringComparison.OrdinalIgnoreCase);
+            var isMap = artifact.Contract.Contains("HeightField", StringComparison.OrdinalIgnoreCase)
+                || artifact.Contract.Contains("C3D", StringComparison.OrdinalIgnoreCase);
+            var precedes = artifact.PipelineStep is null
+                || int.TryParse(artifact.PipelineStep.Order, out var producerOrder) && int.TryParse(step.Order, out var consumerOrder)
+                && producerOrder < consumerOrder;
+            if (!isCurrent && (!isMap || !precedes || !isInputCompatible(port, artifact.Id))) continue;
+            yield return new SelectedToolInputChoice(port, artifact.Id, artifact.DisplayName, isInputAvailable(artifact.Id));
+        }
+        if (!projection.Artifacts.Any(artifact => string.Equals(artifact.Id, currentEntityId, StringComparison.OrdinalIgnoreCase)))
+            yield return new SelectedToolInputChoice(port, currentEntityId, string.IsNullOrEmpty(currentEntityId)
+                ? projection.Localization.SelectedToolInputNotAssigned : currentEntityId, false);
     }
 
     private IEnumerable<SelectedToolRegionItem> CreateRegions(SelectedToolWorkspaceProjection projection)
@@ -198,7 +269,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
             lifecycle,
             FormatLifecycleState(lifecycle, projection.Localization),
                 FormatSelection(selection, projection.Localization),
-            isActive);
+            isActive) { Rectangle = selection?.GridRectangle };
     }
 
     private static string FormatLifecycleState(
@@ -255,7 +326,10 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
                 projection.Artifacts.FirstOrDefault(item => string.Equals(item.Id, id, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? id)),
             evidence.LimitSummary,
             evidence.Reason,
-            evidence.HasExecutionResult);
+            evidence.HasExecutionResult)
+        {
+            Preview = GetPreview("output", step.OutputEntityId, artifact?.Contract ?? step.OutputContract)
+        };
     }
 
     private static string FormatSelection(
@@ -537,8 +611,15 @@ public sealed record SelectedToolInputItem(
     string Unit,
     bool IsSelected)
 {
+    public HeightImageViewerViewModel? Preview { get; init; }
+    public IReadOnlyList<SelectedToolInputChoice> Choices { get; init; } = [];
+    public bool IsRegionInput => RequiredContract.Contains("GridRectangle", StringComparison.OrdinalIgnoreCase)
+        || RequiredContract.Contains("GridPolygon selection", StringComparison.OrdinalIgnoreCase);
+    public bool IsMapInput => Preview is not null;
     public string RequiredContractDisplay => ThreeDLocalization.Shared.ContractLabel(RequiredContract);
 }
+
+public sealed record SelectedToolInputChoice(ToolWorkbenchFlowInputItem Port, string EntityId, string DisplayName, bool IsAvailable);
 
 public sealed record SelectedToolRegionItem(
     InspectionWorkspaceRegionRole Role,
@@ -547,7 +628,11 @@ public sealed record SelectedToolRegionItem(
     InspectionWorkspaceRegionLifecycleState Lifecycle,
     string State,
     string Detail,
-    bool IsActive);
+    bool IsActive)
+{
+    public ToolRecipeGridRectangle? Rectangle { get; init; }
+    public bool HasRectangle => Rectangle is not null;
+}
 
 public sealed record SelectedToolOutputItem(
     string EntityId,
@@ -572,6 +657,8 @@ public sealed record SelectedToolOutputItem(
     string Reason,
     bool HasExecutionResult)
 {
+    public HeightImageViewerViewModel? Preview { get; init; }
+    public bool IsMapOutput => Preview is not null;
     public string ContractDisplay => ThreeDLocalization.Shared.ContractLabel(Contract);
     public bool HasResultStatus => !string.IsNullOrWhiteSpace(ResultStatus);
     public bool HasEvidenceValue => !string.IsNullOrWhiteSpace(Value) && Value != "\u2014";
@@ -588,6 +675,7 @@ internal sealed record SelectedToolOutputEvidence(
     string Reason = "\u2014",
     bool HasExecutionResult = true)
 {
+    public ResultStatus? ExecutionStatus { get; init; }
     public static SelectedToolOutputEvidence Empty { get; } =
         new(string.Empty, "\u2014", string.Empty, string.Empty, HasExecutionResult: false);
 }

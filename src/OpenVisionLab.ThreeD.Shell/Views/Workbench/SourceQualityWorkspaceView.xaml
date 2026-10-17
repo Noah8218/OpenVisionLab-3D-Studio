@@ -61,11 +61,6 @@
                                            Text="{Binding State}" />
                             </Border>
                         </Grid>
-                        <TextBlock Margin="0,7,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{Binding Localization.SourceQualityHint}"
-                                   TextWrapping="Wrap" />
                         <Border Margin="0,7,0,0"
                                 Padding="7,4"
                                 Background="{DynamicResource ThreeD.CommandBarBrush}"
@@ -225,11 +220,6 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Grid>
-                        <TextBlock Margin="0,4,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                   Text="{Binding Localization.SourceAcquisitionProvenanceHint}"
-                                   TextWrapping="Wrap" />
                         <TextBlock Margin="0,7,0,2"
                                    FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"

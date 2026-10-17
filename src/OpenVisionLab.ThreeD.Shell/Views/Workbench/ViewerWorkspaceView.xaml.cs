@@ -14,6 +14,9 @@ namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
 public partial class ViewerWorkspaceView : UserControl, IDisposable
 {
+    public static readonly DependencyProperty IsCompactChromeProperty = DependencyProperty.Register(nameof(IsCompactChrome), typeof(bool), typeof(ViewerWorkspaceView), new PropertyMetadata(true));
+    public static readonly DependencyProperty SelectionContextProperty = DependencyProperty.Register(nameof(SelectionContext), typeof(string), typeof(ViewerWorkspaceView), new PropertyMetadata(string.Empty));
+    public string SelectionContext => (string)GetValue(SelectionContextProperty);
     public static readonly DependencyProperty MainViewerContentProperty =
         DependencyProperty.Register(
             nameof(MainViewerContent),
@@ -27,7 +30,10 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     private OpenVisionThreeDViewerControl? mainViewer;
     private OpenVisionThreeDViewerControl? auxiliaryViewer;
     private HeightImageViewerView? heightImageViewer;
+    private OpenVisionThreeDViewerControl? sectionPaneViewer;
+    private OpenVisionThreeDViewerControl? heightPaneViewer;
     private ViewerWorkspacePopoutWindow? popout;
+    private HeightProfileView? popoutProfile;
     private Window? ownerWindow;
     private readonly ViewerWorkspaceLinkCoordinator linkCoordinator = new();
     private string loadedAuxiliaryPath = string.Empty;
@@ -37,10 +43,15 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     private GridLength roiFocusFirstLength;
     private GridLength roiFocusSecondLength;
     private int disposalState;
+    private (GridLength FirstRow, GridLength SecondRow, GridLength FirstColumn, GridLength SecondColumn)? paneRestoreLengths;
 
     public ViewerWorkspaceView()
     {
         InitializeComponent();
+        var selectionContextBinding = new MultiBinding { StringFormat = "{0} · {1}" };
+        selectionContextBinding.Bindings.Add(new Binding("SelectedPipelineStep.ToolName"));
+        selectionContextBinding.Bindings.Add(new Binding("HeightImageViewer.RoiWorkspace.ContextSummary"));
+        SetBinding(SelectionContextProperty, selectionContextBinding);
         workspaceContextMenu = (ContextMenu)Resources["WorkbenchViewerContextMenu"];
         heightImageContextMenu = (ContextMenu)Resources["HeightImageContextMenu"];
         heightImageContextMenu.SetBinding(DataContextProperty, new Binding("DataContext") { Source = this });
@@ -50,6 +61,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         DataContextChanged += OnDataContextChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        SizeChanged += OnChromeSizeChanged;
     }
 
     public object? MainViewerContent
@@ -57,6 +69,30 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         get => GetValue(MainViewerContentProperty);
         set => SetValue(MainViewerContentProperty, value);
     }
+
+    internal IReadOnlyDictionary<string, OpenVisionLab.ThreeD.Data.HeightDisplayProfile> CaptureDisplayProfiles() => linkCoordinator.CaptureDisplayProfiles();
+    internal void RestoreDisplayProfiles(IReadOnlyDictionary<string, OpenVisionLab.ThreeD.Data.HeightDisplayProfile> profiles) => linkCoordinator.RestoreDisplayProfiles(profiles);
+
+    public bool IsCompactChrome => (bool)GetValue(IsCompactChromeProperty);
+
+    private void OnChromeSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        SetCurrentValue(IsCompactChromeProperty, (Window.GetWindow(this)?.ActualWidth ?? ActualWidth) < 1500);
+        UpdateEmbeddedViewerChrome();
+    }
+
+    private void UpdateEmbeddedViewerChrome()
+    {
+        if (MainPaneMenuHost is null) return;
+        mainViewer?.SetWorkspaceHeaderHost(MainPaneMenuHost, IsCompactChrome);
+        auxiliaryViewer?.SetWorkspaceHeaderHost(IsAuxiliaryInlineVisible ? AuxiliaryPaneMenuHost : null, IsCompactChrome);
+        sectionPaneViewer?.SetWorkspaceHeaderHost(FourSectionMenuHost, IsCompactChrome);
+        heightPaneViewer?.SetWorkspaceHeaderHost(FourHeightMenuHost, IsCompactChrome);
+    }
+
+    private void OnViewerHelpOpened(object sender, EventArgs args) => ViewerHelpCloseButton.Focus();
+
+    private void OnViewerHelpClosed(object sender, EventArgs args) => ViewerHelpButton.Focus();
 
     /// <summary>
     /// Releases resources created by this workspace at the owning Window close
@@ -111,7 +147,20 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         DataContextChanged -= OnDataContextChanged;
         Loaded -= OnLoaded;
         Unloaded -= OnUnloaded;
+        SizeChanged -= OnChromeSizeChanged;
         linkCoordinator.Dispose();
+        popoutProfile?.Dispose();
+        popoutProfile = null;
+        FourSectionProfile.Dispose();
+        FourHeightProfile.Dispose();
+        MainPaneProfile.Dispose();
+        AuxiliaryPaneProfile.Dispose();
+        InlineHeightProfile.Dispose();
+        FourSectionSlotThreeDHost.Content = null;
+        FourHeightSlotThreeDHost.Content = null;
+        sectionPaneViewer?.Dispose();
+        heightPaneViewer?.Dispose();
+        sectionPaneViewer = heightPaneViewer = null;
     }
 
     public bool IsPopoutVisible => popout?.IsVisible == true;
@@ -128,7 +177,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     public bool IsAuxiliaryInlineVisible =>
         AuxiliarySlot.Visibility == Visibility.Visible
         && workbench?.EffectiveViewerLayout is ViewerWorkspaceLayout.SplitVertical
-            or ViewerWorkspaceLayout.SplitHorizontal;
+            or ViewerWorkspaceLayout.SplitHorizontal or ViewerWorkspaceLayout.Four;
 
     public bool IsInputFirstActionVisible =>
         ViewerInputFirstAction.Visibility == Visibility.Visible;
@@ -278,7 +327,12 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         }
 
         workbench.ViewerWorkspace.PropertyChanged += OnViewerWorkspacePropertyChanged;
+        workbench.MainViewerPane.PropertyChanged += OnPanePropertyChanged;
+        workbench.AuxiliaryViewerPane.PropertyChanged += OnPanePropertyChanged;
+        workbench.SectionViewerPane.PropertyChanged += OnPanePropertyChanged;
+        workbench.HeightViewerPane.PropertyChanged += OnPanePropertyChanged;
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
+        workbench.AppliedTeachingSelectionsChanged += OnAppliedSelectionsChanged;
         workbench.CompareCandidates.CollectionChanged += OnCompareCandidatesChanged;
         linkCoordinator.SetWorkbench(workbench);
         AttachMainViewer(MainViewerContent as OpenVisionThreeDViewerControl);
@@ -297,7 +351,12 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         if (workbench is not null)
         {
             workbench.ViewerWorkspace.PropertyChanged -= OnViewerWorkspacePropertyChanged;
+            workbench.MainViewerPane.PropertyChanged -= OnPanePropertyChanged;
+            workbench.AuxiliaryViewerPane.PropertyChanged -= OnPanePropertyChanged;
+            workbench.SectionViewerPane.PropertyChanged -= OnPanePropertyChanged;
+            workbench.HeightViewerPane.PropertyChanged -= OnPanePropertyChanged;
             workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+            workbench.AppliedTeachingSelectionsChanged -= OnAppliedSelectionsChanged;
             workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
         }
 
@@ -334,12 +393,26 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
         if (workspaceContextMenu is not null) workspaceContextMenu.IsOpen = false;
         mainViewer?.SetCurrentValue(OpenVisionThreeDViewerControl.WorkspaceContextMenuProperty, null);
+        mainViewer?.SetWorkspaceHeaderHost(null, false);
+        if (mainViewer is not null) BindingOperations.ClearBinding(mainViewer, OpenVisionThreeDViewerControl.WorkspaceSelectionCaptionProperty);
         InlineHeightProfile.SetCurrentValue(HeightProfileView.ViewerHostProperty, viewer);
         mainViewer = viewer;
+        if (mainViewer is not null) mainViewer.SetBinding(OpenVisionThreeDViewerControl.WorkspaceSelectionCaptionProperty, new Binding(nameof(SelectionContext)) { Source = this });
         MainViewerPresenter.Content = viewer;
         linkCoordinator.SetMainViewer(mainViewer);
 
         RefreshMainViewer();
+        SyncRoiDisplay();
+    }
+
+    private void OnPanePropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ViewerPaneViewModel.Kind))
+        {
+            RefreshAuxiliaryViewer();
+            RefreshLowerViewers();
+            SyncRoiDisplay();
+        }
     }
 
     private void OnViewerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -357,6 +430,9 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
     private void OnWorkbenchPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (args.PropertyName is nameof(ToolWorkbenchViewModel.ViewerRoiScope)
+            or nameof(ToolWorkbenchViewModel.SelectedPipelineStep)
+            or nameof(ToolWorkbenchViewModel.SelectedStepTeachingSelection)) SyncRoiDisplay();
         if (args.PropertyName == nameof(ToolWorkbenchViewModel.IsTeachingSelectionCaptureActive))
         {
             UpdateRoiFocusRatio();
@@ -366,6 +442,10 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             or nameof(ToolWorkbenchViewModel.EffectiveAuxiliaryViewerContentId))
         {
             RefreshWorkspace();
+        }
+        else if (args.PropertyName == nameof(ToolWorkbenchViewModel.MaximizedViewerSlotId))
+        {
+            ApplyPaneMaximization();
         }
     }
 
@@ -377,12 +457,61 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         ApplyLayout(workbench?.EffectiveViewerLayout ?? ViewerWorkspaceLayout.Single);
         RefreshMainViewer();
         RefreshAuxiliaryViewer();
+        RefreshLowerViewers();
+        SyncRoiDisplay();
         UpdateRoiFocusRatio();
         linkCoordinator.Refresh();
+        ApplyPaneMaximization();
+    }
+
+    private void ApplyPaneMaximization()
+    {
+        if (workbench?.MaximizedViewerSlotId is not { Length: > 0 } slotId)
+        {
+            if (paneRestoreLengths is not { } lengths) return;
+            paneRestoreLengths = null;
+            var auxiliaryContent = AuxiliaryViewerHost.Content;
+            ApplyLayout(workbench?.EffectiveViewerLayout ?? ViewerWorkspaceLayout.Single);
+            AuxiliaryViewerHost.Content = auxiliaryContent;
+            FirstRow.Height = lengths.FirstRow;
+            SecondRow.Height = lengths.SecondRow;
+            FirstColumn.Width = lengths.FirstColumn;
+            SecondColumn.Width = lengths.SecondColumn;
+            return;
+        }
+
+        paneRestoreLengths ??= (FirstRow.Height, SecondRow.Height, FirstColumn.Width, SecondColumn.Width);
+        var target = slotId switch { "viewer.auxiliary" => AuxiliarySlot, "viewer.section" => FourSectionSlot, "viewer.height" => FourHeightSlot, _ => MainSlot };
+        foreach (var pane in new[] { MainSlot, AuxiliarySlot, FourSectionSlot, FourHeightSlot }) pane.Visibility = ReferenceEquals(pane, target) ? Visibility.Visible : Visibility.Collapsed;
+        ViewerSplitter.Visibility = Visibility.Collapsed;
+        FirstRow.Height = FirstColumn.Width = new GridLength(1, GridUnitType.Star);
+        MiddleRow.Height = SecondRow.Height = MiddleColumn.Width = SecondColumn.Width = new GridLength(0);
+        Grid.SetRow(target, 0);
+        Grid.SetColumn(target, 0);
+        Grid.SetRowSpan(target, 3);
+        Grid.SetColumnSpan(target, 3);
+    }
+
+    private void OnAppliedSelectionsChanged(object? sender, EventArgs args) => SyncRoiDisplay();
+
+    private void SyncRoiDisplay()
+    {
+        if (workbench is null) return;
+        var selections = workbench.GetCurrentAppliedTeachingSelections();
+        var filter = workbench.ViewerDisplayedRoiIds;
+        mainViewer?.SetTeachingSelectionDisplayFilter(filter);
+        foreach (var viewer in new[] { auxiliaryViewer, sectionPaneViewer, heightPaneViewer })
+        {
+            if (viewer is null) continue;
+            viewer.SetAppliedTeachingSelections(selections);
+            viewer.SetSelectedTeachingSelection(workbench.SelectedStepTeachingSelection?.Id);
+            viewer.SetTeachingSelectionDisplayFilter(filter);
+        }
     }
 
     private void RefreshMainViewer()
     {
+        UpdateEmbeddedViewerChrome();
         if (mainViewer is not null && workspaceContextMenu is not null)
         {
             workspaceContextMenu.Items.OfType<MenuItem>().Single(item => Equals(item.Tag, "OrbitHere")).SetBinding(MenuItem.CommandProperty, new Binding("DataContext.OrbitHereCommand") { Source = mainViewer });
@@ -431,6 +560,8 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
     private void ApplyLayout(ViewerWorkspaceLayout layout)
     {
+        var focusedViewerElement = System.Windows.Input.Keyboard.FocusedElement as UIElement;
+        var hadViewerKeyboardFocus = IsKeyboardFocusWithin;
         roiFocusRatioApplied = false;
         FirstRow.Height = new GridLength(1, GridUnitType.Star);
         MiddleRow.Height = new GridLength(0);
@@ -443,6 +574,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         Grid.SetRowSpan(MainSlot, 3);
         Grid.SetColumnSpan(MainSlot, 3);
         MainSlot.Visibility = Visibility.Visible;
+        FourSectionSlot.Visibility = FourHeightSlot.Visibility = Visibility.Collapsed;
         AuxiliarySlot.Visibility = Visibility.Collapsed;
         ViewerSplitter.Visibility = Visibility.Collapsed;
         AuxiliaryViewerHost.Content = null;
@@ -505,6 +637,22 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
                 ViewerSplitter.Visibility = Visibility.Visible;
                 break;
 
+            case ViewerWorkspaceLayout.Four:
+                HidePopout();
+                FirstRow.Height = SecondRow.Height = new GridLength(1, GridUnitType.Star);
+                MiddleRow.Height = new GridLength(4);
+                FirstColumn.Width = SecondColumn.Width = new GridLength(1, GridUnitType.Star);
+                MiddleColumn.Width = new GridLength(4);
+                Grid.SetRowSpan(MainSlot, 1); Grid.SetColumnSpan(MainSlot, 1);
+                Grid.SetRow(AuxiliarySlot, 0); Grid.SetColumn(AuxiliarySlot, 2);
+                Grid.SetRowSpan(AuxiliarySlot, 1); Grid.SetColumnSpan(AuxiliarySlot, 1);
+                Grid.SetRow(FourSectionSlot, 2); Grid.SetColumn(FourSectionSlot, 0);
+                Grid.SetRowSpan(FourSectionSlot, 1); Grid.SetColumnSpan(FourSectionSlot, 1);
+                Grid.SetRow(FourHeightSlot, 2); Grid.SetColumn(FourHeightSlot, 2);
+                Grid.SetRowSpan(FourHeightSlot, 1); Grid.SetColumnSpan(FourHeightSlot, 1);
+                AuxiliarySlot.Visibility = FourSectionSlot.Visibility = FourHeightSlot.Visibility = Visibility.Visible;
+                break;
+
             case ViewerWorkspaceLayout.PopOut:
                 ShowPopout();
                 break;
@@ -513,6 +661,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
                 HidePopout();
                 break;
         }
+        if (hadViewerKeyboardFocus && focusedViewerElement?.IsVisible == false) ThreeDViewerMode.Focus();
     }
 
     private void UpdateRoiFocusRatio()
@@ -604,18 +753,23 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             return;
         }
 
-        if (candidate.Kind == ViewerWorkspaceCandidateKind.HeightImage)
+        if (currentWorkbench.AuxiliaryViewerPane.IsHeight)
         {
             linkCoordinator.SetAuxiliaryViewer(null);
             heightImageViewer ??= new HeightImageViewerView
             {
-                DataContext = currentWorkbench.HeightImageViewer,
+                DataContext = currentWorkbench.AuxiliaryViewerPane.HeightImage,
                 UseEmbeddedChrome = true
             };
+            heightImageViewer.DataContext = currentWorkbench.AuxiliaryViewerPane.HeightImage;
             heightImageViewer.ContextMenu = heightImageContextMenu;
             heightImageViewer.SetBinding(HeightImageViewerView.ProfileStateProperty, new Binding("Presentation.ProfileState") { Source = MainViewerPresentationBar });
             heightImageViewer.SetBinding(HeightImageViewerView.ProfilePickCommandProperty, new Binding("Presentation.ProfilePickCommand") { Source = MainViewerPresentationBar });
-            if (!currentWorkbench.HasEffectiveSignedDeltaOutput || currentWorkbench.IsInspectionInputView)
+            heightImageViewer.SetBinding(HeightImageViewerView.PresentationProperty, new Binding(nameof(ViewerPresentationBar.Presentation)) { Source = MainViewerPresentationBar });
+            heightImageViewer.SetBinding(HeightImageViewerView.DisplayPresentationProperty, new Binding(nameof(ViewerPresentationBar.Presentation)) { Source = AuxiliaryViewerPresentationBar });
+            heightImageViewer.SetBinding(HeightImageViewerView.SelectionContextProperty, new Binding(nameof(SelectionContext)) { Source = this });
+            if (ReferenceEquals(currentWorkbench.AuxiliaryViewerPane.HeightImage, currentWorkbench.HeightImageViewer)
+                && (!currentWorkbench.HasEffectiveSignedDeltaOutput || currentWorkbench.IsInspectionInputView))
             {
                 currentWorkbench.BeginHeightImageSourceLoad();
             }
@@ -627,11 +781,18 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         {
             SidePanelsVisible = false
         };
+        auxiliaryViewer.SetWorkspaceHeaderHost(IsAuxiliaryInlineVisible ? AuxiliaryPaneMenuHost : null, IsCompactChrome);
         linkCoordinator.SetAuxiliaryViewer(auxiliaryViewer);
         auxiliaryViewer.TrySetHudDetailsVisible(false);
-        if (!string.Equals(loadedAuxiliaryPath, candidate.SourcePath, StringComparison.OrdinalIgnoreCase))
+        var signedFrame = currentWorkbench.AuxiliaryViewerPane.HeightImage.Frame is { IsSignedDelta: true } delta ? delta : null;
+        var displayPath = signedFrame?.SourcePath ?? candidate.SourcePath;
+        if (!string.Equals(loadedAuxiliaryPath, displayPath, StringComparison.OrdinalIgnoreCase))
         {
-            if (candidate.IsSource)
+            if (signedFrame is not null)
+            {
+                if (!auxiliaryViewer.ShowSignedDeltaFrame(signedFrame)) return;
+            }
+            else if (candidate.IsSource)
             {
                 auxiliaryViewer.LoadC3DSource(candidate.SourcePath);
             }
@@ -642,10 +803,47 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
                     $"{candidate.DisplayName} | {candidate.State}");
             }
 
-            loadedAuxiliaryPath = candidate.SourcePath;
+            loadedAuxiliaryPath = displayPath;
         }
 
-        PresentAuxiliaryContent(auxiliaryViewer, currentWorkbench);
+        PresentAuxiliaryContent(currentWorkbench.AuxiliaryViewerPane.IsSection ? AuxiliaryPaneProfile : auxiliaryViewer, currentWorkbench);
+    }
+
+    private void RefreshLowerViewers()
+    {
+        if (workbench?.EffectiveViewerLayout != ViewerWorkspaceLayout.Four) return;
+        RefreshLowerViewer(workbench.SectionViewerPane, FourSectionSlotThreeDHost, FourSectionMenuHost, FourSectionProfile, ref sectionPaneViewer);
+        RefreshLowerViewer(workbench.HeightViewerPane, FourHeightSlotThreeDHost, FourHeightMenuHost, FourHeightProfile, ref heightPaneViewer);
+        FourSectionSlotPresentationBar.ViewerHost = sectionPaneViewer ?? mainViewer;
+        FourHeightSlotPresentationBar.ViewerHost = heightPaneViewer ?? mainViewer;
+        FourSectionSlotPresentationBar.Visibility = workbench.SectionViewerPane.IsThreeD ? Visibility.Visible : Visibility.Collapsed;
+        FourHeightSlotPresentationBar.Visibility = workbench.HeightViewerPane.IsThreeD ? Visibility.Visible : Visibility.Collapsed;
+        linkCoordinator.SetLowerViewers(sectionPaneViewer, heightPaneViewer);
+    }
+
+    private void RefreshLowerViewer(ViewerPaneViewModel pane, ContentControl host, ContentControl menuHost, HeightProfileView profile,
+        ref OpenVisionThreeDViewerControl? viewer)
+    {
+        if (pane.Source is not { } source)
+        {
+            viewer?.ClearC3DTeachingSource(pane.SourceName);
+            host.Content = null;
+            profile.ViewerHost = null;
+            return;
+        }
+        if (pane.IsThreeD || viewer is not null)
+        {
+            viewer ??= new OpenVisionThreeDViewerControl { SidePanelsVisible = false };
+            viewer.SetWorkspaceHeaderHost(menuHost, IsCompactChrome);
+            viewer.TrySetHudDetailsVisible(false);
+            if (!string.Equals(viewer.CurrentC3DSourcePath, source.SourcePath, StringComparison.OrdinalIgnoreCase))
+            {
+                if (source.IsSource) viewer.LoadC3DSource(source.SourcePath);
+                else viewer.ShowC3DWorkbenchResult(source.SourcePath, source.DisplayName);
+            }
+            host.Content = viewer;
+        }
+        profile.ViewerHost = viewer ?? mainViewer;
     }
 
     private void PresentAuxiliaryContent(object content, ToolWorkbenchViewModel currentWorkbench)
@@ -654,18 +852,28 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         AuxiliaryViewerPresentationBar.ViewerHost =
             content is OpenVisionThreeDViewerControl viewer
                 ? viewer
-                : null;
+                : currentWorkbench.AuxiliaryViewerPane.IsSection ? auxiliaryViewer : mainViewer;
+        AuxiliaryViewerPresentationBar.Visibility = currentWorkbench.AuxiliaryViewerPane.IsHeight ? Visibility.Collapsed
+            : AuxiliaryViewerPresentationBar.Presentation is null ? Visibility.Collapsed : Visibility.Visible;
+        AuxiliaryViewerPresentationBar.DialogPlacementTarget = content is HeightImageViewerView heightView
+            ? heightView.DisplaySettingsAnchor : null;
         if (currentWorkbench.EffectiveViewerLayout == ViewerWorkspaceLayout.PopOut)
         {
             AuxiliaryViewerHost.Content = null;
+            if (content is HeightProfileView)
+            {
+                popoutProfile ??= new HeightProfileView { UseEmbeddedChrome = true };
+                popoutProfile.ViewerHost = auxiliaryViewer;
+                content = popoutProfile;
+            }
             popout?.SetViewerContent(content, currentWorkbench.Localization.ViewerAuxiliaryNoOutput);
         }
         else if (currentWorkbench.EffectiveViewerLayout is ViewerWorkspaceLayout.SplitVertical
                      or ViewerWorkspaceLayout.SplitHorizontal
-                     or ViewerWorkspaceLayout.HeightImageOnly)
+                     or ViewerWorkspaceLayout.HeightImageOnly or ViewerWorkspaceLayout.Four)
         {
             popout?.ReleaseViewerContent();
-            AuxiliaryViewerHost.Content = content;
+            AuxiliaryViewerHost.Content = content is HeightProfileView ? null : content;
         }
     }
 

@@ -19,6 +19,8 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
     private readonly RelayCommand cancelCommand;
     private readonly RelayCommand deleteCommand;
     private IReadOnlyList<HeightImageRoiOverlayItem> overlays = [];
+    private IReadOnlyList<HeightImageRoiOverlayItem> additionalDisplayOverlays = [];
+    private IReadOnlyList<string>? displayedSelectionIds;
     private InspectionWorkspaceRegionRole activeRole;
     private InspectionWorkspaceRegionLifecycleState lifecycle =
         InspectionWorkspaceRegionLifecycleState.Missing;
@@ -113,12 +115,12 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         {
             if (!IsCaptureActive || Candidate is null)
             {
-                return overlays;
+                return DisplayedOverlays;
             }
 
             var active = ActiveOverlay;
             var candidateId = active?.SelectionId ?? string.Empty;
-            var visible = overlays
+            var visible = DisplayedOverlays
                 .Where(item =>
                     !item.IsActive
                     || !string.Equals(
@@ -138,6 +140,17 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         }
     }
 
+    private IReadOnlyList<HeightImageRoiOverlayItem> DisplayedOverlays => overlays.Concat(additionalDisplayOverlays)
+        .Where(item => displayedSelectionIds is null || displayedSelectionIds.Contains(item.SelectionId, StringComparer.OrdinalIgnoreCase)).ToArray();
+
+    internal void SetDisplayFilter(IReadOnlyList<string>? ids, IReadOnlyList<HeightImageRoiOverlayItem> additionalOverlays)
+    {
+        displayedSelectionIds = ids?.ToArray();
+        additionalDisplayOverlays = additionalOverlays;
+        OnPropertyChanged(nameof(VisibleOverlays));
+        OnPropertyChanged(nameof(HasOverlays));
+    }
+
     public string ActiveRoleSummary => ActiveRole switch
     {
         InspectionWorkspaceRegionRole.Reference => localization.ReferenceRoi,
@@ -147,6 +160,17 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         InspectionWorkspaceRegionRole.Selection => localization.TeachingSelections,
         _ => localization.TeachingSelections
     };
+
+    public string ContextSummary
+    {
+        get
+        {
+            var rectangle = IsCaptureActive ? Candidate : ActiveOverlay?.Rectangle;
+            if (rectangle is null) return string.Empty;
+            var role = ActiveRole switch { InspectionWorkspaceRegionRole.Reference => localization.ViewerReferenceChip, InspectionWorkspaceRegionRole.Measurement => localization.ViewerMeasurementChip, _ => ActiveRoleSummary };
+            return $"{role} {rectangle.Column},{rectangle.Row} {rectangle.ColumnCount}x{rectangle.RowCount}";
+        }
+    }
 
     public string LifecycleSummary => Lifecycle switch
     {
@@ -359,6 +383,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
 
         candidate = rectangle;
         OnPropertyChanged(nameof(Candidate));
+        OnPropertyChanged(nameof(ContextSummary));
         OnPropertyChanged(nameof(VisibleOverlays));
         OnPropertyChanged(nameof(HasOverlays));
         CandidateChanged?.Invoke(
@@ -367,7 +392,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
     }
 
     private HeightImageRoiOverlayItem? FindOverlay(int row, int column) =>
-        overlays
+        DisplayedOverlays
             .Where(item => Contains(item.Rectangle, row, column))
             .OrderByDescending(item => item.IsActive)
             .ThenBy(item => (long)item.Rectangle.RowCount * item.Rectangle.ColumnCount)
@@ -416,6 +441,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
         OnPropertyChanged(nameof(IsCaptureActive));
         OnPropertyChanged(nameof(IsMutationBlocked));
         OnPropertyChanged(nameof(ActiveRoleSummary));
+        OnPropertyChanged(nameof(ContextSummary));
         OnPropertyChanged(nameof(LifecycleSummary));
         OnPropertyChanged(nameof(InteractionHint));
         applyCommand.RaiseCanExecuteChanged();
@@ -425,6 +451,7 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs args)
     {
+        OnPropertyChanged(nameof(ContextSummary));
         OnPropertyChanged(nameof(ActiveRoleSummary));
         OnPropertyChanged(nameof(LifecycleSummary));
         OnPropertyChanged(nameof(InteractionHint));

@@ -2,6 +2,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -183,7 +184,7 @@ internal sealed class ToolWorkbenchTeachingSelectionCaptureOwner : INotifyProper
 
     public bool IsGridRectangleEditorVisible =>
         getRequirement()?.Kind == ToolRecipeSelectionKinds.GridRectangle
-        && getSelectedSelection()?.GridRectangle is not null;
+        && (IsActive || getSelectedSelection()?.GridRectangle is not null);
 
     public bool IsGridRectangleEditorEnabled =>
         IsActive
@@ -208,23 +209,30 @@ internal sealed class ToolWorkbenchTeachingSelectionCaptureOwner : INotifyProper
         && getRequirement()?.Kind == ToolRecipeSelectionKinds.GridPolygon;
 
     public bool IsGridRectangleDraftValid =>
-        ToolWorkbenchTeachingSelectionPolicy.ValidateGridRectangle(
+        TryReadGridRectangleText(out _)
+        && ToolWorkbenchTeachingSelectionPolicy.ValidateGridRectangle(
             session.GridRectangleDraft,
             getDraftBinding(),
             isCrossSectionDimensions(),
             out _);
 
-    public string GridRectangleValidationSummary
+    public string GridRectangleValidationSummary => GetGridRectangleValidationSummary(false);
+
+    public string GetGridRectangleValidationSummary(bool useKorean)
     {
-        get
+        if (!TryReadGridRectangleText(out _))
         {
-            ToolWorkbenchTeachingSelectionPolicy.ValidateGridRectangle(
-                session.GridRectangleDraft,
-                getDraftBinding(),
-                isCrossSectionDimensions(),
-                out var message);
-            return message;
+            return useKorean
+                ? "시작 열·행과 열·행 수에 정수를 입력하세요."
+                : "Enter whole numbers for the start column, start row, columns, and rows.";
         }
+        ToolWorkbenchTeachingSelectionPolicy.ValidateGridRectangle(
+            session.GridRectangleDraft,
+            getDraftBinding(),
+            isCrossSectionDimensions(),
+            out var message,
+            useKorean);
+        return message;
     }
 
     public bool IsGridCircleDraftValid =>
@@ -293,6 +301,30 @@ internal sealed class ToolWorkbenchTeachingSelectionCaptureOwner : INotifyProper
         set => SetGridRectangleDraftValue(
             session.GridRectangleDraft with { ColumnCount = value },
             nameof(GridRectangleColumnCount));
+    }
+
+    public string GridRectangleColumnText
+    {
+        get => session.GridRectangleColumnText;
+        set => SetGridRectangleDraftText(value, GridRectangleRowText, GridRectangleColumnCountText, GridRectangleRowCountText);
+    }
+
+    public string GridRectangleRowText
+    {
+        get => session.GridRectangleRowText;
+        set => SetGridRectangleDraftText(GridRectangleColumnText, value, GridRectangleColumnCountText, GridRectangleRowCountText);
+    }
+
+    public string GridRectangleColumnCountText
+    {
+        get => session.GridRectangleColumnCountText;
+        set => SetGridRectangleDraftText(GridRectangleColumnText, GridRectangleRowText, value, GridRectangleRowCountText);
+    }
+
+    public string GridRectangleRowCountText
+    {
+        get => session.GridRectangleRowCountText;
+        set => SetGridRectangleDraftText(GridRectangleColumnText, GridRectangleRowText, GridRectangleColumnCountText, value);
     }
 
     public int GridCircleCenterRow
@@ -458,6 +490,12 @@ internal sealed class ToolWorkbenchTeachingSelectionCaptureOwner : INotifyProper
             appendLog(
                 "Warning",
                 $"Selection apply rejected | step={context.Step.Id} | role={context.ActiveRoleName} | selection={selection?.Id ?? "(none)"} | reason={message}");
+            return false;
+        }
+
+        if (IsGridRectangleEditorEnabled && !IsGridRectangleDraftValid)
+        {
+            message = GetGridRectangleValidationSummary(false);
             return false;
         }
 
@@ -696,8 +734,44 @@ internal sealed class ToolWorkbenchTeachingSelectionCaptureOwner : INotifyProper
             new ToolWorkbenchGridRectangleDraftChangedEventArgs(rectangle));
     }
 
+    private void SetGridRectangleDraftText(string column, string row, string columnCount, string rowCount)
+    {
+        session.SetGridRectangleText(column, row, columnCount, rowCount);
+        if (!TryReadGridRectangleText(out var rectangle))
+        {
+            NotifyGridRectangleDraftChanged();
+            return;
+        }
+
+        var previous = session.GridRectangleDraft;
+        UpdateGridRectangleDraft(rectangle);
+        if (previous != rectangle && IsGridRectangleEditorEnabled && IsGridRectangleDraftValid)
+        {
+            GridRectangleDraftChanged?.Invoke(this, new ToolWorkbenchGridRectangleDraftChangedEventArgs(rectangle));
+        }
+    }
+
+    private bool TryReadGridRectangleText(out ToolRecipeGridRectangle rectangle)
+    {
+        rectangle = session.GridRectangleDraft;
+        if (!int.TryParse(GridRectangleColumnText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var column)
+            || !int.TryParse(GridRectangleRowText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var row)
+            || !int.TryParse(GridRectangleColumnCountText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var columnCount)
+            || !int.TryParse(GridRectangleRowCountText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var rowCount))
+        {
+            return false;
+        }
+
+        rectangle = new ToolRecipeGridRectangle(Row: row, Column: column, RowCount: rowCount, ColumnCount: columnCount);
+        return true;
+    }
+
     private void NotifyGridRectangleDraftChanged()
     {
+        OnPropertyChanged(nameof(GridRectangleColumnText));
+        OnPropertyChanged(nameof(GridRectangleRowText));
+        OnPropertyChanged(nameof(GridRectangleColumnCountText));
+        OnPropertyChanged(nameof(GridRectangleRowCountText));
         OnPropertyChanged(nameof(IsGridRectangleDraftValid));
         OnPropertyChanged(nameof(GridRectangleValidationSummary));
         RefreshCommandStates();

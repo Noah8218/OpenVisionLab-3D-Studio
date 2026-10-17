@@ -1,10 +1,15 @@
+using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
+using AvalonDock.Controls;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
+using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 
 namespace OpenVisionLab.ThreeD.Shell.Layout;
 
@@ -15,7 +20,7 @@ namespace OpenVisionLab.ThreeD.Shell.Layout;
 internal sealed class StudioLayoutController : IDisposable
 {
     private const uint MonitorDefaultToNearest = 2;
-    private readonly MainWindow window;
+    private readonly Window window;
     private readonly ToolRecipeWorkbenchView workbenchView;
     private readonly OpenVisionDockWorkspaceView advancedWorkspace;
     private readonly ShellMainWindowViewModel viewModel;
@@ -24,9 +29,14 @@ internal sealed class StudioLayoutController : IDisposable
     private StudioLayoutProfile? pendingProfile;
     private StudioLayoutLoadStatus? loadStatus;
     private bool canAutoSave;
+    private bool disposed;
+    private readonly AvalonDock.DockingManager workbenchDockingManager;
+    private readonly Dictionary<LayoutFloatingWindowControl, DispatcherOperation?> initialValidationFloats = new();
+    private readonly Dictionary<LayoutFloatingWindowControl, (HwndSource Source, HwndSourceHook Hook)> initialFloatingSources = new();
+    private static readonly DependencyPropertyDescriptor FloatingDragState = DependencyPropertyDescriptor.FromProperty(LayoutFloatingWindowControl.IsDraggingProperty, typeof(LayoutFloatingWindowControl))!;
 
     public StudioLayoutController(
-        MainWindow window,
+        Window window,
         ToolRecipeWorkbenchView workbenchView,
         OpenVisionDockWorkspaceView advancedWorkspace,
         ShellMainWindowViewModel viewModel,
@@ -45,6 +55,8 @@ internal sealed class StudioLayoutController : IDisposable
             Configure(explicitProfilePath);
         }
 
+        workbenchDockingManager = (AvalonDock.DockingManager)workbenchView.DockWorkspace.FindName("workspaceDockingManager");
+        workbenchDockingManager.LayoutFloatingWindowControlCreated += OnFloatingWindowCreated;
         window.Loaded += OnWindowLoaded;
         window.StateChanged += OnWindowStateChanged;
         window.LocationChanged += OnWindowLocationChanged;
@@ -74,7 +86,14 @@ internal sealed class StudioLayoutController : IDisposable
                 StudioLayoutProfile.CurrentSchemaVersion,
                 placement,
                 workbenchView.CaptureDockPresentationState(),
-                advancedWorkspace.CapturePresentationState()));
+                advancedWorkspace.CapturePresentationState())
+            {
+                PaneDisplays = workbenchView.CaptureViewerDisplayProfiles(),
+                HeightDisplay = (workbenchView.ViewerContent as IOpenVisionThreeDViewerHost)?.HostState.Presentation.HeightDisplayOptions,
+                HeightImageDisplay = viewModel.Workbench.HeightImageViewer.HeightDisplayOptions,
+                HeightDisplayModes = (workbenchView.ViewerContent as IOpenVisionThreeDViewerHost)?.CaptureHeightDisplayModes(),
+                HeightImageDisplayModes = viewModel.Workbench.HeightImageViewer.CaptureHeightDisplayModes()
+            });
             OVLog.Write(
                 LogCategory.UI,
                 LogLevel.Info,
@@ -96,6 +115,13 @@ internal sealed class StudioLayoutController : IDisposable
     {
         workbenchView.ResetDockPresentationState();
         advancedWorkspace.ResetPresentationState();
+        (workbenchView.ViewerContent as IOpenVisionThreeDViewerHost)?.RestoreHeightDisplayModes(new Dictionary<string, string>());
+        viewModel.Workbench.HeightImageViewer.RestoreHeightDisplayModes(new Dictionary<string, string>());
+        (workbenchView.ViewerContent as IOpenVisionThreeDViewerHost)?.TryApplyHeightDisplayOptions(new HeightDisplayOptions());
+        viewModel.Workbench.HeightImageViewer.TryApplyHeightDisplayOptions(new HeightDisplayOptions());
+        workbenchView.RestoreViewerDisplayProfiles(new[] { "main", "auxiliary", "section", "height" }
+            .SelectMany(slot => new[] { "3d", "input", "output" }.Select(kind => new KeyValuePair<string, HeightDisplayProfile>(slot + "/" + kind, new(new(), new Dictionary<string, string>(), string.Empty))))
+            .ToDictionary(entry => entry.Key, entry => entry.Value));
         window.WindowState = WindowState.Maximized;
         canAutoSave = true;
         try
@@ -121,9 +147,101 @@ internal sealed class StudioLayoutController : IDisposable
 
     public void Dispose()
     {
+        if (disposed) return;
+        disposed = true;
+        workbenchDockingManager.LayoutFloatingWindowControlCreated -= OnFloatingWindowCreated;
+        foreach (var child in initialValidationFloats.Keys.ToArray()) ReleaseInitialValidationFloat(child);
         window.Loaded -= OnWindowLoaded;
         window.StateChanged -= OnWindowStateChanged;
         window.LocationChanged -= OnWindowLocationChanged;
+    }
+
+    private void OnFloatingWindowCreated(object? sender, AvalonDock.LayoutFloatingWindowControlCreatedEventArgs args) =>
+        TrackInitialValidationFloat(args.LayoutFloatingWindowControl);
+
+    internal int PendingInitialValidationFloatCount => initialValidationFloats.Count;
+
+    internal void TrackInitialValidationFloat(LayoutFloatingWindowControl child)
+    {
+        if (disposed || initialValidationFloats.ContainsKey(child) || !workbenchView.DockWorkspace.IsValidationEvidenceFloatingWindow(child.Model)) return;
+        initialValidationFloats.Add(child, null);
+        child.SourceInitialized += OnInitialFloatingSourceInitialized;
+        child.Loaded += OnInitialFloatingLoaded;
+        if (new WindowInteropHelper(child).Handle != IntPtr.Zero) OnInitialFloatingSourceInitialized(child, EventArgs.Empty);
+        child.Closed += OnInitialFloatingClosed;
+        FloatingDragState.AddValueChanged(child, OnInitialFloatingDragChanged);
+        if (child.IsLoaded) QueueInitialValidationFloat(child);
+    }
+
+    private void OnInitialFloatingSourceInitialized(object? sender, EventArgs args)
+    {
+        var child = (LayoutFloatingWindowControl)sender!;
+        if (!initialValidationFloats.ContainsKey(child) || initialFloatingSources.ContainsKey(child)) return;
+        var source = HwndSource.FromHwnd(new WindowInteropHelper(child).Handle);
+        if (source is null) return;
+        HwndSourceHook hook = (IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled) =>
+        {
+            if (message == 0x0232) QueueInitialValidationFloat(child, dragCompleted: true);
+            return IntPtr.Zero;
+        };
+        initialFloatingSources.Add(child, (source, hook));
+        source.AddHook(hook);
+    }
+
+    private void OnInitialFloatingLoaded(object sender, RoutedEventArgs args) => QueueInitialValidationFloat((LayoutFloatingWindowControl)sender);
+
+    private void OnInitialFloatingDragChanged(object? sender, EventArgs args)
+    {
+        var child = (LayoutFloatingWindowControl)sender!;
+        QueueInitialValidationFloat(child, dragCompleted: !child.IsDragging);
+    }
+
+    private void OnInitialFloatingClosed(object? sender, EventArgs args) => ReleaseInitialValidationFloat((LayoutFloatingWindowControl)sender!);
+
+    private void QueueInitialValidationFloat(LayoutFloatingWindowControl child, bool dragCompleted = false)
+    {
+        if (!initialValidationFloats.TryGetValue(child, out var previous)) return;
+        previous?.Abort();
+        initialValidationFloats[child] = null;
+        if (child.IsDragging || !child.IsLoaded) return;
+        initialValidationFloats[child] = child.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+        {
+            if (disposed || child.IsDragging || (!dragCompleted && System.Windows.Input.Mouse.LeftButton == System.Windows.Input.MouseButtonState.Pressed) || !initialValidationFloats.ContainsKey(child)) return;
+            var handle = new WindowInteropHelper(child).Handle;
+            var monitor = MonitorFromWindow(handle, MonitorDefaultToNearest);
+            var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+            if (handle == IntPtr.Zero || monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref info))
+            {
+                ReleaseInitialValidationFloat(child);
+                return;
+            }
+            var dpi = GetDpiForWindow(handle);
+            var scale = dpi > 0 ? dpi / 96d : 1d;
+            CompleteInitialValidationFloat(child, new Rect(info.Work.Left / scale, info.Work.Top / scale, (info.Work.Right - info.Work.Left) / scale, (info.Work.Bottom - info.Work.Top) / scale));
+        }));
+    }
+
+    internal void CompleteInitialValidationFloat(LayoutFloatingWindowControl child, Rect workArea)
+    {
+        if (disposed || child.IsDragging || !initialValidationFloats.ContainsKey(child)) return;
+        var eligible = workbenchView.DockWorkspace.IsValidationEvidenceFloatingWindow(child.Model);
+        ReleaseInitialValidationFloat(child);
+        if (!eligible) return;
+        child.Width = Math.Min(child.Width, Math.Max(child.MinWidth, workArea.Width));
+        child.Height = Math.Min(child.Height, Math.Max(child.MinHeight, workArea.Height));
+        child.Left = Math.Clamp(child.Left, workArea.Left, Math.Max(workArea.Left, workArea.Right - child.Width));
+        child.Top = Math.Clamp(child.Top, workArea.Top, Math.Max(workArea.Top, workArea.Bottom - child.Height));
+    }
+
+    private void ReleaseInitialValidationFloat(LayoutFloatingWindowControl child)
+    {
+        if (!initialValidationFloats.Remove(child, out var operation)) return;
+        operation?.Abort();
+        child.SourceInitialized -= OnInitialFloatingSourceInitialized;
+        if (initialFloatingSources.Remove(child, out var native) && !native.Source.IsDisposed) native.Source.RemoveHook(native.Hook);
+        child.Loaded -= OnInitialFloatingLoaded;
+        child.Closed -= OnInitialFloatingClosed;
+        FloatingDragState.RemoveValueChanged(child, OnInitialFloatingDragChanged);
     }
 
     private void Configure(string? explicitProfilePath)
@@ -195,6 +313,15 @@ internal sealed class StudioLayoutController : IDisposable
 
         workbenchView.ApplyDockPresentationState(profile.Workbench);
         advancedWorkspace.ApplyPresentationState(profile.Advanced);
+        if (profile.HeightDisplay is { } heightDisplay)
+            (workbenchView.ViewerContent as IOpenVisionThreeDViewerHost)?.TryApplyHeightDisplayOptions(heightDisplay);
+        if (profile.HeightImageDisplay is { } heightImageDisplay)
+            viewModel.Workbench.HeightImageViewer.TryApplyHeightDisplayOptions(heightImageDisplay);
+        if (profile.HeightDisplayModes is { } heightModes)
+            (workbenchView.ViewerContent as IOpenVisionThreeDViewerHost)?.RestoreHeightDisplayModes(heightModes);
+        if (profile.HeightImageDisplayModes is { } imageModes)
+            viewModel.Workbench.HeightImageViewer.RestoreHeightDisplayModes(imageModes);
+        if (profile.PaneDisplays is { } paneDisplays) workbenchView.RestoreViewerDisplayProfiles(paneDisplays);
         WriteSmokeReport(profile);
         pendingProfile = null;
     }

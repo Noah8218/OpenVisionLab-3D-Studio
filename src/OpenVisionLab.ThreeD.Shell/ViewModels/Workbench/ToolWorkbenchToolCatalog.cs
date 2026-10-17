@@ -12,7 +12,7 @@ internal static class ToolWorkbenchToolCatalog
             ["filter"] = ("ThreeD.Tool.Filter", "필터", ["필터"]),
             ["height-threshold-background-removal"] = ("ThreeD.Tool.HeightThresholdBackgroundRemoval", "높이 임계값 배경 제거", ["높이", "임계값", "배경"]),
             ["signed-delta-background-subtraction"] = ("ThreeD.Tool.SignedDeltaBackgroundSubtraction", "부호 있는 배경 차이", ["부호", "배경", "차이", "델타"]),
-            ["remove-outlier-pixels"] = ("ThreeD.Tool.RemoveOutlierPixels", "이상치 픽셀 제거", ["이상치", "아웃라이어"]),
+            ["remove-outlier-pixels"] = ("ThreeD.Tool.RemoveOutlierPixels", "노이즈 제거", ["노이즈", "이상치", "아웃라이어"]),
             ["connected-region"] = ("ThreeD.Tool.ConnectedRegion", "연결 영역", ["연결", "영역"]),
             ["grid-polygon-domain"] = ("ThreeD.Tool.GridPolygonDomain", "그리드 다각형 영역", ["다각형", "폴리곤", "영역"]),
             ["domain-mask"] = ("ThreeD.Tool.DomainMask", "영역 / 마스크", ["도메인", "영역", "마스크"]),
@@ -58,11 +58,11 @@ internal static class ToolWorkbenchToolCatalog
                 "Input: a raw-height source map. Result: a separate same-grid map retaining samples at the inclusive threshold; the source and existing missing cells stay unchanged. Next: confirm the threshold and mode, then Preview and Publish."),
             ["signed-delta-background-subtraction"] = (
                 "ThreeD.Tool.Description.SignedDeltaBackgroundSubtraction",
-                "입력: 현재 높이 데이터와 파일 식별 정보를 확인한 배경 데이터. 결과: 현재 높이에서 배경 높이를 뺀 값입니다. 0은 유효한 차이값이고 어느 입력이든 누락된 셀은 결측으로 유지합니다. C3D로 저장하면 0을 결측으로 처리하므로 별도의 결과 데이터로 보관합니다. 배경 파일·격자·처리 방법을 확인하고 미리보기 후 결과를 적용하세요.",
+                "입력: 현재 높이 데이터와 파일 식별 정보를 확인한 배경 데이터. 결과: 현재 높이에서 배경 높이를 뺀 값입니다. 0은 유효한 차이값이고 어느 입력이든 누락된 셀은 결측으로 유지합니다. C3D로 저장하면 0을 결측으로 처리하므로 별도의 결과 데이터로 보관합니다. 다음: 배경 파일·격자·처리 방법을 확인하고 미리보기 후 결과를 적용하세요.",
                 "Input: the current raw-height C3D and a SHA-256-bound saved background. Result: signed current-minus-background deltas; finite zero remains valid zero and cells missing in either input remain missing. The result is kept as an evidence artifact because writing it as C3D would turn zero into missing. Next: confirm the background identity, grid, and policies, then Preview, review, and Publish."),
             ["remove-outlier-pixels"] = (
                 "ThreeD.Tool.Description.RemoveOutlierPixels",
-                "입력: 높이 맵. 결과: 국부 기준에서 벗어난 셀을 결측으로 표시한 별도 맵이며 원본과 기존 결측은 유지됩니다. 다음: 임계값을 확인하고 미리보기 후 결과를 적용하세요.",
+                "입력: 높이 맵. 결과: 주변과 높이 차이가 큰 데이터를 계산에서 제외한 별도 맵이며 원본과 기존 결측은 유지됩니다. 다음: 임계값을 확인하고 미리보기 후 결과를 적용하세요.",
                 "Input: a height map. Result: a separate map with local outliers marked missing; the source and existing missing cells stay unchanged. Next: confirm the threshold, then Preview and Publish."),
             ["connected-region"] = (
                 "ThreeD.Tool.Description.ConnectedRegion",

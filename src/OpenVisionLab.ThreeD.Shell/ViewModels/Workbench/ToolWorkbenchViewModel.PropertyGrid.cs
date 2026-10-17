@@ -13,12 +13,15 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 public sealed partial class ToolWorkbenchViewModel
 {
     private RelayCommand applySelectedStepParameterDraftCommand = null!;
+    private RelayCommand undoSelectedStepParametersCommand = null!;
+    private readonly Dictionary<string, Stack<(ToolRecipeDocument Before, ToolRecipeDocument After, string Summary)>> appliedStepParameters = new(StringComparer.Ordinal);
     private RelayCommand configureSelectedStepAcceptanceLimitsCommand = null!;
     private RelayCommand clearRecentRecipeSearchCommand = null!;
     private RelayCommand discardSelectedStepParameterDraftCommand = null!;
     private RelayCommand markSelectedStepParameterDraftDirtyCommand = null!;
     private RelayCommand openRecentInspectionRecipeCommand = null!;
     private RelayCommand reportParameterDraftCommitErrorCommand = null!;
+    private int stepParameterDraftRejectionVersion;
     private readonly ToolWorkbenchStepPropertySession stepPropertySession = new(ThreeDLocalization.Shared);
     private readonly string recentRecipesPath;
     private ToolWorkbenchRecentRecipeItem? selectedRecentRecipe;
@@ -253,6 +256,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     public bool HasPendingStepParameterChanges => stepPropertySession.HasPendingChanges;
 
+    public int StepParameterDraftRejectionVersion => stepParameterDraftRejectionVersion;
+
     public string StepParameterEditStatus => stepPropertySession.Status;
 
     public string SelectedStepAdapterStatus =>
@@ -268,6 +273,10 @@ public sealed partial class ToolWorkbenchViewModel
             ? $"{SupportedStepCount}/{PipelineSteps.Count} typed adapters ready"
             : $"{SupportedStepCount}/{PipelineSteps.Count} typed adapters ready | {UnsupportedStepCount} preserved read-only";
 
+    public ICommand UndoSelectedStepParametersCommand => undoSelectedStepParametersCommand;
+    public bool HasSelectedStepParameterHistory => SelectedPipelineStep is { } step && appliedStepParameters.TryGetValue(step.Id, out var history) && history.Count > 0 && CanRestoreAppliedStepChange(step, history.Peek().Before, history.Peek().After);
+    public string SelectedStepLastAppliedChange => SelectedPipelineStep is { } step && appliedStepParameters.TryGetValue(step.Id, out var history) && history.Count > 0
+        ? history.Peek().Summary : Localize("적용 이력 없음", "No applied changes");
     public ICommand ApplySelectedStepParameterDraftCommand => applySelectedStepParameterDraftCommand;
     public ICommand ConfigureSelectedStepAcceptanceLimitsCommand => configureSelectedStepAcceptanceLimitsCommand;
     public bool IsSelectedStepAcceptanceLimitsUnconfigured => SelectedPipelineStep?.AcceptanceLimitsConfigured == false;
@@ -407,10 +416,18 @@ public sealed partial class ToolWorkbenchViewModel
             _ => HasRecentRecipeFilter);
         configureSelectedStepAcceptanceLimitsCommand = new RelayCommand(_ =>
         {
-            if (!TryApplySelectedStepParameterDraft(out var message) || SelectedPipelineStep is not { } step) return;
+            if (SelectedPipelineStep is not { } step) return;
+            var before = CreateDocument();
+            var count = appliedStepParameters.GetValueOrDefault(step.Id)?.Count ?? 0;
+            if (!TryApplySelectedStepParameterDraft(out var message)) return;
+            if ((appliedStepParameters.GetValueOrDefault(step.Id)?.Count ?? 0) > count) appliedStepParameters[step.Id].Pop();
             step.AcceptanceLimitsConfigured = true;
+            RememberAppliedStepChange(step, before, Localize("값만 측정 → 판정 규격 적용", "Measure values only → apply acceptance limits"));
+            NotifyStepParameterHistory();
             RefreshSelectedToolWorkspaceProjection();
         }, _ => IsSelectedStepAcceptanceLimitsUnconfigured && CanEditRecipe && IsSelectedStepPropertyGridSupported && !IsSelectedStepPreviewRunning);
+        undoSelectedStepParametersCommand = new RelayCommand(_ => UndoSelectedStepParameters(),
+            _ => !IsReadOnlySampleView && CanEditFlowConnection && !HasPendingFlowConnection && HasSelectedStepParameterHistory);
         applySelectedStepParameterDraftCommand = new RelayCommand(
             _ => TryApplySelectedStepParameterDraft(out var _),
             _ => IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
@@ -470,6 +487,7 @@ public sealed partial class ToolWorkbenchViewModel
         switch (args.PropertyName)
         {
             case nameof(ToolWorkbenchStepPropertySession.Draft):
+                SetStepParameterDraftRejected(false);
                 OnPropertyChanged(nameof(SelectedStepPropertyDraft));
                 break;
             case nameof(ToolWorkbenchStepPropertySession.IsSupported):
@@ -480,9 +498,11 @@ public sealed partial class ToolWorkbenchViewModel
                 OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
                 if (!stepPropertySession.HasPendingChanges)
                 {
+                    SetStepParameterDraftRejected(false);
                     ResetPreparationPresetAssistant();
                 }
                 applySelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
+                undoSelectedStepParametersCommand?.RaiseCanExecuteChanged();
                 discardSelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
                 RefreshValidationThresholdCorrectionCommands();
                 RefreshStepCommands();
@@ -505,10 +525,26 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
+        SetStepParameterDraftRejected(false);
         stepPropertySession.MarkDirty();
     }
 
-    public void ReportParameterDraftCommitError(string message) => stepPropertySession.SetStatus(message);
+    public void ReportParameterDraftCommitError(string message)
+    {
+        stepPropertySession.SetStatus(message);
+        SetStepParameterDraftRejected(true);
+    }
+
+    private void SetStepParameterDraftRejected(bool rejected)
+    {
+        // A repeated rejection must reveal hidden settings even without another edit.
+        var version = rejected
+            ? stepParameterDraftRejectionVersion == int.MaxValue ? 1 : stepParameterDraftRejectionVersion + 1
+            : 0;
+        if (stepParameterDraftRejectionVersion == version) return;
+        stepParameterDraftRejectionVersion = version;
+        OnPropertyChanged(nameof(StepParameterDraftRejectionVersion));
+    }
 
     internal bool TryConfigureInvalidHeightDifferenceEdgeDraftForSmoke()
     {
@@ -531,17 +567,35 @@ public sealed partial class ToolWorkbenchViewModel
         if (SelectedPipelineStep is not { } step)
         {
             message = "The selected step changed. Discard the draft and select the step again.";
-            stepPropertySession.SetStatus(message);
+            ReportParameterDraftCommitError(message);
             return false;
         }
         if (!stepPropertySession.TryCreateParameterValues(step, out var values, out message))
         {
+            SetStepParameterDraftRejected(true);
             return false;
         }
 
 
+        var before = CreateDocument();
+        var previousParameters = before.Steps.First(item => item.Id == step.Id).Parameters;
+        var changes = values.Where(pair => previousParameters.FirstOrDefault(parameter => parameter.Name == pair.Key)?.Value != pair.Value)
+            .Select(pair => $"{ParameterChangeLabel(pair.Key)} {FormatParameterChangeValue(previousParameters.FirstOrDefault(parameter => parameter.Name == pair.Key)?.Value ?? Localize("미설정", "Unset"))} → {FormatParameterChangeValue(pair.Value)}").ToArray();
+        var changed = ApplyStepParameterValues(step, values);
+        if (changed) RememberAppliedStepChange(step, before, string.Join(Environment.NewLine, changes));
+        message = changed
+            ? "Parameters applied to the recipe. Preview and Publish were not run."
+            : "No committed parameter value changed.";
+        stepPropertySession.Refresh(step, message);
+        NotifyStepParameterHistory();
+        NotifyValidationThresholdDraftCommitted(step, changed);
+        return true;
+    }
+
+    private bool ApplyStepParameterValues(ToolWorkbenchPipelineStepItem step, IReadOnlyDictionary<string, string> values, bool restoreFullSet = false)
+    {
         var changed = false;
-        if (step.ToolId == "re-grid-height-map")
+        if (restoreFullSet || step.ToolId == "re-grid-height-map")
         {
             for (var index = step.Parameters.Count - 1; index >= 0; index--)
             {
@@ -592,12 +646,102 @@ public sealed partial class ToolWorkbenchViewModel
             RefreshRecipeState();
         }
 
-        message = changed
-            ? "Parameters applied to the recipe. Preview and Publish were not run."
-            : "No committed parameter value changed.";
-        stepPropertySession.Refresh(step, message);
+        return changed;
+    }
+
+    private string ParameterChangeLabel(string name) => SelectedStepPropertyDraft is { } draft
+        ? TypeDescriptor.GetProperties(OpenVisionLab.ThreeD.Shell.PropertyGrid.LocalizedPropertyGridObject.Create(draft))[name]?.DisplayName ?? name : name;
+
+    private static string FormatParameterChangeValue(string value) => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && double.IsFinite(number)
+        ? number.ToString("0.##", CultureInfo.InvariantCulture) : value;
+
+    private string AppliedSelectionSummary(ToolRecipeSelection selection) => selection.GridRectangle is { } rectangle
+        ? string.Format(Localization.SelectedToolGridRectangleFormat, rectangle.Column, rectangle.Row, rectangle.ColumnCount, rectangle.RowCount)
+        : selection.GridCircle is { } circle
+            ? Localize($"중심 열 {circle.CenterColumn}, 행 {circle.CenterRow}, 반지름 {circle.Radius:0.##} 셀", $"Centre column {circle.CenterColumn}, row {circle.CenterRow}, radius {circle.Radius:0.##} cells")
+            : selection.GridPolygon is { } polygon
+                ? Localize("다각형 꼭짓점 (열, 행): ", "Polygon vertices (column, row): ") + string.Join("; ", polygon.Vertices.Select(vertex => $"({vertex.Column:0.##}, {vertex.Row:0.##})"))
+                : selection.Points is { } points
+                    ? Localize("선택 점 (열, 행): ", "Selected points (column, row): ") + string.Join("; ", points.Select(point => $"({point.Locator.Column}, {point.Locator.Row})"))
+                    : selection.Name;
+
+    private void RememberAppliedStepChange(ToolWorkbenchPipelineStepItem step, ToolRecipeDocument before, string summary)
+    {
+        if (!appliedStepParameters.TryGetValue(step.Id, out var history)) appliedStepParameters.Add(step.Id, history = new());
+        history.Push((before, CreateDocument(), summary));
+        NotifyStepParameterHistory();
+    }
+
+    private static IEnumerable<string> ChangedSelectionIds(ToolRecipeDocument before, ToolRecipeDocument after) =>
+        (before.Selections ?? []).Select(selection => selection.Id).Union((after.Selections ?? []).Select(selection => selection.Id), StringComparer.OrdinalIgnoreCase)
+            .Where(id => !Equals(before.Selections?.FirstOrDefault(selection => selection.Id.Equals(id, StringComparison.OrdinalIgnoreCase)),
+                after.Selections?.FirstOrDefault(selection => selection.Id.Equals(id, StringComparison.OrdinalIgnoreCase))));
+
+    private static bool AppliedRouteChanged(ToolRecipeStep before, ToolRecipeStep after) =>
+        !before.InputEntityIds.SequenceEqual(after.InputEntityIds) || before.DualRoiRouting != after.DualRoiRouting;
+
+    private bool CanRestoreAppliedStepChange(ToolWorkbenchPipelineStepItem step, ToolRecipeDocument before, ToolRecipeDocument after)
+    {
+        // A session undo must never transplant ROI or links into another input or overwrite a later shared edit.
+        if (before.Source.Id != Source.Id || before.Source.ContentSha256 != SourceSession.SourceBinding?.ContentSha256
+            || before.Source.Unit != Source.Unit || before.Source.FrameId != Source.FrameId) return false;
+        var expected = after.Steps.FirstOrDefault(item => item.Id == step.Id);
+        if (expected is null || step.AcceptanceLimitsConfigured != expected.AcceptanceLimitsConfigured
+            || !step.Parameters.Select(parameter => new ToolRecipeParameter(parameter.Name, parameter.Value)).SequenceEqual(expected.Parameters)) return false;
+        foreach (var previous in before.Steps)
+        {
+            var next = after.Steps.FirstOrDefault(item => item.Id == previous.Id);
+            if (next is null || !AppliedRouteChanged(previous, next)) continue;
+            var current = PipelineSteps.FirstOrDefault(item => item.Id == previous.Id);
+            if (current is null || !current.InputEntityIds.SequenceEqual(next.InputEntityIds) || current.DualRoiRouting != next.DualRoiRouting) return false;
+        }
+        return ChangedSelectionIds(before, after).All(id => Equals(teachingSelectionStoreOwner.Find(id),
+            after.Selections?.FirstOrDefault(selection => selection.Id.Equals(id, StringComparison.OrdinalIgnoreCase))));
+    }
+
+    private void UndoSelectedStepParameters()
+    {
+        if (SelectedPipelineStep is not { } step || !HasSelectedStepParameterHistory || !CanEditFlowConnection || HasPendingFlowConnection || IsReadOnlySampleView) return;
+        var change = appliedStepParameters[step.Id].Pop();
+        var previousStep = change.Before.Steps.First(item => item.Id == step.Id);
+        var changed = ApplyStepParameterValues(step, previousStep.Parameters.ToDictionary(parameter => parameter.Name, parameter => parameter.Value), restoreFullSet: true);
+        if (step.AcceptanceLimitsConfigured != previousStep.AcceptanceLimitsConfigured) { step.AcceptanceLimitsConfigured = previousStep.AcceptanceLimitsConfigured; SetDirty(true); changed = true; }
+        var selectionIds = ChangedSelectionIds(change.Before, change.After).ToArray();
+        var routes = change.Before.Steps.Where(previous => change.After.Steps.FirstOrDefault(item => item.Id == previous.Id) is { } next && AppliedRouteChanged(previous, next)).ToArray();
+        if (selectionIds.Length > 0 || routes.Length > 0)
+        {
+            MutateRecipe(() =>
+            {
+                foreach (var id in selectionIds)
+                {
+                    if (change.Before.Selections?.FirstOrDefault(selection => selection.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) is { } previous)
+                        teachingSelectionStoreOwner.Upsert(previous);
+                    else if (teachingSelectionStoreOwner.Find(id) is { } added) teachingSelectionStoreOwner.Remove(added);
+                }
+                foreach (var route in routes)
+                {
+                    var target = PipelineSteps.First(item => item.Id == route.Id);
+                    target.InputEntityIdsText = string.Join("; ", route.InputEntityIds);
+                    target.DualRoiRouting = route.DualRoiRouting;
+                }
+            });
+            MarkHeightDifferenceEdgePreviewStaleIfNeeded();
+            MarkMeasurementPreviewStaleIfNeeded();
+            RefreshTeachingSelectionContext();
+            teachingSelectionStoreOwner.NotifyAppliedSelectionsChanged();
+            changed = true;
+        }
+        stepPropertySession.Refresh(step, Localize("직전 적용값 복원 · 다시 실행 필요", "Previous applied values restored · Run again"));
         NotifyValidationThresholdDraftCommitted(step, changed);
-        return true;
+        RefreshSelectedToolWorkspaceProjection();
+        NotifyStepParameterHistory();
+    }
+
+    private void NotifyStepParameterHistory()
+    {
+        OnPropertyChanged(nameof(HasSelectedStepParameterHistory));
+        OnPropertyChanged(nameof(SelectedStepLastAppliedChange));
+        undoSelectedStepParametersCommand?.RaiseCanExecuteChanged();
     }
 
     private (bool Success, string Message) TryApplyFilterKernelPresetDraftForAssistant(
@@ -608,6 +752,7 @@ public sealed partial class ToolWorkbenchViewModel
             step,
             kernelSize,
             out var message);
+        if (success) SetStepParameterDraftRejected(false);
         return (success, message);
     }
 
@@ -623,6 +768,7 @@ public sealed partial class ToolWorkbenchViewModel
     {
         ResetPreparationPresetAssistant();
         stepPropertySession.Refresh(SelectedPipelineStep, status);
+        NotifyStepParameterHistory();
     }
 
     private void SetParameterDraftStatus(string status) =>

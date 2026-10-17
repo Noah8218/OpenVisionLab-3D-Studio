@@ -111,11 +111,6 @@
                             </StackPanel>
                         </Border>
                     </Grid>
-                    <TextBlock Margin="0,4,0,0"
-                               FontSize="12"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               TextWrapping="Wrap"
-                               Text="{Binding Localization.StepPropertiesEditDetail}" />
                     <Expander Margin="0,7,0,0" Header="{i18n:ThreeDText Key=ThreeD.Workbench.ConnectionDetails, Korean='연결·데이터 정보', English='Connection and data details'}">
                         <Expander.Style>
                             <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
@@ -625,9 +620,9 @@
                                         <DataGridTextColumn Width="*"
                                                             Header="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceInspector.ReferenceLandmark, Korean='기준점', English='Reference landmark'}"
                                                             Binding="{Binding ReferenceLandmarkId}" />
-                                        <DataGridTextColumn Width="Auto" Header="X" Binding="{Binding ReferencePosition.X, StringFormat=F3}" />
-                                        <DataGridTextColumn Width="Auto" Header="Y" Binding="{Binding ReferencePosition.Y, StringFormat=F3}" />
-                                        <DataGridTextColumn Width="Auto" Header="Z" Binding="{Binding ReferencePosition.Z, StringFormat=F3}" />
+                                        <DataGridTextColumn Width="Auto" Header="X" Binding="{Binding ReferencePosition.X, StringFormat=0.##}" />
+                                        <DataGridTextColumn Width="Auto" Header="Y" Binding="{Binding ReferencePosition.Y, StringFormat=0.##}" />
+                                        <DataGridTextColumn Width="Auto" Header="Z" Binding="{Binding ReferencePosition.Z, StringFormat=0.##}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"

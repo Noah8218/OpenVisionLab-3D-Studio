@@ -61,6 +61,7 @@ internal static class CalibrationCenterViewModelVerification
                 "workspace command accepts supported modes",
                 shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Teach)
                 && shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Inspect)
+                && shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Validate)
                 && shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Review)
                 && shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Calibrate)
                 && shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Workbench)
@@ -73,11 +74,20 @@ internal static class CalibrationCenterViewModelVerification
                 "inspection workspace selection",
                 shell.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect
                 && shell.IsInspectWorkspaceSelected
-                && shell.IsValidateWorkspaceSelected
+                && !shell.IsValidateWorkspaceSelected
                 && shell.IsWorkbenchWorkspaceSelected
                 && !shell.IsTaskWorkspaceSelected,
                 shell.WorkspaceSummary);
             Check("inspection workspace summary", shell.WorkspaceSummary == "Add files, then inspect the checked files.", shell.WorkspaceSummary);
+            shell.IsValidateWorkspaceSelected = true;
+            Check("validation has a distinct readonly sample context",
+                shell.SelectedWorkspaceMode == ShellWorkspaceMode.Validate
+                && shell.IsValidateWorkspaceSelected && !shell.IsInspectWorkspaceSelected
+                && shell.IsWorkbenchWorkspaceSelected && shell.IsInspectionWorkspaceSelected
+                && shell.Workbench.IsValidationSampleView && !shell.Workbench.IsInspectionFileView
+                && ReferenceEquals(shell.Workbench.RunCurrentWorkspaceCommand, shell.Workbench.RunValidationSetCommand)
+                && ReferenceEquals(shell.Workbench.CancelCurrentWorkspaceCommand, shell.Workbench.CancelValidationSetCommand),
+                shell.WorkspaceSummary);
             shell.ShowReviewWorkspace();
             Check(
                 "review workspace selection",
@@ -129,7 +139,7 @@ internal static class CalibrationCenterViewModelVerification
             shell.IsTeachWorkspaceSelected = true;
             Check("two-way Teach selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Teach, shell.WorkspaceSummary);
             shell.IsValidateWorkspaceSelected = true;
-            Check("two-way Validate selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect, shell.WorkspaceSummary);
+            Check("two-way Validate selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Validate, shell.WorkspaceSummary);
             shell.IsResultsWorkspaceSelected = true;
             Check("two-way Results selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Review, shell.WorkspaceSummary);
             shell.IsSetupWorkspaceSelected = true;
@@ -227,7 +237,7 @@ internal static class CalibrationCenterViewModelVerification
             Check("load does not calculate", !viewModel.HasCalculatedRepeatability && viewModel.RepeatabilityMapState == "Not calculated", viewModel.RepeatabilityMapState);
             Check("verified input enables only Calculate", viewModel.CanCalculate && viewModel.CalculateCommand.CanExecute(null) && !viewModel.ValidateCommand.CanExecute(null) && !viewModel.ActivateCommand.CanExecute(null), "calculate only");
             Check("loaded run rows", viewModel.RepeatabilityRuns.Count == 3 && viewModel.RepeatabilityRuns.All(run => run.Status == "Ready"), string.Join(',', viewModel.RepeatabilityRuns.Select(run => run.Status)));
-            Check("run value formatting", viewModel.RepeatabilityRuns[1].ValueText == "10.004 mm", viewModel.RepeatabilityRuns[1].ValueText);
+            Check("run value display uses at most two decimals", viewModel.RepeatabilityRuns[1].ValueText == "10 mm", viewModel.RepeatabilityRuns[1].ValueText);
             Check(
                 "loaded run chart keeps raw values and labels",
                 viewModel.RepeatabilityChartValues.Count == 3
@@ -237,7 +247,15 @@ internal static class CalibrationCenterViewModelVerification
                 && viewModel.RepeatabilityChartValues.SequenceEqual(new[] { 10.000, 10.004, 9.998 }),
                 string.Join(',', viewModel.RepeatabilityChartValues.Select(value => value.ToString("0.###", CultureInfo.InvariantCulture))));
             Check("loaded study fields", viewModel.ProfileNameValue == fixture.Document.StudyId && viewModel.UnitFrameValue == "mm | frame.synthetic-repeatability", $"{viewModel.ProfileNameValue}|{viewModel.UnitFrameValue}");
-            Check("acceptance fields", viewModel.MinimumRunCountValue == "3" && viewModel.StandardDeviationLimitValue == "0.005 mm" && viewModel.RangeLimitValue == "0.01 mm", $"{viewModel.MinimumRunCountValue}|{viewModel.StandardDeviationLimitValue}|{viewModel.RangeLimitValue}");
+            var rawAcceptance = ThicknessRepeatabilityStudyLoader.Load(fixture.StudyPath).Input.Acceptance!;
+            Check(
+                "acceptance fields keep raw thresholds and display at most two decimals",
+                viewModel.MinimumRunCountValue == "3"
+                && viewModel.StandardDeviationLimitValue == "0.01 mm"
+                && viewModel.RangeLimitValue == "0.01 mm"
+                && rawAcceptance.MaximumSampleStandardDeviation == 0.005
+                && rawAcceptance.MaximumRange == 0.010,
+                $"{viewModel.MinimumRunCountValue}|{viewModel.StandardDeviationLimitValue}|{viewModel.RangeLimitValue}|rawStd={rawAcceptance.MaximumSampleStandardDeviation:R}|rawRange={rawAcceptance.MaximumRange:R}");
             Check(
                 "load property notifications",
                 propertyChanges.Contains(nameof(viewModel.CanCalculate))
@@ -256,7 +274,7 @@ internal static class CalibrationCenterViewModelVerification
 
             viewModel.CalculateCommand.Execute(null);
             Check("explicit Calculate produces result", viewModel.HasCalculatedRepeatability && viewModel.RepeatabilityMapState == "Aggregate result: Pass", viewModel.RepeatabilityMapState);
-            Check("calculation summary binds statistics", viewModel.RepeatabilitySummary.Contains("Mean 10.000667", StringComparison.Ordinal) && viewModel.RepeatabilitySummary.Contains("Range 0.006 mm", StringComparison.Ordinal) && viewModel.RepeatabilitySummary.EndsWith("Pass", StringComparison.Ordinal), viewModel.RepeatabilitySummary);
+            Check("calculation summary displays rounded statistics", viewModel.RepeatabilitySummary.Contains("Mean 10", StringComparison.Ordinal) && viewModel.RepeatabilitySummary.Contains("Range 0.01 mm", StringComparison.Ordinal) && viewModel.RepeatabilitySummary.EndsWith("Pass", StringComparison.Ordinal), viewModel.RepeatabilitySummary);
             Check("calculation keeps source rows", viewModel.RepeatabilityRuns.Count == 3 && viewModel.RepeatabilityRuns.All(run => run.Status == "Included"), string.Join(',', viewModel.RepeatabilityRuns.Select(run => run.Status)));
             Check("claim boundary remains visible", viewModel.RepeatabilityCalculationMessage.Contains("not Gauge R&R", StringComparison.Ordinal), viewModel.RepeatabilityCalculationMessage);
             Check("profile workflow remains blocked", !viewModel.ValidateCommand.CanExecute(null) && !viewModel.ActivateCommand.CanExecute(null), "validate/activate disabled");
@@ -273,6 +291,19 @@ internal static class CalibrationCenterViewModelVerification
                 && viewModel.RepeatabilityChartRunLabels.SequenceEqual(new[] { "1", "2", "3" }, StringComparer.Ordinal),
                 string.Join(',', viewModel.RepeatabilityChartValues.Select(value => value.ToString("0.###", CultureInfo.InvariantCulture))));
             Check("stale run chart datum rejected", !viewModel.SelectRepeatabilityChartPointCommand.CanExecute(chartRun), chartRun.ValueText);
+
+            var precisionFixture = CreateFixture(fixtureRoot, "calibration-viewmodel-raw-acceptance-fixture", new[] { 10.0, 10.0, 10.015 });
+            WriteDocument(precisionFixture.StudyPath, precisionFixture.Document with { Acceptance = new ThicknessRepeatabilityAcceptance(3, 0.005, 0.02) });
+            var precisionStudyHash = Hash(precisionFixture.StudyPath);
+            Check("raw acceptance boundary study loads", viewModel.LoadStudy(precisionFixture.StudyPath), viewModel.RepeatabilitySummary);
+            viewModel.CalculateCommand.Execute(null);
+            Check(
+                "rounded acceptance display does not relax the raw calculation threshold or stored study",
+                viewModel.StandardDeviationLimitValue == "0.01 mm"
+                && viewModel.RangeLimitValue == "0.02 mm"
+                && viewModel.RepeatabilityMapState == "Aggregate result: Fail"
+                && Hash(precisionFixture.StudyPath) == precisionStudyHash,
+                $"{viewModel.StandardDeviationLimitValue}|{viewModel.RangeLimitValue}|{viewModel.RepeatabilitySummary}");
 
             var invalidStudyPath = WriteModelInvalidStudy(fixture);
             Check("model-invalid study does not become ready", !viewModel.LoadStudy(invalidStudyPath), viewModel.RepeatabilitySummary);

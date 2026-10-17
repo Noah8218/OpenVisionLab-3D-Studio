@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Threading;
+using System.Runtime.CompilerServices;
+using OpenVisionLab.ThreeD.Data;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell;
@@ -15,6 +17,9 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged, IDisposable
 {
     private readonly ThreeDLocalization localization;
+    private readonly Func<string, C3DHeightImageDisplayFrame?>? getSharedPreview;
+    private readonly Func<string, C3DHeightFieldSnapshot?>? getHeightField;
+    private readonly ConditionalWeakTable<C3DHeightFieldSnapshot, C3DHeightImageDisplayFrame> heightPreviews = new();
     private readonly Func<IEnumerable<ToolWorkbenchPipelineStepItem>> getPipelineSteps;
     private readonly Func<IEnumerable<ToolWorkbenchArtifactItem>> getArtifacts;
     private readonly Func<IEnumerable<ToolRecipeSelection>> getSelections;
@@ -58,8 +63,12 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
         Func<bool> isOrientedBoxDraftOpen,
         Action refreshTeachingSelectionContext,
         Action refreshStepCommands,
-        Action refreshNavigatorSelection)
+        Action refreshNavigatorSelection,
+        Func<string, C3DHeightImageDisplayFrame?>? getSharedPreview = null,
+        Func<string, C3DHeightFieldSnapshot?>? getHeightField = null)
     {
+        this.getSharedPreview = getSharedPreview;
+        this.getHeightField = getHeightField;
         this.localization = localization ?? throw new ArgumentNullException(nameof(localization));
         this.getPipelineSteps = getPipelineSteps ?? throw new ArgumentNullException(nameof(getPipelineSteps));
         this.getArtifacts = getArtifacts ?? throw new ArgumentNullException(nameof(getArtifacts));
@@ -175,6 +184,8 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
     public string SelectedRecipeHealthDetail => SelectedRecipeHealthItem?.Detail
         ?? localization.RecipeHealthNoStepDetail;
 
+    public string NextRecipeHealthIssueDetail => FindNextRecipeHealthIssue()?.Detail ?? SelectedRecipeHealthDetail;
+
     public bool CanNavigatePreviousRecipeHealthIssue =>
         CanNavigateRecipeHealth
         && FindPreviousRecipeHealthIssue() is not null;
@@ -218,9 +229,26 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
         var steps = getPipelineSteps().ToArray();
         var artifacts = getArtifacts().ToArray();
         var selections = getSelections().ToArray();
+        var previews = new Dictionary<string, C3DHeightImageDisplayFrame>(StringComparer.OrdinalIgnoreCase);
+        var currentSelections = new Dictionary<string, ToolRecipeSelection>(StringComparer.OrdinalIgnoreCase);
+        var names = artifacts.GroupBy(artifact => artifact.Id, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() == 1).ToDictionary(group => group.Key, group => group.Single().DisplayName, StringComparer.OrdinalIgnoreCase);
+        foreach (var entityId in steps.SelectMany(step => step.InputEntityIds.Append(step.OutputEntityId)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (GetPreviewFrame(entityId) is { } preview) previews[entityId] = preview;
+        }
+        foreach (var selection in selections.Where(selection => selection.GridRectangle is not null && isSelectionCurrent(selection)))
+        {
+            var ownerId = selection.SourceBinding.OwnerEntityId ?? selection.RootSourceId;
+            if (GetPreviewFrame(ownerId) is not { } preview
+                || preview.Width != selection.SourceBinding.GridWidth || preview.Height != selection.SourceBinding.GridHeight) continue;
+            previews[selection.Id] = preview;
+            currentSelections[selection.Id] = selection;
+        }
         var diagnostics = new List<ToolWorkbenchFlowPortDiagnosticItem>();
         foreach (var step in steps)
         {
+            step.UpdateFlowPreviews(previews, currentSelections, names);
             var input = DescribeInputPort(step, steps, artifacts);
             var output = DescribeOutputPort(step, artifacts);
             step.UpdateFlowPortPresentation(
@@ -261,6 +289,13 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
         RebuildRecipeHealthProjection(steps, artifacts, selections);
     }
 
+    private C3DHeightImageDisplayFrame? GetPreviewFrame(string entityId)
+    {
+        if (getSharedPreview?.Invoke(entityId) is { } shared) return shared;
+        if (getHeightField?.Invoke(entityId) is not { } heightField) return null;
+        return heightPreviews.GetValue(heightField, snapshot => C3DHeightImageFrame.Create(snapshot).DefaultDisplayFrame);
+    }
+
     public void RebuildRecipeHealthProjection()
     {
         RebuildRecipeHealthProjection(
@@ -281,6 +316,7 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedRecipeHealthItem));
         OnPropertyChanged(nameof(SelectedRecipeHealthTitle));
         OnPropertyChanged(nameof(SelectedRecipeHealthDetail));
+        OnPropertyChanged(nameof(NextRecipeHealthIssueDetail));
         OnPropertyChanged(nameof(CanNavigatePreviousRecipeHealthIssue));
         OnPropertyChanged(nameof(CanNavigateNextRecipeHealthIssue));
         previousRecipeHealthIssueCommand.RaiseCanExecuteChanged();

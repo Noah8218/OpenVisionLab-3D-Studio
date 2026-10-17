@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using OpenVisionLab.ThreeD.Docking.Controls;
+using OpenVisionLab.ThreeD.Data;
 
 namespace OpenVisionLab.ThreeD.Shell.Layout;
 
@@ -28,6 +29,11 @@ internal sealed record StudioLayoutProfile(
     OpenVisionDockPresentationState Advanced)
 {
     public const int CurrentSchemaVersion = 1;
+    public IReadOnlyDictionary<string, HeightDisplayProfile>? PaneDisplays { get; init; }
+    public HeightDisplayOptions? HeightDisplay { get; init; }
+    public HeightDisplayOptions? HeightImageDisplay { get; init; }
+    public IReadOnlyDictionary<string, string>? HeightDisplayModes { get; init; }
+    public IReadOnlyDictionary<string, string>? HeightImageDisplayModes { get; init; }
 
     public static StudioLayoutProfile Default { get; } = new(
         CurrentSchemaVersion,
@@ -101,6 +107,11 @@ internal sealed class StudioLayoutProfileStore
             var usedFallback = false;
             var profile = candidate with
             {
+                PaneDisplays = SanitizePaneDisplays(candidate.PaneDisplays, ref usedFallback),
+                HeightDisplay = SanitizeHeightDisplay(candidate.HeightDisplay, ref usedFallback),
+                HeightImageDisplay = SanitizeHeightDisplay(candidate.HeightImageDisplay, ref usedFallback),
+                HeightDisplayModes = SanitizeHeightDisplayModes(candidate.HeightDisplayModes, ref usedFallback),
+                HeightImageDisplayModes = SanitizeHeightDisplayModes(candidate.HeightImageDisplayModes, ref usedFallback),
                 Window = SanitizeWindow(candidate.Window, ref usedFallback),
                 Workbench = SanitizeDockState(
                     candidate.Workbench,
@@ -134,6 +145,11 @@ internal sealed class StudioLayoutProfileStore
         var usedFallback = false;
         var safeProfile = profile with
         {
+            PaneDisplays = SanitizePaneDisplays(profile.PaneDisplays, ref usedFallback),
+            HeightDisplay = profile.HeightDisplay?.Sanitize(forPersistence: true),
+            HeightImageDisplay = profile.HeightImageDisplay?.Sanitize(forPersistence: true),
+            HeightDisplayModes = SanitizeHeightDisplayModes(profile.HeightDisplayModes, ref usedFallback),
+            HeightImageDisplayModes = SanitizeHeightDisplayModes(profile.HeightImageDisplayModes, ref usedFallback),
             SchemaVersion = StudioLayoutProfile.CurrentSchemaVersion,
             Window = SanitizeWindow(profile.Window, ref usedFallback),
             Workbench = SanitizeDockState(profile.Workbench, ref usedFallback),
@@ -182,6 +198,46 @@ internal sealed class StudioLayoutProfileStore
             StudioLayoutProfile.Default,
             StudioLayoutLoadStatus.Corrupt,
             message);
+
+    private static IReadOnlyDictionary<string, HeightDisplayProfile>? SanitizePaneDisplays(IReadOnlyDictionary<string, HeightDisplayProfile>? profiles, ref bool usedFallback)
+    {
+        if (profiles is null) return null;
+        var safe = new Dictionary<string, HeightDisplayProfile>();
+        foreach (var entry in profiles)
+        {
+            var parts = entry.Key.Split('/');
+            if (parts.Length != 2 || parts[0] is not ("main" or "auxiliary" or "section" or "height")
+                || parts[1] is not ("3d" or "input" or "output") || entry.Value?.Options is null || entry.Value.MapModes is null
+                || entry.Value.RecipeContext is null)
+            {
+                usedFallback = true;
+                continue;
+            }
+            var options = SanitizeHeightDisplay(entry.Value.Options, ref usedFallback)!;
+            var modes = SanitizeHeightDisplayModes(entry.Value.MapModes, ref usedFallback)!;
+            var textures = entry.Value.Textures?.Where(texture => texture.Key.Length == 64 && texture.Key.All(Uri.IsHexDigit) && texture.Value?.IsValid == true)
+                .ToDictionary(texture => texture.Key, texture => texture.Value);
+            if (textures?.Count != entry.Value.Textures?.Count) usedFallback = true;
+            safe.Add(entry.Key, entry.Value with { Options = options, MapModes = modes, Textures = textures });
+        }
+        return safe;
+    }
+
+    private static HeightDisplayOptions? SanitizeHeightDisplay(HeightDisplayOptions? options, ref bool usedFallback)
+    {
+        if (options is null) return null;
+        var safe = options.Sanitize(forPersistence: true);
+        usedFallback |= safe != options;
+        return safe;
+    }
+
+    private static IReadOnlyDictionary<string, string>? SanitizeHeightDisplayModes(IReadOnlyDictionary<string, string>? modes, ref bool usedFallback)
+    {
+        if (modes is null) return null;
+        var safe = modes.Where(HeightDisplayOptions.IsStoredMapMode).ToDictionary(entry => entry.Key, entry => entry.Value);
+        usedFallback |= safe.Count != modes.Count;
+        return safe;
+    }
 
     private static StudioWindowPlacement? SanitizeWindow(
         StudioWindowPlacement? candidate,

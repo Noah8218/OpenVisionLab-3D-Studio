@@ -35,11 +35,17 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("CaseInsensitiveFlag", VerifyCaseInsensitiveFlag()),
             ("SoftwareRendering", VerifySoftwareRendering()),
             ("LeftmostVirtualScreenOrigin", VerifyLeftmostVirtualScreenOrigin()),
+            ("CaptureTopmostIsExplicit", !ShellSmokeCommandLineOptions.Parse(["shell.exe"]).KeepTestWindowOnTop
+                && ShellSmokeCommandLineOptions.Parse(["shell.exe", "--shell-smoke-topmost"]).KeepTestWindowOnTop),
+            ("EvidenceStorageBoundary", VerifyEvidenceStorageBoundary()),
             ("FilterPublishImpliesPreview", VerifyFilterPublishImpliesPreview()),
             ("EdgeLineFitImpliesPreview", VerifyEdgeLineFitImpliesPreview()),
             ("WindowSize", VerifyWindowSize()),
             ("CompactWorkbench", VerifyCompactWorkbench()),
             ("LoadedHandler", VerifyLoadedHandler()),
+            ("PerformanceMatrixExplicitOnly", !ShellSmokeCommandLineOptions.Parse(["shell.exe"]).ShouldAttachLoadedHandler(false)
+                && ShellSmokeCommandLineOptions.Parse(["shell.exe", "--smoke-performance-matrix-report", "timings.json"]).PerformanceMatrixReportPath == "timings.json"
+                && ShellSmokeCommandLineOptions.Parse(["shell.exe", "--smoke-performance-matrix-report", "timings.json"]).ShouldAttachLoadedHandler(false)),
             ("AsyncC3DLoadFailure", VerifyAsyncC3DLoadFailure()),
             ("FilterPreviewLoadedHandler", VerifyFilterPreviewLoadedHandler()),
             ("PreparationQualityComparison", VerifyPreparationQualityComparison()),
@@ -679,6 +685,37 @@ internal static class ShellSmokeCommandLineOptionsVerification
         ]);
         return options.ValidationThresholdAssistantDisabledSmoke
                && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyEvidenceStorageBoundary()
+    {
+        const string variable = "OVL3D_SECTION_POINTER_EVIDENCE";
+        const string rootVariable = "OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        var previousRoot = Environment.GetEnvironmentVariable(rootVariable);
+        var root = Path.Combine(Path.GetTempPath(), "smoke-evidence-boundary");
+        bool Rejected(string path)
+        {
+            Environment.SetEnvironmentVariable(variable, path);
+            try { ShellViewerWorkspaceSmoke.ResolveEvidenceDirectory(variable); return false; }
+            catch (InvalidOperationException) { return true; }
+        }
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+            if (ShellViewerWorkspaceSmoke.ResolveEvidenceDirectory(variable) is not null) return false;
+            Environment.SetEnvironmentVariable(rootVariable, null);
+            if (!Rejected(Path.Combine(root, "inside"))) return false;
+            Environment.SetEnvironmentVariable(rootVariable, root);
+            Environment.SetEnvironmentVariable(variable, Path.Combine(root, "inside"));
+            if (ShellViewerWorkspaceSmoke.ResolveEvidenceDirectory(variable) != Path.Combine(root, "inside")) return false;
+            return Rejected(root) && Rejected(root + "-sibling") && Rejected(Path.Combine(root, "..", "outside"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, previous);
+            Environment.SetEnvironmentVariable(rootVariable, previousRoot);
+        }
     }
 
     private static bool VerifyIntegrationExchangeState()

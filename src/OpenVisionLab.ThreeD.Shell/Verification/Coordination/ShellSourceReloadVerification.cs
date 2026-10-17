@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using System.Threading;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Core;
@@ -13,6 +14,95 @@ namespace OpenVisionLab.ThreeD.Shell.Verification;
 
 internal static class ShellSourceReloadVerification
 {
+    public static bool VerifyOpenedRecipeSource(string reportPath, out string summary)
+    {
+        var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        Directory.CreateDirectory(root);
+        var lines = new List<string> { "Boundary|Existing recipe/source owners and attached WPF bindings; no inspection or SDK numerical evaluation. Fixtures are retained." };
+        var passed = 0;
+        var total = 0;
+        void Check(string name, bool condition, string detail)
+        {
+            total++;if (condition) passed++;
+            lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
+        }
+        try
+        {
+            foreach (var mode in new[] { ShellWorkspaceMode.Inspect, ShellWorkspaceMode.Validate })
+            {
+                var folder = Path.Combine(root, mode.ToString());Directory.CreateDirectory(folder);
+                var oldPath = Path.Combine(folder, "previous.C3D");var incomingPath = Path.Combine(folder, "incoming.C3D");
+                CreateSource([1, 2, 3, 4, 5, 6, 7, 8, 9]).SaveC3D(oldPath);
+                CreateSource([21, 22, 23, 24, 25, 26, 27, 28, 29]).SaveC3D(incomingPath);
+                var oldBytes = File.ReadAllBytes(oldPath);var incomingBytes = File.ReadAllBytes(incomingPath);
+                using var viewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
+                using var model = new ShellMainWindowViewModel(recentRecipesPath: Path.Combine(folder, "recent.json"));
+                using var sourceLoad = new ShellWorkbenchSourceLoadCoordinator(new ShellSourceFileDialogService(() => throw new InvalidOperationException("No modal dialog is expected.")), viewer, model,
+                    new ShellWorkbenchSourceLoadCallbacks { ShowLoadSourceFailure = message => throw new InvalidOperationException(message) });
+                using var teaching = new WorkbenchViewerTeachingCoordinator(model.Workbench, viewer, () => { });
+                model.Workbench.SetC3DSource(oldPath, markDirty: false);
+                var previousRecipe = Path.Combine(folder, "previous.ov3d-recipe.json");
+                Check($"{mode} previous recipe saves", model.Workbench.TrySaveTeachingRecipe(previousRecipe, out var message), message);
+                var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(incomingPath);
+                var document = ToolRecipeDocumentStore.Load(previousRecipe);
+                var incoming = document with { Name = "Incoming recipe", Source = document.Source with { Id = "source.incoming", Name = "Declared incoming source", Path = incomingPath,
+                    ByteLength = incomingBytes.Length, ContentSha256 = binding.ContentSha256, GridWidth = binding.GridWidth, GridHeight = binding.GridHeight } };
+                var incomingRecipe = Path.Combine(folder, "incoming.ov3d-recipe.json");ToolRecipeDocumentStore.Save(incomingRecipe, incoming);
+                model.Workbench.InspectionQueue.AddSources([oldPath]);model.Workbench.InspectionQueue.SelectedSample = model.Workbench.InspectionQueue.Samples[0];
+                model.Workbench.SetValidationSetSources([oldPath]);
+                model.SelectWorkspaceCommand.Execute(mode);
+                using var workspace = new ViewerWorkspaceView { DataContext = model.Workbench, MainViewerContent = viewer };
+                sourceLoad.LoadC3DSource(oldPath);
+                void Fail(string text) => lines.Add("INFO | lifecycle failure callback | " + text);
+                using var lifecycle = new ShellWorkbenchLifecycleController(null!, model, new RecipeFileDialogService(() => throw new InvalidOperationException("No modal dialog is expected.")), new ShellSourceFileDialogService(() => throw new InvalidOperationException("No modal dialog is expected.")), teaching, sourceLoad,
+                    new ShellWorkbenchLifecycleCallbacks { ShowLoadSourceFailure = Fail, ShowRecipeSaveFailure = Fail, ShowFirstRecipeCreateFailure = Fail,
+                        ShowFirstRecipeSetupPersistenceFailure = Fail, ShowRecipeFileUnavailable = _ => { }, ShowRecipeOpenFailure = Fail,
+                        ShowRecipeSourceNotReady = () => Fail("Source not ready"), ShowRecipeSourceLoadFailure = Fail, ShowParameterApplyFailure = Fail,
+                        ConfirmUnsavedRecipeChanges = () => ShellLifecycleDialogChoice.Cancel, ConfirmPendingParameterChanges = () => ShellLifecycleDialogChoice.Cancel,
+                        CommitPendingParameterEdit = () => (true, ""), DiscardPendingParameterChanges = () => { }, ActivateWorkbench = () => { }, DialogText = (_, _, english) => english });
+                lifecycle.OpenWorkbenchRecipe(incomingRecipe);
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                Check($"{mode} successful open selects Teach before applying the source", model.IsTeachWorkspaceSelected && !model.Workbench.IsReadOnlySampleView, model.SelectedWorkspaceMode.ToString());
+                sourceLoad.TryGetCurrentC3DSourceBinding(incomingPath, out var observedBinding);
+                lines.Add("INFO | targets=" + string.Join(";", model.Workbench.MainViewerCandidates.Select(item => item.Id + "=" + item.SourcePath)) + ";artifacts=" + string.Join(";", model.Workbench.ArtifactRegistry.Select(item => item.Id + "=" + item.State + "/" + item.ContentSha256)));
+                lines.Add($"INFO | expected={System.Text.Json.JsonSerializer.Serialize(model.Workbench.SourceSession.SourceBinding)};actual={System.Text.Json.JsonSerializer.Serialize(observedBinding)};viewer={viewer.CurrentC3DSourcePath}");
+                Check($"{mode} declared input and Viewer agree", model.Workbench.Source.Path == incomingPath && viewer.CurrentC3DSourcePath == incomingPath
+                    && model.Workbench.Source.Name == incoming.Source.Name && model.Workbench.Source.Id == incoming.Source.Id && !model.Workbench.IsDirty,
+                    $"source={model.Workbench.Source.Path};viewer={viewer.CurrentC3DSourcePath};dirty={model.Workbench.IsDirty}");
+                var savedPath = Path.Combine(folder, "saved.ov3d-recipe.json");
+                Check($"{mode} source survives Save As", model.Workbench.TrySaveTeachingRecipe(savedPath, out message)
+                    && ToolRecipeDocumentStore.Load(savedPath).Source.ContentSha256 == binding.ContentSha256
+                    && model.Workbench.Source.Unit == incoming.Source.Unit && model.Workbench.Source.FrameId == incoming.Source.FrameId, message);
+                Check($"{mode} save/reopen retains the incoming source", model.Workbench.TryOpenTeachingRecipe(savedPath, out message)
+                    && model.Workbench.Source.Path == incomingPath && model.Workbench.SourceSession.SourceBinding?.ContentSha256 == binding.ContentSha256, message);
+                var queued = model.Workbench.InspectionQueue.SelectedSample;
+                var sourceAdapter = new ShellWorkbenchRecipeSourceCoordinator(sourceLoad, model.Workbench, teaching, model.UpdateC3DSampleVisible);
+                CreateSource([41, 42, 43, 44, 45, 46, 47, 48, 49]).SaveC3D(incomingPath);
+                var changed = sourceAdapter.ApplyOpenedRecipeSource();
+                Check($"{mode} changed bytes cannot replace the opened recipe identity", !changed.IsReady
+                    && model.Workbench.SourceSession.SourceBinding?.ContentSha256 == binding.ContentSha256 && !model.Workbench.IsDirty
+                    && model.Workbench.Source.Path == incomingPath, changed.FailureMessage ?? "Controlled source rejection");
+                File.WriteAllBytes(incomingPath, [0, 1, 2]);
+                var unreadable = sourceAdapter.ApplyOpenedRecipeSource();
+                Check($"{mode} unreadable source is rejected without adopting the old Viewer input", !unreadable.IsReady
+                    && model.Workbench.Source.Path == incomingPath && model.Workbench.SourceSession.SourceBinding?.ContentSha256 == binding.ContentSha256, unreadable.FailureMessage ?? "Not ready");
+                File.WriteAllBytes(incomingPath, incomingBytes);
+                var recovered = sourceAdapter.ApplyOpenedRecipeSource();
+                Check($"{mode} original bytes recover without Run or queue mutation", recovered.IsReady && viewer.CurrentC3DSourcePath == incomingPath
+                    && ReferenceEquals(queued, model.Workbench.InspectionQueue.SelectedSample) && oldBytes.SequenceEqual(File.ReadAllBytes(oldPath))
+                    && incomingBytes.SequenceEqual(File.ReadAllBytes(incomingPath)) && !model.Workbench.IsOrderedRunRunning
+                    && model.Workbench.RunLog.All(row => row.Category is not ("Run" or "Preview" or "Publish")), recovered.FailureMessage ?? "Recovered");
+                var modeBeforeFailure = model.SelectedWorkspaceMode;var sourceBeforeFailure = model.Workbench.Source.Path;
+                lifecycle.OpenWorkbenchRecipe(Path.Combine(folder, "missing.ov3d-recipe.json"));
+                Check($"{mode} missing recipe does not change the current input or mode", model.SelectedWorkspaceMode == modeBeforeFailure && model.Workbench.Source.Path == sourceBeforeFailure, "Preflight failure retains context");
+            }
+        }
+        catch (Exception exception) { total++;lines.Add("FAIL | unexpected | " + exception); }
+        var ok = passed == total;
+        summary = $"Opened recipe source verification: {(ok ? "Pass" : "Fail")} ({passed} checks)";
+        File.WriteAllLines(reportPath, lines.Append(summary));return ok;
+    }
+
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);

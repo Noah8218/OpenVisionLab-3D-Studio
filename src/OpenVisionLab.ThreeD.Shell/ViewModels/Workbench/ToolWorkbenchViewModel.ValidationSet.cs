@@ -13,11 +13,35 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 public sealed partial class ToolWorkbenchViewModel
 {
     private ValidationSetWorkspaceViewModel validationSetWorkspace = null!;
+    private RelayCommand? openValidationMismatchSectionCommand;
 
     public event EventHandler? SelectValidationSetSourcesRequested;
     public event EventHandler? ValidationSetComparisonRequested;
 
     public ReadOnlyObservableCollection<ValidationSetSampleRow> ValidationSetSamples => validationSetWorkspace.ValidationSetSamples;
+
+    public IReadOnlyList<ValidationMatrixColumn> ValidationMatrixColumns => validationSetWorkspace.ValidationMatrixColumns;
+    public IReadOnlyList<ValidationTableColumn> ValidationTableColumns => validationSetWorkspace.ValidationTableColumns;
+    public IReadOnlyList<ValidationSetSampleRow> ValidationMismatchSamples => validationSetWorkspace.ValidationMismatchSamples;
+    public IReadOnlyDictionary<string, System.Windows.Media.Imaging.BitmapSource> ValidationMismatchPreviews => validationSetWorkspace.ValidationMismatchPreviews;
+    public ICommand SelectValidationMismatchSampleCommand => validationSetWorkspace.SelectValidationMismatchSampleCommand;
+    public ICommand SelectValidationMismatchDistributionCommand => validationSetWorkspace.SelectValidationMismatchDistributionCommand;
+    public ICommand OpenValidationMismatchSectionCommand => openValidationMismatchSectionCommand ??= new RelayCommand(parameter =>
+    {
+        if (!SelectValidationMismatchSampleCommand.CanExecute(parameter)) return;
+        SelectValidationMismatchSampleCommand.Execute(parameter);
+        MainViewerPane.SetKindCommand.Execute(ViewerPaneKind.Section);
+    }, parameter => !IsDisposed && SelectValidationMismatchSampleCommand.CanExecute(parameter) && MainViewerPane.SetKindCommand.CanExecute(ViewerPaneKind.Section));
+    public bool HasValidationMismatches => validationSetWorkspace.HasValidationMismatches;
+    public bool HasValidationResults => validationSetWorkspace.HasValidationResults;
+    public IReadOnlyList<ValidationDistributionOutput> ValidationDistributionOutputs => validationSetWorkspace.ValidationDistributionOutputs;
+    public string SelectedValidationDistributionReadout => validationSetWorkspace.SelectedValidationDistributionReadout;
+    public IReadOnlyList<ValidationThresholdCandidateRow> ValidationDistributionCandidates => validationSetWorkspace.ValidationDistributionCandidates;
+    public ValidationDistributionOutput? SelectedValidationDistributionOutput
+    {
+        get => validationSetWorkspace.SelectedValidationDistributionOutput;
+        set => validationSetWorkspace.SelectedValidationDistributionOutput = value;
+    }
 
     public ReadOnlyObservableCollection<ValidationSetStepRow> SelectedValidationSetSteps => validationSetWorkspace.SelectedValidationSetSteps;
 
@@ -92,6 +116,19 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsValidationSetFilterFail => validationSetWorkspace.IsValidationSetFilterFail;
 
     public bool IsValidationSetFilterError => validationSetWorkspace.IsValidationSetFilterError;
+    public bool IsValidationSetFilterMismatch => validationSetWorkspace.IsValidationSetFilterMismatch;
+    public bool IsValidationSetFilterFalseReject => validationSetWorkspace.IsValidationSetFilterFalseReject;
+    public bool IsValidationSetFilterFalseAccept => validationSetWorkspace.IsValidationSetFilterFalseAccept;
+    public bool IsValidationSetFilterHeldOut => validationSetWorkspace.IsValidationSetFilterHeldOut;
+    public int ValidationSetAdjustmentCount => validationSetWorkspace.ValidationSetAdjustmentCount;
+    public int ValidationSetMatchCount => validationSetWorkspace.ValidationSetMatchCount;
+    public int ValidationSetMismatchCount => validationSetWorkspace.ValidationSetMismatchCount;
+    public int ValidationSetFalseRejectCount => validationSetWorkspace.ValidationSetFalseRejectCount;
+    public int ValidationSetFalseAcceptCount => validationSetWorkspace.ValidationSetFalseAcceptCount;
+    public int ValidationSetAdjustmentErrorCount => validationSetWorkspace.ValidationSetAdjustmentErrorCount;
+    public int ValidationSetAdjustmentPendingCount => validationSetWorkspace.ValidationSetAdjustmentPendingCount;
+    public int ValidationSetHeldOutCompletedCount => validationSetWorkspace.ValidationSetHeldOutCompletedCount;
+    public int ValidationSetHeldOutPendingCount => validationSetWorkspace.ValidationSetHeldOutPendingCount;
 
     public int ValidationSetAllCount => validationSetWorkspace.ValidationSetAllCount;
 
@@ -109,6 +146,10 @@ public sealed partial class ToolWorkbenchViewModel
 
     public bool HasValidationSetIssues => validationSetWorkspace.HasValidationSetIssues;
 
+    public bool IsSelectedValidationRoleUnset => validationSetWorkspace.IsSelectedValidationRoleUnset;
+    public bool IsSelectedValidationUsageAdjustment => validationSetWorkspace.IsSelectedValidationUsageAdjustment;
+    public int ValidationSetUnsetCount => validationSetWorkspace.ValidationSetUnsetCount;
+    public string ValidationSetDefinitionSaveState => validationSetWorkspace.ValidationSetDefinitionSaveState;
     public bool IsSelectedValidationRoleGood => validationSetWorkspace.IsSelectedValidationRoleGood;
 
     public bool IsSelectedValidationRoleBad => validationSetWorkspace.IsSelectedValidationRoleBad;
@@ -179,6 +220,12 @@ public sealed partial class ToolWorkbenchViewModel
 
     public string ValidationSetCapability => validationSetWorkspace.ValidationSetCapability;
 
+    public DateTimeOffset? ValidationSetLastRunAt => validationSetWorkspace.ValidationSetLastRunAt;
+    public bool IsValidationSetStale => validationSetWorkspace.IsValidationSetStale;
+    public string ValidationSetElapsedText => validationSetWorkspace.ValidationSetElapsedText;
+    public string ValidationSetRunBasisText => validationSetWorkspace.ValidationSetRunBasisText;
+    public string ValidationSetRunNoticeText => validationSetWorkspace.ValidationSetRunNoticeText;
+
     public string ValidationSetProgressText => validationSetWorkspace.ValidationSetProgressText;
 
     public double ValidationSetProgress => validationSetWorkspace.ValidationSetProgress;
@@ -206,7 +253,8 @@ public sealed partial class ToolWorkbenchViewModel
             stepPropertySession,
             AppendLog,
             Localize,
-            LocalizeStatus);
+            LocalizeStatus,
+            () => IsDirty);
         validationSetWorkspace.PropertyChanged += OnValidationSetWorkspacePropertyChanged;
         validationSetWorkspace.SamplesChanged += OnValidationSetSamplesChanged;
         validationSetWorkspace.DefinitionDirtyChanged += OnValidationSetDefinitionDirtyChanged;
@@ -215,8 +263,12 @@ public sealed partial class ToolWorkbenchViewModel
         validationSetWorkspace.SelectValidationSetSourcesRequested += OnSelectValidationSetSourcesRequested;
     }
 
-    private void OnValidationSetWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args) =>
+    private void OnValidationSetWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
         OnPropertyChanged(args.PropertyName);
+        openValidationMismatchSectionCommand?.RaiseCanExecuteChanged();
+        ValidationWorkspace?.RefreshMismatchCommandStates();
+    }
 
     private void OnValidationSetSamplesChanged(object? sender, EventArgs args) => RebuildRenderableC3DConsumers();
 
@@ -228,6 +280,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
         OnPropertyChanged(nameof(RecipeStateSummary));
         OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
+        NotifyHeaderRecipeState();
     }
 
     private void OnValidationSetComparisonRequested(object? sender, ValidationSetSampleRow sample)
@@ -276,15 +329,15 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void SetValidationSetDefinitionDirty(bool value) => validationSetWorkspace.SetValidationSetDefinitionDirty(value);
 
-    private void SaveValidationSetDefinition(string recipePath) => validationSetWorkspace.SaveValidationSetDefinition(recipePath);
+    private void SaveValidationSetDefinition(string recipePath, bool markClean = true) => validationSetWorkspace.SaveValidationSetDefinition(recipePath, markClean);
 
     private void SaveValidationThresholdCorrectionEvidence(string recipePath) => validationSetWorkspace.SaveValidationThresholdCorrectionEvidence(recipePath);
 
-    private void LoadValidationSetDefinition(string recipePath, ToolRecipeDocument document) =>
-        validationSetWorkspace.LoadValidationSetDefinition(recipePath, document);
+    private void LoadValidationSetDefinition(ToolRecipeDocument document, ToolRecipeValidationSetDefinition? definition) =>
+        validationSetWorkspace.LoadValidationSetDefinition(document, definition);
 
-    private void LoadValidationThresholdCorrectionEvidence(string recipePath, ToolRecipeDocument document) =>
-        validationSetWorkspace.LoadValidationThresholdCorrectionEvidence(recipePath, document);
+    private void LoadValidationThresholdCorrectionEvidence(ToolRecipeDocument document, ToolRecipeThresholdCorrectionEvidence? evidence) =>
+        validationSetWorkspace.LoadValidationThresholdCorrectionEvidence(document, evidence);
 
     private void RefreshValidationSetCapability() => validationSetWorkspace.RefreshValidationSetCapability();
 

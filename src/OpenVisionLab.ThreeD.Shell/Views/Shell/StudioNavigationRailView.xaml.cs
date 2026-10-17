@@ -39,6 +39,7 @@ public partial class StudioNavigationRailView : UserControl
         {
             AuthoringModeButton,
             ValidateModeButton,
+            InspectionModeButton,
             ResultsModeButton,
             CalibrateModeButton,
             AdvancedModeButton,
@@ -78,8 +79,8 @@ public partial class StudioNavigationRailView : UserControl
 
     private void UpdateResponsiveState(double width)
     {
-        IsCompact = width < CompactWindowWidth;
-        Width = IsCompact ? 86 : 108;
+        IsCompact = width <= CompactWindowWidth;
+        Width = IsCompact ? 48 : 52;
     }
 
     private void OpenRecipeManagerButton_Click(object sender, RoutedEventArgs args) =>

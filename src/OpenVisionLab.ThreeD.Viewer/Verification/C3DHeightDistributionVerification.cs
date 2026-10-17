@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using OpenVisionLab.ThreeD.Presentation.Models;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
@@ -93,11 +94,11 @@ public static class C3DHeightDistributionVerification
                 tinySpanViewModel.C3DHeightDistributionHighLabel
             }.Select(MeasureLabelWidth).ToArray();
             Check(
-                "tiny non-constant span shares full 0-to-1 normalization with distinct fitting labels",
+                "tiny non-constant span retains full normalization with two-decimal display labels",
                 Near(tinySpanGrid.Points.Min(point => point.HeightScalar), 0.0)
                 && Near(tinySpanGrid.Points.Max(point => point.HeightScalar), 1.0)
-                && tinyHighLabel != tinyMeanLabel
-                && tinyMeanLabel != tinyLowLabel
+                && tinySpanGrid.HeightDistribution.Minimum < tinySpanGrid.HeightDistribution.Maximum
+                && tinyHighLabel == "1" && tinyMeanLabel == "1" && tinyLowLabel == "1"
                 && tinyLabelWidths.All(width => width <= MainWindowViewModel.C3DHeightDistributionLabelColumnWidth)
                 && tinySpanViewModel.C3DHeightDistributionPeakLabel.Contains('–'),
                 $"scalars={tinySpanGrid.Points.Min(point => point.HeightScalar):R}..{tinySpanGrid.Points.Max(point => point.HeightScalar):R}|labels={tinySpanViewModel.C3DHeightDistributionLowLabel},{tinySpanViewModel.C3DHeightDistributionMeanLabel},{tinySpanViewModel.C3DHeightDistributionHighLabel}|widths={string.Join(',', tinyLabelWidths.Select(width => width.ToString("F2", CultureInfo.InvariantCulture)))}|column={MainWindowViewModel.C3DHeightDistributionLabelColumnWidth:F1}|{tinySpanViewModel.C3DHeightDistributionPeakLabel}");
@@ -235,6 +236,21 @@ public static class C3DHeightDistributionVerification
                 DescribeStops(viewModel.C3DHeightDistributionGradient));
 
             var rangeRevisionBefore = viewModel.C3DHeightColorRangeRevision;
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Begin));
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Lower, 20));
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Upper, 40));
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Shift, 5));
+            Check("legend body drag retains width", Near(viewModel.C3DHeightColorMinimumRaw, 25) && Near(viewModel.C3DHeightColorMaximumRaw, 45), viewModel.C3DHeightColorRangeSummary);
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Cancel));
+            Check("legend Escape restores complete range and auto mode", Near(viewModel.C3DHeightColorMinimumRaw, 10) && Near(viewModel.C3DHeightColorMaximumRaw, 50) && viewModel.C3DHeightColorRangeAuto, viewModel.C3DHeightColorRangeSummary);
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Begin));
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.InputUpper, Text: "NaN"));
+            Check("legend invalid numeric input retains range", !string.IsNullOrEmpty(viewModel.C3DHeightLegendError) && Near(viewModel.C3DHeightColorMaximumRaw, 50), viewModel.C3DHeightLegendError);
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.InputUpper, Text: "40"));
+            Check("legend valid numeric input recovers", string.IsNullOrEmpty(viewModel.C3DHeightLegendError) && Near(viewModel.C3DHeightColorMaximumRaw, 40), viewModel.C3DHeightColorRangeSummary);
+            viewModel.C3DHeightLegendEditCommand.Execute(new HeightLegendEditRequest(HeightLegendEditKind.Reset));
+            Check("legend edits do not execute or replace results", ReferenceEquals(previewBefore, viewModel.PreviewToolResult) && ReferenceEquals(resultsBefore, viewModel.ResultEntities) && viewModel.C3DHeightColorRangeAuto, "display commands only");
+            rangeRevisionBefore = viewModel.C3DHeightColorRangeRevision;
             viewModel.C3DHeightColorMinimumRaw = 20.0;
             viewModel.C3DHeightColorMaximumRaw = 40.0;
             Check(

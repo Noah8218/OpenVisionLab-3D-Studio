@@ -169,7 +169,7 @@ internal sealed class C3DRoiEditingSession
         {
             viewModel.SetAlignmentWorkflowSummary(string.Create(
                 CultureInfo.InvariantCulture,
-                $"ROI alignment: ROI pair centered at origin; dT({-referenceX:F3}, {-referenceY:F3}, {-referenceZ:F3})"));
+                $"ROI alignment: ROI pair centered at origin; dT({-referenceX:0.##}, {-referenceY:0.##}, {-referenceZ:0.##})"));
             SetRecipeValidationOk();
             viewModel.SelectedEntity = "ROI Step Compare";
             viewModel.ViewerStatus = "ROI alignment applied from selected regions";
@@ -478,7 +478,7 @@ internal sealed class C3DRoiEditingSession
         {
             viewModel.SetRoiStepSelectionPending(
                 string.Create(CultureInfo.InvariantCulture, $"ROI step: L {left.Count:N0} pts, pick R"),
-                string.Create(CultureInfo.InvariantCulture, $"Left mean raw {left.RawMean:F3}; click right ROI center."),
+                string.Create(CultureInfo.InvariantCulture, $"Left mean raw {left.RawMean:0.##}; click right ROI center."),
                 "Interactive");
             viewModel.SelectedEntity = "ROI Step Compare";
             return true;

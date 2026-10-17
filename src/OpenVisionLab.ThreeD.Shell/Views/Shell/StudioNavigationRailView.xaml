@@ -10,19 +10,19 @@
              AutomationProperties.AutomationId="StudioNavigationRail">
     <UserControl.Resources>
         <Style x:Key="RailLabelStyle" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Margin" Value="0,2,0,0" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="MaxWidth" Value="68" />
+            <Setter Property="MaxWidth" Value="48" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
         <Style x:Key="RailRadioButtonStyle" TargetType="RadioButton">
-            <Setter Property="Height" Value="64" />
-            <Setter Property="Margin" Value="6,3" />
-            <Setter Property="Padding" Value="4" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Margin" Value="4,2" />
+            <Setter Property="Padding" Value="2" />
             <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -30,15 +30,18 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
+                        <Grid>
                         <Border x:Name="Surface"
                                 Padding="{TemplateBinding Padding}"
                                 Background="Transparent"
                                 BorderBrush="Transparent"
                                 BorderThickness="1"
-                                CornerRadius="4">
+                                CornerRadius="6">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
+                        <Border x:Name="SelectedMarker" Width="3" Margin="-4,12,0,12" HorizontalAlignment="Left" Background="{DynamicResource ThreeD.AccentBrush}" CornerRadius="2" Visibility="Collapsed" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Surface"
@@ -48,11 +51,9 @@
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Surface"
                                         Property="Background"
-                                        Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
-                                <Setter TargetName="Surface"
-                                        Property="BorderBrush"
-                                        Value="{DynamicResource ThreeD.AccentBrush}" />
-                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                        Value="{DynamicResource ThreeD.RailSelectedBrush}" />
+                                <Setter TargetName="SelectedMarker" Property="Visibility" Value="Visible" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.RailSelectedTextBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Surface"
@@ -75,6 +76,12 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedLanguageOption.Language}" Value="English">
+                    <Setter Property="Margin" Value="1,2" />
+                    <Setter Property="Padding" Value="0,2" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="RailActionButtonStyle" TargetType="Button">
@@ -138,7 +145,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Background="{DynamicResource ThreeD.CommandBarBrush}"
+    <Border Background="{DynamicResource ThreeD.RailBackgroundBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="0,0,1,0">
         <Grid>
@@ -160,7 +167,7 @@
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="WrenchScrewdriver24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
-                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Authoring, Korean='티칭', English='Teaching'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.AuthoringCompact, Korean='티칭', English='Teach'}" />
                     </StackPanel>
                 </RadioButton>
 
@@ -168,7 +175,7 @@
                              GroupName="WorkspaceMode"
                              IsChecked="{Binding IsValidateWorkspaceSelected, Mode=OneWay}"
                              Command="{Binding SelectWorkspaceCommand}"
-                             CommandParameter="{x:Static app:ShellWorkspaceMode.Inspect}"
+                             CommandParameter="{x:Static app:ShellWorkspaceMode.Validate}"
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ValidateTip, Korean='샘플 세트를 실행하고 실패 근거를 검토합니다.', English='Run the sample set and review failure evidence.'}"
                              AutomationProperties.AutomationId="ValidateModeButton"
@@ -176,11 +183,27 @@
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="CheckmarkCircle24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
-                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Validate, Korean='검사', English='Inspection'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Validate, Korean='검증', English='Validate'}" />
                     </StackPanel>
                 </RadioButton>
 
-                <RadioButton x:Name="ResultsModeButton" Visibility="Collapsed"
+                <RadioButton x:Name="InspectionModeButton"
+                             GroupName="WorkspaceMode"
+                             IsChecked="{Binding IsInspectWorkspaceSelected, Mode=OneWay}"
+                             Command="{Binding SelectWorkspaceCommand}"
+                             CommandParameter="{x:Static app:ShellWorkspaceMode.Inspect}"
+                             Style="{StaticResource RailRadioButtonStyle}"
+                             ToolTip="{views:ThreeDText Key=ThreeD.Navigation.InspectTip, Korean='체크한 파일을 저장된 레시피로 검사합니다.', English='Inspect checked files with the saved recipe.'}"
+                             AutomationProperties.AutomationId="InspectionModeButton"
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.InspectAccessible, Korean='파일 검사 워크스페이스', English='File inspection workspace'}">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="48">
+                        <ui:SymbolIcon Width="19" Height="19" Symbol="PlayCircle24" />
+                        <TextBlock Style="{StaticResource RailLabelStyle}"
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Inspect, Korean='검사', English='Inspect'}" />
+                    </StackPanel>
+                </RadioButton>
+
+                <RadioButton x:Name="ResultsModeButton"
                              GroupName="WorkspaceMode"
                              IsChecked="{Binding IsResultsWorkspaceSelected, Mode=OneWay}"
                              Command="{Binding SelectWorkspaceCommand}"
@@ -188,11 +211,11 @@
                              Style="{StaticResource RailRadioButtonStyle}"
                              ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ResultsTip, Korean='검사 판정, 실행 기록과 출력 비교를 확인합니다.', English='Review decisions, run records, and output comparison.'}"
                              AutomationProperties.AutomationId="ResultsModeButton"
-                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ResultsAccessible, Korean='검사 결과 워크스페이스', English='Inspection results workspace'}">
+                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ResultsAccessible, Korean='검사 기록', English='Inspection records'}">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">
                         <ui:SymbolIcon Width="19" Height="19" Symbol="DataHistogram24" />
                         <TextBlock Style="{StaticResource RailLabelStyle}"
-                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Results, Korean='결과', English='Results'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Results, Korean='기록', English='Records'}" />
                     </StackPanel>
                 </RadioButton>
 
@@ -230,24 +253,51 @@
 
             </StackPanel>
 
-            <StackPanel Grid.Row="1" Margin="0,0,0,7">
-                <Separator Margin="8,4" />
+            <Expander Grid.Row="1" x:Name="RailUtilityMenu" Margin="4,0,4,7" AutomationProperties.AutomationId="RailUtilityMenu"
+                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.Actions, Korean='조작 메뉴', English='Actions menu'}">
+                <Expander.Template>
+                    <ControlTemplate TargetType="Expander">
+                        <Grid>
+                            <ToggleButton x:Name="UtilityToggle" Height="48" Cursor="Hand" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="UtilitySurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><ui:SymbolIcon Width="19" Height="19" Symbol="Settings24" /><TextBlock Margin="0,2,0,0" FontSize="11" Text="{views:ThreeDText Key=ThreeD.Navigation.ActionsShort, Korean='조작', English='Actions'}" /></StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="UtilitySurface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
+                                        <Trigger Property="IsChecked" Value="True"><Setter TargetName="UtilitySurface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" /></Trigger>
+                                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="UtilitySurface" Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /></Trigger>
+                                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="UtilitySurface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
+                                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="Cursor" Value="Arrow" /></Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate></ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup Placement="Right" PlacementTarget="{Binding ElementName=UtilityToggle}" AllowsTransparency="True" StaysOpen="False"
+                                   IsOpen="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <Border Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="6"><ContentPresenter /></Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Expander.Template>
+                <StackPanel Width="226" Margin="4">
+
 
                 <Button x:Name="RecipeManagerButton"
-                        Style="{StaticResource RailActionButtonStyle}"
+                        Style="{StaticResource RailActionButtonStyle}" Height="36" Margin="0,2" Padding="8,4" HorizontalContentAlignment="Left"
                         Click="OpenRecipeManagerButton_Click"
                         ToolTip="{Binding Localization.OpenRecipeManagerToolTip}"
                         AutomationProperties.AutomationId="OpenRecipeManagerButton"
                         AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.RecipeManagerAccessible, Korean='레시피 관리자 열기', English='Open Recipe Manager'}">
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <ui:SymbolIcon Width="18" Height="18" Symbol="DocumentBulletList24" />
-                        <TextBlock Style="{StaticResource RailLabelStyle}"
-                                   Text="{Binding Localization.RecipeManager}" />
+                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12"
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.RecipeShort, Korean='레시피', English='Recipe'}" />
                     </StackPanel>
                 </Button>
 
                 <Button x:Name="ToolLabsMenuButton"
-                        Style="{StaticResource RailActionButtonStyle}"
+                        Style="{StaticResource RailActionButtonStyle}" Height="36" Margin="0,2" Padding="8,4" HorizontalContentAlignment="Left"
                         Click="OpenToolLabsMenuButton_Click"
                         ToolTip="{Binding Localization.OpenToolLabsToolTip}"
                         AutomationProperties.AutomationId="ToolLabsMenu"
@@ -310,27 +360,28 @@
                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.RegridHeightMapToolLabAccessible, Korean='높이 맵 재격자화 도구 실험실 열기', English='Open Re-grid Height Map Tool Lab'}" />
                         </ContextMenu>
                     </Button.ContextMenu>
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <ui:SymbolIcon Width="18" Height="18" Symbol="BoxToolbox24" />
-                        <TextBlock Style="{StaticResource RailLabelStyle}"
+                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12"
                                    Text="{Binding Localization.ToolLabs}" />
                     </StackPanel>
                 </Button>
 
                 <Button x:Name="ResetLayoutButton"
-                        Style="{StaticResource RailActionButtonStyle}"
+                        Style="{StaticResource RailActionButtonStyle}" Height="36" Margin="0,2" Padding="8,4" HorizontalContentAlignment="Left"
                         Click="ResetLayoutButton_Click"
                         ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ResetLayoutTip, Korean='저장된 패널 크기와 탭 배치를 기본값으로 되돌립니다.', English='Reset saved panel sizes and tab placement to safe defaults.'}"
                         AutomationProperties.AutomationId="ResetStudioLayoutButton"
                         AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ResetLayoutAccessible, Korean='저장된 스튜디오 레이아웃 초기화', English='Reset saved studio layout'}">
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <ui:SymbolIcon Width="18" Height="18" Symbol="ArrowReset24" />
-                        <TextBlock Style="{StaticResource RailLabelStyle}"
-                                   Text="{views:ThreeDText Key=ThreeD.Navigation.ResetLayout, Korean='레이아웃 초기화', English='Reset layout'}" />
+                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12"
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.ResetShort, Korean='초기화', English='Reset'}" />
                     </StackPanel>
                 </Button>
 
             </StackPanel>
+            </Expander>
         </Grid>
     </Border>
 </UserControl>

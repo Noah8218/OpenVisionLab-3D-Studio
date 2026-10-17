@@ -58,10 +58,10 @@ public sealed partial class MainWindowViewModel
 
         selectedWorkbenchHeightDifferenceEdgePoint = point;
         SelectedEntity = "Height Difference Edge Point";
-        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"midpoint ({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
+        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"midpoint ({point.X:0.##}, {point.Y:0.##}, {point.Z:0.##})");
         SelectionSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Edge marker | ({point.FirstRow},{point.FirstColumn}) h0={point.FirstHeight:F3} -> ({point.SecondRow},{point.SecondColumn}) h1={point.SecondHeight:F3} | delta={point.SignedDelta:F3} | magnitude={point.Magnitude:F3} | midpoint=({point.X:F3},{point.Y:F3},{point.Z:F3})");
+            $"Edge marker | ({point.FirstRow},{point.FirstColumn}) h0={point.FirstHeight:0.##} -> ({point.SecondRow},{point.SecondColumn}) h1={point.SecondHeight:0.##} | delta={point.SignedDelta:0.##} | magnitude={point.Magnitude:0.##} | midpoint=({point.X:0.##},{point.Y:0.##},{point.Z:0.##})");
         ViewerStatus = isWorkbenchHeightDifferenceEdgePublished
             ? "Selected published Height Difference Edge marker"
             : "Selected Height Difference Edge Preview marker - not published";

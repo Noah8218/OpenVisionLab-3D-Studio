@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OpenVisionLab.ThreeD.Core;
 
 public enum ToolRecipeValidationSampleRole
@@ -7,10 +9,32 @@ public enum ToolRecipeValidationSampleRole
     HeldOut
 }
 
+public enum ToolRecipeValidationExpectation { Unset, Ok, Ng }
+public enum ToolRecipeValidationUsage { Adjustment, HeldOut }
+
 public sealed record ToolRecipeValidationSampleDefinition(
     int Order,
     string SourcePath,
-    ToolRecipeValidationSampleRole Role);
+    ToolRecipeValidationSampleRole Role)
+{
+    public ToolRecipeValidationExpectation? Expectation { get; init; }
+    public ToolRecipeValidationUsage? Usage { get; init; }
+    [JsonIgnore] public ToolRecipeValidationExpectation EffectiveExpectation => ResolveExpectation(Role, Expectation);
+    [JsonIgnore] public ToolRecipeValidationUsage EffectiveUsage => ResolveUsage(Role, Usage);
+    [JsonIgnore] public ToolRecipeValidationSampleRole DevelopmentRole => ResolveDevelopmentRole(EffectiveExpectation, EffectiveUsage);
+
+    public static ToolRecipeValidationExpectation ResolveExpectation(ToolRecipeValidationSampleRole role, ToolRecipeValidationExpectation? expectation) => expectation ?? role switch
+    {
+        ToolRecipeValidationSampleRole.Good => ToolRecipeValidationExpectation.Ok,
+        ToolRecipeValidationSampleRole.Bad => ToolRecipeValidationExpectation.Ng,
+        _ => ToolRecipeValidationExpectation.Unset
+    };
+    public static ToolRecipeValidationUsage ResolveUsage(ToolRecipeValidationSampleRole role, ToolRecipeValidationUsage? usage) => usage
+        ?? (role == ToolRecipeValidationSampleRole.HeldOut ? ToolRecipeValidationUsage.HeldOut : ToolRecipeValidationUsage.Adjustment);
+    public static ToolRecipeValidationSampleRole ResolveDevelopmentRole(ToolRecipeValidationExpectation expectation, ToolRecipeValidationUsage usage) =>
+        usage == ToolRecipeValidationUsage.HeldOut || expectation == ToolRecipeValidationExpectation.Unset ? ToolRecipeValidationSampleRole.HeldOut
+            : expectation == ToolRecipeValidationExpectation.Ok ? ToolRecipeValidationSampleRole.Good : ToolRecipeValidationSampleRole.Bad;
+}
 
 /// <summary>
 /// Durable sample-role manifest stored beside a recipe. It references sample
@@ -22,7 +46,9 @@ public sealed record ToolRecipeValidationSetDefinition(
     string RecipeSourceSha256,
     IReadOnlyList<ToolRecipeValidationSampleDefinition> Samples)
 {
-    public const string CurrentSchemaVersion = "1.0";
+    public const string CurrentSchemaVersion = "2.0";
+    public string? RecipeContentSha256 { get; init; }
+    public string? CalculationContextSha256 { get; init; }
 }
 
 public enum ToolRecipeEvidenceScope

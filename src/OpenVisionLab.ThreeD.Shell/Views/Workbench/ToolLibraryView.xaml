@@ -38,11 +38,6 @@
                     <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
                                Text="{Binding Localization.ToolLibrary}" />
                 </StackPanel>
-                <TextBlock Margin="0,4,0,0"
-                           FontSize="12"
-                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                           TextWrapping="Wrap"
-                           Text="{Binding Localization.ToolLibraryHint}" />
             </StackPanel>
 
             <Border Grid.Row="1"
@@ -236,11 +231,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 </ScrollViewer>
-                <TextBlock Margin="0,2,0,0"
-                           FontSize="12"
-                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                           Text="{Binding Localization.FilterOptionalHint}"
-                           TextWrapping="Wrap" />
             </StackPanel>
 
             <StackPanel Grid.Row="3"

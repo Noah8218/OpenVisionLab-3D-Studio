@@ -6,9 +6,148 @@
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:dock="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
              AutomationProperties.AutomationId="RecipePipelineReview">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <Style x:Key="ValidationNativePaneActionStyle" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+            <Style.Triggers><DataTrigger Binding="{Binding DockPaneCommands, ElementName=ValidationReviewRoot}" Value="{x:Null}"><Setter Property="IsEnabled" Value="False" /></DataTrigger></Style.Triggers>
+        </Style>
+        <ControlTemplate x:Key="ValidationResultTabTemplate" TargetType="RadioButton">
+            <Border x:Name="TabSurface" MinHeight="34" Padding="10,0" Background="Transparent" BorderThickness="0,0,0,2" BorderBrush="Transparent">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" /><Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /></Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="ValidationResultNavigationStyle" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+            <Setter Property="Margin" Value="0,0,14,0" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Content, RelativeSource={RelativeSource Self}}" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsValidationSamplesExternal, ElementName=ValidationReviewRoot}" Value="True"><Setter Property="Template" Value="{StaticResource ValidationResultTabTemplate}" /><Setter Property="Margin" Value="0" /><Setter Property="Height" Value="34" /><Setter Property="MinHeight" Value="0" /><Setter Property="MinWidth" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="12.5" /><Setter Property="FontWeight" Value="600" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMatrixCellStyle" TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="Margin" Value="6,5" /><Setter Property="VerticalAlignment" Value="Center" /></Style>
+        <workbench:ValidationMatrixValueConverter x:Key="ValidationMatrixValue" />
+        <workbench:ValidationMatrixValueConverter x:Key="ValidationMatrixDisplayValue" IncludeStatus="False" />
+        <SolidColorBrush x:Key="ValidationMatrixHeaderBrush" Color="#1D242B" />
+        <SolidColorBrush x:Key="ValidationMatrixLineBrush" Color="#262E37" />
+        <SolidColorBrush x:Key="ValidationMatrixHoverBrush" Color="#222A32" />
+        <SolidColorBrush x:Key="ValidationMatrixSelectedBrush" Color="#203034" />
+        <SolidColorBrush x:Key="ValidationMatrixPassBorderBrush" Color="#3D6049" />
+        <SolidColorBrush x:Key="ValidationMatrixFailBorderBrush" Color="#6E434B" />
+        <SolidColorBrush x:Key="ValidationMatrixErrorBrush" Color="#3A2A1F" />
+        <SolidColorBrush x:Key="ValidationMatrixErrorBorderBrush" Color="#6E4A30" />
+        <SolidColorBrush x:Key="ValidationGroupPassBrush" Color="#2F5B44" />
+        <SolidColorBrush x:Key="ValidationGroupFailBrush" Color="#C9686C" />
+        <SolidColorBrush x:Key="ValidationGroupErrorBrush" Color="#C98450" />
+        <SolidColorBrush x:Key="ValidationGroupNoneBrush" Color="#3A444F" />
+        <Style x:Key="ValidationGroupCellStyle" TargetType="ItemsControl">
+            <Setter Property="Margin" Value="10,5" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="AlternationCount" Value="2147483647" />
+            <Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></Setter.Value></Setter>
+            <Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ContentPresenter"><Setter Property="Margin" Value="2,0,0,0" /><Style.Triggers><Trigger Property="ItemsControl.AlternationIndex" Value="0"><Setter Property="Margin" Value="0" /></Trigger></Style.Triggers></Style></Setter.Value></Setter>
+            <Setter Property="ItemTemplate"><Setter.Value><DataTemplate>
+                <Border Width="9" Height="14" CornerRadius="2" ToolTip="{Binding Detail}" AutomationProperties.Name="{Binding Detail}" AutomationProperties.AutomationId="ValidationGroupMember">
+                    <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="{StaticResource ValidationGroupNoneBrush}" /><Style.Triggers>
+                        <DataTrigger Binding="{Binding Status}" Value="Pass"><Setter Property="Background" Value="{StaticResource ValidationGroupPassBrush}" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Status}" Value="Fail"><Setter Property="Background" Value="{StaticResource ValidationGroupFailBrush}" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Status}" Value="Error"><Setter Property="Background" Value="{StaticResource ValidationGroupErrorBrush}" /></DataTrigger>
+                    </Style.Triggers></Style></Border.Style>
+                </Border>
+            </DataTemplate></Setter.Value></Setter>
+        </Style>
+        <Style x:Key="ValidationMatrixRowStyle" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+            <Setter Property="MinHeight" Value="31.125" /><Setter Property="Background" Value="Transparent" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource ValidationMatrixHoverBrush}" /></Trigger>
+                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{StaticResource ValidationMatrixSelectedBrush}" /></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMatrixGridCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+            <Setter Property="Padding" Value="0" /><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixLineBrush}" /><Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" /></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /><Setter Property="BorderThickness" Value="1" /></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMatrixHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+            <Setter Property="Padding" Value="10,6" /><Setter Property="MinHeight" Value="29.89" /><Setter Property="FontSize" Value="12" /><Setter Property="FontWeight" Value="500" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="Background" Value="{StaticResource ValidationMatrixHeaderBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.SoftDividerBrush}" /><Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="ToolTip" Value="{Binding Content, RelativeSource={RelativeSource Self}}" />
+        </Style>
+        <Style x:Key="ValidationMatrixDisplayCellStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="10,5" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextAlignment" Value="Right" /><Setter Property="FontFamily" Value="Cascadia Mono, Cascadia Code, Consolas, D2Coding" />
+        </Style>
+        <Style x:Key="ValidationMatrixFileStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="10,5" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="ToolTip" Value="{Binding SourcePath}" />
+        </Style>
+        <Style x:Key="ValidationMatrixEvidenceStyle" TargetType="TextBlock" BasedOn="{StaticResource ValidationMatrixFileStyle}">
+            <Setter Property="TextTrimming" Value="None" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="ToolTip" Value="{Binding Message}" />
+        </Style>
+        <Style x:Key="ValidationMatrixPillStyle" TargetType="Border">
+            <Setter Property="Height" Value="20" /><Setter Property="Padding" Value="7,0" /><Setter Property="CornerRadius" Value="10" /><Setter Property="BorderThickness" Value="1" />
+            <Setter Property="HorizontalAlignment" Value="Left" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextElement.FontSize" Value="12" /><Setter Property="TextElement.FontWeight" Value="600" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.SoftDividerBrush}" />
+        </Style>
+        <Style x:Key="ValidationMatrixStatusPillStyle" TargetType="Border" BasedOn="{StaticResource ValidationMatrixPillStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Pass"><Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.PassBrush}" /><Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixPassBorderBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Fail"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /><Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixFailBorderBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Error"><Setter Property="Background" Value="{StaticResource ValidationMatrixErrorBrush}" /><Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixErrorBorderBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.InspectionErrorTextBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Warning"><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMatrixAgreementPillStyle" TargetType="Border" BasedOn="{StaticResource ValidationMatrixPillStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Agreement}" Value="Match"><Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixPassBorderBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="FalseReject"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixFailBorderBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="FalseAccept"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource ValidationMatrixFailBorderBrush}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMatrixFalseRejectSummaryStyle" TargetType="Border" BasedOn="{StaticResource ValidationMatrixPillStyle}"><Style.Triggers><DataTrigger Binding="{Binding ValidationSetFalseRejectCount}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+        <Style x:Key="ValidationMatrixFalseAcceptSummaryStyle" TargetType="Border" BasedOn="{StaticResource ValidationMatrixPillStyle}"><Style.Triggers><DataTrigger Binding="{Binding ValidationSetFalseAcceptCount}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+        <Style x:Key="ValidationMatrixErrorSummaryStyle" TargetType="Border" BasedOn="{StaticResource ValidationMatrixPillStyle}"><Style.Triggers><DataTrigger Binding="{Binding ValidationSetErrorCount}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+
+        <DataTemplate x:Key="ValidationMatrixExpectedTemplate"><TextBlock Margin="10,5" VerticalAlignment="Center" Text="{Binding ExpectedVerdictText}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Style.Triggers><DataTrigger Binding="{Binding IsGood}" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger><DataTrigger Binding="{Binding IsBad}" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></DataTemplate>
+        <DataTemplate x:Key="ValidationMatrixStatusTemplate"><Border Margin="10,0" Style="{StaticResource ValidationMatrixStatusPillStyle}" ToolTip="{Binding Message}"><TextBlock VerticalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding StatusText}" /><Style.Triggers><DataTrigger Binding="{Binding Status}" Value="Pass"><Setter Property="Text" Value="✓ OK" /></DataTrigger><DataTrigger Binding="{Binding Status}" Value="Fail"><Setter Property="Text" Value="× NG" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Border></DataTemplate>
+        <workbench:HeightImageFrameConverter x:Key="ValidationSamplePreview" />
+        <Style x:Key="ValidationAgreementTextStyle" TargetType="TextBlock">
+            <Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.NotRun, Korean='미검증', English='Not run'}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Agreement}" Value="Match"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Match, Korean='일치', English='Match'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="FalseReject"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.FalseReject, Korean='과검출', English='False reject'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="FalseAccept"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.FalseAccept, Korean='미검출', English='False accept'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="Error"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Error, Korean='오류', English='Error'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="Warning"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Warning, Korean='경고', English='Warning'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="Unset"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='기대 미지정', English='Expectation unset'}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="HeldOut"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류', English='Held-out'}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMatrixAgreementLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ValidationAgreementTextStyle}">
+            <Style.Triggers><DataTrigger Binding="{Binding Agreement}" Value="Match"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.MatrixMatch, Korean='✓ 일치', English='✓ Match'}" /></DataTrigger><DataTrigger Binding="{Binding Agreement}" Value="FalseReject"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.MatrixFalseReject, Korean='× 과검출', English='× False reject'}" /></DataTrigger><DataTrigger Binding="{Binding Agreement}" Value="FalseAccept"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.MatrixFalseAccept, Korean='× 미검출', English='× False accept'}" /></DataTrigger></Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="ValidationMatrixAgreementTemplate"><Border Margin="10,0" Style="{StaticResource ValidationMatrixAgreementPillStyle}"><TextBlock VerticalAlignment="Center" Style="{StaticResource ValidationMatrixAgreementLabelStyle}" /></Border></DataTemplate>
+        <SolidColorBrush x:Key="ValidationMismatchHoverBrush" Color="#1E252C" />
+        <SolidColorBrush x:Key="ValidationMismatchSelectedBrush" Color="#1D2A2C" />
+        <Style x:Key="ValidationMismatchActionStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="ValidationMismatchItemStyle" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="CardSurface" Background="Transparent" Padding="12,10" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1"><ContentPresenter /></Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="CardSurface" Property="Background" Value="{StaticResource ValidationMismatchHoverBrush}" /></Trigger>
+                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="CardSurface" Property="Background" Value="{StaticResource ValidationMismatchSelectedBrush}" /></Trigger>
+                    <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="CardSurface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
         <ControlTemplate x:Key="ContentOnlyTabControlTemplate"
                          TargetType="{x:Type TabControl}">
             <Border Background="{TemplateBinding Background}"
@@ -29,7 +168,7 @@
                     Modifiers="Control+Shift"
                     Command="{Binding RunValidationSetCommand}" />
     </UserControl.InputBindings>
-    <Border Background="{DynamicResource ThreeD.PanelBrush}"
+    <Border x:Name="ReviewSurface" Background="{DynamicResource ThreeD.PanelBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="0,1,0,0"
             Padding="12">
@@ -58,12 +197,18 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <WrapPanel>
+                    <WrapPanel x:Name="ValidationNavigationRow" VerticalAlignment="Center">
+                        <StackPanel x:Name="ValidationHeaderLeading" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                            <dock:AnchorablePaneTitle x:Name="ValidationHeaderGrip" Width="10" Height="16" Model="{Binding DockPaneCommands.LayoutElement, ElementName=ValidationReviewRoot}" ToolTip="{shell:ThreeDText Key=ThreeD.Dock.Drag, Korean='끌어서 도킹 위치 변경', English='Drag to change docking position'}" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Dock.Drag, Korean='끌어서 도킹 위치 변경', English='Drag to change docking position'}">
+                                <dock:AnchorablePaneTitle.Style><Style TargetType="dock:AnchorablePaneTitle"><Setter Property="Cursor" Value="SizeAll" /><Style.Triggers><DataTrigger Binding="{Binding DockPaneCommands, ElementName=ValidationReviewRoot}" Value="{x:Null}"><Setter Property="IsEnabled" Value="False" /></DataTrigger></Style.Triggers></Style></dock:AnchorablePaneTitle.Style>
+                                <dock:AnchorablePaneTitle.Template><ControlTemplate TargetType="dock:AnchorablePaneTitle"><Rectangle Fill="{DynamicResource ThreeD.DataMutedTextBrush}"><Rectangle.OpacityMask><DrawingBrush TileMode="Tile" Viewport="0,0,5,5" ViewportUnits="Absolute" Viewbox="0,0,5,5" ViewboxUnits="Absolute"><DrawingBrush.Drawing><GeometryDrawing Brush="White"><GeometryDrawing.Geometry><EllipseGeometry Center="2.5,2.5" RadiusX="1.1" RadiusY="1.1" /></GeometryDrawing.Geometry></GeometryDrawing></DrawingBrush.Drawing></DrawingBrush></Rectangle.OpacityMask></Rectangle></ControlTemplate></dock:AnchorablePaneTitle.Template>
+                            </dock:AnchorablePaneTitle>
+                            <ui:SymbolIcon Symbol="Layer24" Width="14" Height="14" FontSize="14" Margin="4,0,7,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" IsHitTestVisible="False" />
+                        </StackPanel>
                         <RadioButton x:Name="ValidationSamplesNavigation"
                                      Margin="0,0,14,0"
                                      VerticalAlignment="Center"
                                      Content="{Binding Localization.ValidationWorkspaceSamples}"
-                                     GroupName="ValidationWorkspaceSection"
                                      IsChecked="{Binding ValidationWorkspace.IsSamplesSelected, Mode=OneWay}"
                                      behaviors:CheckedCommandBehavior.IsEnabled="True"
                                      behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
@@ -72,57 +217,61 @@
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceSamples}"
                                      />
                         <RadioButton x:Name="ValidationResultsNavigation"
-                                     Margin="0,0,14,0"
                                      VerticalAlignment="Center"
-                                     Content="{Binding Localization.ValidationWorkspaceResults}"
-                                     GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationResultsNavigation"
-                                     AutomationProperties.Name="{Binding Localization.ValidationWorkspaceResults}"
                                      IsChecked="{Binding ValidationWorkspace.IsResultsSelected, Mode=OneWay}"
                                      behaviors:CheckedCommandBehavior.IsEnabled="True"
                                      behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
-                                     behaviors:CheckedCommandBehavior.CommandParameter="Results" />
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Results">
+                            <RadioButton.Style><Style TargetType="RadioButton" BasedOn="{StaticResource ValidationResultNavigationStyle}"><Setter Property="Content" Value="{Binding Localization.ValidationWorkspaceResults}" /><Style.Triggers><DataTrigger Binding="{Binding IsValidationSamplesExternal, ElementName=ValidationReviewRoot}" Value="True"><Setter Property="Content" Value="{shell:ThreeDText Key=ThreeD.Validation.Matrix, Korean='결과표', English='Results table'}" /></DataTrigger></Style.Triggers></Style></RadioButton.Style>
+                        </RadioButton>
                         <RadioButton x:Name="ValidationFailuresNavigation"
-                                     Margin="0,0,14,0"
                                      VerticalAlignment="Center"
-                                     Content="{Binding Localization.ValidationWorkspaceFailures}"
-                                     GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationFailuresNavigation"
-                                     AutomationProperties.Name="{Binding Localization.ValidationWorkspaceFailures}"
                                      IsChecked="{Binding ValidationWorkspace.IsFailuresSelected, Mode=OneWay}"
                                      behaviors:CheckedCommandBehavior.IsEnabled="True"
                                      behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
-                                     behaviors:CheckedCommandBehavior.CommandParameter="Failures" />
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Failures">
+                            <RadioButton.Style><Style TargetType="RadioButton" BasedOn="{StaticResource ValidationResultNavigationStyle}"><Setter Property="Content" Value="{Binding Localization.ValidationWorkspaceFailures}" /><Style.Triggers><DataTrigger Binding="{Binding IsValidationSamplesExternal, ElementName=ValidationReviewRoot}" Value="True"><Setter Property="Content" Value="{shell:ThreeDText Key=ThreeD.Validation.Mismatches, Korean='불일치', English='Mismatches'}" /></DataTrigger></Style.Triggers></Style></RadioButton.Style>
+                        </RadioButton>
                         <RadioButton x:Name="ValidationThresholdNavigation"
-                                     Margin="0,0,14,0"
                                      VerticalAlignment="Center"
-                                     Content="{Binding Localization.ValidationWorkspaceThresholds}"
-                                     GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationThresholdNavigation"
-                                     AutomationProperties.Name="{Binding Localization.ValidationWorkspaceThresholds}"
                                      IsChecked="{Binding ValidationWorkspace.IsThresholdsSelected, Mode=OneWay}"
                                      behaviors:CheckedCommandBehavior.IsEnabled="True"
                                      behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
-                                     behaviors:CheckedCommandBehavior.CommandParameter="Thresholds" />
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Thresholds">
+                            <RadioButton.Style><Style TargetType="RadioButton" BasedOn="{StaticResource ValidationResultNavigationStyle}"><Setter Property="Content" Value="{Binding Localization.ValidationWorkspaceThresholds}" /><Style.Triggers><DataTrigger Binding="{Binding IsValidationSamplesExternal, ElementName=ValidationReviewRoot}" Value="True"><Setter Property="Content" Value="{shell:ThreeDText Key=ThreeD.Validation.Distribution, Korean='값 분포', English='Value distribution'}" /></DataTrigger></Style.Triggers></Style></RadioButton.Style>
+                        </RadioButton>
                         <RadioButton x:Name="ValidationHeldOutNavigation"
                                      VerticalAlignment="Center"
                                      Content="{Binding Localization.ValidationWorkspaceHeldOut}"
-                                     GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationHeldOutNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceHeldOut}"
                                      IsChecked="{Binding ValidationWorkspace.IsHeldOutSelected, Mode=OneWay}"
                                      behaviors:CheckedCommandBehavior.IsEnabled="True"
                                      behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
                                      behaviors:CheckedCommandBehavior.CommandParameter="HeldOut" />
+                        <StackPanel x:Name="ValidationMatrixSummary" Orientation="Horizontal" Margin="8,0,4,0" VerticalAlignment="Center" Visibility="Collapsed" AutomationProperties.AutomationId="ValidationMatrixSummary">
+                            <Border Style="{StaticResource ValidationMatrixPillStyle}" Margin="0,0,4,0" Background="{DynamicResource ThreeD.PassSurfaceBrush}" BorderBrush="{StaticResource ValidationMatrixPassBorderBrush}" TextElement.Foreground="{DynamicResource ThreeD.PassBrush}"><TextBlock VerticalAlignment="Center"><Run Text="✓ " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.Match, Korean='일치', English='Match'}" /><Run Text=" " /><Run Text="{Binding ValidationSetMatchCount, Mode=OneWay}" /></TextBlock></Border>
+                            <Border Style="{StaticResource ValidationMatrixFalseRejectSummaryStyle}" Margin="0,0,4,0" Background="{DynamicResource ThreeD.FailSurfaceBrush}" BorderBrush="{StaticResource ValidationMatrixFailBorderBrush}" TextElement.Foreground="{DynamicResource ThreeD.FailBrush}"><TextBlock VerticalAlignment="Center"><Run Text="× " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.FalseReject, Korean='과검출', English='False reject'}" /><Run Text=" " /><Run Text="{Binding ValidationSetFalseRejectCount, Mode=OneWay}" /></TextBlock></Border>
+                            <Border Style="{StaticResource ValidationMatrixFalseAcceptSummaryStyle}" Margin="0,0,4,0" Background="{DynamicResource ThreeD.FailSurfaceBrush}" BorderBrush="{StaticResource ValidationMatrixFailBorderBrush}" TextElement.Foreground="{DynamicResource ThreeD.FailBrush}"><TextBlock VerticalAlignment="Center"><Run Text="× " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.FalseAccept, Korean='미검출', English='False accept'}" /><Run Text=" " /><Run Text="{Binding ValidationSetFalseAcceptCount, Mode=OneWay}" /></TextBlock></Border>
+                            <Border Style="{StaticResource ValidationMatrixErrorSummaryStyle}" Background="{StaticResource ValidationMatrixErrorBrush}" BorderBrush="{StaticResource ValidationMatrixErrorBorderBrush}" TextElement.Foreground="{DynamicResource ThreeD.InspectionErrorTextBrush}"><TextBlock VerticalAlignment="Center"><Run Text="! " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.Error, Korean='오류', English='Error'}" /><Run Text=" " /><Run Text="{Binding ValidationSetErrorCount, Mode=OneWay}" /></TextBlock></Border>
+                        </StackPanel>
                     </WrapPanel>
-                    <TextBlock Grid.Row="1"
-                               Margin="0,7,12,0"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               FontSize="12"
-                               Text="{Binding Localization.ValidationWorkspaceNavigationHint}"
-                               TextWrapping="Wrap" />
-                    <StackPanel Grid.Row="1"
+                    <StackPanel x:Name="ValidationMatrixHeaderActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                        <Button Padding="8,2" Height="24" MinHeight="0" Command="{Binding OpenValidationSetComparisonCommand}" AutomationProperties.AutomationId="ValidationMatrixCompare"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,6,0" Symbol="Eye24" /><TextBlock FontSize="12" Text="{shell:ThreeDText Key=ThreeD.Validation.CompareInTeach, Korean='티칭에서 비교', English='Compare in teaching'}" /></StackPanel></Button>
+                        <Button x:Name="ValidationMatrixPin" Margin="32,0,0,0" Width="24" Height="24" MinWidth="0" MinHeight="0" Padding="4" Background="Transparent" BorderBrush="Transparent" Command="{Binding DockPaneCommands.AutoHideCommand, ElementName=ValidationReviewRoot}" ToolTip="{shell:ThreeDText Key=ThreeD.Dock.AutoHide, Korean='자동 숨김', English='Auto hide'}" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Dock.AutoHide, Korean='자동 숨김', English='Auto hide'}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding DockPaneCommands, ElementName=ValidationReviewRoot}" Value="{x:Null}"><Setter Property="IsEnabled" Value="False" /></DataTrigger></Style.Triggers></Style></Button.Style><ui:SymbolIcon Width="14" Height="14" Symbol="Pin16" /></Button>
+                    </StackPanel>
+                    <Menu x:Name="ValidationAdvancedNavigation" Grid.Column="1" HorizontalAlignment="Right" Margin="0,0,24,0" Height="34" MinHeight="0" Padding="0" IsMainMenu="False" Background="Transparent" Visibility="Collapsed" AutomationProperties.AutomationId="ValidationAdvancedNavigation">
+                        <MenuItem Header="⋯" Width="32" Height="28" MinHeight="0" Padding="6,0" VerticalAlignment="Center" Template="{StaticResource R19TopMenuItemTemplate}" ToolTip="{shell:ThreeDText Key=ThreeD.Validation.More, Korean='검증 추가 작업', English='Additional validation actions'}" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.More, Korean='검증 추가 작업', English='Additional validation actions'}">
+                            <MenuItem Header="{Binding Localization.ValidationWorkspaceHeldOut}" Command="{Binding ValidationWorkspace.SelectSectionCommand}" CommandParameter="HeldOut" />
+                            <Separator />
+                            <MenuItem x:Name="ValidationAutoHidePaneAction" Style="{StaticResource ValidationNativePaneActionStyle}" Header="{shell:ThreeDText Key=ThreeD.Dock.AutoHide, Korean='자동 숨김', English='Auto hide'}" Command="{Binding DockPaneCommands.AutoHideCommand, ElementName=ValidationReviewRoot}" AutomationProperties.AutomationId="ValidationAutoHidePaneAction" />
+                            <MenuItem x:Name="ValidationFloatPaneAction" Style="{StaticResource ValidationNativePaneActionStyle}" Header="{shell:ThreeDText Key=ThreeD.Dock.Float, Korean='떠 있는 창으로 열기', English='Open in a floating window'}" Command="{Binding DockPaneCommands.FloatCommand, ElementName=ValidationReviewRoot}" AutomationProperties.AutomationId="ValidationFloatPaneAction" />
+                        </MenuItem>
+                    </Menu>
+                    <StackPanel x:Name="ValidationRunActions" Grid.Row="1"
                                 Grid.Column="1"
                                 Margin="0,6,0,0"
                                 HorizontalAlignment="Right"
@@ -162,7 +311,7 @@
                                 AutomationProperties.Name="{Binding Localization.ValidationWorkspaceOpenInTeach}"
                                 AutomationProperties.HelpText="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" />
                     </StackPanel>
-                    <Border Grid.Row="2"
+                    <Border x:Name="ValidationCurrentRecipeStatus" Grid.Row="2"
                             Grid.ColumnSpan="2"
                             Margin="0,7,0,0"
                             Padding="8,6"
@@ -339,11 +488,6 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.FlowMapTitle}" />
-                                <TextBlock Margin="0,2,0,0"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="12"
-                                           Text="{Binding Localization.FlowMapDetail}"
-                                           TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                             <Border Grid.Column="1"
                                     Margin="8,0,0,0"
@@ -521,11 +665,6 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.ProblemsTitle}" />
-                                <TextBlock Margin="0,2,0,0"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="12"
-                                           Text="{Binding Localization.ProblemsDetail}"
-                                           TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                             <Border Grid.Column="1"
                                     Margin="8,0,0,0"
@@ -671,15 +810,11 @@
                             <TextBlock FontSize="12"
                                        FontWeight="SemiBold"
                                        Text="{Binding Localization.RunRecordTitle}" />
-                            <TextBlock x:Name="RunRecordDetailText"
-                                       Margin="0,2,0,0"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       FontSize="12"
-                                       Text="{Binding Localization.RunRecordDetail}" />
-                            <TextBlock Margin="0,3,0,0"
+                            <TextBlock x:Name="RunRecordStatusSummary" Margin="0,3,0,0"
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
                                        Text="{Binding RunRecordSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </StackPanel>
                         <StackPanel x:Name="RunRecordActionPanel"
@@ -990,12 +1125,6 @@
                                                    Text="{Binding RunRecordContext.RunRecordComparisonStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Grid.Row="1"
-                                           Margin="0,4,0,0"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           FontSize="12"
-                                           Text="{Binding Localization.RunRecordComparisonDetail}"
-                                           TextWrapping="Wrap" />
                                 <TextBlock Grid.Row="2"
                                            Margin="0,5,0,0"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
@@ -1335,12 +1464,7 @@
                                     AutomationProperties.AutomationId="ValidationSamplesMeaningGuide">
                                 <StackPanel>
                                     <TextBlock FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Text="{Binding Localization.ValidationSetWorkflowGuide}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,2,0,0"
-                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               FontSize="12"
+                                               Foreground="{DynamicResource ThreeD.TextBrush}"
                                                Text="{Binding Localization.ValidationSetMeaningGuide}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
@@ -1385,6 +1509,8 @@
                                                  Text="{Binding ValidationSetBadCount, Mode=OneWay}" />
                                         </TextBlock>
                                     </ToggleButton>
+                                    <ToggleButton Margin="0,0,4,0" Padding="8,3" IsChecked="{Binding IsSelectedValidationRoleUnset, Mode=OneWay}" Command="{Binding SetValidationSampleRoleCommand}" CommandParameter="Unset" Content="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='미지정', English='Unset'}" AutomationProperties.AutomationId="ValidationSampleRoleUnset" />
+                                    <ToggleButton Margin="0,0,4,0" Padding="8,3" IsChecked="{Binding IsSelectedValidationUsageAdjustment, Mode=OneWay}" Command="{Binding SetValidationSampleRoleCommand}" CommandParameter="Adjustment" Content="{shell:ThreeDText Key=ThreeD.Validation.AdjustmentUse, Korean='조건 조정', English='Adjustment'}" AutomationProperties.AutomationId="ValidationSampleUseAdjustment" />
                                     <ToggleButton Padding="8,3"
                                                   IsChecked="{Binding IsSelectedValidationRoleHeldOut, Mode=OneWay}"
                                                   Command="{Binding SetValidationSampleRoleCommand}"
@@ -1509,11 +1635,11 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Margin="2,0,2,5"
+                                    <TextBlock x:Name="ValidationSamplesTitle" Margin="2,0,2,5"
                                                FontSize="12"
                                                FontWeight="SemiBold"
                                                Text="{Binding Localization.ValidationSetSamples}" />
-                                    <DataGrid Grid.Row="1"
+                                    <DataGrid x:Name="ValidationSamplesGrid" Grid.Row="1"
                                               AutoGenerateColumns="False"
                                               Background="Transparent"
                                               BorderThickness="0"
@@ -1749,6 +1875,91 @@
                             </Border>
                         </Grid>
 
+                        <Grid x:Name="ValidationRedesignContent" Grid.Row="3" Grid.RowSpan="3" Visibility="Collapsed">
+                            <Grid x:Name="ValidationMismatchCardsHost" Visibility="Collapsed">
+                                <ListBox x:Name="ValidationMismatchCards" Background="Transparent" BorderThickness="0"
+                                         ItemsSource="{Binding ValidationMismatchSamples}"
+                                         ItemContainerStyle="{StaticResource ValidationMismatchItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         AutomationProperties.AutomationId="ValidationMismatchCards" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.Mismatches, Korean='불일치', English='Mismatches'}">
+                                    <ListBox.ItemTemplate><DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0"><Border ToolTip="{shell:ThreeDText Key=ThreeD.Validation.InputPreview, Korean='현재 파일의 입력 미리보기 · 실행 당시 원인 맵이 아닙니다', English='Current input file preview · not an executed cause map'}" Width="150" Height="98" VerticalAlignment="Top" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="5">
+                                                <Grid>
+                                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.NoPreview, Korean='이미지 없음', English='No image'}" />
+                                                    <Image Stretch="Uniform">
+                                                        <Image.Source><MultiBinding Converter="{StaticResource ValidationSamplePreview}">
+                                                            <Binding Path="DataContext.ValidationMismatchPreviews" RelativeSource="{RelativeSource AncestorType=ListBox}" />
+                                                            <Binding Path="SourcePath" />
+                                                        </MultiBinding></Image.Source>
+                                                    </Image>
+                                                </Grid>
+                                            </Border><TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.CurrentInputPreview, Korean='현재 파일 · 입력 미리보기', English='Current file · input preview'}" /></StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <WrapPanel>
+                                                    <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding FileName}" TextWrapping="Wrap" />
+                                                    <Border Margin="8,0,0,0" Style="{StaticResource ValidationMatrixAgreementPillStyle}">
+                                                        <TextBlock Style="{StaticResource ValidationMatrixAgreementLabelStyle}" FontSize="12" FontWeight="SemiBold" />
+                                                    </Border>
+                                                    <TextBlock Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.ExpectedCaption, Korean='기대 ', English='Expected '}" /><Run Text="{Binding ExpectedVerdictText, Mode=OneWay}" /><Run Text=" → " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.ResultCaption, Korean='결과 ', English='Result '}" /><Run Text="{Binding ActualVerdictText, Mode=OneWay}" /></TextBlock>
+                                                </WrapPanel>
+                                                <TextBlock Margin="0,4,0,0" FontSize="12.5" Text="{Binding MismatchEvidenceText}" TextWrapping="Wrap" />
+                                                <TextBlock Margin="0,4,0,0" FontSize="12" LineHeight="19.2" Text="{Binding MismatchGuidance}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                                <WrapPanel Margin="0,2,0,0">
+                                                    <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding DataContext.OpenValidationSetComparisonCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ArrowRight24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.CompareInTeach, Korean='티칭에서 비교', English='Compare in Teach'}" /></StackPanel></Button>
+                                                    <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding RunRecordContext.OpenSelectedValidationIssueInTeachCommand, ElementName=ValidationReviewRoot}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Settings24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.OpenSettings, Korean='도구 설정 열기', English='Open tool settings'}" /></StackPanel></Button>
+                                                    <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding DataContext.OpenValidationMismatchSectionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="SlideText24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.InputSection, Korean='입력 단면 보기', English='View input section'}" /></StackPanel></Button>
+                                                    <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding DataContext.ValidationWorkspace.OpenMismatchDistributionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ChartMultiple24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.ValueDistribution, Korean='값 분포', English='Value distribution'}" /></StackPanel></Button>
+                                                </WrapPanel>
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.NoAutomaticCorrection, Korean='허용 범위와 영역은 자동으로 바꾸지 않습니다.', English='Limits and regions are not changed automatically.'}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate></ListBox.ItemTemplate>
+                                </ListBox>
+                                <TextBlock Margin="20" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.AllMatch, Korean='모든 샘플이 기대 판정과 일치합니다.', English='All samples match the expected decisions.'}" /><Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasValidationMismatches}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding HasValidationResults}" Value="False"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.NoResults, Korean='검증 결과가 없습니다.', English='No validation results.'}" /></DataTrigger>
+                                    </Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <Grid x:Name="ValidationDistributionWorkspace" Visibility="Collapsed" AutomationProperties.AutomationId="ValidationDistributionWorkspace">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="206" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <ListBox x:Name="ValidationDistributionOutputs" Padding="6" Background="Transparent" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,1,0"
+                                         ItemsSource="{Binding ValidationDistributionOutputs}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="ValidationDistributionOutputs" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.JudgedOutputs, Korean='판정 출력', English='Judged outputs'}">
+                                    <ListBox.ItemTemplate><DataTemplate><TextBlock Margin="2,3" FontSize="12" Text="{Binding Label}" TextWrapping="Wrap" /></DataTemplate></ListBox.ItemTemplate>
+                                </ListBox>
+                                <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Margin="12,8">
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding SelectedValidationDistributionOutput.Label}" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.DistributionLegend, Korean='기대 OK ○ · 기대 NG ◆ · 보류 Ⅱ · 노란 고리 = 불일치', English='Expected OK ○ · expected NG ◆ · held-out Ⅱ · yellow ring = mismatch'}" />
+                                        <Border Padding="10,8" Margin="0,6,0,0" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6">
+                                            <TextBlock x:Name="ValidationDistributionReadout" FontSize="12.5" TextWrapping="Wrap" Text="{Binding SelectedValidationDistributionReadout}"
+                                                       AutomationProperties.AutomationId="ValidationDistributionReadout" AutomationProperties.Name="{Binding SelectedValidationDistributionReadout}" />
+                                        </Border>
+                                        <workbench:ValidationDistributionPlot x:Name="ValidationDistributionChart" Margin="0,4,0,0"
+                                                                            Output="{Binding SelectedValidationDistributionOutput}" Candidate="{Binding SelectedValidationThresholdCandidate}"
+                                                                            SelectedSample="{Binding SelectedValidationSetSample, Mode=TwoWay}" AutomationProperties.AutomationId="ValidationDistributionChart" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.Distribution, Korean='값 분포', English='Value distribution'}" />
+                                        <Border Padding="10,8" Margin="0,6,0,0" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6">
+                                            <StackPanel>
+                                                <WrapPanel><TextBlock Margin="0,0,10,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.CommonRecordedLimits, Korean='공통 허용 범위', English='Common recorded limits'}" /><TextBlock FontFamily="Consolas" Text="{Binding SelectedValidationDistributionOutput.RangeText}" /></WrapPanel>
+                                                <WrapPanel Margin="0,6,0,0"><TextBlock Margin="0,4,10,0" Text="{shell:ThreeDText Key=ThreeD.Validation.Candidate, Korean='후보', English='Candidate'}" />
+                                                    <ComboBox x:Name="ValidationDistributionCandidates" Width="250" ItemsSource="{Binding ValidationDistributionCandidates}" DisplayMemberPath="Limits" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.Candidate, Korean='후보', English='Candidate'}" />
+                                                </WrapPanel>
+                                                <WrapPanel Margin="0,6,0,0">
+                                                    <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ProposeValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ProposeDraft, Korean='초안 제안', English='Propose draft'}" />
+                                                    <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ReviewValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ReviewDraft, Korean='초안 검토', English='Review draft'}" />
+                                                    <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ApplyValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ApplyDraft, Korean='후보를 티칭 초안으로', English='Candidate to Teach draft'}" />
+                                                </WrapPanel>
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ValidationThresholdAssistantSummary}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.ManualLimits, Korean='허용 범위는 사용자가 정합니다. 후보는 초안에 입력되며 티칭에서 적용해야 바뀝니다.', English='The operator sets limits. Candidates are drafts and require Apply in Teach.'}" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Grid>
                         <Expander x:Name="ValidationEvidenceExpander"
                                   Grid.Row="4"
                                   Margin="4,6,4,0"
@@ -2120,6 +2331,8 @@
                          Header="{shell:ThreeDText Key=ThreeD.Inspection.Queue, Korean='검사 목록', English='Inspection queue'}"
                          AutomationProperties.AutomationId="InspectionQueueTab">
                     <workbench:InspectionQueueWorkspaceView DataContext="{Binding InspectionQueue}"
+                                                            DockPaneCommands="{Binding DockPaneCommands, RelativeSource={RelativeSource AncestorType=workbench:RecipePipelineReviewView}}"
+                                                            ResultsCommand="{Binding RunRecordContext.SelectWorkspaceCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipePipelineReviewView}}"
                                                             AutomationProperties.AutomationId="InspectionQueueView" />
                 </TabItem>
             </TabControl>

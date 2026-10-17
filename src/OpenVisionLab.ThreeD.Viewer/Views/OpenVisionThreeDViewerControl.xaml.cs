@@ -55,7 +55,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             typeof(OpenVisionThreeDViewerControl),
             new PropertyMetadata(ViewerHostState.Empty));
 
-    private const float FieldOfViewDegrees = 45.0f;
+    private const float FieldOfViewDegrees = CameraMath.DefaultFieldOfViewDegrees;
     private const string DefaultC3DSamplePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
     private const string DefaultGlbSamplePath = @"3D\PublicSamples\glTF\Box.glb";
     private const string DefaultLazSamplePath = @"3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz";
@@ -76,6 +76,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private readonly HeightGridPoint[] generatedPointCloud = ViewerGeneratedPointCloudFactory.Create();
     private readonly ViewerSourceLoadOperationCoordinator sourceLoadOperations = new();
+    private DispatcherOperation? pendingSourceAutoFit;
+    private EventHandler? pendingSourceAutoFitLayoutUpdated;
+    private EventHandler? pendingSourceAutoFitShutdown;
     private readonly ViewerOnlySourceLoadCoordinator viewerOnlySourceLoadCoordinator;
     private readonly C3DHeightGridRenderProxyCache c3dRenderProxyCache = new();
     private readonly C3DRenderResourceState c3dRenderResources = new();
@@ -110,6 +113,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         get => c3dRenderResources.InteractionDisplayListKey;
         set => c3dRenderResources.InteractionDisplayListKey = value;
     }
+    private bool c3dTextureDrawing;
     private readonly C3DGpuTelemetry c3dGpuTelemetry = new();
     private string openGLVendor = "(pending)";
     private string openGLRenderer = "(pending)";
@@ -308,7 +312,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             PublishHostStateChanged);
         viewerOnlySourceLoadCoordinator = new ViewerOnlySourceLoadCoordinator(lazPointCloudLoadCoordinator);
         openGLResourceRetirement = new OpenGLResourceRetirementCoordinator(
-            ReleaseC3DGpuBuffers,
+            gl => { ReleaseC3DGpuBuffers(gl); ReleaseC3DTexture(gl); },
             ReleaseImportedMeshTexture,
             ReleaseC3DDisplayLists,
             DropOpenGLResourceReferencesAfterDispose,

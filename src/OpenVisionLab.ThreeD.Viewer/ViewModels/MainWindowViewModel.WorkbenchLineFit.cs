@@ -37,8 +37,8 @@ public sealed partial class MainWindowViewModel
             ? "Published 3D Line Fit feature extraction"
             : "3D Line Fit Preview - not published";
         LineFitHudSummary = isPublished
-            ? $"3D Line Fit Published | {output.Diagnostics.InlierCount:N0}/{output.Diagnostics.InputPointCount:N0} inliers | residual RMS {output.Diagnostics.ResidualRms:G6}"
-            : $"3D Line Fit Preview | {output.Diagnostics.InlierCount:N0}/{output.Diagnostics.InputPointCount:N0} inliers | residual RMS {output.Diagnostics.ResidualRms:G6}";
+            ? $"3D Line Fit Published | {output.Diagnostics.InlierCount:N0}/{output.Diagnostics.InputPointCount:N0} inliers | residual RMS {output.Diagnostics.ResidualRms:0.##}"
+            : $"3D Line Fit Preview | {output.Diagnostics.InlierCount:N0}/{output.Diagnostics.InputPointCount:N0} inliers | residual RMS {output.Diagnostics.ResidualRms:0.##}";
         OnPropertyChanged(nameof(WorkbenchLineFit));
         OnPropertyChanged(nameof(SelectedWorkbenchLineFitPoint));
         OnPropertyChanged(nameof(IsWorkbenchLineFitPublished));
@@ -68,8 +68,8 @@ public sealed partial class MainWindowViewModel
         if (point is null) return false;
         selectedWorkbenchLineFitPoint = point;
         SelectedEntity = "3D Line Fit point";
-        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"XYZ ({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
-        SelectionSummary = string.Create(CultureInfo.InvariantCulture, $"Line Fit {(point.IsInlier ? "inlier" : "outlier")} | scanline {point.ScanlineIndex} | residual {point.OrthogonalResidual:F6} source-coordinate | projected ({point.ProjectedX:F3}, {point.ProjectedY:F3}, {point.ProjectedZ:F3})");
+        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"XYZ ({point.X:0.##}, {point.Y:0.##}, {point.Z:0.##})");
+        SelectionSummary = string.Create(CultureInfo.InvariantCulture, $"Line Fit {(point.IsInlier ? "inlier" : "outlier")} | scanline {point.ScanlineIndex} | residual {point.OrthogonalResidual:0.##} source-coordinate | projected ({point.ProjectedX:0.##}, {point.ProjectedY:0.##}, {point.ProjectedZ:0.##})");
         ViewerStatus = isWorkbenchLineFitPublished ? "Selected published 3D Line Fit diagnostic" : "Selected 3D Line Fit Preview diagnostic - not published";
         OnPropertyChanged(nameof(SelectedWorkbenchLineFitPoint));
         return true;

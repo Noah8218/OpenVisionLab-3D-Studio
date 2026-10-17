@@ -420,7 +420,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
 
     private string GetLocalizedLifecycleStatus(bool pending) => pending
         ? localization?.StepParameterPendingChanges
-            ?? "Unapplied parameter changes. Apply or discard before changing recipe sessions."
+            ?? "Apply or discard the parameter changes."
         : Draft is null
             ? localization?.StepParameterUnsupportedEditor
                 ?? "This step is preserved, but no typed parameter editor is available yet."

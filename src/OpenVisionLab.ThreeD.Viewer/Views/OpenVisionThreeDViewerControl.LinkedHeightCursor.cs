@@ -10,22 +10,21 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
-    private C3DGridCursor? linkedHeightCursor;
     private C3DGridCursor? lastPublishedThreeDGridHover;
 
     public event EventHandler<C3DGridHoverChangedEventArgs>? C3DGridHoverChanged;
 
-    public C3DGridCursor? LinkedHeightCursor => linkedHeightCursor;
+    public C3DGridCursor? LinkedHeightCursor => viewModel.LinkedHeightCursor;
 
     public void SetLinkedHeightCursor(C3DGridCursor? cursor)
     {
         var next = ValidateLinkedHeightCursor(cursor);
-        if (linkedHeightCursor == next)
+        if (LinkedHeightCursor == next)
         {
             return;
         }
 
-        linkedHeightCursor = next;
+        viewModel.LinkedHeightCursor = next;
         UpdateLinkedProfileCursor(next);
         // The SharpGL host already renders at 60 FPS. Keeping linked-hover
         // updates out of the camera interaction scheduler avoids activating
@@ -121,7 +120,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var hadPublishedHover = lastPublishedThreeDGridHover is not null;
         lastPublishedThreeDGridHover = null;
         linkedHeightHoverSampling.Reset();
-        linkedHeightCursor = null;
+        viewModel.LinkedHeightCursor = null;
         viewModel.ClearProfileLinkedCursor();
         if (hadPublishedHover)
         {
@@ -133,7 +132,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void DrawLinkedHeightCursor(OpenGL gl)
     {
-        if (linkedHeightCursor is not { IsValid: true } cursor
+        if (LinkedHeightCursor is not { IsValid: true } cursor
             || c3dSample is null)
         {
             return;

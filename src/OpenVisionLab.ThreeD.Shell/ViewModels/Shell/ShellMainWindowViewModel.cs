@@ -26,7 +26,8 @@ public enum ShellWorkspaceMode
     Review,
     Calibrate,
     Expert,
-    Exchange
+    Exchange,
+    Validate
 }
 
 public enum ShellInspectionTask
@@ -167,8 +168,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             CanSelectWorkspace);
         SelectWorkspaceCommand = selectWorkspaceCommand;
         openSelectedValidationIssueInTeachCommand = new RelayCommand(
-            _ => OpenSelectedValidationIssueInTeach(),
-            _ => CanOpenSelectedValidationIssueInTeach());
+            parameter => OpenSelectedValidationIssueInTeach(parameter),
+            parameter => CanOpenSelectedValidationIssueInTeach(parameter));
         OpenSelectedValidationIssueInTeachCommand =
             openSelectedValidationIssueInTeachCommand;
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
@@ -248,6 +249,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             IntegrationExchange.PropertyChanged -= OnIntegrationExchangePropertyChanged;
             shellEventCoordinator.Dispose();
             Calibration.Dispose();
+            ResultsWorkspace.Dispose();
             Workbench.Dispose();
         }
     }
@@ -260,7 +262,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             args => OnWorkbenchNavigationStateChanged(this, args),
             args => OnWorkbenchOrderedRunCompleted(this, args),
             () => OnWorkbenchOrderedRunInvalidated(this, EventArgs.Empty),
-            RefreshLocalizedPresentation);
+            RefreshLocalizedPresentation,
+            OpenValidationSetComparisonInTeach);
 
     private void OnIntegrationExchangePropertyChanged(
         object? sender,
@@ -427,6 +430,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 return;
             }
 
+            Workbench.SetInspectionFileView(value == ShellWorkspaceMode.Inspect);
+            Workbench.SetValidationSampleView(value == ShellWorkspaceMode.Validate);
+
             RaisePropertyChanged(nameof(IsInspectWorkspaceSelected));
             RaisePropertyChanged(nameof(IsTeachWorkspaceSelected));
             RaisePropertyChanged(nameof(IsAuthoringWorkspaceSelected));
@@ -477,6 +483,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     {
         get => !IsStartPageSelected && (SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
             or ShellWorkspaceMode.Teach
+            or ShellWorkspaceMode.Validate
             or ShellWorkspaceMode.Inspect
             or ShellWorkspaceMode.Review);
         set
@@ -491,6 +498,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     public bool IsInspectionWorkspaceSelected => !IsStartPageSelected
         && (SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
             or ShellWorkspaceMode.Teach
+            or ShellWorkspaceMode.Validate
             or ShellWorkspaceMode.Inspect
             or ShellWorkspaceMode.Review);
 
@@ -514,8 +522,14 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     public bool IsValidateWorkspaceSelected
     {
-        get => IsInspectWorkspaceSelected;
-        set => IsInspectWorkspaceSelected = value;
+        get => SelectedWorkspaceMode == ShellWorkspaceMode.Validate;
+        set
+        {
+            if (value)
+            {
+                TrySelectWorkspace(ShellWorkspaceMode.Validate);
+            }
+        }
     }
 
     public bool IsReviewWorkspaceSelected
@@ -626,6 +640,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     {
         ShellWorkspaceMode.Workbench => L("검사 구성 | 도구와 검사 순서를 구성합니다", "Inspection Setup | Compose tools and inspection order"),
         ShellWorkspaceMode.Teach => L("티칭 | 데이터, 영역, 설정값과 검출 결과를 확인합니다", "Teach | Configure data, regions, parameters, and detection"),
+        ShellWorkspaceMode.Validate => L("샘플의 기대 역할과 실행 결과를 비교하세요.", "Compare sample expectations with run results."),
         ShellWorkspaceMode.Inspect => L("파일을 추가하고 체크한 파일을 검사하세요.", "Add files, then inspect the checked files."),
         ShellWorkspaceMode.Review => L("결과 | 실행 기록과 출력 정보를 검토합니다", "Results | Review run records and output evidence"),
         ShellWorkspaceMode.Calibrate => L("교정 작업공간 | 오프라인 데이터셋", "Calibration workspace | Offline datasets"),
@@ -921,17 +936,35 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
     }
 
-    private bool CanOpenSelectedValidationIssueInTeach() =>
-        Workbench.SelectedValidationSetStep is { StepId.Length: > 0 } selected
+    private void OpenValidationSetComparisonInTeach()
+    {
+        if (!CanSelectWorkspace(ShellWorkspaceMode.Teach))
+        {
+            StatusText = InspectionStageNavigationStatus;
+            return;
+        }
+
+        TrySelectWorkspace(ShellWorkspaceMode.Teach);
+        if (!Workbench.IsOutputCompareViewerActive && Workbench.ShowOutputCompareViewerCommand.CanExecute(null)) Workbench.ShowOutputCompareViewerCommand.Execute(null);
+    }
+
+    private bool CanOpenSelectedValidationIssueInTeach(object? parameter = null) =>
+        (parameter is ValidationSetSampleRow sample ? sample.MismatchStep : Workbench.SelectedValidationSetStep) is { StepId.Length: > 0 } selected
         && Workbench.PipelineSteps.Any(
             step => string.Equals(
                 step.Id,
                 selected.StepId,
                 StringComparison.OrdinalIgnoreCase))
+        && (parameter is not ValidationSetSampleRow row || Workbench.SelectValidationMismatchSampleCommand.CanExecute(row))
         && CanSelectWorkspace(ShellWorkspaceMode.Teach);
 
-    private void OpenSelectedValidationIssueInTeach()
+    private void OpenSelectedValidationIssueInTeach(object? parameter = null)
     {
+        if (parameter is ValidationSetSampleRow sample)
+        {
+            if (!CanOpenSelectedValidationIssueInTeach(sample)) return;
+            Workbench.SelectValidationMismatchSampleCommand.Execute(sample);
+        }
         if (Workbench.SelectedValidationSetStep is not { StepId.Length: > 0 } selected
             || !CanSelectWorkspace(ShellWorkspaceMode.Teach))
         {
@@ -1036,6 +1069,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         {
             Workbench.ReportOrderedRunRecordFailure(exception.Message, pendingOrderedRunArtifact?.Record);
             currentResultsRecord = null;
+            ResultsWorkspace.SetOpenedRecord(null);
             StatusText = L(
                 $"현재 레시피 실행은 완료되었지만 검사 기록 저장에 실패했습니다: {exception.Message}",
                 $"The current recipe Run completed, but its Run Record could not be saved: {exception.Message}");
@@ -1092,6 +1126,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         currentHtmlReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, htmlReportPath);
         currentCsvReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, csvReportPath);
         currentResultsRecord = null;
+        ResultsWorkspace.SetOpenedRecord(null);
         RefreshCommandCanExecute();
 
         StatusText = "Viewer hosted | viewer smoke failed";
@@ -1152,6 +1187,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         currentHtmlReportPath = null;
         currentCsvReportPath = null;
         currentResultsRecord = null;
+        ResultsWorkspace.SetOpenedRecord(null);
         SelectedRecentRunRecord = null;
         ResetRunRecordComparison();
         RefreshCommandCanExecute();
@@ -1192,6 +1228,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         ResetRunRecordComparison();
         var runRecord = runRecordPersistence.Read(currentRunRecordPath);
         currentResultsRecord = runRecord;
+        ResultsWorkspace.SetOpenedRecord(runRecord);
         var contractPath = ShellEvidencePathResolver.ResolvePath(
             root,
             (useStartupOverrides ? comparisonContractPath : null) ?? runRecord?.Artifacts.ViewerContract,
@@ -1249,7 +1286,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         var metric = steps.SelectMany(step => step.Metrics).FirstOrDefault();
         var metricSummary = metric is null
             ? L("유한 측정값 없음", "No finite metric")
-            : $"{metric.Name} {metric.Value:G6} {metric.Unit}".TrimEnd();
+            : $"{metric.Name} {metric.Value:0.##} {metric.Unit}".TrimEnd();
         RecipeComparisonSummary = L(
             $"레시피 순차 검사 · {record.Status} · {steps.Count}개 단계\n레시피에 연결된 순서대로 실행했으며 미리보기와 결과 적용 상태는 변경하지 않았습니다.",
             $"Explicit Studio ordered Run · {record.Status} · {steps.Count} step(s)\nExecuted by the same ordered graph engine without changing Preview or Publish state.");
@@ -1261,8 +1298,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             steps.Select(step =>
                 $"{step.RecipeIndex + 1:D2} | {step.Id} | {step.ToolName} | {step.Status} | {step.OutputEntityId} | SHA-256 {step.OutputContentSha256 ?? "(none)"}"));
         RunSnapshotSummary = L(
-            $"현재 레시피 실행 · 상태 {record.Status} · 핵심 측정값 {metricSummary} · {record.ElapsedMilliseconds:F3} ms",
-            $"Current recipe Run · {record.Status} · key metric {metricSummary} · {record.ElapsedMilliseconds:F3} ms");
+            $"현재 레시피 실행 · 상태 {record.Status} · 핵심 측정값 {metricSummary} · {record.ElapsedMilliseconds:0.##} ms",
+            $"Current recipe Run · {record.Status} · key metric {metricSummary} · {record.ElapsedMilliseconds:0.##} ms");
         RunSnapshotEvidence =
             $"Recipe: {ShellEvidenceTextParser.FormatShortEvidencePath(root, record.Recipe.Path)} | Source: {ShellEvidenceTextParser.FormatShortEvidencePath(root, record.Source.Path)} | JSON: {ShellEvidenceTextParser.FormatOptionalArtifact(root, currentRunRecordPath)} | Report: {ShellEvidenceTextParser.FormatOptionalArtifact(root, currentReportPath)}";
         RefreshInspectionStepsFromRecord(record);
@@ -1375,7 +1412,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 ? FormatSignedDeltaStepSummary(signedDelta)
                 : metric is null
                     ? "no metrics"
-                    : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
+                    : $"{metric.Name} {metric.Value:0.##} {metric.Unit}";
             var outputHash = string.IsNullOrWhiteSpace(step.OutputContentSha256)
                 ? string.Empty
                 : $" | SHA-256 {step.OutputContentSha256[..Math.Min(12, step.OutputContentSha256.Length)]}";
@@ -1848,8 +1885,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         !double.IsFinite(metric.Value)
             ? $"{metric.Name}={L("계산 불가", "Unavailable")}{(string.IsNullOrWhiteSpace(metric.Unit) ? string.Empty : " " + metric.Unit)}"
             : string.IsNullOrWhiteSpace(metric.Unit)
-            ? $"{metric.Name}={metric.Value:G6}"
-            : $"{metric.Name}={metric.Value:G6} {metric.Unit}";
+            ? $"{metric.Name}={metric.Value:0.##}"
+            : $"{metric.Name}={metric.Value:0.##} {metric.Unit}";
 
     private static string FormatGridRegion(ToolRecipeGridRectangle region) =>
         string.Create(
@@ -1878,7 +1915,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"{timing.TotalElapsedMilliseconds:F3} ms · {string.Join("; ", timing.Stages.Select(stage => $"{stage.StageId} {stage.ElapsedMilliseconds:F3} ms"))}");
+            $"{timing.TotalElapsedMilliseconds:0.##} ms · {string.Join("; ", timing.Stages.Select(stage => $"{stage.StageId} {stage.ElapsedMilliseconds:0.##} ms"))}");
     }
 
     private void RefreshSourceQuality(InspectionRunRecord? runRecord)
@@ -2355,8 +2392,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 $"관찰 시각: {current.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} → {comparison.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}",
                 $"Observed time: {current.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} → {comparison.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}"),
             L(
-                $"관찰 수행 시간: {current.ElapsedMilliseconds:F3} ms → {comparison.ElapsedMilliseconds:F3} ms · 판정/동일성 근거에 사용하지 않음",
-                $"Observed duration: {current.ElapsedMilliseconds:F3} ms → {comparison.ElapsedMilliseconds:F3} ms · excluded from condition identity and decisions")
+                $"관찰 수행 시간: {current.ElapsedMilliseconds:0.##} ms → {comparison.ElapsedMilliseconds:0.##} ms · 판정/동일성 근거에 사용하지 않음",
+                $"Observed duration: {current.ElapsedMilliseconds:0.##} ms → {comparison.ElapsedMilliseconds:0.##} ms · excluded from condition identity and decisions")
         };
         var details = string.Join(
             Environment.NewLine,
@@ -2510,6 +2547,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             }
 
             SelectedRecentRunRecord = null;
+            ResultsWorkspace.RefreshHistory(RecentRunRecords.ToArray());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -2535,6 +2573,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         }
 
         SelectedRecentRunRecord = item;
+        ResultsWorkspace.RefreshHistory(RecentRunRecords.ToArray());
         try
         {
             runRecordPersistence.SaveRecentPaths(RecentRunRecords.Select(recent => recent.Path));
@@ -2553,7 +2592,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 ?? File.GetLastWriteTime(path).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture),
             record?.Status.ToString() ?? "Unavailable",
             record?.Steps?.Count ?? (record?.Step is null ? 0 : 1),
-            record is not null);
+            record is not null)
+        {
+            Snapshot = record is null ? null : ResultsRunSnapshot.FromRecord(record)
+        };
 
     public void UpdateC3DSampleVisible(bool isVisible)
     {
@@ -2706,7 +2748,11 @@ public sealed record RunRecordRecentItem(
     string RecordedAt,
     string Status,
     int StepCount,
-    bool IsAvailable);
+    bool IsAvailable)
+{
+    public ResultsRunSnapshot? Snapshot { get; init; }
+    public string SourceName => Snapshot?.SourceName ?? Name;
+}
 
 public sealed class EvidenceArtifactOpenRequestEventArgs : EventArgs
 {

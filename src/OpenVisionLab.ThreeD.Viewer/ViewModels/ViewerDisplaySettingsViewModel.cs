@@ -25,7 +25,8 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             ViewerColorMap.Solid,
             ViewerColorMap.Grayscale,
             ViewerColorMap.Height,
-            ViewerColorMap.Thermal
+            ViewerColorMap.Thermal,
+            ViewerColorMap.ColorVisionAssist
         ]);
     private static readonly IReadOnlyList<ViewerColorMap> C3DResultColorMaps =
         Array.AsReadOnly([
@@ -33,6 +34,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             ViewerColorMap.Grayscale,
             ViewerColorMap.Height,
             ViewerColorMap.Thermal,
+            ViewerColorMap.ColorVisionAssist,
             ViewerColorMap.Deviation
         ]);
     private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSourceColorMaps =
@@ -77,6 +79,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     private bool fallbackApplied;
     private string fallbackSummary = "No display fallback.";
     private int displaySettingsRevision;
+    private bool floorGridVisible = true;
     private SourceNormalQualityReport? importedMeshNormalQuality;
     private double pointSize = 2.0;
     private string selectedRenderDensity = "Balanced";
@@ -188,6 +191,15 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
     public int DisplaySettingsRevision => displaySettingsRevision;
+
+    public bool FloorGridVisible
+    {
+        get => floorGridVisible;
+        set
+        {
+            if (SetField(ref floorGridVisible, value)) NotifyRenderSettingsChanged();
+        }
+    }
 
     public double PointSize
     {
@@ -355,6 +367,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         ViewerColorMap.Grayscale => "Grayscale",
         ViewerColorMap.Height => "Height",
         ViewerColorMap.Thermal => "Thermal",
+        ViewerColorMap.ColorVisionAssist => "ColorVisionAssist",
         ViewerColorMap.Deviation => "Deviation",
         ViewerColorMap.Rgb => "RGB",
         ViewerColorMap.Intensity => "Intensity",
@@ -557,7 +570,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         {
             ViewerDisplaySourceKind.C3DHeightGrid when colorMap is ViewerColorMap.Grayscale
                 or ViewerColorMap.Height
-                or ViewerColorMap.Thermal => SourceQualityChannel.Height,
+                or ViewerColorMap.Thermal or ViewerColorMap.ColorVisionAssist => SourceQualityChannel.Height,
             ViewerDisplaySourceKind.ImportedTriangleMesh when colorMap == ViewerColorMap.Source => SourceQualityChannel.Color,
             ViewerDisplaySourceKind.ImportedTriangleMesh when colorMap == ViewerColorMap.Normal => SourceQualityChannel.Normal,
             ViewerDisplaySourceKind.PointCloud when colorMap == ViewerColorMap.Rgb => SourceQualityChannel.Color,
@@ -781,13 +794,14 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             "Grayscale" => ViewerColorMap.Grayscale,
             "Height" => ViewerColorMap.Height,
             "Thermal" => ViewerColorMap.Thermal,
+            "ColorVisionAssist" => ViewerColorMap.ColorVisionAssist,
             "Deviation" => ViewerColorMap.Deviation,
             "RGB" => ViewerColorMap.Rgb,
             "Intensity" => ViewerColorMap.Intensity,
             "Normal" => ViewerColorMap.Normal,
             _ => default
         };
-        return label is "Source" or "Solid" or "Grayscale" or "Height" or "Thermal" or "Deviation" or "RGB" or "Intensity" or "Normal";
+        return label is "Source" or "Solid" or "Grayscale" or "Height" or "Thermal" or "ColorVisionAssist" or "Deviation" or "RGB" or "Intensity" or "Normal";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

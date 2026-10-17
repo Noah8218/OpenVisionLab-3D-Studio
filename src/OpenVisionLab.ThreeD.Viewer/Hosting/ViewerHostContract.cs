@@ -1,8 +1,29 @@
 using System.Reflection;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.Hosting;
+
+/// <summary>Read-only teaching result caption. Source/ROI identity and raw measurement remain authoritative.</summary>
+public sealed record ViewerTeachingResultLabel(
+    string StepId, string ToolName, string MetricName, double? Value, string ValueText, string Unit,
+    ResultStatus? Status, bool IsCurrent, ToolRecipeSelection Anchor, bool IsVisible = true)
+{
+    public bool IsValid => !string.IsNullOrWhiteSpace(StepId) && !string.IsNullOrWhiteSpace(ValueText)
+        && (Value is null || double.IsFinite(Value.Value))
+        && Anchor is { GridRectangle: { Row: >= 0, Column: >= 0, RowCount: > 0, ColumnCount: > 0 } rectangle,
+            SourceBinding: { GridWidth: > 0, GridHeight: > 0 } binding }
+        && !string.IsNullOrWhiteSpace(binding.ContentSha256)
+        && rectangle.RowCount <= binding.GridHeight - rectangle.Row && rectangle.ColumnCount <= binding.GridWidth - rectangle.Column;
+    public string Caption => !IsCurrent ? $"↻ {ValueText}" : Status switch
+    {
+        ResultStatus.Error => $"! {ValueText}",
+        ResultStatus.Fail => $"× {ValueText} NG",
+        _ => ValueText
+    };
+    public string Description => $"{ToolName} · {MetricName} · {(Value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? ValueText)} {Unit}";
+}
 
 public static class ViewerHostContract
 {
@@ -301,7 +322,7 @@ public sealed record ViewerHostSceneDisplayState(
 {
     public static ViewerHostSceneDisplayState Empty { get; } = new(
         SceneContractSummary: "(pending)",
-        TransformSummary: "Transform: Identity | T(0.000, 0.000, 0.000) | R(0.0, 0.0, 0.0) | S 1.000",
+        TransformSummary: "Transform: Identity | T(0, 0, 0) | R(0.0, 0.0, 0.0) | S 1",
         AlignmentSummary: "Alignment: Not aligned | source frame",
         CoordinateMappingSummary: "Mapping: source = aligned | raw-height retained",
         C3DSamplePointCount: "(not loaded)",
@@ -349,6 +370,11 @@ public sealed record ViewerHostProfileState(
     public bool IsPicking { get; init; }
     public string GridDistance { get; init; } = "—";
     public string HeightDelta { get; init; } = "—";
+    public double GridDistanceCells { get; init; }
+    public double MinimumRaw { get; init; } = double.NaN;
+    public double MaximumRaw { get; init; } = double.NaN;
+    public double LinkedCursorRawHeight { get; init; } = double.NaN;
+    public double LinkedCursorDistanceCells { get; init; } = double.NaN;
 
     public static ViewerHostProfileState Empty { get; } = new(
         Visible: false,
@@ -392,6 +418,12 @@ public sealed record ViewerHostPresentationState(
     int C3DHeightColorRangeRevision,
     string C3DHeightColorRangeSummary)
 {
+    public HeightDisplayOptions HeightDisplayOptions { get; init; } = new();
+    public string HeightDisplayWorkspace { get; init; } = "teach";
+    public string HeightDisplayMapId { get; init; } = "source";
+    public bool HasHeightDisplayRegion { get; init; }
+    public bool CanUseMeasurementColor { get; init; }
+    public string MeasurementColorSummary { get; init; } = string.Empty;
     public static ViewerHostPresentationState Empty { get; } = new(
         HudDetailsVisible: false,
         C3DHeightDistributionVisible: false,
@@ -409,9 +441,19 @@ public sealed record ViewerHostPresentationState(
     /// </summary>
     public IReadOnlyList<string> AvailableColorMaps { get; init; } = [];
 
+    public bool CanLoadC3DTexture { get; init; }
+    public bool HasC3DTexture { get; init; }
+    public bool C3DTextureVisible { get; init; }
+    public string C3DTextureName { get; init; } = string.Empty;
+    public string C3DTextureError { get; init; } = string.Empty;
     public string SelectedColorMap { get; init; } = string.Empty;
 
     public bool CanSelectColorMap { get; init; }
+
+    public IReadOnlyList<string> AvailableGeometryStyles { get; init; } = [];
+    public string SelectedGeometryStyle { get; init; } = string.Empty;
+    public bool CanSelectGeometryStyle { get; init; }
+    public bool FloorGridVisible { get; init; } = true;
 
     public IReadOnlyList<ViewerDiagnosticChannelOption> DiagnosticChannelOptions { get; init; } = [];
 
@@ -441,6 +483,8 @@ public sealed record ViewerHostInspectionState(
         ProjectionMode: ViewerProjectionMode.Perspective);
 
     public bool IsTopOrthographicView => ProjectionMode == ViewerProjectionMode.TopOrthographic;
+
+    public bool IsOrthographicView => ProjectionMode is ViewerProjectionMode.TopOrthographic or ViewerProjectionMode.Orthographic;
 
     public bool IsPerspectiveView => ProjectionMode == ViewerProjectionMode.Perspective;
 }
@@ -519,9 +563,21 @@ public interface IOpenVisionThreeDViewerHost
 
     bool TrySetSelectedColorMap(string colorMap);
 
+    /// <summary>Attaches a full-frame aligned image to the current C3D source for display only.</summary>
+    bool TryLoadC3DTexture(string path) => false;
+    bool TrySetC3DTextureVisible(bool visible) => false;
+    bool TryClearC3DTexture() => false;
+    IReadOnlyDictionary<string, HeightTextureImageSettings> CaptureC3DTextureSettings() => new Dictionary<string, HeightTextureImageSettings>();
+    void RestoreC3DTextureSettings(IReadOnlyDictionary<string, HeightTextureImageSettings>? settings) { }
+
+    bool TrySetSelectedGeometryStyle(string geometryStyle) => false;
+    bool TrySetFloorGridVisible(bool visible) => false;
+
     bool TrySetSelectedDiagnosticChannel(ViewerDiagnosticChannelOption? channel);
 
     bool TrySetResultOverlayVisible(bool visible);
+
+    bool TrySetTeachingResultLabels(IReadOnlyList<ViewerTeachingResultLabel> labels) => false;
 
     bool TrySetMeasurementVisible(bool visible);
 
@@ -536,8 +592,14 @@ public interface IOpenVisionThreeDViewerHost
     bool TryResetC3DHeightColorRange();
 
     bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum);
+    bool TryApplyHeightDisplayOptions(HeightDisplayOptions options, double? minimum = null, double? maximum = null) => false;
+    bool TryApplyLinkedHeightDisplayState(HeightDisplayOptions options, double minimum, double maximum) => false;
+    void SetHeightDisplayContext(string workspace, string mapId, string mapName) { }
+    void SetHeightDisplayLinked(bool linked) { }
+    IReadOnlyDictionary<string, string> CaptureHeightDisplayModes() => new Dictionary<string, string>();
+    void RestoreHeightDisplayModes(IReadOnlyDictionary<string, string> modes) { }
 
-    bool TrySetC3DHeightEmphasis(int emphasis);
+    bool TrySetC3DHeightEmphasis(int emphasis) => false;
 
     void FitAll();
 

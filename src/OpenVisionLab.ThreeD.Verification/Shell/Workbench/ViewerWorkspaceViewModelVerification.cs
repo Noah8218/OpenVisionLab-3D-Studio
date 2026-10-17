@@ -139,6 +139,20 @@ internal static class ViewerWorkspaceViewModelVerification
                 && session.FocusedSlotId == ViewerWorkspaceSession.AuxiliarySlotId
                 && selection.FocusedViewerSlotId == ViewerWorkspaceSession.AuxiliarySlotId && owner.CanLinkViewerCameras);
             owner.MainViewerContentId = "output.a";
+            Check("D45 an explicit Main source choice overrides the selected tool display without changing its input or output",
+                owner.CanEditMainViewerPin && owner.EffectiveMainViewerContentId == "output.a"
+                && selection.SelectedInputEntityId == initialSelection.SelectedInputEntityId
+                && selection.SelectedOutputEntityId == "output.b");
+            owner.ToggleViewerPaneMaximizedCommand.Execute(ViewerWorkspaceSession.AuxiliarySlotId);
+            Check("D45 pane maximization preserves split layout, source pins and selected tool",
+                owner.MaximizedViewerSlotId == ViewerWorkspaceSession.AuxiliarySlotId
+                && session.Layout == ViewerWorkspaceLayout.SplitVertical
+                && owner.MainViewerContentId == "output.a" && owner.AuxiliaryViewerContentId == "output.b"
+                && selection.SelectedStepId == initialSelection.SelectedStepId);
+            owner.ToggleViewerPaneMaximizedCommand.Execute(ViewerWorkspaceSession.AuxiliarySlotId);
+            Check("D45 the same pane command restores display without repinning or executing",
+                owner.MaximizedViewerSlotId.Length == 0 && session.Layout == ViewerWorkspaceLayout.SplitVertical
+                && !owner.ToggleViewerPaneMaximizedCommand.CanExecute("viewer.unknown"));
             owner.MainViewerContentId = ViewerWorkspaceViewModel.HeightImageViewerContentId;
             owner.AuxiliaryViewerContentId = "output.missing";
             Check("main accepts only 3D candidates and invalid pins leave selection unchanged",
@@ -238,6 +252,60 @@ internal static class ViewerWorkspaceViewModelVerification
                 && owner.ViewerWorkspaceCandidates.Select(candidate => candidate.Id).SequenceEqual(teachingCandidates)
                 && teachingPins == (session.MainContentId, session.AuxiliaryContentId, session.Layout)
                 && selection.Current == teachingSelection);
+
+            owner.SetSingleViewerLayoutCommand.Execute(null);
+            owner.SetInspectionDataViewCommand.Execute(ViewerInspectionDataView.InputOutput);
+            Check("D90 non-readonly InputOutput does not widen auxiliary focus beyond Session.Single",
+                owner.EffectiveViewerLayout == ViewerWorkspaceLayout.SplitVertical && session.Layout == ViewerWorkspaceLayout.Single
+                && !owner.FocusViewerWorkspaceSlotCommand.CanExecute(ViewerWorkspaceSession.AuxiliarySlotId));
+            owner.SetInspectionDataViewCommand.Execute(ViewerInspectionDataView.Input);
+            compareSlots = ("output.a", "output.b", "output.c");
+            foreach (var savedLayout in new[] { ViewerWorkspaceLayout.Single, ViewerWorkspaceLayout.SplitVertical, ViewerWorkspaceLayout.SplitHorizontal,
+                ViewerWorkspaceLayout.Four, ViewerWorkspaceLayout.PopOut, ViewerWorkspaceLayout.HeightImageOnly })
+            {
+                session.SetLayout(savedLayout);
+                var savedPins = (session.MainContentId, session.AuxiliaryContentId);
+                owner.ShowOutputCompareViewerCommand.Execute(null);
+                Check($"D90 {savedLayout} active compare preserves the Session split and A/B contract",
+                    owner.IsOutputCompareViewerActive && session.Layout == ViewerWorkspaceLayout.SplitVertical
+                    && owner.EffectiveViewerLayout == ViewerWorkspaceLayout.SplitVertical
+                    && owner.EffectiveMainViewerContentId == compareSlots.A && owner.EffectiveAuxiliaryViewerContentId == compareSlots.B);
+                inspectionInput = (true, null);
+                owner.RefreshInspectionFileContext();
+                var hasAuxiliarySlot = savedLayout is ViewerWorkspaceLayout.SplitVertical or ViewerWorkspaceLayout.SplitHorizontal
+                    or ViewerWorkspaceLayout.PopOut or ViewerWorkspaceLayout.Four;
+                Check($"D90 {savedLayout} readonly return preserves saved layout and visible auxiliary focus",
+                    !owner.IsOutputCompareViewerActive && session.Layout == ViewerWorkspaceLayout.SplitVertical
+                    && owner.EffectiveViewerLayout == savedLayout
+                    && owner.IsSingleViewerLayout == (savedLayout == ViewerWorkspaceLayout.Single)
+                    && owner.IsSplitVerticalViewerLayout == (savedLayout == ViewerWorkspaceLayout.SplitVertical)
+                    && owner.FocusViewerWorkspaceSlotCommand.CanExecute(ViewerWorkspaceSession.AuxiliarySlotId) == hasAuxiliarySlot
+                    && owner.ToggleViewerPaneMaximizedCommand.CanExecute(ViewerWorkspaceSession.AuxiliarySlotId)
+                        == (savedLayout is ViewerWorkspaceLayout.SplitVertical or ViewerWorkspaceLayout.SplitHorizontal or ViewerWorkspaceLayout.Four or ViewerWorkspaceLayout.HeightImageOnly));
+                inspectionInput = (false, null);
+                owner.RefreshInspectionFileContext();
+                Check($"D90 {savedLayout} Teach reentry retains active A/B and saved pins",
+                    owner.IsOutputCompareViewerActive && owner.EffectiveViewerLayout == ViewerWorkspaceLayout.SplitVertical
+                    && owner.EffectiveMainViewerContentId == compareSlots.A && owner.EffectiveAuxiliaryViewerContentId == compareSlots.B
+                    && savedPins == (session.MainContentId, session.AuxiliaryContentId));
+                owner.EndOutputCompareViewerCommand.Execute(null);
+                Check($"D90 {savedLayout} explicit comparison end restores the original session layout",
+                    !owner.IsOutputCompareViewerActive && session.Layout == savedLayout && owner.EffectiveViewerLayout == savedLayout);
+            }
+            session.SetLayout(ViewerWorkspaceLayout.Single);
+            owner.ShowOutputCompareViewerCommand.Execute(null);
+            owner.SplitViewerHorizontallyCommand.Execute(null);
+            Check("D90 explicit horizontal layout exits compare and applies the chosen layout",
+                !owner.IsOutputCompareViewerActive && session.Layout == ViewerWorkspaceLayout.SplitHorizontal && owner.IsSplitHorizontalViewerLayout);
+            owner.ShowOutputCompareViewerCommand.Execute(null);
+            inspectionInput = (true, null);
+            owner.RefreshInspectionFileContext();
+            owner.SetSingleViewerLayoutCommand.Execute(null);
+            Check("D90 explicit Single in readonly exits suspended compare and applies Single",
+                !owner.IsOutputCompareViewerActive && session.Layout == ViewerWorkspaceLayout.Single && owner.IsSingleViewerLayout
+                && !owner.FocusViewerWorkspaceSlotCommand.CanExecute(ViewerWorkspaceSession.AuxiliarySlotId));
+            inspectionInput = (false, null);
+            owner.RefreshInspectionFileContext();
 
             notifications.Clear();
             var beforeLocalizationSelection = selection.Current;

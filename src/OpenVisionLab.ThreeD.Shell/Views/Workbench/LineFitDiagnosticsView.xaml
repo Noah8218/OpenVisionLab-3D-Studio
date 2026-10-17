@@ -107,7 +107,7 @@
                                     <ColumnDefinition Width="48" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock FontFamily="Consolas" FontSize="12" Text="{Binding ScanlineIndex}" />
-                                <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="12" Text="{Binding OrthogonalResidual, StringFormat=F6}" />
+                                <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="12" Text="{Binding OrthogonalResidual, StringFormat=0.##}" />
                                 <TextBlock Grid.Column="2"
                                            FontSize="12"
                                            Text="{Binding IsInlier, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=LineFitPointState}" />

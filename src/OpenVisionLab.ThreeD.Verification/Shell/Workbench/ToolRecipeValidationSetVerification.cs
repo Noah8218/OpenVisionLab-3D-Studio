@@ -167,7 +167,7 @@ internal static class ToolRecipeValidationSetVerification
                         ToolRecipeValidationSampleRole.Bad),
                     new ToolRecipeValidationSampleInput(
                         taughtPath,
-                        ToolRecipeValidationSampleRole.HeldOut)
+                        ToolRecipeValidationSampleRole.HeldOut) { Expectation = ToolRecipeValidationExpectation.Ok, Usage = ToolRecipeValidationUsage.HeldOut }
                 ]);
             var labeledEvidence =
                 ToolRecipeLabeledEvidenceAnalyzer.Analyze(
@@ -301,7 +301,7 @@ internal static class ToolRecipeValidationSetVerification
                         ToolRecipeValidationSampleRole.Bad),
                     new ToolRecipeValidationSampleInput(
                         thresholdHeldOutPath,
-                        ToolRecipeValidationSampleRole.HeldOut)
+                        ToolRecipeValidationSampleRole.HeldOut) { Expectation = ToolRecipeValidationExpectation.Ok, Usage = ToolRecipeValidationUsage.HeldOut }
                 ]);
             Check(
                 "threshold fixture executes two Good two Bad and one Held-out sample",
@@ -365,7 +365,7 @@ internal static class ToolRecipeValidationSetVerification
                         ToolRecipeValidationSampleRole.Good),
                     new ToolRecipeValidationSampleInput(
                         thresholdHeldOutPath,
-                        ToolRecipeValidationSampleRole.HeldOut)
+                        ToolRecipeValidationSampleRole.HeldOut) { Expectation = ToolRecipeValidationExpectation.Ok, Usage = ToolRecipeValidationUsage.HeldOut }
                 ]);
             var missingBadReport =
                 ToolRecipeThresholdCandidateAnalyzer.Analyze(
@@ -767,8 +767,13 @@ internal static class ToolRecipeValidationSetVerification
                             .MaximumReferenceRelativeMean)
                 .ToArray();
             Check(
-                "Completeness policy observations preserve one worst-cell locator per sample and bound",
-                completenessPolicyObservations.Length == 15
+                "Completeness policy observations preserve one worst-cell locator per development sample and bound",
+                completenessPolicyObservations.Length == completenessFixture.Samples.Count(sample =>
+                    sample.Role is ToolRecipeValidationSampleRole.Good or ToolRecipeValidationSampleRole.Bad) * 3
+                && completenessPolicyObservations.GroupBy(observation => (observation.SampleOrder, observation.MetricName)).All(group => group.Count() == 1)
+                && completenessPolicyObservations.All(observation => observation.SampleOrder > 0
+                    && observation.SampleOrder <= completenessFixture.Samples.Count
+                    && completenessFixture.Samples[observation.SampleOrder - 1].Role is ToolRecipeValidationSampleRole.Good or ToolRecipeValidationSampleRole.Bad)
                 && completenessPolicyObservations.All(observation =>
                     C3DCompletenessMetricNames.TryGetCellId(
                         $"{observation.EvidenceLocator} "

@@ -373,6 +373,48 @@ internal static class SelectedStepExecutionRoutingVerification
         Check("R19 replacement releases retained results",
             !resultOwner.TryGetCompletedResult(firstStep, out _, out _) && !resultOwner.TryGetCompletedResult(secondStep, out _, out _), "cleared");
 
+        var activityRecords = new System.Collections.Concurrent.ConcurrentQueue<(bool Run, ResultStatus? Status, string Reason, bool Canceled)>();
+        var activityStatus = (ResultStatus?)ResultStatus.Fail;
+        var activityMode = "success";
+        var activityPublications = 0;
+        using var activityOwner = new ToolWorkbenchSelectedStepExecutionOwner(() => firstStep,
+            new Dictionary<string, ToolWorkbenchSelectedStepExecutionRoute>
+            {
+                [firstStep.ToolId] = new(() => activityMode switch
+                {
+                    "error" => Task.FromException<bool>(new InvalidOperationException("explicit execution failure")),
+                    "cancel" => Task.FromCanceled<bool>(new CancellationToken(canceled: true)),
+                    "blocked" => Task.FromResult(false),
+                    _ => Task.FromResult(true)
+                }, () => true, () => activityPublications++, () => true, () => { }, () => false, () => { })
+            }, (category, message) => commandLog.Add($"{category}:{message}"),
+            captureOutput: () => new SelectedToolOutputEvidence("Value", "5", "raw-height", "Pass", Reason: "original producer reason") { ExecutionStatus = activityStatus },
+            recordExecution: (_, run, status, _, reason, canceled) => activityRecords.Enqueue((run, status, reason, canceled)));
+        foreach (var status in new ResultStatus?[] { ResultStatus.Pass, ResultStatus.Fail, ResultStatus.Warning, ResultStatus.Error, null })
+        {
+            activityStatus = status;
+            activityOwner.RunCommand.Execute(null);
+            Check($"Activity uses the typed {status?.ToString() ?? "calculated"} result", activityRecords.Last().Status == status && activityRecords.Last().Run
+                && !activityRecords.Last().Canceled && activityRecords.Last().Reason == "original producer reason", "Typed status and original reason are independent from the conflicting 'Pass' label.");
+        }
+        activityOwner.PreviewCommand.Execute(null);
+        Check("Explicit Preview is recorded without publication", !activityRecords.Last().Run && activityPublications == 5, $"publications={activityPublications}");
+        foreach (var mode in new[] { "error", "cancel", "blocked" })
+        {
+            activityMode = mode;
+            activityOwner.RunCommand.Execute(null);
+            Check($"Activity records {mode} without a successful publication", activityPublications == 5
+                && (mode != "error" || activityRecords.Last().Reason == "explicit execution failure")
+                && (mode == "cancel" ? activityRecords.Last().Canceled && activityRecords.Last().Status is null
+                    : activityRecords.Last().Status == (mode == "error" ? ResultStatus.Error : ResultStatus.NotRun)), $"records={activityRecords.Count}");
+        }
+        activityMode = "success";
+        activityOwner.RunCommand.Execute(null);
+        Check("Explicit retry recovers one execution record and publication", activityPublications == 6 && activityRecords.Count == 10, $"publications={activityPublications};records={activityRecords.Count}");
+        activityOwner.Dispose();
+        activityOwner.RunCommand.Execute(null);
+        Check("Disposed execution owner cannot append Activity", activityRecords.Count == 10 && activityPublications == 6, "No late execution or display mutation.");
+
         owner.Dispose();
         Check(
             "disposed owner fails closed for all selected-step commands",

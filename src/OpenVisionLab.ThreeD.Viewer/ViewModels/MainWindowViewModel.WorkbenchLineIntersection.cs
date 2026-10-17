@@ -42,13 +42,13 @@ public sealed partial class MainWindowViewModel
         var status = isPublished ? "Published" : "Preview - not published";
         SelectionSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{status} Line Intersection | {output.OutputRole} | XYZ ({output.CornerAnchorX:F3}, {output.CornerAnchorY:F3}, {output.CornerAnchorZ:F3}) | gap {output.ClosestApproachDistance:F6}");
+            $"{status} Line Intersection | {output.OutputRole} | XYZ ({output.CornerAnchorX:0.##}, {output.CornerAnchorY:0.##}, {output.CornerAnchorZ:0.##}) | gap {output.ClosestApproachDistance:0.##}");
         ViewerStatus = isPublished
             ? "Published full-XYZ line intersection feature extraction"
             : "Full-XYZ line intersection Preview - not published";
         LineIntersectionHudSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Line Intersection {status} | {output.OutputRole} | gap {output.ClosestApproachDistance:G6} | acute {output.AcuteAngleDegrees:G5}°");
+            $"Line Intersection {status} | {output.OutputRole} | gap {output.ClosestApproachDistance:0.##} | acute {output.AcuteAngleDegrees:0.##}°");
         OnPropertyChanged(nameof(WorkbenchFirstIntersectionLine));
         OnPropertyChanged(nameof(WorkbenchSecondIntersectionLine));
         OnPropertyChanged(nameof(WorkbenchLineIntersection));

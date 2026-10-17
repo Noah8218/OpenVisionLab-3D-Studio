@@ -17,7 +17,7 @@ internal sealed class ToolWorkbenchArtifactProjection
 
         var artifacts = new List<ToolWorkbenchArtifactItem>
         {
-            CreateSourceArtifact(snapshot)
+            WithHeightMetadata(snapshot, CreateSourceArtifact(snapshot))
         };
 
         foreach (var selection in snapshot.Selections)
@@ -42,10 +42,73 @@ internal sealed class ToolWorkbenchArtifactProjection
 
         foreach (var step in snapshot.PipelineSteps)
         {
-            artifacts.Add(CreateStepArtifact(snapshot, step));
+            artifacts.Add(WithHeightMetadata(snapshot, CreateStepArtifact(snapshot, step)));
         }
 
         return artifacts;
+    }
+
+    // Read cached SDK statistics only when their full identity matches the current artifact.
+    // Declared, disabled and stale outputs must never retain an earlier map's values.
+    private static ToolWorkbenchArtifactItem WithHeightMetadata(
+        ToolWorkbenchArtifactProjectionSnapshot snapshot, ToolWorkbenchArtifactItem artifact)
+    {
+        if (artifact.State is not ("Ready" or "Preview" or "Published")) return artifact;
+        if (artifact.NodeKind == "Source" && snapshot.SourceQuality is { } quality
+            && quality.Source.EntityId == artifact.Id
+            && string.Equals(quality.Source.ContentSha256, artifact.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            && quality.Coordinates.Unit == artifact.Unit && quality.Coordinates.FrameId == artifact.FrameId)
+        {
+            return artifact with
+            {
+                Minimum = quality.Height.Minimum,
+                Maximum = quality.Height.Maximum,
+                ValidSampleCount = quality.Coverage.ValidSampleCount,
+                MissingSampleCount = quality.Coverage.MissingSampleCount,
+                GridWidth = quality.Grid.Width,
+                GridHeight = quality.Grid.Height
+            };
+        }
+
+        var output = artifact.PipelineStep?.ToolId switch
+        {
+            "roi-crop" => snapshot.RoiCrop.Output,
+            "level-surface" => snapshot.LevelSurface.Output,
+            "domain-mask" => snapshot.DomainMask.Output,
+            "height-threshold-background-removal" => snapshot.HeightThreshold.Output,
+            "remove-outlier-pixels" => snapshot.RemoveOutlier.Output,
+            "filter" => snapshot.GetPublishedFilterOutput?.Invoke(artifact.Id) ?? snapshot.Filter.Output,
+            _ => null
+        };
+        if (output is not null && output.EntityId == artifact.Id
+            && string.Equals(output.ContentSha256, artifact.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            && output.Unit == artifact.Unit && output.FrameId == artifact.FrameId)
+        {
+            return artifact with
+            {
+                Minimum = output.ValidCount > 0 ? output.Minimum : null,
+                Maximum = output.ValidCount > 0 ? output.Maximum : null,
+                ValidSampleCount = output.ValidCount,
+                MissingSampleCount = output.MissingCount,
+                GridWidth = output.Width,
+                GridHeight = output.Height
+            };
+        }
+
+        if (snapshot.SignedDeltaBackgroundSubtraction?.Output is { } delta
+            && delta.OutputEntityId == artifact.Id
+            && string.Equals(delta.OutputContentSha256, artifact.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            && delta.Unit == artifact.Unit && delta.FrameId == artifact.FrameId)
+        {
+            return artifact with
+            {
+                ValidSampleCount = delta.OutputValidSampleCount,
+                MissingSampleCount = delta.OutputMissingSampleCount,
+                GridWidth = delta.Width,
+                GridHeight = delta.Height
+            };
+        }
+        return artifact;
     }
 
     private static ToolWorkbenchArtifactItem CreateSourceArtifact(
@@ -895,4 +958,5 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     ToolWorkbenchArtifactPreview<ToolRecipeHeightMeasurementOutput> Measurement,
     ToolWorkbenchArtifactPreview<C3DSignedHeightDeltaArtifact>? SignedDeltaBackgroundSubtraction = null,
     Func<string, C3DHeightFieldSnapshot?>? GetPublishedFilterOutput = null,
-    Func<string, C3DHeightDifferenceEdgePointSet?>? GetPublishedHeightDifferenceEdgeOutput = null);
+    Func<string, C3DHeightDifferenceEdgePointSet?>? GetPublishedHeightDifferenceEdgeOutput = null,
+    SourceQualityReport? SourceQuality = null);

@@ -294,7 +294,7 @@ public partial class MainWindow : Window
             {
                 SelectWorkbenchWorkspace = () => _viewModel.IsSetupWorkspaceSelected = true,
                 SelectTeachWorkspace = () => _viewModel.IsTeachWorkspaceSelected = true,
-                SelectInspectWorkspace = () => _viewModel.IsValidateWorkspaceSelected = true,
+                SelectInspectWorkspace = () => _viewModel.IsInspectWorkspaceSelected = true,
                 SelectReviewWorkspace = () => _viewModel.IsResultsWorkspaceSelected = true,
                 UseTopView = _viewer.UseTopView,
                 UsePerspectiveView = _viewer.UsePerspectiveView,
@@ -405,7 +405,6 @@ public partial class MainWindow : Window
                 CancelC3DSourceLoad = (_, _) => _workbenchLifecycle.CancelC3DSourceLoad(),
                 ToolLab = OnWorkbenchToolLabRequested,
                 SelectValidationSetSources = OnWorkbenchSelectValidationSetSourcesRequested,
-                ValidationSetComparison = OnWorkbenchValidationSetComparisonRequested,
                 SelectInspectionInputFiles = OnInspectionQueueSelectInputFilesRequested,
                 SelectInspectionInputFolder = OnInspectionQueueSelectInputFolderRequested,
                 ExportInspectionQueueCsv = OnInspectionQueueExportCsvRequested,
@@ -744,9 +743,6 @@ public partial class MainWindow : Window
             _viewModel.Workbench.SetValidationSetSources(paths);
         }
     }
-
-    private void OnWorkbenchValidationSetComparisonRequested(object? sender, EventArgs args) =>
-        ToolWorkbench.ActivateOutputComparePane();
 
     private void OnInspectionQueueSelectInputFilesRequested(object? sender, EventArgs args)
     {

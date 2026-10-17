@@ -503,7 +503,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private (Vector3 origin, Vector3 direction) CreatePickRay(Point screenPoint)
     {
-        return viewModel.IsTopOrthographicView
+        return viewModel.IsOrthographicView
             ? CameraMath.CreateOrthographicPickRay(
                 screenPoint,
                 Viewport.ActualWidth,
@@ -531,7 +531,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.CameraDistance,
             target,
             eye,
-            viewModel.IsTopOrthographicView ? viewModel.OrthographicHeight : null);
+            viewModel.IsOrthographicView ? viewModel.OrthographicHeight : null);
 
         viewModel.Pan(movement.X, movement.Y, movement.Z);
     }

@@ -201,7 +201,7 @@ public sealed partial class ToolWorkbenchViewModel
         var decision = evidence.Assessment?.Decision.ToString().ToUpperInvariant()
                        ?? "RAW";
         var rmse = coverage.InlierRmse is { } value
-            ? value.ToString("G5", CultureInfo.InvariantCulture)
+            ? value.ToString("0.##", CultureInfo.InvariantCulture)
             : "n/a";
         return string.Create(
             CultureInfo.InvariantCulture,

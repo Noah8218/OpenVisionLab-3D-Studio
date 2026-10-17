@@ -85,6 +85,31 @@ public sealed partial class MainWindowViewModel
         UpdateCameraStatus();
     }
 
+    private void SetCameraOrientation(object? parameter)
+    {
+        if (parameter is not ("Top" or "Bottom" or "Front" or "Back" or "Right" or "Left" or "Home")) return;
+        if (parameter is "Top")
+        {
+            TopViewRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        var orientation = parameter switch
+        {
+            "Bottom" => (Yaw: 0.0, Pitch: -90.0),
+            "Front" => (Yaw: 0.0, Pitch: 0.0),
+            "Back" => (Yaw: 180.0, Pitch: 0.0),
+            "Right" => (Yaw: 90.0, Pitch: 0.0),
+            "Left" => (Yaw: -90.0, Pitch: 0.0),
+            "Home" => (Yaw: -24.0, Pitch: 42.0),
+            _ => (Yaw: YawDegrees, Pitch: PitchDegrees)
+        };
+        ProjectionMode = ViewerProjectionMode.Perspective;
+        CameraSession.ClearSavedPerspective();
+        YawDegrees = orientation.Yaw;
+        PitchDegrees = orientation.Pitch;
+        FitAllRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     public void ApplyC3DCameraFit(
         Vector3 target,
         double distance,
@@ -119,7 +144,8 @@ public sealed partial class MainWindowViewModel
         Vector3 target,
         double height,
         double cameraDistance,
-        string status)
+        string status,
+        bool preserveOrientation = false)
     {
         if (!float.IsFinite(target.X)
             || !float.IsFinite(target.Y)
@@ -137,13 +163,34 @@ public sealed partial class MainWindowViewModel
             CameraSession.SavePerspective();
         }
 
-        ProjectionMode = ViewerProjectionMode.TopOrthographic;
-        YawDegrees = 0.0;
-        PitchDegrees = 90.0;
+        ProjectionMode = preserveOrientation ? ViewerProjectionMode.Orthographic : ViewerProjectionMode.TopOrthographic;
+        if (!preserveOrientation)
+        {
+            YawDegrees = 0.0;
+            PitchDegrees = 90.0;
+        }
         OrthographicHeight = height;
         SetCameraTarget(target.X, target.Y, target.Z);
         CameraDistance = cameraDistance;
         ViewerStatus = status;
+        UpdateCameraStatus();
+    }
+
+    private void ToggleCameraProjection()
+    {
+        var scale = 2.0 * Math.Tan(Rendering.CameraMath.DefaultFieldOfViewDegrees * Math.PI / 360.0);
+        if (IsOrthographicView)
+        {
+            CameraDistance = OrthographicHeight / scale;
+            ProjectionMode = ViewerProjectionMode.Perspective;
+        }
+        else
+        {
+            OrthographicHeight = CameraDistance * scale;
+            ProjectionMode = ViewerProjectionMode.Orthographic;
+        }
+        CameraSession.ClearSavedPerspective();
+        ViewerStatus = IsOrthographicView ? "Orthographic projection" : "Perspective projection";
         UpdateCameraStatus();
     }
 
@@ -280,8 +327,8 @@ public sealed partial class MainWindowViewModel
         MeasurementSummary = "C3D sample loaded; no measurement tool published";
         SelectionSummary = "Selection overlay hidden";
         SelectedColorMode = "Height";
-        YawDegrees = 34.0;
-        PitchDegrees = 52.0;
+        YawDegrees = -24.0;
+        PitchDegrees = 42.0;
         CameraDistance = 13.2;
         c3dFitDistance = CameraDistance;
         SetCameraTarget(0.0, 0.0, 0.0);
@@ -461,8 +508,8 @@ public sealed partial class MainWindowViewModel
         TwoPointDeltaZ = double.NaN;
         TwoPointRawHeightDelta = double.NaN;
         var valueLabel = heightUnit == "raw-height"
-            ? $"raw {heightValue:F3}"
-            : $"height {heightValue:F3} {heightUnit}";
+            ? $"raw {heightValue:0.##}"
+            : $"height {heightValue:0.##} {heightUnit}";
         TwoPointMeasurementSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"P1: {FormatVector(point)} | {valueLabel}");
@@ -481,8 +528,8 @@ public sealed partial class MainWindowViewModel
         var distance = delta.Length();
         var heightDelta = secondHeight - firstHeight;
         var heightDeltaLabel = heightUnit == "raw-height"
-            ? $"height delta {heightDelta:F3} raw-height"
-            : $"height delta {heightDelta:F3} {heightUnit}";
+            ? $"height delta {heightDelta:0.##} raw-height"
+            : $"height delta {heightDelta:0.##} {heightUnit}";
 
         TwoPointMeasurementVisible = true;
         TwoPointDistance = distance;
@@ -495,7 +542,7 @@ public sealed partial class MainWindowViewModel
             $"P1 {FormatVector(first)} -> P2 {FormatVector(second)}");
         TwoPointMeasurementDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Distance {distance:F3} model | dX {delta.X:F3}, dY {delta.Y:F3}, dZ {delta.Z:F3} | {heightDeltaLabel}");
+            $"Distance {distance:0.##} model | dX {delta.X:0.##}, dY {delta.Y:0.##}, dZ {delta.Z:0.##} | {heightDeltaLabel}");
         SelectionSummary = TwoPointMeasurementDetails;
         MeasurementSummary = TwoPointMeasurementDetails;
         LazTwoPointAcceptanceSummary = "LAZ/LAS acceptance: pending";
@@ -558,7 +605,7 @@ public sealed partial class MainWindowViewModel
             $"Fitted plane: {referenceName} | {result.SampleCount:N0} samples | normal {FormatVector(result.Normal)}");
         PlaneReferenceMeasurementDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Orthogonal distance {result.TargetSignedDistance:F3} model | abs {result.TargetAbsoluteDistance:F3} | RMS {result.RootMeanSquareDistance:F3} | target {FormatVector(result.Target)} | raw residual {result.TargetRawHeightDelta:F3} raw-height");
+            $"Orthogonal distance {result.TargetSignedDistance:0.##} model | abs {result.TargetAbsoluteDistance:0.##} | RMS {result.RootMeanSquareDistance:0.##} | target {FormatVector(result.Target)} | raw residual {result.TargetRawHeightDelta:0.##} raw-height");
         SelectionSummary = PlaneReferenceMeasurementDetails;
         MeasurementSummary = PlaneReferenceMeasurementDetails;
         ViewerStatus = "Fitted C3D reference plane updated";

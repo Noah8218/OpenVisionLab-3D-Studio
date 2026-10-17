@@ -463,10 +463,16 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner : IDisposable
 
     public void MarkStaleIfNeeded(object? sender = null)
     {
-        if (IsDisposed || previewOutput is null || isPreviewRunning)
+        if (IsDisposed || isPreviewRunning) return;
+        foreach (var entry in completedResults.Where(entry => entry.Value.Fingerprint.Length > 0).ToArray())
         {
-            return;
+            var completed = entry.Value;
+            var completedStep = findStepByOutputEntityId(completed.Output.OutputEntityId);
+            if (completedStep is null || !IsCurrentExecutionSnapshot(completed.Fingerprint, completedStep))
+                completedResults[entry.Key] = (completed.Output, string.Empty, false, completed.Parameters);
         }
+        // Keep the executed values, but an edit followed by Undo still requires a new explicit execution.
+        if (previewOutput is null) return;
 
         var step = findStepByOutputEntityId(previewOutput.OutputEntityId);
         if (step is null)

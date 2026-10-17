@@ -28,6 +28,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private readonly Func<ToolRecipeOrderedGraphExecutionResult, string> createSummary;
     private readonly Func<string, string, string> localize;
     private readonly Action<string, string> appendLog;
+    private readonly Action<string, ResultStatus?, bool>? recordExecution;
     private readonly Action stateChanged;
     private readonly Action<ToolWorkbenchOrderedRunCompletedEventArgs> completed;
     private readonly Action invalidated;
@@ -62,7 +63,8 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         Action<ToolWorkbenchOrderedRunCompletedEventArgs> completed,
         Action invalidated,
         Func<ToolRecipeDocument, string, (bool CanRun, string Message)>? getInspectionCapability = null,
-        Func<string?>? getSavedRecipeSha256 = null)
+        Func<string?>? getSavedRecipeSha256 = null,
+        Action<string, ResultStatus?, bool>? recordExecution = null)
     {
         this.createDocument = createDocument ?? throw new ArgumentNullException(nameof(createDocument));
         this.getCapability = getCapability ?? throw new ArgumentNullException(nameof(getCapability));
@@ -80,6 +82,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         this.invalidated = invalidated ?? throw new ArgumentNullException(nameof(invalidated));
         this.getInspectionCapability = getInspectionCapability;
         this.getSavedRecipeSha256 = getSavedRecipeSha256;
+        this.recordExecution = recordExecution;
 
         summary = localize(
             "저장된 현재 레시피를 직접 실행하면 검사 기록이 생성됩니다.",
@@ -283,7 +286,18 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                 NotifyStateChanged();
                 appendLog(
                     "Run",
-                    $"Ordered recipe Run completed: status={execution.Status} | steps={execution.Steps.Count} | elapsedMs={execution.Duration.TotalMilliseconds:F3}.");
+                    $"Ordered recipe Run completed: status={execution.Status} | steps={execution.Steps.Count} | elapsedMs={execution.Duration.TotalMilliseconds:0.##}.");
+                var passCount = execution.Steps.Count(step => step.Result.Status == ResultStatus.Pass && ToolRecipeStep.RequiresAcceptanceLimits(step.ToolId));
+                var completedCount = execution.Steps.Count(step => step.Result.Status == ResultStatus.Pass && !ToolRecipeStep.RequiresAcceptanceLimits(step.ToolId));
+                var failCount = execution.Steps.Count(step => step.Result.Status == ResultStatus.Fail);
+                var errorCount = execution.Steps.Count(step => step.Result.Status == ResultStatus.Error);
+                var warningCount = execution.Steps.Count(step => step.Result.Status == ResultStatus.Warning);
+                var notRunCount = execution.Steps.Count(step => step.Result.Status == ResultStatus.NotRun);
+                var executionMessage = localize($"모든 도구 실행 · OK {passCount} · NG {failCount} · 오류 {errorCount}", $"Run all tools · OK {passCount} · NG {failCount} · errors {errorCount}");
+                if (completedCount > 0) executionMessage += localize($" · 전처리 완료 {completedCount}", $" · preprocessing completed {completedCount}");
+                if (warningCount > 0) executionMessage += localize($" · 경고 {warningCount}", $" · warnings {warningCount}");
+                if (notRunCount > 0) executionMessage += localize($" · 미실행 {notRunCount}", $" · not run {notRunCount}");
+                recordExecution?.Invoke(executionMessage, execution.Status, false);
                 completedRun = new ToolWorkbenchOrderedRunCompletedEventArgs(fullRecipePath, document, fullSourcePath, execution, identity);
                 completed(completedRun);
                 return execution.Status is not (ResultStatus.Error or ResultStatus.NotRun);
@@ -296,6 +310,12 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         catch (OperationCanceledException) when (currentCancellation?.IsCancellationRequested == true)
         {
             return CompleteCancelledRun();
+        }
+        catch (Exception exception)
+        {
+            if (Volatile.Read(ref disposalState) == 0 && isRunning)
+                recordExecution?.Invoke(localize($"현재 레시피 실행 중 오류가 발생했습니다: {exception.Message}", $"The current recipe Run failed: {exception.Message}"), ResultStatus.Error, false);
+            throw;
         }
         finally
         {
@@ -339,6 +359,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
             "Current recipe Run was canceled. No Run Record was created.");
         NotifyStateChanged();
         appendLog("Run", summary);
+        recordExecution?.Invoke(summary, null, true);
         return false;
     }
 

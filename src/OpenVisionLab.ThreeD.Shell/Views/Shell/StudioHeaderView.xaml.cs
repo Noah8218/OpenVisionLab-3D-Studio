@@ -16,7 +16,7 @@ public partial class StudioHeaderView : UserControl
     public event EventHandler? RecipeManagerRequested;
     public event EventHandler? LayoutResetRequested;
 
-    private void OpenRecipeManager_Click(object sender, RoutedEventArgs args) =>
+    private void OpenRecipeManager_Click(object? sender, EventArgs args) =>
         RecipeManagerRequested?.Invoke(this, EventArgs.Empty);
 
     private void ResetLayout_Click(object sender, RoutedEventArgs args) =>

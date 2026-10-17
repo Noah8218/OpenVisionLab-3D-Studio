@@ -82,7 +82,6 @@ internal sealed class ShellWorkbenchRecipeSourceCoordinator
 
     public ShellWorkbenchOpenedRecipeSourceResult ApplyOpenedRecipeSource()
     {
-        var source = workbench.Source;
         if (!workbench.IsSourceReadyForRecipe)
         {
             sourceLoad.ClearC3DTeachingSource(workbench.SourceReadinessSummary);
@@ -90,13 +89,9 @@ internal sealed class ShellWorkbenchRecipeSourceCoordinator
             return ShellWorkbenchOpenedRecipeSourceResult.NotReady;
         }
 
-        if (sourceLoad.IsViewerSourceAlreadyLoaded(source.Path))
-        {
-            teaching.SyncAppliedSelections();
-            return ShellWorkbenchOpenedRecipeSourceResult.Ready;
-        }
-
-        if (!sourceLoad.LoadC3DSource(source.Path))
+        var sourcePath = workbench.Source.Path;
+        var expectedBinding = workbench.SourceSession.SourceBinding;
+        if (!sourceLoad.IsViewerSourceAlreadyLoaded(sourcePath) && !sourceLoad.LoadC3DSource(sourcePath))
         {
             var loadFailure = sourceLoad.ViewerStatus;
             sourceLoad.ClearC3DTeachingSource("Recipe source could not be loaded. Relink a valid C3D source.");
@@ -104,12 +99,17 @@ internal sealed class ShellWorkbenchRecipeSourceCoordinator
             return new ShellWorkbenchOpenedRecipeSourceResult(false, loadFailure);
         }
 
-        if (sourceLoad.CurrentC3DSourcePath is { } loadedSourcePath)
+        // Opening a recipe loads its declared source for display; it is not an input-import command.
+        if (expectedBinding is null || !sourceLoad.TryGetCurrentC3DSourceBinding(sourcePath, out var loadedBinding)
+            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, loadedBinding))
         {
-            sourceLoad.SetWorkbenchC3DSourceFromViewer(loadedSourcePath);
-            teaching.SyncAppliedSelections();
+            var message = workbench.Localization.SourceIdentityMismatch;
+            sourceLoad.ClearC3DTeachingSource(message);
+            updateSampleVisible(false);
+            return new ShellWorkbenchOpenedRecipeSourceResult(false, message);
         }
 
+        teaching.SyncAppliedSelections();
         return ShellWorkbenchOpenedRecipeSourceResult.Ready;
     }
 }

@@ -45,7 +45,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         openGLVendor = ReadOpenGLString(gl, 0x1F00);
         openGLRenderer = ReadOpenGLString(gl, 0x1F01);
         openGLVersion = ReadOpenGLString(gl, 0x1F02);
-        gl.ClearColor(0.08f, 0.10f, 0.13f, 1.0f);
+        gl.ClearColor(15 / 255.0f, 19 / 255.0f, 23 / 255.0f, 1.0f);
         gl.Enable(OpenGL.GL_DEPTH_TEST);
         gl.DepthFunc(OpenGL.GL_LEQUAL);
         gl.ShadeModel(OpenGL.GL_SMOOTH);
@@ -98,11 +98,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             ReleaseImportedMeshTexture(gl);
         }
 
+        if (!ReferenceEquals(c3dRenderResources.TextureImage, viewModel.C3DTexture.Image)) ReleaseC3DTexture(gl);
         gl.Clear(OpenGL.GL_COLOR_BUFFER_BIT | OpenGL.GL_DEPTH_BUFFER_BIT);
 
         ConfigureProjection(gl);
+        DrawViewportBackground(gl);
         ConfigureCamera(gl);
         DrawGrid(gl);
+        UpdateC3DFloorLabels();
         DrawAxes(gl);
 
         if (viewModel.CubeVisible)
@@ -188,6 +191,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        Keyboard.Focus(Viewport);
         if (pointerInputRegressionActive)
         {
             interactionTelemetry.RecordMouseDown();
@@ -202,8 +206,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             isOrbiting = false;
             isPanning = false;
             Viewport.ReleaseMouseCapture();
-            var fitted = viewModel.IsTopOrthographicView
-                ? TryFitCurrentC3DOrthographic("Double-click fit Top C3D height grid")
+            var fitted = viewModel.IsOrthographicView
+                ? TryFitCurrentC3DOrthographic("Double-click fit orthographic C3D height grid")
                 : TryFitCurrentC3D(
                     useTopInspectionView: false,
                     "Double-click fit C3D height grid");
@@ -256,7 +260,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (e.ChangedButton == MouseButton.Left && !panRequested)
         {
-            if (TryBeginTeachingOrientedBoxEdit(lastMousePosition))
+            var profileRequested = !viewModel.IsTeachingCaptureActive && viewModel.SelectedSelectionMode == MainWindowViewModel.ProfileSelectionMode;
+            if (!profileRequested && TryBeginTeachingOrientedBoxEdit(lastMousePosition))
             {
                 isPanning = false;
                 isOrbiting = false;
@@ -265,7 +270,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return;
             }
 
-            if (TryBeginTeachingGridRectangleEdit(lastMousePosition))
+            if (!profileRequested && TryBeginTeachingGridRectangleEdit(lastMousePosition))
             {
                 isPanning = false;
                 isOrbiting = false;
@@ -274,7 +279,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return;
             }
 
-            if (TrySelectAppliedTeachingGridRectangle(lastMousePosition))
+            if (!profileRequested && TrySelectAppliedTeachingGridRectangle(lastMousePosition))
             {
                 isPanning = false;
                 isOrbiting = false;
@@ -283,7 +288,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return;
             }
 
-            if (TrySelectAppliedTeachingOrientedBox(lastMousePosition))
+            if (!profileRequested && TrySelectAppliedTeachingOrientedBox(lastMousePosition))
             {
                 isPanning = false;
                 isOrbiting = false;
@@ -608,6 +613,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (e.MiddleButton != MouseButtonState.Pressed
                 && e.RightButton != MouseButtonState.Pressed
+                && !(e.LeftButton == MouseButtonState.Pressed && viewModel.SelectedSelectionMode == "Move")
                 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             {
                 isPanning = false;

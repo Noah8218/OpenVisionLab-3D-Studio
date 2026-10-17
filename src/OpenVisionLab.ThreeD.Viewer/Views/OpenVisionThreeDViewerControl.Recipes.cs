@@ -31,8 +31,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 {
     private void HandleFitAllCommand()
     {
-        var fitted = viewModel.IsTopOrthographicView
-            ? TryFitCurrentC3DOrthographic("Top view fitted to all C3D data")
+        var fitted = viewModel.IsOrthographicView
+            ? TryFitCurrentC3DOrthographic("Orthographic view fitted to all C3D data")
             : TryFitCurrentC3D(useTopInspectionView: false, "Fit all C3D height grid");
         if (!fitted)
         {
@@ -45,7 +45,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void HandleTopViewCommand()
     {
         if (TryFitCurrentC3DOrthographic(
-                "Top orthographic view · X=column, Z=row · view only"))
+                "Top orthographic view · X=column, Z=row · view only", forceTopView: true))
         {
             RenderNow();
         }
@@ -77,19 +77,20 @@ public sealed partial class OpenVisionThreeDViewerControl
             CreateC3DGridDisplayPosition(lastRow, rectangle.Column, rawHeight)
         ];
         var aspect = Math.Max(1.0, Viewport.ActualWidth) / Math.Max(1.0, Viewport.ActualHeight);
-        if (viewModel.IsTopOrthographicView)
+        if (viewModel.IsOrthographicView)
         {
             var fit = CameraMath.FitOrthographicPositions(
                 positions,
-                yawDegrees: 0.0,
-                pitchDegrees: 90.0,
+                viewModel.YawDegrees,
+                viewModel.PitchDegrees,
                 aspect,
                 padding: 1.30);
             viewModel.ApplyTopOrthographicFit(
                 fit.Target,
                 fit.Height,
                 fit.Distance,
-                "Top view fitted to selected ROI · view only");
+                "Orthographic view fitted to selected ROI · view only",
+                preserveOrientation: !viewModel.IsTopOrthographicView);
         }
         else
         {
@@ -112,8 +113,10 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void HandleFitSelectionCommand()
     {
-        if (viewModel.SelectedEntity != "C3D Height Grid"
-            || !TryFitCurrentC3D(useTopInspectionView: false, "Fit selected C3D height grid"))
+        var fitted = viewModel.SelectedEntity == "C3D Height Grid" && (viewModel.IsOrthographicView
+            ? TryFitCurrentC3DOrthographic("Fit selected orthographic C3D height grid")
+            : TryFitCurrentC3D(useTopInspectionView: false, "Fit selected C3D height grid"));
+        if (!fitted)
         {
             viewModel.FitSelection();
         }
@@ -142,7 +145,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         return true;
     }
 
-    private bool TryFitCurrentC3DOrthographic(string status)
+    private bool TryFitCurrentC3DOrthographic(string status, bool forceTopView = false)
     {
         if (!viewModel.C3DSampleVisible || c3dSample is null)
         {
@@ -151,12 +154,13 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var renderProxy = GetC3DRenderProxy();
         var positions = GetC3DRenderPositions(renderProxy);
+        var topView = forceTopView || viewModel.IsTopOrthographicView;
         var fit = CameraMath.FitOrthographicPositions(
             positions,
-            yawDegrees: 0.0,
-            pitchDegrees: 90.0,
+            topView ? 0.0 : viewModel.YawDegrees,
+            topView ? 90.0 : viewModel.PitchDegrees,
             Math.Max(1.0, Viewport.ActualWidth) / Math.Max(1.0, Viewport.ActualHeight));
-        viewModel.ApplyTopOrthographicFit(fit.Target, fit.Height, fit.Distance, status);
+        viewModel.ApplyTopOrthographicFit(fit.Target, fit.Height, fit.Distance, status, preserveOrientation: !topView);
         return true;
     }
 

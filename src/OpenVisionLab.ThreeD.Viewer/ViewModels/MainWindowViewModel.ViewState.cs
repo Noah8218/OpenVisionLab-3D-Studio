@@ -49,7 +49,7 @@ public sealed partial class MainWindowViewModel
             $"ROI step: L {leftPointCount:N0} pts vs R {rightPointCount:N0} pts");
         RoiStepMeasurementDetails = string.Create(
             CultureInfo.InvariantCulture,
-            $"Mean raw L {leftRawMean:F3}, R {rightRawMean:F3} | step {rawDelta:F3} raw-height | model dY {modelDelta:F3}");
+            $"Mean raw L {leftRawMean:0.##}, R {rightRawMean:0.##} | step {rawDelta:0.##} raw-height | model dY {modelDelta:0.##}");
         RoiStepEditSummary = selectionMode == "Interactive"
             ? "ROI edit: interactive L/R centers selected; click again to start a new pair."
             : "ROI edit: auto regions; click left ROI then right ROI.";
@@ -216,10 +216,10 @@ public sealed partial class MainWindowViewModel
         lazHeightUnit = string.IsNullOrWhiteSpace(unit) ? "source-z" : unit;
         PointCloudColorLegendTitle = "Point Cloud Height Scale";
         PointCloudColorLegendLow = double.IsFinite(lazHeightMinimum)
-            ? string.Create(CultureInfo.InvariantCulture, $"Low: {lazHeightMinimum:F3} {lazHeightUnit}")
+            ? string.Create(CultureInfo.InvariantCulture, $"Low: {lazHeightMinimum:0.##} {lazHeightUnit}")
             : "Low: not loaded";
         PointCloudColorLegendHigh = double.IsFinite(lazHeightMaximum)
-            ? string.Create(CultureInfo.InvariantCulture, $"High: {lazHeightMaximum:F3} {lazHeightUnit}")
+            ? string.Create(CultureInfo.InvariantCulture, $"High: {lazHeightMaximum:0.##} {lazHeightUnit}")
             : "High: not loaded";
         PointCloudColorLegendScale = "Scale: source Z min to max";
         RefreshPointCloudColorLegend();

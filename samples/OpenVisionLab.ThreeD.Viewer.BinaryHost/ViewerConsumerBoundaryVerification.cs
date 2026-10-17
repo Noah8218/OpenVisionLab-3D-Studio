@@ -194,6 +194,8 @@ internal static class ViewerConsumerBoundaryVerification
             && hostType.GetMethod(nameof(IOpenVisionThreeDViewerHost.TrySetSelectedDiagnosticChannel)) is not null
             && hostType.GetMethod(nameof(IOpenVisionThreeDViewerHost.TrySetResultOverlayVisible)) is not null
             && hostType.GetMethod(nameof(IOpenVisionThreeDViewerHost.TrySetMeasurementVisible)) is not null
+            && hostType.GetMethod(nameof(IOpenVisionThreeDViewerHost.TrySetC3DHeightEmphasis)) is { IsAbstract: false }
+            && !((IOpenVisionThreeDViewerHost)fake).TrySetC3DHeightEmphasis(2)
             && hostType.GetMethod(nameof(IOpenVisionThreeDViewerHost.TryShiftC3DHeightColorMinimum)) is not null
             && hostType.GetMethod(nameof(IOpenVisionThreeDViewerHost.TryShiftC3DHeightColorMaximum)) is not null
             && stateType.GetProperty(nameof(ViewerHostState.Sources)) is not null

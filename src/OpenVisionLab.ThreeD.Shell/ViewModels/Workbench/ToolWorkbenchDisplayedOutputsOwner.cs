@@ -29,6 +29,11 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
     private readonly RelayCommand showDisplayedOutputInViewerCommand;
     private readonly RelayCommand pinDisplayedOutputToCompareCommand;
     private readonly RelayCommand focusDisplayedOutputStepCommand;
+    private readonly Func<ToolWorkbenchPipelineStepItem?>? getSelectedStep;
+    private readonly Func<string, bool>? isArtifactShown;
+    private readonly Func<string, string?, bool>? showGalleryArtifact;
+    private readonly Func<bool>? isInputOutputView;
+    private readonly Action? restoreInputOutputView;
     private string displayedViewerArtifactId = string.Empty;
 
     public ToolWorkbenchDisplayedOutputsOwner(
@@ -65,7 +70,12 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
         Func<string, bool> tryPinToCompare,
         Action<string> displayInPrimaryViewer,
         Action<ToolWorkbenchPipelineStepItem> selectPipelineStep,
-        Action refreshSelectedToolWorkspaceProjection)
+        Action refreshSelectedToolWorkspaceProjection,
+        Func<ToolWorkbenchPipelineStepItem?>? getSelectedStep = null,
+        Func<string, bool>? isArtifactShown = null,
+        Func<string, string?, bool>? showGalleryArtifact = null,
+        Func<bool>? isInputOutputView = null,
+        Action? restoreInputOutputView = null)
     {
         this.getArtifactSnapshot = getArtifactSnapshot
             ?? throw new ArgumentNullException(nameof(getArtifactSnapshot));
@@ -89,6 +99,16 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
             refreshSelectedToolWorkspaceProjection
             ?? throw new ArgumentNullException(
                 nameof(refreshSelectedToolWorkspaceProjection));
+
+        this.getSelectedStep = getSelectedStep;
+        this.isArtifactShown = isArtifactShown;
+        this.showGalleryArtifact = showGalleryArtifact;
+        this.isInputOutputView = isInputOutputView;
+        this.restoreInputOutputView = restoreInputOutputView;
+        ShowGalleryInActivePaneCommand = CreateGalleryCommand(null);
+        ShowGalleryInOtherPaneCommand = CreateGalleryCommand("other");
+        ShowGalleryInLeftPaneCommand = CreateGalleryCommand(ViewerWorkspaceSession.MainSlotId);
+        ShowGalleryInRightPaneCommand = CreateGalleryCommand(ViewerWorkspaceSession.AuxiliarySlotId);
 
         showDisplayedOutputInViewerCommand = new RelayCommand(
             parameter => RequestDisplayedOutputInViewer(
@@ -124,6 +144,12 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
     public RelayCommand FocusDisplayedOutputStepCommand =>
         focusDisplayedOutputStepCommand;
 
+    public RelayCommand ShowGalleryInActivePaneCommand { get; }
+    public RelayCommand ShowGalleryInOtherPaneCommand { get; }
+    public RelayCommand ShowGalleryInLeftPaneCommand { get; }
+    public RelayCommand ShowGalleryInRightPaneCommand { get; }
+    public int GalleryDataCount => DisplayedOutputs.Count(item => item.IsGalleryData);
+
     public string DisplayedOutputsSummary => DisplayedOutputs.Count == 0
         ? "No typed artifacts are registered."
         : string.Format(
@@ -135,6 +161,29 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
         DisplayedOutputs.FirstOrDefault(item => item.IsShownInViewer) is { } item
             ? $"{item.DisplayName} | {item.ContractDisplay}"
             : localization.DisplayedOutputsNoViewerSelection;
+
+    private RelayCommand CreateGalleryCommand(string? slot) => new(parameter =>
+    {
+        if (parameter is not ToolWorkbenchDisplayedOutputItem { CanShowInViewer: true } item) return;
+        if (TryGetDisplayableTarget(item.Id) is null && getSignedDeltaArtifact(item.Id) is null) return;
+        if (slot is null && isInputOutputView?.Invoke() == true)
+        {
+            var step = item.PipelineStep ?? getArtifactSnapshot().Select(artifact => artifact.PipelineStep)
+                .FirstOrDefault(candidate => candidate?.InputEntityIds.Contains(item.Id, StringComparer.OrdinalIgnoreCase) == true);
+            if (step is not null && !ReferenceEquals(step, getSelectedStep?.Invoke())) selectPipelineStep(step);
+            restoreInputOutputView?.Invoke();
+        }
+        if (TryGetDisplayableTarget(item.Id) is not null && showGalleryArtifact?.Invoke(item.Id, slot) == true)
+        {
+            RefreshPresentation();
+        }
+        else if (slot is null or "other" && getSignedDeltaArtifact(item.Id) is not null)
+        {
+            RequestDisplayedOutputInViewer(item);
+        }
+    }, parameter => parameter is ToolWorkbenchDisplayedOutputItem { CanShowInViewer: true } item
+        && (showGalleryArtifact is not null && TryGetDisplayableTarget(item.Id) is not null
+            || slot is null or "other" && getSignedDeltaArtifact(item.Id) is not null));
 
     public void Rebuild()
     {
@@ -213,7 +262,7 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
         refreshSelectedToolWorkspaceProjection();
     }
 
-    public void RefreshPresentation()
+    public void RefreshPresentation(bool refreshWorkspace = true)
     {
         // Source Quality may complete on a worker while the recipe projection
         // is being rebuilt. Refresh against a stable item snapshot so a
@@ -226,10 +275,7 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
             var pins = getComparePins(item.Id);
             item.UpdatePresentation(
                 isRenderable,
-                string.Equals(
-                    item.Id,
-                    displayedViewerArtifactId,
-                    StringComparison.OrdinalIgnoreCase),
+                string.Equals(item.Id, displayedViewerArtifactId, StringComparison.OrdinalIgnoreCase),
                 pins,
                 c3DRenderable && pins.Length == 0 && hasEmptyCompareSlot(),
                 isRenderable
@@ -242,11 +288,17 @@ internal sealed class ToolWorkbenchDisplayedOutputsOwner : INotifyPropertyChange
                 pins.Length == 0
                     ? string.Empty
                     : string.Format(localization.PinnedSlotsFormat, pins));
+            item.UpdateGalleryRole(getSelectedStep?.Invoke(), isArtifactShown?.Invoke(item.Id) ?? item.IsShownInViewer);
         }
 
+        OnPropertyChanged(nameof(GalleryDataCount));
+        ShowGalleryInActivePaneCommand.RaiseCanExecuteChanged();
+        ShowGalleryInOtherPaneCommand.RaiseCanExecuteChanged();
+        ShowGalleryInLeftPaneCommand.RaiseCanExecuteChanged();
+        ShowGalleryInRightPaneCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CurrentViewerOutputSummary));
         OnPropertyChanged(nameof(DisplayedOutputsSummary));
-        refreshSelectedToolWorkspaceProjection();
+        if (refreshWorkspace) refreshSelectedToolWorkspaceProjection();
     }
 
     private ToolWorkbenchRenderableC3DTarget? TryGetDisplayableTarget(string id)
@@ -293,6 +345,8 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
     private string comparePinsSummary = string.Empty;
     private string availability = string.Empty;
     private bool canPinToCompare;
+    private string galleryRole = string.Empty;
+    private bool isShownInGallery;
 
     public ToolWorkbenchDisplayedOutputItem(ToolWorkbenchArtifactItem artifact)
     {
@@ -304,12 +358,39 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
     public ToolWorkbenchArtifactItem Artifact { get; }
     public string Id => Artifact.Id;
     public string DisplayName => Artifact.DisplayName;
+    public bool IsGalleryData => IsImageData || Contract is "ConnectedRegionArtifact" or "EditableRegionArtifact";
+    public string GalleryName => NodeKind == "Source" ? Label("원본 높이 맵", "Original height map") : PipelineStep?.ToolId switch
+    {
+        "remove-outlier-pixels" => Label("정리된 높이 맵", "Cleaned height map"),
+        "level-surface" => Label("수평 높이 맵", "Leveled height map"),
+        "datum-plane-raw-height-deviation" => Label("평면 편차 맵", "Plane deviation map"),
+        "filter" => Label("필터 높이 맵", "Filtered height map"),
+        "height-threshold-background-removal" => Label("남은 높이 맵", "Remaining height map"),
+        "signed-delta-background-subtraction" => Label("높이 차이 맵", "Height difference map"),
+        "connected-region" or "editable-region" => Label("영역", "Region"),
+        _ => DisplayName
+    };
+    public string GalleryProducer => PipelineStep is { } step ? $"{step.Order} {(step.ToolName == step.Tool.Name ? step.Tool.DisplayName : step.ToolName)}" : Label("3D 입력", "3D input");
+    public string GalleryMetadata => Artifact.ValidSampleCount is { } valid && Artifact.MissingSampleCount is { } missing && valid + missing > 0
+        ? $"{GalleryProducer} · {Label("결측", "Missing")} {100.0 * missing / (valid + missing):0.0}%"
+        : $"{GalleryProducer} · {StateDisplay}";
+    public string GalleryRole => galleryRole;
+    public bool IsShownInGallery => isShownInGallery;
+    public bool IsRelatedToSelectedStep => galleryRole.Length > 0;
+    public string GalleryLeftLabel => $"{GalleryName} {Label("왼쪽 창에 표시", "Show in left pane")}";
+    public string GalleryRightLabel => $"{GalleryName} {Label("오른쪽 창에 표시", "Show in right pane")}";
+    public string GalleryPreviewSummary => $"{(Artifact.GridWidth is { } width && Artifact.GridHeight is { } height ? $"{width} × {height} · " : string.Empty)}{Artifact.Unit}" + Environment.NewLine +
+        $"{Label("높이", "Height")} {FormatValue(Artifact.Minimum)} – {FormatValue(Artifact.Maximum)} · {Label("유효", "Valid")} {FormatCount(Artifact.ValidSampleCount)} · {Label("결측", "Missing")} {FormatCount(Artifact.MissingSampleCount)}" + Environment.NewLine +
+        $"{StateDisplay} · {Availability}";
+    public string GalleryIdentitySummary => $"{GalleryMetadata}{Environment.NewLine}{DisplayName}{Environment.NewLine}{Id} · {ContractDisplay} · {Artifact.Unit}";
     public string Contract => Artifact.Contract;
     public string ContractDisplay => ThreeDLocalization.Shared.ContractLabel(Contract);
     public string State => Artifact.State;
     public string StateDisplay => ThreeDLocalization.Shared.SelectedToolOutputStateLabel(State);
     public string Detail => Artifact.Detail;
     public string NodeKind => Artifact.NodeKind;
+    public bool IsImageData => NodeKind is "Source" or "HeightField" or "FilteredHeightField" or "LeveledHeightField"
+        || Contract is "HeightField" or "FilteredHeightField" or "SignedDeltaHeightField";
     public ToolWorkbenchPipelineStepItem? PipelineStep => Artifact.PipelineStep;
     public bool CanFocusStep => PipelineStep is not null;
     public bool IsRenderableInViewer => isRenderableInViewer;
@@ -331,6 +412,25 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
     public string ComparePinsSummary => comparePinsSummary;
     public string Availability => availability;
 
+    private static string Label(string korean, string english) => ThreeDLocalization.Shared.Resolve("ThreeD.Data." + english, korean, english);
+    private static string FormatValue(double? value) => value is { } number && double.IsFinite(number) ? number.ToString("0.##") : "—";
+    private static string FormatCount(long? value) => value?.ToString("N0") ?? "—";
+
+    internal void UpdateGalleryRole(ToolWorkbenchPipelineStepItem? selectedStep, bool? shown = null)
+    {
+        SetField(ref isShownInGallery, shown ?? isShownInViewer, nameof(IsShownInGallery));
+        var role = selectedStep?.InputEntityIds.Contains(Id, StringComparer.OrdinalIgnoreCase) == true ? Label("입력", "Input")
+            : string.Equals(selectedStep?.OutputEntityId, Id, StringComparison.OrdinalIgnoreCase) ? Label("출력", "Output") : string.Empty;
+        SetField(ref galleryRole, role, nameof(GalleryRole));
+        OnPropertyChanged(nameof(IsRelatedToSelectedStep));
+        OnPropertyChanged(nameof(GalleryName));
+        OnPropertyChanged(nameof(GalleryProducer));
+        OnPropertyChanged(nameof(GalleryMetadata));
+        OnPropertyChanged(nameof(GalleryPreviewSummary));
+        OnPropertyChanged(nameof(GalleryLeftLabel));
+        OnPropertyChanged(nameof(GalleryRightLabel));
+    }
+
     internal void UpdatePresentation(
         bool renderable,
         bool shownInViewer,
@@ -342,6 +442,7 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
         SetField(ref isRenderableInViewer, renderable, nameof(IsRenderableInViewer));
         OnPropertyChanged(nameof(CanShowInViewer));
         SetField(ref isShownInViewer, shownInViewer, nameof(IsShownInViewer));
+        SetField(ref isShownInGallery, shownInViewer, nameof(IsShownInGallery));
         if (!string.Equals(comparePins, newComparePins, StringComparison.Ordinal))
         {
             comparePins = newComparePins;

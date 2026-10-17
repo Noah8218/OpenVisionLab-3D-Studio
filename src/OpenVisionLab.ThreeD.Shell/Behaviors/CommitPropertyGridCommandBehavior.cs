@@ -33,6 +33,9 @@ public static class CommitPropertyGridCommandBehavior
             typeof(CommitPropertyGridCommandBehavior),
             new PropertyMetadata(null));
 
+    public static readonly DependencyProperty AdditionalPropertyGridProperty = DependencyProperty.RegisterAttached(
+        "AdditionalPropertyGrid", typeof(RecipeStepPropertyGridHost), typeof(CommitPropertyGridCommandBehavior), new PropertyMetadata(null));
+
     public static readonly DependencyProperty ErrorCommandProperty =
         DependencyProperty.RegisterAttached(
             "ErrorCommand",
@@ -51,6 +54,10 @@ public static class CommitPropertyGridCommandBehavior
 
     public static RecipeStepPropertyGridHost? GetPropertyGrid(DependencyObject element) =>
         (RecipeStepPropertyGridHost?)element.GetValue(PropertyGridProperty);
+
+    public static void SetAdditionalPropertyGrid(DependencyObject element, RecipeStepPropertyGridHost? value) => element.SetValue(AdditionalPropertyGridProperty, value);
+
+    public static RecipeStepPropertyGridHost? GetAdditionalPropertyGrid(DependencyObject element) => (RecipeStepPropertyGridHost?)element.GetValue(AdditionalPropertyGridProperty);
 
     public static void SetCommand(DependencyObject element, ICommand? value) =>
         element.SetValue(CommandProperty, value);
@@ -93,6 +100,12 @@ public static class CommitPropertyGridCommandBehavior
         }
 
         if (!propertyGrid.CommitPendingEdit(out var message))
+        {
+            args.Handled = Execute(GetErrorCommand(button), message);
+            return;
+        }
+
+        if (GetAdditionalPropertyGrid(button) is { IsVisible: true } additional && !additional.CommitPendingEdit(out message))
         {
             args.Handled = Execute(GetErrorCommand(button), message);
             return;

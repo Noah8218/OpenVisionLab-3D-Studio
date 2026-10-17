@@ -1,11 +1,15 @@
 # OpenVisionLab Vision SDK package
 
-- Current package: `OpenVisionLab.Vision3D` `3.0.1-dev.20260829.normal-preparation.1`
-- Source commit: `6da3bcf521efb88681a17e4a7b23a091e7fcbacf`
+- Current package: `OpenVisionLab.Vision3D` `3.3.0-dev.20261017.physical-edge-gap-flush.1`
+- Source commit: `456eb2af7a62962144757d967538594fde79e481`
 - Target framework: `netstandard2.0`
-- SHA-256: `E0A2EB2021EB041D93225D00EEF71F028BD79CE3BA7F9CF27F539634F8D506A2`
+- SHA-256: `941D301325485083C8DD54E71033DD8DE232E56C1B76EEDE95574EEE0B9327AB`
 
-Historical package retained for D-13 evidence:
+Required managed dependency: `OpenVisionLab.Compute` `3.3.0-dev.20261017.physical-edge-gap-flush.1`, from the same committed source.
+SHA-256: `02E25FE1D9DC6CDF9A0295A1C575FDDFA107B40D123C82071113ABF7E78D1E51`.
+The existing Vision2D/Core package identities below remain unchanged.
+
+Earlier package input:
 
 - Package: `OpenVisionLab.Vision3D` `3.0.1-dev.20260829.voxel-downsample.1`
 - Source commit: `b15490c5717566effae891eb64c7b832c4fea8be`

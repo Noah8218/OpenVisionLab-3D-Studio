@@ -473,11 +473,11 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     private static string Format(double value, string unit) => string.IsNullOrWhiteSpace(unit)
-        ? value.ToString("0.######", CultureInfo.InvariantCulture)
-        : $"{value.ToString("0.######", CultureInfo.InvariantCulture)} {unit}";
+        ? value.ToString("0.##", CultureInfo.InvariantCulture)
+        : $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}";
 
     private static string FormatNumber(double value) =>
-        value.ToString("0.######", CultureInfo.InvariantCulture);
+        value.ToString("0.##", CultureInfo.InvariantCulture);
 
     private static string LocalizeResultStatus(object? status) =>
         status?.ToString() switch
@@ -503,6 +503,6 @@ public sealed record CalibrationRepeatabilityRunItem(
 {
     public string TimestampText => Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
     public string ValueText => string.IsNullOrWhiteSpace(Unit)
-        ? Value.ToString("0.######", CultureInfo.InvariantCulture)
-        : $"{Value.ToString("0.######", CultureInfo.InvariantCulture)} {Unit}";
+        ? Value.ToString("0.##", CultureInfo.InvariantCulture)
+        : $"{Value.ToString("0.##", CultureInfo.InvariantCulture)} {Unit}";
 }

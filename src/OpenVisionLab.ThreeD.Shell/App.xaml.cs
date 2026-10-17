@@ -12,15 +12,15 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (ShellSmokeCommandLineOptions.Parse(e.Args).SoftwareRendering)
+        {
+            OpenVisionThreeDViewerControl.UseSoftwareRenderingForProcess();
+        }
+
         if (ShellVerificationCommandRouter.IsVerificationRequest(e.Args))
         {
             ShellVerificationCommandRouter.Run(e.Args, Shutdown);
             return;
-        }
-
-        if (ShellSmokeCommandLineOptions.Parse(e.Args).SoftwareRendering)
-        {
-            OpenVisionThreeDViewerControl.UseSoftwareRenderingForProcess();
         }
 
         LiveCharts.Configure(settings => settings.UseDefaults());

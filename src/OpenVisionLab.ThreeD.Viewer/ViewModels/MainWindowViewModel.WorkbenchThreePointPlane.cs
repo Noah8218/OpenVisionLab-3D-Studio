@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
         workbenchThreePointPlane = output;
         isWorkbenchThreePointPlanePublished = isPublished;
         var state = isPublished ? "Published" : "Preview - not published";
-        SelectionSummary = $"{state} 3-Point Plane | {output.OutputRole} | normal ({output.NormalX:G4}, {output.NormalY:G4}, {output.NormalZ:G4}) | {output.ContentSha256[..12]}";
+        SelectionSummary = $"{state} 3-Point Plane | {output.OutputRole} | normal ({output.NormalX:0.##}, {output.NormalY:0.##}, {output.NormalZ:0.##}) | {output.ContentSha256[..12]}";
         ViewerStatus = isPublished ? "Published ordered 3-Point Plane datum" : "Ordered 3-Point Plane Preview - not published";
         OnPropertyChanged(nameof(WorkbenchThreePointPlane));
         OnPropertyChanged(nameof(IsWorkbenchThreePointPlanePublished));

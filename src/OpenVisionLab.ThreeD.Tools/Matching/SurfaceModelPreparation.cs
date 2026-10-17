@@ -1,5 +1,6 @@
 using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
+using SurfaceModelArtifact = OpenVisionLab.ThreeD.Core.SurfaceModelArtifact;
 using OpenVisionLab.ThreeD.Data;
 
 namespace OpenVisionLab.ThreeD.Tools;

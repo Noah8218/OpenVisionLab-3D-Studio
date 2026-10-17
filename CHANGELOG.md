@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0-dev — 2026-10-16
+
+- Reorganized recipe teaching, settings, viewer panes, validation, and records;
+  improved recipe-open and per-file result-save recovery.
+- Added aligned 2D appearance images on C3D surfaces with source-bound display
+  preferences, visibility control, validation on restore, and GPU cleanup.
+- Limited numeric presentation to two decimal places while preserving raw
+  calculation and storage precision. Viewer Host API adds optional display
+  operations in version `1.2`.
+
+This is a development source update. It does not publish a binary release or
+qualify a production installation.
+
 ## 0.6.0-dev — 2026-10-03
 
 - Updated Graphite controls, tool settings, input/output nodes, viewer and height

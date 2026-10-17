@@ -17,6 +17,18 @@ internal sealed class ShellSourceFileDialogService
         this.getOwner = getOwner ?? throw new ArgumentNullException(nameof(getOwner));
     }
 
+    public string? SelectC3DTextureImage()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = DialogText("ThreeD.Texture.Select", "높이맵에 입힐 텍스처 영상 선택", "Select Texture Image for Height Map"),
+            Filter = DialogText("ThreeD.Texture.Filter", "영상 파일|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff", "Image files|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff"),
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        return TrySelectPath(dialog, out var path) ? path : null;
+    }
+
     public bool TrySelectC3DSourcePath(out string path)
     {
         var dialog = new OpenFileDialog

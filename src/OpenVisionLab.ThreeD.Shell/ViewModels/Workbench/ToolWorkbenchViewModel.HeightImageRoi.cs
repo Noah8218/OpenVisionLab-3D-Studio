@@ -89,6 +89,14 @@ public sealed partial class ToolWorkbenchViewModel
                 activeRole);
         }
 
+        var additionalOverlays = new List<HeightImageRoiOverlayItem>();
+        foreach (var selection in GetCurrentAppliedTeachingSelections().Where(item =>
+                     !overlays.Any(overlay => overlay.SelectionId == item.Id)))
+        {
+            AddHeightImageRoiOverlay(additionalOverlays, selection, InspectionWorkspaceRegionRole.None, activeRole);
+        }
+        HeightImageViewer.RoiWorkspace.SetDisplayFilter(ViewerDisplayedRoiIds, additionalOverlays);
+
         var lifecycle = IsTeachingSelectionCaptureActive
             ? CanApplyTeachingSelectionCapture
                 ? InspectionWorkspaceRegionLifecycleState.Review
@@ -104,7 +112,7 @@ public sealed partial class ToolWorkbenchViewModel
             : null;
         var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
         HeightImageViewer.RoiWorkspace.SetProjection(new HeightImageRoiProjection(
-            !IsInspectionFileView
+            !IsReadOnlySampleView
             && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
             && binding is not null,
             binding?.GridWidth ?? 0,
@@ -114,7 +122,7 @@ public sealed partial class ToolWorkbenchViewModel
             IsTeachingSelectionCaptureActive,
             candidate,
             overlays,
-            IsRecipeMutationBlocked || IsInspectionFileView));
+            IsRecipeMutationBlocked || IsReadOnlySampleView));
     }
 
     private static void AddHeightImageRoiOverlay(
@@ -134,7 +142,7 @@ public sealed partial class ToolWorkbenchViewModel
             role,
             InspectionWorkspaceRegionLifecycleState.Applied,
             rectangle,
-            role == activeRole,
+            role != InspectionWorkspaceRegionRole.None && role == activeRole,
             false));
     }
 

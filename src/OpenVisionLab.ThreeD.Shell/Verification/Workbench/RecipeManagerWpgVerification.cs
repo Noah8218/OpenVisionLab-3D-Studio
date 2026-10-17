@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.WpfPropertyGrid;
 using System.Windows.Media;
@@ -24,6 +25,398 @@ namespace OpenVisionLab.ThreeD.Shell;
 
 internal static class RecipeManagerWpgVerification
 {
+    public static bool VerifyFieldPresentation(string reportPath, out string summary)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        var lines = new List<string>
+        {
+            "OpenVisionLab 3D settings field presentation verification",
+            $"Generated: {DateTimeOffset.Now:O}",
+            $"Assembly: {typeof(RecipeManagerWpgVerification).Assembly.Location}",
+            "Scope: mounted WPF field/adapter checks; actual Computer Use and physical pointer-down evidence are separate."
+        };
+        var passed = 0;
+        var total = 0;
+        var imageRoot = Path.ChangeExtension(Path.GetFullPath(reportPath), null) + "-images";
+        Directory.CreateDirectory(imageRoot);
+        var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+        var originalShutdownMode = Application.Current.ShutdownMode;
+        Window? window = null;
+        void Check(string name, bool condition, string detail)
+        {
+            total++;
+            lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
+            if (condition) passed++;
+        }
+        void Layout()
+        {
+            window?.UpdateLayout();
+            Application.Current.Dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+        }
+        void Capture(FrameworkElement view, string name)
+        {
+            view.InvalidateVisual();
+            foreach (var child in FindVisualChildren<FrameworkElement>(view)) child.InvalidateVisual();
+            Layout();
+            var offset = VisualTreeHelper.GetOffset(view);
+            var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(view.ActualWidth + 6), (int)Math.Ceiling(view.ActualHeight + 6), 96, 96, PixelFormats.Pbgra32);
+            var drawing = new DrawingVisual();
+            using (var context = drawing.RenderOpen())
+            {
+                context.DrawRectangle((Brush)Application.Current.FindResource("ThreeD.PanelBrush"), null, new Rect(0, 0, view.ActualWidth + 6, view.ActualHeight + 6));
+                var brush = new VisualBrush(view)
+                {
+                    Stretch = Stretch.None,
+                    AlignmentX = AlignmentX.Left,
+                    AlignmentY = AlignmentY.Top,
+                    ViewboxUnits = BrushMappingMode.Absolute,
+                    Viewbox = new Rect(0, 0, view.ActualWidth, view.ActualHeight)
+                };
+                context.DrawRectangle(brush, null, new Rect(0, 0, view.ActualWidth, view.ActualHeight));
+            }
+            bitmap.Render(drawing);
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+            using var stream = File.Create(Path.Combine(imageRoot, name + ".png"));
+            encoder.Save(stream);
+        }
+        try
+        {
+            Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop.TryGetLeftmostWorkArea(out var workArea);
+            foreach (var language in new[] { OpenVisionLanguage.Korean, OpenVisionLanguage.English })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                foreach (var width in new[] { 266d, 296d })
+                {
+                    var label = $"{language}-{width:F0}";
+                    var draft = new ThicknessStepProperties { MinimumThickness = 7.75, MaximumThickness = 8.25, MinimumValidSampleCount = 3000 };
+                    var conditions = new RecipeStepPropertyGridHost
+                    {
+                        Width = width,
+                        IsCompactPresentation = true,
+                        AcceptanceParametersOnly = false,
+                        SelectedObject = draft
+                    };
+                    var acceptance = new RecipeStepPropertyGridHost
+                    {
+                        Width = width,
+                        IsCompactPresentation = true,
+                        AcceptanceParametersOnly = true,
+                        SelectedObject = draft,
+                        Margin = new Thickness(0, 16, 0, 0)
+                    };
+                    var panel = new StackPanel { Children = { conditions, acceptance } };
+                    window = new Window
+                    {
+                        Title = "Settings field verification",
+                        Width = width + 24,
+                        MinWidth = 0,
+                        Height = 640,
+                        Left = workArea.Left + 16,
+                        Top = workArea.Top + 16,
+                        WindowStyle = WindowStyle.None,
+                        WindowStartupLocation = WindowStartupLocation.Manual,
+                        ShowInTaskbar = false,
+                        ShowActivated = false,
+                        Background = (Brush)Application.Current.FindResource("ThreeD.PanelBrush"),
+                        Content = panel
+                    };
+                    window.Show();
+                    OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop.AppendWindowMonitorEvidence(window, reportPath + ".monitor.txt");
+                    Layout();
+                    lines.Add($"Fields | {label}; condition metadata={conditions.VisiblePropertyCount}, editors={FindTextEditors(conditions).Count()}; acceptance metadata={acceptance.VisiblePropertyCount}, editors={FindTextEditors(acceptance).Count()}");
+                    Capture(panel, label + "-normal");
+                    var sample = FindTextEditors(conditions).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumValidSampleCount));
+                    var minimum = FindTextEditors(acceptance).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumThickness));
+                    var maximum = FindTextEditors(acceptance).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MaximumThickness));
+                    var focusedSample = sample.Focus();
+                    var movedToNext = sample.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                    Layout();
+                    Check("compact Tab reaches the next editor without container focus", focusedSample && movedToNext && minimum.IsKeyboardFocused, $"{label}; next={Keyboard.FocusedElement?.GetType().FullName}");
+                    Check("focused compact editor keeps description tooltip away from input", !ToolTipService.GetIsEnabled(minimum), label);
+                    Check("same typed draft and split metadata", ReferenceEquals(conditions.SelectedObject, draft) && ReferenceEquals(acceptance.SelectedObject, draft)
+                        && conditions.VisiblePropertyCount == 1 && acceptance.VisiblePropertyCount == 2,
+                        $"{label}; condition={conditions.VisiblePropertyCount}; acceptance={acceptance.VisiblePropertyCount}");
+                    Check("field geometry and font", new[] { sample, minimum, maximum }.All(e => Math.Abs(e.ActualHeight - 30) <= 0.5 && e.FontSize == 13 && e.FontFamily.Source.StartsWith("Segoe UI Variable Text", StringComparison.Ordinal))
+                        && Math.Abs(minimum.ActualWidth - (width - 10) / 2) <= 0.5 && Math.Abs(maximum.ActualWidth - minimum.ActualWidth) <= 0.5
+                        && Math.Abs(minimum.TranslatePoint(new Point(), acceptance).Y - maximum.TranslatePoint(new Point(), acceptance).Y) <= 0.5,
+                        $"{label}; sample={sample.ActualWidth:F2}x{sample.ActualHeight:F2}; minimum={minimum.ActualWidth:F2}x{minimum.ActualHeight:F2}; maximum={maximum.ActualWidth:F2}x{maximum.ActualHeight:F2}");
+                    var surface = (Border)sample.Template.FindName("ParameterInputSurface", sample);
+                    Check("rendered normal surface uses field roles", surface.CornerRadius.TopLeft == 4 && surface.BorderThickness == new Thickness(1)
+                        && surface.Background.ToString() == "#FF222A33" && surface.BorderBrush.ToString() == "#FF718293",
+                        $"{label}; bg={surface.Background}; border={surface.BorderBrush}; radius={surface.CornerRadius}");
+                    Check("one outer scroll owner", !FindVisualChildren<ScrollViewer>(conditions).Concat(FindVisualChildren<ScrollViewer>(acceptance)).Any(s => s.IsVisible && s.Name != "PART_ContentHost"), label);
+                    var expression = minimum.GetBindingExpression(TextBox.TextProperty)!;
+                    minimum.SetCurrentValue(TextBox.TextProperty, "7.8");
+                    var validWithoutUpdate = expression.ValidateWithoutUpdate();
+                    Check("display validation does not update source", validWithoutUpdate && draft.MinimumThickness == 7.75 && ReferenceEquals(expression, minimum.GetBindingExpression(TextBox.TextProperty)), label);
+                    var validCommit = acceptance.CommitPendingEdit(out var validMessage);
+                    Check("existing explicit commit still uses its converter", validCommit && draft.MinimumThickness == 7.8 && !acceptance.HasValidationErrors, $"{label}; {validMessage}");
+                    minimum.SetCurrentValue(TextBox.TextProperty, "not-a-number");
+                    var invalidCommit = acceptance.CommitPendingEdit(out var invalidMessage);
+                    Layout();
+                    var errorText = (TextBlock)minimum.Template.FindName("ParameterErrorText", minimum);
+                    Check("invalid numeric input stays visible without source mutation", !invalidCommit && acceptance.HasValidationErrors && Validation.GetHasError(minimum)
+                        && minimum.Text == "not-a-number" && draft.MinimumThickness == 7.8 && errorText.Visibility == Visibility.Visible && !string.IsNullOrWhiteSpace(errorText.Text)
+                        && errorText.TextWrapping == TextWrapping.Wrap && minimum.ActualHeight > 30,
+                        $"{label}; error={invalidMessage}; height={minimum.ActualHeight:F2}; errorHeight={errorText.ActualHeight:F2}");
+                    var invalidSurface = (Border)minimum.Template.FindName("ParameterInputSurface", minimum);
+                    Check("rendered changed error uses HTML colors without tooltip overlay", invalidSurface.BorderBrush.ToString() == "#FFF1C27A"
+                        && invalidSurface.Background.ToString() == "#FF2A2226" && errorText.Foreground.ToString() == "#FFF29D9F" && !ToolTipService.GetIsEnabled(minimum),
+                        $"{label}; border={invalidSurface.BorderBrush}; error={errorText.Foreground}; bg={invalidSurface.Background}");
+                    Capture(panel, label + "-invalid");
+                    minimum.SetCurrentValue(TextBox.TextProperty, "7.75");
+                    var recovered = acceptance.CommitPendingEdit(out var recoveredMessage);
+                    Layout();
+                    Check("valid input recovers the same binding", recovered && !acceptance.HasValidationErrors && !Validation.GetHasError(minimum) && draft.MinimumThickness == 7.75
+                        && ReferenceEquals(expression, minimum.GetBindingExpression(TextBox.TextProperty)), $"{label}; {recoveredMessage}");
+                    maximum.Focus();
+                    Layout();
+                    Check("recovered unfocused editor restores description tooltip", !minimum.IsKeyboardFocusWithin && ToolTipService.GetIsEnabled(minimum), label);
+                    conditions.IsEnabled = false;
+                    Layout();
+                    surface = (Border)sample.Template.FindName("ParameterInputSurface", sample);
+                    Check("disabled editor is rendered with semantic roles", !sample.IsEnabled && surface.Background.ToString() == "#FF1C2229"
+                        && sample.Foreground.ToString() == "#FF8B98A6", $"{label}; bg={surface.Background}; text={sample.Foreground}");
+                    Capture(panel, label + "-disabled");
+                    conditions.IsEnabled = true;
+                    acceptance.IsCompactPresentation = false;
+                    acceptance.AcceptanceParametersOnly = null;
+                    Layout();
+                    Check("noncompact presentation restores table and same source", ReferenceEquals(acceptance.SelectedObject, draft) && acceptance.VisiblePropertyCount == 3
+                        && FindTextEditors(acceptance).Any(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumValidSampleCount))
+                        && !FindVisualChildren<Border>(acceptance).Any(b => b.Name == "ParameterInputSurface"), label);
+                    Capture(panel, label + "-noncompact");
+                    window.Close();
+                    window = null;
+                }
+            }
+            var representative = new RecipeStepPropertyGridHost
+            {
+                Width = 266,
+                IsCompactPresentation = true,
+                SelectedObject = new WpgProbeProperties()
+            };
+            window = new Window
+            {
+                Title = "Settings editor consumers",
+                Width = 290,
+                MinWidth = 0,
+                Height = 640,
+                Left = workArea.Left + 16,
+                Top = workArea.Top + 16,
+                WindowStyle = WindowStyle.None,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                Background = (Brush)Application.Current.FindResource("ThreeD.PanelBrush"),
+                Content = representative
+            };
+            window.Show();
+            OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop.AppendWindowMonitorEvidence(window, reportPath + ".monitor.txt");
+            Layout();
+            var enumEditor = FindVisualChildren<ComboBox>(representative).First();
+            Check("enum consumer preserves its real source and complete localized caption", enumEditor.FontSize == 13 && Math.Abs(enumEditor.ActualHeight - 30) <= 0.5 && enumEditor.ItemTemplate is not null
+                && FindVisualChildren<TextBlock>(enumEditor).Any(text => text.IsVisible && text.Text == "Rising")
+                && representative.VisiblePropertyCount == 3, $"height={enumEditor.ActualHeight:F2}; font={enumEditor.FontSize}; selected={enumEditor.SelectedValue}");
+            Capture(representative, "representative-enum-bool-range");
+            var enumFactory = (System.Windows.Controls.WpfPropertyGrid.Controls.EnumDropdown)enumEditor;
+            var enumBinding = enumEditor.GetBindingExpression(System.Windows.Controls.WpfPropertyGrid.Controls.EnumDropdown.PropertyValueProperty);
+            enumEditor.Focus();
+            Layout();
+            var enumOutline = FindVisualChildren<Border>(representative).Single(border => border.Name == "ParameterSelectionFocusOutline" && border.IsVisible);
+            Check("focused enum has HTML outer outline without growing factory editor", enumOutline.BorderThickness == new Thickness(2) && enumOutline.CornerRadius == new CornerRadius(6)
+                && enumOutline.BorderBrush.ToString() == "#FFA2DFD4" && Math.Abs(enumOutline.ActualWidth - enumEditor.ActualWidth - 4) <= 0.5
+                && Math.Abs(enumOutline.ActualHeight - enumEditor.ActualHeight - 4) <= 0.5 && Math.Abs(enumEditor.ActualHeight - 30) <= 0.5,
+                $"editor={enumEditor.ActualWidth:F2}x{enumEditor.ActualHeight:F2}; outline={enumOutline.ActualWidth:F2}x{enumOutline.ActualHeight:F2}");
+            Check("enum outline preserves original typed factory binding", enumBinding is not null && ReferenceEquals(enumFactory.PropertyValue, enumEditor.DataContext)
+                && ReferenceEquals(enumBinding, enumEditor.GetBindingExpression(System.Windows.Controls.WpfPropertyGrid.Controls.EnumDropdown.PropertyValueProperty))
+                && ((WpgProbeProperties)representative.SelectedObject).Polarity == HeightDifferenceEdgePolarity.Rising, $"selected={enumEditor.SelectedValue}; DP=PropertyValue; source={enumBinding?.DataItem?.GetType().Name}");
+            enumEditor.SetCurrentValue(System.Windows.Controls.Primitives.Selector.SelectedItemProperty, HeightDifferenceEdgePolarity.Falling);
+            Layout();
+            Check("original enum factory writes selected value into typed source", ((WpgProbeProperties)representative.SelectedObject).Polarity == HeightDifferenceEdgePolarity.Falling
+                && Equals(enumFactory.PropertyValue.Value, HeightDifferenceEdgePolarity.Falling), $"selected={enumEditor.SelectedValue}; source={((WpgProbeProperties)representative.SelectedObject).Polarity}");
+            Check("changed enum has HTML warning border and independent focus outline", RecipeStepPropertyGridHost.GetIsEditedValue(enumEditor)
+                && enumEditor.BorderBrush.ToString() == "#FFF1C27A" && enumOutline.IsVisible && enumOutline.BorderBrush.ToString() == "#FFA2DFD4", $"border={enumEditor.BorderBrush}; outline={enumOutline.BorderBrush}");
+            Capture(representative, "representative-enum-changed");
+            enumFactory.PropertyValue.Value = HeightDifferenceEdgePolarity.Rising;
+            Layout();
+            Check("original enum factory restores rendered selection from source value", Equals(enumEditor.SelectedValue, HeightDifferenceEdgePolarity.Rising)
+                && ReferenceEquals(enumBinding, enumEditor.GetBindingExpression(System.Windows.Controls.WpfPropertyGrid.Controls.EnumDropdown.PropertyValueProperty)), $"selected={enumEditor.SelectedValue}");
+            Check("restored enum clears changed presentation without replacing binding", !RecipeStepPropertyGridHost.GetIsEditedValue(enumEditor)
+                && enumEditor.BorderBrush.ToString() == "#FFA2DFD4", $"border={enumEditor.BorderBrush}");
+            Capture(representative, "representative-enum-focused");
+            enumEditor.SetCurrentValue(System.Windows.Controls.Primitives.Selector.SelectedItemProperty, HeightDifferenceEdgePolarity.Falling);
+            representative.IsEnabled = false;
+            Layout();
+            Check("disabled enum removes outer outline", !enumOutline.IsVisible, "existing host enabled state");
+            Check("disabled enum keeps disabled border despite changed selection", enumEditor.BorderBrush.ToString() == representative.FindResource("ThreeD.DividerBrush").ToString(), $"border={enumEditor.BorderBrush}");
+            representative.IsEnabled = true;
+            Layout();
+            var booleanEditor = FindVisualChildren<CheckBox>(representative).Single();
+            var booleanSource = (WpgProbeProperties)representative.SelectedObject;
+            var booleanBinding = booleanEditor.GetBindingExpression(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty);
+            var booleanSurface = (Border)booleanEditor.Template.FindName("ParameterCheckSurface", booleanEditor);
+            Check("checked bool factory uses compact graphite surface", booleanEditor.IsChecked == true && booleanSurface.Background.ToString() == "#FF65B9AE"
+                && ((System.Windows.Shapes.Path)booleanEditor.Template.FindName("ParameterCheckMark", booleanEditor)).Visibility == Visibility.Visible, $"bg={booleanSurface.Background}");
+            booleanEditor.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, false);
+            booleanBinding!.UpdateSource();
+            Layout();
+            Check("bool factory retains two-way typed binding", !booleanSource.Enabled && ReferenceEquals(booleanBinding, booleanEditor.GetBindingExpression(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty))
+                && booleanSurface.Background.ToString() == "#FF222A33", $"source={booleanSource.Enabled}; bg={booleanSurface.Background}");
+            Capture(representative, "representative-bool-unchecked");
+            booleanSource.Enabled = true;
+            booleanBinding.UpdateTarget();
+            Layout();
+            Check("restored bool source renders checked mark", booleanEditor.IsChecked == true && ((System.Windows.Shapes.Path)booleanEditor.Template.FindName("ParameterCheckMark", booleanEditor)).Visibility == Visibility.Visible, "same factory editor");
+            booleanEditor.IsEnabled = false;
+            Layout();
+            Check("disabled bool avoids platform-white surface", booleanSurface.Background.ToString() == "#FF1C2229" && booleanEditor.Foreground.ToString() == "#FF8B98A6", $"bg={booleanSurface.Background}; fg={booleanEditor.Foreground}");
+            Capture(representative, "representative-bool-disabled");
+
+            representative.SelectedObject = new FilterStepProperties { KernelSize = 3 };
+            Layout();
+            var kernelEditor = FindVisualChildren<TextBox>(representative).Single(editor => AutomationProperties.GetAutomationId(editor) == nameof(FilterStepProperties.KernelSize));
+            var kernelUnit = FindVisualChildren<TextBlock>(representative).Single(text => text.IsVisible && text.Text == "cells");
+            Check("filter kernel caption, cell unit and input width match HTML field roles", FindVisualChildren<TextBlock>(representative).Any(text => text.IsVisible && text.Text == "Kernel size")
+                && kernelUnit.FontSize == 12 && Math.Abs(kernelEditor.ActualWidth + kernelUnit.ActualWidth + 6 - representative.ActualWidth) <= 0.5
+                && Math.Abs(kernelEditor.ActualHeight - 30) <= 0.5, $"editor={kernelEditor.ActualWidth:F2}; unit={kernelUnit.ActualWidth:F2}; host={representative.ActualWidth:F2}");
+            Capture(representative, "representative-filter-cell-unit");
+
+            window.Close();
+            window = null;
+            var fixtureRoot = Path.Combine(imageRoot, "footer-fixture");
+            Directory.CreateDirectory(fixtureRoot);
+            var sourcePath = Path.Combine(fixtureRoot, "source.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("source.settings-footer", 3, 3, [1, 2, 4, 2, 4, 8, 3, 6, 12]).SaveC3D(sourcePath);
+            foreach (var language in new[] { OpenVisionLanguage.Korean, OpenVisionLanguage.English })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                foreach (var panelWidth in new[] { 290d, 320d })
+                {
+                    var width = panelWidth - 4;
+                    using var workbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, $"recent-{language}-{width:F0}.json"));
+                    workbench.SetC3DSource(sourcePath);
+                    var step = AddTool(workbench, "thickness");
+                    var view = new Views.Workbench.SelectedToolWorkspaceView { Width = width, DataContext = workbench };
+                    window = new Window
+                    {
+                        Title = "Settings footer verification", Width = width + 24, MinWidth = 0, Height = 640,
+                        Left = workArea.Left + 16, Top = workArea.Top + 16, WindowStyle = WindowStyle.None,
+                        WindowStartupLocation = WindowStartupLocation.Manual, ShowInTaskbar = false, ShowActivated = false,
+                        Background = (Brush)Application.Current.FindResource("ThreeD.PanelBrush"), Content = view
+                    };
+                    window.Show();
+                    OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop.AppendWindowMonitorEvidence(window, reportPath + ".monitor.txt");
+                    Layout();
+                    var label = $"footer-{language}-{panelWidth:F0}";
+                    var footer = (Border)view.FindName("SelectedToolActionBar");
+                    var draftBar = (Border)view.FindName("SelectedToolDraftBar");
+                    var run = (Button)view.FindName("PreviewActionButton");
+                    var menu = (Button)view.FindName("SelectedToolFooterMenuButton");
+                    var apply = (Button)view.FindName("SelectedToolFooterApplyButton");
+                    var discard = (Button)view.FindName("SelectedToolFooterDiscardButton");
+                    var conditions = (RecipeStepPropertyGridHost)view.FindName("StepPropertyGrid");
+                    var acceptance = (RecipeStepPropertyGridHost)view.FindName("AcceptancePropertyGrid");
+                    var logCount = workbench.RunLog.Count;
+                    var requiredSections = FindVisualChildren<Expander>(view).Where(section => section.IsVisible && ReferenceEquals(section.Style, view.FindResource("RequiredSettingsSectionStyle"))).ToArray();
+                    var requiredHeaders = requiredSections.Select(section => (TextBlock)section.Template.FindName("RequiredSettingsHeader", section)).ToArray();
+                    Check("Teaching section captions use the HTML type and color roles", requiredHeaders.Length >= 4
+                        && requiredHeaders.All(header => header.FontFamily.Source == "Segoe UI Variable Text, Segoe UI, Malgun Gothic" && header.FontSize == 12
+                            && header.FontWeight.ToOpenTypeWeight() == 650 && Math.Abs(header.ActualHeight - 17.4) <= 0.05 && header.Foreground.ToString() == "#FFADB9C6"),
+                        $"{label}; headers={requiredHeaders.Length}; heights={string.Join(",", requiredHeaders.Select(header => header.ActualHeight.ToString("F2")))}");
+                    var sampleField = FindVisualChildren<TextBox>(conditions).Single(editor => AutomationProperties.GetAutomationId(editor) == nameof(ThicknessStepProperties.MinimumValidSampleCount));
+                    var minimumField = FindVisualChildren<TextBox>(acceptance).Single(editor => AutomationProperties.GetAutomationId(editor) == nameof(ThicknessStepProperties.MinimumThickness));
+                    var sampleToLimitGap = minimumField.TranslatePoint(new Point(), view).Y - sampleField.TranslatePoint(new Point(), view).Y;
+                    Check("Teaching condition-to-decision spacing matches the localhost HTML", Math.Abs(sampleToLimitGap - 110.78125) <= 0.05
+                        && requiredSections.All(section => section.Margin == new Thickness()), $"{label}; gap={sampleToLimitGap:F5}; expected=110.78125");
+                    Check("fixed footer compensates docking inset with HTML padding", footer.IsVisible && Math.Abs(footer.ActualWidth - panelWidth) <= 0.5
+                        && footer.Margin == new Thickness(-2, 0, -2, 0)
+                        && footer.Padding == new Thickness(12, 10, 12, 10) && footer.BorderThickness == new Thickness(0, 1, 0, 0), $"{label}; width={footer.ActualWidth:F2}; padding={footer.Padding}");
+                    Check("run and menu geometry match HTML", Math.Abs(run.ActualHeight - 34) <= 0.5 && Math.Abs(menu.ActualHeight - 34) <= 0.5
+                        && Math.Abs(menu.ActualWidth - 30) <= 0.5 && Math.Abs(run.ActualWidth - (panelWidth - 60)) <= 0.5
+                        && Math.Abs(menu.TranslatePoint(new Point(), footer).X - run.TranslatePoint(new Point(run.ActualWidth, 0), footer).X - 6) <= 0.5
+                        && run.FontSize == 13, $"{label}; run={run.ActualWidth:F2}x{run.ActualHeight:F2}; menu={menu.ActualWidth:F2}x{menu.ActualHeight:F2}");
+                    Check("normal footer has no draft action gap or execution", draftBar.Visibility == Visibility.Collapsed && !apply.IsVisible && !discard.IsVisible
+                        && workbench.RunLog.Count == logCount && !workbench.IsSelectedStepPreviewRunning && !workbench.IsOrderedRunRunning, label);
+                    Check("footer keeps existing command and dual-grid commit owners", ReferenceEquals(run.Command, workbench.RunSelectedStepCommand)
+                        && ReferenceEquals(discard.Command, workbench.DiscardSelectedStepParameterDraftCommand)
+                        && ReferenceEquals(Behaviors.CommitPropertyGridCommandBehavior.GetCommand(apply), workbench.ApplySelectedStepParameterDraftCommand)
+                        && ReferenceEquals(Behaviors.CommitPropertyGridCommandBehavior.GetPropertyGrid(apply), conditions)
+                        && ReferenceEquals(Behaviors.CommitPropertyGridCommandBehavior.GetAdditionalPropertyGrid(apply), acceptance), label);
+                    Capture(view, label + "-normal");
+                    menu.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                    Layout();
+                    Check("footer menu opens with existing workbench command owner", menu.ContextMenu!.IsOpen && ReferenceEquals(menu.ContextMenu.DataContext, workbench)
+                        && ReferenceEquals(menu.ContextMenu.Items.OfType<MenuItem>().First().Command, workbench.MoveSelectedStepUpCommand), label);
+                    Capture(menu.ContextMenu, label + "-menu");
+                    menu.ContextMenu.IsOpen = false;
+                    Layout();
+
+                    workbench.MarkSelectedStepParameterDraftDirty();
+                    Layout();
+                    Check("pending draft actions stay inside fixed footer", draftBar.IsVisible && apply.IsVisible && discard.IsVisible && apply.IsEnabled && discard.IsEnabled
+                        && Math.Abs(apply.ActualHeight - 26) <= 0.5 && Math.Abs(discard.ActualHeight - 26) <= 0.5
+                        && apply.FontSize == 12 && discard.FontSize == 12
+                        && draftBar.IsAncestorOf(apply), label);
+                    Check("draft bar and primary button use HTML roles", draftBar.Padding == new Thickness(10, 8, 10, 8) && draftBar.CornerRadius.TopLeft == 4
+                        && draftBar.Background.ToString() == "#FF382D20" && apply.Background.ToString() == "#FF65B9AE"
+                        && apply.Foreground.ToString() == "#FF11171B" && discard.Foreground.ToString() == "#FFF3D9AE",
+                        $"{label}; draft={draftBar.Background}; apply={apply.Background}/{apply.Foreground}; discard={discard.Foreground}");
+                    Capture(view, label + "-pending");
+                    discard.IsEnabled = false;
+                    Layout();
+                    Check("disabled Discard retains shared state roles", discard.Foreground.ToString() == "#FF8B98A6"
+                        && discard.Background.ToString() == "#FF1E252C", $"{label}; fg={discard.Foreground}; bg={discard.Background}");
+                    Capture(view, label + "-discard-disabled");
+                    discard.ClearValue(UIElement.IsEnabledProperty);
+                    Layout();
+                    var sample = FindTextEditors(conditions).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumValidSampleCount));
+                    sample.SetCurrentValue(TextBox.TextProperty, "not-a-number");
+                    _ = conditions.CommitPendingEdit(out var error);
+                    Layout();
+                    Check("invalid field disables fixed Apply and preserves Discard", conditions.HasValidationErrors && !apply.IsEnabled && discard.IsEnabled
+                        && apply.Background.ToString() == "#FF2A3A3A" && apply.Foreground.ToString() == "#FF7F9C97", $"{label}; {error}");
+                    Capture(view, label + "-invalid");
+                    if (discard.Command?.CanExecute(discard.CommandParameter) == true) discard.Command.Execute(discard.CommandParameter);
+                    Layout();
+                    Check("fixed Discard command recovers rendered draft without execution", !workbench.HasPendingStepParameterChanges && !conditions.HasValidationErrors
+                        && draftBar.Visibility == Visibility.Collapsed && workbench.RunLog.Count == logCount
+                        && !workbench.IsSelectedStepPreviewRunning && !workbench.IsOrderedRunRunning, label);
+                    view.IsLabPresentation = true;
+                    Layout();
+                    var labSections = FindVisualChildren<Expander>(view).Where(section => section.IsVisible && ReferenceEquals(section.Style, view.FindResource("RequiredSettingsSectionStyle"))).ToArray();
+                    var labHeaders = labSections.Select(section => (TextBlock)section.Template.FindName("RequiredSettingsHeader", section)).ToArray();
+                    Check("Lab section presentation retains its existing margin and caption roles", labSections.Length >= 4
+                        && labSections.All(section => section.Margin == new Thickness(0, 0, 0, 7))
+                        && labHeaders.All(header => header.FontWeight == FontWeights.SemiBold && header.Foreground.ToString() == "#FFE4E9EF" && header.Margin == new Thickness(0, 0, 0, 6)), label);
+                    Check("Lab preserves body actions and hides Teaching footer", footer.Visibility == Visibility.Collapsed
+                        && FindVisualChildren<Button>(view).Any(button => button.IsVisible && AutomationProperties.GetAutomationId(button) == "ApplySelectedToolParameters"
+                            && ReferenceEquals(Behaviors.CommitPropertyGridCommandBehavior.GetCommand(button), workbench.ApplySelectedStepParameterDraftCommand))
+                        && !conditions.IsCompactPresentation, label);
+                    window.Close();
+                    window = null;
+                }
+            }
+
+        }
+        catch (Exception exception)
+        {
+            Check("settings field verification completed without exception", false, exception.ToString());
+        }
+        finally
+        {
+            window?.Close();
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Application.Current.ShutdownMode = originalShutdownMode;
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        File.WriteAllLines(reportPath, lines);
+        summary = $"Settings field presentation verification: {passed}/{total} checks passed.";
+        return passed == total;
+    }
+
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
@@ -1716,7 +2109,7 @@ internal static class RecipeManagerWpgVerification
             host.UpdateLayout();
             var closedEnumCaptions = new[]
             {
-                (nameof(FilterStepProperties.Method), "중앙값 필터"),
+                (nameof(FilterStepProperties.Method), "중앙값"),
                 (nameof(FilterStepProperties.MissingValuePolicy), "누락 위치 유지"),
                 (nameof(FilterStepProperties.BoundaryPolicy), "사용 가능한 주변 셀")
             };

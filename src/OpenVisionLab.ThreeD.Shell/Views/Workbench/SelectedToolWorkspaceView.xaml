@@ -11,8 +11,132 @@
              xmlns:workbenchVm="clr-namespace:OpenVisionLab.ThreeD.Shell.ViewModels.Workbench"
              AutomationProperties.AutomationId="SelectedToolWorkspace">
     <UserControl.Resources>
+        <workbench:MeasurementNumberTextConverter x:Key="MeasurementNumberTextConverter" />
+        <SolidColorBrush x:Key="SettingsFooterSurfaceBrush" Color="#1F262E" />
+        <SolidColorBrush x:Key="SettingsButtonHoverBorderBrush" Color="#4B5967" />
+        <SolidColorBrush x:Key="SettingsButtonPressedBorderBrush" Color="#7B8C9A" />
+        <SolidColorBrush x:Key="SettingsButtonDisabledSurfaceBrush" Color="#1E252C" />
+        <SolidColorBrush x:Key="SettingsButtonDisabledBorderBrush" Color="#323C47" />
+        <SolidColorBrush x:Key="SettingsPrimaryDisabledSurfaceBrush" Color="#2A3A3A" />
+        <SolidColorBrush x:Key="SettingsPrimaryDisabledBorderBrush" Color="#2F4443" />
+        <SolidColorBrush x:Key="SettingsPrimaryDisabledTextBrush" Color="#7F9C97" />
+        <SolidColorBrush x:Key="SettingsDraftTextBrush" Color="#F3D9AE" />
+        <Style x:Key="SettingsFooterButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
+                            </Border>
+                            <Border x:Name="SettingsButtonFocusOutline" Margin="-3" BorderBrush="{DynamicResource ThreeD.FocusBrush}" BorderThickness="2" CornerRadius="7" Visibility="Collapsed" IsHitTestVisible="False" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="SettingsButtonFocusOutline" Property="Visibility" Value="Visible" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="SettingsButtonFocusOutline" Property="Visibility" Value="Collapsed" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource SettingsButtonHoverBorderBrush}" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource SettingsButtonPressedBorderBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Background" Value="{StaticResource SettingsButtonDisabledSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource SettingsButtonDisabledBorderBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="Cursor" Value="Arrow" /></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SettingsFooterDiscardButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingsFooterButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource SettingsDraftTextBrush}" />
+        </Style>
+        <Style x:Key="SettingsFooterPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingsFooterButtonStyle}">
+            <Setter Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryButtonTextBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.AccentHoverBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.AccentPressedBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentPressedBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Background" Value="{StaticResource SettingsPrimaryDisabledSurfaceBrush}" /><Setter Property="BorderBrush" Value="{StaticResource SettingsPrimaryDisabledBorderBrush}" /><Setter Property="Foreground" Value="{StaticResource SettingsPrimaryDisabledTextBrush}" /></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SettingsFooterApplyButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingsFooterPrimaryButtonStyle}">
+            <Setter Property="IsEnabled" Value="{Binding HasPendingStepParameterChanges}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasValidationErrors, ElementName=StepPropertyGrid}" Value="True"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <DataTrigger Binding="{Binding HasValidationErrors, ElementName=AcceptancePropertyGrid}" Value="True"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <DataTrigger Binding="{Binding CanEditRecipe}" Value="False"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SelectedToolApplyParameterButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="IsEnabled" Value="{Binding HasPendingStepParameterChanges}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasValidationErrors, ElementName=StepPropertyGrid}" Value="True"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <DataTrigger Binding="{Binding HasValidationErrors, ElementName=AcceptancePropertyGrid}" Value="True"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <DataTrigger Binding="{Binding CanEditRecipe}" Value="False"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <workbench:HeightImageFrameConverter x:Key="HeightImageFrameConverter" />
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+        <SolidColorBrush x:Key="AppliedRoiHoverBorderBrush" Color="#8C9DAE" />
+        <Style x:Key="AppliedRoiLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="LineHeight" Value="17.4" />
+            <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+        </Style>
+        <Style x:Key="AppliedRoiTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <Border x:Name="ContentBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                <ScrollViewer x:Name="PART_ContentHost" BorderThickness="0" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                            </Border>
+                            <Border x:Name="FocusOutline" Margin="-2" BorderBrush="{DynamicResource ThreeD.FocusBrush}" BorderThickness="2" CornerRadius="5" Visibility="Collapsed" IsHitTestVisible="False" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{StaticResource AppliedRoiHoverBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                                <Setter TargetName="FocusOutline" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="Validation.HasError" Value="True">
+                                <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                <Setter TargetName="FocusOutline" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="WorkspaceSectionStyle" TargetType="{x:Type Expander}">
             <Setter Property="Margin" Value="0,0,0,7" />
             <Setter Property="IsExpanded" Value="False" />
@@ -124,17 +248,34 @@
         </Style>
         <Style x:Key="RequiredSettingsSectionStyle" TargetType="Expander" BasedOn="{StaticResource WorkspaceSectionStyle}">
             <Setter Property="IsExpanded" Value="True" />
+            <Setter Property="Margin" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
-                        <StackPanel Margin="0,10,0,6">
-                            <TextBlock Margin="0,0,0,6" FontWeight="SemiBold" FontSize="12"
-                                       Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{TemplateBinding Header}" />
+                        <Border BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1" Padding="0,12,0,12"><StackPanel>
+                            <TextBlock x:Name="RequiredSettingsHeader" Margin="0,0,0,4" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" FontWeight="650" FontSize="12" LineHeight="17.4" LineStackingStrategy="BlockLineHeight"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{TemplateBinding Header}" />
                             <ContentPresenter ContentSource="Content" />
-                        </StackPanel>
+                        </StackPanel></Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True">
+                    <Setter Property="Margin" Value="0,0,0,7" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Border BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1" Padding="0,12,0,12"><StackPanel>
+                            <TextBlock x:Name="RequiredSettingsHeader" Margin="0,0,0,6" FontWeight="SemiBold" FontSize="12"
+                                       Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{TemplateBinding Header}" />
+                            <ContentPresenter ContentSource="Content" />
+                        </StackPanel></Border>
+                    </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="RegionCardStyle" TargetType="Border">
             <Setter Property="Margin" Value="0,0,0,6" />
@@ -210,6 +351,7 @@
         </Style>
     </UserControl.Resources>
     <UserControl.InputBindings>
+        <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoSelectedStepParametersCommand}" />
         <KeyBinding Key="A"
                     Modifiers="Control+Alt"
                     Command="{Binding AnalyzePreparationPresetsCommand}" />
@@ -230,10 +372,12 @@
     <Grid Background="{DynamicResource ThreeD.PanelBrush}"
           TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Border Grid.RowSpan="2"
+        <Border Grid.Row="1" Grid.RowSpan="2"
                 Margin="12"
                 Padding="12"
                 VerticalAlignment="Top"
@@ -270,39 +414,26 @@
 
         <workbench:SourceQualityWorkspaceView
             x:Name="SourceQualityWorkspace"
-            Grid.RowSpan="2"
+            Grid.Row="1" Grid.RowSpan="2"
             DataContext="{Binding SourceQuality}"
             Visibility="{Binding DataContext.IsSourceQualityWorkspaceVisible, ElementName=SelectedToolRoot, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-        <ScrollViewer x:Name="SelectedToolScrollViewer"
-                      Grid.Row="0"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      ScrollViewer.CanContentScroll="False"
-                      PanningMode="VerticalOnly">
-            <StackPanel Margin="8">
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Style>
-
-                <Border x:Name="SelectedToolHeader"
-                        Margin="0,0,0,6"
-                        Padding="8,6"
-                        Background="{DynamicResource ThreeD.CommandBarBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
+        <Border Grid.Row="0" Height="34" Padding="10,0" Background="{DynamicResource ThreeD.DockHeaderBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1">
+            <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Workspace.ToolSettings, Korean='도구 설정', English='Tool settings'}" />
+        </Border>
+        <Border x:Name="SelectedToolHeader"
+                        Grid.Row="1" Margin="0"
+                        Padding="12,10"
+                        Background="Transparent"
+                        BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}"
+                        BorderThickness="0,0,0,1"
                         CornerRadius="4"
                         AutomationProperties.AutomationId="SelectedToolHeader">
                     <Border.Style>
                         <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                                 <DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
@@ -315,10 +446,13 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="SelectedToolHeaderTitle"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Text="{views:ThreeDText Key=ThreeD.Workspace.ToolSettings, Korean='도구 설정', English='Tool settings'}" />
+                            <TextBlock x:Name="SelectedToolHeaderTitle" Visibility="Collapsed" Text="{Binding SelectedPipelineStep.ToolName}" />
+                            <TextBox x:Name="SelectedToolNameEditor" FontSize="14" FontWeight="SemiBold" Padding="3,2" MinHeight="26" Margin="-4,0,0,0" Background="Transparent" BorderThickness="1" IsReadOnly="{Binding IsRecipeMutationBlocked}" Text="{Binding SelectedPipelineStep.ToolName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" AutomationProperties.AutomationId="SelectedToolNameEditor" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Settings.ToolName, Korean='도구 이름', English='Tool name'}">
+                                <TextBox.Style><Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Setter Property="BorderBrush" Value="Transparent" />
+                                    <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger></Style.Triggers>
+                                </Style></TextBox.Style>
+                            </TextBox>
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
@@ -329,22 +463,110 @@
                                 <Run Text="{Binding PipelineSteps.Count, Mode=OneWay}" />
                             </TextBlock>
                         </Grid>
-                        <ComboBox x:Name="SelectedToolStepSelector"
-                                  MinHeight="34"
-                                  Margin="0,4,0,0"
-                                  ItemsSource="{Binding PipelineSteps}"
-                                  SelectedItem="{Binding SelectedPipelineStep, Mode=TwoWay}"
-                                  SelectionChanged="OnSelectedToolStepSelectionChanged"
-                                  AutomationProperties.AutomationId="SelectedToolStepSelector"
-                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.SelectInspectionStep, Korean='검사 단계 선택', English='Select inspection step'}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding ToolName}" TextWrapping="Wrap" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                        <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.Tool.DisplayName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedPipelineStep.Tool.DisplayName}" />
                     </StackPanel>
                 </Border>
+        <Grid Grid.Row="2" x:Name="SelectedToolEditorWorkspace">
+            <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsSourceQualityWorkspaceVisible}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <StackPanel Grid.Row="0">
+<Expander Margin="12,0"
+                          IsExpanded="True"
+                          Header="{views:ThreeDText Key=ThreeD.Settings.InputSection, Korean='입력', English='Input'}"><Expander.Style><Style TargetType="Expander" BasedOn="{StaticResource RequiredSettingsSectionStyle}"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander"><Border Padding="0,8" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1"><ContentPresenter ContentSource="Content" /></Border></ControlTemplate></Setter.Value></Setter></Style></Expander.Style>
+                    <StackPanel Margin="0,5,0,0">
+                        <ItemsControl ItemsSource="{Binding SelectedToolWorkspace.DataInputs}" AutomationProperties.AutomationId="SelectedToolDataInputs">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <StackPanel Margin="0,0,0,6">
+
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" MaxWidth="76" Margin="0,0,8,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding RequiredContractDisplay}" TextWrapping="Wrap" /><ComboBox Grid.Column="1" Margin="0" MinHeight="28" Padding="7,3" ItemsSource="{Binding Choices}" TextSearch.TextPath="DisplayName" SelectedValuePath="EntityId" SelectedValue="{Binding EntityId, Mode=OneWay}" ToolTip="{Binding EntityId}"
+                                              IsEnabled="{Binding DataContext.CanEditFlowConnection, ElementName=SelectedToolRoot}" behaviors:ComboBoxSelectionCommandBehavior.Command="{Binding DataContext.ChooseWorkspaceInputCommand, ElementName=SelectedToolRoot}" AutomationProperties.AutomationId="SelectedToolInputRoute" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Input.SelectTypedInputAccessible, Korean='타입이 지정된 도구 입력 선택', English='Select typed tool input'}">
+                                        <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}"><Setter Property="TextOptions.TextFormattingMode" Value="Ideal" /><Setter Property="IsEnabled" Value="{Binding IsAvailable}" /></Style></ComboBox.ItemContainerStyle>
+                                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate>
+                                    </ComboBox><Button Grid.Column="2" HorizontalAlignment="Left" Margin="6,4,0,0" Padding="5,2" Content="{views:ThreeDText Key=ThreeD.Command.View, Korean='보기', English='View'}" Command="{Binding DataContext.SelectWorkspaceInputCommand, ElementName=SelectedToolRoot}" CommandParameter="{Binding}" IsEnabled="{Binding Preview.HasImage}" /></Grid>
+
+                                </StackPanel>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                    </StackPanel>
+                </Expander>            </StackPanel>
+            <StackPanel Grid.Row="1">
+<UniformGrid Rows="1" Margin="12,0,12,8" AutomationProperties.AutomationId="SelectedToolEditorPages" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.ToolSettingPages, Korean='도구 설정 항목', English='Tool setting pages'}">
+<UniformGrid.Style><Style TargetType="UniformGrid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
+<DataTrigger Binding="{Binding IsSelectedStepRegionSurfaceVisible}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+<DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+<DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+</Style.Triggers></Style></UniformGrid.Style>
+<RadioButton x:Name="EditorRegionTab"
+                                 Grid.Column="1"
+                                 GroupName=""
+                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Checked="OnEditorPageChecked"
+                                 Tag="Region"
+                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageRegion, Korean='영역', English='Region'}"
+                                 Visibility="{Binding IsSelectedStepRegionSurfaceVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                 AutomationProperties.AutomationId="SelectedToolEditorPageRegion" />
+<RadioButton x:Name="EditorAllTab"
+                                 Grid.Column="0"
+                                 GroupName=""
+                                 IsChecked="True"
+                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Checked="OnEditorPageChecked"
+                                 Tag="All"
+                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageConditions, Korean='조건', English='Conditions'}"
+                                 AutomationProperties.AutomationId="SelectedToolEditorPageAll" />
+<RadioButton x:Name="EditorJudgmentTab"
+                                 Grid.Column="2"
+                                 GroupName=""
+                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Checked="OnEditorPageChecked"
+                                 Tag="Judgment"
+                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageJudgment, Korean='판정', English='Judgment'}"
+                                 Visibility="{Binding IsSelectedStepMeasurement, Converter={StaticResource BoolToVisibilityConverter}}"
+                                 AutomationProperties.AutomationId="SelectedToolEditorPageJudgment" />
+<RadioButton x:Name="EditorDetailTab"
+                                 Grid.Column="3"
+                                 Margin="0"
+                                 GroupName=""
+                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Checked="OnEditorPageChecked"
+                                 Tag="Detail"
+                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageDiagnostics, Korean='상세', English='Details'}"
+                                 AutomationProperties.AutomationId="SelectedToolEditorPageDetail" />
+<RadioButton x:Name="EditorHistoryTab" Visibility="Collapsed" GroupName="" Tag="History" Checked="OnEditorPageChecked" /></UniformGrid><Button Margin="0" MinHeight="28" HorizontalAlignment="Stretch" Content="{views:ThreeDText Key=ThreeD.Settings.BackToCore, Korean='설정으로 돌아가기', English='Back to settings'}" Click="OnBackToCoreClick" AutomationProperties.AutomationId="SelectedToolBackToSettings">
+<Button.Style><Style TargetType="Button" BasedOn="{StaticResource SettingsFooterButtonStyle}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsChecked, ElementName=EditorHistoryTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Button.Style></Button><StackPanel Margin="12,0,12,8">
+    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+    <UniformGrid Rows="1" AutomationProperties.AutomationId="SelectedToolDetailPages">
+        <RadioButton x:Name="DetailParametersTab" GroupName="" Style="{StaticResource EditorPageTabStyle}" Checked="OnDetailTopicChecked" IsChecked="True" Content="{views:ThreeDText Key=ThreeD.Settings.DetailParameters, Korean='설정값', English='Values'}" AutomationProperties.AutomationId="SelectedToolDetailParameters" />
+        <RadioButton x:Name="DetailIoTab" GroupName="" Style="{StaticResource EditorPageTabStyle}" Checked="OnDetailTopicChecked" IsChecked="False" Content="{views:ThreeDText Key=ThreeD.Settings.DetailIo, Korean='입출력', English='I/O'}" AutomationProperties.AutomationId="SelectedToolDetailIo" />
+        <RadioButton x:Name="DetailProcessingTab" GroupName="" Style="{StaticResource EditorPageTabStyle}" Checked="OnDetailTopicChecked" IsChecked="False" Content="{views:ThreeDText Key=ThreeD.Settings.DetailProcessing, Korean='처리 정보', English='Process'}" AutomationProperties.AutomationId="SelectedToolDetailProcessing" />
+        <RadioButton x:Name="DetailHelpTab" GroupName="" Style="{StaticResource EditorPageTabStyle}" Checked="OnDetailTopicChecked" IsChecked="False" Content="{views:ThreeDText Key=ThreeD.Settings.DetailHelp, Korean='도움말', English='Help'}" AutomationProperties.AutomationId="SelectedToolDetailHelp" />
+    </UniformGrid>
+</StackPanel>            </StackPanel>
+        <ScrollViewer x:Name="SelectedToolScrollViewer"
+                      Style="{StaticResource NonOverlappingScrollViewerStyle}"
+                      Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.CanContentScroll="False"
+                      PanningMode="VerticalOnly">
+            <StackPanel Margin="12,0,12,8">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Setter Property="UseLayoutRounding" Value="False" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True">
+                                <Setter Property="UseLayoutRounding" Value="{Binding UseLayoutRounding, ElementName=SelectedToolRoot}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+
 
                 <Border x:Name="TeachFailureCorrectionContext"
                         Margin="0,0,0,8"
@@ -414,53 +636,7 @@
                            Text="{views:ThreeDText Key=ThreeD.Workspace.ItemMenu, Korean='항목 메뉴', English='Item menu'}"
                            Visibility="Collapsed" />
 
-                <Grid Margin="0,0,0,6"
-                      Visibility="Collapsed"
-                      AutomationProperties.AutomationId="SelectedToolEditorPages"
-                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.ToolSettingPages, Korean='도구 설정 항목', English='Tool setting pages'}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <RadioButton x:Name="EditorAllTab"
-                                 Grid.Column="0"
-                                 GroupName="SelectedToolEditorPage"
-                                 IsChecked="True"
-                                 Style="{StaticResource EditorPageTabStyle}"
-                                 Checked="OnEditorPageChecked"
-                                 Tag="All"
-                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageAll, Korean='전체', English='All'}"
-                                 AutomationProperties.AutomationId="SelectedToolEditorPageAll" />
-                    <RadioButton x:Name="EditorRegionTab"
-                                 Grid.Column="1"
-                                 GroupName="SelectedToolEditorPage"
-                                 Style="{StaticResource EditorPageTabStyle}"
-                                 Checked="OnEditorPageChecked"
-                                 Tag="Region"
-                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageRegion, Korean='영역', English='Region'}"
-                                 Visibility="{Binding IsSelectedStepRegionSurfaceVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                 AutomationProperties.AutomationId="SelectedToolEditorPageRegion" />
-                    <RadioButton x:Name="EditorJudgmentTab"
-                                 Grid.Column="2"
-                                 GroupName="SelectedToolEditorPage"
-                                 Style="{StaticResource EditorPageTabStyle}"
-                                 Checked="OnEditorPageChecked"
-                                 Tag="Judgment"
-                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageJudgment, Korean='판정', English='Judgment'}"
-                                 Visibility="{Binding IsSelectedStepMeasurement, Converter={StaticResource BoolToVisibilityConverter}}"
-                                 AutomationProperties.AutomationId="SelectedToolEditorPageJudgment" />
-                    <RadioButton x:Name="EditorDetailTab"
-                                 Grid.Column="3"
-                                 Margin="0"
-                                 GroupName="SelectedToolEditorPage"
-                                 Style="{StaticResource EditorPageTabStyle}"
-                                 Checked="OnEditorPageChecked"
-                                 Tag="Detail"
-                                 Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageDetail, Korean='상세', English='Details'}"
-                                 AutomationProperties.AutomationId="SelectedToolEditorPageDetail" />
-                </Grid>
+
 
 
 
@@ -512,7 +688,8 @@
                     </StackPanel>
                 </Border>
 
-                <Border Margin="0,0,0,8"
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailProcessingTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Border Margin="0,0,0,8"
                         Padding="8"
                         Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                         BorderBrush="{DynamicResource ThreeD.AccentBrush}"
@@ -669,8 +846,10 @@
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
+</Grid>
 
-                <Border Margin="0,0,0,7"
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailProcessingTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Border Margin="0,0,0,7"
                         Padding="8"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -716,11 +895,6 @@
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding LevelSurfaceOutputSummary}"
                                    TextWrapping="Wrap" />
-                        <TextBlock Margin="0,3,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.LevelSurfaceBoundary, Korean='원본 격자와 결측 셀은 유지되며 파생 C3D에만 높이 기울기 보정이 적용됩니다.', English='The source grid and missing cells are preserved; height detrending applies only to the derived C3D.'}"
-                                   TextWrapping="Wrap" />
                         <ui:Button Margin="0,6,0,0"
                                    Padding="7,3"
                                    HorizontalAlignment="Left"
@@ -730,8 +904,10 @@
                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.LevelSurface.AddReferenceRoiAccessible, Korean='Level Surface 기준 ROI 추가', English='Add another Level Surface reference ROI'}" />
                     </StackPanel>
                 </Border>
+</Grid>
 
-                <Border Margin="0,0,0,7"
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailProcessingTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Border Margin="0,0,0,7"
                         Padding="8"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -762,90 +938,35 @@
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding HeightThresholdEvidenceSummary}"
                                    TextWrapping="Wrap" />
-                        <TextBlock Margin="0,3,0,0"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.HeightThresholdSourceImmutable, Korean='원본은 변경되지 않으며 임계값에 의해 제외된 셀만 파생 출력에서 결측으로 표시됩니다.', English='The source is unchanged; cells rejected by the threshold become missing only in the derived output.'}"
-                                   TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
+</Grid>
 
-                <Expander Style="{StaticResource RequiredSettingsSectionStyle}"
-                          IsExpanded="True"
-                          Header="{views:ThreeDText Key=ThreeD.Settings.InputSection, Korean='01  입력', English='01  Input'}">
-                    <StackPanel Margin="0,5,0,0">
-                        <ItemsControl ItemsSource="{Binding SelectedToolWorkspace.Inputs}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Margin="0,0,0,4"
-                                            Padding="0"
-                                            HorizontalContentAlignment="Stretch"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Command="{Binding DataContext.SelectWorkspaceInputCommand, ElementName=SelectedToolRoot}"
-                                            CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Input.SelectTypedInputAccessible, Korean='타입이 지정된 도구 입력 선택', English='Select typed tool input'}">
-                                        <Border Padding="7,5"
-                                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="3">
-                                            <StackPanel>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               Text="{Binding RequiredContractDisplay}"
-                                                               TextWrapping="Wrap" />
-                                                    <TextBlock Grid.Column="1"
-                                                               Margin="6,0,0,0"
-                                                               FontSize="12"
-                                                               Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                                               Text="{Binding State}" />
-                                                </Grid>
-                                                <TextBlock Margin="0,2,0,0"
-                                                           FontSize="12"
-                                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                                           Text="{Binding DisplayName}"
-                                                           TextWrapping="Wrap"
-                                                           ToolTip="{Binding EntityId}" />
-                                                <TextBlock Margin="0,1,0,0"
-                                                           FontSize="12"
-                                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap">
-                                                    <Run Text="{Binding FrameId}" />
-                                                    <Run Text=" | " />
-                                                    <Run Text="{Binding Unit}" />
-                                                </TextBlock>
+
+
+
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailIoTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><ItemsControl ItemsSource="{Binding SelectedToolWorkspace.DataInputs}"><ItemsControl.ItemTemplate><DataTemplate><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Border Margin="0,8,0,0" Padding="6" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6" Visibility="{Binding IsMapInput, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                            <Border Width="96" Height="63" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3"><Grid>
+                                                <Image Stretch="Uniform" Source="{Binding Preview.DisplayFrame, Converter={StaticResource HeightImageFrameConverter}}" AutomationProperties.AutomationId="SelectedToolInputThumbnail"><Image.Style><Style TargetType="Image"><Style.Triggers><DataTrigger Binding="{Binding Preview.IsLoading}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Image.Style></Image>
+                                                <TextBlock FontSize="11" TextAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Settings.NoCurrentInputMap, Korean='현재 입력 맵 없음', English='No current input map'}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding Preview.HasImage}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                                            </Grid></Border>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Settings.IncomingMap, Korean='들어오는 맵', English='Incoming map'}" />
+                                                <TextBlock FontSize="11" Text="{Binding State}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" />
+                                                <TextBlock FontSize="11" Text="{Binding Unit}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+
                                             </StackPanel>
-                                        </Border>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Expander Margin="0,3,0,0"
-                                  IsExpanded="{Binding IsAdvancedInputRouteEditingExpanded, Mode=TwoWay}"
-                                  Header="{views:ThreeDText Key=ThreeD.Workspace.EditTypedRoute, Korean='고급 입력 경로 편집', English='Advanced input route editing'}">
-                            <StackPanel Margin="0,5,0,0">
-                                <TextBox Text="{Binding SelectedPipelineStep.InputEntityIdsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Margin="0,3,0,0"
-                                           FontSize="12"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="{views:ThreeDText Key=ThreeD.Workspace.RouteDoesNotRun, Korean='경로 변경은 미리보기 또는 검사를 실행하지 않습니다.', English='Changing a route does not invoke Preview or Run.'}"
-                                           TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Expander>
-                    </StackPanel>
-                </Expander>
-
-                <Grid>
+                                        </Grid>
+                                    </Border>
+</Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Grid><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorRegionTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Grid>
                 <Expander x:Name="RegionsExpander"
                           Style="{StaticResource RequiredSettingsSectionStyle}"
                           IsExpanded="True"
                           Visibility="{Binding IsSelectedStepRegionSurfaceVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                          Header="{views:ThreeDText Key=ThreeD.Settings.RegionSection, Korean='02  ROI / 영역', English='02  ROI / Regions'}">
+                          Header="{views:ThreeDText Key=ThreeD.Settings.RegionSection, Korean='ROI / 영역', English='ROI / Regions'}">
                     <StackPanel Margin="0,5,0,0">
                         <Border x:Name="ActiveRoiLifecycleSummary"
                                 Margin="0,0,0,6"
@@ -1177,53 +1298,23 @@
                                          </Style.Triggers>
                                      </Style>
                                 </Border.Style>
-                                <StackPanel>
-                                    <Button Padding="0"
-                                            HorizontalContentAlignment="Stretch"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Command="{Binding SelectWorkspaceRegionCommand}"
-                                            CommandParameter="{Binding SelectedToolWorkspace.Regions[0]}"
-                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.SelectReferenceRoiAccessible, Korean='첫 번째 ROI 역할 선택', English='Select first ROI role'}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                             </Grid.ColumnDefinitions>
-                                             <TextBlock FontSize="12"
-                                                        FontWeight="SemiBold"
-                                                        Text="{Binding SelectedToolWorkspace.Regions[0].Label}" />
-                                             <TextBlock Grid.Column="1"
-                                                        Margin="6,0,0,0"
-                                                        Style="{StaticResource RoiLifecycleStateTextStyle}"
-                                                        DataContext="{Binding SelectedToolWorkspace.Regions[0]}"
-                                                        Text="{Binding State}"
-                                                        AutomationProperties.AutomationId="ReferenceRoiLifecycleState" />
-                                        </Grid>
-                                    </Button>
-                                    <TextBlock x:Name="ReferenceRoiSummaryText"
-                                               Margin="0,3,0,0"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               Text="{Binding SelectedToolWorkspace.Regions[0].Detail}"
-                                               ToolTip="{Binding PlaneFlatnessReferenceSummary}"
-                                               TextWrapping="Wrap" />
-                                    <WrapPanel Margin="0,6,0,0">
-                                         <ui:Button Margin="0,0,5,0"
-                                                    Padding="7,3"
-                                                    Content="{Binding PlaneFlatnessReferenceActionText}"
-                                                    Icon="{ui:SymbolIcon TargetArrow24}"
-                                                    Command="{Binding CapturePlaneFlatnessReferenceRoiCommand}"
-                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.CaptureReferenceRoiAccessible, Korean='기준 ROI 그리기 또는 다시 그리기', English='Draw or redraw Reference ROI'}" />
-                                         <ui:Button Margin="0,0,5,0"
-                                                    Padding="7,3"
-                                                    Content="{Binding Localization.FitRoi}"
-                                                    Command="{Binding FitWorkspaceRegionCommand}"
-                                                    CommandParameter="{Binding SelectedToolWorkspace.Regions[0]}"
-                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.FitReferenceRoiAccessible, Korean='기준 ROI 맞춤', English='Fit Reference ROI'}" />
-                                         <Menu IsMainMenu="False" Background="Transparent"><MenuItem Header="⋯" Template="{StaticResource R19TopMenuItemTemplate}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.DeleteReferenceRoiAccessible, Korean='기준 ROI 삭제', English='Delete Reference ROI'}"><MenuItem Header="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.DeleteReferenceRoiAccessible, Korean='기준 ROI 삭제', English='Delete Reference ROI'}" Command="{Binding RemovePlaneFlatnessReferenceRoiCommand}" /></MenuItem></Menu>
-                                    </WrapPanel>
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" Command="{Binding SelectWorkspaceRegionCommand}" CommandParameter="{Binding SelectedToolWorkspace.Regions[0]}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.SelectReference, Korean='기준 ROI 선택', English='Select Reference ROI'}">
+                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="{Binding SelectedToolWorkspace.Regions[0].Label}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedToolWorkspace.Regions[0].Label}" />
+                                                <TextBlock x:Name="ReferenceRoiLifecycleState" Grid.Column="1" Margin="4,0,0,0" FontSize="11" DataContext="{Binding SelectedToolWorkspace.Regions[0]}" Style="{StaticResource RoiLifecycleStateTextStyle}" Text="{Binding State}" AutomationProperties.AutomationId="ReferenceRoiLifecycleState" />
+                                            </Grid>
+                                        </Button>
+                                        <TextBlock x:Name="ReferenceRoiSummaryText" Margin="0,3,0,0" FontSize="11.5" Text="{Binding SelectedToolWorkspace.Regions[0].Detail}" ToolTip="{Binding SelectedToolWorkspace.Regions[0].Detail}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5,0,0,0" VerticalAlignment="Center">
+                                        <ui:Button Width="24" Height="24" MinHeight="24" Padding="2" Icon="{ui:SymbolIcon TargetArrow24}" Command="{Binding CapturePlaneFlatnessReferenceRoiCommand}" ToolTip="{Binding PlaneFlatnessReferenceActionText}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.EditReference, Korean='기준 ROI 편집', English='Edit Reference ROI'}" />
+                                        <ui:Button Width="24" Height="24" MinHeight="24" Padding="2" Icon="{ui:SymbolIcon FullScreenMaximize24}" Command="{Binding FitWorkspaceRegionCommand}" CommandParameter="{Binding SelectedToolWorkspace.Regions[0]}" ToolTip="{Binding Localization.FitRoi}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.FitReference, Korean='기준 ROI 맞춤', English='Fit Reference ROI'}" />
+                                        <Menu IsMainMenu="False" Background="Transparent"><MenuItem Header="⋯" Template="{StaticResource R19TopMenuItemTemplate}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.MenuReference, Korean='기준 ROI 메뉴', English='Reference ROI menu'}"><MenuItem Header="{views:ThreeDText Key=ThreeD.Roi.DeleteReference, Korean='기준 ROI 삭제', English='Delete Reference ROI'}" Command="{Binding RemovePlaneFlatnessReferenceRoiCommand}" /></MenuItem></Menu>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
 
                             <Border>
@@ -1247,53 +1338,23 @@
                                          </Style.Triggers>
                                      </Style>
                                 </Border.Style>
-                                <StackPanel>
-                                    <Button Padding="0"
-                                            HorizontalContentAlignment="Stretch"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Command="{Binding SelectWorkspaceRegionCommand}"
-                                            CommandParameter="{Binding SelectedToolWorkspace.Regions[1]}"
-                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.SelectMeasurementRoiAccessible, Korean='두 번째 ROI 역할 선택', English='Select second ROI role'}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                             </Grid.ColumnDefinitions>
-                                             <TextBlock FontSize="12"
-                                                        FontWeight="SemiBold"
-                                                        Text="{Binding SelectedToolWorkspace.Regions[1].Label}" />
-                                             <TextBlock Grid.Column="1"
-                                                        Margin="6,0,0,0"
-                                                        Style="{StaticResource RoiLifecycleStateTextStyle}"
-                                                        DataContext="{Binding SelectedToolWorkspace.Regions[1]}"
-                                                        Text="{Binding State}"
-                                                        AutomationProperties.AutomationId="MeasurementRoiLifecycleState" />
-                                        </Grid>
-                                    </Button>
-                                    <TextBlock x:Name="MeasurementRoiSummaryText"
-                                               Margin="0,3,0,0"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               Text="{Binding SelectedToolWorkspace.Regions[1].Detail}"
-                                               ToolTip="{Binding PlaneFlatnessMeasurementSummary}"
-                                               TextWrapping="Wrap" />
-                                    <WrapPanel Margin="0,6,0,0">
-                                         <ui:Button Margin="0,0,5,0"
-                                                    Padding="7,3"
-                                                    Content="{Binding PlaneFlatnessMeasurementActionText}"
-                                                    Icon="{ui:SymbolIcon TargetArrow24}"
-                                                    Command="{Binding CapturePlaneFlatnessMeasurementRoiCommand}"
-                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.CaptureMeasurementRoiAccessible, Korean='측정 ROI 그리기 또는 다시 그리기', English='Draw or redraw Measurement ROI'}" />
-                                         <ui:Button Margin="0,0,5,0"
-                                                    Padding="7,3"
-                                                    Content="{Binding Localization.FitRoi}"
-                                                    Command="{Binding FitWorkspaceRegionCommand}"
-                                                    CommandParameter="{Binding SelectedToolWorkspace.Regions[1]}"
-                                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.FitMeasurementRoiAccessible, Korean='측정 ROI 맞춤', English='Fit Measurement ROI'}" />
-                                         <Menu IsMainMenu="False" Background="Transparent"><MenuItem Header="⋯" Template="{StaticResource R19TopMenuItemTemplate}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.DeleteMeasurementRoiAccessible, Korean='측정 ROI 삭제', English='Delete Measurement ROI'}"><MenuItem Header="{views:ThreeDText Key=ThreeD.Workbench.PlaneFlatness.DeleteMeasurementRoiAccessible, Korean='측정 ROI 삭제', English='Delete Measurement ROI'}" Command="{Binding RemovePlaneFlatnessMeasurementRoiCommand}" /></MenuItem></Menu>
-                                    </WrapPanel>
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" Command="{Binding SelectWorkspaceRegionCommand}" CommandParameter="{Binding SelectedToolWorkspace.Regions[1]}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.SelectMeasurement, Korean='측정 ROI 선택', English='Select Measurement ROI'}">
+                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="{Binding SelectedToolWorkspace.Regions[1].Label}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedToolWorkspace.Regions[1].Label}" />
+                                                <TextBlock x:Name="MeasurementRoiLifecycleState" Grid.Column="1" Margin="4,0,0,0" FontSize="11" DataContext="{Binding SelectedToolWorkspace.Regions[1]}" Style="{StaticResource RoiLifecycleStateTextStyle}" Text="{Binding State}" AutomationProperties.AutomationId="MeasurementRoiLifecycleState" />
+                                            </Grid>
+                                        </Button>
+                                        <TextBlock x:Name="MeasurementRoiSummaryText" Margin="0,3,0,0" FontSize="11.5" Text="{Binding SelectedToolWorkspace.Regions[1].Detail}" ToolTip="{Binding SelectedToolWorkspace.Regions[1].Detail}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5,0,0,0" VerticalAlignment="Center">
+                                        <ui:Button Width="24" Height="24" MinHeight="24" Padding="2" Icon="{ui:SymbolIcon TargetArrow24}" Command="{Binding CapturePlaneFlatnessMeasurementRoiCommand}" ToolTip="{Binding PlaneFlatnessMeasurementActionText}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.EditMeasurement, Korean='측정 ROI 편집', English='Edit Measurement ROI'}" />
+                                        <ui:Button Width="24" Height="24" MinHeight="24" Padding="2" Icon="{ui:SymbolIcon FullScreenMaximize24}" Command="{Binding FitWorkspaceRegionCommand}" CommandParameter="{Binding SelectedToolWorkspace.Regions[1]}" ToolTip="{Binding Localization.FitRoi}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.FitMeasurement, Korean='측정 ROI 맞춤', English='Fit Measurement ROI'}" />
+                                        <Menu IsMainMenu="False" Background="Transparent"><MenuItem Header="⋯" Template="{StaticResource R19TopMenuItemTemplate}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.MenuMeasurement, Korean='측정 ROI 메뉴', English='Measurement ROI menu'}"><MenuItem Header="{views:ThreeDText Key=ThreeD.Roi.DeleteMeasurement, Korean='측정 ROI 삭제', English='Delete Measurement ROI'}" Command="{Binding RemovePlaneFlatnessMeasurementRoiCommand}" /></MenuItem></Menu>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
                         </StackPanel>
 
@@ -1358,6 +1419,15 @@
                             </WrapPanel>
                         </StackPanel>
 
+                        <Grid x:Name="AppliedRoiGeometry" Margin="-2,8,-12,2" UseLayoutRounding="False" AutomationProperties.AutomationId="AppliedRoiGeometry">
+                            <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SelectedToolWorkspace.ActiveRegion.HasRectangle}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsTeachingSelectionCaptureActive}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,8"><TextBlock Style="{StaticResource AppliedRoiLabelStyle}" Text="{views:ThreeDText Key=ThreeD.Roi.AppliedColumn, Korean='열 (셀)', English='Column (cells)'}" /><TextBox Style="{StaticResource AppliedRoiTextBoxStyle}" IsReadOnly="True" IsTabStop="False" Text="{Binding SelectedToolWorkspace.ActiveRegion.Rectangle.Column, Mode=OneWay}" AutomationProperties.AutomationId="AppliedRoiColumn" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.AppliedColumn, Korean='열 (셀)', English='Column (cells)'}" /></StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,10,8"><TextBlock Style="{StaticResource AppliedRoiLabelStyle}" Text="{views:ThreeDText Key=ThreeD.Roi.AppliedRow, Korean='행 (셀)', English='Row (cells)'}" /><TextBox Style="{StaticResource AppliedRoiTextBoxStyle}" IsReadOnly="True" IsTabStop="False" Text="{Binding SelectedToolWorkspace.ActiveRegion.Rectangle.Row, Mode=OneWay}" AutomationProperties.AutomationId="AppliedRoiRow" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.AppliedRow, Korean='행 (셀)', English='Row (cells)'}" /></StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,8"><TextBlock Style="{StaticResource AppliedRoiLabelStyle}" Text="{views:ThreeDText Key=ThreeD.Roi.AppliedColumnCount, Korean='너비 (셀)', English='Width (cells)'}" /><TextBox Style="{StaticResource AppliedRoiTextBoxStyle}" IsReadOnly="True" IsTabStop="False" Text="{Binding SelectedToolWorkspace.ActiveRegion.Rectangle.ColumnCount, Mode=OneWay}" AutomationProperties.AutomationId="AppliedRoiColumnCount" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.AppliedColumnCount, Korean='너비 (셀)', English='Width (cells)'}" /></StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,10,8"><TextBlock Style="{StaticResource AppliedRoiLabelStyle}" Text="{views:ThreeDText Key=ThreeD.Roi.AppliedRowCount, Korean='높이 (셀)', English='Height (cells)'}" /><TextBox Style="{StaticResource AppliedRoiTextBoxStyle}" IsReadOnly="True" IsTabStop="False" Text="{Binding SelectedToolWorkspace.ActiveRegion.Rectangle.RowCount, Mode=OneWay}" AutomationProperties.AutomationId="AppliedRoiRowCount" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Roi.AppliedRowCount, Korean='높이 (셀)', English='Height (cells)'}" /></StackPanel>
+                        </Grid>
+
                         <Border x:Name="GridRectangleNumericEditor"
                                 Margin="0,1,0,6"
                                 Padding="8"
@@ -1384,12 +1454,7 @@
                             <StackPanel>
                                 <TextBlock FontSize="12"
                                            FontWeight="SemiBold"
-                                           Text="{views:ThreeDText Key=ThreeD.Workspace.NumericRoi, Korean='ROI 숫자 편집 · X=열, Z=행', English='Numeric ROI · X=column, Z=row'}" />
-                                <TextBlock Margin="0,2,0,0"
-                                           FontSize="12"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="{views:ThreeDText Key=ThreeD.Workspace.GridRectangleOverlayBoundary, Korean='X/Z 영역을 편집합니다. Y 위치는 화면 표시에만 적용됩니다.', English='Edit the X/Z area. Y position affects the display only.'}"
-                                           TextWrapping="Wrap" />
+                                           Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleGridArea, Korean='영역 위치와 크기', English='Area position and size'}" />
                                 <Grid Margin="0,6,0,0" IsEnabled="{Binding IsTeachingGridRectangleEditorEnabled}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -1401,30 +1466,46 @@
                                     </Grid.RowDefinitions>
                                     <StackPanel Margin="0,0,3,4">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.Column, Korean='시작 X (열)', English='Start X (column)'}" />
-                                        <TextBox Text="{Binding TeachingGridRectangleColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartColumn, Korean='시작 열', English='Start column'}" />
+                                        <TextBox x:Name="GridRectangleColumnEditor" Text="{Binding TeachingGridRectangleColumnText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartColumn, Korean='시작 열', English='Start column'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="3,0,0,4">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.Row, Korean='시작 Z (행)', English='Start Z (row)'}" />
-                                        <TextBox Text="{Binding TeachingGridRectangleRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartRow, Korean='시작 행', English='Start row'}" />
+                                        <TextBox x:Name="GridRectangleRowEditor" Text="{Binding TeachingGridRectangleRowText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartRow, Korean='시작 행', English='Start row'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Margin="0,0,3,0">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.ColumnCount, Korean='X 길이 (열)', English='X length (columns)'}" />
-                                        <TextBox Text="{Binding TeachingGridRectangleColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleColumns, Korean='열 수', English='Columns'}" />
+                                        <TextBox x:Name="GridRectangleColumnCountEditor" Text="{Binding TeachingGridRectangleColumnCountText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleColumns, Korean='열 수', English='Columns'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="3,0,0,0">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RowCount, Korean='Z 길이 (행)', English='Z length (rows)'}" />
-                                        <TextBox Text="{Binding TeachingGridRectangleRowCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleRows, Korean='행 수', English='Rows'}" />
+                                        <TextBox x:Name="GridRectangleRowCountEditor" Text="{Binding TeachingGridRectangleRowCountText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleRows, Korean='행 수', English='Rows'}" />
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Margin="0,4,0,0"
+                                <TextBlock x:Name="GridRectangleValidationNotice"
+                                           Margin="0,4,0,0"
                                            FontSize="12"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding TeachingGridRectangleValidationSummary}"
-                                           TextWrapping="Wrap" />
+                                           TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTeachingGridRectangleDraftValid}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                         </Border>
 
@@ -1667,7 +1748,7 @@
                                         <TextBox Grid.Row="1" Grid.Column="3" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.CenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
 
-                                        <TextBlock Grid.Row="2"
+                                        <TextBlock Grid.Row="3"
                                                    VerticalAlignment="Center"
                                                    FontSize="12"
                                                    Text="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.AxisX, Korean='축 X', English='Axis X'}" />
@@ -1715,11 +1796,6 @@
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                Text="{Binding OrientedBoxEditor.ValidationSummary}"
                                                TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,5,0,0"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               Text="{views:ThreeDText Key=ThreeD.Workspace.OrientedBoxReviewBarHint, Korean='위 검토 바 사용: Enter 적용, Esc 취소', English='Use the Review bar above: Enter applies, Esc cancels.'}"
-                                               TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <TextBlock Margin="0,5,0,0"
@@ -1733,38 +1809,30 @@
                     </StackPanel>
                 </Expander>
                 </Grid>
-                <Grid>
+</Grid>
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorAllTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailParametersTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Grid>
                 <Expander x:Name="ParametersExpander"
-                          Style="{StaticResource RequiredSettingsSectionStyle}"
                           IsExpanded="True"
                           AutomationProperties.AutomationId="SelectedToolParametersExpander"
                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.SelectedToolAccessible, Korean='선택 도구 설정값', English='Selected tool parameters'}"
-                          Header="{views:ThreeDText Key=ThreeD.Settings.ConditionsSection, Korean='03  검사 조건', English='03  Inspection settings'}"
-                          ToolTip="{Binding SelectedToolWorkspace.ParameterStatus}">
+                          Header="{views:ThreeDText Key=ThreeD.Settings.ConditionsSection, Korean='조건', English='Conditions'}"
+                          ToolTip="{Binding SelectedToolWorkspace.ParameterStatus}"><Expander.Style><Style TargetType="Expander" BasedOn="{StaticResource RequiredSettingsSectionStyle}"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander"><Border Padding="0,6" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1"><ContentPresenter ContentSource="Content" /></Border></ControlTemplate></Setter.Value></Setter></Style></Expander.Style>
                     <StackPanel Margin="0,5,0,0">
-                        <Border Padding="8"
-                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                Visibility="{Binding SelectedToolWorkspace.IsParameterEditorSupported, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border CornerRadius="3" Visibility="{Binding SelectedToolWorkspace.IsParameterEditorSupported, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Border.Style><Style TargetType="Border"><Setter Property="Margin" Value="-2,0,-2,0" /><Setter Property="Padding" Value="0" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Style.Triggers><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Margin" Value="0" /><Setter Property="Padding" Value="8" /><Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /><Setter Property="BorderThickness" Value="1" /></DataTrigger></Style.Triggers></Style></Border.Style>
                             <StackPanel>
-                                 <StackPanel Margin="0,0,0,6"
-                                             Visibility="{Binding IsSelectedStepAcceptanceLimitsUnconfigured, Converter={StaticResource BoolToVisibilityConverter}}">
-                                     <TextBlock Text="{views:ThreeDText Key=ThreeD.Workspace.UnconfiguredLimitsNote, Korean='규격 미설정 · 값만 측정합니다.', English='Limits not configured · measure values only.'}"
-                                                TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" />
-                                     <Button Margin="0,5,0,0" HorizontalAlignment="Stretch"
-                                             Content="{views:ThreeDText Key=ThreeD.Workspace.ConfigureLimits, Korean='현재 조건을 판정 규격으로 사용', English='Use current settings as acceptance limits'}"
-                                             Command="{Binding ConfigureSelectedStepAcceptanceLimitsCommand}"
-                                             AutomationProperties.AutomationId="ConfigureSelectedStepAcceptanceLimits" />
-                                 </StackPanel>
-                                 <CheckBox x:Name="ShowAdvancedSamples" IsChecked="False" Margin="0,0,0,5" Content="{views:ThreeDText Key=ThreeD.Workspace.AdvancedSamples, Korean='유효점 상세 설정', English='Valid sample settings'}" />
+
+                                 <CheckBox x:Name="ShowAdvancedSamples" Margin="0,0,0,5" Content="{views:ThreeDText Key=ThreeD.Workspace.AdvancedSamples, Korean='유효점 상세 설정', English='Valid sample settings'}">
+                                     <CheckBox.Style><Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}"><Setter Property="IsChecked" Value="True" /><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="IsChecked" Value="False" /><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></CheckBox.Style>
+                                 </CheckBox>
                                  <propertyGrid:RecipeStepPropertyGridHost x:Name="StepPropertyGrid"
                                                                           ShowAdvancedParameters="{Binding IsChecked, ElementName=ShowAdvancedSamples}"
-                                                                          IsEnabled="{Binding CanEditRecipe}"
-                                                                          Height="150"
+                                                                          CanEditValues="{Binding CanEditRecipe}"
                                                                           SelectedObject="{Binding SelectedToolWorkspace.ParameterDraft}"
-                                                                          PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}" />
+                                                                          PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}">
+                                     <propertyGrid:RecipeStepPropertyGridHost.Style><Style TargetType="propertyGrid:RecipeStepPropertyGridHost"><Setter Property="IsCompactPresentation" Value="True" /><Setter Property="IsPagedPresentation" Value="True" /><Setter Property="PrimaryParametersOnly" Value="True" /><Setter Property="AcceptanceParametersOnly" Value="False" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="PrimaryParametersOnly" Value="False" /></DataTrigger><Trigger Property="VisiblePropertyCount" Value="0"><Setter Property="Visibility" Value="Collapsed" /></Trigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="IsPagedPresentation" Value="False" /><Setter Property="IsCompactPresentation" Value="False" /><Setter Property="PrimaryParametersOnly" Value="False" /><Setter Property="AcceptanceParametersOnly" Value="{x:Null}" /><Setter Property="MinHeight" Value="120" /><Setter Property="Height" Value="150" /></DataTrigger></Style.Triggers></Style></propertyGrid:RecipeStepPropertyGridHost.Style>
+                                 </propertyGrid:RecipeStepPropertyGridHost>
                                  <Border Margin="0,7,0,0"
                                          Padding="8"
                                          Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
@@ -1795,7 +1863,7 @@
                                                     FontSize="12"
                                                     Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                     Text="{Binding PreparationPresetAssistantSummary}"
-                                                    TextWrapping="Wrap" />
+                                                    TextWrapping="Wrap" ><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding PreparationPresetAssistantSummary}" Value="선택한 Filter 단계에서 Analyze를 실행하면 준비 프리셋을 검토할 수 있습니다."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding PreparationPresetAssistantSummary}" Value="Select Analyze for the selected Filter step to review preparation presets."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                          <Grid Margin="0,6,0,0">
                                              <Grid.ColumnDefinitions>
                                                  <ColumnDefinition Width="Auto" />
@@ -1850,19 +1918,6 @@
                                          </WrapPanel>
                                      </StackPanel>
                                  </Border>
-                                <WrapPanel Margin="0,6,0,0" HorizontalAlignment="Right">
-                                    <Button Margin="0,0,5,0"
-                                            Content="{Binding Localization.Discard}"
-                                            Command="{Binding DiscardSelectedStepParameterDraftCommand}"
-                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.DiscardToolDraftAccessibleName, Korean='선택 도구 설정값 변경 취소', English='Discard selected tool parameter changes'}" />
-                                    <Button Content="{Binding Localization.ApplyParameters}"
-                                            IsEnabled="{Binding HasPendingStepParameterChanges}"
-                                            behaviors:CommitPropertyGridCommandBehavior.IsEnabled="True"
-                                            behaviors:CommitPropertyGridCommandBehavior.PropertyGrid="{Binding ElementName=StepPropertyGrid}"
-                                            behaviors:CommitPropertyGridCommandBehavior.Command="{Binding ApplySelectedStepParameterDraftCommand}"
-                                            behaviors:CommitPropertyGridCommandBehavior.ErrorCommand="{Binding ReportParameterDraftCommitErrorCommand}"
-                                            AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.ApplyToolDraftAccessibleName, Korean='검사 실행 없이 선택 도구 설정값 적용', English='Apply selected tool parameters without running inspection'}" />
-                                </WrapPanel>
                             </StackPanel>
                         </Border>
                         <TextBlock FontSize="12"
@@ -1876,9 +1931,13 @@
                                         <DataTrigger Binding="{Binding SelectedToolWorkspace.IsParameterEditorSupported}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
-                                        <DataTrigger Binding="{Binding SelectedToolWorkspace.HasPendingParameterChanges}" Value="True">
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding SelectedToolWorkspace.HasPendingParameterChanges}" Value="True" />
+                                                <Condition Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
                                             <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
@@ -1886,8 +1945,79 @@
                     </StackPanel>
                 </Expander>
                 </Grid>
+</Grid>
 
-                <Expander IsExpanded="False" Header="{views:ThreeDText Key=ThreeD.Workspace.OutlierDetails, Korean='처리 상세', English='Processing details'}" Margin="0,0,0,7"
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorJudgmentTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Expander x:Name="AcceptanceLimitsExpander" Style="{StaticResource RequiredSettingsSectionStyle}" IsExpanded="True"
+                          Header="{views:ThreeDText Key=ThreeD.Settings.DecisionSection, Korean='판정', English='Decision'}" AutomationProperties.AutomationId="SelectedToolDecisionSection">
+                    <StackPanel Margin="0,5,0,0">
+                        <propertyGrid:RecipeStepPropertyGridHost x:Name="AcceptancePropertyGrid" Margin="-2,0,-2,6"
+                            IsCompactPresentation="True" AcceptanceParametersOnly="True" IsEnabled="{Binding CanEditRecipe}"
+                            SelectedObject="{Binding SelectedToolWorkspace.ParameterDraft}" PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}"
+                            AutomationProperties.AutomationId="SelectedToolAcceptanceParameters">
+                            <propertyGrid:RecipeStepPropertyGridHost.Style><Style TargetType="propertyGrid:RecipeStepPropertyGridHost"><Style.Triggers><Trigger Property="VisiblePropertyCount" Value="0"><Setter Property="Visibility" Value="Collapsed" /></Trigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></propertyGrid:RecipeStepPropertyGridHost.Style>
+                        </propertyGrid:RecipeStepPropertyGridHost>
+                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                            <TextBlock.Style><Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Settings.DecisionLimitsConfigured, Korean='규격 설정됨 · 적용된 조건으로 판정합니다.', English='Limits configured · decide using the applied settings.'}" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding VisiblePropertyCount, ElementName=AcceptancePropertyGrid}" Value="0"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Settings.NoDecisionLimits, Korean='이 도구는 판정 규격을 사용하지 않습니다.', English='This tool does not use acceptance limits.'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /></DataTrigger>
+                                    <DataTrigger Binding="{Binding SelectedPipelineStep.AcceptanceLimitsConfigured}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                </Style.Triggers>
+                            </Style></TextBlock.Style>
+                        </TextBlock>
+                                 <StackPanel Margin="0,0,0,6"
+                                             Visibility="{Binding IsSelectedStepAcceptanceLimitsUnconfigured, Converter={StaticResource BoolToVisibilityConverter}}">
+                                     <TextBlock Text="{views:ThreeDText Key=ThreeD.Workspace.UnconfiguredLimitsNote, Korean='규격 미설정 · 값만 측정합니다.', English='Limits not configured · measure values only.'}"
+                                                TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" />
+                                     <Button Margin="0,5,0,0" HorizontalAlignment="Stretch"
+                                             Content="{views:ThreeDText Key=ThreeD.Workspace.ConfigureLimits, Korean='현재 조건을 판정 규격으로 사용', English='Use current settings as acceptance limits'}"
+                                             Command="{Binding ConfigureSelectedStepAcceptanceLimitsCommand}"
+                                             AutomationProperties.AutomationId="ConfigureSelectedStepAcceptanceLimits" />
+                                 </StackPanel>
+                    </StackPanel>
+                </Expander>
+</Grid>
+
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorHistoryTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Border Margin="0,6,0,8" Padding="8" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="4"
+                        Visibility="{Binding HasSelectedToolResultComparison, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel><TextBlock FontSize="12" FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Settings.BeforeAfter, Korean='전후 측정값', English='Before and after values'}" />
+                        <TextBlock Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap" Text="{Binding SelectedToolResultComparisonText, Converter={StaticResource MeasurementNumberTextConverter}}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                    </StackPanel>
+                </Border>
+</Grid>
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorHistoryTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Border Margin="0,6,0,8" Padding="8" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="4"
+                        Visibility="{Binding HasSelectedStepParameterHistory, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="12" Text="{views:ThreeDText Key=ThreeD.Settings.LastApplied, Korean='마지막 적용 변경', English='Last applied change'}" />
+                        <TextBlock Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap" Text="{Binding SelectedStepLastAppliedChange}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                        <Button Margin="0,6,0,0" HorizontalAlignment="Left" Style="{StaticResource SettingsFooterButtonStyle}" Content="{views:ThreeDText Key=ThreeD.Settings.UndoApplied, Korean='직전 적용값으로 되돌리기', English='Undo applied settings'}"
+                                Command="{Binding UndoSelectedStepParametersCommand}" ToolTip="Ctrl+Z" AutomationProperties.AutomationId="UndoSelectedToolParameters" />
+                    </StackPanel>
+                </Border>
+</Grid>
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<WrapPanel Margin="0,0,0,8" HorizontalAlignment="Right">
+                    <WrapPanel.Style><Style TargetType="WrapPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True" /><Condition Binding="{Binding SelectedToolWorkspace.IsParameterEditorSupported}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers></Style></WrapPanel.Style>
+                    <Button Margin="0,0,5,0" Content="{Binding Localization.Discard}" Command="{Binding DiscardSelectedStepParameterDraftCommand}"
+                        AutomationProperties.AutomationId="DiscardSelectedToolParameters"
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.DiscardToolDraftAccessibleName, Korean='선택 도구 설정값 변경 취소', English='Discard selected tool parameter changes'}" />
+                    <Button Content="{Binding Localization.ApplyParameters}" Style="{StaticResource SelectedToolApplyParameterButtonStyle}"
+                        behaviors:CommitPropertyGridCommandBehavior.IsEnabled="True"
+                        behaviors:CommitPropertyGridCommandBehavior.PropertyGrid="{Binding ElementName=StepPropertyGrid}"
+                        behaviors:CommitPropertyGridCommandBehavior.AdditionalPropertyGrid="{Binding ElementName=AcceptancePropertyGrid}"
+                        behaviors:CommitPropertyGridCommandBehavior.Command="{Binding ApplySelectedStepParameterDraftCommand}"
+                        behaviors:CommitPropertyGridCommandBehavior.ErrorCommand="{Binding ReportParameterDraftCommitErrorCommand}"
+                        AutomationProperties.AutomationId="ApplySelectedToolParameters"
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.ApplyToolDraftAccessibleName, Korean='검사 실행 없이 선택 도구 설정값 적용', English='Apply selected tool parameters without running inspection'}" />
+                </WrapPanel>
+</Grid>
+
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailProcessingTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Expander IsExpanded="False" Header="{views:ThreeDText Key=ThreeD.Workspace.OutlierDetails, Korean='처리 상세', English='Processing details'}" Margin="0,0,0,7"
                         Padding="8"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -1924,11 +2054,61 @@
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Expander>
+</Grid>
 
 
-                <Expander x:Name="SettingsDetails" Style="{StaticResource WorkspaceSectionStyle}" Header="{views:ThreeDText Key=ThreeD.Settings.Details, Korean='상세 정보', English='Details'}" IsExpanded="False" Margin="0,12,0,8" AutomationProperties.AutomationId="SelectedToolDetails">
-                <StackPanel x:Name="SelectedToolDetailOutputGroup">
-                <StackPanel x:Name="SelectedToolDetailContextGroup">
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorAllTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsChecked, ElementName=EditorJudgmentTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Expander x:Name="SelectedToolOutputSummary" Style="{StaticResource RequiredSettingsSectionStyle}" IsExpanded="True" Header="{views:ThreeDText Key=ThreeD.Settings.LastExecutionOutput, Korean='마지막 실행 결과', English='Last run result'}" AutomationProperties.AutomationId="SelectedToolOutputSummary">
+                    <ItemsControl ItemsSource="{Binding SelectedToolWorkspace.Outputs}"><ItemsControl.ItemTemplate><DataTemplate>
+                        <Border Padding="6" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6"><StackPanel>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding ContractDisplay}" TextWrapping="Wrap" /><TextBlock Grid.Column="1" FontSize="11" Margin="8,0,0,0" Text="{Binding DataContext.SelectedPipelineStep.FlowNodeStatusLabel, ElementName=SelectedToolRoot}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><Button Grid.Column="2" Margin="6,0,0,0" HorizontalAlignment="Left" Padding="5,2" Content="{views:ThreeDText Key=ThreeD.Command.View, Korean='보기', English='View'}" Command="{Binding DataContext.ShowWorkspaceOutputCommand, ElementName=SelectedToolRoot}" CommandParameter="{Binding}" IsEnabled="{Binding CanShowInViewer}" /></Grid>
+                            <Grid Margin="0,6,0,0"><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsMapOutput}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsMapOutput}" Value="True" /><Condition Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers></Style></Grid.Style><Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Width="96" Height="63" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1"><Grid>
+                                    <Image Stretch="Uniform" Source="{Binding Preview.DisplayFrame, Converter={StaticResource HeightImageFrameConverter}}" AutomationProperties.AutomationId="SelectedToolOutputThumbnail"><Image.Style><Style TargetType="Image"><Style.Triggers><DataTrigger Binding="{Binding Preview.IsLoading}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Image.Style></Image>
+                                    <TextBlock Text="{views:ThreeDText Key=ThreeD.Settings.NoCurrentOutputMap, Korean='현재 결과 없음', English='No current result'}" FontSize="11" TextAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding Preview.HasImage}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                                </Grid></Border>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock FontSize="11" Text="{Binding DisplayName}" TextWrapping="Wrap" /></StackPanel>
+                            </Grid>
+
+<TextBlock Margin="0,5,0,0" FontSize="12" TextWrapping="Wrap" Visibility="{Binding HasEvidenceValue, Converter={StaticResource BoolToVisibilityConverter}}"><Run Text="{Binding ValueLabel, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Value, Mode=OneWay, Converter={StaticResource MeasurementNumberTextConverter}}" /><Run Text=" " /><Run Text="{Binding Unit, Mode=OneWay}" /></TextBlock>
+                            <TextBlock Margin="0,3,0,0" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Reason}" ><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Reason}" Value="—"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Reason}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                        </StackPanel></Border>
+                    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                </Expander>
+</Grid>
+<Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorAllTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<WrapPanel Margin="0,2,0,8"><Button Style="{StaticResource SettingsFooterButtonStyle}" Margin="0,0,6,0" Padding="5,4" Content="{views:ThreeDText Key=ThreeD.Settings.Diagnostics, Korean='진단 정보', English='Diagnostics'}" Click="OnOpenDiagnosticsClick" AutomationProperties.AutomationId="SelectedToolOpenDiagnostics" /><Button Style="{StaticResource SettingsFooterButtonStyle}" Padding="5,4" Content="{views:ThreeDText Key=ThreeD.Settings.History, Korean='설정 변경 이력', English='Settings history'}" Click="OnOpenHistoryClick" AutomationProperties.AutomationId="SelectedToolOpenHistory" /></WrapPanel></Grid>
+
+                <Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailIoTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailHelpTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+<Expander x:Name="SettingsDetails" Style="{StaticResource WorkspaceSectionStyle}" Header="{views:ThreeDText Key=ThreeD.Settings.Details, Korean='상세 정보', English='Details'}" IsExpanded="{Binding IsChecked, ElementName=EditorDetailTab, Mode=OneWay}" Margin="0,0,0,8" AutomationProperties.AutomationId="SelectedToolDetails">
+                <StackPanel x:Name="SelectedToolDetailOutputGroup"><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailIoTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><ComboBox x:Name="SelectedToolStepSelector"
+                                  MinHeight="30" Padding="7,3"
+                                  Margin="0,4,0,0"
+                                  ItemsSource="{Binding PipelineSteps}"
+                                  SelectedItem="{Binding SelectedPipelineStep, Mode=TwoWay}"
+                                  SelectionChanged="OnSelectedToolStepSelectionChanged"
+                                  AutomationProperties.AutomationId="SelectedToolStepSelector"
+                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.SelectInspectionStep, Korean='검사 단계 선택', English='Select inspection step'}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox></Grid><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailIoTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><Expander Margin="0,3,0,0"
+                                  IsExpanded="{Binding IsAdvancedInputRouteEditingExpanded, Mode=TwoWay}"
+                                  Header="{views:ThreeDText Key=ThreeD.Workspace.EditTypedRoute, Korean='고급 입력 경로 편집', English='Advanced input route editing'}">
+                            <StackPanel Margin="0,5,0,0">
+                                <ItemsControl ItemsSource="{Binding SelectedToolWorkspace.Inputs}"><ItemsControl.ItemTemplate><DataTemplate>
+                                    <Button Margin="0,0,0,4" Padding="5,3" HorizontalContentAlignment="Stretch" Command="{Binding DataContext.SelectWorkspaceInputCommand, ElementName=SelectedToolRoot}" CommandParameter="{Binding}"><TextBlock Text="{Binding RequiredContractDisplay}" ToolTip="{Binding EntityId}" TextWrapping="Wrap" /></Button>
+                                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                <TextBox Text="{Binding SelectedPipelineStep.InputEntityIdsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.Workspace.RouteDoesNotRun, Korean='경로 변경은 미리보기 또는 검사를 실행하지 않습니다.', English='Changing a route does not invoke Preview or Run.'}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Expander></Grid><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailIoTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><StackPanel x:Name="SelectedToolDetailContextGroup">
 
                 <Border x:Name="SelectedToolInspectionContext"
                         Margin="0,0,0,6"
@@ -2267,11 +2447,10 @@
 
                     </StackPanel>
                 </Border>
-                </StackPanel>
-                <Expander x:Name="OutputSection"
+                </StackPanel></Grid><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailIoTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><Expander x:Name="OutputSection"
                           IsExpanded="True"
                           Style="{StaticResource WorkspaceSectionStyle}"
-                          Header="{views:ThreeDText Key=ThreeD.Workspace.Outputs, Korean='4  출력', English='4  Outputs'}">
+                          Header="{views:ThreeDText Key=ThreeD.Workspace.Outputs, Korean='출력', English='Outputs'}">
                     <StackPanel>
                     <ItemsControl Margin="0,5,0,0" ItemsSource="{Binding SelectedToolWorkspace.Outputs}">
                         <ItemsControl.ItemTemplate>
@@ -2341,7 +2520,7 @@
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource ThreeD.TextBrush}"
-                                                       Text="{Binding Value}" />
+                                                       Text="{Binding Value, Converter={StaticResource MeasurementNumberTextConverter}}" />
                                             <TextBlock Grid.Column="2"
                                                        Margin="4,0,0,0"
                                                        VerticalAlignment="Center"
@@ -2585,15 +2764,13 @@
                         </StackPanel>
                     </Border>
                     </StackPanel>
-                </Expander>
-
-                <Expander Header="{views:ThreeDText Key=ThreeD.Workspace.ToolExecutionOptions, Korean='도구 사용 설정', English='Tool execution options'}" IsExpanded="False" Margin="0,0,0,7"><CheckBox VerticalAlignment="Center"
+                </Expander></Grid><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailHelpTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><Expander Header="{views:ThreeDText Key=ThreeD.Workspace.ToolExecutionOptions, Korean='도구 사용 설정', English='Tool execution options'}" IsExpanded="False" Margin="0,0,0,7"><CheckBox VerticalAlignment="Center"
                           Margin="0,0,0,6"
                           Content="{views:ThreeDText Key=ThreeD.Workspace.OutputEnabled, Korean='이 도구 사용', English='Enable this tool'}"
                           IsChecked="{Binding SelectedPipelineStep.OutputEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                           IsEnabled="{Binding CanEditRecipe}"
                           ToolTip="{views:ThreeDText Key=ThreeD.Workspace.OutputEnabledTip, Korean='끄면 레시피 실행에서 이 도구를 건너뜁니다.', English='When off, recipe execution skips this tool.'}"
-                          AutomationProperties.AutomationId="SelectedToolOutputEnabledToggle" /></Expander><Expander Margin="0,0,0,7"
+                          AutomationProperties.AutomationId="SelectedToolOutputEnabledToggle" /></Expander></Grid><Grid><Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True" /><Condition Binding="{Binding IsChecked, ElementName=DetailHelpTab}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style><Expander Margin="0,0,0,7"
                           IsExpanded="False"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Help, Korean='도움말', English='Help'}">
                     <StackPanel>
@@ -2633,19 +2810,20 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                </Expander></Grid></StackPanel>
                 </Expander>
-                </StackPanel>
-                </Expander>
+</Grid>
             </StackPanel>
         </ScrollViewer>
+        </Grid>
         <Border x:Name="SelectedToolActionBar"
-                Grid.Row="1"
-                Margin="10,8,10,10"
-                Padding="8,6"
-                Background="{DynamicResource ThreeD.CommandBarBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                BorderThickness="1"
-                CornerRadius="4"
+                Grid.Row="3"
+                Margin="-2,0"
+                Padding="12,10"
+                Background="{StaticResource SettingsFooterSurfaceBrush}"
+                BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}"
+                BorderThickness="0,1,0,0"
+                TextElement.FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic"
                 AutomationProperties.AutomationId="SelectedToolActionBar">
             <Border.Style>
                 <Style TargetType="Border">
@@ -2667,14 +2845,31 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /></Grid.RowDefinitions>
+
+                <Border x:Name="SelectedToolDraftBar" Grid.Row="0" Margin="0,0,0,8" Padding="10,8" CornerRadius="4" Background="{DynamicResource ThreeD.WarningSurfaceBrush}" Visibility="{Binding HasPendingStepParameterChanges, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="SelectedToolDraftBar">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource SettingsDraftTextBrush}" Text="{views:ThreeDText Key=ThreeD.Settings.UnappliedChangesCompact, Korean='미적용 변경', English='Unapplied changes'}" TextTrimming="CharacterEllipsis" />
+                        <Button x:Name="SelectedToolFooterDiscardButton" Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource SettingsFooterDiscardButtonStyle}" Content="{Binding Localization.Discard}" Command="{Binding DiscardSelectedStepParameterDraftCommand}" AutomationProperties.AutomationId="DiscardSelectedToolParameters" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.DiscardToolDraftAccessibleName, Korean='선택 도구 설정값 변경 취소', English='Discard selected tool parameter changes'}" />
+                        <Button x:Name="SelectedToolFooterApplyButton" Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource SettingsFooterApplyButtonStyle}" Content="{views:ThreeDText Key=ThreeD.Settings.ApplyCompact, Korean='적용', English='Apply'}"
+                                behaviors:CommitPropertyGridCommandBehavior.IsEnabled="True"
+                                behaviors:CommitPropertyGridCommandBehavior.PropertyGrid="{Binding ElementName=StepPropertyGrid}"
+                                behaviors:CommitPropertyGridCommandBehavior.AdditionalPropertyGrid="{Binding ElementName=AcceptancePropertyGrid}"
+                                behaviors:CommitPropertyGridCommandBehavior.Command="{Binding ApplySelectedStepParameterDraftCommand}"
+                                behaviors:CommitPropertyGridCommandBehavior.ErrorCommand="{Binding ReportParameterDraftCommitErrorCommand}"
+                                AutomationProperties.AutomationId="ApplySelectedToolParameters" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.Parameters.ApplyToolDraftAccessibleName, Korean='검사 실행 없이 선택 도구 설정값 적용', English='Apply selected tool parameters without running inspection'}" />
+                    </Grid>
+                </Border>
 
                 <TextBlock x:Name="SelectedToolParameterNotice"
-                           Grid.Row="0"
+                           Grid.Row="2"
                            AutomationProperties.AutomationId="SelectedToolParameterNotice"
                            Text="{Binding SelectedToolWorkspace.ParameterStatus}"
                            TextWrapping="Wrap"
-                           Margin="0,0,0,6">
+                           FontSize="12"
+                           LineHeight="17.4" LineStackingStrategy="BlockLineHeight"
+                           Margin="0,6,0,0">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
@@ -2688,29 +2883,37 @@
                     </TextBlock.Style>
                 </TextBlock>
 
+
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <ui:Button x:Name="PreviewActionButton"
-                               MinWidth="120"
-                               Height="30"
-                               Margin="0,0,4,0"
-                               Padding="5,4"
-                               HorizontalAlignment="Stretch"
-                               HorizontalContentAlignment="Center"
-                               Appearance="Primary"
-                               FontSize="12"
-                               Content="{views:ThreeDText Key=ThreeD.Command.RunSelectedAction, Korean='선택 도구 실행', English='Run selected tool'}"
-                               Command="{Binding RunSelectedStepCommand}"
-                               ToolTip="{views:ThreeDText Key=ThreeD.Command.RunSelectedTip, Korean='선택 도구 실행 (F5)', English='Run selected tool (F5)'}"
-                               AutomationProperties.AutomationId="PreviewTeachingToolButton"
-                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.RunSelectedAccessible, Korean='선택 검사 단계 실행', English='Run selected inspection step'}" />
+                    <Button x:Name="PreviewActionButton" Style="{StaticResource SettingsFooterPrimaryButtonStyle}" Height="34" FontSize="13" Margin="0,0,6,0" Padding="10,4" HorizontalAlignment="Stretch"
+                            Command="{Binding RunSelectedStepCommand}" ToolTip="{views:ThreeDText Key=ThreeD.Command.RunSelectedTip, Korean='선택 도구 실행 (F5)', English='Run selected tool (F5)'}"
+                            AutomationProperties.AutomationId="PreviewTeachingToolButton" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.RunSelectedAccessible, Korean='선택 검사 단계 실행', English='Run selected inspection step'}">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Play16" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{views:ThreeDText Key=ThreeD.Settings.RunCompact, Korean='실행', English='Run'}" VerticalAlignment="Center" />
+                            <Border Margin="6,0,0,0" Padding="5,0" BorderThickness="1,1,1,2" BorderBrush="{DynamicResource ThreeD.PrimaryButtonTextBrush}" CornerRadius="4" VerticalAlignment="Center"><TextBlock Text="F5" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Normal" LineHeight="16" LineStackingStrategy="BlockLineHeight" /></Border>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="1" Margin="0,0,6,0" Padding="8,4" MinHeight="34" Style="{StaticResource SettingsFooterButtonStyle}" Content="{views:ThreeDText Key=ThreeD.Settings.UndoCompact, Korean='되돌리기', English='Undo'}" Command="{Binding UndoSelectedStepParametersCommand}" ToolTip="Ctrl+Z" AutomationProperties.AutomationId="UndoSelectedToolParametersFooter" />
+                    <Button x:Name="SelectedToolFooterMenuButton" Grid.Column="2" Width="30" Height="34" Padding="0" Content="⋯" FontSize="20" Tag="{Binding}" Click="OnFooterToolMenuClick"
+                            ToolTip="{views:ThreeDText Key=ThreeD.Flow.ToolMenu, Korean='도구 메뉴', English='Tool menu'}" AutomationProperties.AutomationId="SelectedToolFooterMenu" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Flow.ToolMenu, Korean='도구 메뉴', English='Tool menu'}">
+                        <Button.ContextMenu><ContextMenu Placement="Top" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                            <MenuItem Header="{Binding Localization.MoveUp}" Command="{Binding MoveSelectedStepUpCommand}" />
+                            <MenuItem Header="{Binding Localization.MoveDown}" Command="{Binding MoveSelectedStepDownCommand}" />
+                            <Separator />
+                            <MenuItem Header="{Binding Localization.RemoveStep}" Command="{Binding RemoveSelectedStepCommand}" />
+                            <MenuItem Header="{Binding Localization.OpenSelectedToolLab}" Command="{Binding OpenSelectedToolLabCommand}" />
+                        </ContextMenu></Button.ContextMenu>
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource SettingsFooterButtonStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsSelectedStepPreviewRunning}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Button.Style>
+                    </Button>
                     <ui:Button x:Name="CancelPreviewActionButton"
-                               Grid.Column="1"
+                               Grid.Column="2"
                                MinWidth="62"
-                               Height="30"
+                               Height="34"
                                Padding="5,4"
                                FontSize="12"
                                Content="{views:ThreeDText Key=ThreeD.Command.CancelAction, Korean='취소', English='Cancel'}"
@@ -2728,12 +2931,12 @@
                            TextWrapping="Wrap">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Workspace.ExplicitRunHint, Korean='영역과 조건을 확인한 뒤 실행하세요.', English='Check regions and settings, then run.'}" />
+                            <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="False">
+                                <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="False"><Setter Property="Visibility" Value="Visible" />
                                     <Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Workspace.LoadInputBeforeRun, Korean='먼저 티칭 3D 입력을 불러오세요.', English='Load a teaching 3D input first.'}" />
                                 </DataTrigger>
-                            <DataTrigger Binding="{Binding SelectedPipelineStep.OutputEnabled}" Value="False"><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Workspace.ToolDisabled, Korean='이 도구는 꺼져 있습니다. 상세에서 도구 사용을 켜세요.', English='This tool is off. Enable it in Details.'}" /></DataTrigger></Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedPipelineStep.OutputEnabled}" Value="False"><Setter Property="Visibility" Value="Visible" /><Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Workspace.ToolDisabled, Korean='이 도구는 꺼져 있습니다. 상세에서 도구 사용을 켜세요.', English='This tool is off. Enable it in Details.'}" /></DataTrigger></Style.Triggers>
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>

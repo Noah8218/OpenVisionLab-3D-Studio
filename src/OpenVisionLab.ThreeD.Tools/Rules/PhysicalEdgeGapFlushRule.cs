@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.Vision3D.Inspection;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -10,9 +11,9 @@ public sealed record C3DPhysicalEdgeGapFlushEvaluation(
 
 /// <summary>
 /// Evaluates the approved physical-edge Gap/Flush contract from already
-/// published EdgePointSet and LineFeature evidence. The rule owns only pairing,
-/// support aggregation, validity, and tolerance policy; edge extraction and
-/// line fitting remain with their existing owners.
+/// published EdgePointSet and LineFeature evidence. The SDK owns paired support
+/// aggregation and signed measurements; this adapter retains lineage, validity
+/// and acceptance policy. Edge extraction and line fitting retain their owners.
 /// </summary>
 public static class PhysicalEdgeGapFlushRule
 {
@@ -37,18 +38,23 @@ public static class PhysicalEdgeGapFlushRule
 
             var structuralErrors = ValidateLineage(input);
             var profile = input.Profile;
-            var signedGap = structuralErrors.Count == 0
-                ? SignedGap(input.FirstLine, input.SecondLine, profile.ComparisonAxis)
-                : double.NaN;
-            var firstPoints = structuralErrors.Count == 0
-                ? GetInlierSurfacePoints(input.FirstLine, input.FirstEdge)
-                : new Dictionary<int, C3DHeightDifferenceEdgePoint>();
-            var secondPoints = structuralErrors.Count == 0
-                ? GetInlierSurfacePoints(input.SecondLine, input.SecondEdge)
-                : new Dictionary<int, C3DHeightDifferenceEdgePoint>();
             var paired = structuralErrors.Count == 0
-                ? PairSurfacePoints(firstPoints, secondPoints, profile)
-                : new PairSupport(double.NaN, double.NaN, 0);
+                ? new PhysicalEdgeGapFlushTool().Execute(
+                    new PhysicalEdgeGapFlushInput(
+                        profile.ComparisonAxis == C3DHeightDifferenceComparisonAxis.AcrossColumns ? input.FirstLine.AnchorX : input.FirstLine.AnchorZ,
+                        profile.ComparisonAxis == C3DHeightDifferenceComparisonAxis.AcrossColumns ? input.SecondLine.AnchorX : input.SecondLine.AnchorZ,
+                        GetInlierSurfacePoints(input.FirstLine, input.FirstEdge, profile.FirstSurfaceSide),
+                        GetInlierSurfacePoints(input.SecondLine, input.SecondEdge, profile.SecondSurfaceSide)),
+                    new PhysicalEdgeGapFlushOptions
+                    {
+                        AmbiguityEpsilon = profile.AmbiguityEpsilon,
+                        ExpectedGap = profile.ExpectedGap,
+                        GapTolerance = profile.GapTolerance,
+                        ExpectedFlush = profile.ExpectedFlush,
+                        FlushTolerance = profile.FlushTolerance
+                    }, cancellationToken)
+                : PhysicalEdgeGapFlushResult.Unavailable;
+            var signedGap = paired.SignedGap;
             cancellationToken.ThrowIfCancellationRequested();
 
             var supportFailure = string.Empty;
@@ -68,8 +74,7 @@ public static class PhysicalEdgeGapFlushRule
                 state = C3DPhysicalEdgeGapFlushMeasurementState.Limited;
                 supportFailure = "No finite paired surface support is available for the authored roles.";
             }
-            else if (Math.Abs(signedGap) <= profile.AmbiguityEpsilon
-                && !(profile.ContactAllowed && signedGap == 0d))
+            else if (paired.IsNearTie && !(profile.ContactAllowed && paired.IsExactContact))
             {
                 state = C3DPhysicalEdgeGapFlushMeasurementState.Rejected;
                 supportFailure = profile.ContactAllowed
@@ -87,16 +92,13 @@ public static class PhysicalEdgeGapFlushRule
                 supportFailure = "Candidate ambiguity cannot be evaluated: the edge extractor retains only the strongest candidate per scanline. Gap and flush are provisional; tolerance judgement was not performed.";
             }
 
-            var signedFlush = double.IsFinite(paired.FirstSupport) && double.IsFinite(paired.SecondSupport)
-                ? paired.SecondSupport - paired.FirstSupport
-                : double.NaN;
+            var signedFlush = paired.SignedFlush;
             var toleranceState = profile.ToleranceEnabled
                 ? C3DPhysicalEdgeGapFlushToleranceState.NotEvaluated
                 : C3DPhysicalEdgeGapFlushToleranceState.NotConfigured;
             if (state == C3DPhysicalEdgeGapFlushMeasurementState.Valid && profile.ToleranceEnabled)
             {
-                toleranceState = IsWithinInclusiveTolerance(signedGap, profile.ExpectedGap, profile.GapTolerance)
-                    && IsWithinInclusiveTolerance(signedFlush, profile.ExpectedFlush, profile.FlushTolerance)
+                toleranceState = paired.GapWithinTolerance && paired.FlushWithinTolerance
                     ? C3DPhysicalEdgeGapFlushToleranceState.Pass
                     : C3DPhysicalEdgeGapFlushToleranceState.Fail;
             }
@@ -226,11 +228,12 @@ public static class PhysicalEdgeGapFlushRule
         || string.Equals(input.FirstEdge.OutputEntityId, input.SecondEdge.OutputEntityId, StringComparison.OrdinalIgnoreCase)
         || string.Equals(input.FirstEdge.ContentSha256, input.SecondEdge.ContentSha256, StringComparison.OrdinalIgnoreCase);
 
-    private static Dictionary<int, C3DHeightDifferenceEdgePoint> GetInlierSurfacePoints(
+    private static Dictionary<int, double> GetInlierSurfacePoints(
         C3DLineFeature line,
-        C3DHeightDifferenceEdgePointSet edge)
+        C3DHeightDifferenceEdgePointSet edge,
+        C3DPhysicalEdgeSurfaceSide side)
     {
-        var points = new Dictionary<int, C3DHeightDifferenceEdgePoint>();
+        var points = new Dictionary<int, double>();
         foreach (var diagnostic in line.PointDiagnostics
                      .Where(point => point.IsInlier)
                      .OrderBy(point => point.InputPointIndex))
@@ -246,41 +249,11 @@ public static class PhysicalEdgeGapFlushRule
                 continue;
             }
 
-            points.TryAdd(point.ScanlineIndex, point);
+            points.TryAdd(point.ScanlineIndex, side == C3DPhysicalEdgeSurfaceSide.First ? point.FirstHeight : point.SecondHeight);
         }
 
         return points;
     }
-
-    private static PairSupport PairSurfacePoints(
-        IReadOnlyDictionary<int, C3DHeightDifferenceEdgePoint> firstPoints,
-        IReadOnlyDictionary<int, C3DHeightDifferenceEdgePoint> secondPoints,
-        C3DPhysicalEdgeGapFlushProfile profile)
-    {
-        var firstValues = new List<double>();
-        var secondValues = new List<double>();
-        foreach (var scanline in firstPoints.Keys.Intersect(secondPoints.Keys).OrderBy(index => index))
-        {
-            var first = SurfaceValue(firstPoints[scanline], profile.FirstSurfaceSide);
-            var second = SurfaceValue(secondPoints[scanline], profile.SecondSurfaceSide);
-            if (!double.IsFinite(first) || !double.IsFinite(second))
-            {
-                continue;
-            }
-
-            firstValues.Add(first);
-            secondValues.Add(second);
-        }
-
-        var count = firstValues.Count;
-        var denominator = Math.Max(1, Math.Max(firstPoints.Count, secondPoints.Count));
-        return count == 0
-            ? new PairSupport(double.NaN, double.NaN, 0, 0d)
-            : new PairSupport(firstValues.Average(), secondValues.Average(), count, (double)count / denominator);
-    }
-
-    private static double SurfaceValue(C3DHeightDifferenceEdgePoint point, C3DPhysicalEdgeSurfaceSide side) =>
-        side == C3DPhysicalEdgeSurfaceSide.First ? point.FirstHeight : point.SecondHeight;
 
     private static bool PassesSupportGates(
         C3DPhysicalEdgeGapFlushInput input,
@@ -321,21 +294,6 @@ public static class PhysicalEdgeGapFlushRule
             : string.Join("; ", failures);
         return failures.Count == 0;
     }
-
-    private static double SignedGap(
-        C3DLineFeature first,
-        C3DLineFeature second,
-        C3DHeightDifferenceComparisonAxis axis) =>
-        axis == C3DHeightDifferenceComparisonAxis.AcrossColumns
-            ? second.AnchorX - first.AnchorX
-            : second.AnchorZ - first.AnchorZ;
-
-    private static bool IsWithinInclusiveTolerance(double actual, double expected, double tolerance) =>
-        double.IsFinite(actual)
-        && double.IsFinite(expected)
-        && double.IsFinite(tolerance)
-        && tolerance >= 0d
-        && Math.Abs(actual - expected) <= tolerance;
 
     private static ResultStatus ToResultStatus(
         C3DPhysicalEdgeGapFlushMeasurementState state,
@@ -379,10 +337,4 @@ public static class PhysicalEdgeGapFlushRule
 
     private static string Format(double value) =>
         double.IsFinite(value) ? value.ToString("G17", CultureInfo.InvariantCulture) : value.ToString(CultureInfo.InvariantCulture);
-
-    private sealed record PairSupport(
-        double FirstSupport,
-        double SecondSupport,
-        int ValidPairCount,
-        double CoverageRatio = 0d);
 }

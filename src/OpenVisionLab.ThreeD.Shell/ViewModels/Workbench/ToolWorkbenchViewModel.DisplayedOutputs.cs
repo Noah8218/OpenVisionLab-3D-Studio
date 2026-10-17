@@ -32,6 +32,12 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand FocusDisplayedOutputStepCommand =>
         displayedOutputsOwner.FocusDisplayedOutputStepCommand;
 
+    public ICommand ShowGalleryInActivePaneCommand => displayedOutputsOwner.ShowGalleryInActivePaneCommand;
+    public ICommand ShowGalleryInOtherPaneCommand => displayedOutputsOwner.ShowGalleryInOtherPaneCommand;
+    public ICommand ShowGalleryInLeftPaneCommand => displayedOutputsOwner.ShowGalleryInLeftPaneCommand;
+    public ICommand ShowGalleryInRightPaneCommand => displayedOutputsOwner.ShowGalleryInRightPaneCommand;
+    public int GalleryDataCount => displayedOutputsOwner.GalleryDataCount;
+
     public string DisplayedOutputsSummary =>
         displayedOutputsOwner.DisplayedOutputsSummary;
 
@@ -54,7 +60,17 @@ public sealed partial class ToolWorkbenchViewModel
                 SelectedPipelineStep = step;
                 RefreshNavigatorSelection();
             },
-            RefreshSelectedToolWorkspaceProjection);
+            RefreshSelectedToolWorkspaceProjection,
+            () => SelectedPipelineStep,
+            viewerWorkspaceViewModel.IsGalleryArtifactShown,
+            viewerWorkspaceViewModel.TryShowGalleryArtifact,
+            () => IsInspectionInputOutputView,
+            () =>
+            {
+                if (SelectedPipelineStep is not { } selected) return;
+                WorkspaceSelection.SelectOutput(selected.OutputEntityId);
+                SetInspectionDataViewCommand.Execute(ViewerInspectionDataView.InputOutput);
+            });
         displayedOutputsEventCoordinator =
             new ToolWorkbenchDisplayedOutputsEventCoordinator(
                 displayedOutputsOwner,
@@ -104,7 +120,14 @@ public sealed partial class ToolWorkbenchViewModel
             }
         }
 
-        ViewerWorkspace.PinMainContent(artifactId);
+        if (CanEditMainViewerPin)
+        {
+            MainViewerContentId = artifactId;
+        }
+        else
+        {
+            ViewerWorkspace.PinMainContent(artifactId);
+        }
         ViewerWorkspace.FocusSlot(ViewerWorkspaceSession.MainSlotId);
         WorkspaceSelection.SelectOutput(artifactId);
         WorkspaceSelection.FocusViewerSlot(ViewerWorkspaceSession.MainSlotId);

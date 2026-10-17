@@ -9,6 +9,10 @@ public sealed record ViewerWorkspaceCandidateItem(
     string State,
     bool IsSource)
 {
+    public string ViewerName => Contract == "SignedDeltaHeightField" ? DisplayName
+        : (IsSource || Kind == ViewerWorkspaceCandidateKind.HeightImage) && !string.IsNullOrWhiteSpace(SourcePath)
+        ? System.IO.Path.GetFileName(SourcePath) : DisplayName;
+
     public bool Equals(ViewerWorkspaceCandidateItem? other) =>
         other is not null
         && string.Equals(Id, other.Id, StringComparison.OrdinalIgnoreCase);

@@ -47,7 +47,6 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.CancelC3DSourceLoadRequested += callbacks.CancelC3DSourceLoad;
         viewModel.Workbench.ToolLabRequested += callbacks.ToolLab;
         viewModel.Workbench.SelectValidationSetSourcesRequested += callbacks.SelectValidationSetSources;
-        viewModel.Workbench.ValidationSetComparisonRequested += callbacks.ValidationSetComparison;
         viewModel.Workbench.InspectionQueue.SelectFilesRequested += callbacks.SelectInspectionInputFiles;
         viewModel.Workbench.InspectionQueue.SelectFolderRequested += callbacks.SelectInspectionInputFolder;
         viewModel.Workbench.InspectionQueue.ExportCsvRequested += callbacks.ExportInspectionQueueCsv;
@@ -92,7 +91,6 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.CancelC3DSourceLoadRequested -= callbacks.CancelC3DSourceLoad;
         viewModel.Workbench.ToolLabRequested -= callbacks.ToolLab;
         viewModel.Workbench.SelectValidationSetSourcesRequested -= callbacks.SelectValidationSetSources;
-        viewModel.Workbench.ValidationSetComparisonRequested -= callbacks.ValidationSetComparison;
         viewModel.Workbench.InspectionQueue.SelectFilesRequested -= callbacks.SelectInspectionInputFiles;
         viewModel.Workbench.InspectionQueue.SelectFolderRequested -= callbacks.SelectInspectionInputFolder;
         viewModel.Workbench.InspectionQueue.ExportCsvRequested -= callbacks.ExportInspectionQueueCsv;
@@ -134,7 +132,6 @@ internal sealed record ShellRequestCallbacks
     public required EventHandler CancelC3DSourceLoad { get; init; }
     public required EventHandler<ToolWorkbenchToolLabRequestEventArgs> ToolLab { get; init; }
     public required EventHandler SelectValidationSetSources { get; init; }
-    public required EventHandler ValidationSetComparison { get; init; }
     public required EventHandler SelectInspectionInputFiles { get; init; }
     public required EventHandler SelectInspectionInputFolder { get; init; }
     public required EventHandler ExportInspectionQueueCsv { get; init; }

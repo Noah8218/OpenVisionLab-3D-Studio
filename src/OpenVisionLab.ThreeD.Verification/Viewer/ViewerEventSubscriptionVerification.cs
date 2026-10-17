@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Localization;
@@ -38,8 +39,28 @@ internal static class ViewerEventSubscriptionVerification
         var propertyChanges = 0;
         var languageChanges = 0;
         var displayHeightChanges = 0;
+        var profileNotifications = 0;
+        var profileRequests = 0;
+        C3DHeightGrid? profileSource = null;
+        var publicProfile = ViewerHostProfileState.Empty;
+        var hostState = new ViewerHostStateCoordinator(() => ViewerHostStateProjection.From(viewModel), () => false, args =>
+        {
+            if (args.PropertyName != nameof(ViewerHostState.Profile)) return;
+            profileNotifications++;
+            publicProfile = args.State.Profile;
+        });
         var handlers = CreateHandlers(
-            propertyChanged: (_, _) => propertyChanges++,
+            propertyChanged: (_, args) =>
+            {
+                propertyChanges++;
+                hostState.Notify(args.PropertyName);
+            },
+            profileRequested: (_, _) =>
+            {
+                profileRequests++;
+                viewModel.ProfileSourceCommand.Execute(profileSource);
+                viewModel.ProfileActionCommand.Execute(ViewerHeightProfileAction.Begin);
+            },
             languageChanged: (_, _) => languageChanges++,
             displayHeightChanged: (_, _) => displayHeightChanges++);
         using var subscription = new ViewerEventSubscription(viewModel, localization, handlers);
@@ -107,7 +128,7 @@ internal static class ViewerEventSubscriptionVerification
             $"delta={propertyChanges - beforeRepeatedAttach}");
 
         subscription.Detach();
-        Check("Detach removes all handlers", !subscription.IsAttached, "attached=False");
+        Check("Detach removes loaded presentation and execution callbacks", !subscription.IsAttached, "attached=False");
         localization.RaiseLanguageChanged();
         Check(
             "detached language provider notification reaches no handler",
@@ -116,10 +137,44 @@ internal static class ViewerEventSubscriptionVerification
         var beforeDetachChange = propertyChanges;
         viewModel.SelectedEntity = "Detached selection";
         Check(
-            "detached subscription receives no notification",
-            propertyChanges == beforeDetachChange,
+            "unloaded retained Host still receives one property notification",
+            propertyChanges - beforeDetachChange == 1,
             $"delta={propertyChanges - beforeDetachChange}");
 
+        var profileSourcePath = Path.Combine(Path.GetDirectoryName(fullReportPath)!, "viewer-event-subscription-profile.c3d");
+        Directory.CreateDirectory(Path.GetDirectoryName(profileSourcePath)!);
+        using (var writer = new BinaryWriter(File.Create(profileSourcePath)))
+        {
+            writer.Write(5);
+            writer.Write(1);
+            for (var column = 0; column < 5; column++) writer.Write(10f + column);
+        }
+        profileSource = C3DHeightGrid.Load(profileSourcePath, maxRenderedPoints: 0);
+        viewModel.CancelTeachingCapture();
+        viewModel.C3DSampleVisible = true;
+        viewModel.ProfileCommand.Execute(null);
+        Check("unloaded retained Host begins a source-bound profile through its command",
+            profileRequests == 1 && publicProfile.IsActive && publicProfile.IsPicking && publicProfile.SourceSha256 == profileSource.ContentSha256,
+            $"requests={profileRequests}|picking={publicProfile.IsPicking}|source={publicProfile.SourceSha256}");
+        viewModel.HeightProfile.Pick(profileSource.ReadPoint(0, 0));
+        viewModel.HeightProfile.Pick(profileSource.ReadPoint(0, 4));
+        viewModel.SetProfileLinkedCursor(0, 2, 12, 2, 5, 10, 14);
+        Check("unloaded Host projects the exact source cursor and cell distance",
+            publicProfile.LinkedCursorVisible && publicProfile.LinkedCursorRawHeight == 12 && publicProfile.LinkedCursorDistanceCells == 2,
+            $"raw={publicProfile.LinkedCursorRawHeight:R}|distance={publicProfile.LinkedCursorDistanceCells:R}|notifications={profileNotifications}");
+
+        subscription.Detach();
+        viewModel.ProfileSourceCommand.Execute(null);
+        viewModel.ProfileCommand.Execute(null);
+        Check("profile request reconnects the restored source after repeated unload",
+            profileRequests == 2 && publicProfile.IsActive && publicProfile.IsPicking && publicProfile.SourceSha256 == profileSource.ContentSha256,
+            $"requests={profileRequests}|picking={publicProfile.IsPicking}|source={publicProfile.SourceSha256}");
+        viewModel.HeightProfile.Pick(profileSource.ReadPoint(0, 0));
+        viewModel.HeightProfile.Pick(profileSource.ReadPoint(0, 4));
+        viewModel.SetProfileLinkedCursor(0, 3, 13, 3, 5, 10, 14);
+        Check("repeated unload retains the next source cell without stale state",
+            publicProfile.LinkedCursorVisible && publicProfile.LinkedCursorRawHeight == 13 && publicProfile.LinkedCursorDistanceCells == 3,
+            $"raw={publicProfile.LinkedCursorRawHeight:R}|distance={publicProfile.LinkedCursorDistanceCells:R}");
         subscription.Detach();
         Check("repeated Detach is idempotent", !subscription.IsAttached, "attached=False");
 
@@ -131,8 +186,21 @@ internal static class ViewerEventSubscriptionVerification
             propertyChanges - beforeReattach == 1,
             $"delta={propertyChanges - beforeReattach}");
 
+        viewModel.ProfileCommand.Execute(null);
+        Check("reattach does not duplicate the retained profile request", profileRequests == 3, $"requests={profileRequests}");
+        viewModel.HeightProfile.Pick(profileSource.ReadPoint(0, 0));
+        viewModel.HeightProfile.Pick(profileSource.ReadPoint(0, 4));
+        viewModel.SetProfileLinkedCursor(0, 3, 13, 3, 5, 10, 14);
+
         subscription.Dispose();
         Check("Dispose detaches the subscription", !subscription.IsAttached, "attached=False");
+        viewModel.ProfileCommand.Execute(null);
+        Check("final disposal releases retained profile requests", profileRequests == 3, $"requests={profileRequests}");
+        var beforeDisposedProfileChange = profileNotifications;
+        viewModel.ClearProfileLinkedCursor();
+        Check("final disposal releases retained Host property notifications",
+            profileNotifications == beforeDisposedProfileChange && publicProfile.LinkedCursorVisible && publicProfile.LinkedCursorRawHeight == 13,
+            $"notificationDelta={profileNotifications - beforeDisposedProfileChange}");
         var beforeDisposeChange = propertyChanges;
         viewModel.SelectedEntity = "Disposed selection";
         Check(
@@ -190,6 +258,7 @@ internal static class ViewerEventSubscriptionVerification
 
     private static ViewerEventHandlerSet CreateHandlers(
         PropertyChangedEventHandler propertyChanged,
+        EventHandler profileRequested,
         EventHandler languageChanged,
         EventHandler<TeachingRoiDisplayHeightChangedEventArgs> displayHeightChanged) =>
         new()
@@ -212,7 +281,7 @@ internal static class ViewerEventSubscriptionVerification
             PreviewVolumeRequested = NoOp,
             PreviewCrossSectionRequested = NoOp,
             ScreenshotRequested = NoOp,
-            ProfileViewRequested = NoOp,
+            ProfileViewRequested = profileRequested,
             PublishPreviewResultRequested = NoOp,
             NominalActualPreviewRequested = NoOp,
             NominalActualPublishRequested = NoOp,

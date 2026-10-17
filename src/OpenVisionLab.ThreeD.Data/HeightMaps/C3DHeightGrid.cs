@@ -16,6 +16,7 @@ public sealed class C3DHeightGrid
     public const float ViewerHeightScale = 0.0006f;
 
     private readonly float[] samples;
+    private readonly C3DHeightImageFrame? signedDeltaFrame;
 
     private C3DHeightGrid(
         string sourcePath,
@@ -32,7 +33,8 @@ public sealed class C3DHeightGrid
         C3DHeightGridLoadPerformance loadPerformance,
         int pointStride,
         HeightGridPoint[] points,
-        float[] samples)
+        float[] samples,
+        C3DHeightImageFrame? signedDeltaFrame = null)
     {
         SourcePath = sourcePath;
         SourceByteLength = sourceByteLength;
@@ -49,12 +51,18 @@ public sealed class C3DHeightGrid
         PointStride = pointStride;
         Points = points;
         this.samples = samples;
+        this.signedDeltaFrame = signedDeltaFrame;
         HorizontalScale = CalculateHorizontalScale(width, height);
         XHalfExtent = (width - 1) * HorizontalScale / 2.0f;
         ZHalfExtent = (height - 1) * HorizontalScale / 2.0f;
     }
 
     public string SourcePath { get; }
+
+    public bool IsSignedDelta => signedDeltaFrame is not null;
+    public string DisplayUnit => signedDeltaFrame?.Unit ?? "raw-height";
+    private float DisplayMinimum => (float)(signedDeltaFrame?.DefaultDisplayMinimum ?? Min);
+    private float DisplayMaximum => (float)(signedDeltaFrame?.DefaultDisplayMaximum ?? Max);
 
     public long SourceByteLength { get; }
 
@@ -101,12 +109,12 @@ public sealed class C3DHeightGrid
         }
 
         var value = samples[row * Width + column];
-        if (!float.IsFinite(value) || value == 0.0f)
+        if (!float.IsFinite(value) || !IsSignedDelta && value == 0.0f)
         {
             throw new InvalidDataException($"C3D point ({row}, {column}) is not a finite non-zero sample.");
         }
 
-        return CreatePoint(value, row, column, Width, Height, Min, Max, Mean);
+        return CreatePoint(value, row, column, Width, Height, DisplayMinimum, DisplayMaximum, Mean);
     }
 
     public HeightGridPoint[] ReadRowRange(int row, int startColumn, int endColumn)
@@ -120,8 +128,8 @@ public sealed class C3DHeightGrid
         for (var column = startColumn; column <= endColumn; column++)
         {
             var value = samples[row * Width + column];
-            if (float.IsFinite(value) && value != 0.0f)
-                points.Add(CreatePoint(value, row, column, Width, Height, Min, Max, Mean));
+            if (float.IsFinite(value) && (IsSignedDelta || value != 0.0f))
+                points.Add(CreatePoint(value, row, column, Width, Height, DisplayMinimum, DisplayMaximum, Mean));
         }
 
         return points.ToArray();
@@ -148,9 +156,9 @@ public sealed class C3DHeightGrid
             var row = InterpolateGridCoordinate(startRow, endRow, step, stepCount);
             var column = InterpolateGridCoordinate(startColumn, endColumn, step, stepCount);
             var value = samples[row * Width + column];
-            if (float.IsFinite(value) && value != 0.0f)
+            if (float.IsFinite(value) && (IsSignedDelta || value != 0.0f))
             {
-                points.Add(CreatePoint(value, row, column, Width, Height, Min, Max, Mean));
+                points.Add(CreatePoint(value, row, column, Width, Height, DisplayMinimum, DisplayMaximum, Mean));
             }
         }
 
@@ -164,6 +172,7 @@ public sealed class C3DHeightGrid
     /// </summary>
     public double[] ReadHeightMapValues()
     {
+        if (signedDeltaFrame is not null) return signedDeltaFrame.DisplayValues.ToArray();
         var values = new double[checked(Width * Height)];
         for (var index = 0; index < values.Length; index++)
         {
@@ -196,11 +205,12 @@ public sealed class C3DHeightGrid
                 Width,
                 Height,
                 pointStride,
-                Min,
-                Max,
+                DisplayMinimum,
+                DisplayMaximum,
                 Mean,
                 CancellationToken.None,
-                progress: null);
+                progress: null,
+                zeroIsMissing: !IsSignedDelta);
         var pointsMilliseconds = Stopwatch.GetElapsedTime(pointsStart).TotalMilliseconds;
         var loadPerformance = LoadPerformance with
         {
@@ -224,7 +234,36 @@ public sealed class C3DHeightGrid
             loadPerformance,
             pointStride,
             points,
-            samples);
+            samples,
+            signedDeltaFrame);
+    }
+
+    /// <summary>Display-only projection; finite zero is valid and the signed frame remains authoritative.</summary>
+    public static C3DHeightGrid CreateSignedDelta(C3DHeightImageFrame frame, int maxRenderedPoints = 55000)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        if (!frame.IsSignedDelta) throw new ArgumentException("A signed-delta frame is required.", nameof(frame));
+        var start = Stopwatch.GetTimestamp();
+        var values = frame.DisplayValues.Span;
+        var samples = new float[values.Length];
+        for (var index = 0; index < samples.Length; index++)
+        {
+            var value = values[index];
+            samples[index] = (float)value;
+            if (double.IsFinite(value) && (!float.IsFinite(samples[index]) || value != 0 && samples[index] == 0))
+                throw new InvalidDataException("Signed-delta values exceed the 3D renderer precision; the current view is retained.");
+        }
+        var summary = new HeightGridSummaryTool().Execute(samples, new HeightGridSummaryOptions
+        {
+            ZeroIsMissing = false, DistributionBinCount = C3DHeightDistribution.DefaultBinCount
+        });
+        if (!summary.Success) throw new InvalidDataException(summary.Message);
+        var stride = CalculatePointStride(samples.Length, maxRenderedPoints);
+        var points = stride == 0 ? [] : CreatePoints(samples, frame.Width, frame.Height, stride, (float)frame.DefaultDisplayMinimum,
+            (float)frame.DefaultDisplayMaximum, frame.Mean, CancellationToken.None, null, zeroIsMissing: false);
+        return new C3DHeightGrid(frame.SourcePath, 0, frame.SourceContentSha256, frame.Width, frame.Height,
+            summary.ValidSampleCount, summary.ZeroSampleCount, (float)frame.Minimum, (float)frame.Maximum, frame.Mean,
+            C3DHeightDistribution.Create(summary), new(0, 0, 0, 0, Stopwatch.GetElapsedTime(start).TotalMilliseconds), stride, points, samples, frame);
     }
 
     public static C3DHeightGrid Load(string path, int maxRenderedPoints = 55000)
@@ -331,7 +370,8 @@ public sealed class C3DHeightGrid
         float max,
         double mean,
         CancellationToken cancellationToken,
-        IProgress<double>? progress)
+        IProgress<double>? progress,
+        bool zeroIsMissing = true)
     {
         var points = new List<HeightGridPoint>();
         var progressRowInterval = Math.Max(stride, height / 32);
@@ -345,7 +385,7 @@ public sealed class C3DHeightGrid
             for (var column = 0; column < width; column += stride)
             {
                 var value = samples[row * width + column];
-                if (!float.IsFinite(value) || value == 0.0f)
+                if (!float.IsFinite(value) || zeroIsMissing && value == 0.0f)
                 {
                     continue;
                 }

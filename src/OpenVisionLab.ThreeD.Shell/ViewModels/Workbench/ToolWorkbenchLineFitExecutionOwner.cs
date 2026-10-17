@@ -131,7 +131,7 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner : IDisposable
 
     public string SelectedDiagnosticSummary => IsDisposed || selectedDiagnostic is null
         ? "Select an inlier/outlier diagnostic to review its source-coordinate residual."
-        : $"scanline {selectedDiagnostic.ScanlineIndex} | residual {selectedDiagnostic.OrthogonalResidual:G6} source-coordinate | {(selectedDiagnostic.IsInlier ? "inlier" : "outlier")} | XYZ ({selectedDiagnostic.X:G6}, {selectedDiagnostic.Y:G6}, {selectedDiagnostic.Z:G6})";
+        : $"scanline {selectedDiagnostic.ScanlineIndex} | residual {selectedDiagnostic.OrthogonalResidual:0.##} source-coordinate | {(selectedDiagnostic.IsInlier ? "inlier" : "outlier")} | XYZ ({selectedDiagnostic.X:0.##}, {selectedDiagnostic.Y:0.##}, {selectedDiagnostic.Z:0.##})";
 
     public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
 
@@ -248,7 +248,7 @@ internal sealed class ToolWorkbenchLineFitExecutionOwner : IDisposable
             RebuildResidualPlot(evaluation.Output);
             step.State = "Preview ready";
             var diagnostics = evaluation.Output.Diagnostics;
-            SetSummary($"Preview ready | inliers {diagnostics.InlierCount:N0}/{diagnostics.InputPointCount:N0} ({diagnostics.InlierRatio:P1}) | residual RMS {diagnostics.ResidualRms:G6} source-coordinate | no OK/NG");
+            SetSummary($"Preview ready | inliers {diagnostics.InlierCount:N0}/{diagnostics.InputPointCount:N0} ({diagnostics.InlierRatio:P1}) | residual RMS {diagnostics.ResidualRms:0.##} source-coordinate | no OK/NG");
             if (!IsCurrentPreview(currentCancellation))
             {
                 return false;

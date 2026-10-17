@@ -19,6 +19,7 @@ internal sealed class ShellMainWindowEventCoordinator : IDisposable
     private readonly Action<ToolWorkbenchOrderedRunCompletedEventArgs> orderedRunCompleted;
     private readonly Action orderedRunInvalidated;
     private readonly Action languageChanged;
+    private readonly Action validationSetComparison;
     private readonly object gate = new();
     private bool isDisposed;
 
@@ -29,7 +30,8 @@ internal sealed class ShellMainWindowEventCoordinator : IDisposable
         Action<PropertyChangedEventArgs> workbenchPropertyChanged,
         Action<ToolWorkbenchOrderedRunCompletedEventArgs> orderedRunCompleted,
         Action orderedRunInvalidated,
-        Action languageChanged)
+        Action languageChanged,
+        Action validationSetComparison)
     {
         this.inspectionSteps = inspectionSteps ?? throw new ArgumentNullException(nameof(inspectionSteps));
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
@@ -38,11 +40,13 @@ internal sealed class ShellMainWindowEventCoordinator : IDisposable
         this.orderedRunCompleted = orderedRunCompleted ?? throw new ArgumentNullException(nameof(orderedRunCompleted));
         this.orderedRunInvalidated = orderedRunInvalidated ?? throw new ArgumentNullException(nameof(orderedRunInvalidated));
         this.languageChanged = languageChanged ?? throw new ArgumentNullException(nameof(languageChanged));
+        this.validationSetComparison = validationSetComparison ?? throw new ArgumentNullException(nameof(validationSetComparison));
 
         inspectionSteps.CollectionChanged += OnInspectionStepsChanged;
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
         workbench.OrderedRunCompleted += OnOrderedRunCompleted;
         workbench.OrderedRunInvalidated += OnOrderedRunInvalidated;
+        workbench.ValidationSetComparisonRequested += OnValidationSetComparisonRequested;
         OpenVisionLanguageService.LanguageChanged += OnLanguageChanged;
     }
 
@@ -60,6 +64,7 @@ internal sealed class ShellMainWindowEventCoordinator : IDisposable
             workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
             workbench.OrderedRunCompleted -= OnOrderedRunCompleted;
             workbench.OrderedRunInvalidated -= OnOrderedRunInvalidated;
+            workbench.ValidationSetComparisonRequested -= OnValidationSetComparisonRequested;
             OpenVisionLanguageService.LanguageChanged -= OnLanguageChanged;
         }
     }
@@ -105,6 +110,14 @@ internal sealed class ShellMainWindowEventCoordinator : IDisposable
             {
                 orderedRunInvalidated();
             }
+        }
+    }
+
+    private void OnValidationSetComparisonRequested(object? sender, EventArgs args)
+    {
+        lock (gate)
+        {
+            if (!isDisposed) validationSetComparison();
         }
     }
 

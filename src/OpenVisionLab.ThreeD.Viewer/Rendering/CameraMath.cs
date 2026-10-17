@@ -8,6 +8,7 @@ namespace OpenVisionLab.ThreeD.Viewer.Rendering;
 public static class CameraMath
 {
     public const float NearPlane = 0.01f;
+    public const float DefaultFieldOfViewDegrees = 45.0f;
 
     public static Vector3 CameraTarget(double x, double y, double z) =>
         new((float)x, (float)y, (float)z);
@@ -408,7 +409,7 @@ public static class CameraMath
     }
 
     public static string FormatPoint(Vector3 point) =>
-        string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
+        string.Create(CultureInfo.InvariantCulture, $"({point.X:0.##}, {point.Y:0.##}, {point.Z:0.##})");
 
     private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
 

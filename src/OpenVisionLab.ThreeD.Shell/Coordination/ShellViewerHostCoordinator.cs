@@ -28,6 +28,7 @@ internal static class ShellViewerHostPolicy
         {
             ShellWorkspaceMode.Workbench
                 or ShellWorkspaceMode.Teach
+                or ShellWorkspaceMode.Validate
                 or ShellWorkspaceMode.Inspect
                 or ShellWorkspaceMode.Review => ShellViewerHostTarget.Workbench,
             ShellWorkspaceMode.Expert => ShellViewerHostTarget.Expert,

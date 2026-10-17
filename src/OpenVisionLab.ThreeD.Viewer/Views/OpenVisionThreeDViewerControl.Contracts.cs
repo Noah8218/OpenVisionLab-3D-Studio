@@ -271,6 +271,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add("LinkedViewProfile");
         lines.Add($"SectionProfile|visible={viewModel.SectionProfileVisible}|samples={viewModel.SectionProfileSampleCount}|summary={viewModel.SectionProfileSummary.Replace('|', '/')}");
         lines.Add($"SectionProfileRange|summary={viewModel.SectionProfileRange.Replace('|', '/')}");
+        lines.Add("TeachingResultLabels");
+        lines.AddRange(viewModel.TeachingResultLabels.Select(label => $"TeachingResultLabel|step={CleanContractText(label.StepId)}|metric={CleanContractText(label.MetricName)}|value={label.Value?.ToString("R", System.Globalization.CultureInfo.InvariantCulture) ?? "(none)"}|unit={CleanContractText(label.Unit)}|current={label.IsCurrent}|shown={label.IsVisible}|captionRendered={teachingResultCaptionCache.ContainsKey($"{label.StepId}|{label.MetricName}")}|source={label.Anchor.SourceBinding.ContentSha256}|row={label.Anchor.GridRectangle?.Row}|column={label.Anchor.GridRectangle?.Column}|caption={CleanContractText(label.Caption)}"));
         lines.Add("PublishedResultEntities");
         lines.AddRange(viewModel.ResultEntities.Select(InspectionContractText.FormatResultEntity));
         lines.Add("PublishedMetrics");
@@ -288,12 +290,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         var aligned = TransformC3DPosition(point.Position);
         if (ModelTransformIsIdentity(viewModel.C3DModelTransform))
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{CameraMath.FormatPoint(point.Position)} | raw {point.RawValue:F3}");
+            return string.Create(CultureInfo.InvariantCulture, $"{CameraMath.FormatPoint(point.Position)} | raw {point.RawValue:0.##}");
         }
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"src {CameraMath.FormatPoint(point.Position)} -> aligned {CameraMath.FormatPoint(aligned)} | raw {point.RawValue:F3}");
+            $"src {CameraMath.FormatPoint(point.Position)} -> aligned {CameraMath.FormatPoint(aligned)} | raw {point.RawValue:0.##}");
     }
 
     private void SetLazPick(LazPointCloudPoint point, string status)
@@ -327,7 +329,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SelectedSelectionMode = "Point";
         viewModel.PickCoordinate = string.Create(
             CultureInfo.InvariantCulture,
-            $"query #{sample.QueryPointIndex:N0} | {CameraMath.FormatPoint(sample.Position)} | signed {sample.SignedDeviation:G7} {comparison.PreviewResult!.Input.Unit}");
+            $"query #{sample.QueryPointIndex:N0} | {CameraMath.FormatPoint(sample.Position)} | signed {sample.SignedDeviation:0.##} {comparison.PreviewResult!.Input.Unit}");
         viewModel.SelectionSummary = comparison.SelectedDeviationSummary;
         viewModel.MeasurementSummary = comparison.SelectedDeviationDetails;
         viewModel.ViewerStatus = status;
@@ -446,17 +448,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         var viewer = MapLazPosition(point);
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"src {FormatLazSourceCoordinate(point)} -> viewer {FormatVector(viewer)} | RGB {point.Red},{point.Green},{point.Blue}");
+            $"src {FormatLazSourceCoordinate(point, "0.##")} -> viewer {FormatDisplayVector(viewer)} | RGB {point.Red},{point.Green},{point.Blue}");
     }
 
-    private static string FormatLazSourceCoordinate(LazPointCloudPoint point)
+    private static string FormatLazSourceCoordinate(LazPointCloudPoint point, string format = "G17")
     {
         var source = point.HasPreciseSourceCoordinate
             ? point.SourceCoordinate
             : new LazPointCloudSourceCoordinate(point.Position.X, point.Position.Y, point.Position.Z, 0);
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"({source.X:G17},{source.Y:G17},{source.Z:G17})");
+            $"({source.X.ToString(format, CultureInfo.InvariantCulture)},{source.Y.ToString(format, CultureInfo.InvariantCulture)},{source.Z.ToString(format, CultureInfo.InvariantCulture)})");
     }
 
     private static string FormatImportedMeshPoint(
@@ -466,7 +468,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var summary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{kind} {FormatVector(point)}");
+            $"{kind} {FormatDisplayVector(point)}");
         if (surfaceNormal is not { } normal
             || !float.IsFinite(normal.X)
             || !float.IsFinite(normal.Y)
@@ -478,7 +480,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"{summary} | normal {FormatVector(Vector3.Normalize(normal))}");
+            $"{summary} | normal {FormatDisplayVector(Vector3.Normalize(normal))}");
     }
 
     private Vector3 TransformC3DPosition(Vector3 sourcePosition) =>
@@ -495,6 +497,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         && transform.RotateYDegrees == 0.0
         && transform.RotateZDegrees == 0.0
         && transform.Scale == 1.0;
+
+    private static string FormatDisplayVector(Vector3 point) =>
+        string.Create(CultureInfo.InvariantCulture, $"({point.X:0.##}, {point.Y:0.##}, {point.Z:0.##})");
 
     private static string FormatVector(Vector3 point) =>
         string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
@@ -610,7 +615,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void RenderNow()
     {
-        if (IsDisposed)
+        if (IsDisposed || viewModel.HeightDisplayOptions.IsRangeDragActive)
         {
             return;
         }

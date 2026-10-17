@@ -7,7 +7,7 @@ namespace OpenVisionLab.ThreeD.Viewer.Hosting;
 
 /// <summary>
 /// The concrete Viewer supplies these callbacks; this owner supplies one
-/// symmetric attach/detach boundary for every ViewModel and language event.
+/// symmetric attach/detach boundary for presentation and execution events.
 /// </summary>
 internal sealed class ViewerEventHandlerSet
 {
@@ -42,8 +42,10 @@ internal sealed class ViewerEventHandlerSet
 
 /// <summary>
 /// Attaches Viewer callbacks while the control is loaded and detaches them on
-/// unload or final disposal. Attach/detach are idempotent so transient WPF
-/// reparenting cannot duplicate handlers.
+/// unload or final disposal. ViewModel property notifications remain subscribed
+/// until disposal so retained Height/Section consumers receive public Host state.
+/// Profile initialization also remains available to those consumers.
+/// Attach/detach are idempotent so transient WPF reparenting cannot duplicate handlers.
 /// </summary>
 internal sealed class ViewerEventSubscription : IDisposable
 {
@@ -61,6 +63,8 @@ internal sealed class ViewerEventSubscription : IDisposable
         this.viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         this.localizationProvider = localizationProvider ?? throw new ArgumentNullException(nameof(localizationProvider));
         this.handlers = handlers ?? throw new ArgumentNullException(nameof(handlers));
+        viewModel.PropertyChanged += handlers.ViewModelPropertyChanged;
+        viewModel.ProfileViewRequested += handlers.ProfileViewRequested;
     }
 
     public bool IsAttached => isAttached;
@@ -91,12 +95,10 @@ internal sealed class ViewerEventSubscription : IDisposable
         viewModel.PreviewVolumeRequested += handlers.PreviewVolumeRequested;
         viewModel.PreviewCrossSectionRequested += handlers.PreviewCrossSectionRequested;
         viewModel.ScreenshotRequested += handlers.ScreenshotRequested;
-        viewModel.ProfileViewRequested += handlers.ProfileViewRequested;
         viewModel.PublishPreviewResultRequested += handlers.PublishPreviewResultRequested;
         viewModel.NominalActual.PreviewRequested += handlers.NominalActualPreviewRequested;
         viewModel.NominalActual.PublishRequested += handlers.NominalActualPublishRequested;
         viewModel.NominalActual.PropertyChanged += handlers.NominalActualPropertyChanged;
-        viewModel.PropertyChanged += handlers.ViewModelPropertyChanged;
         viewModel.CameraChanged += handlers.CameraChanged;
         viewModel.TeachingRoiDisplayHeightChanged += handlers.TeachingRoiDisplayHeightChanged;
         localizationProvider.LanguageChanged += handlers.LanguageChanged;
@@ -128,12 +130,10 @@ internal sealed class ViewerEventSubscription : IDisposable
         viewModel.PreviewVolumeRequested -= handlers.PreviewVolumeRequested;
         viewModel.PreviewCrossSectionRequested -= handlers.PreviewCrossSectionRequested;
         viewModel.ScreenshotRequested -= handlers.ScreenshotRequested;
-        viewModel.ProfileViewRequested -= handlers.ProfileViewRequested;
         viewModel.PublishPreviewResultRequested -= handlers.PublishPreviewResultRequested;
         viewModel.NominalActual.PreviewRequested -= handlers.NominalActualPreviewRequested;
         viewModel.NominalActual.PublishRequested -= handlers.NominalActualPublishRequested;
         viewModel.NominalActual.PropertyChanged -= handlers.NominalActualPropertyChanged;
-        viewModel.PropertyChanged -= handlers.ViewModelPropertyChanged;
         viewModel.CameraChanged -= handlers.CameraChanged;
         viewModel.TeachingRoiDisplayHeightChanged -= handlers.TeachingRoiDisplayHeightChanged;
         localizationProvider.LanguageChanged -= handlers.LanguageChanged;
@@ -148,6 +148,8 @@ internal sealed class ViewerEventSubscription : IDisposable
         }
 
         Detach();
+        viewModel.PropertyChanged -= handlers.ViewModelPropertyChanged;
+        viewModel.ProfileViewRequested -= handlers.ProfileViewRequested;
         isDisposed = true;
     }
 }

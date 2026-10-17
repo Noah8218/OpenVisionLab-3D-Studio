@@ -480,6 +480,8 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
         }
 
         _viewModel.ClearCurrentRunEvidenceForRecipeContext();
+        // The old inspection/validation selection must not drive the newly opened recipe input.
+        _viewModel.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
         ActivateWorkbenchAfterRecipeLifecycle();
 
         var sourceApplication = _recipeSourceCoordinator.ApplyOpenedRecipeSource();

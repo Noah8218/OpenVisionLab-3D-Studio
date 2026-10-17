@@ -95,14 +95,14 @@ internal sealed class ToolWorkbenchXyzAffineExecutionOwner : IDisposable
         : "One current Published CorrespondenceSet must be routed from Landmark Correspondence.";
     public string SolveEvidenceSummary => solveOutput is null
         ? "No matrix evidence until Preview completes."
-        : $"condition {solveOutput.ConditionEstimate:G6} / {solveOutput.MaximumConditionEstimate:G6} | residual RMS {solveOutput.ArithmeticRmsResidual:G6}, max {solveOutput.ArithmeticMaximumResidual:G6} {solveOutput.ReferenceUnit} | no C3D point moved";
+        : $"condition {solveOutput.ConditionEstimate:0.##} / {solveOutput.MaximumConditionEstimate:0.##} | residual RMS {solveOutput.ArithmeticRmsResidual:0.##}, max {solveOutput.ArithmeticMaximumResidual:0.##} {solveOutput.ReferenceUnit} | no C3D point moved";
     public string SolveMatrixSummary => solveOutput is null
         ? "No source-to-reference matrix until Preview completes."
         : string.Join(Environment.NewLine,
         [
-            $"Xref = {solveOutput.Matrix.M11:G8} X + {solveOutput.Matrix.M12:G8} Y + {solveOutput.Matrix.M13:G8} Z + {solveOutput.Matrix.M14:G8}",
-            $"Yref = {solveOutput.Matrix.M21:G8} X + {solveOutput.Matrix.M22:G8} Y + {solveOutput.Matrix.M23:G8} Z + {solveOutput.Matrix.M24:G8}",
-            $"Zref = {solveOutput.Matrix.M31:G8} X + {solveOutput.Matrix.M32:G8} Y + {solveOutput.Matrix.M33:G8} Z + {solveOutput.Matrix.M34:G8}"
+            $"Xref = {solveOutput.Matrix.M11:0.##} X + {solveOutput.Matrix.M12:0.##} Y + {solveOutput.Matrix.M13:0.##} Z + {solveOutput.Matrix.M14:0.##}",
+            $"Yref = {solveOutput.Matrix.M21:0.##} X + {solveOutput.Matrix.M22:0.##} Y + {solveOutput.Matrix.M23:0.##} Z + {solveOutput.Matrix.M24:0.##}",
+            $"Zref = {solveOutput.Matrix.M31:0.##} X + {solveOutput.Matrix.M32:0.##} Y + {solveOutput.Matrix.M33:0.##} Z + {solveOutput.Matrix.M34:0.##}"
         ]);
 
     public bool IsSelectedApply => !IsDisposed && isSelectedApply();

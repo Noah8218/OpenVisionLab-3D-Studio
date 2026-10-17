@@ -32,11 +32,6 @@
                     <StackPanel>
                         <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                                    Text="{Binding Localization.OutputCompareTitle}" />
-                        <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   FontSize="12"
-                                   Text="{Binding Localization.OutputCompareDetail}"
-                                   TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </StackPanel>
                 <Border Grid.Column="1"

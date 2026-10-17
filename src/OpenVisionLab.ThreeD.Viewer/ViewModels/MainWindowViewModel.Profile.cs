@@ -18,18 +18,27 @@ public sealed partial class MainWindowViewModel
     private string profilePathData = "M 0,30 L 240,30";
     private int profileValidSampleCount;
     private int profileMissingSampleCount;
+    private double profileMinimumRaw = double.NaN;
+    private double profileMaximumRaw = double.NaN;
     private bool profileLinkedCursorVisible;
     private double profileLinkedCursorX;
     private double profileLinkedCursorY;
     private double profileLinkedCursorMarkerLeft;
     private double profileLinkedCursorMarkerTop;
+    private double profileLinkedCursorRawHeight = double.NaN;
+    private double profileLinkedCursorDistanceCells = double.NaN;
     private string profileLinkedCursorSummary = "Linked cursor: unavailable until P1–P2 trace is ready.";
 
     public bool ProfileIsCollapsed => HeightProfile.IsCollapsed;
     public bool ProfileHasEndpoints => HeightProfile.HasEndpoints;
     public bool ProfileIsPicking => HeightProfile.IsPicking;
-    public string ProfileGridDistance => HeightProfile.HasEndpoints ? HeightProfile.GridDistance.ToString("F3", CultureInfo.InvariantCulture) : "—";
-    public string ProfileHeightDelta => HeightProfile.HasEndpoints ? HeightProfile.HeightDelta.ToString("+0.000;-0.000;0.000", CultureInfo.InvariantCulture) : "—";
+    public string ProfileGridDistance => HeightProfile.HasEndpoints ? HeightProfile.GridDistance.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+    public string ProfileHeightDelta => HeightProfile.HasEndpoints ? HeightProfile.HeightDelta.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) : "—";
+    public double ProfileGridDistanceCells => HeightProfile.HasEndpoints ? HeightProfile.GridDistance : 0;
+    public double ProfileMinimumRaw { get => profileMinimumRaw; private set => SetField(ref profileMinimumRaw, value); }
+    public double ProfileMaximumRaw { get => profileMaximumRaw; private set => SetField(ref profileMaximumRaw, value); }
+    public double ProfileLinkedCursorRawHeight { get => profileLinkedCursorRawHeight; private set => SetField(ref profileLinkedCursorRawHeight, value); }
+    public double ProfileLinkedCursorDistanceCells { get => profileLinkedCursorDistanceCells; private set => SetField(ref profileLinkedCursorDistanceCells, value); }
 
     private bool CanRequestHeightProfile(ViewerHeightProfileAction action) => action switch
     {
@@ -44,7 +53,7 @@ public sealed partial class MainWindowViewModel
     {
         if (!HeightProfile.Pick(point)) return;
         SelectedEntity = "C3D Height Profile";
-        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"column {point.Column} / row {point.Row} / H {point.RawValue:F3} raw-height");
+        PickCoordinate = string.Create(CultureInfo.InvariantCulture, $"column {point.Column} / row {point.Row} / H {point.RawValue:0.##} raw-height");
     }
 
     private void RequestHeightProfile(ViewerHeightProfileAction action)
@@ -77,7 +86,7 @@ public sealed partial class MainWindowViewModel
                 session.Samples.Length, Math.Max(0, session.ExpectedSampleCount - session.Samples.Length), session.Minimum, session.Maximum, session.Mean,
                 C3DSectionProfilePathBuilder.Build(session.Samples, session.Minimum, session.Maximum));
             ProfileEndpointSummary = string.Create(CultureInfo.InvariantCulture, $"A ({first.Column}, {first.Row}) → B ({second.Column}, {second.Row})");
-            ProfileRange = string.Create(CultureInfo.InvariantCulture, $"H {session.Minimum:F3}–{session.Maximum:F3} · {session.Samples.Length} / {session.ExpectedSampleCount}");
+            ProfileRange = string.Create(CultureInfo.InvariantCulture, $"H {session.Minimum:0.##}–{session.Maximum:0.##} · {session.Samples.Length} / {session.ExpectedSampleCount}");
         }
         else if (session.First is { } start)
         {
@@ -100,6 +109,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ProfileIsPicking));
         OnPropertyChanged(nameof(ProfileGridDistance));
         OnPropertyChanged(nameof(ProfileHeightDelta));
+        OnPropertyChanged(nameof(ProfileGridDistanceCells));
         profileActionCommand?.RaiseCanExecuteChanged();
     }
 
@@ -186,13 +196,14 @@ public sealed partial class MainWindowViewModel
         ProfileVisible = true;
         ProfileValidSampleCount = 1;
         ProfileMissingSampleCount = 0;
+        ProfileMinimumRaw = ProfileMaximumRaw = rawHeight;
         ProfileSummary = "Profile: P1 set; choose P2.";
         ProfileEndpointSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"P1 ({row},{column}) raw {rawHeight:F3} | P2: not set");
+            $"P1 ({row},{column}) raw {rawHeight:0.##} | P2: not set");
         ProfileRange = string.Create(
             CultureInfo.InvariantCulture,
-            $"Viewer P1: X {position.X:F3}, Y {position.Y:F3}, Z {position.Z:F3}");
+            $"Viewer P1: X {position.X:0.##}, Y {position.Y:0.##}, Z {position.Z:0.##}");
         ProfilePathData = "M 0,30 L 240,30";
         ClearProfileLinkedCursor();
     }
@@ -218,15 +229,17 @@ public sealed partial class MainWindowViewModel
         ProfileVisible = true;
         ProfileValidSampleCount = validSampleCount;
         ProfileMissingSampleCount = missingSampleCount;
+        ProfileMinimumRaw = validSampleCount > 0 && double.IsFinite(minimum) ? minimum : double.NaN;
+        ProfileMaximumRaw = validSampleCount > 0 && double.IsFinite(maximum) ? maximum : double.NaN;
         ProfileSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"P1-P2 profile | distance {distance:F3} viewer | ΔH {rawDelta:F3} raw-height");
+            $"P1-P2 profile | distance {distance:0.##} viewer | ΔH {rawDelta:0.##} raw-height");
         ProfileEndpointSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"P1 ({firstRow},{firstColumn}) {firstRawHeight:F3} → P2 ({secondRow},{secondColumn}) {secondRawHeight:F3}");
+            $"P1 ({firstRow},{firstColumn}) {firstRawHeight:0.##} → P2 ({secondRow},{secondColumn}) {secondRawHeight:0.##}");
         ProfileRange = string.Create(
             CultureInfo.InvariantCulture,
-            $"Min {minimum:F3} | Max {maximum:F3} | Mean {mean:F3} raw-height | valid {validSampleCount:N0} | missing {missingSampleCount:N0}");
+            $"Min {minimum:0.##} | Max {maximum:0.##} | Mean {mean:0.##} raw-height | valid {validSampleCount:N0} | missing {missingSampleCount:N0}");
         ProfilePathData = string.IsNullOrWhiteSpace(pathData) ? "M 0,30 L 240,30" : pathData;
         ClearProfileLinkedCursor();
     }
@@ -265,26 +278,30 @@ public sealed partial class MainWindowViewModel
             + (1.0 - Math.Clamp((rawHeight - minimum) / span, 0.0, 1.0))
                 * (chartHeight - chartPadding * 2.0);
 
+        ProfileLinkedCursorRawHeight = rawHeight;
+        ProfileLinkedCursorDistanceCells = HeightProfile.HasEndpoints && sampleCount > 1 ? HeightProfile.GridDistance * sampleIndex / (sampleCount - 1) : double.NaN;
         ProfileLinkedCursorX = x;
         ProfileLinkedCursorY = y;
         ProfileLinkedCursorMarkerLeft = x - markerRadius;
         ProfileLinkedCursorMarkerTop = y - markerRadius;
         ProfileLinkedCursorSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Linked cursor: ({row},{column}) raw {rawHeight:F3} | sample {sampleIndex + 1:N0}/{sampleCount:N0}");
-        if (HeightProfile.HasEndpoints) ProfileLinkedCursorSummary = string.Create(CultureInfo.InvariantCulture, $"X {column} · Y {row} · H {rawHeight:F3} raw-height");
+            $"Linked cursor: ({row},{column}) raw {rawHeight:0.##} | sample {sampleIndex + 1:N0}/{sampleCount:N0}");
+        if (HeightProfile.HasEndpoints) ProfileLinkedCursorSummary = string.Create(CultureInfo.InvariantCulture, $"X {column} · Y {row} · H {rawHeight:0.##} raw-height");
         ProfileLinkedCursorVisible = true;
     }
 
     public void SetProfileLinkedCursorUnavailable()
     {
         ProfileLinkedCursorVisible = false;
+        ProfileLinkedCursorRawHeight = ProfileLinkedCursorDistanceCells = double.NaN;
         ProfileLinkedCursorSummary = "Linked cursor: current cell is outside the P1–P2 trace.";
     }
 
     public void ClearProfileLinkedCursor()
     {
         ProfileLinkedCursorVisible = false;
+        ProfileLinkedCursorRawHeight = ProfileLinkedCursorDistanceCells = double.NaN;
         ProfileLinkedCursorX = 0.0;
         ProfileLinkedCursorY = 0.0;
         ProfileLinkedCursorMarkerLeft = 0.0;
@@ -297,6 +314,7 @@ public sealed partial class MainWindowViewModel
         ProfileVisible = false;
         ProfileValidSampleCount = 0;
         ProfileMissingSampleCount = 0;
+        ProfileMinimumRaw = ProfileMaximumRaw = double.NaN;
         ProfileSummary = "Profile: choose P1 and P2 on the C3D height grid.";
         ProfileEndpointSummary = "P1: not set | P2: not set";
         ProfileRange = "Height range: pending";

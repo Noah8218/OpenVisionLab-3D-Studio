@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using System.Windows.Threading;
 using OpenVisionLab;
@@ -168,6 +169,38 @@ internal static class ToolRecipeTeachingVerification
                 && routeWarpageProposal.Contains(routeWorkbench.Source.Id, StringComparison.Ordinal)
                 && !routeWarpageProposal.Contains(routeThickness.OutputEntityId, StringComparison.Ordinal),
                 $"proposal={routeWarpageProposal}; route={routeWarpage.InputSummary}");
+
+            var projectionNotifications = new List<ToolWorkbenchPipelineStepItem?>();
+            PropertyChangedEventHandler projectionChanged = (_, args) =>
+            {
+                if (args.PropertyName == nameof(ToolWorkbenchViewModel.ViewerInspectionInput))
+                    projectionNotifications.Add(routeWorkbench.SelectedToolWorkspace.SelectedStep);
+            };
+            routeWorkbench.PropertyChanged += projectionChanged;
+            routeWorkbench.SelectedPipelineStep = routeThickness;
+            Check("step selection projects the final tool once before returning without execution",
+                projectionNotifications.SequenceEqual([routeThickness])
+                && ReferenceEquals(routeWorkbench.SelectedToolWorkspace.ParameterDraft, routeWorkbench.SelectedStepPropertyDraft)
+                && routeWorkbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == routeActionLogCount,
+                $"projections={projectionNotifications.Count};selected={routeWorkbench.SelectedToolWorkspace.SelectedStep?.Id}");
+            PropertyChangedEventHandler failingSelection = (_, args) =>
+            {
+                if (args.PropertyName == nameof(ToolWorkbenchViewModel.SelectedPipelineStep))
+                    throw new InvalidOperationException("Owned selection notification failure.");
+            };
+            var selectionNotificationFailed = false;
+            routeWorkbench.PropertyChanged += failingSelection;
+            try { routeWorkbench.SelectedPipelineStep = routeWarpage; }
+            catch (InvalidOperationException exception) when (exception.Message == "Owned selection notification failure.") { selectionNotificationFailed = true; }
+            finally { routeWorkbench.PropertyChanged -= failingSelection; }
+            projectionNotifications.Clear();
+            routeWorkbench.SelectedPipelineStep = routeThickness;
+            Check("a failed selection notification releases projection deferral for the next valid selection",
+                selectionNotificationFailed && projectionNotifications.SequenceEqual([routeThickness])
+                && routeWorkbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == routeActionLogCount,
+                $"projections={projectionNotifications.Count};selected={routeWorkbench.SelectedToolWorkspace.SelectedStep?.Id}");
+            routeWorkbench.PropertyChanged -= projectionChanged;
+            routeWorkbench.SelectedPipelineStep = routeWarpage;
 
             var routeAdmissionWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(fixtureRoot, "route-admission-recent.json"));
@@ -1067,8 +1100,8 @@ internal static class ToolRecipeTeachingVerification
                 var copyGuidanceCases = new[]
                 {
                     (ToolId: "thickness", EnglishToken: "Reference", KoreanToken: "기준면"),
-                    (ToolId: "height-difference-edge", EnglishToken: "EdgePointSet", KoreanToken: "EdgePointSet"),
-                    (ToolId: "three-d-line-fit", EnglishToken: "inlier", KoreanToken: "인라이어")
+                    (ToolId: "height-difference-edge", EnglishToken: "EdgePointSet", KoreanToken: "에지 점 집합"),
+                    (ToolId: "three-d-line-fit", EnglishToken: "inlier", KoreanToken: "유효점")
                 };
                 var copyWorkspace = new SelectedToolWorkspaceViewModel(
                     new InspectionWorkspaceSelectionSession());

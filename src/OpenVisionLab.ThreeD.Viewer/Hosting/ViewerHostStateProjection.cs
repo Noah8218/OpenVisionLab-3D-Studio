@@ -82,7 +82,12 @@ internal static class ViewerHostStateProjection
                 HasEndpoints = viewModel.ProfileHasEndpoints,
                 IsPicking = viewModel.ProfileIsPicking,
                 GridDistance = viewModel.ProfileGridDistance,
-                HeightDelta = viewModel.ProfileHeightDelta
+                HeightDelta = viewModel.ProfileHeightDelta,
+                GridDistanceCells = viewModel.ProfileGridDistanceCells,
+                MinimumRaw = viewModel.ProfileMinimumRaw,
+                MaximumRaw = viewModel.ProfileMaximumRaw,
+                LinkedCursorRawHeight = viewModel.ProfileLinkedCursorRawHeight,
+                LinkedCursorDistanceCells = viewModel.ProfileLinkedCursorDistanceCells
             },
             SectionProfile = new ViewerHostSectionProfileState(
                 viewModel.SectionProfileVisible,
@@ -114,9 +119,24 @@ internal static class ViewerHostStateProjection
                 viewModel.C3DHeightColorRangeRevision,
                 viewModel.C3DHeightColorRangeSummary)
             {
+                HeightDisplayOptions = viewModel.HeightDisplayOptions,
+                HeightDisplayWorkspace = viewModel.HeightDisplayWorkspace,
+                HeightDisplayMapId = viewModel.HeightDisplayMapId,
+                HasHeightDisplayRegion = viewModel.HasHeightDisplayRegion,
+                CanUseMeasurementColor = viewModel.CanUseMeasurementColor,
+                MeasurementColorSummary = viewModel.MeasurementColorSummary,
                 AvailableColorMaps = Array.AsReadOnly(viewModel.Display.AvailableColorMaps.ToArray()),
+                CanLoadC3DTexture = viewModel.C3DSampleVisible && viewModel.C3DTexture.CanLoad,
+                HasC3DTexture = viewModel.C3DTexture.HasImage,
+                C3DTextureVisible = viewModel.C3DTexture.IsVisible,
+                C3DTextureName = viewModel.C3DTexture.ImageName,
+                C3DTextureError = viewModel.C3DTexture.Error,
                 SelectedColorMap = viewModel.Display.SelectedColorMap,
                 CanSelectColorMap = viewModel.Display.CanSelectColorMap,
+                AvailableGeometryStyles = Array.AsReadOnly(viewModel.Display.AvailableGeometryStyles.ToArray()),
+                SelectedGeometryStyle = viewModel.Display.SelectedGeometryStyle,
+                CanSelectGeometryStyle = viewModel.Display.CanSelectGeometryStyle,
+                FloorGridVisible = viewModel.Display.FloorGridVisible,
                 DiagnosticChannelOptions = Array.AsReadOnly(viewModel.Display.DiagnosticChannelOptions.ToArray()),
                 SelectedDiagnosticChannel = viewModel.Display.SelectedDiagnosticChannel,
                 CanSelectDiagnosticChannel = viewModel.Display.CanSelectDiagnosticChannel,

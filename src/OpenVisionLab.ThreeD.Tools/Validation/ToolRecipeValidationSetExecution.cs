@@ -11,7 +11,12 @@ public sealed record ToolRecipeValidationStepResult(
     ResultStatus Status,
     string Evidence,
     IReadOnlyList<Metric> Metrics,
-    IReadOnlyList<Overlay> Overlays);
+    IReadOnlyList<Overlay> Overlays)
+{
+    // Display buffers stay in memory; the persisted validation contract contains numeric evidence, not rendered samples.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public HeightMeasurementColorSnapshot? ColorSnapshot { get; init; }
+}
 
 public sealed record ToolRecipeValidationSampleResult(
     int Order,
@@ -21,7 +26,13 @@ public sealed record ToolRecipeValidationSampleResult(
     ResultStatus Status,
     string Message,
     TimeSpan Duration,
-    IReadOnlyList<ToolRecipeValidationStepResult> Steps);
+    IReadOnlyList<ToolRecipeValidationStepResult> Steps)
+{
+    public ToolRecipeValidationExpectation? Expectation { get; init; }
+    public ToolRecipeValidationUsage? Usage { get; init; }
+    public ToolRecipeValidationExpectation EffectiveExpectation => ToolRecipeValidationSampleDefinition.ResolveExpectation(Role, Expectation);
+    public ToolRecipeValidationUsage EffectiveUsage => ToolRecipeValidationSampleDefinition.ResolveUsage(Role, Usage);
+}
 
 public sealed record ToolRecipeValidationSetResult(
     ResultStatus Status,
@@ -37,7 +48,14 @@ public sealed record ToolRecipeValidationProgress(
 
 public sealed record ToolRecipeValidationSampleInput(
     string SourcePath,
-    ToolRecipeValidationSampleRole Role);
+    ToolRecipeValidationSampleRole Role)
+{
+    public ToolRecipeValidationExpectation? Expectation { get; init; }
+    public ToolRecipeValidationUsage? Usage { get; init; }
+    public ToolRecipeValidationExpectation EffectiveExpectation => ToolRecipeValidationSampleDefinition.ResolveExpectation(Role, Expectation);
+    public ToolRecipeValidationUsage EffectiveUsage => ToolRecipeValidationSampleDefinition.ResolveUsage(Role, Usage);
+    public ToolRecipeValidationSampleRole DevelopmentRole => ToolRecipeValidationSampleDefinition.ResolveDevelopmentRole(EffectiveExpectation, EffectiveUsage);
+}
 
 /// <summary>
 /// Executes a taught recipe against an explicit, ordered set of same-grid C3D
@@ -92,7 +110,7 @@ public static class ToolRecipeValidationSetExecution
             .ToArray();
         var conflictingRole = normalizedSamples
             .GroupBy(sample => sample.SourcePath, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault(group => group.Select(item => item.Role).Distinct().Count() > 1);
+            .FirstOrDefault(group => group.Select(item => (item.EffectiveExpectation, item.EffectiveUsage)).Distinct().Count() > 1);
         if (conflictingRole is not null)
         {
             return new ToolRecipeValidationSetResult(
@@ -127,9 +145,9 @@ public static class ToolRecipeValidationSetExecution
             var sample = ExecuteSample(
                 document,
                 sourcePath,
-                sourceSample.Role,
+                sourceSample.DevelopmentRole,
                 sampleIndex + 1,
-                cancellationToken);
+                cancellationToken) with { Expectation = sourceSample.EffectiveExpectation, Usage = sourceSample.EffectiveUsage };
             samples.Add(sample);
             progress?.Report(new ToolRecipeValidationProgress(
                 sampleIndex + 1,
@@ -172,7 +190,7 @@ public static class ToolRecipeValidationSetExecution
                     step.Result.Status,
                     step.Evidence,
                     step.Result.Metrics,
-                    step.Result.Overlays))
+                    step.Result.Overlays) { ColorSnapshot = step.ColorSnapshot })
                 .ToArray();
 
             stopwatch.Stop();

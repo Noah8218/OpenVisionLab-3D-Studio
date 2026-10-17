@@ -1,6 +1,7 @@
 using OpenVisionLab;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Core;
 using System.IO;
 
 namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
@@ -45,6 +46,21 @@ internal static class RunLogRetentionVerification
                 && directOwner.Entries[0].Category == "Owner"
                 && directOwner.Entries[0].Message == "direct-owner-boundary",
                 $"entries={directOwner.Entries.Count};category={directOwner.Entries[0].Category};message={directOwner.Entries[0].Message}");
+            directOwner.Append("Run", "PASS / NG / Error in an ordinary message");
+            Check("Activity does not infer execution from category or text", directOwner.ExecutionEntries.Count == 0 && directOwner.Entries.Count == 2, "Raw Run category is not an execution event.");
+            foreach (var status in new[] { ResultStatus.Pass, ResultStatus.Fail, ResultStatus.Warning, ResultStatus.Error })
+                directOwner.AppendExecution("Conflicting words PASS / NG remain ordinary text", status);
+            directOwner.AppendExecution("Canceled by the explicit command", null, wasCanceled: true);
+            Check("Typed execution states and cancellation are retained independently", directOwner.ExecutionEntries[0].WasCanceled
+                && directOwner.ExecutionEntries.Skip(1).Select(item => item.Status).SequenceEqual(new ResultStatus?[] { ResultStatus.Error, ResultStatus.Warning, ResultStatus.Fail, ResultStatus.Pass })
+                && directOwner.Entries.Count == 2, "No message parsing or mutation of raw entries.");
+            for (var index = 0; index < ToolWorkbenchRunLogOwner.MaximumEntries + 2; index++)
+                directOwner.AppendExecution($"Execution {index}", null);
+            Check("Execution display has an independent newest-first 3000 limit", directOwner.ExecutionEntries.Count == 3000
+                && directOwner.ExecutionEntries[0].Message == "Execution 3001" && directOwner.ExecutionEntries[^1].Message == "Execution 2"
+                && directOwner.Entries.Count == 2, "The complete activity log is not pruned by execution-display traffic.");
+            directOwner.ClearExecutionEntries();
+            Check("New task clears only its execution display", directOwner.ExecutionEntries.Count == 0 && directOwner.Entries.Count == 2, "Raw activity retained.");
             workbench.RunLog.Clear();
             var dirtyBefore = workbench.IsDirty;
             var stepCountBefore = workbench.PipelineSteps.Count;

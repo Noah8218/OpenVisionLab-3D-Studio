@@ -142,10 +142,6 @@
                         <StackPanel>
                             <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
                                        Text="{shell:ThreeDText Key=ThreeD.Calibration.Center, Korean='교정 센터', English='Calibration Center'}" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       TextWrapping="Wrap"
-                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.CenterDetail, Korean='센서 독립형 프로파일 작업공간', English='Sensor-neutral profile workspace'}" />
 
                             <StackPanel Margin="0,10,0,0">
                                 <ui:Button HorizontalAlignment="Stretch"

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using OpenVisionLab;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -34,11 +35,23 @@ internal static class ShellMainWindowEventCoordinatorVerification
         var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
         try
         {
-            using var workbench = new ToolWorkbenchViewModel();
+            var fixtureRoot = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "event-comparison-fixture");
+            Directory.CreateDirectory(fixtureRoot);
+            var taughtPath = Path.Combine(fixtureRoot, "taught.C3D");
+            var selectedPath = Path.Combine(fixtureRoot, "selected.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("source.event-comparison", 4, 4,
+                [10, 11, 12, 13, 11, 12, 13, 14, 12, 13, 14, 15, 13, 14, 15, 16]).SaveC3D(taughtPath);
+            C3DHeightFieldSnapshot.CreateForVerification("source.event-comparison", 4, 4,
+                [9, 10, 11, 12, 10, 11, 12, 13, 11, 12, 13, 14, 12, 13, 14, 15]).SaveC3D(selectedPath);
+            using var workbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-recipes.json"));
+            workbench.SetC3DSource(taughtPath, markDirty: false);
+            workbench.SetValidationSetSources([selectedPath]);
             var inspectionSteps = new ObservableCollection<InspectionStepItem>();
             var inspectionStepCallbacks = 0;
             var workbenchCallbacks = 0;
             var languageCallbacks = 0;
+            var comparisonCallbacks = 0;
+            workbench.SelectedValidationSetSample = workbench.ValidationSetSamples.FirstOrDefault();
 
             using var coordinator = new ShellMainWindowEventCoordinator(
                 inspectionSteps,
@@ -47,7 +60,8 @@ internal static class ShellMainWindowEventCoordinatorVerification
                 _ => workbenchCallbacks++,
                 _ => { },
                 () => { },
-                () => languageCallbacks++);
+                () => languageCallbacks++,
+                () => comparisonCallbacks++);
 
             inspectionSteps.Add(new InspectionStepItem("1", "Source", "Ready", "test"));
             workbench.SelectedTool = null;
@@ -70,8 +84,13 @@ internal static class ShellMainWindowEventCoordinatorVerification
                 languageCallbacks == 1,
                 $"callbacks={languageCallbacks}");
 
+            Check("Public comparison command has a real loaded source and selected input", workbench.OpenValidationSetComparisonCommand.CanExecute(null), $"taught={taughtPath};selected={selectedPath};self-contained canonical input paths");
+            workbench.OpenValidationSetComparisonCommand.Execute(null);
+            Check("Public validation comparison event reaches the existing coordinator exactly once", comparisonCallbacks == 1, $"callbacks={comparisonCallbacks};canonical command -> public event");
             coordinator.Dispose();
             coordinator.Dispose();
+            workbench.OpenValidationSetComparisonCommand.Execute(null);
+            Check("Disposed coordinator detaches comparison event", comparisonCallbacks == 1, $"callbacks={comparisonCallbacks};public command remains available");
             var inspectionStepsAfterDispose = inspectionStepCallbacks;
             var workbenchAfterDispose = workbenchCallbacks;
             var languageAfterDispose = languageCallbacks;

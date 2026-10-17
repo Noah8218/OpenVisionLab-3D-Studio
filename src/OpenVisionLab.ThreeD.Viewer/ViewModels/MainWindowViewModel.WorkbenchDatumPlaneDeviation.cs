@@ -28,7 +28,7 @@ public sealed partial class MainWindowViewModel
         workbenchDatumPlaneDeviation = output;
         isWorkbenchDatumPlaneDeviationPublished = isPublished;
         var state = isPublished ? "Published" : "Preview - not published";
-        SelectionSummary = $"{state} Datum Plane Deviation | {output.OutputRole} | P2V {output.PeakToValleyRawHeight:G6} raw-height | {output.ContentSha256[..12]}";
+        SelectionSummary = $"{state} Datum Plane Deviation | {output.OutputRole} | P2V {output.PeakToValleyRawHeight:0.##} raw-height | {output.ContentSha256[..12]}";
         ViewerStatus = isPublished
             ? "Published datum-plane raw-height deviation (local software result)"
             : "Datum-plane raw-height deviation Preview - not published";

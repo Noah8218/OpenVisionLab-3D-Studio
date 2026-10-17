@@ -14,7 +14,7 @@ public partial class RecipeChainView : UserControl
 {
     private const double FlowCanvasMinimumWidth = 192;
     private const double FlowNodeColumnGap = 24;
-    private const double FlowNodeRowGap = 42;
+    private const double FlowNodeRowGap = 26;
     private const double FlowNodeSideInset = 8;
     private const double FlowNodeWidth = 160;
     private const double FlowZoomMaximum = 1.5;
@@ -32,6 +32,12 @@ public partial class RecipeChainView : UserControl
             typeof(RecipeChainView),
             new PropertyMetadata(1d));
 
+    public static readonly DependencyProperty FlowCardWidthProperty = DependencyProperty.Register(
+        nameof(FlowCardWidth), typeof(double), typeof(RecipeChainView), new PropertyMetadata(FlowNodeWidth));
+
+    public static readonly DependencyProperty IsThicknessGroupExpandedProperty = DependencyProperty.Register(
+        nameof(IsThicknessGroupExpanded), typeof(bool), typeof(RecipeChainView), new PropertyMetadata(false));
+
     public static readonly DependencyProperty IsTeachingModeProperty =
         DependencyProperty.Register(
             nameof(IsTeachingMode),
@@ -47,6 +53,7 @@ public partial class RecipeChainView : UserControl
         BringSelectedToolIntoViewCommand = new RelayCommand(_ => BringSelectedToolIntoView());
         InitializeComponent();
         LayoutUpdated += OnLayoutUpdated;
+        Loaded += OnLoaded;
     }
 
     public ICommand BringSelectedToolIntoViewCommand { get; }
@@ -61,10 +68,22 @@ public partial class RecipeChainView : UserControl
 
     public ICommand IncreaseFlowZoomCommand => increaseFlowZoomCommand;
 
+    public double FlowCardWidth
+    {
+        get => (double)GetValue(FlowCardWidthProperty);
+        private set => SetCurrentValue(FlowCardWidthProperty, value);
+    }
+
     public bool IsTeachingMode
     {
         get => (bool)GetValue(IsTeachingModeProperty);
         set => SetValue(IsTeachingModeProperty, value);
+    }
+
+    public bool IsThicknessGroupExpanded
+    {
+        get => (bool)GetValue(IsThicknessGroupExpandedProperty);
+        set => SetValue(IsThicknessGroupExpandedProperty, value);
     }
 
     public ICommand ResetFlowViewCommand { get; }
@@ -76,10 +95,21 @@ public partial class RecipeChainView : UserControl
 
     internal int FlowConnectionCount { get; private set; }
 
+    private void OnStepRequestBringIntoView(object sender, RequestBringIntoViewEventArgs args)
+    {
+        if (!IsTeachingMode || RecipeStepList.SelectedIndex != 0 || RecipeStepList.IsKeyboardFocusWithin
+            || !ReferenceEquals(args.TargetObject, RecipeStepList.ItemContainerGenerator.ContainerFromIndex(0))) return;
+        // Initial/restored selection of the first tool includes its source card in the viewport.
+        args.Handled = true;
+        FlowGraphViewport.ScrollToTop();
+    }
+
     private void BringSelectedToolIntoView()
     {
         if (RecipeStepList.SelectedItem is not { } selectedItem) return;
 
+        if (IsTeachingMode && selectedItem is ToolWorkbenchPipelineStepItem { IsFlowRepeatGroupMember: true })
+            IsThicknessGroupExpanded = true;
         RecipeStepList.ScrollIntoView(selectedItem);
         _ = Dispatcher.BeginInvoke(() =>
         {
@@ -98,12 +128,51 @@ public partial class RecipeChainView : UserControl
         increaseFlowZoomCommand.RaiseCanExecuteChanged();
     }
 
+    private void OnToolMenuClick(object sender, RoutedEventArgs args)
+    {
+        if (sender is Button { ContextMenu: { } menu } button)
+        {
+            // ButtonBase executes its selection command after the routed Click event.
+            // Open only after selection and scrolling settle so the popup keeps its owner.
+            _ = Dispatcher.BeginInvoke(() =>
+            {
+                if (!IsLoaded || !button.IsLoaded || !ReferenceEquals(button.ContextMenu, menu)) return;
+                // Selection can expand the card and replace its header menu with the footer button.
+                var target = button.IsVisible ? button
+                    : RecipeStepList.ItemContainerGenerator.ContainerFromItem(button.DataContext) is FrameworkElement container
+                        ? FindNamedPort(container, "FlowExpandedMenuButton") as Button : null;
+                if (target is not { IsLoaded: true, IsVisible: true }) return;
+                menu.PlacementTarget = target;
+                menu.IsOpen = true;
+            }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+        }
+    }
+
+    private void OnFlowViewOptionsKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Escape) return;
+        FlowViewOptionsToggle.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, false);
+        FlowViewOptionsToggle.Focus();
+        args.Handled = true;
+    }
+
+    private void OnExpandAllChanged(object sender, RoutedEventArgs args) => IsThicknessGroupExpanded = FlowExpandAllToggle.IsChecked == true;
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        if (!IsTeachingMode) return;
+        // A newly loaded flow starts with its input card visible. Later selection still uses the existing scroll behavior.
+        _ = Dispatcher.BeginInvoke(() => FlowGraphViewport.ScrollToTop(), System.Windows.Threading.DispatcherPriority.ContextIdle);
+    }
+
     private void OnLayoutUpdated(object? sender, EventArgs e) => UpdateFlowConnections();
 
     private bool ArrangeFlowNodes(ToolWorkbenchViewModel workbench)
     {
         var width = Math.Max(FlowCanvasMinimumWidth, FlowGraphViewport.ViewportWidth);
-        var columns = width >= (2 * FlowNodeWidth) + FlowNodeColumnGap + (2 * FlowNodeSideInset) ? 2 : 1;
+        var nodeWidth = IsTeachingMode ? Math.Clamp(width - 36, 192, 470) : FlowNodeWidth;
+        if (Math.Abs(FlowCardWidth - nodeWidth) > 0.5) FlowCardWidth = nodeWidth;
+        var columns = !IsTeachingMode && width >= (2 * nodeWidth) + FlowNodeColumnGap + (2 * FlowNodeSideInset) ? 2 : 1;
         var depthByOutput = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
             [workbench.Source.Id] = 0,
@@ -122,15 +191,15 @@ public partial class RecipeChainView : UserControl
 
         foreach (var depthGroup in stepDepths.GroupBy(item => item.Depth).OrderBy(group => group.Key))
         {
-            var group = depthGroup.ToArray();
+            var group = depthGroup.Where(item => !IsTeachingMode || !item.Step.IsFlowRepeatGroupMember || item.Step.IsFlowRepeatGroupLead || IsThicknessGroupExpanded).ToArray();
             for (var firstIndex = 0; firstIndex < group.Length; firstIndex += columns)
             {
                 var row = group.Skip(firstIndex).Take(columns)
                     .Select((item, column) => (
                         Container: RecipeStepList.ItemContainerGenerator.ContainerFromItem(item.Step) as ListBoxItem,
                         X: Math.Min(columns, group.Length - firstIndex) == 1
-                            ? (width - FlowNodeWidth) / 2
-                            : FlowNodeSideInset + (column * (FlowNodeWidth + FlowNodeColumnGap))))
+                            ? IsTeachingMode ? 22 : (width - nodeWidth) / 2
+                            : FlowNodeSideInset + (column * (nodeWidth + FlowNodeColumnGap))))
                     .ToArray();
                 if (row.Any(item => item.Container is null || item.Container.DesiredSize.Height <= 0)) return false;
 
@@ -151,7 +220,9 @@ public partial class RecipeChainView : UserControl
                     }
                 }
 
-                top += rowHeight + FlowNodeRowGap;
+                var lastStep = group[Math.Min(firstIndex + columns, group.Length) - 1].Step;
+                var rowGap = IsTeachingMode && IsThicknessGroupExpanded && lastStep.IsFlowRepeatGroupMember && !lastStep.IsFlowRepeatGroupLast ? 0 : FlowNodeRowGap;
+                top += rowHeight + rowGap;
             }
         }
 
@@ -198,7 +269,7 @@ public partial class RecipeChainView : UserControl
         var containers = workbench.PipelineSteps
             .Select((step, index) => (
                 Step: step,
-                Container: RecipeStepList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem))
+                Container: RecipeStepList.ItemContainerGenerator.ContainerFromItem(IsTeachingMode && step.FlowRepeatGroupAnchor is { } anchor ? anchor : step) as ListBoxItem))
             .Where(item => item.Container is { ActualWidth: > 0, ActualHeight: > 0 })
             .Select(item => (item.Step, Container: item.Container!))
             .ToArray();
@@ -206,7 +277,7 @@ public partial class RecipeChainView : UserControl
             .Where(item => !string.IsNullOrWhiteSpace(item.Step.OutputEntityId))
             .GroupBy(item => item.Step.OutputEntityId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First().Container, StringComparer.OrdinalIgnoreCase);
-        var edges = new List<(string FromId, Point Start, double ExitX, string ToId, Point End, double EntryX, bool IsSelected)>();
+        var edges = new List<(string FromId, Point Start, double ExitX, string ToId, Point End, double EntryX, bool IsSelected, string Contract, bool HasIssue)>();
 
         foreach (var target in containers)
         {
@@ -224,7 +295,6 @@ public partial class RecipeChainView : UserControl
                     producer = upstream;
                 }
 
-                producer ??= FindSelectionPort(FlowSelectionSources, inputId);
                 if (producer is null) continue;
                 edges.Add((
                     producerId,
@@ -233,7 +303,7 @@ public partial class RecipeChainView : UserControl
                     target.Step.Id,
                     GetPortCenter(target.Container, "StepInputPort", false, inputPort.Index),
                     target.Container.TranslatePoint(new Point(-8, 0), FlowConnectionCanvas).X,
-                    ReferenceEquals(target.Step, workbench.SelectedPipelineStep)));
+                    ReferenceEquals(target.Step, workbench.SelectedPipelineStep), inputPort.Contract, target.Step.FlowNodeStatusHasIssue));
             }
         }
 
@@ -243,15 +313,17 @@ public partial class RecipeChainView : UserControl
             workbench.Source.Id,
             workbench.SelectedPipelineStep?.Id ?? string.Empty,
             string.Join(';', containers.Select(item => $"{item.Step.Id}:{item.Container.TranslatePoint(new Point(), FlowConnectionCanvas)}")),
-            string.Join(';', edges.Select(edge => $"{edge.FromId}>{edge.ToId}:{edge.Start}:{edge.ExitX}:{edge.End}:{edge.EntryX}")));
+            string.Join(';', edges.Select(edge => $"{edge.FromId}>{edge.ToId}:{edge.Start}:{edge.ExitX}:{edge.End}:{edge.EntryX}:{edge.Contract}:{edge.HasIssue}:{edge.IsSelected}")));
         if (string.Equals(flowConnectionSignature, signature, StringComparison.Ordinal)) return;
 
         flowConnectionSignature = signature;
         FlowConnectionCanvas.Children.Clear();
         FlowPortConnectionCanvas.Children.Clear();
-        foreach (var edge in edges)
+        // A folded repeat group shares its visible endpoints; its logical connections remain distinct.
+        foreach (var renderedEdges in edges.GroupBy(edge => (edge.Start, edge.ExitX, edge.End, edge.EntryX, edge.Contract)))
         {
-            DrawFlowConnection(edge.Start, edge.ExitX, edge.End, edge.EntryX, edge.IsSelected);
+            var edge = renderedEdges.First();
+            DrawFlowConnection(edge.Start, edge.ExitX, edge.End, edge.EntryX, renderedEdges.Any(item => item.IsSelected), edge.Contract, renderedEdges.Any(item => item.HasIssue));
         }
 
         FlowConnectionCount = edges.Count;
@@ -260,10 +332,16 @@ public partial class RecipeChainView : UserControl
 
     private Point GetPortCenter(FrameworkElement node, string portName, bool output, int inputIndex = 0)
     {
+        if (IsTeachingMode && node.DataContext is ToolWorkbenchPipelineStepItem { IsFlowRepeatGroupLead: true })
+        {
+            var groupPort = FindNamedPort(node, output ? "GroupOutputPortVisual" : "GroupInputPortVisual");
+            if (groupPort is { ActualWidth: > 0, ActualHeight: > 0 } && HasVisiblePortPath(groupPort))
+                return groupPort.TranslatePoint(new Point(groupPort.ActualWidth / 2, groupPort.ActualHeight / 2), FlowConnectionCanvas);
+        }
         var port = node.Name == "SelectionOutputPort" ? node
             : node == RecipeInputNode ? SourceOutputPort
             : output ? FindNamedPort(node, portName) : FindInputPort(node, inputIndex);
-        if (port is { ActualWidth: > 0, ActualHeight: > 0 })
+        if (port is { ActualWidth: > 0, ActualHeight: > 0 } && HasVisiblePortPath(port))
         {
             if (FindNamedPort(port, "PortVisual") is { ActualWidth: > 0, ActualHeight: > 0 } glyph)
             {
@@ -272,19 +350,22 @@ public partial class RecipeChainView : UserControl
             return port.TranslatePoint(new Point(port.ActualWidth / 2, port.ActualHeight / 2), FlowConnectionCanvas);
         }
 
+        var closedPort = FindNamedPort(node, output ? "CollapsedOutputPortVisual" : "CollapsedInputPortVisual");
+        if (closedPort is { ActualWidth: > 0, ActualHeight: > 0 } && HasVisiblePortPath(closedPort))
+        {
+            return closedPort.TranslatePoint(new Point(closedPort.ActualWidth / 2, closedPort.ActualHeight / 2), FlowConnectionCanvas);
+        }
         var origin = node.TranslatePoint(new Point(), FlowConnectionCanvas);
         return new Point(origin.X + (output ? node.ActualWidth : 0), origin.Y + (node.ActualHeight * (output ? 0.72 : 0.48)));
     }
 
-    private static FrameworkElement? FindSelectionPort(DependencyObject parent, string id)
+    private static bool HasVisiblePortPath(DependencyObject port)
     {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        for (var current = port; current is not null; current = VisualTreeHelper.GetParent(current))
         {
-            var child = VisualTreeHelper.GetChild(parent, index);
-            if (child is FrameworkElement { Name: "SelectionOutputPort", DataContext: ToolRecipeSelection selection } element && string.Equals(selection.Id, id, StringComparison.OrdinalIgnoreCase)) return element;
-            if (FindSelectionPort(child, id) is { } found) return found;
+            if (current is UIElement { Visibility: not Visibility.Visible }) return false;
         }
-        return null;
+        return true;
     }
 
     private static FrameworkElement? FindInputPort(DependencyObject parent, int index)
@@ -311,7 +392,7 @@ public partial class RecipeChainView : UserControl
         return null;
     }
 
-    private void DrawFlowConnection(Point start, double producerExitX, Point end, double targetEntryX, bool isSelected)
+    private void DrawFlowConnection(Point start, double producerExitX, Point end, double targetEntryX, bool isSelected, string contract, bool hasIssue)
     {
         var exitX = Math.Min(FlowConnectionCanvas.ActualWidth - 2, Math.Max(start.X + 9, producerExitX));
         var entryX = Math.Max(2, Math.Min(end.X - 9, targetEntryX));
@@ -327,13 +408,20 @@ public partial class RecipeChainView : UserControl
             context.LineTo(end, true, false);
         }
         geometry.Freeze();
+        var brushKey = contract.Contains("SignedDeltaHeightField", StringComparison.Ordinal) ? "FlowDeviationBrush"
+            : contract.Contains("GridRectangle", StringComparison.Ordinal) || contract.Contains("RegionArtifact", StringComparison.Ordinal) ? "FlowRegionBrush"
+            : contract.Contains("HeightField", StringComparison.Ordinal) ? "ThreeD.AccentBrush" : "ThreeD.SecondaryTextBrush";
         var path = new System.Windows.Shapes.Path
         {
             Data = geometry,
-            StrokeThickness = isSelected ? 2.25 : 1.25,
+            StrokeThickness = isSelected ? 2.4 : 1.7,
+            StrokeLineJoin = PenLineJoin.Round,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
             Opacity = isSelected ? 1 : 0.82,
         };
-        path.SetResourceReference(Shape.StrokeProperty, isSelected ? "ThreeD.AccentBrush" : "ThreeD.MutedTextBrush");
+        path.SetResourceReference(Shape.StrokeProperty, brushKey);
+        if (hasIssue) path.StrokeDashArray = new DoubleCollection([3d, 3d]);
         FlowConnectionCanvas.Children.Add(path);
 
         var ports = new GeometryGroup
@@ -342,7 +430,7 @@ public partial class RecipeChainView : UserControl
         };
         ports.Freeze();
         var portPath = new System.Windows.Shapes.Path { Data = ports, StrokeThickness = path.StrokeThickness, Opacity = path.Opacity };
-        portPath.SetResourceReference(Shape.StrokeProperty, isSelected ? "ThreeD.AccentBrush" : "ThreeD.MutedTextBrush");
+        portPath.SetResourceReference(Shape.StrokeProperty, brushKey);
         FlowPortConnectionCanvas.Children.Add(portPath);
 
         var arrow = new Polygon
@@ -354,7 +442,7 @@ public partial class RecipeChainView : UserControl
             ],
             Opacity = path.Opacity,
         };
-        arrow.SetResourceReference(Shape.FillProperty, isSelected ? "ThreeD.AccentBrush" : "ThreeD.MutedTextBrush");
+        arrow.SetResourceReference(Shape.FillProperty, brushKey);
         FlowPortConnectionCanvas.Children.Add(arrow);
     }
 

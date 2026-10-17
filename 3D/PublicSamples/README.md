@@ -22,20 +22,14 @@ These files are small public 3D samples for import-loader and viewer smoke work.
 | `Invalid/corrupt.stl` | Invalid STL | 158 bytes | `AD4D480EF181484BF2515913920830FB70CEAEAECFD1BDCEEA24D19D0F28627F` | local fixture | Intentional invalid data, no external license. | Loader failure and smoke exit-code test only. |
 | `Invalid/corrupt.laz` | Invalid LAZ | 31 bytes | local fixture | Intentional invalid data, no external license. | Loader failure and smoke exit-code test only. |
 
-## Import Test Order
+## Use the samples
 
-1. Load `Box.glb` first. Expected import result is a small mesh with a stable bounding box and one material.
-2. Load `BoxVertexColors.glb` next. Verify vertex colors are preserved or intentionally mapped to a fallback color mode.
-3. Load `BoxTextured.glb` after texture/resource handling exists.
-4. Load `SimpleInstancing.glb` to verify scene/node traversal and static `EXT_mesh_gpu_instancing` expansion before relying on real multi-node GLB data.
-5. Load `Avocado.glb` to verify a non-box textured mesh with realistic framing and material metadata.
-6. Load `ToyCar.glb` as fixed-matrix coverage for larger real GLB behavior: texture, bounds, picking, and two-point measurement on a high-triangle model.
-7. Load `Tetrahedron.stl` to verify a non-GLB triangle mesh path with no texture or vertex-color metadata.
-8. Load `3DBenchy.stl` as fixed-matrix large-STL coverage for real-world import behavior, picking, two-point measurement, and render-sampling evidence.
-9. Load `xyzrgb_manuscript.laz` after the point-cloud loader path exists. Verify unit metadata, coordinate ranges, point count, RGB availability, and downsample behavior before rendering all points.
-10. Load `interesting.las` to verify uncompressed LAS RGB decoding on a small 1,065-point sample.
-
-Promote a probe-only sample into the fixed matrix only when it exposes a loader, camera, picking, measurement, Shell, or contract gap that the current matrix does not cover. Otherwise, keep it as an ad hoc probe to avoid slowing every routine smoke run.
+Use a small box or tetrahedron when checking a basic loader or camera change.
+Textured and vertex-coloured boxes, instanced geometry, larger meshes, and
+LAS/LAZ data cover different format and display contracts. Select the sample
+that matches the changed path; the source and license column owns its origin.
+Keep intentionally invalid samples in `Invalid/` for rejection and recovery
+checks only.
 
 ## Guardrails
 

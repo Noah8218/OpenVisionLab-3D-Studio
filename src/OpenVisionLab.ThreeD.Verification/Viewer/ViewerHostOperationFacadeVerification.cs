@@ -139,6 +139,37 @@ internal static class ViewerHostOperationFacadeVerification
                 && viewModel.ViewerStatus.Contains("Recipe output is disabled", StringComparison.Ordinal),
                 viewModel.ViewerStatus);
 
+            var labelSource = new OpenVisionLab.ThreeD.Core.ToolRecipeSelectionSourceBinding(Format: "C3D", ContentSha256: new string('A', 64), GridWidth: 12, GridHeight: 8);
+            var labelAnchor = new OpenVisionLab.ThreeD.Core.ToolRecipeSelection("roi.fixture", "Measure", "GridRectangle", "source.fixture", "frame.fixture",
+                labelSource, new(2, 3, 2, 4), null, null);
+            var exact = 8.1234567890123456;
+            var label = new ViewerTeachingResultLabel("step.fixture", "Thickness", "Mean", exact, "8.123", "raw-height",
+                OpenVisionLab.ThreeD.Core.ResultStatus.Pass, true, labelAnchor);
+            var labels = new[] { label };
+            var previewBeforeLabels = viewModel.PreviewToolResult;
+            var publishedBeforeLabels = viewModel.ResultEntities;
+            var frameBeforeLabels = visibleFrameRequests;
+            Check("teaching labels copy raw values and identity without Preview or Publish",
+                facade.TrySetTeachingResultLabels(labels) && viewModel.TeachingResultLabels.Single() == label
+                    && viewModel.TeachingResultLabels[0].Value == exact && visibleFrameRequests == frameBeforeLabels + 1
+                    && ReferenceEquals(previewBeforeLabels, viewModel.PreviewToolResult) && ReferenceEquals(publishedBeforeLabels, viewModel.ResultEntities),
+                $"raw={viewModel.TeachingResultLabels[0].Value:R}|source={viewModel.TeachingResultLabels[0].Anchor.SourceBinding.ContentSha256}");
+            labels[0] = label with { Value = 999 };
+            Check("host owns a collection snapshot and invalid input is atomic",
+                viewModel.TeachingResultLabels[0].Value == exact
+                    && !facade.TrySetTeachingResultLabels([label with { Value = double.NaN }])
+                    && !facade.TrySetTeachingResultLabels([label with { Anchor = labelAnchor with { GridRectangle = new(-1, 3, 2, 4) } }])
+                    && !facade.TrySetTeachingResultLabels([label with { Anchor = labelAnchor with { GridRectangle = new(2, 11, 2, 4) } }])
+                    && viewModel.TeachingResultLabels.Single() == label && visibleFrameRequests == frameBeforeLabels + 1,
+                $"raw={viewModel.TeachingResultLabels[0].Value:R}|frames={visibleFrameRequests}");
+            var hidden = label with { IsVisible = false };
+            Check("hide clear and valid recovery change only label presentation",
+                facade.TrySetTeachingResultLabels([hidden]) && !viewModel.TeachingResultLabels[0].IsVisible
+                    && facade.TrySetTeachingResultLabels([]) && viewModel.TeachingResultLabels.Count == 0
+                    && facade.TrySetTeachingResultLabels([label]) && viewModel.TeachingResultLabels.Single() == label
+                    && ReferenceEquals(previewBeforeLabels, viewModel.PreviewToolResult) && ReferenceEquals(publishedBeforeLabels, viewModel.ResultEntities),
+                $"labels={viewModel.TeachingResultLabels.Count}|caption={viewModel.TeachingResultLabels[0].Caption}");
+
             var stateBeforeDispose = facade.CaptureCameraState();
             var frameRequestsBeforeDispose = visibleFrameRequests;
             var commandCallbacksBeforeDispose = commandCallbacks.Count;
@@ -146,7 +177,8 @@ internal static class ViewerHostOperationFacadeVerification
             disposed = true;
             Check(
                 "disposed gate rejects state, command, save, and publish operations",
-                !facade.TryApplyCameraState(stateBeforeDispose)
+                !facade.TrySetTeachingResultLabels([]) && viewModel.TeachingResultLabels.Single() == label
+                && !facade.TryApplyCameraState(stateBeforeDispose)
                 && !facade.TrySetSelectionMode("Point")
                 && !facade.TrySetSelectionOverlayVisible(true)
                 && !facade.TrySetC3DHeightColorMinimumRaw(0.0)

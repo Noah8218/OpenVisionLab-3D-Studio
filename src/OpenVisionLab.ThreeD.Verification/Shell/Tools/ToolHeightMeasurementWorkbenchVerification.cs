@@ -56,6 +56,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             workbench.Selections.Add(selection);
 
             var thickness = Add(workbench, "Thickness", thicknessReferenceSelection.Id);
+            thickness.AcceptanceLimitsConfigured = true;
             Check("Thickness is a typed generic adapter", workbench.IsSelectedStepPropertyGridSupported && workbench.SelectedStepAdapterStatus == workbench.Localization.StepAdapterReady, workbench.SelectedStepAdapterStatus);
             Check("Current one-ROI Thickness treats input 2 as Reference and enables Measurement capture",
                 workbench.IsSelectedStepDualRoiMeasurement
@@ -267,6 +268,27 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 $"value={selectedThicknessOutput.Value} {selectedThicknessOutput.Unit};status={selectedThicknessOutput.ResultStatus};availability={selectedThicknessOutput.Availability}");
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Thickness publishes exact Preview", thickness.State == "Published" && workbench.IsMeasurementPreviewPublished, thickness.State);
+            var measuredColor = workbench.CurrentMeasurementOutput?.ColorSnapshot;
+            Check("Thickness colour map is SDK plane-relative, not the raw input height",
+                measuredColor is not null && measuredColor.Width == 4 && measuredColor.Height == 4
+                && measuredColor.Values.Span[..8].ToArray().All(double.IsNaN)
+                && measuredColor.Values.Span[8..].ToArray().All(value => Math.Abs(value - 5) < 1e-6),
+                measuredColor is null ? "missing" : string.Join(",", measuredColor.Values.Span[8..].ToArray()));
+            Check("colour limits and input identity are captured by the explicit Thickness result",
+                measuredColor is not null && measuredColor.InputContentSha256 == binding.ContentSha256
+                && measuredColor.LowerLimit == workbench.CurrentMeasurementOutput!.Result.Metrics.Single(metric => metric.Name == "LowerLimit").Value
+                && measuredColor.UpperLimit == workbench.CurrentMeasurementOutput.Result.Metrics.Single(metric => metric.Name == "UpperLimit").Value,
+                measuredColor?.ExecutionIdentity ?? "missing");
+            workbench.HeightImageViewer.EnsureSourceAsync(sourcePath, workbench.Source.Id, workbench.Source.Unit, workbench.Source.FrameId).GetAwaiter().GetResult();
+            var heightAlias = new ViewerWorkspaceCandidateItem(ToolWorkbenchViewModel.HeightImageViewerContentId, "Height", ViewerWorkspaceCandidateKind.HeightImage,
+                sourcePath, "HeightField", "Ready", true);
+            workbench.AuxiliaryViewerPane.UpdateSource(heightAlias, ViewerPaneKind.Height, true, preserveLegacyInputControls: true);
+            using (var links = new OpenVisionLab.ThreeD.Shell.Coordination.ViewerWorkspaceLinkCoordinator())
+            {
+                links.SetWorkbench(workbench);
+                Check("central height-image alias retains the selected executed measurement snapshot", workbench.HeightImageViewer.CanUseMeasurementColor
+                    && ReferenceEquals(workbench.HeightImageViewer.HeightDisplayOptions.Measurement, measuredColor), workbench.HeightImageViewer.MeasurementColorSummary);
+            }
             var thicknessPublishedOutput = workbench.CurrentMeasurementOutput;
             var thicknessMinimum = thickness.Parameters.Single(parameter => parameter.Name == "MinimumThickness");
             thicknessMinimum.Value = "1";
@@ -333,7 +355,19 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 thicknessDraft = args;
                 thicknessDraftEventCount++;
             };
+            var roiRunEnabled = workbench.RunSelectedStepCommand.CanExecute(null);
+            var roiPreviewEnabled = workbench.PreviewSelectedStepCommand.CanExecute(null);
+            workbench.RunSelectedStepCommand.CanExecuteChanged += (_, _) =>
+                roiRunEnabled = workbench.RunSelectedStepCommand.CanExecute(null);
+            workbench.PreviewSelectedStepCommand.CanExecuteChanged += (_, _) =>
+                roiPreviewEnabled = workbench.PreviewSelectedStepCommand.CanExecute(null);
             workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+            Check("ROI drawing blocks Run and Preview commands and notifies their listeners",
+                workbench.IsTeachingSelectionCaptureActive
+                && !workbench.RunSelectedStepCommand.CanExecute(null)
+                && !workbench.PreviewSelectedStepCommand.CanExecute(null)
+                && !roiRunEnabled && !roiPreviewEnabled && runCompleted == 2,
+                $"run={roiRunEnabled};preview={roiPreviewEnabled};completed={runCompleted}");
             Check(
                 "Thickness replacement request preserves the authored ROI identity and geometry",
                 thicknessReplaceRequest?.ExistingSelection == selection
@@ -354,6 +388,11 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && workbench.TeachingSelectionCaptureInstruction == workbench.Localization.RoiCaptureReadyInstruction
                 && workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null),
                 $"{workbench.TeachingSelectionCaptureProgress} | {workbench.TeachingSelectionCaptureInstruction}");
+            Check("ROI review keeps execution blocked until explicit Apply or Cancel",
+                !workbench.RunSelectedStepCommand.CanExecute(null)
+                && !workbench.PreviewSelectedStepCommand.CanExecute(null)
+                && !roiRunEnabled && !roiPreviewEnabled && runCompleted == 2,
+                $"run={roiRunEnabled};preview={roiPreviewEnabled};completed={runCompleted}");
             workbench.TeachingGridRectangleRowCount = 2;
             workbench.TeachingGridRectangleRow = 1;
             Check(
@@ -383,8 +422,22 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && workbench.Selections.Single(item => item.Id == selection.Id).GridRectangle == new ToolRecipeGridRectangle(2, 0, 2, 4)
                 && !workbench.IsTeachingSelectionCaptureActive,
                 editMessage);
+            Check("ROI Apply restores executable commands and their listeners without executing",
+                workbench.RunSelectedStepCommand.CanExecute(null)
+                && workbench.PreviewSelectedStepCommand.CanExecute(null)
+                && roiRunEnabled && roiPreviewEnabled && runCompleted == 2,
+                $"run={roiRunEnabled};preview={roiPreviewEnabled};completed={runCompleted}");
+            var appliedSelection = workbench.Selections.Single(item => item.Id == selection.Id);
+            workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+            workbench.CancelTeachingSelectionCaptureCommand.Execute(null);
+            Check("ROI Cancel restores execution and retains the applied ROI without executing",
+                !workbench.IsTeachingSelectionCaptureActive
+                && roiRunEnabled && roiPreviewEnabled && runCompleted == 2
+                && workbench.Selections.Single(item => item.Id == selection.Id) == appliedSelection,
+                $"run={roiRunEnabled};preview={roiPreviewEnabled};completed={runCompleted}");
 
             var warpage = Add(workbench, "Warpage", selection.Id);
+            warpage.AcceptanceLimitsConfigured = true;
             var thicknessOutputBeforeStepChange = workbench.CurrentMeasurementOutput;
             Check(
                 "changing the selected measurement step removes the previous step's Publish candidate",
@@ -619,6 +672,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 throw new InvalidOperationException(
                     "Completeness Grid was not added after its command became ready.");
             }
+            completenessStep.AcceptanceLimitsConfigured = true;
             completenessWorkbench.SelectedCompatibleSelection =
                 completenessReference;
             completenessWorkbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(
@@ -808,6 +862,69 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && request.SelectionId.EndsWith(".reference-roi", StringComparison.Ordinal)
                 && request.SelectionName.Contains(captureWorkbench.Localization.ReferenceRoi, StringComparison.Ordinal),
                 request is null ? "no request" : $"{request.SelectionId}; {request.SelectionName}");
+            ToolWorkbenchGridRectangleDraftChangedEventArgs? firstReferenceDraft = null;
+            captureWorkbench.TeachingGridRectangleDraftChanged += (_, args) => firstReferenceDraft = args;
+            captureWorkbench.UpdateTeachingSelectionCaptureState(
+                active: true, capturedPointCount: 2, requiredPointCount: 2, canApply: true,
+                message: "First Reference ROI candidate.");
+            Check("The first Rectangle ROI candidate exposes numeric correction before any Apply",
+                request?.ExistingSelection is null
+                && captureWorkbench.IsTeachingGridRectangleEditorVisible
+                && captureWorkbench.IsTeachingGridRectangleEditorEnabled
+                && captureWorkbench.Selections.Count == 0,
+                $"visible={captureWorkbench.IsTeachingGridRectangleEditorVisible};enabled={captureWorkbench.IsTeachingGridRectangleEditorEnabled};selections={captureWorkbench.Selections.Count}");
+            captureWorkbench.TeachingGridRectangleRowCount = 2;
+            captureWorkbench.TeachingGridRectangleColumnCount = 2;
+            Check("First ROI numeric correction remains transient and does not execute inspection",
+                firstReferenceDraft?.Rectangle == new ToolRecipeGridRectangle(0, 0, 2, 2)
+                && captureWorkbench.Selections.Count == 0
+                && !captureWorkbench.HasCurrentMeasurementPreview
+                && captureWorkbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null),
+                firstReferenceDraft?.Rectangle.ToString() ?? "no numeric draft");
+            var rectangleLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var rectangleMessageNotified = false;
+            System.ComponentModel.PropertyChangedEventHandler rectangleLanguageChanged = (_, args) =>
+            {
+                if (args.PropertyName == nameof(ToolWorkbenchViewModel.TeachingGridRectangleValidationSummary)) rectangleMessageNotified = true;
+            };
+            captureWorkbench.PropertyChanged += rectangleLanguageChanged;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                captureWorkbench.TeachingGridRectangleColumn = 4;
+                Check("An out-of-grid Rectangle candidate reports English source bounds and blocks Apply",
+                    !captureWorkbench.IsTeachingGridRectangleDraftValid
+                    && !captureWorkbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null)
+                    && captureWorkbench.TeachingGridRectangleValidationSummary.Contains("rows 0..3 and columns 0..3", StringComparison.Ordinal),
+                    captureWorkbench.TeachingGridRectangleValidationSummary);
+                rectangleMessageNotified = false;
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                Check("Changing language refreshes the existing Rectangle error without changing the candidate",
+                    rectangleMessageNotified
+                    && captureWorkbench.TeachingGridRectangleColumn == 4
+                    && captureWorkbench.TeachingGridRectangleValidationSummary == "행 범위 0~3, 열 범위 0~3 안에 지정하세요."
+                    && !captureWorkbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null),
+                    $"notified={rectangleMessageNotified};{captureWorkbench.TeachingGridRectangleValidationSummary}");
+                captureWorkbench.TeachingGridRectangleColumn = 0;
+                captureWorkbench.TeachingGridRectangleRowCount = 0;
+                Check("An empty Rectangle reports the required positive row and column counts",
+                    !captureWorkbench.IsTeachingGridRectangleDraftValid
+                    && captureWorkbench.TeachingGridRectangleValidationSummary == "시작 행과 열은 0 이상, 행 수와 열 수는 1 이상이어야 합니다.",
+                    captureWorkbench.TeachingGridRectangleValidationSummary);
+                captureWorkbench.TeachingGridRectangleRowCount = 2;
+                Check("Valid Rectangle recovery re-enables Apply while retaining a transient draft",
+                    captureWorkbench.IsTeachingGridRectangleDraftValid
+                    && captureWorkbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null)
+                    && firstReferenceDraft?.Rectangle == new ToolRecipeGridRectangle(0, 0, 2, 2)
+                    && captureWorkbench.Selections.Count == 0
+                    && !captureWorkbench.HasCurrentMeasurementPreview,
+                    firstReferenceDraft?.Rectangle.ToString() ?? "no recovered draft");
+            }
+            finally
+            {
+                captureWorkbench.PropertyChanged -= rectangleLanguageChanged;
+                OpenVisionLanguageService.SetLanguage(rectangleLanguage, save: false);
+            }
             var capturedReference = CapturedRectangle(request!, new ToolRecipeGridRectangle(0, 0, 2, 2));
             Check("Shell applies the Viewer-shaped Reference ROI candidate",
                 capturedReference.GridRectangle == new ToolRecipeGridRectangle(0, 0, 2, 2)
@@ -818,7 +935,16 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 capturedReference.Id);
 
             request = null;
+            var referenceCaptureEnabled = captureWorkbench.CapturePlaneFlatnessReferenceRoiCommand.CanExecute(null);
+            var measurementCaptureEnabled = captureWorkbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null);
+            captureWorkbench.CapturePlaneFlatnessReferenceRoiCommand.CanExecuteChanged += (_, _) =>
+                referenceCaptureEnabled = captureWorkbench.CapturePlaneFlatnessReferenceRoiCommand.CanExecute(null);
+            captureWorkbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecuteChanged += (_, _) =>
+                measurementCaptureEnabled = captureWorkbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null);
             captureWorkbench.CapturePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            Check("Both ROI command listeners receive disabled state when Measurement capture begins",
+                !referenceCaptureEnabled && !measurementCaptureEnabled,
+                $"reference={referenceCaptureEnabled};measurement={measurementCaptureEnabled}");
             Check("Measurement ROI command raises a distinct Viewer capture request after Reference",
                 request is { Kind: ToolRecipeSelectionKinds.GridRectangle, RequiredPointCount: 2 }
                 && request.SelectionId.EndsWith(".measurement-roi", StringComparison.Ordinal)
@@ -832,6 +958,10 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && captureStep.InputEntityIds[1] == capturedReference.Id
                 && captureStep.InputEntityIds[2] == capturedMeasurement.Id,
                 capturedMeasurement.Id);
+
+            Check("Both ROI command listeners receive enabled state after the second ROI is applied without switching roles",
+                referenceCaptureEnabled && measurementCaptureEnabled,
+                $"reference={referenceCaptureEnabled};measurement={measurementCaptureEnabled}");
 
             var initialMeasurementId = capturedMeasurement.Id;
             request = null;
@@ -1180,6 +1310,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 $"before={hadMeasurementOutputBeforeDispose};running={workbench.IsMeasurementPreviewRunning};current={workbench.HasCurrentMeasurementPreview};published={workbench.IsMeasurementPreviewPublished};output={workbench.CurrentMeasurementOutput is not null};preview={workbench.PreviewSelectedStepCommand.CanExecute(null)};publish={workbench.PublishSelectedStepCommand.CanExecute(null)};cancel={workbench.CancelSelectedPreviewCommand.CanExecute(null)}");
 
             var blockerRendering = VerifyRecipeHealthBlockerRendering(root);
+            Check("Rectangle XAML inputs block malformed drafts, retain errors, and recover without applying or running", blockerRendering.RectangleInputPassed, blockerRendering.RectangleInputDetail);
             Check(
                 "Recipe Health navigates to and renders the blocker without mutation or Compact/Wide clipping",
                 blockerRendering.Passed,
@@ -1365,10 +1496,104 @@ internal static class ToolHeightMeasurementWorkbenchVerification
         return reader.ReadToEnd();
     }
 
-    private static (bool Passed, string Detail) VerifyRecipeHealthBlockerRendering(string root)
+    private static (bool Passed, string Detail) VerifyRectangleTextInputBinding(string root)
+    {
+        var passed = false;
+        var detail = "STA binding verification did not complete.";
+        try
+        {
+            using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "rectangle-input-recent.json"));
+            workbench.SetC3DSource(Path.Combine(root, "measurement.C3D"));
+            PrepareTransformedHeightFieldRoute(workbench);
+            workbench.SelectedTool = workbench.Tools.Single(tool => tool.Id == "plane-flatness");
+            workbench.AddSelectedToolCommand.Execute(null);
+            workbench.SelectedPipelineStep!.InputEntityIdsText = workbench.Source.Id;
+            ToolWorkbenchTeachingCaptureRequestEventArgs? request = null;
+            workbench.BeginTeachingSelectionCaptureRequested += (_, args) => request = args;
+            workbench.CapturePlaneFlatnessReferenceRoiCommand.Execute(null);
+            workbench.UpdateTeachingSelectionCaptureState(true, 2, 2, true, "Rectangle input verification.");
+            workbench.TeachingGridRectangleColumnCount = 2;
+            workbench.TeachingGridRectangleRowCount = 2;
+            var view = new SelectedToolWorkspaceView { DataContext = workbench };
+            view.Measure(new Size(400, 1000));
+            view.Arrange(new Rect(0, 0, 400, 1000));
+            view.UpdateLayout();
+            var column = (TextBox)view.FindName("GridRectangleColumnEditor");
+            var row = (TextBox)view.FindName("GridRectangleRowEditor");
+            var columns = (TextBox)view.FindName("GridRectangleColumnCountEditor");
+            var rows = (TextBox)view.FindName("GridRectangleRowCountEditor");
+            var notice = (TextBlock)view.FindName("GridRectangleValidationNotice");
+            var applyRequests = 0;
+            var observedCanApply = workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null);
+            workbench.ApplyTeachingSelectionCaptureRequested += (_, _) => applyRequests++;
+            workbench.ApplyTeachingSelectionCaptureCommand.CanExecuteChanged += (_, _) =>
+                observedCanApply = workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null);
+            var selectedCount = workbench.Selections.Count;
+            var dirty = workbench.IsDirty;
+            var actionCount = workbench.RunLog.Count(item => item.Category is "Run" or "Preview" or "Publish");
+            var cases = new List<string>();
+            foreach (var (editor, invalid, restored) in new[]
+            {
+                (column, "abc1280", "0"),
+                (row, "", "0"),
+                (columns, "2147483648", "2"),
+                (rows, "1.5", "2"),
+            })
+            {
+                editor.Text = invalid;
+                view.UpdateLayout();
+                workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
+                var callbackRejected = !workbench.TryApplyCapturedTeachingSelection(
+                    CapturedRectangle(request!, new ToolRecipeGridRectangle(0, 0, 2, 2)), out _);
+                var blocked = !observedCanApply && !workbench.IsTeachingGridRectangleDraftValid
+                    && notice.Visibility == Visibility.Visible && !string.IsNullOrWhiteSpace(notice.Text)
+                    && callbackRejected && workbench.IsTeachingSelectionCaptureActive
+                    && workbench.Selections.Count == selectedCount && applyRequests == 0;
+                editor.Text = restored;
+                view.UpdateLayout();
+                var recovered = observedCanApply && workbench.IsTeachingGridRectangleDraftValid
+                    && notice.Visibility == Visibility.Collapsed && applyRequests == 0;
+                cases.Add($"{invalid}:blocked={blocked},recovered={recovered}");
+                passed = cases.Count == 1 ? blocked && recovered : passed && blocked && recovered;
+            }
+
+            column.Text = "invalid";
+            row.Text = "1";
+            var retained = column.Text == "invalid" && !observedCanApply && !workbench.IsTeachingGridRectangleDraftValid;
+            column.Text = "0";
+            var validNumbers = workbench.TeachingGridRectangleRow == 1 && workbench.TeachingGridRectangleColumn == 0;
+            workbench.TeachingGridRectangleRow = 0;
+            var backToControl = row.Text == "0";
+            ToolWorkbenchGridRectangleDraftChangedEventArgs? asymmetricDraft = null;
+            workbench.TeachingGridRectangleDraftChanged += (_, args) => asymmetricDraft = args;
+            column.Text = "1";
+            row.Text = "0";
+            columns.Text = "2";
+            rows.Text = "3";
+            var asymmetric = asymmetricDraft?.Rectangle == new ToolRecipeGridRectangle(Row: 0, Column: 1, RowCount: 3, ColumnCount: 2)
+                && column.Text == "1" && row.Text == "0" && columns.Text == "2" && rows.Text == "3"
+                && workbench.TeachingGridRectangleColumn == 1 && workbench.TeachingGridRectangleRow == 0
+                && workbench.TeachingGridRectangleColumnCount == 2 && workbench.TeachingGridRectangleRowCount == 3;
+            var noExecution = workbench.IsDirty == dirty && applyRequests == 0
+                && workbench.Selections.Count == selectedCount
+                && workbench.RunLog.Count(item => item.Category is "Run" or "Preview" or "Publish") == actionCount;
+            passed &= retained && validNumbers && backToControl && asymmetric && noExecution;
+            detail = $"{string.Join(";", cases)};retained={retained};numbers={validNumbers};sourceToControl={backToControl};asymmetric={asymmetric};noExecution={noExecution}";
+        }
+        catch (Exception exception)
+        {
+            passed = false;
+            detail = $"{exception.GetType().Name}: {exception.Message}";
+        }
+        return (passed, detail);
+    }
+
+
+    private static (bool Passed, string Detail, bool RectangleInputPassed, string RectangleInputDetail) VerifyRecipeHealthBlockerRendering(string root)
     {
         var passed = false;
         var detail = "STA rendering did not complete.";
+        var rectangleInput = (Passed: false, Detail: "STA binding verification did not complete.");
         var thread = new Thread(() =>
         {
             try
@@ -1378,6 +1603,8 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                     var app = new App();
                     app.InitializeComponent();
                 }
+
+                rectangleInput = VerifyRectangleTextInputBinding(root);
 
                 var sourcePath = Path.Combine(root, "recipe-health-render.C3D");
                 C3DHeightFieldSnapshot.CreateForVerification(
@@ -1486,7 +1713,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();
-        return (passed, detail);
+        return (passed, detail, rectangleInput.Passed, rectangleInput.Detail);
     }
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)

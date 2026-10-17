@@ -464,7 +464,7 @@ internal static class ThreeDIntegrationViewModelVerification
                 "explicit reject writes rejected acknowledgement",
                 rejectedAcknowledgement.Status == IntegrationAcknowledgementStatus.Rejected
                 && rejectedAcknowledgement.Error?.Code == IntegrationErrorCode.RequestRejected
-                && (rejector.StatusText.Contains("거절", StringComparison.Ordinal)
+                && (rejector.StatusText.Contains("거부", StringComparison.Ordinal)
                     || rejector.StatusText.Contains("Rejected", StringComparison.OrdinalIgnoreCase)),
                 $"status={rejectedAcknowledgement.Status}; error={rejectedAcknowledgement.Error?.Code}; text={rejector.StatusText}");
             Check(
@@ -521,7 +521,7 @@ internal static class ThreeDIntegrationViewModelVerification
             Check(
                 "published state visible",
                 restored.SelectedTransaction?.State.Contains("published", StringComparison.OrdinalIgnoreCase) == true
-                || restored.SelectedTransaction?.State.Contains("게시", StringComparison.Ordinal) == true,
+                || restored.SelectedTransaction?.State.Contains("결과 준비됨", StringComparison.Ordinal) == true,
                 restored.SelectedTransaction?.State ?? "none");
 
             var legacyHandoff = WriteLegacyHandoff(legacyExchangeRoot);

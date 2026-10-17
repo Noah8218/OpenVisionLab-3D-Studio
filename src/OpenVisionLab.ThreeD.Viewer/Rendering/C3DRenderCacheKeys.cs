@@ -16,7 +16,12 @@ internal readonly record struct C3DDisplayListKey(
     double HeightColorMaximumRaw,
     double PointSize,
     int HeightEmphasis,
-    C3DWireframeLodLevel WireframeLodLevel);
+    C3DWireframeLodLevel WireframeLodLevel)
+{
+    public OpenVisionLab.ThreeD.Viewer.Loading.C3DTextureImage? TextureImage { get; init; }
+    public bool TextureVisible { get; init; }
+    public (string Style, int Bands, bool Outside, string Measurement) HeightColorOptions { get; init; }
+}
 
 /// <summary>
 /// Immutable identity for an uploaded C3D GPU buffer snapshot.
@@ -28,4 +33,9 @@ internal readonly record struct C3DGpuBufferKey(
     double HeightColorMinimumRaw,
     double HeightColorMaximumRaw,
     int HeightEmphasis,
-    ViewerPlaneFlatnessDisplayEvaluation? DynamicColorEvaluation);
+    ViewerPlaneFlatnessDisplayEvaluation? DynamicColorEvaluation)
+{
+    public OpenVisionLab.ThreeD.Viewer.Loading.C3DTextureImage? TextureImage { get; init; }
+    public bool TextureVisible { get; init; }
+    public (string Style, int Bands, bool Outside, string Measurement) HeightColorOptions { get; init; }
+}

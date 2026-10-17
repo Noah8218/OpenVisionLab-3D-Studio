@@ -76,6 +76,7 @@ public static class ToolRecipeValidator
             document.SchemaVersion,
             ToolRecipeDocument.RecipeMetadataSchemaVersion,
             StringComparison.Ordinal);
+        var isAcceptanceLimitsSchema = document.SchemaVersion == ToolRecipeDocument.AcceptanceLimitsSchemaVersion;
         var isCurrentSchema = string.Equals(
             document.SchemaVersion,
             ToolRecipeDocument.CurrentSchemaVersion,
@@ -90,6 +91,7 @@ public static class ToolRecipeValidator
             && !isGridPolygonSchema
             && !isOutputPolicySchema
             && !isRecipeMetadataSchema
+            && !isAcceptanceLimitsSchema
             && !isCurrentSchema)
         {
             errors.Add($"Unsupported teaching recipe schema: {Clean(document.SchemaVersion)}.");
@@ -107,10 +109,22 @@ public static class ToolRecipeValidator
             errors.Add($"Recipe category, inspection target, and description must each be {ToolRecipeDocument.MaximumMetadataFieldLength} characters or fewer.");
         }
 
-        if (!isRecipeMetadataSchema && !isCurrentSchema
+        if (!isRecipeMetadataSchema && !isAcceptanceLimitsSchema && !isCurrentSchema
             && (document.Category is not null || document.InspectionTarget is not null || document.Description is not null))
         {
             errors.Add($"Recipe metadata requires teaching recipe schema {ToolRecipeDocument.RecipeMetadataSchemaVersion}.");
+        }
+
+        var groupNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var step in document.Steps ?? [])
+        {
+            if (step?.Group is not { } group) continue;
+            if (!isCurrentSchema) errors.Add($"Step groups require teaching recipe schema {ToolRecipeDocument.GroupSchemaVersion}.");
+            if (string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name) || group.Name.Length > ToolRecipeDocument.MaximumMetadataFieldLength)
+                errors.Add("Step group ID and name must be nonempty; name must fit the metadata field limit.");
+            else if (groupNames.TryGetValue(group.Id, out var name) && name != group.Name)
+                errors.Add($"Step group '{group.Id}' has conflicting names.");
+            else groupNames[group.Id] = group.Name;
         }
 
         var source = document.Source;
@@ -288,7 +302,7 @@ public static class ToolRecipeValidator
                 warnings.Add($"{label} '{Clean(step.ToolName)}' is saved as an incomplete draft ({inputs.Count}/{minimumInputCount} inputs).");
             }
 
-            if (step.AcceptanceLimitsConfigured is not null && (!isCurrentSchema || !ToolRecipeStep.RequiresAcceptanceLimits(step.ToolId)))
+            if (step.AcceptanceLimitsConfigured is not null && (!(isCurrentSchema || isAcceptanceLimitsSchema) || !ToolRecipeStep.RequiresAcceptanceLimits(step.ToolId)))
             {
                 errors.Add($"{label} acceptance limits require a measurement tool and schema {ToolRecipeDocument.AcceptanceLimitsSchemaVersion}.");
             }

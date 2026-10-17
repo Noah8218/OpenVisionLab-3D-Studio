@@ -103,7 +103,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
     public string LevelSurfaceTransformSummary =>
         IsDisposed || levelSurfacePreview?.Transform is not { } transform
             ? "No typed leveling transform until Preview completes."
-            : $"Transform {transform.ContentSha256} | input slope X {transform.FittedSlopeX:G6}, Z {transform.FittedSlopeZ:G6} | target {transform.TargetHeight:G6} {transform.SourceUnit}";
+            : $"Transform {transform.ContentSha256} | input slope X {transform.FittedSlopeX:0.##}, Z {transform.FittedSlopeZ:0.##} | target {transform.TargetHeight:0.##} {transform.SourceUnit}";
 
     public string LevelSurfaceFrameSummary =>
         IsDisposed || levelSurfacePreview?.LevelFrame is not { } frame
@@ -118,7 +118,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
     public string LevelSurfaceResidualSummary =>
         IsDisposed || levelSurfacePreview is not { Transform: { } transform }
             ? "Reference residual and output slope evidence are available after Preview."
-            : $"Reference RMS {transform.ReferenceResidualRms:G6} | P2V {transform.ReferenceResidualPeakToValley:G6} | output slope X {levelSurfacePreview.OutputReferenceSlopeX:G6}, Z {levelSurfacePreview.OutputReferenceSlopeZ:G6} | software confidence {levelSurfacePreview.QualityEvidence?.State.ToString() ?? "Unavailable"} | minimum reference coverage {levelSurfacePreview.QualityEvidence?.MinimumObservedCoverageRatio.ToString("P1") ?? "Unavailable"}";
+            : $"Reference RMS {transform.ReferenceResidualRms:0.##} | P2V {transform.ReferenceResidualPeakToValley:0.##} | output slope X {levelSurfacePreview.OutputReferenceSlopeX:0.##}, Z {levelSurfacePreview.OutputReferenceSlopeZ:0.##} | software confidence {levelSurfacePreview.QualityEvidence?.State.ToString() ?? "Unavailable"} | minimum reference coverage {levelSurfacePreview.QualityEvidence?.MinimumObservedCoverageRatio.ToString("P1") ?? "Unavailable"}";
 
     public string LevelSurfaceOutputSummary =>
         IsDisposed || levelSurfacePreview?.Output is not { } output
@@ -243,7 +243,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
 
             step.State = "Preview ready";
             SetLevelSurfaceSummary(
-                $"Preview ready | {evaluation.Transform.ReferenceRegions.Count} reference ROI(s) | input slope X {evaluation.Transform.FittedSlopeX:G6}, Z {evaluation.Transform.FittedSlopeZ:G6} | output slope X {evaluation.OutputReferenceSlopeX:G6}, Z {evaluation.OutputReferenceSlopeZ:G6} | level frame {evaluation.LevelFrame.ContentSha256[..12]} | frame chain {evaluation.FrameChain.ContentSha256[..12]} | source unchanged");
+                $"Preview ready | {evaluation.Transform.ReferenceRegions.Count} reference ROI(s) | input slope X {evaluation.Transform.FittedSlopeX:0.##}, Z {evaluation.Transform.FittedSlopeZ:0.##} | output slope X {evaluation.OutputReferenceSlopeX:0.##}, Z {evaluation.OutputReferenceSlopeZ:0.##} | level frame {evaluation.LevelFrame.ContentSha256[..12]} | frame chain {evaluation.FrameChain.ContentSha256[..12]} | source unchanged");
             if (IsCurrentPreview(currentCancellation))
             {
                 appendLog(

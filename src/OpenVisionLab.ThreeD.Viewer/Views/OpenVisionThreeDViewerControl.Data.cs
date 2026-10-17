@@ -44,6 +44,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         IProgress<double>? progress = null)
     {
         VerifyHostDispatcherAccess(nameof(LoadViewerOnlySourceAsync));
+        CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin(cancellationToken);
         IProgress<double>? operationProgress = progress is null
             ? null
@@ -206,6 +207,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     public bool LoadC3DSource(string path)
     {
         VerifyHostDispatcherAccess(nameof(LoadC3DSource));
+        CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin();
         try
         {
@@ -234,6 +236,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         IProgress<double>? progress = null)
     {
         VerifyHostDispatcherAccess(nameof(LoadC3DSourceAsync));
+        CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin(cancellationToken);
         IProgress<double>? operationProgress = progress is null
             ? null
@@ -389,8 +392,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                 "C3D grid-index scalar frame",
                 Path.GetFileNameWithoutExtension(fullPath));
             TryFitCurrentC3D(
-                useTopInspectionView: true,
-                "C3D source fitted to top inspection view");
+                useTopInspectionView: false,
+                "C3D source fitted to perspective view");
+            RequestSettledSourceAutoFit();
             alignmentMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
 
             stageStart = Stopwatch.GetTimestamp();
@@ -430,6 +434,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     /// </summary>
     public void ClearC3DTeachingSource(string status)
     {
+        CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin();
         sourceLoadOperations.TryApply(
             operation,
@@ -453,6 +458,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     /// </summary>
     public bool ShowC3DWorkbenchResult(string path, string label)
     {
+        CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin();
         try
         {
@@ -467,8 +473,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                     viewModel.UseC3DSmokeScene();
                     viewModel.SetC3DAlignment(ModelTransform.Identity, "C3D grid-index scalar frame", label);
                     TryFitCurrentC3D(
-                        useTopInspectionView: true,
-                        "Workbench result fitted to top inspection view");
+                        useTopInspectionView: false,
+                        "Workbench result fitted to perspective view");
+                    RequestSettledSourceAutoFit();
                     viewModel.ViewerStatus = $"Workbench display: {label}";
                     RenderNow();
                 });
@@ -483,6 +490,84 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             return false;
         }
+    }
+
+    /// <summary>Shows an already-executed signed map without encoding it as C3D or changing the recipe input.</summary>
+    public bool ShowSignedDeltaFrame(C3DHeightImageFrame frame)
+    {
+        VerifyHostDispatcherAccess(nameof(ShowSignedDeltaFrame));
+        using var operation = sourceLoadOperations.Begin();
+        try
+        {
+            var loaded = C3DHeightGrid.CreateSignedDelta(frame, viewModel.C3DMaxRenderedPoints);
+            return sourceLoadOperations.TryApply(operation, () =>
+            {
+                CancelPendingSourceAutoFit();
+                c3dSample = loaded;
+                SetC3DSampleStatus();
+                viewModel.UseC3DSmokeScene();
+                viewModel.SetC3DAlignment(ModelTransform.Identity, "Signed delta display frame", frame.SourceEntityId);
+                TryFitCurrentC3D(false, "Signed delta fitted to perspective view");
+                RequestSettledSourceAutoFit();
+                viewModel.ViewerStatus = "Signed delta · finite zero retained · display only";
+                RenderNow();
+            });
+        }
+        catch (Exception exception) when (exception is InvalidDataException or ArgumentException or OverflowException)
+        {
+            viewModel.ViewerStatus = $"Signed delta display failed; current view retained: {exception.Message}";
+            return false;
+        }
+    }
+
+    private void CancelPendingSourceAutoFit()
+    {
+        pendingSourceAutoFit?.Abort();
+        pendingSourceAutoFit = null;
+        if (pendingSourceAutoFitLayoutUpdated is { } layoutUpdated) LayoutUpdated -= layoutUpdated;
+        if (pendingSourceAutoFitShutdown is { } shutdown) Dispatcher.ShutdownStarted -= shutdown;
+        pendingSourceAutoFitLayoutUpdated = null;
+        pendingSourceAutoFitShutdown = null;
+    }
+
+    private void RequestSettledSourceAutoFit()
+    {
+        CancelPendingSourceAutoFit();
+        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        var source = c3dSample;
+        var camera = CaptureCameraState();
+        var aspect = Math.Max(1.0, Viewport.ActualWidth) / Math.Max(1.0, Viewport.ActualHeight);
+        var loadedPhaseReached = false;
+        void CompleteSourceAutoFit()
+        {
+            if (!loadedPhaseReached) return;
+            if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished
+                || !ReferenceEquals(c3dSample, source) || CaptureCameraState() != camera)
+            {
+                CancelPendingSourceAutoFit();
+                return;
+            }
+            if (VisualTreeHelper.GetParent(this) is null) return;
+            for (DependencyObject? visual = Viewport; visual is not null; visual = VisualTreeHelper.GetParent(visual))
+                if (visual is UIElement { Visibility: not Visibility.Visible }) return;
+            if (Viewport.ActualWidth <= 0 || Viewport.ActualHeight <= 0) return;
+            var settledAspect = Viewport.ActualWidth / Viewport.ActualHeight;
+            CancelPendingSourceAutoFit();
+            if (settledAspect == aspect) return;
+            // Finish this source once at its first visible layout; later resize and user camera changes keep their camera.
+            TryFitCurrentC3D(useTopInspectionView: false, viewModel.ViewerStatus);
+            RequestVisibleFrame();
+        }
+        pendingSourceAutoFitLayoutUpdated = (_, _) => CompleteSourceAutoFit();
+        pendingSourceAutoFitShutdown = (_, _) => CancelPendingSourceAutoFit();
+        LayoutUpdated += pendingSourceAutoFitLayoutUpdated;
+        Dispatcher.ShutdownStarted += pendingSourceAutoFitShutdown;
+        pendingSourceAutoFit = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            pendingSourceAutoFit = null;
+            loadedPhaseReached = true;
+            CompleteSourceAutoFit();
+        }));
     }
 
     private C3DHeightGrid? LoadDefaultC3DSample()
@@ -875,6 +960,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.SetC3DDisplayCapabilities(surfaceGeometryAvailable: false);
             viewModel.C3DSamplePointCount = "(missing)";
             viewModel.C3DSampleSummary = $"Missing sample: {DefaultC3DSamplePath}";
+            viewModel.C3DTexture.SetSource(null);
             viewModel.ClearC3DHeightDistribution();
             viewModel.ClearHeightMap();
             viewModel.ClearSectionProfile();
@@ -890,10 +976,13 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.C3DSamplePointCount = c3dSample.Points.Length.ToString("N0", CultureInfo.InvariantCulture);
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{c3dSample.Width} x {c3dSample.Height} | rendered {c3dSample.Points.Length:N0} | density {viewModel.SelectedRenderDensity} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+            $"{c3dSample.Width} x {c3dSample.Height} | rendered {c3dSample.Points.Length:N0} | density {viewModel.SelectedRenderDensity} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:0.##} | max {c3dSample.Max:0.##}");
         viewModel.SetC3DHeightDistribution(
             c3dSample.HeightDistribution,
-            c3dSample.ContentSha256);
+            c3dSample.ContentSha256,
+            viewModel.C3DHeightDistributionSourceSha256 == c3dSample.ContentSha256 ? default : c3dSample.ReadHeightMapValues(),
+            c3dSample.Width, c3dSample.Height, c3dSample.IsSignedDelta, c3dSample.DisplayUnit);
+        viewModel.C3DTexture.SetSource(c3dSample);
         UpdateHeightMapFromC3D();
         UpdateSectionProfileFromC3D();
     }
@@ -929,7 +1018,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             : "normals unavailable";
         viewModel.GlbSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{Path.GetFileName(importedMesh.SourcePath)} | format {importedMesh.Format} | vertices {importedMesh.Positions.Length:N0} | triangles {importedMesh.TriangleCount:N0} | {colorSummary} | {textureSummary} | {normalSummary} | bounds {FormatVector(importedMesh.Min)} to {FormatVector(importedMesh.Max)}");
+            $"{Path.GetFileName(importedMesh.SourcePath)} | format {importedMesh.Format} | vertices {importedMesh.Positions.Length:N0} | triangles {importedMesh.TriangleCount:N0} | {colorSummary} | {textureSummary} | {normalSummary} | bounds {FormatDisplayVector(importedMesh.Min)} to {FormatDisplayVector(importedMesh.Max)}");
         viewModel.SetGlbSampleSource(importedMesh.SourcePath, Path.GetFileNameWithoutExtension(importedMesh.SourcePath), importedMesh.Format);
         viewModel.SetGlbSampleBounds(importedMesh.Min, importedMesh.Max);
     }

@@ -36,11 +36,11 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
             .ToArray();
 
         var good = result.Samples.Count(sample =>
-            sample.Role == ToolRecipeValidationSampleRole.Good);
+            sample.EffectiveExpectation == ToolRecipeValidationExpectation.Ok && sample.EffectiveUsage == ToolRecipeValidationUsage.Adjustment);
         var bad = result.Samples.Count(sample =>
-            sample.Role == ToolRecipeValidationSampleRole.Bad);
+            sample.EffectiveExpectation == ToolRecipeValidationExpectation.Ng && sample.EffectiveUsage == ToolRecipeValidationUsage.Adjustment);
         var heldOut = result.Samples.Count(sample =>
-            sample.Role == ToolRecipeValidationSampleRole.HeldOut);
+            sample.EffectiveUsage == ToolRecipeValidationUsage.HeldOut);
         var warnings = new List<string>();
         if (good == 0) warnings.Add("No Good sample is assigned.");
         if (bad == 0) warnings.Add("No Bad sample is assigned.");
@@ -100,7 +100,7 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
                 "completeness-grid",
                 StringComparison.Ordinal))
             .ToArray();
-        foreach (var sample in result.Samples)
+        foreach (var sample in result.Samples.Where(sample => sample.EffectiveExpectation != ToolRecipeValidationExpectation.Unset))
         foreach (var step in steps)
         {
             var executed = sample.Steps.FirstOrDefault(item =>
@@ -200,7 +200,7 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
         ToolRecipeValidationSetResult result,
         ICollection<ToolRecipeMetricObservation> observations)
     {
-        foreach (var sample in result.Samples)
+        foreach (var sample in result.Samples.Where(sample => sample.EffectiveExpectation != ToolRecipeValidationExpectation.Unset))
         {
             var identity = SampleIdentity(sample);
             foreach (var step in sample.Steps)
@@ -247,7 +247,7 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
             return;
         }
 
-        foreach (var sample in result.Samples)
+        foreach (var sample in result.Samples.Where(sample => sample.EffectiveExpectation != ToolRecipeValidationExpectation.Unset))
         {
             C3DHeightFieldSnapshot source;
             try
