@@ -649,15 +649,15 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged, ID
         {
             SourceQualityGridDiagnosticCode.Topology => localization.Resolve(
                 "ThreeD.SourceQuality.GridDiagnostics.Topology",
-                "예상 격자 구조",
+                "격자 구조",
                 "Expected grid topology"),
             SourceQualityGridDiagnosticCode.LocatorMonotonicity => localization.Resolve(
                 "ThreeD.SourceQuality.GridDiagnostics.LocatorMonotonicity",
-                "단조 위치 순서",
+                "위치 순서",
                 "Monotonic locator order"),
             SourceQualityGridDiagnosticCode.DuplicateLocator => localization.Resolve(
                 "ThreeD.SourceQuality.GridDiagnostics.DuplicateLocator",
-                "고유 위치 식별자",
+                "고유 위치",
                 "Unique locators"),
             SourceQualityGridDiagnosticCode.CoordinateFiniteness => localization.Resolve(
                 "ThreeD.SourceQuality.GridDiagnostics.CoordinateFiniteness",

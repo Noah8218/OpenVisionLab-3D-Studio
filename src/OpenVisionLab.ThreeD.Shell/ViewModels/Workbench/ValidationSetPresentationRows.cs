@@ -81,8 +81,8 @@ public sealed record ValidationSetSampleRow(
     }
     public string MismatchGuidance => Agreement switch
     {
-        "FalseReject" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.RejectGuidance", "• 공정 편차에 비해 허용 범위가 좁은지 검토하세요.\n• 영역이 경계나 경사면을 포함하는지 확인하세요.", "• Review whether the limits are too narrow for process variation.\n• Check whether the region includes an edge or slope."),
-        "FalseAccept" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.AcceptGuidance", "• 국부 결함이 평균에 가려지는지 영역과 측정 방식을 검토하세요.\n• 실제 판정 출력과 최소·최대 측정값을 확인하세요.", "• Review regions and measurement methods for local defects hidden by averaging.\n• Check recorded judged outputs and minimum/maximum measurements."),
+        "FalseReject" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.RejectGuidance", "• 기대 판정별 측정값 분포를 비교하세요.\n• 영역이 경계나 경사면을 포함하는지 확인하세요.", "• Compare measurements by expected decision.\n• Check whether the region includes an edge or slope."),
+        "FalseAccept" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.AcceptGuidance", "• 해당 영역의 최소·최대 측정값을 확인하세요.\n• 결함 위치가 영역 안에 있는지 확인하세요.", "• Check the minimum and maximum measurements in this region.\n• Check whether the defect is inside the region."),
         _ => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.ErrorGuidance", "• 입력과 영역 위치를 확인하세요.\n• 실행 오류는 OK로 처리하지 않습니다.", "• Check the input and region location.\n• Execution errors are not treated as OK.")
     };
     public string EvidenceSummary => string.Join(" · ", Steps.Where(step => step.Status is "Fail" or "Error").Select(step => $"{step.ToolName}: {step.Evidence}"));

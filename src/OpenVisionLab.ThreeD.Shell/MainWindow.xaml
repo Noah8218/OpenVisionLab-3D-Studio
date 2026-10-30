@@ -1516,12 +1516,12 @@
                     <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                TextWrapping="Wrap"
-                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageTeachFlow, Korean='티칭: 레시피 열기  →  3D 입력 불러오기  →  도구 티칭  →  확인·저장', English='Teach: Open a recipe  →  Load 3D input  →  Teach tools  →  Review and save'}" />
+                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageTeachFlow, Korean='새 검사 방법 만들기', English='Teach a new inspection'}" />
                     <TextBlock Margin="0,5,0,0"
                                FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                TextWrapping="Wrap"
-                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageInspectFlow, Korean='검사: 저장된 레시피 열기  →  다른 3D 입력 선택  →  검사  →  결과 확인', English='Inspect: Open a saved recipe  →  Select another 3D input  →  Inspect  →  Review results'}" />
+                               Text="{views:ThreeDText Key=ThreeD.R19.StartPageInspectFlow, Korean='저장한 레시피로 검사', English='Inspect with a saved recipe'}" />
                 </StackPanel>
             </Grid>
         </Border>

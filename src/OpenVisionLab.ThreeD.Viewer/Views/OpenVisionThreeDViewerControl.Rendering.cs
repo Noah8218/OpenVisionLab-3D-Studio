@@ -802,6 +802,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             ReleaseC3DTexture(gl);
             try
             {
+                // GL error flags survive earlier rendering calls; only this upload may fail the image.
+                while (gl.GetError() != OpenGL.GL_NO_ERROR) { }
                 var limit = new int[1];
                 gl.GetInteger(0x0D33, limit); // GL_MAX_TEXTURE_SIZE for this context.
                 if (image.Width > limit[0] || image.Height > limit[0])

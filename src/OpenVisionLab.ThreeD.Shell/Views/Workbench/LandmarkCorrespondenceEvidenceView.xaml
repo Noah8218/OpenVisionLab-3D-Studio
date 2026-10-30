@@ -19,12 +19,12 @@
                 <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                            Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.Title, Korean='랜드마크 대응 정보', English='Landmark Correspondence Evidence'}" />
                 <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
-                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.Caption, Korean='적용된 교점 기준점 입력과 기준 좌표 대응입니다.', English='Applied CornerAnchor inputs and explicit reference-coordinate correspondence.'}" />
+                           Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.Caption, Korean='기준점 대응 결과', English='Landmark correspondence result'}" />
             </StackPanel>
             <Border Grid.Column="1"
                     Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
-                    ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.ReadOnlyTip, Korean='이 창은 기록만 표시하며 어파인 변환을 계산하지 않습니다.', English='This pane reports evidence only; it never calculates the affine transform.'}"
-                    AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.ReadOnlyAction, Korean='읽기 전용 랜드마크 대응 정보', English='Read-only landmark correspondence evidence'}">
+                    ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.ReadOnlyTip, Korean='기준점 대응 결과 · 읽기 전용', English='Landmark correspondence result · read only'}"
+                    AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.ReadOnlyAction, Korean='기준점 대응 결과', English='Landmark correspondence result'}">
                 <StackPanel Orientation="Horizontal">
                     <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Symbol="Document24" />
                     <TextBlock FontSize="12"
@@ -60,6 +60,6 @@
                    FontSize="12"
                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                    TextWrapping="Wrap"
-                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.Guidance, Korean='현재 적용된 교점 기준점 4개와 기준 좌표 4개가 비퇴화 사면체를 이루어야 합니다. 이 정보는 어파인 행렬을 계산하거나 보정, 계측, OK/NG를 주장하지 않습니다.', English='Exactly four current Applied CornerAnchors and four explicit reference coordinates must form non-degenerate tetrahedra. This evidence does not calculate an affine matrix or claim calibration, metrology, or OK/NG.'}" />
+                   Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.Guidance, Korean='기준점 4개와 대응점 4개는 각각 한 평면에 놓이지 않아야 합니다. 변환 행렬은 XYZ 어파인 계산 도구에서 생성합니다.', English='Each set of four source and reference points must be non-coplanar. Create the transform with XYZ Affine Solve.'}" />
     </Grid>
 </UserControl>

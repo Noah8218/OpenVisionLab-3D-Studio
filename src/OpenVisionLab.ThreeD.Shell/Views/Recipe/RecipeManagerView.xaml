@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:shellViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
              xmlns:workbenchViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              MinWidth="720"
@@ -145,7 +146,7 @@
                 </ListBox>
                 <StackPanel Grid.Column="1" Margin="16,0,0,0">
                     <TextBlock Text="{Binding SelectedBrowsedStep.ToolName}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Recipe.SelectTool, Korean='검사 도구를 선택하면 입력과 저장된 조건을 확인할 수 있습니다.', English='Select a tool to view its inputs and saved conditions.'}">
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.Recipe.SelectTool, Korean='검사 도구를 선택하세요.', English='Select an inspection tool.'}">
                         <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SelectedBrowsedStep}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                     </TextBlock>
                     <Expander Margin="0,8,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.Recipe.ToolIdentity, Korean='도구 식별 정보', English='Tool identity'}">
@@ -312,7 +313,6 @@
                         </WrapPanel>
                         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0">
                             <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LocalizedRecipePathSummary}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeManagerSavePath" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SavePath, Korean='현재 레시피 저장 파일', English='Current recipe save file'}" />
-                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.SaveRecoveryHint, Korean='변경한 내용을 저장하세요. 저장에 실패하면 저장 위치를 확인하거나 다른 이름으로 저장하세요.', English='Save your changes. If saving fails, check the location or use Save as.'}" TextWrapping="Wrap" Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="RecipeManagerSaveRecoveryHint" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -671,7 +671,17 @@
                                FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{Binding FirstRecipeSetupDetailText}"
-                               TextWrapping="Wrap" />
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                     <ScrollViewer Grid.Row="2"
                                   Margin="0,12,0,0"
@@ -725,23 +735,15 @@
                                    VerticalAlignment="Center"
                                    Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                    Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.FolderRequiredLabel, Korean='저장 위치 (필수)', English='Save folder (required)'}" TextWrapping="Wrap" />
-                        <TextBox Grid.Row="2"
-                                 Grid.Column="1"
-                                 Height="34"
-                                 Margin="0,9,7,0"
-                                 VerticalContentAlignment="Center"
-                                 AutomationProperties.AutomationId="FirstRecipeFolder"
-                                 AutomationProperties.Name="{Binding Localization.FirstRecipeFolder}"
-                                 Text="{Binding FirstRecipeFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <ui:Button Grid.Row="2"
-                                   Grid.Column="2"
-                                   Height="34"
-                                   Margin="0,9,0,0"
-                                   Content="{Binding Localization.FirstRecipeBrowse}"
-                                   Icon="{ui:SymbolIcon Folder24}"
-                                   Command="{Binding BrowseFirstRecipeFolderCommand}"
-                                   AutomationProperties.AutomationId="BrowseFirstRecipeFolder"
-                                   AutomationProperties.Name="{Binding Localization.FirstRecipeBrowse}" />
+                        <shellViews:PathInput Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                              Height="34" Margin="0,9,0,0"
+                                              Text="{Binding FirstRecipeFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              BrowseCommand="{Binding BrowseFirstRecipeFolderCommand}"
+                                              BrowseText="{Binding Localization.FirstRecipeBrowse}"
+                                              BrowseSymbol="Folder24"
+                                              InputAutomationId="FirstRecipeFolder"
+                                              BrowseAutomationId="BrowseFirstRecipeFolder"
+                                              AutomationProperties.Name="{Binding Localization.FirstRecipeFolder}" />
 
                         <TextBlock Grid.Row="4" Margin="0,9,0,0" VerticalAlignment="Center" TextWrapping="Wrap">
                             <TextBlock.Style>
@@ -755,23 +757,15 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBox Grid.Row="4"
-                                 Grid.Column="1"
-                                 Height="34"
-                                 Margin="0,9,7,0"
-                                 VerticalContentAlignment="Center"
-                                 AutomationProperties.AutomationId="FirstRecipeSource"
-                                 AutomationProperties.Name="{Binding Localization.FirstRecipeSource}"
-                                 Text="{Binding FirstRecipeSourcePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <ui:Button Grid.Row="4"
-                                   Grid.Column="2"
-                                   Height="34"
-                                   Margin="0,9,0,0"
-                                   Content="{Binding Localization.FirstRecipeBrowse}"
-                                   Icon="{ui:SymbolIcon FolderOpen24}"
-                                   Command="{Binding BrowseFirstRecipeSourceCommand}"
-                                   AutomationProperties.AutomationId="BrowseFirstRecipeSource"
-                                   AutomationProperties.Name="{Binding Localization.FirstRecipeBrowse}" />
+                        <shellViews:PathInput Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2"
+                                              Height="34" Margin="0,9,0,0"
+                                              Text="{Binding FirstRecipeSourcePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              BrowseCommand="{Binding BrowseFirstRecipeSourceCommand}"
+                                              BrowseText="{Binding Localization.FirstRecipeBrowse}"
+                                              BrowseSymbol="FolderOpen24"
+                                              InputAutomationId="FirstRecipeSource"
+                                              BrowseAutomationId="BrowseFirstRecipeSource"
+                                              AutomationProperties.Name="{Binding Localization.FirstRecipeSource}" />
 
                         <TextBlock Grid.Row="5"
                                    Margin="0,9,0,0"
@@ -863,8 +857,8 @@
                                        Text="{Binding Localization.FirstRecipeTargetFile}" />
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="12"
-                                       Text="{Binding FirstRecipeTargetPath}"
-                                       TextWrapping="Wrap"
+                                       Text="{Binding FirstRecipeTargetPath, Converter={shellViews:PathSummaryConverter}}"
+                                       TextTrimming="CharacterEllipsis"
                                        ToolTip="{Binding FirstRecipeTargetPath}" />
                         </StackPanel>
                         <Border Grid.Column="1"
@@ -877,6 +871,9 @@
                                     <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FirstRecipeSetupStatus}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding IsFirstRecipeSetupValid}" Value="True">
                                             <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
                                             <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />

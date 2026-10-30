@@ -44,7 +44,7 @@ internal static class CalibrationCenterViewModelVerification
 
             Check("default workspace", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Workbench, shell.SelectedWorkspaceMode.ToString());
             Check("default workspace flags", shell.IsSetupWorkspaceSelected && shell.IsInspectionWorkspaceSelected && shell.IsWorkbenchWorkspaceSelected && !shell.IsTaskWorkspaceSelected && !shell.IsExpertWorkspaceSelected && !shell.IsCalibrationWorkspaceSelected, shell.WorkspaceSummary);
-            Check("default workspace summary", shell.WorkspaceSummary == "Inspection Setup | Compose tools and inspection order", shell.WorkspaceSummary);
+            Check("default workspace summary", shell.WorkspaceSummary == "Inspection setup", shell.WorkspaceSummary);
             Check(
                 "workbench catalog",
                 shell.Workbench.Tools.Any(tool => tool.Name == "Filter")
@@ -78,7 +78,7 @@ internal static class CalibrationCenterViewModelVerification
                 && shell.IsWorkbenchWorkspaceSelected
                 && !shell.IsTaskWorkspaceSelected,
                 shell.WorkspaceSummary);
-            Check("inspection workspace summary", shell.WorkspaceSummary == "Add files, then inspect the checked files.", shell.WorkspaceSummary);
+            Check("inspection workspace summary", shell.WorkspaceSummary == "Inspect", shell.WorkspaceSummary);
             shell.IsValidateWorkspaceSelected = true;
             Check("validation has a distinct readonly sample context",
                 shell.SelectedWorkspaceMode == ShellWorkspaceMode.Validate
@@ -97,7 +97,7 @@ internal static class CalibrationCenterViewModelVerification
                 && shell.IsWorkbenchWorkspaceSelected
                 && !shell.IsTaskWorkspaceSelected,
                 shell.WorkspaceSummary);
-            Check("review workspace summary", shell.WorkspaceSummary == "Results | Review run records and output evidence", shell.WorkspaceSummary);
+            Check("review workspace summary", shell.WorkspaceSummary == "Inspection records", shell.WorkspaceSummary);
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Expert);
             Check("expert workspace selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Expert && shell.IsExpertWorkspaceSelected && !shell.IsTaskWorkspaceSelected, shell.WorkspaceSummary);
             Check("expert workspace summary", shell.WorkspaceSummary == "Expert workspace | Full inspection layout", shell.WorkspaceSummary);
@@ -213,7 +213,7 @@ internal static class CalibrationCenterViewModelVerification
             }
 
             Check("empty profile state", viewModel.ActiveProfileStatus == "No active calibration profile" && viewModel.CalibrationStatus.Contains("no active profile", StringComparison.Ordinal), viewModel.CalibrationStatus);
-            Check("empty input state", viewModel.HeightTargetStatus.EndsWith("not loaded", StringComparison.Ordinal) && viewModel.RepeatabilityInputStatus == "No repeatability study loaded", viewModel.RepeatabilityInputStatus);
+            Check("empty input state", viewModel.HeightTargetStatus.EndsWith("not loaded", StringComparison.Ordinal) && viewModel.RepeatabilityInputStatus == "No repeatability data loaded", viewModel.RepeatabilityInputStatus);
             Check("empty repeatability collection", viewModel.RepeatabilityRuns.Count == 0 && viewModel.SelectedRepeatabilityRun is null, viewModel.SelectedRepeatabilityRunSummary);
             Check("empty run chart", viewModel.RepeatabilityChartValues.Count == 0 && viewModel.RepeatabilityChartSeries.Count == 1 && viewModel.RepeatabilityChartSeries[0].Values.Count == 0 && viewModel.RepeatabilityChartRunLabels.Count == 0 && !viewModel.SelectRepeatabilityChartPointCommand.CanExecute(null), "empty");
             Check("single metric contract", viewModel.RepeatabilityMetricOptions.SequenceEqual(new[] { "Thickness" }) && !viewModel.HasMultipleRepeatabilityMetrics, viewModel.SelectedRepeatabilityMetric);

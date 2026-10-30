@@ -245,13 +245,13 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
             {
                 var measuredOutside = C3DHeightImageFrame.GetOutsideDisplayPercentages(C3DHeightImageFrame.SortDisplaySamples(measurement.Values.Span), measurement.LowerLimit, measurement.UpperLimit);
                 return localization.Resolve("ThreeD.Legend.MeasuredInformation",
-                    $"{MeasurementColorSummary}\n측정 영역의 실행 허용 범위\n미만 {measuredOutside.Below:0.0}% · 초과 {measuredOutside.Above:0.0}%",
-                    $"{MeasurementColorSummary}\nExecuted limits on the measured region\nBelow {measuredOutside.Below:0.0}% · above {measuredOutside.Above:0.0}%");
+                    $"{MeasurementColorSummary}\n측정 영역 · 실행 당시 허용 범위\n미만 {measuredOutside.Below:0.0}% · 초과 {measuredOutside.Above:0.0}%",
+                    $"{MeasurementColorSummary}\nMeasured region · limits at execution\nBelow {measuredOutside.Below:0.0}% · above {measuredOutside.Above:0.0}%");
             }
             var outside = C3DHeightImageFrame.GetOutsideDisplayPercentages(current.SortedDisplaySamples.Span, activeRangeMinimum, activeRangeMaximum);
             return localization.Resolve("ThreeD.Legend.Information",
-                $"{heightDisplayMapName}\n결측 {GetMissingPercentage():0.0}%\n범위 밖 ↓{outside.Below:0.0}% ↑{outside.Above:0.0}%",
-                $"{heightDisplayMapName}\nMissing {GetMissingPercentage():0.0}%\nOutside ↓{outside.Below:0.0}% ↑{outside.Above:0.0}%");
+                $"결측 {GetMissingPercentage():0.0}%\n표시 범위 미만 ↓{outside.Below:0.0}% · 초과 ↑{outside.Above:0.0}%",
+                $"Missing {GetMissingPercentage():0.0}%\nBelow display range ↓{outside.Below:0.0}% · above ↑{outside.Above:0.0}%");
         }
     }
 
@@ -311,7 +311,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         ? localization.HeightImageInvalidOverlayUnavailable
         : string.Create(
             CultureInfo.InvariantCulture,
-            $"{(ShowInvalidCells ? localization.HeightImageInvalidOverlayLegend : localization.HeightImageInvalidOverlayHidden)} {Frame.MissingCount:N0} ({GetMissingPercentage():0.0}%) · {localization.HeightImageViewOnlyShort}");
+            $"{(ShowInvalidCells ? localization.HeightImageInvalidOverlayLegend : localization.HeightImageInvalidOverlayHidden)} {Frame.MissingCount:N0} ({GetMissingPercentage():0.0}%)");
 
     public bool ShowInvalidCells
     {

@@ -7,8 +7,8 @@ namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
 public partial class FilterToolLabWindow : ToolLabWindowBase
 {
-    private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
-    private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
+    private readonly OpenVisionThreeDViewerControl inputViewer = new(loadDefaultSamples: false) { SidePanelsVisible = false };
+    private readonly OpenVisionThreeDViewerControl outputViewer = new(loadDefaultSamples: false) { SidePanelsVisible = false };
 
     public FilterToolLabWindow(
         ToolWorkbenchViewModel workbench,
@@ -32,6 +32,11 @@ public partial class FilterToolLabWindow : ToolLabWindowBase
         {
             inputViewer.LoadC3DSource(Workbench.Source.Path);
         }
+        else
+        {
+            inputViewer.ClearC3DTeachingSource(Workbench.Localization.Resolve(
+                "ThreeD.ToolLab.Filter.NoInput", "입력 없음", "No input"));
+        }
 
         if (!string.IsNullOrWhiteSpace(Workbench.CurrentFilterPreviewPath)
             && File.Exists(Workbench.CurrentFilterPreviewPath))
@@ -39,6 +44,11 @@ public partial class FilterToolLabWindow : ToolLabWindowBase
             outputViewer.ShowC3DWorkbenchResult(
                 Workbench.CurrentFilterPreviewPath,
                 Workbench.CurrentFilterPreviewOutputSummary);
+        }
+        else
+        {
+            outputViewer.ClearC3DTeachingSource(Workbench.Localization.Resolve(
+                "ThreeD.ToolLab.Filter.NoOutput", "결과 없음", "No result"));
         }
     }
 

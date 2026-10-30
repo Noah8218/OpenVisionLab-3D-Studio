@@ -168,9 +168,9 @@
                                                    Icon="{ui:SymbolIcon FlowchartCircle24}"
                                                    Command="{Binding DataContext.FocusDisplayedOutputStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                    CommandParameter="{Binding}"
-                                                   ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.FocusStepTip, Korean='작성된 파이프라인 단계를 포커스합니다. 단계를 실행하지 않습니다.', English='Focus the authored pipeline step; this does not execute it'}"
+                                                   ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.FocusStepTip, Korean='해당 도구로 이동', English='Go to tool'}"
                                                    Visibility="{Binding CanFocusStep, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.FocusStepAction, Korean='작성된 파이프라인 단계 포커스', English='Focus authored pipeline step'}" />
+                                                   AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.FocusStepAction, Korean='도구 선택', English='Select tool'}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>

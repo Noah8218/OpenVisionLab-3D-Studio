@@ -46,11 +46,11 @@ internal sealed class ShellMessageDialogController
         ShowStudioDialog(
             WpfMessageDialogKind.Info,
             "ThreeD.Dialog.ToolLab.StepRequired.Title",
-            $"{toolName} 도구 랩",
-            $"{toolName} Tool Lab",
+            $"{toolName} 설정",
+            $"{toolName} settings",
             "ThreeD.Dialog.ToolLab.StepRequired.Message",
-            $"도구 랩을 열기 전에 레시피에 {toolName} 단계를 추가하거나 기존 단계를 여세요.",
-            $"Add or open a {toolName} step in the recipe before opening its Tool Lab.");
+            $"레시피에 {toolName} 도구를 추가하세요.",
+            $"Add a {toolName} step to the recipe.");
 
     public void ShowRecipeSaveFailure(string details) =>
         ShowStudioDialog(
@@ -113,8 +113,8 @@ internal sealed class ShellMessageDialogController
             "레시피 입력 확인",
             "Recipe Input Check",
             "ThreeD.Dialog.RecipeSource.NotReady.Message",
-            $"레시피는 열렸지만 3D 입력이 준비되지 않았습니다. 레시피는 계속 편집할 수 있으며 검사는 실행되지 않았습니다.{Environment.NewLine}{Environment.NewLine}{viewModel.Workbench.LocalizedSourceReadinessSummary}",
-            $"The recipe was opened, but its 3D input is not ready. The recipe remains editable and no inspection was run.{Environment.NewLine}{Environment.NewLine}{viewModel.Workbench.LocalizedSourceReadinessSummary}");
+            $"레시피를 열었지만 3D 입력을 불러오지 못했습니다. C3D 입력을 다시 연결하세요.{Environment.NewLine}{Environment.NewLine}{viewModel.Workbench.LocalizedSourceReadinessSummary}",
+            $"The recipe opened, but its 3D input could not be loaded. Reconnect the C3D input.{Environment.NewLine}{Environment.NewLine}{viewModel.Workbench.LocalizedSourceReadinessSummary}");
 
     public void ShowRecipeSourceLoadFailure(string details) =>
         ShowStudioDialog(

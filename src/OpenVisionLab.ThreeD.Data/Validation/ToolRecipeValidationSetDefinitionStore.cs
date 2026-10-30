@@ -29,6 +29,12 @@ public static class ToolRecipeValidationSetDefinitionStore
         ToolRecipeValidationSetDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
+        RequireSamples(definition);
+        if (definition.Samples.Any(sample => !Enum.IsDefined(sample.Role)))
+        {
+            throw new InvalidDataException("Validation Set samples require contiguous order, unique paths, and a Good, Bad, or HeldOut role.");
+        }
+
         definition = definition with
         {
             SchemaVersion = ToolRecipeValidationSetDefinition.CurrentSchemaVersion,
@@ -100,10 +106,10 @@ public static class ToolRecipeValidationSetDefinitionStore
     public static void Validate(ToolRecipeValidationSetDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
+        RequireSamples(definition);
         if (definition.SchemaVersion is not ("1.0" or ToolRecipeValidationSetDefinition.CurrentSchemaVersion)
             || string.IsNullOrWhiteSpace(definition.RecipeName)
             || string.IsNullOrWhiteSpace(definition.RecipeSourceSha256)
-            || definition.Samples is null
             || definition.RecipeContentSha256 is { } recipeSha && (recipeSha.Length != 64 || !recipeSha.All(Uri.IsHexDigit))
             || definition.CalculationContextSha256 is { } contextSha && (contextSha.Length != 64 || !contextSha.All(Uri.IsHexDigit)))
         {
@@ -126,6 +132,14 @@ public static class ToolRecipeValidationSetDefinitionStore
                 throw new InvalidDataException(
                     "Validation Set samples require contiguous order, unique paths, and a Good, Bad, or HeldOut role.");
             }
+        }
+    }
+
+    private static void RequireSamples(ToolRecipeValidationSetDefinition definition)
+    {
+        if (definition.Samples is null || definition.Samples.Any(sample => sample is null))
+        {
+            throw new InvalidDataException("Validation Set role manifest identity is incomplete or unsupported.");
         }
     }
 

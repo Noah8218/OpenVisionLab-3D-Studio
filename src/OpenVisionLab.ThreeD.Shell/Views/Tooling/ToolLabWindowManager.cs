@@ -214,7 +214,7 @@ internal sealed class ToolLabWindowManager : IDisposable
         {
             if (showMissing)
             {
-                showMissingStep(toolName);
+                showMissingStep(workbench.Tools.FirstOrDefault(tool => tool.Id == toolId)?.DisplayName ?? toolName);
             }
             return false;
         }

@@ -115,6 +115,39 @@ internal static class ToolLabActivationSelectionVerification
             !window.IsVisible,
             $"isVisible={window.IsVisible}"));
 
+        var area = SystemParameters.WorkArea;
+        using var bounds = new ProbeToolLabWindow(workbench, filterStep, SelectPipelineStep)
+        {
+            Width = 1600, Height = 920, MinWidth = 1120, MinHeight = 700,
+            Left = area.Left + 156, Top = area.Top + 156, WindowStyle = WindowStyle.None,
+            WindowStartupLocation = WindowStartupLocation.Manual, ShowInTaskbar = false
+        };
+        System.Windows.Shell.WindowChrome.SetWindowChrome(bounds, new System.Windows.Shell.WindowChrome
+        {
+            CaptionHeight = 56, ResizeBorderThickness = new Thickness(6), GlassFrameThickness = new Thickness(0), UseAeroCaptionButtons = false
+        });
+        void Settle() => bounds.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, new Action(bounds.UpdateLayout));
+        bool Contained() => bounds.Left >= area.Left - 1 && bounds.Top >= area.Top - 1
+            && bounds.Left + bounds.ActualWidth <= area.Right + 1 && bounds.Top + bounds.ActualHeight <= area.Bottom + 1;
+        try
+        {
+            bounds.Show();Settle();
+            checks.Add(("normal-lab-is-inside-work-area", Contained(), $"area={area};window={bounds.Left},{bounds.Top},{bounds.ActualWidth},{bounds.ActualHeight}"));
+            var normal = bounds.RestoreBounds;
+            bounds.WindowState = WindowState.Maximized;Settle();
+            var handle = new System.Windows.Interop.WindowInteropHelper(bounds).Handle;
+            // Read-only native metadata: the maximized client must stop above the taskbar.
+            checks.Add(("maximized-lab-is-inside-work-area", bounds.ActualWidth <= area.Width + 1 && bounds.ActualHeight <= area.Height + 1,
+                $"area={area};actual={bounds.ActualWidth},{bounds.ActualHeight};hwnd={handle}"));
+            bounds.WindowState = WindowState.Normal;Settle();
+            checks.Add(("restored-lab-is-inside-work-area", Contained() && Math.Abs(bounds.Width - normal.Width) <= 1,
+                $"normal={normal};restored={bounds.Left},{bounds.Top},{bounds.ActualWidth},{bounds.ActualHeight}"));
+            bounds.Width = 1280;bounds.Height = 760;Settle();
+            checks.Add(("compact-lab-can-resize", Math.Abs(bounds.ActualWidth - 1280) <= 1 && Math.Abs(bounds.ActualHeight - 760) <= 1,
+                $"actual={bounds.ActualWidth},{bounds.ActualHeight}"));
+        }
+        finally { bounds.Close(); }
+
         return checks;
     }
 

@@ -7,6 +7,7 @@
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              Loaded="OnLoaded"
              Unloaded="OnUnloaded"
+             PreviewKeyDown="OnUtilityMenuPreviewKeyDown"
              AutomationProperties.AutomationId="StudioNavigationRail">
     <UserControl.Resources>
         <Style x:Key="RailLabelStyle" TargetType="TextBlock">
@@ -16,13 +17,13 @@
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="MaxWidth" Value="48" />
-            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
         </Style>
 
         <Style x:Key="RailRadioButtonStyle" TargetType="RadioButton">
             <Setter Property="Height" Value="48" />
-            <Setter Property="Margin" Value="4,2" />
-            <Setter Property="Padding" Value="2" />
+            <Setter Property="Margin" Value="1,2" />
+            <Setter Property="Padding" Value="0,2" />
             <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -76,12 +77,6 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding SelectedLanguageOption.Language}" Value="English">
-                    <Setter Property="Margin" Value="1,2" />
-                    <Setter Property="Padding" Value="0,2" />
-                </DataTrigger>
-            </Style.Triggers>
         </Style>
 
         <Style x:Key="RailActionButtonStyle" TargetType="Button">
@@ -254,7 +249,7 @@
             </StackPanel>
 
             <Expander Grid.Row="1" x:Name="RailUtilityMenu" Margin="4,0,4,7" AutomationProperties.AutomationId="RailUtilityMenu"
-                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.Actions, Korean='조작 메뉴', English='Actions menu'}">
+                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.Actions, Korean='설정 메뉴', English='Settings menu'}">
                 <Expander.Template>
                     <ControlTemplate TargetType="Expander">
                         <Grid>
@@ -262,7 +257,7 @@
                                           IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                                 <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                                     <Border x:Name="UtilitySurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
-                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><ui:SymbolIcon Width="19" Height="19" Symbol="Settings24" /><TextBlock Margin="0,2,0,0" FontSize="11" Text="{views:ThreeDText Key=ThreeD.Navigation.ActionsShort, Korean='조작', English='Actions'}" /></StackPanel>
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><ui:SymbolIcon Width="19" Height="19" Symbol="Settings24" /><TextBlock Margin="0,2,0,0" FontSize="11" Text="{views:ThreeDText Key=ThreeD.Navigation.ActionsShort, Korean='설정', English='Setup'}" /></StackPanel>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="UtilitySurface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
@@ -273,7 +268,7 @@
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate></ToggleButton.Template>
                             </ToggleButton>
-                            <Popup Placement="Right" PlacementTarget="{Binding ElementName=UtilityToggle}" AllowsTransparency="True" StaysOpen="False"
+                            <Popup Placement="Right" PlacementTarget="{Binding ElementName=UtilityToggle}" AllowsTransparency="True" StaysOpen="False" PreviewKeyDown="OnUtilityMenuPreviewKeyDown"
                                    IsOpen="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                                 <Border Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="6"><ContentPresenter /></Border>
                             </Popup>
@@ -315,13 +310,13 @@
                                       Tag="height-difference-edge"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenEdgeToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.HeightDifferenceEdgeToolLabAccessible, Korean='높이 차이 에지 도구 실험실 열기', English='Open Height Difference Edge Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.HeightDifferenceEdgeToolLabAccessible, Korean='높이차 에지 도구 실험실 열기', English='Open Height Difference Edge Tool Lab'}" />
                             <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.TwoPointLine, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="two-point-line"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenTwoPointLineToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.TwoPointLineToolLabAccessible, Korean='2점 선 도구 실험실 열기', English='Open 2-Point Line Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.TwoPointLineToolLabAccessible, Korean='2점 직선 도구 실험실 열기', English='Open 2-Point Line Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.ThreePointPlane, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="three-point-plane"
                                       Click="OpenToolLabMenuItem_Click"
@@ -336,7 +331,7 @@
                                       Tag="line-intersection"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LineIntersectionToolLabAccessible, Korean='선 교차 도구 실험실 열기', English='Open Line Intersection Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LineIntersectionToolLabAccessible, Korean='직선 교점 도구 실험실 열기', English='Open Line Intersection Tool Lab'}" />
                             <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LandmarkCorrespondence, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="landmark-correspondence"
@@ -347,12 +342,12 @@
                                       Tag="xyz-affine-solve"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenXYZAffineSolveToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineSolveToolLabAccessible, Korean='XYZ 아핀 해 도구 실험실 열기', English='Open XYZ Affine Solve Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineSolveToolLabAccessible, Korean='XYZ 어파인 계산 도구 실험실 열기', English='Open XYZ Affine Solve Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineApply, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="xyz-affine-apply"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenXYZAffineApplyToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineApplyToolLabAccessible, Korean='XYZ 아핀 적용 도구 실험실 열기', English='Open Apply XYZ Affine Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineApplyToolLabAccessible, Korean='XYZ 어파인 적용 도구 실험실 열기', English='Open Apply XYZ Affine Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.RegridHeightMap, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="re-grid-height-map"
                                       Click="OpenToolLabMenuItem_Click"

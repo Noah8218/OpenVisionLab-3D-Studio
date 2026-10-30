@@ -58,6 +58,14 @@ internal static class SignedDeltaRecipeSidecarVerification
             authoring.AddSelectedToolCommand.Execute(signedTool);
             var signedStep = authoring.SelectedPipelineStep
                 ?? throw new InvalidOperationException("Signed-delta step was not selected after Add.");
+            void CheckCurrentResultProjection(string stage)
+            {
+                var row = authoring.TeachingResults.Single(item => ReferenceEquals(item.Step, signedStep));
+                var output = authoring.SelectedToolWorkspace.Outputs.Single();
+                Check($"{stage} retains current result in the table, selected output and flow node",
+                    row.IsCurrent && row.Status == output.ResultStatus && row.Status == signedStep.FlowNodeStatusLabel,
+                    $"current={row.IsCurrent};table={row.Status};output={output.ResultStatus};flow={signedStep.FlowNodeStatusLabel}");
+            }
             ConfigureBackground(authoring, signedStep, backgroundPath, backgroundEntityId, backgroundByteLength, backgroundGrid, currentIdentity);
 
             var previewed = authoring.PreviewSelectedSignedDeltaBackgroundSubtractionAsync()
@@ -84,8 +92,11 @@ internal static class SignedDeltaRecipeSidecarVerification
                 "Save writes the recipe and explicit sidecar reference",
                 published
                 && saved
+                && authoring.IsSignedDeltaPreviewPublished
+                && !authoring.IsSignedDeltaPreviewStale
                 && File.Exists(recipePath),
                 saveMessage);
+            CheckCurrentResultProjection("Initial Save");
 
             var stored = ToolRecipeDocumentStore.Load(recipePath);
             var storedStep = stored.Steps.Single(step =>
@@ -140,6 +151,25 @@ internal static class SignedDeltaRecipeSidecarVerification
                 && reopenedReference.ContentSha256 == outputBeforeSave.ContentSha256
                 && reopenedActionCountAfterSave == reopenActionCount,
                 $"{reopenedSaveMessage} | reference={reopenedReference?.Path ?? "none"}");
+
+            var legacyRecipePath = Path.Combine(root, "legacy-name.ov3d-recipe.json");
+            var legacySidecarName = "legacy-name.ov3d-recipe.signed-delta.derived_signeddeltaheightfield_01.sdelta.json";
+            File.Copy(sidecarPath, Path.Combine(root, legacySidecarName));
+            ToolRecipeDocumentStore.Save(legacyRecipePath, stored with
+            {
+                Steps = stored.Steps.Select(step => step.SignedDeltaSidecar is { } sidecar
+                    ? step with { SignedDeltaSidecar = sidecar with { Path = legacySidecarName } }
+                    : step).ToArray()
+            });
+            using (var legacy = new ToolWorkbenchViewModel(Path.Combine(root, "legacy-recent.json")))
+            {
+                var legacyOpened = legacy.TryOpenTeachingRecipe(legacyRecipePath, out var legacyMessage);
+                Check("existing output-ID sidecar filenames remain readable through their explicit reference",
+                    legacyOpened && legacy.IsSignedDeltaPreviewPublished
+                    && legacy.CurrentSignedDeltaPreviewOutput?.ContentSha256 == outputBeforeSave.ContentSha256
+                    && !legacy.RunLog.Any(item => item.Category is "Preview" or "Publish" or "Run"),
+                    legacyMessage);
+            }
 
             using (var copyAuthoring = new ToolWorkbenchViewModel(Path.Combine(root, "copy-recent.json")))
             {
@@ -231,6 +261,78 @@ internal static class SignedDeltaRecipeSidecarVerification
                 && reopened.CurrentSignedDeltaPreviewOutput?.ContentSha256 == restoredHash
                 && reopened.IsSignedDeltaPreviewPublished,
                 recoveryMessage);
+
+            var savedRecipeBytes = File.ReadAllBytes(recipePath);
+            var savedSidecarBytes = File.ReadAllBytes(sidecarPath);
+            File.WriteAllBytes(Path.Combine(root, "saved-recipe-before-failure.json"), savedRecipeBytes);
+            File.WriteAllBytes(Path.Combine(root, "saved-sidecar-before-failure.json"), savedSidecarBytes);
+            var changedBackgroundPath = Path.Combine(root, "background-changed.C3D");
+            WriteC3D(changedBackgroundPath, 2, 2, [2f, 2f, 4f, 4f]);
+            var changedBackground = C3DHeightGrid.Load(changedBackgroundPath, maxRenderedPoints: 0);
+            ConfigureBackground(authoring, signedStep, changedBackgroundPath, backgroundEntityId,
+                new FileInfo(changedBackgroundPath).Length, changedBackground, currentIdentity);
+            var changedPreviewed = authoring.PreviewSelectedSignedDeltaBackgroundSubtractionAsync().GetAwaiter().GetResult();
+            authoring.PublishSelectedStepCommand.Execute(null);
+            var changedOutput = authoring.CurrentSignedDeltaPreviewOutput
+                ?? throw new InvalidOperationException("Changed background did not produce a signed-delta output.");
+            Check("changed background publishes a new artifact under the same output identity",
+                changedPreviewed && authoring.IsSignedDeltaPreviewPublished && authoring.IsDirty
+                && changedOutput.OutputEntityId == outputBeforeSave.OutputEntityId
+                && changedOutput.ContentSha256 != outputBeforeSave.ContentSha256,
+                $"output={changedOutput.OutputEntityId};before={outputBeforeSave.ContentSha256};after={changedOutput.ContentSha256}");
+
+            bool failedSave;
+            string failedSaveMessage;
+            using (var locked = new FileStream(recipePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                failedSave = authoring.TrySaveTeachingRecipe(recipePath, out failedSaveMessage);
+            var recipePreserved = File.ReadAllBytes(recipePath).SequenceEqual(savedRecipeBytes);
+            var sidecarPreserved = File.ReadAllBytes(sidecarPath).SequenceEqual(savedSidecarBytes);
+            File.Copy(recipePath, Path.Combine(root, "recipe-after-failed-save.json"));
+            File.Copy(sidecarPath, Path.Combine(root, "sidecar-after-failed-save.json"));
+            Check("failed primary Save preserves both previously saved recipe and signed-delta evidence",
+                !failedSave && recipePreserved && sidecarPreserved && authoring.IsDirty && !authoring.IsRecipeSaving
+                && authoring.IsSignedDeltaPreviewPublished && !authoring.IsSignedDeltaPreviewStale,
+                $"saved={failedSave};recipePreserved={recipePreserved};sidecarPreserved={sidecarPreserved};published={authoring.IsSignedDeltaPreviewPublished};stale={authoring.IsSignedDeltaPreviewStale};{failedSaveMessage}");
+            CheckCurrentResultProjection("Failed primary Save");
+            using (var preserved = new ToolWorkbenchViewModel(Path.Combine(root, "preserved-recent.json")))
+            {
+                var preservedOpen = preserved.TryOpenTeachingRecipe(recipePath, out var preservedMessage);
+                Check("failed Save leaves the old recipe reopenable without execution",
+                    preservedOpen && preserved.IsSignedDeltaPreviewPublished
+                    && preserved.CurrentSignedDeltaPreviewOutput?.ContentSha256 == outputBeforeSave.ContentSha256
+                    && !preserved.RunLog.Any(item => item.Category is "Preview" or "Publish" or "Run"),
+                    preservedMessage);
+            }
+
+            var retriedSave = authoring.TrySaveTeachingRecipe(recipePath, out var retriedSaveMessage);
+            var retriedReference = ToolRecipeDocumentStore.Load(recipePath).Steps
+                .Single(step => step.ToolId == C3DSignedHeightDeltaRecipePolicy.ToolId).SignedDeltaSidecar;
+            Check("unlocked Save commits the new artifact while retaining the previous evidence",
+                retriedSave && !authoring.IsDirty && retriedReference is not null
+                && retriedReference.ContentSha256 == changedOutput.ContentSha256
+                && retriedReference.Path != savedReference!.Path
+                && File.ReadAllBytes(sidecarPath).SequenceEqual(savedSidecarBytes),
+                $"{retriedSaveMessage};old={savedReference?.Path};new={retriedReference?.Path}");
+            CheckCurrentResultProjection("Successful retry");
+            using (var retried = new ToolWorkbenchViewModel(Path.Combine(root, "retried-recent.json")))
+            {
+                var retriedOpen = retried.TryOpenTeachingRecipe(recipePath, out var retriedMessage);
+                Check("successful retry reopens the new signed-delta result without execution",
+                    retriedOpen && retried.IsSignedDeltaPreviewPublished
+                    && retried.CurrentSignedDeltaPreviewOutput?.ContentSha256 == changedOutput.ContentSha256
+                    && !retried.RunLog.Any(item => item.Category is "Preview" or "Publish" or "Run"),
+                    retriedMessage);
+            }
+
+            var actionsBeforeEdit = authoring.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
+            ConfigureBackground(authoring, signedStep, backgroundPath, backgroundEntityId, backgroundByteLength, backgroundGrid, currentIdentity);
+            Check("actual background edits still invalidate the result without implicit execution",
+                authoring.IsSignedDeltaPreviewStale && !authoring.TeachingResults.Single().IsCurrent
+                && authoring.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == actionsBeforeEdit,
+                $"stale={authoring.IsSignedDeltaPreviewStale};current={authoring.TeachingResults.Single().IsCurrent}");
+            authoring.PreviewSelectedSignedDeltaBackgroundSubtractionAsync().GetAwaiter().GetResult();
+            authoring.PublishSelectedStepCommand.Execute(null);
+            CheckCurrentResultProjection("Explicit execution after the background edit");
 
             lines.Add($"Evidence: recipe={recipePath}; sidecar={sidecarPath}");
         }

@@ -45,8 +45,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal bool TryGetPublishedDomainMaskOutput(
         string outputEntityId,
-        out C3DHeightFieldSnapshot? output) =>
-        domainMaskExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DHeightFieldSnapshot? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightFieldSnapshot>(outputEntityId, out output)) return output is not null;
+        return domainMaskExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 
     internal C3DHeightFieldSnapshot? TryGetCurrentPublishedHeightField(string entityId)
     {
@@ -54,6 +57,9 @@ public sealed partial class ToolWorkbenchViewModel
         {
             return null;
         }
+
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightFieldSnapshot>(entityId, out var ordered)) return ordered;
+        if (ninePointExecutionOwner?.GetPublishedOutput(entityId) is { } compensated) return compensated.Output;
 
         if (removeOutlierExecutionOwner.TryGetPublishedInput(entityId) is { } outlier)
         {

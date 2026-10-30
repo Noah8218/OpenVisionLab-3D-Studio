@@ -7,8 +7,9 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
+        xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
         xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.WindowTitle, Korean='높이맵 재그리드 도구 실험실 | OpenVisionLab 3D Studio', English='Re-grid Height Map Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.WindowTitle, Korean='높이 맵 재격자화 도구 실험실 | OpenVisionLab 3D Studio', English='Re-grid Height Map Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1760" Height="980" MinWidth="1280" MinHeight="760"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -23,7 +24,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="260" />
         </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Subtitle, Korean='높이맵 재그리드 도구 실험실', English='Re-grid Height Map Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Subtitle, Korean='높이 맵 재격자화 도구 실험실', English='Re-grid Height Map Tool Lab'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
@@ -32,9 +33,9 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewGrid, Korean='그리드 미리보기', English='Preview grid'}" Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PreviewTip, Korean='현재 적용된 A2 점군을 작성된 기준 격자 설정에 투영합니다.', English='Project the current Applied A2 cloud into the authored ReferenceGridProfile'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PreviewAction, Korean='높이맵 재그리드 미리보기', English='Preview Re-grid Height Map'}" />
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PreviewTip, Korean='적용된 변환 점군을 기준 격자에 투영합니다.', English='Project the applied transformed point cloud into the reference grid'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PreviewAction, Korean='높이맵 재그리드 미리보기', English='Preview Re-grid Height Map'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshViews, Korean='보기 새로고침', English='Refresh views'}" Icon="{ui:SymbolIcon ArrowSync24}"
-                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.ShowInputTip, Korean='계산 없이 두 툴 뷰어를 새로 고칩니다.', English='Reload both tool viewers without calculation'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.ShowInputAction, Korean='높이맵 재그리드 보기 새로 고침', English='Refresh Re-grid Height Map views'}" />
+                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.ShowInputTip, Korean='입력 보기 새로고침', English='Refresh input view'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.ShowInputAction, Korean='높이맵 재그리드 보기 새로 고침', English='Refresh Re-grid Height Map views'}" />
                     <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishGrid, Korean='그리드 적용', English='Apply grid'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PublishTip, Korean='유효 셀 비율 기준을 통과한 미리보기 결과만 적용합니다.', English='Apply the exact Preview only when its authored coverage gate passes'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PublishAction, Korean='높이맵 재그리드 출력 적용', English='Apply Re-grid Height Map output'}" />
                 </WrapPanel>
@@ -52,8 +53,8 @@
                 <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
                     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel>
-                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Input, Korean='입력 | 적용된 A2 라인 점군', English='Input | Applied A2 line cloud'}" /></DockPanel>
-                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.InputRule, Korean='A3는 현재 적용된 변환 점군 하나만 입력받습니다.', English='A3 accepts one current Applied TransformedPointCloud only.'}" />
+                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Input, Korean='입력 | 적용된 변환 점군', English='Input | applied transformed point cloud'}" /></DockPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.InputRule, Korean='입력: 적용된 변환 점군 1개', English='Input: one applied transformed point cloud'}" />
                         </StackPanel></Border>
                         <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
                     </Grid>
@@ -61,8 +62,8 @@
                 <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
                     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel>
-                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="ArrowSync24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Output, Korean='출력 | A3 기준 그리드 라인 필드', English='Output | A3 reference-grid line field'}" /></DockPanel>
-                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.OutputRule, Korean='라인 기반 그리드 표시입니다. 누락 셀은 유지되며, 미리보기는 티칭 범위 밖의 점을 거부합니다.', English='Line-based grid display. Missing cells remain absent; Preview rejects points outside authored bounds.'}" />
+                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="ArrowSync24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Output, Korean='출력 | 기준 격자 높이맵', English='Output | reference-grid height map'}" /></DockPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" behaviors:WordBoundaryWrapBehavior.Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.OutputRule, Korean='누락 셀 유지 · 티칭 범위 밖의 점은 미리보기 거부', English='Missing cells retained · Preview rejects points outside taught bounds'}" />
                         </StackPanel></Border>
                         <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
                     </Grid>
@@ -71,7 +72,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <StackPanel>
-                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DocumentCheckmark24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.A3Evidence, Korean='A3 정보', English='A3 evidence'}" /></DockPanel>
+                            <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DocumentCheckmark24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.A3Evidence, Korean='재격자화 결과', English='Regrid result'}" /></DockPanel>
                             <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="RegridHeightFieldUpstreamSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
                             <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="RegridHeightFieldExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding RegridHeightFieldExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                             <TextBlock Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="RegridHeightFieldEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
@@ -79,7 +80,7 @@
                         </StackPanel>
                         <Border Grid.Row="1" Margin="0,12,0,12" Padding="10" Background="{DynamicResource ThreeD.InfoSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1"><StackPanel>
                             <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.FixedDeterministicPolicy, Korean='격자 처리 조건', English='Fixed deterministic policy'}" />
-                            <TextBlock Margin="0,5,0,0" FontSize="12" TextWrapping="Wrap" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PolicyDetail, Korean='평면상 최근접 셀 중심을 사용하고 동거리면 입력 데이터 행/열 순으로 결정합니다. U/V 상한 밖 포인트는 미리보기를 거부하고 홀은 누락으로 유지하며 커버리지 기준이 적용을 제어합니다.', English='Planar nearest cell center; equal-distance tie breaks by source row/column; upper U/V bounds reject Preview; holes stay missing; coverage gates Apply.'}" />
+                            <TextBlock Margin="0,5,0,0" FontSize="12" TextWrapping="Wrap" behaviors:WordBoundaryWrapBehavior.Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.PolicyDetail, Korean='최근접 셀 중심에 배치하며 동거리면 원본 행/열 순서로 결정합니다. U/V 상한 밖 점은 거부합니다. 누락 셀은 유지하며 유효 셀 비율 기준을 통과해야 적용할 수 있습니다.', English='Planar nearest cell center; equal-distance tie breaks by source row/column; upper U/V bounds reject Preview; holes stay missing; coverage gates Apply.'}" />
                         </StackPanel></Border>
                     </Grid>
                     </ScrollViewer>

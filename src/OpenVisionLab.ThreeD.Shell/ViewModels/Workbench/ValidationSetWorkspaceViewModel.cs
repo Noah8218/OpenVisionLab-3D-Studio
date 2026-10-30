@@ -40,7 +40,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private int disposalState;
     private readonly object previewGate = new();
     private readonly SynchronizationContext? previewContext = SynchronizationContext.Current
-        ?? (System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread) is { } dispatcher ? new System.Windows.Threading.DispatcherSynchronizationContext(dispatcher) : null);
+        ?? (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA
+            && System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread) is { } dispatcher ? new System.Windows.Threading.DispatcherSynchronizationContext(dispatcher) : null);
     private readonly Func<string, CancellationToken, Task<BitmapSource>>? previewLoader;
     private CancellationTokenSource? previewCancellation;
     private int previewGeneration;
@@ -108,6 +109,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? SamplesChanged;
+    public event EventHandler<ToolWorkbenchValidationRunCompletedEventArgs>? RunCompleted;
     public event EventHandler? DefinitionDirtyChanged;
     public event EventHandler? ComparePinsClearRequested;
     public event EventHandler<ValidationSetSampleRow>? ComparisonRequested;
@@ -578,8 +580,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         }
 
         ValidationSetSummary = Localize(
-            $"{validationSetDefinitionOwner.Samples.Count}개 샘플을 순서대로 실행하고 있습니다.",
-            $"Running {validationSetDefinitionOwner.Samples.Count} sample(s) sequentially.");
+            $"샘플 {validationSetDefinitionOwner.Samples.Count}개 검증 중",
+            $"Validating {validationSetDefinitionOwner.Samples.Count} samples");
         validationSetWasCanceled = false;
         validationSetRunFailure = string.Empty;
         OnPropertyChanged(nameof(ValidationSetRunNoticeText));
@@ -623,6 +625,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             validationThresholdWorkflowOwner.CompleteAnalysis(
                 result.Samples.Count);
             appendLog("Validation Set", result.Message);
+            if (!IsDisposed && result.Samples.Count > 0)
+                RunCompleted?.Invoke(this, new ToolWorkbenchValidationRunCompletedEventArgs(result));
         }
         catch (OperationCanceledException)
         {
@@ -634,8 +638,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             validationSetWasCanceled = true;
             OnPropertyChanged(nameof(ValidationSetRunNoticeText));
             ValidationSetSummary = Localize(
-                "반복 검증이 취소되었습니다. 작성 중인 레시피와 3D 뷰 입력은 변경되지 않았습니다.",
-                "Repeat validation was canceled. The authored recipe and 3D Viewer input were not changed.");
+                "반복 검증을 취소했습니다.",
+                "Repeat validation canceled.");
             appendLog("Validation Set", "Canceled by operator.");
         }
         catch (Exception exception) when (exception is IOException
@@ -665,6 +669,13 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                 OnPropertyChanged(nameof(HasValidationSetSamples));
             }
         }
+    }
+
+    internal void ReportRunRecordSave(string message, bool failed)
+    {
+        validationSetRunFailure = failed ? message : string.Empty;
+        OnPropertyChanged(nameof(ValidationSetRunNoticeText));
+        appendLog("Validation Run Record", message);
     }
 
     private void StartRunValidationSetCommand()
@@ -1004,8 +1015,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         if (ToolRecipeValidationSetExecution.CanExecute(document, out var message))
         {
             ValidationSetCapability = Localize(
-                "현재 레시피의 지원되는 전체 툴 체인을 동일 그리드 C3D 샘플에 안전하게 재바인딩하여 순서대로 실행할 수 있습니다.",
-                "The complete supported tool chain can be safely rebound and replayed in order against same-grid C3D samples.");
+                "같은 격자 크기의 C3D 샘플을 현재 레시피의 지원 도구로 검증합니다.",
+                "Validate same-grid C3D samples with the supported tools in the current recipe.");
             return;
         }
 
@@ -1048,11 +1059,11 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     {
         ValidationSetSummary = validationSetDefinitionOwner.Samples.Count == 0
             ? Localize(
-                "C3D 샘플을 추가하고 기대 역할을 지정한 뒤 검증을 실행하세요. 샘플 선택만으로 검사는 실행되지 않습니다.",
-                "Add C3D samples and assign expected roles, then run validation. Selecting samples never runs inspection.")
+                "C3D 샘플을 추가하고 기대 역할을 지정하세요.",
+                "Add C3D samples and assign expected roles.")
             : Localize(
-                $"{validationSetDefinitionOwner.Samples.Count}개 샘플 준비됨 · 실행 전",
-                $"{validationSetDefinitionOwner.Samples.Count} sample(s) ready · not run");
+                $"샘플 {validationSetDefinitionOwner.Samples.Count}개 · 미검증",
+                $"{validationSetDefinitionOwner.Samples.Count} samples · not validated");
     }
 
     public void RefreshValidationSetLocalization()

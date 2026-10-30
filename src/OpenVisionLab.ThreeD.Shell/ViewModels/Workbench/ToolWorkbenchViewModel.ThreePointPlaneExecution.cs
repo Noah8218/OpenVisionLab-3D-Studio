@@ -19,8 +19,11 @@ public sealed partial class ToolWorkbenchViewModel
         threePointPlaneExecutionOwner.IsPreviewPublished;
     internal C3DThreePointPlaneFeature? CurrentThreePointPlaneOutput =>
         threePointPlaneExecutionOwner.CurrentOutput;
-    internal bool TryGetPublishedThreePointPlaneOutput(string outputEntityId, out C3DThreePointPlaneFeature? output) =>
-        threePointPlaneExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    internal bool TryGetPublishedThreePointPlaneOutput(string outputEntityId, out C3DThreePointPlaneFeature? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DThreePointPlaneFeature>(outputEntityId, out output)) return output is not null;
+        return threePointPlaneExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 
     public string ThreePointPlaneExecutionSummary =>
         threePointPlaneExecutionOwner.ExecutionSummary;

@@ -39,6 +39,27 @@ public sealed record ToolRecipeDocument(
     {
         var selected = Steps.FirstOrDefault(step => string.Equals(step.Id, stepId, StringComparison.OrdinalIgnoreCase));
         if (selected is null) return string.Empty;
+        var (stepIds, entityIds) = GetStepDependencies(selected);
+        return JsonSerializer.Serialize(new
+        {
+            Source = Source with { Name = string.Empty },
+            Steps = Steps.Where(step => stepIds.Contains(step.Id)).OrderBy(step => step.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(step => step with { ToolName = string.Empty, Group = null }),
+            Selections = (Selections ?? []).Where(selection => entityIds.Contains(selection.Id)).OrderBy(selection => selection.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(selection => selection with { Name = string.Empty }),
+            References = References.Where(reference => entityIds.Contains(reference.Id)).OrderBy(reference => reference.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(reference => reference with { Name = string.Empty })
+        });
+    }
+
+    public bool DependsOnEntity(string stepId, string entityId)
+    {
+        var selected = Steps.FirstOrDefault(step => string.Equals(step.Id, stepId, StringComparison.OrdinalIgnoreCase));
+        return selected is not null && GetStepDependencies(selected).EntityIds.Contains(entityId);
+    }
+
+    private (HashSet<string> StepIds, HashSet<string> EntityIds) GetStepDependencies(ToolRecipeStep selected)
+    {
         var producers = Steps.ToLookup(step => step.OutputEntityId, StringComparer.OrdinalIgnoreCase);
         var selections = (Selections ?? []).ToLookup(selection => selection.Id, StringComparer.OrdinalIgnoreCase);
         var stepIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -55,19 +76,16 @@ public sealed record ToolRecipeDocument(
                 if (!entityIds.Add(inputId)) continue;
                 foreach (var producer in producers[inputId]) pendingSteps.Enqueue(producer);
                 foreach (var selection in selections[inputId])
+                {
                     if (selection.SourceBinding.OwnerEntityId is { } ownerId) inputs.Enqueue(ownerId);
+                    foreach (var row in selection.Rows ?? [])
+                    {
+                        if (!string.IsNullOrWhiteSpace(row.SourceEntityId)) inputs.Enqueue(row.SourceEntityId);
+                    }
+                }
             }
         }
-        return JsonSerializer.Serialize(new
-        {
-            Source = Source with { Name = string.Empty },
-            Steps = Steps.Where(step => stepIds.Contains(step.Id)).OrderBy(step => step.Id, StringComparer.OrdinalIgnoreCase)
-                .Select(step => step with { ToolName = string.Empty, Group = null }),
-            Selections = (Selections ?? []).Where(selection => entityIds.Contains(selection.Id)).OrderBy(selection => selection.Id, StringComparer.OrdinalIgnoreCase)
-                .Select(selection => selection with { Name = string.Empty }),
-            References = References.Where(reference => entityIds.Contains(reference.Id)).OrderBy(reference => reference.Id, StringComparer.OrdinalIgnoreCase)
-                .Select(reference => reference with { Name = string.Empty })
-        });
+        return (stepIds, entityIds);
     }
 
     public static bool SupportsArtifactOwnedSelections(string? schemaVersion) =>

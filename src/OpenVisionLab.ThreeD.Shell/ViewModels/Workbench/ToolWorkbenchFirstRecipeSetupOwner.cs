@@ -265,7 +265,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
 
     public string FirstRecipeSetupDetailText => IsCompatibleVariantSetup
         ? ThreeDLocalization.Shared.CompatibleVariantSetupDetail
-        : ThreeDLocalization.Shared.FirstRecipeSetupDetail;
+        : string.Empty;
 
     public string FirstRecipeCreateLabel => IsCompatibleVariantSetup
         ? ThreeDLocalization.Shared.CompatibleVariantCreate
@@ -284,7 +284,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         GetFirstRecipeSetupValidationError()
         ?? (IsCompatibleVariantSetup
             ? ThreeDLocalization.Shared.CompatibleVariantReady
-            : ThreeDLocalization.Shared.FirstRecipeReadyToCreate);
+            : string.Empty);
 
     public void BeginFirstRecipeSetup()
     {
@@ -348,7 +348,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
             IsCompatibleVariantSetup || string.IsNullOrWhiteSpace(FirstRecipeCategory) ? null : FirstRecipeCategory.Trim(),
             IsCompatibleVariantSetup || string.IsNullOrWhiteSpace(FirstRecipeInspectionTarget) ? null : FirstRecipeInspectionTarget.Trim(),
             IsCompatibleVariantSetup || string.IsNullOrWhiteSpace(FirstRecipeDescription) ? null : FirstRecipeDescription.Trim());
-        message = ThreeDLocalization.Shared.FirstRecipeReadyToCreate;
+        message = string.Empty;
         return true;
     }
 

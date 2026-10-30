@@ -360,6 +360,41 @@ internal static class RunRecordHistoryQueryVerification
                     "run-record-history-json-collision.txt.tmp.*")
                     .Any(),
                 $"exit={jsonCollisionExitCode};textPreserved={jsonCollisionText == collisionSentinel}"));
+
+            var protectedSources = new[] { newRecord, tieA, invalidPath }
+                .ToDictionary(path => path, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
+            var protectedReports = new[] { summaryPath, csvPath, jsonPath }
+                .ToDictionary(path => path, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
+            foreach (var (kind, sourcePath) in new[] { ("text", newRecord), ("csv", tieA), ("json", invalidPath) })
+            {
+                var sourceCollisionExit = RunRecordHistoryExecution.Run(
+                    fixtureRoot,
+                    kind == "text" ? sourcePath : summaryPath,
+                    new RunRecordHistoryQueryOptions(Status: ResultStatus.Error),
+                    csvReportPath: kind == "csv" ? sourcePath : csvPath,
+                    jsonReportPath: kind == "json" ? sourcePath : jsonPath);
+                var sourcesPreserved = protectedSources.All(item => File.ReadAllBytes(item.Key).AsSpan().SequenceEqual(item.Value));
+                var reportsPreserved = protectedReports.All(item => File.ReadAllBytes(item.Key).AsSpan().SequenceEqual(item.Value));
+                checks.Add(Check(
+                    $"runner-history-rejects-{kind}-output-over-source",
+                    sourceCollisionExit == 1 && sourcesPreserved && reportsPreserved,
+                    $"exit={sourceCollisionExit};sourcesPreserved={sourcesPreserved};reportsPreserved={reportsPreserved};filteredOrMalformedSource=true"));
+            }
+
+            var newCandidatePath = Path.Combine(fixtureRoot, "new-report-candidate", "run-record.json");
+            var newCandidateExit = RunRecordHistoryExecution.Run(fixtureRoot, summaryPath, jsonReportPath: newCandidatePath);
+            checks.Add(Check(
+                "runner-history-does-not-create-a-report-as-a-source-candidate",
+                newCandidateExit == 1 && !File.Exists(newCandidatePath)
+                && protectedReports.All(item => File.ReadAllBytes(item.Key).AsSpan().SequenceEqual(item.Value)),
+                $"exit={newCandidateExit};candidateExists={File.Exists(newCandidatePath)}"));
+            var outsideRootReportPath = Path.Combine(fixtureRoot + "-reports", "run-record.json");
+            var recoveryExit = RunRecordHistoryExecution.Run(fixtureRoot, outsideRootReportPath);
+            checks.Add(Check(
+                "runner-history-recovers-with-same-named-output-outside-root",
+                recoveryExit == 0 && File.ReadAllText(outsideRootReportPath).Contains("Records|4", StringComparison.Ordinal)
+                && protectedSources.All(item => File.ReadAllBytes(item.Key).AsSpan().SequenceEqual(item.Value)),
+                $"exit={recoveryExit};outsideRoot={outsideRootReportPath}"));
             checks.Add(Check(
                 "runner-summary-escapes-delimiters-and-newlines",
                 summaryText.Contains("tool=Tool\\|new", StringComparison.Ordinal)

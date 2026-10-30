@@ -189,6 +189,7 @@ internal static class ToolParameterUndoVerification
             }
 
             var savePath = Path.Combine(root, "definition-integration", "recipe.ov3d-recipe.json");
+            workbench.ClearValidationSetCommand.Execute(null);
             Check("integration recipe saves through the normal workflow", workbench.TrySaveTeachingRecipe(savePath, out _));
             var savedRecipeBytes = File.ReadAllBytes(savePath);
             var savedRecipeHash = Convert.ToHexString(SHA256.HashData(savedRecipeBytes));
@@ -205,13 +206,18 @@ internal static class ToolParameterUndoVerification
             workbench.SelectedValidationSetSample = baselineSample;
             workbench.SetValidationSampleRoleCommand.Execute("Good");
             workbench.SetValidationSampleRoleCommand.Execute("Unset");
+            lines.Add($"DefinitionRestore|saved={savedDefinition.Samples.Single()}|actual={workbench.ValidationSetSamples.Single()}|dirty={workbench.IsValidationSetDefinitionDirty}");
             Check("restoring saved expectation clears sample dirty state without another save", !workbench.IsValidationSetDefinitionDirty
                 && savedRecipeBytes.SequenceEqual(File.ReadAllBytes(savePath)) && definitionBytes.SequenceEqual(File.ReadAllBytes(ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(savePath))));
             workbench.SetValidationSampleRoleCommand.Execute("Good");
             var sidecarPath = ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(savePath);
             using (var locked = new FileStream(sidecarPath, FileMode.Open, FileAccess.Read, FileShare.None))
-                Check("normal Save failure preserves definition edits and recipe bytes", !workbench.TrySaveTeachingRecipe(savePath, out _)
+            {
+                var savedWhileLocked = workbench.TrySaveTeachingRecipe(savePath, out var lockedSaveMessage);
+                lines.Add($"LockedSave|saved={savedWhileLocked}|definitionDirty={workbench.IsValidationSetDefinitionDirty}|recipeDirty={workbench.IsDirty}|message={lockedSaveMessage}");
+                Check("normal Save failure preserves definition edits and recipe bytes", !savedWhileLocked
                     && workbench.IsValidationSetDefinitionDirty && !workbench.IsDirty && savedRecipeBytes.SequenceEqual(File.ReadAllBytes(savePath)));
+            }
             Check("normal Save retry recovers with the same recipe identity", workbench.TrySaveTeachingRecipe(savePath, out _)
                 && !workbench.IsValidationSetDefinitionDirty && savedRecipeBytes.SequenceEqual(File.ReadAllBytes(savePath)));
             Check("reopen restores saved declarations without execution", workbench.TryOpenTeachingRecipe(savePath, out _)

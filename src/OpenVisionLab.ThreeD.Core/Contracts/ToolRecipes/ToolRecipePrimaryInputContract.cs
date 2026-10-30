@@ -8,6 +8,7 @@ public static class ToolRecipePrimaryInputContract
 {
     private static readonly HashSet<string> HeightFieldTools = new(StringComparer.OrdinalIgnoreCase)
     {
+        "nine-point-surface-compensation",
         "thickness",
         "warpage",
         "completeness-grid",
@@ -56,6 +57,9 @@ public static class ToolRecipePrimaryInputContract
         var primaryContract = artifactContract.Split(
             '+',
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)[0];
+        if (string.Equals(toolId, "nine-point-surface-compensation", StringComparison.OrdinalIgnoreCase))
+            return primaryContract is "HeightField" or "RawHeightField" or "FilteredHeightField" or "LeveledHeightField"
+                || string.Equals(artifactContract, "SourceC3D / RawHeightField", StringComparison.Ordinal);
         if (string.Equals(requiredContract, "TransformedHeightField", StringComparison.Ordinal))
         {
             return string.Equals(primaryContract, requiredContract, StringComparison.Ordinal);
@@ -77,7 +81,7 @@ public static class ToolRecipePrimaryInputContract
     {
         "filter" or "remove-outlier-pixels" or "height-threshold-background-removal" => "FilteredHeightField",
         "level-surface" => "LeveledHeightField",
-        "roi-crop" => "HeightField",
+        "roi-crop" or "nine-point-surface-compensation" => "HeightField",
         "re-grid-height-map" => "TransformedHeightField",
         "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions"
             or "gap-flush" or "physical-edge-gap-flush" or "volume" or "cross-section-dimensions" => "MeasurementResult",

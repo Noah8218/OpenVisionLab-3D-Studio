@@ -7,6 +7,7 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
+        xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
         Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.WindowTitle, Korean='랜드마크 대응 도구 실험실 | OpenVisionLab 3D Studio', English='Landmark Correspondence Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1680"
         Height="940"
@@ -54,12 +55,12 @@
                     <ui:Button Margin="0,0,6,0" Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon ArrowSync24}"
                                Click="RefreshViewsButton_Click"
-                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ShowInputTip, Korean='도구를 실행하지 않고 원본 앵커와 기준 좌표 정보를 새로 고칩니다.', English='Refresh source-anchor and reference-coordinate evidence without running a tool'}"
+                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ShowInputTip, Korean='입력 보기 새로고침', English='Refresh input view'}"
                                AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ShowInputAction, Korean='랜드마크 대응 보기 새로 고침', English='Refresh Landmark Correspondence views'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.PublishTip, Korean='어파인 변환을 계산하지 않고 현재 대응 미리보기를 적용합니다.', English='Apply the current correspondence Preview without calculating an affine transform'}"
+
                                AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.PublishAction, Korean='랜드마크 대응 출력 적용', English='Apply Landmark Correspondence output'}" />
                 </WrapPanel>
             </Grid>
@@ -85,7 +86,7 @@
                         <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                             <StackPanel>
                                     <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding Localization.Input}" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.SourceInputs, Korean=' | 원본 좌표계 / 적용된 교점 기준점 입력 4개', English=' | Source Frame / Four Applied CornerAnchor Inputs'}" /></DockPanel>
-                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LandmarkCorrespondenceUpstreamSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.ToolTip><TextBlock Text="{Binding LandmarkCorrespondenceUpstreamSummary}" MaxWidth="560" TextWrapping="Wrap" /></TextBlock.ToolTip><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="LandmarkCorrespondenceSummary"><Binding Path="LandmarkCorrespondenceUpstreamSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
                             </StackPanel>
                         </Border>
                         <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
@@ -98,10 +99,10 @@
                         <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                             <StackPanel>
                                     <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ReferenceEvidence, Korean=' | 기준 좌표 정보', English=' | Reference-coordinate evidence'}" /></DockPanel>
-                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LandmarkCorrespondenceExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding LandmarkCorrespondenceExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LandmarkCorrespondenceEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
-                                <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LandmarkCorrespondenceOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
-                                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.NoFabricatedSurface, Korean='가상의 기준 면을 생성하지 않습니다. 티칭된 기준 좌표 집합만 표시합니다.', English='No nominal surface is fabricated here; this is the taught reference-coordinate set.'}" />
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.ToolTip><TextBlock Text="{Binding LandmarkCorrespondenceExecutionSummary}" MaxWidth="560" TextWrapping="Wrap" /></TextBlock.ToolTip><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="LandmarkCorrespondenceSummary"><Binding Path="LandmarkCorrespondenceExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding LandmarkCorrespondenceExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="LandmarkCorrespondenceSummary"><Binding Path="LandmarkCorrespondenceEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                                <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="LandmarkCorrespondenceSummary"><Binding Path="LandmarkCorrespondenceOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.NoFabricatedSurface, Korean='티칭한 기준 좌표 집합을 표시합니다.', English='Shows the taught reference coordinates.'}" />
                             </StackPanel>
                         </Border>
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -113,7 +114,7 @@
                             </UniformGrid>
                             <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,8">
                                 <StackPanel Margin="0,0,8,0"><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Provenance, Korean='출처', English='Provenance'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceProvenance, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ProvenanceTip, Korean='기준 좌표의 생성 출처를 입력합니다.', English='Reference coordinate provenance'}" /></StackPanel>
-                                <StackPanel><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Revision, Korean='리비전', English='Revision'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.RevisionTip, Korean='기준 좌표의 리비전 식별자를 입력합니다.', English='Reference-coordinate revision'}" /></StackPanel>
+                                <StackPanel><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Revision, Korean='리비전', English='Revision'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnlySampleView}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.RevisionTip, Korean='기준 좌표의 리비전 식별자를 입력합니다.', English='Reference-coordinate revision'}" /></StackPanel>
                             </UniformGrid>
                             <StackPanel Grid.Row="2" Margin="0,0,0,10">
                                 <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.MinimumTetrahedronVolume, Korean='최소 정규화 사면체 체적', English='Minimum normalized tetrahedron volume'}" />
@@ -123,10 +124,16 @@
                                 <Grid>
                                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                     <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TaughtMappings, Korean='티칭된 대응', English='Taught mappings'}" />
-                                    <DataGrid Grid.Row="1" Margin="0,8,0,8" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding SelectedCorrespondenceRows}" HeadersVisibility="Column" MinHeight="150" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                    <DataGrid Grid.Row="1" Margin="0,8,0,8" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding SelectedCorrespondenceRows}" HeadersVisibility="Column" MinHeight="150" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                                         <DataGrid.Resources>
                                             <Style x:Key="CorrespondenceIdTextStyle" TargetType="{x:Type TextBlock}" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
-                                                <Setter Property="TextWrapping" Value="Wrap" />
+                                                <Setter Property="TextWrapping" Value="NoWrap" />
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                <Setter Property="ToolTip">
+                                                    <Setter.Value>
+                                                        <ToolTip><TextBlock MaxWidth="560" TextWrapping="Wrap" Text="{Binding PlacementTarget.Text, RelativeSource={RelativeSource AncestorType=ToolTip}}" /></ToolTip>
+                                                    </Setter.Value>
+                                                </Setter>
                                             </Style>
                                         </DataGrid.Resources>
                                         <DataGrid.Columns>
@@ -137,7 +144,14 @@
                                             <DataGridTextColumn Header="Z" Binding="{Binding ReferencePosition.Z, StringFormat=0.##}" Width="Auto" MinWidth="100" />
                                         </DataGrid.Columns>
                                     </DataGrid>
-                                    <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="CorrespondenceSelectionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                                    <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap">
+                                        <behaviors:WordBoundaryWrapBehavior.Text>
+                                            <MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="LandmarkCorrespondenceSummary">
+                                                <Binding Path="CorrespondenceSelectionSummary" />
+                                                <Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" />
+                                            </MultiBinding>
+                                        </behaviors:WordBoundaryWrapBehavior.Text>
+                                    </TextBlock>
                                 </Grid>
                             </Border>
                         </Grid>

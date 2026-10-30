@@ -23,7 +23,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ThreePointPlane), nameof(DatumPlaneDeviation), nameof(LineIntersection), nameof(LandmarkCorrespondence),
         nameof(XYZAffineSolve), nameof(XYZAffineApply), nameof(RegridHeightMap), nameof(AlignmentStatusFormat),
         nameof(AlignmentLegacyStatusFormat), nameof(AlignmentNotTaught), nameof(ToolboxAndEntities), nameof(ToolLibrary), nameof(ToolLibraryHint),
-        nameof(ToolSearch), nameof(AllTools), nameof(CompactToolLibrary), nameof(RecipeFlow), nameof(CompactRecipeFlow), nameof(RecipeFlowHint), nameof(FilterOptionalHint),
+        nameof(ToolSearch), nameof(AllTools), nameof(CompactToolLibrary), nameof(RecipeFlow), nameof(CompactRecipeFlow), nameof(FilterOptionalHint),
         nameof(RecipeHealth), nameof(RecipeHealthSummaryFormat), nameof(RecipeHealthCountsPrimaryFormat), nameof(RecipeHealthCountsSecondaryFormat),
         nameof(RecipeHealthReady), nameof(RecipeHealthNeedsInput), nameof(RecipeHealthNeedsSelection), nameof(RecipeHealthNeedsParameters), nameof(RecipeHealthExecutionBlocked), nameof(RecipeHealthStalePreview), nameof(RecipeHealthPublished),
         nameof(RecipeHealthReadyDetail), nameof(RecipeHealthStalePreviewDetail), nameof(RecipeHealthPublishedDetail), nameof(RecipeHealthNoStep), nameof(RecipeHealthNoStepDetail),
@@ -167,8 +167,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(FlowConnectionSaved), nameof(FlowConnectionAlreadyConnected), nameof(FlowConnectionRejected),
         nameof(FlowConnectionCancelled), nameof(FlowConnectionCancel), nameof(FlowConnectionOutputPort),
         nameof(FlowConnectionOutputPortHelp), nameof(FlowConnectionInputPort), nameof(FlowConnectionInputPortHelp),
-        nameof(NavigatorHint), nameof(RecipeSource),
-        nameof(RecipeNavigator), nameof(CompatibleToolCatalogTitle), nameof(CompatibleToolCatalogDetail),
+        nameof(RecipeSource),
+        nameof(RecipeNavigator), nameof(CompatibleToolCatalogTitle),
         nameof(CompatibleToolCatalogSummaryFormat), nameof(CompatibleToolCatalogEmpty), nameof(SelectCompatibleTool),
         nameof(AddCompatibleTool), nameof(AddCompatibleToolToolTip), nameof(CompatibleToolBlockerLabel),
         nameof(CompatibleToolBlocked),
@@ -182,11 +182,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(StepAdapterPartiallySupported), nameof(StepAdapterReady), nameof(StepAdapterReadyUnmappedFormat),
         nameof(StepParameterSelectTypedTool), nameof(StepParameterUnsupportedEditor), nameof(StepParameterMatchesRecipe),
         nameof(StepParameterPendingChanges),
-        nameof(StepPropertiesEditDetail),
+
         nameof(SelectedToolExampleLabel), nameof(SelectedToolExpectedOverlayLabel), nameof(SelectedToolEmptyExample), nameof(SelectedToolEmptyExpectedOverlay), nameof(SelectedToolStateLabel),
         nameof(SelectedToolOutputPolicyLabel), nameof(OutputEnabled), nameof(OutputDisabled),
         nameof(Discard), nameof(ApplyParameters), nameof(Produces), nameof(OutputEntity),
-        nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint), nameof(SelectedRoute),
+        nameof(ExpectedData), nameof(InputEntities), nameof(SelectedRoute),
         nameof(OpenSelectedToolLab), nameof(ToolLabReview), nameof(ToolLabReviewDetail),
         nameof(ShowInput), nameof(TeachingSelections), nameof(ThicknessRoiTeaching), nameof(ThicknessRoiTeachingDetail),
         nameof(ThicknessRoiReadyDetail), nameof(ThicknessMeasurementRoi), nameof(TwoGridCorners),
@@ -219,7 +219,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(AddFirstToolActionDetail), nameof(SelectStepActionTitle), nameof(SelectStepActionDetail),
         nameof(TeachSelectedStepActionTitle), nameof(TeachSelectedStepActionDetail),
         nameof(NewRecipe), nameof(OpenExistingRecipe), nameof(CurrentRecipe), nameof(RecentRecipes),
-        nameof(FirstRecipeSetup), nameof(FirstRecipeSetupDetail), nameof(FirstRecipeFolder), nameof(FirstRecipeBrowse),
+        nameof(FirstRecipeSetup), nameof(FirstRecipeFolder), nameof(FirstRecipeBrowse),
         nameof(FirstRecipeSource), nameof(FirstRecipeStarter), nameof(FirstRecipeNoStarter), nameof(FirstRecipeNoStarterDetail),
         nameof(FirstRecipeThicknessStarter), nameof(FirstRecipeThicknessStarterDetail), nameof(FirstRecipeRememberSetup),
         nameof(RecipeInfoTarget), nameof(RecipeInfoCategory), nameof(RecipeInfoDescription), nameof(RecipeInfoFieldTooLong),
@@ -236,11 +236,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(FirstRecipeNameRequired), nameof(FirstRecipeNameInvalid), nameof(FirstRecipeCreateBusy), nameof(FirstRecipeFolderRequired),
         nameof(FirstRecipeFolderMissing), nameof(FirstRecipeSourceRequired), nameof(FirstRecipeSourceMissing),
         nameof(FirstRecipeSourceMustBeC3D), nameof(FirstRecipeStarterRequired), nameof(FirstRecipeAlreadyExists),
-        nameof(FirstRecipeReadyToCreate), nameof(FirstRecipeTargetUnavailable), nameof(FirstRecipeStarterUnavailable),
+        nameof(FirstRecipeTargetUnavailable), nameof(FirstRecipeStarterUnavailable),
         nameof(FirstRecipeThicknessStarterApplied), nameof(FirstRecipeSetupRemembered), nameof(FirstRecipeSetupNotRemembered),
         nameof(RecipeNameLabel), nameof(RecipeStatusLabel), nameof(RecipePathLabel), nameof(SourceLabel),
         nameof(StepsLabel), nameof(Save), nameof(SaveAs), nameof(RemoveFromRecent),
-        nameof(RemoveFromRecentToolTip), nameof(Available), nameof(Unavailable), nameof(RecipeCenterDetail),
+        nameof(RemoveFromRecentToolTip), nameof(Available), nameof(Unavailable),
         nameof(SourceNotSelected), nameof(SourceUnsupportedFormat), nameof(SourceMissing), nameof(SourceIdentityMismatch),
         nameof(SourceUnreadable), nameof(SourceReadyFormat), nameof(NotSavedYet), nameof(Valid),
         nameof(ValidWarningsFormat), nameof(CorrectionsFormat), nameof(SourceCorrectionsFormat),
@@ -270,12 +270,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string CalibrationSoonShort => T("ThreeD.Calibration.SoonShort", "\uC900\uBE44", "Soon");
     public string CalibrationComingSoonToolTip => T(
         "ThreeD.Calibration.ComingSoonToolTip",
-        "\uC774 \uAD50\uC815 \uAE30\uB2A5\uC740 \uC544\uC9C1 \uAD6C\uD604\u00B7\uAC80\uC99D\uB418\uC9C0 \uC54A\uC544 \uC120\uD0DD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
-        "This calibration capability is not selectable because it has not been implemented and verified.");
+        "\uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uAE30\uB2A5\uC785\uB2C8\uB2E4.",
+        "This feature is not supported yet.");
     public string CalibrationProfileLifecycleComingSoon => T(
         "ThreeD.Calibration.ProfileLifecycleComingSoon",
-        "\uD504\uB85C\uD30C\uC77C \uAC80\uC99D\u00B7\uD65C\uC131\uD654\uB294 \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4.",
-        "Profile validation and activation are coming soon.");
+        "\uC544\uC9C1 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uAE30\uB2A5\uC785\uB2C8\uB2E4.",
+        "This feature is not supported yet.");
     public string RecipeManager => T("ThreeD.Header.RecipeManager", "\uB808\uC2DC\uD53C \uC13C\uD130", "Recipe Center");
     public string RecipeCenter => T("ThreeD.Header.RecipeCenter", "\uB808\uC2DC\uD53C \uC13C\uD130", "Recipe Center");
     public string RecipeWorkbench => T("ThreeD.Header.RecipeWorkbench", "\uAC80\uC0AC \uB808\uC2DC\uD53C", "Inspection Recipe");
@@ -325,8 +325,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Acquisition/source provenance");
     public string SourceAcquisitionProvenanceHint => T(
         "ThreeD.SourceQuality.Acquisition.Hint",
-        "\uC785\uB825 \uB370\uC774\uD130\uC758 \uCDE8\uB4DD \uC870\uAC74\uACFC \uC54C\uB824\uC9C4 \uC81C\uC57D\uC744 \uC785\uB825\uD558\uC138\uC694. \uC801\uC6A9\uD558\uAE30 \uC804\uC5D0\uB294 \uB808\uC2DC\uD53C\uAC00 \uBC14\uB00C\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "Declare verified acquisition evidence and known limits for this source. The recipe is unchanged until Apply.");
+        "\uCDE8\uB4DD \uC870\uAC74\uACFC \uC54C\uB824\uC9C4 \uC81C\uC57D\uC744 \uC785\uB825\uD558\uC138\uC694.",
+        "Enter the acquisition conditions and known limits.");
     public string SourceAcquisitionState => T(
         "ThreeD.SourceQuality.Acquisition.State",
         "\uC815\uBCF4 \uC0C1\uD0DC",
@@ -337,12 +337,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Acquisition evidence");
     public string SourceAcquisitionLimitations => T(
         "ThreeD.SourceQuality.Acquisition.Limitations",
-        "\uC81C\uC57D \uBC0F \uBD80\uC871\uD55C \uC815\uBCF4",
-        "Limitations and missing information");
+        "\uCDE8\uB4DD \uC81C\uC57D",
+        "Acquisition limits");
     public string SourceAcquisitionLimitationsHint => T(
         "ThreeD.SourceQuality.Acquisition.LimitationsHint",
-        "\uC544\uB798 \uD50C\uB798\uADF8\uB294 \uD68D\uB4DD \uC81C\uD55C\uC758 \uC120\uC5B8\uC774\uBA70, \uC18C\uD504\uD2B8\uAC00 \uC790\uB3D9 \uCD94\uB860\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "These flags declare acquisition limitations; the software does not infer them.");
+        "\uCDE8\uB4DD \uC81C\uC57D (\uC9C1\uC811 \uC785\uB825)",
+        "Acquisition limits (entered manually)");
     public string SourceAcquisitionFlagReflective => T(
         "ThreeD.SourceQuality.Acquisition.Flag.Reflective",
         "\uBC18\uC0AC\uCCB4",
@@ -357,7 +357,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Textureless");
     public string SourceAcquisitionFlagClipped => T(
         "ThreeD.SourceQuality.Acquisition.Flag.Clipped",
-        "\uCE74\uD53C\uB428",
+        "\uC798\uB9BC",
         "Clipped");
     public string SourceAcquisitionFlagLowCoverage => T(
         "ThreeD.SourceQuality.Acquisition.Flag.LowCoverage",
@@ -365,8 +365,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Low coverage");
     public string SourceAcquisitionDirectionTitle => T(
         "ThreeD.SourceQuality.Acquisition.Direction.Title",
-        "구조화된 획득 방향",
-        "Structured acquisition direction");
+        "취득 방향",
+        "Acquisition direction");
     public string SourceAcquisitionDirectionState => T(
         "ThreeD.SourceQuality.Acquisition.Direction.State",
         "방향 정보 상태",
@@ -381,7 +381,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Direction unavailable");
     public string SourceAcquisitionDirectionConvention => T(
         "ThreeD.SourceQuality.Acquisition.Direction.Convention",
-        "방향 규약",
+        "방향 기준",
         "Direction convention");
     public string SourceAcquisitionDirectionFrame => T(
         "ThreeD.SourceQuality.Acquisition.Direction.Frame",
@@ -397,12 +397,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Direction available requires available provenance and a finite, non-zero XYZ vector.");
     public string SourceAcquisitionDirectionPersisted => T(
         "ThreeD.SourceQuality.Acquisition.Direction.Persisted",
-        "정규화된 방향이 레시피에 저장됨",
-        "Normalized direction explicitly stored in the recipe");
+        "방향 정보 저장됨",
+        "Direction saved");
     public string SourceAcquisitionDirectionFallback => T(
         "ThreeD.SourceQuality.Acquisition.Direction.Fallback",
-        "기존 레시피 호환 기본값: 방향 정보 없음",
-        "Legacy-compatible fallback: direction evidence unavailable");
+        "방향 정보 없음",
+        "No direction information");
     public string SourceAcquisitionAvailable => T(
         "ThreeD.SourceQuality.Acquisition.Available",
         "\uC815\uBCF4 \uC788\uC74C",
@@ -421,8 +421,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Acquisition viewpoint, direction, sensor pose, calibration, and capture conditions are unavailable.");
     public string SourceAcquisitionApply => T(
         "ThreeD.SourceQuality.Acquisition.Apply",
-        "입력 데이터 계약 적용",
-        "Apply source contract");
+        "입력 정보 적용",
+        "Apply input information");
     public string SourceAcquisitionReset => T(
         "ThreeD.SourceQuality.Acquisition.Reset",
         "\uC801\uC6A9\uB41C \uAC12\uC73C\uB85C \uB418\uB3CC\uB9AC\uAE30",
@@ -433,8 +433,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Acquisition evidence is required.");
     public string SourceAcquisitionLimitationsRequired => T(
         "ThreeD.SourceQuality.Acquisition.LimitationsRequired",
-        "\uC81C\uC57D \uBC0F \uBD80\uC871\uD55C \uC815\uBCF4\uB97C \uC785\uB825\uD558\uC138\uC694.",
-        "Limitation notes are required.");
+        "\uC54C\uB824\uC9C4 \uC81C\uC57D\uC744 \uC785\uB825\uD558\uC138\uC694.",
+        "Enter known limits.");
     public string SourceAcquisitionNoChanges => T(
         "ThreeD.SourceQuality.Acquisition.NoChanges",
         "\uC801\uC6A9\uD560 \uBCC0\uACBD \uC0AC\uD56D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
@@ -453,8 +453,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Shown from the legacy-compatible fallback");
     public string SourceAcquisitionBoundary => T(
         "ThreeD.SourceQuality.Acquisition.Boundary",
-        "\uC774 \uBA54\uBAA8\uB294 \uCE74\uBA54\uB77C \uD3EC\uC988\u00B7\uAD50\uC815\u00B7\uD68D\uB4DD \uC2DC\uC810\uC744 \uC99D\uBA85\uD558\uAC70\uB098 \uCD94\uB860\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "These notes do not prove or infer camera pose, calibration, or acquisition viewpoint.");
+        "\uC0AC\uC6A9\uC790\uAC00 \uC785\uB825\uD55C \uBA54\uBAA8\uC774\uBA70 \uAD50\uC815 \uD655\uC778 \uC790\uB8CC\uB294 \uC544\uB2D9\uB2C8\uB2E4.",
+        "User-entered notes; not calibration evidence.");
     public string CurrentSourceQualitySummaryFormat => T(
         "ThreeD.SourceQuality.CurrentSummaryFormat",
         "\uD488\uC9C8 \uC720\uD6A8 {0:P1} \u00B7 \uB204\uB77D {1:P1}",
@@ -471,18 +471,18 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.SourceQuality.Header.CheckingInput",
         "\uC785\uB825 \uD655\uC778 \uC911",
         "Checking input");
-    public string ToolLabs => T("ThreeD.Header.ToolLabs", "\uD234 \uB7A9", "Tool Labs");
+    public string ToolLabs => T("ThreeD.Header.ToolLabs", "도구 실험실", "Tool Labs");
     public string AdvancedLayout => T("ThreeD.Header.AdvancedLayout", "\uACE0\uAE09 \uB808\uC774\uC544\uC6C3", "Advanced layout");
     public string Language => T("ThreeD.Header.Language", "\uC5B8\uC5B4", "Language");
-    public string OpenRecipeManagerToolTip => T("ThreeD.Header.OpenRecipeManagerToolTip", "\uBCC4\uB3C4 \uB808\uC2DC\uD53C \uC13C\uD130\uC5D0\uC11C \uC0C8 \uAC80\uC0AC\uB97C \uC2DC\uC791\uD558\uAC70\uB098 \uAE30\uC874 \uB808\uC2DC\uD53C\uB97C \uC5FD\uB2C8\uB2E4.", "Open the separate Recipe Center to start a new inspection or open an existing recipe.");
-    public string OpenToolLabsToolTip => T("ThreeD.Header.OpenToolLabsToolTip", "\uAE30\uC874 \uB3C4\uAD6C\uC758 \uC785\uB825\u00B7\uCD9C\uB825\u00B7\uC815\uBCF4 \uD654\uBA74\uB97C \uC5FD\uB2C8\uB2E4.", "Open an existing tool's focused input, output, and evidence view.");
+    public string OpenRecipeManagerToolTip => T("ThreeD.Header.OpenRecipeManagerToolTip", "\uB808\uC2DC\uD53C \uB9CC\uB4E4\uAE30\u00B7\uC5F4\uAE30", "Create or open a recipe");
+    public string OpenToolLabsToolTip => T("ThreeD.Header.OpenToolLabsToolTip", "\uB3C4\uAD6C \uC785\uB825\u00B7\uCD9C\uB825\u00B7\uC815\uBCF4", "Tool inputs, outputs, and details");
     public string OpenAdvancedToolTip => T("ThreeD.Header.OpenAdvancedToolTip", "\uAE30\uC874 \uC9C4\uB2E8 \uC804\uC6A9 \uB808\uC774\uC544\uC6C3\uC744 \uC5FD\uB2C8\uB2E4.", "Open the existing diagnostic dock layout.");
     public string Filter => T("ThreeD.Tool.Filter", "\uD544\uD130", "Filter");
-    public string HeightDifferenceEdge => T("ThreeD.Tool.HeightDifferenceEdge", "\uB192\uC774 \uCC28\uC774 \uC5E3\uC9C0", "Height Difference Edge");
-    public string TwoPointLine => T("ThreeD.Tool.TwoPointLine", "2-\uD3EC\uC778\uD2B8 \uB77C\uC778", "2-Point Line");
-    public string ThreePointPlane => T("ThreeD.Tool.ThreePointPlane", "3-\uD3EC\uC778\uD2B8 \uD3C9\uBA74", "3-Point Plane");
-    public string DatumPlaneDeviation => T("ThreeD.Tool.DatumPlaneDeviation", "\uB370\uC774\uD140 \uD3C9\uBA74 \uB192\uC774 \uD3B8\uCC28", "Datum Plane Deviation");
-    public string LineIntersection => T("ThreeD.Tool.LineIntersection", "\uB77C\uC778 \uAD50\uC810", "Line Intersection");
+    public string HeightDifferenceEdge => T("ThreeD.Tool.HeightDifferenceEdge", "\uB192\uC774\uCC28 \uC5D0\uC9C0", "Height Difference Edge");
+    public string TwoPointLine => T("ThreeD.Tool.TwoPointLine", "2\uC810 \uC9C1\uC120", "2-Point Line");
+    public string ThreePointPlane => T("ThreeD.Tool.ThreePointPlane", "3\uC810 \uD3C9\uBA74", "3-Point Plane");
+    public string DatumPlaneDeviation => T("ThreeD.Tool.DatumPlaneDeviation", "\uAE30\uC900\uBA74 \uD3B8\uCC28", "Datum Plane Deviation");
+    public string LineIntersection => T("ThreeD.Tool.LineIntersection", "\uC9C1\uC120 \uAD50\uC810", "Line Intersection");
     public string LandmarkCorrespondence => T("ThreeD.Tool.LandmarkCorrespondence", "\uB79C\uB4DC\uB9C8\uD06C \uB300\uC751", "Landmark Correspondence");
     public string XYZAffineSolve => T("ThreeD.Tool.XYZAffineSolve", "XYZ \uC5B4\uD30C\uC778 \uACC4\uC0B0", "XYZ Affine Solve");
     public string XYZAffineApply => T("ThreeD.Tool.XYZAffineApply", "XYZ \uC5B4\uD30C\uC778 \uC801\uC6A9", "Apply XYZ Affine");
@@ -501,11 +501,10 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string AllTools => T("ThreeD.Workbench.AllTools", "\uC804\uCCB4 \uB3C4\uAD6C", "All tools");
     public string RecipeFlow => T("ThreeD.Workbench.RecipeFlow", "\uAC80\uC0AC \uAD6C\uC131", "Inspection Flow");
     public string CompactRecipeFlow => T("ThreeD.Workbench.CompactRecipeFlow", "\uAC80\uC0AC \uAD6C\uC131", "Flow");
-    public string RecipeFlowHint => T("ThreeD.Workbench.RecipeFlowHint", "\uB2E8\uACC4\uB97C \uC120\uD0DD\uD558\uBA74 \uC624\uB978\uCABD\uC5D0\uC11C \uC124\uC815\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC120\uD0DD\uD55C \uB2E8\uACC4\uB294 \uC774\uB3D9\uD558\uAC70\uB098 \uC0AD\uC81C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Select a step to edit it on the right. The selected step can also be reordered or removed here.");
     public string FilterOptionalHint => T("ThreeD.Workbench.FilterOptionalHint", "\uD544\uD130\uB294 \uC120\uD0DD \uC0AC\uD56D\uC785\uB2C8\uB2E4. \uD604\uC7AC \uC785\uB825\uC774 \uD638\uD658\uB418\uBA74 \uCE21\uC815 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uCD94\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Filter is optional. Add a measurement tool directly when the current input is compatible.");
     public string AddSelectedStep => T("ThreeD.Command.AddSelectedStep", "\uC120\uD0DD \uB2E8\uACC4 \uCD94\uAC00", "Add selected step");
     public string AddToolFromCatalog => T("ThreeD.Command.AddToolFromCatalog", "\uB3C4\uAD6C \uCD94\uAC00", "Add tool");
-    public string AddToolFromCatalogToolTip => T("ThreeD.Command.AddToolFromCatalogToolTip", "\uC774 \uB3C4\uAD6C\uB97C \uB808\uC2DC\uD53C\uC5D0 \uCD94\uAC00\uD569\uB2C8\uB2E4. \uCD94\uAC00\uB9CC \uD558\uBA70 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Add this tool to the recipe. This does not run inspection.");
+    public string AddToolFromCatalogToolTip => T("ThreeD.Command.AddToolFromCatalogToolTip", "\uB808\uC2DC\uD53C\uC5D0 \uB3C4\uAD6C \uCD94\uAC00", "Add this tool to the recipe");
     public string ProposedToolRoute => T("ThreeD.Workbench.ProposedToolRoute", "\uCD94\uAC00 \uC608\uC815 \uC785\uB825 \u2192 \uB3C4\uAD6C \u2192 \uCD9C\uB825", "Proposed input \u2192 tool \u2192 output");
     public string ProposedToolRouteFormat => T("ThreeD.Workbench.ProposedToolRouteFormat", "{0} [{1}] \u2192 {2} \u2192 {3}", "{0} [{1}] \u2192 {2} \u2192 {3}");
     public string ProposedToolRouteUnavailableFormat => T("ThreeD.Workbench.ProposedToolRouteUnavailableFormat", "\uD638\uD658 \uC785\uB825 \uC5C6\uC74C: {0} \uD544\uC694 | \uC608\uC815 \uCD9C\uB825: {1}", "No compatible input: requires {0} | Proposed output: {1}");
@@ -529,9 +528,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ViewerReturnToSingle => T("ThreeD.Command.ViewerReturnToSingle", "\uB2E8\uC77C \uBDF0\uB85C \uBCF5\uADC0", "Return to single view");
     public string ViewerCameraLink => T("ThreeD.Command.ViewerCameraLink", "\uCE74\uBA54\uB77C \uB9C1\uD06C", "Link camera");
     public string ViewerCameraUnlink => T("ThreeD.Command.ViewerCameraUnlink", "\uCE74\uBA54\uB77C \uB9C1\uD06C \uD574\uC81C", "Unlink camera");
-    public string ViewerCameraLinked => T("ThreeD.Workbench.ViewerCameraLinked", "Main \u2192 Auxiliary \uCE74\uBA54\uB77C \uB9C1\uD06C \uC0C1\uD0DC", "Camera linked Main \u2192 Auxiliary");
-    public string ViewerCameraLinkSummary => T("ThreeD.Workbench.ViewerCameraLinkSummary", "Main \uCE74\uBA54\uB77C\uB97C Auxiliary\uC5D0 \uB3D9\uAE30\uD654\uD569\uB2C8\uB2E4. \uBCF4\uAE30 \uC804\uC6A9.", "Main camera will drive Auxiliary. View only.");
-    public string ViewerCameraLinkUnavailable => T("ThreeD.Workbench.ViewerCameraLinkUnavailable", "\uC2E4\uC81C 3D Auxiliary \uBDF0\uC5D0\uC11C\uB9CC \uCE74\uBA54\uB77C \uB9C1\uD06C\uAC00 \uAC00\uB2A5\uD569\uB2C8\uB2E4.", "Camera linking requires a real 3D Auxiliary view.");
+    public string ViewerCameraLinked => T("ThreeD.Workbench.ViewerCameraLinked", "\uC8FC \uBDF0 \u2192 \uBCF4\uC870 \uBDF0 \uC2DC\uC810 \uC5F0\uB3D9", "Main \u2192 auxiliary view linked");
+    public string ViewerCameraLinkSummary => T("ThreeD.Workbench.ViewerCameraLinkSummary", "\uC8FC \uBDF0\uC5D0 \uBCF4\uC870 \uBDF0 \uC2DC\uC810\uC744 \uB9DE\uCDA5\uB2C8\uB2E4.", "Match the auxiliary view to the main view.");
+    public string ViewerCameraLinkUnavailable => T("ThreeD.Workbench.ViewerCameraLinkUnavailable", "3D \uBCF4\uC870 \uBDF0\uC5D0\uC11C \uC0AC\uC6A9 \uAC00\uB2A5", "Available with a 3D auxiliary view");
     public string ViewerPalette => T("ThreeD.Workbench.ViewerPalette", "\uD314\uB808\uD2B8", "Palette");
     public string ViewerDiagnosticChannel => T("ThreeD.Workbench.ViewerDiagnosticChannel", "\uC9C4\uB2E8 \uCC44\uB110", "Diagnostic channel");
     public string ViewerOverlays => T("ThreeD.Workbench.ViewerOverlays", "\uC624\uBC84\uB808\uC774", "Overlays");
@@ -541,9 +540,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ViewerAutoHeightRange => T("ThreeD.Command.ViewerAutoHeightRange", "AUTO", "AUTO");
     public string ViewerHeightRangeMinimum => T("ThreeD.Workbench.ViewerHeightRangeMinimum", "\uD558\uD55C", "Min");
     public string ViewerHeightRangeMaximum => T("ThreeD.Workbench.ViewerHeightRangeMaximum", "\uC0C1\uD55C", "Max");
-    public string ViewerHeightRangeMinimumDecrease => T("ThreeD.Viewer.HeightColorMinimumDecrease", "\uB192\uC774 \uC0C9\uC0C1 \uD558\uD55C \uB0AE\uC8FC\uAE30", "Lower the height-color minimum");
+    public string ViewerHeightRangeMinimumDecrease => T("ThreeD.Viewer.HeightColorMinimumDecrease", "\uB192\uC774 \uC0C9\uC0C1 \uD558\uD55C \uB0AE\uCD94\uAE30", "Lower the height-color minimum");
     public string ViewerHeightRangeMinimumIncrease => T("ThreeD.Viewer.HeightColorMinimumIncrease", "\uB192\uC774 \uC0C9\uC0C1 \uD558\uD55C \uB192\uC774\uAE30", "Raise the height-color minimum");
-    public string ViewerHeightRangeMaximumDecrease => T("ThreeD.Viewer.HeightColorMaximumDecrease", "\uB192\uC774 \uC0C9\uC0C1 \uC0C1\uD55C \uB0AE\uC8FC\uAE30", "Lower the height-color maximum");
+    public string ViewerHeightRangeMaximumDecrease => T("ThreeD.Viewer.HeightColorMaximumDecrease", "\uB192\uC774 \uC0C9\uC0C1 \uC0C1\uD55C \uB0AE\uCD94\uAE30", "Lower the height-color maximum");
     public string ViewerHeightRangeMaximumIncrease => T("ThreeD.Viewer.HeightColorMaximumIncrease", "\uB192\uC774 \uC0C9\uC0C1 \uC0C1\uD55C \uB192\uC774\uAE30", "Raise the height-color maximum");
     public string HeightImage => T("ThreeD.Workbench.HeightImage", "\uB192\uC774 \uC774\uBBF8\uC9C0", "Height Image");
     public string OpenHeightImage => T("ThreeD.Command.OpenHeightImage", "\uB192\uC774 \uC774\uBBF8\uC9C0 \uC5F4\uAE30", "Open Height Image");
@@ -553,9 +552,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string HeightImageActualPixels => T("ThreeD.Command.HeightImageActualPixels", "1:1 \uD53D\uC140", "1:1 pixels");
     public string HeightImageZoomOut => T("ThreeD.Command.HeightImageZoomOut", "\uCD95\uC18C", "Zoom out");
     public string HeightImageZoomIn => T("ThreeD.Command.HeightImageZoomIn", "\uD655\uB300", "Zoom in");
-    public string HeightImageCoordinateHint => T("ThreeD.Workbench.HeightImageCoordinateHint", "\uCEE4\uC11C\uB97C \uC774\uB3D9\uD574 column / row / H \uD655\uC778", "Move the pointer to inspect column / row / H");
+    public string HeightImageCoordinateHint => T("ThreeD.Workbench.HeightImageCoordinateHint", "\uC5F4 \u2014 \u00B7 \uD589 \u2014 \u00B7 \uB192\uC774 \u2014", "Column — · row — · height —");
     public string HeightImagePanZoomHint => T("ThreeD.Workbench.HeightImagePanZoomHint", "\uD720: \uD655\uB300/\uCD95\uC18C \u00B7 \uC911\uAC04 \uB4DC\uB798\uADF8: \uC774\uB3D9", "Wheel: zoom \u00B7 middle drag: pan");
-    public string HeightImageViewOnly => T("ThreeD.Workbench.HeightImageViewOnly", "\uD45C\uC2DC/\uCEE4\uC11C\uB294 \uBCF4\uAE30 \uC804\uC6A9 \u00B7 ROI \uC801\uC6A9\uB9CC \uB808\uC2DC\uD53C \uBCC0\uACBD \u00B7 \uAC80\uC0AC \uC2E4\uD589 \uC5C6\uC74C", "Display and cursor are view only \u00B7 only ROI Apply changes the recipe \u00B7 inspection does not run");
+    public string HeightImageViewOnly => T("ThreeD.Workbench.HeightImageViewOnly", "\uB192\uC774 \uC774\uBBF8\uC9C0", "Height image");
     public string HeightImageMissingValue => T("ThreeD.Workbench.HeightImageMissingValue", "\uACB0\uCE21 \uC140", "missing cell");
     public string HeightImagePalette => T("ThreeD.Workbench.HeightImagePalette", "\uD314\uB808\uD2B8", "Palette");
     public string HeightImagePaletteHeight => T("ThreeD.Workbench.HeightImagePaletteHeight", "\uB192\uC774", "Height");
@@ -564,14 +563,14 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string HeightImagePaletteMonochrome => T("ThreeD.Workbench.HeightImagePaletteMonochrome", "\uB2E8\uC0C9", "Monochrome");
     public string HeightImageAutoRange => T("ThreeD.Command.HeightImageAutoRange", "\uC790\uB3D9 \uBC94\uC704", "Auto range");
     public string HeightImageManualRange => T("ThreeD.Workbench.HeightImageManualRange", "\uC218\uB3D9 \uBC94\uC704", "Manual range");
-    public string HeightImageAutoRangeToolTip => T("ThreeD.Command.HeightImageAutoRangeToolTip", "\uC804\uCCB4 \uC720\uD6A8 \uB192\uC774\uC758 \uCD5C\uC18C/\uCD5C\uB300\uB85C \uD45C\uC2DC \uBC94\uC704\uB97C \uBCF5\uC6D0\uD569\uB2C8\uB2E4. \uBCF4\uAE30 \uC804\uC6A9\uC785\uB2C8\uB2E4.", "Restore the display range to the full valid-height minimum and maximum. View only.");
+    public string HeightImageAutoRangeToolTip => T("ThreeD.Command.HeightImageAutoRangeToolTip", "\uC804\uCCB4 \uC720\uD6A8 \uB192\uC774 \uBC94\uC704\uB85C \uB9DE\uCDA4", "Fit the full valid-height range");
     public string HeightImageRangeMinimum => T("ThreeD.Workbench.HeightImageRangeMinimum", "\uCD5C\uC18C", "Min");
     public string HeightImageRangeMaximum => T("ThreeD.Workbench.HeightImageRangeMaximum", "\uCD5C\uB300", "Max");
     public string HeightImageApplyRange => T("ThreeD.Command.HeightImageApplyRange", "\uBC94\uC704 \uC801\uC6A9", "Apply range");
-    public string HeightImageApplyRangeToolTip => T("ThreeD.Command.HeightImageApplyRangeToolTip", "\uC785\uB825\uD55C \uCD5C\uC18C/\uCD5C\uB300\uB97C \uB192\uC774 \uC774\uBBF8\uC9C0 \uC0C9\uC0C1\uC5D0\uB9CC \uC801\uC6A9\uD569\uB2C8\uB2E4. \uB370\uC774\uD130\uC640 \uB808\uC2DC\uD53C\uB294 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Apply the entered minimum and maximum to Height Image colors only. Data and recipe stay unchanged.");
+    public string HeightImageApplyRangeToolTip => T("ThreeD.Command.HeightImageApplyRangeToolTip", "\uB192\uC774 \uC774\uBBF8\uC9C0\uC758 \uC0C9\uC0C1 \uBC94\uC704\uC5D0 \uC801\uC6A9", "Apply to the height-image colour range");
     public string HeightImageRangeInvalid => T("ThreeD.Workbench.HeightImageRangeInvalid", "\uC720\uD55C\uD55C \uC22B\uC790\uB97C \uC785\uB825\uD558\uACE0 \uCD5C\uC18C\uB97C \uCD5C\uB300\uBCF4\uB2E4 \uC791\uAC8C \uC124\uC815\uD558\uC138\uC694.", "Enter finite numbers and keep minimum below maximum.");
     public string HeightImageInvalidOverlay => T("ThreeD.Workbench.HeightImageInvalidOverlay", "\uACB0\uCE21 \uC140 \uD45C\uC2DC", "Show missing cells");
-    public string HeightImageInvalidOverlayToolTip => T("ThreeD.Workbench.HeightImageInvalidOverlayToolTip", "\uACB0\uCE21 \uC140\uC744 \uBE57\uAE08\uC73C\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4. \uC6D0\uBCF8 \uB370\uC774\uD130, ROI, \uB808\uC2DC\uD53C\uC640 \uAC80\uC0AC \uACB0\uACFC\uB294 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Hatch missing cells. Source data, ROI, recipe, and inspection results remain unchanged.");
+    public string HeightImageInvalidOverlayToolTip => T("ThreeD.Workbench.HeightImageInvalidOverlayToolTip", "\uACB0\uCE21 \uC140\uC744 \uBE57\uAE08\uC73C\uB85C \uD45C\uC2DC", "Hatch missing cells");
     public string HeightImageInvalidOverlayLegend => T("ThreeD.Workbench.HeightImageInvalidOverlayLegend", "\uBE57\uAE08 = \uACB0\uCE21 \uC140", "Hatch = missing cell");
     public string HeightImageInvalidOverlayHidden => T("ThreeD.Workbench.HeightImageInvalidOverlayHidden", "\uC228\uAE40 = \uACB0\uCE21 \uC140", "Hidden missing cells");
     public string HeightImageInvalidOverlayUnavailable => T("ThreeD.Workbench.HeightImageInvalidOverlayUnavailable", "\uACB0\uCE21 \uC140 \uC815\uBCF4 \uC5C6\uC74C", "Missing-cell information unavailable");
@@ -587,14 +586,14 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string HeightImageCursorFromThreeD => T("ThreeD.Workbench.HeightImageCursorFromThreeD", "3D\uC5D0\uC11C", "from 3D");
     public string ThicknessRepeatGrid => T("ThreeD.Workbench.ThicknessRepeatGrid", "\uB450\uAED8 4 \u00D7 2 \uBC18\uBCF5", "Thickness repeat grid");
     public string RepeatAsGrid => T("ThreeD.Command.RepeatAsGrid", "\uACA9\uC790\uB85C \uBC18\uBCF5", "Repeat as grid");
-    public string ThicknessRepeatReady => T("ThreeD.Workbench.ThicknessRepeatReady", "\uC801\uC6A9\uB41C \uAE30\uC900/\uCE21\uC815 ROI\uB97C \uBC18\uBCF5 \uD6C4\uBCF4\uB85C \uAC80\uD1A0\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "The applied Reference and Measurement ROIs are ready for repeat review.");
-    public string ThicknessRepeatUnavailable => T("ThreeD.Workbench.ThicknessRepeatUnavailable", "\uC644\uB8CC\uB41C Thickness\uC640 \uC801\uC6A9\uB41C \uAE30\uC900/\uCE21\uC815 ROI, \uADF8\uB9AC\uACE0 \uC801\uC6A9\uB41C \uC124\uC815\uAC12\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.", "A complete Thickness step, both applied ROIs, and committed parameters are required.");
+    public string ThicknessRepeatReady => T("ThreeD.Workbench.ThicknessRepeatReady", "\uBC18\uBCF5\uD560 ROI\uB97C \uD655\uC778\uD558\uC138\uC694.", "Review the ROIs to repeat.");
+    public string ThicknessRepeatUnavailable => T("ThreeD.Workbench.ThicknessRepeatUnavailable", "\uC644\uB8CC\uB41C \uB450\uAED8 \uACB0\uACFC\uC640 \uC801\uC6A9\uB41C \uAE30\uC900\u00B7\uCE21\uC815 ROI \uBC0F \uC124\uC815\uAC12\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.", "Requires a completed thickness result and applied reference/measurement ROIs and settings.");
     public string ThicknessRepeatColumns => T("ThreeD.Workbench.ThicknessRepeatColumns", "\uC5F4", "Columns");
     public string ThicknessRepeatRows => T("ThreeD.Workbench.ThicknessRepeatRows", "\uD589", "Rows");
     public string ThicknessRepeatColumnPitch => T("ThreeD.Workbench.ThicknessRepeatColumnPitch", "X \uD53C\uCE58(\uC5F4)", "X pitch (columns)");
     public string ThicknessRepeatRowPitch => T("ThreeD.Workbench.ThicknessRepeatRowPitch", "Z \uD53C\uCE58(\uD589)", "Z pitch (rows)");
     public string ThicknessRepeatNamePattern => T("ThreeD.Workbench.ThicknessRepeatNamePattern", "\uC774\uB984 \uD328\uD134", "Name pattern");
-    public string ThicknessRepeatReviewFormat => T("ThreeD.Workbench.ThicknessRepeatReviewFormat", "\uB2E8\uACC4 {0}\uAC1C \u00B7 ROI {1}\uAC1C \u00B7 \uC801\uC6A9 \uC804 \uB808\uC2DC\uD53C \uBCC0\uACBD \uC5C6\uC74C", "{0} steps \u00B7 {1} ROIs \u00B7 recipe unchanged until Apply");
+    public string ThicknessRepeatReviewFormat => T("ThreeD.Workbench.ThicknessRepeatReviewFormat", "\uB2E8\uACC4 {0}\uAC1C \u00B7 ROI {1}\uAC1C", "{0} steps \u00B7 {1} ROIs");
     public string ApplyThicknessRepeat => T("ThreeD.Command.ApplyThicknessRepeat", "\uBC18\uBCF5 \uC801\uC6A9", "Apply repeat");
     public string CancelThicknessRepeat => T("ThreeD.Command.CancelThicknessRepeat", "\uBC18\uBCF5 \uCDE8\uC18C", "Cancel repeat");
     public string ThicknessGroupFormat => T("ThreeD.Workbench.ThicknessGroupFormat", "\uB450\uAED8 \uADF8\uB8F9 ({0})", "Thickness group ({0})");
@@ -626,7 +625,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Teaching needs {0} structural correction(s) before it can be saved.");
     public string RunRecord => T("ThreeD.Workbench.RunRecord", "\uC2E4\uD589 \uAE30\uB85D", "Run Record");
     public string RunRecordTitle => T("ThreeD.Workbench.RunRecordTitle", "\uC21C\uC11C\uD615 \uB2E4\uC911 \uB2E8\uACC4 \uC2E4\uD589 \uAE30\uB85D", "Ordered multi-step run record");
-    public string RunRecordDetail => T("ThreeD.Workbench.RunRecordDetail", "\uAC01 \uB3C4\uAD6C\uC758 \uC785\uB825\u00B7\uCD9C\uB825 \uB370\uC774\uD130, \uC0C1\uD0DC, \uD575\uC2EC \uCE21\uC815\uAC12\uC744 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4.", "Read-only input/output entities, state, and key metric for each executed tool.");
+    public string RunRecordDetail => T("ThreeD.Workbench.RunRecordDetail", "\uB3C4\uAD6C\uBCC4 \uC785\uB825\u00B7\uCD9C\uB825\u00B7\uC0C1\uD0DC\u00B7\uCE21\uC815\uAC12", "Tool inputs, outputs, status, and measurements");
     public string RunRecordOpen => T("ThreeD.Command.RunRecordOpen", "\uC2E4\uD589 \uAE30\uB85D \uC5F4\uAE30", "Open record");
     public string RunRecordOpenCurrent => T("ThreeD.Command.RunRecordOpenCurrent", "JSON \uC5F4\uAE30", "Open JSON");
     public string RunRecordOpenHtml => T("ThreeD.Command.RunRecordOpenHtml", "HTML \uC5F4\uAE30", "Open HTML");
@@ -643,18 +642,18 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Raw 3D data, absolute paths, and user/machine identity are excluded by default.");
     public string SupportBundleToolTip => T(
         "ThreeD.Command.SupportBundleToolTip",
-        "현재 레시피 설정, 최근 세션 로그, 입력 데이터 식별값, 품질 정보와 결과를 개인정보 안전 ZIP으로 만듭니다. 공유 전 내용을 확인하세요.",
-        "Create a privacy-safe ZIP with recipe settings, a recent session-log excerpt, source identity, quality evidence, and the current result. Review it before sharing.");
+        "현재 레시피 설정, 최근 로그, 입력 식별값, 품질 정보와 결과를 ZIP으로 저장합니다. 공유 전 내용을 확인하세요.",
+        "Save recipe settings, recent logs, input identifiers, quality information and results as a ZIP. Review the contents before sharing.");
     public string RunRecordRecent => T("ThreeD.Workbench.RunRecordRecent", "\uCD5C\uADFC \uC2E4\uD589 \uAE30\uB85D", "Recent Run Records");
     public string RunRecordOpenRecent => T("ThreeD.Command.RunRecordOpenRecent", "\uC120\uD0DD \uAE30\uB85D \uC5F4\uAE30", "Open selected");
     public string RunRecordCompareRecent => T("ThreeD.Command.RunRecordCompareRecent", "\uD604\uC7AC\uC640 \uBE44\uAD50", "Compare with current");
     public string RunRecordComparisonTitle => T("ThreeD.Workbench.RunRecordComparisonTitle", "\uB450 \uC2E4\uD589 \uBE44\uAD50", "Two-run comparison");
-    public string RunRecordComparisonDetail => T("ThreeD.Workbench.RunRecordComparisonDetail", "\uAC80\uC0AC \uC870\uAC74 \uC77C\uCE58\uB97C \uBA3C\uC800 \uD655\uC778\uD558\uACE0 \uACB0\uACFC\uC640 \uC2DC\uAC04 \uAD00\uCC30\uAC12\uC744 \uBD84\uB9AC\uD569\uB2C8\uB2E4.", "Check inspection-condition identity first, then review results separately from timing observations.");
+    public string RunRecordComparisonDetail => T("ThreeD.Workbench.RunRecordComparisonDetail", "\uAC80\uC0AC \uC870\uAC74\uACFC \uACB0\uACFC \uBE44\uAD50", "Compare inspection conditions and results");
     public string RunRecordSummaryFormat => T("ThreeD.Workbench.RunRecordSummaryFormat", "\uAC80\uC0AC \uAE30\uB85D \uC2A4\uD0A4\uB9C8 {0} | \uC21C\uC11C\uD615 \uB2E8\uACC4 {1}\uAC1C | \uCD5C\uC885 {2}", "Run Record schema {0} | Ordered steps: {1} | Overall: {2}");
     public string RunRecordSourceQuality => T("ThreeD.Workbench.RunRecordSourceQuality", "\uC785\uB825 \uC0C1\uD0DC \uC815\uBCF4", "Source Quality evidence");
-    public string RunRecordSourceQualityDetail => T("ThreeD.Workbench.RunRecordSourceQualityDetail", "실행에 사용한 입력 상태를 확인한 기록입니다. 입력을 다시 분석하거나 검사를 실행하지 않습니다.", "Read-only quality snapshot for the exact run source; it does not reanalyze the source or execute inspection.");
+    public string RunRecordSourceQualityDetail => T("ThreeD.Workbench.RunRecordSourceQualityDetail", "실행 당시의 입력 상태", "Source quality at the time of the run");
     public string RunRecordThresholdCorrection => T("ThreeD.Workbench.RunRecordThresholdCorrection", "\uC784\uACC4\uAC12 \uAD50\uC815 \uC815\uBCF4", "Threshold correction evidence");
-    public string RunRecordThresholdCorrectionDetail => T("ThreeD.Workbench.RunRecordThresholdCorrectionDetail", "\uC2E4\uD589 \uC2DC\uC810\uC758 sidecar\uB97C \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uBCF4\uC874\uD569\uB2C8\uB2E4. \uC2E4\uD589\u00B7\uC801\uC6A9\u00B7\uC7AC\uC0DD\uC740 \uC218\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read-only sidecar snapshot at run time; it never executes, applies, or replays inspection.");
+    public string RunRecordThresholdCorrectionDetail => T("ThreeD.Workbench.RunRecordThresholdCorrectionDetail", "\uC2E4\uD589 \uB2F9\uC2DC\uC758 \uC784\uACC4\uAC12 \uAD50\uC815 \uAE30\uB85D", "Threshold correction recorded for the run");
     public string RunRecordOpenFailed => T("ThreeD.Message.RunRecordOpenFailed", "\uC2E4\uD589 \uAE30\uB85D\uC744 \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. JSON \uD30C\uC77C\uACFC \uC2A4\uD0A4\uB9C8\uB97C \uD655\uC778\uD558\uC138\uC694.", "The Run Record could not be read. Check the JSON file and schema.");
     public string RunRecordExportedFormat => T("ThreeD.Message.RunRecordExportedFormat", "\uC2E4\uD589 \uAE30\uB85D \uBB36\uC74C\uC744 \uB0B4\uBCF4\uB0C8\uC2B5\uB2C8\uB2E4: {0}", "Run Record bundle exported: {0}");
     public string SupportBundleExportedFormat => T(
@@ -663,7 +662,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Support files saved: {0}");
     public string ResultsWorkspaceTitle => T("ThreeD.Results.Title", "기록", "Records");
     public string ResultsWorkspaceRunResultTitle => T("ThreeD.Results.RunResultTitle", "\uC2E4\uD589 \uACB0\uACFC", "Run result");
-    public string ResultsWorkspaceNoRun => T("ThreeD.Results.NoRun", "\uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uBA74 \uD56D\uBAA9\uBCC4 \uAC12\uACFC \uD310\uC815\uC744 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Run the inspection to see each item's value and decision.");
+    public string ResultsWorkspaceNoRun => T("ThreeD.Results.NoRun", "\uAC80\uC0AC \uACB0\uACFC \uC5C6\uC74C", "No inspection results");
     public string ResultsWorkspaceItemColumn => T("ThreeD.Results.ItemColumn", "검사 항목", "Inspection item");
     public string ResultsWorkspaceDecisionColumn => T("ThreeD.Results.DecisionColumn", "판정", "Decision");
     public string ResultsWorkspaceValueColumn => T("ThreeD.Results.ValueColumn", "측정값", "Value");
@@ -687,7 +686,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "If a step failed, review the Run Record and fix it in Teach. Open Advanced only when deeper diagnosis is needed.");
     public string ValidationSet => T("ThreeD.Workbench.ValidationSet", "\uBC18\uBCF5 \uAC80\uC99D", "Validation Set");
     public string ValidationSetTitle => T("ThreeD.Workbench.ValidationSetTitle", "\uB2E4\uC911 \uC0D8\uD50C \uBC18\uBCF5 \uAC80\uC99D", "Multi-sample repeat validation");
-    public string ValidationSetDetail => T("ThreeD.Workbench.ValidationSetDetail", "\uD2F0\uCE6D\uB41C \uB808\uC2DC\uD53C\uB97C \uC120\uD0DD\uD55C C3D \uC0D8\uD50C\uC5D0 \uC21C\uC11C\uB300\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4. \uC0D8\uD50C \uC120\uD0DD\uC740 3D \uBDF0\uC5B4\uC758 \uD45C\uC2DC \uADFC\uAC70\uB9CC \uBC14\uAFB8\uBA70, \uB808\uC2DC\uD53C\uB97C \uBCC0\uACBD\uD558\uAC70\uB098 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Run the taught recipe sequentially on selected C3D samples. Selecting a sample only changes the evidence shown in the 3D Viewer; it never changes the recipe or runs inspection.");
+    public string ValidationSetDetail => T("ThreeD.Workbench.ValidationSetDetail", "\uC120\uD0DD\uD55C C3D \uC0D8\uD50C\uC5D0 \uD604\uC7AC \uB808\uC2DC\uD53C\uB97C \uC801\uC6A9\uD574 \uAC80\uC99D\uD569\uB2C8\uB2E4.", "Validate selected C3D samples with the current recipe.");
     public string ValidationSetAddSamples => T("ThreeD.Command.ValidationSetAddSamples", "\uC0D8\uD50C \uCD94\uAC00", "Add samples");
     public string ValidationSetAddCurrentInput => T("ThreeD.Command.ValidationSetAddCurrentInput", "\uD604\uC7AC \uC785\uB825 \uCD94\uAC00", "Add current input");
     public string ValidationSetRunAll => T(
@@ -696,13 +695,13 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Run sample set");
     public string ValidationSetRunAllHint => T(
         "ThreeD.Command.ValidationSetRunAllHint",
-        "\uAC80\uC99D \uC0D8\uD50C \uC138\uD2B8\uB97C \uC9C1\uC811 \uC2E4\uD589\uD569\uB2C8\uB2E4. Tab\uC73C\uB85C \uC774\uB3D9\uD55C \uB4A4 Space \uB610\uB294 Enter\uB85C \uC2E4\uD589\uD558\uC138\uC694.",
-        "Explicitly run the validation sample set. Focus it with Tab, then press Space or Enter.");
+        "\uC0D8\uD50C \uAC80\uC99D \uC2E4\uD589",
+        "Run sample validation");
     public string ValidationSetClear => T("ThreeD.Command.ValidationSetClear", "\uBAA9\uB85D \uBE44\uC6B0\uAE30", "Clear list");
     public string ValidationSetSamples => T("ThreeD.Workbench.ValidationSetSamples", "\uAC80\uC99D \uC0D8\uD50C", "Validation samples");
     public string ValidationSetSelectedRecord => T("ThreeD.Workbench.ValidationSetSelectedRecord", "\uC120\uD0DD \uC0D8\uD50C \uC2E4\uD589 \uAE30\uB85D", "Selected sample record");
     public string ValidationSetNoSamples => T("ThreeD.Workbench.ValidationSetNoSamples", "\uC544\uC9C1 \uAC80\uC99D \uC0D8\uD50C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.", "No validation samples have been added.");
-    public string ValidationSetNoSelection => T("ThreeD.Workbench.ValidationSetNoSelection", "\uC0D8\uD50C\uC744 \uC120\uD0DD\uD558\uBA74 \uB2E8\uACC4\uBCC4 \uC2E4\uD589 \uADFC\uAC70\uAC00 \uD45C\uC2DC\uB429\uB2C8\uB2E4.", "Select a sample to inspect its step-by-step evidence.");
+    public string ValidationSetNoSelection => T("ThreeD.Workbench.ValidationSetNoSelection", "\uC0D8\uD50C\uC744 \uC120\uD0DD\uD558\uC138\uC694.", "Select a sample.");
     public string ValidationSetFile => T("ThreeD.Column.ValidationSetFile", "\uD30C\uC77C", "File");
     public string ValidationSetDuration => T("ThreeD.Column.ValidationSetDuration", "\uC2E4\uD589 \uC2DC\uAC04", "Duration");
     public string ValidationSetCoverage => T("ThreeD.Workbench.ValidationSetCoverage", "\uC2E4\uD589 \uC801\uC6A9 \uBC94\uC704", "Execution coverage");
@@ -718,8 +717,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetRole => T("ThreeD.Workbench.ValidationSetRole", "\uC5ED\uD560", "Role");
     public string ValidationSetExpectedRole => T(
         "ThreeD.Workbench.ValidationSetExpectedRole",
-        "\uAE30\uB300 \uC5ED\uD560",
-        "Expected");
+        "\uC0D8\uD50C \uAD6C\uBD84",
+        "Sample category");
     public string ValidationSetRunState => T(
         "ThreeD.Workbench.ValidationSetRunState",
         "\uC2E4\uD589 \uC0C1\uD0DC",
@@ -730,15 +729,15 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "1. Add samples  \u2192  2. Set expected roles  \u2192  3. Run sample set");
     public string ValidationSetMeaningGuide => T(
         "ThreeD.Workbench.ValidationSetMeaningGuide",
-        "\uAE30\uB300 \uC5ED\uD560\uC740 \uC791\uC5C5\uC790\uAC00 \uC815\uD55C \uC815\uB2F5\uC774\uACE0, \uC2E4\uD589 \uC0C1\uD0DC\uB294 \uB808\uC2DC\uD53C\uC758 \uC2E4\uC81C \uACB0\uACFC\uC785\uB2C8\uB2E4. Held-out\uC740 \uC784\uACC4\uAC12 \uC870\uC815\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.",
-        "Expected role is the operator's answer; Run state is the recipe result. Held-out is excluded from threshold tuning.");
+        "\uBCF4\uB958 \uC0D8\uD50C\uC740 \uD5C8\uC6A9 \uBC94\uC704 \uC870\uC815\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.",
+        "Held-out samples are excluded from limit adjustment.");
     public string ValidationSetSelectedExpectedRole => T(
         "ThreeD.Workbench.ValidationSetSelectedExpectedRole",
-        "\uC120\uD0DD\uD55C \uC0D8\uD50C\uC758 \uAE30\uB300 \uC5ED\uD560",
-        "Expected role for selected sample");
+        "\uC0D8\uD50C \uAD6C\uBD84",
+        "Sample category");
     public string ValidationSetRoleGood => T("ThreeD.Workbench.ValidationSetRoleGood", "\uC591\uD488", "Good");
     public string ValidationSetRoleBad => T("ThreeD.Workbench.ValidationSetRoleBad", "\uBD88\uB7C9", "Bad");
-    public string ValidationSetRoleHeldOut => T("ThreeD.Workbench.ValidationSetRoleHeldOut", "\uD640\uB4DC\uc544\uc6C3", "Held-out");
+    public string ValidationSetRoleHeldOut => T("ThreeD.Workbench.ValidationSetRoleHeldOut", "\uBCF4\uB958", "Held-out");
     public string ValidationSetRoleGoodAccessible => T(
         "ThreeD.Workbench.ValidationSetRoleGoodAccessible",
         "\uC120\uD0DD\uD55C \uC0D8\uD50C \uAE30\uB300 \uC5ED\uD560: \uC591\uD488",
@@ -755,12 +754,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.Workbench.ValidationWorkspaceNavigationHint",
         "\uAC80\uD1A0 \uD654\uBA74 \uC804\uD658 \u00B7 '\uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589'\uB9CC \uAC80\uC0AC\uB97C \uC2DC\uC791\uD569\uB2C8\uB2E4.",
         "Review sections \u00B7 only 'Run sample set' starts inspection.");
-    public string ValidationSetLabeledEvidence => T("ThreeD.Workbench.ValidationSetLabeledEvidence", "\uB77C\uBCA8 \uC0D8\uD50C \uBD84\uD3EC \uC815\uBCF4", "Labeled sample distributions");
+    public string ValidationSetLabeledEvidence => T("ThreeD.Workbench.ValidationSetLabeledEvidence", "\uAE30\uB300 \uD310\uC815\uBCC4 \uCE21\uC815\uAC12 \uBD84\uD3EC", "Measurement distributions by expected decision");
     public string ValidationSetScope => T("ThreeD.Workbench.ValidationSetScope", "\uBC94\uC704", "Scope");
     public string ValidationSetOwner => T("ThreeD.Workbench.ValidationSetOwner", "\uB2E8\uACC4 / ROI", "Step / ROI");
     public string ValidationSetMetric => T("ThreeD.Workbench.ValidationSetMetric", "\uCE21\uC815\uAC12", "Metric");
     public string ValidationSetThresholdCandidates => T("ThreeD.Workbench.ValidationSetThresholdCandidates", "\uC784\uACC4\uAC12 \uD6C4\uBCF4\uC640 \uC624\uB958\uD45C", "Threshold candidates and error table");
-    public string ValidationSetThresholdReadOnly => T("ThreeD.Workbench.ValidationSetThresholdReadOnly", "\uC120\uD0DD\uD55C \uACB0\uACFC\uB294 \uD655\uC778\uB9CC \uAC00\uB2A5\uD569\uB2C8\uB2E4. \uC801\uC6A9\uD558\uBA74 \uC124\uC815\uCC3D\uC758 \uAC12\uB9CC \uBC14\uB01D\uB2C8\uB2E4.", "Selection is read-only \u00B7 Apply changes the PropertyGrid draft only");
+    public string ValidationSetThresholdReadOnly => T("ThreeD.Workbench.ValidationSetThresholdReadOnly", "\uD6C4\uBCF4 \uAC80\uD1A0", "Candidate review");
     public string ValidationSetThresholdAssistant => T("ThreeD.Workbench.ValidationSetThresholdAssistant", "\uC791\uC5C5\uBCC4 \uC784\uACC4\uAC12 \uBCF4\uC870", "Task-specific threshold assistant");
     public string ValidationSetThresholdAnalyze => T("ThreeD.Workbench.ValidationSetThresholdAnalyze", "\uBD84\uC11D", "Analyze");
     public string ValidationSetThresholdPropose => T("ThreeD.Workbench.ValidationSetThresholdPropose", "\uC81C\uC548", "Propose");
@@ -793,26 +792,26 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Fix in Teach");
     public string ValidationWorkspaceOpenInTeachHint => T(
         "ThreeD.Workbench.ValidationWorkspaceOpenInTeachHint",
-        "\uC120\uD0DD\uD55C \uC2E4\uD328 \uB2E8\uACC4\uB97C \uD2F0\uCE6D \uD654\uBA74\uC5D0\uC11C \uC5FD\uB2C8\uB2E4. \uB808\uC2DC\uD53C\uB97C \uBCC0\uACBD\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "Open the selected failed step in Teach without changing or running the recipe.");
-    public string ValidationFailureSummaryTitle => T("ThreeD.Validation.FailureSummaryTitle", "\uC9C0\uAE08 \uC218\uC815\uD560 \uC2E4\uD328", "Failure to correct now");
+        "\uD2F0\uCE6D\uC5D0\uC11C \uC218\uC815",
+        "Edit in Teach");
+    public string ValidationFailureSummaryTitle => T("ThreeD.Validation.FailureSummaryTitle", "\uC2E4\uD328 \uB3C4\uAD6C", "Failed tool");
     public string ValidationFailureSample => T("ThreeD.Validation.FailureSample", "\uC2E4\uD328 \uC0D8\uD50C", "Failed sample");
     public string ValidationFailureRule => T("ThreeD.Validation.FailureRule", "\uC2E4\uD328 \uADDC\uCE59", "Failed rule");
     public string ValidationFailureReason => T("ThreeD.Validation.FailureReason", "\uC2E4\uD328 \uC774\uC720", "Reason");
     public string ValidationFailureNextAction => T("ThreeD.Validation.FailureNextAction", "\uB2E4\uC74C \uC791\uC5C5", "Next action");
     public string ValidationFailureNextActionDetail => T(
         "ThreeD.Validation.FailureNextActionDetail",
-        "\uC601\uD5A5\uC744 \uBC1B\uC740 \uD615\uC0C1\uC744 \uD655\uC778\uD55C \uB4A4 '\uD2F0\uCE6D\uC5D0\uC11C \uC218\uC815'\uC744 \uC120\uD0DD\uD558\uC138\uC694. \uAE30\uC220 \uCE21\uC815\uAC12\uACFC \uC624\uBC84\uB808\uC774\uB294 \uC544\uB798\uC5D0\uC11C \uAC80\uD1A0\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-        "Review the affected geometry, then choose Fix in Teach. Technical metrics and overlays remain available below.");
+        "\uC2E4\uD328\uD55C \uB3C4\uAD6C\uC758 \uAC12\uACFC \uC601\uC5ED\uC744 \uD655\uC778\uD558\uC138\uC694.",
+        "Check the failed tool values and region.");
     public string ValidationSetThresholdCancelReview => T("ThreeD.Command.ValidationSetThresholdCancelReview", "\uAC80\uD1A0 \uCDE8\uC18C", "Cancel review");
     public string ValidationSetThresholdApplyDraft => T("ThreeD.Command.ValidationSetThresholdApplyDraft", "\uC124\uC815\uCC3D\uC5D0 \uC785\uB825", "Apply to draft");
-    public string ValidationSetThresholdRevalidateDevelopment => T("ThreeD.Command.ValidationSetThresholdRevalidateDevelopment", "\uAC1C\uBC1C \uC7AC\uAC80\uC99D", "Revalidate development");
-    public string ValidationSetThresholdReplayHeldOut => T("ThreeD.Command.ValidationSetThresholdReplayHeldOut", "Held-out \uC7AC\uC2E4\uD589", "Replay Held-out");
+    public string ValidationSetThresholdRevalidateDevelopment => T("ThreeD.Command.ValidationSetThresholdRevalidateDevelopment", "\uC870\uC815 \uC0D8\uD50C \uC7AC\uAC80\uC99D", "Revalidate adjustment samples");
+    public string ValidationSetThresholdReplayHeldOut => T("ThreeD.Command.ValidationSetThresholdReplayHeldOut", "\uBCF4\uB958 \uC0D8\uD50C \uC7AC\uAC80\uC99D", "Revalidate held-out samples");
     public string ValidationSetLimits => T("ThreeD.Workbench.ValidationSetLimits", "\uD55C\uACC4", "Limits");
-    public string ValidationSetCorrect => T("ThreeD.Workbench.ValidationSetCorrect", "\uC815\uB2F5", "Correct");
+    public string ValidationSetCorrect => T("ThreeD.Workbench.ValidationSetCorrect", "\uD310\uC815 \uC77C\uCE58", "Matching decisions");
     public string ValidationSetErrors => T("ThreeD.Workbench.ValidationSetErrors", "\uC624\uB958", "Errors");
-    public string ValidationSetFalseAccept => T("ThreeD.Workbench.ValidationSetFalseAccept", "\uC624\uD310\uC815 \uD1B5\uACFC", "False accept");
-    public string ValidationSetFalseReject => T("ThreeD.Workbench.ValidationSetFalseReject", "\uC815\uC0C1 \uAC70\uBD80", "False reject");
+    public string ValidationSetFalseAccept => T("ThreeD.Workbench.ValidationSetFalseAccept", "\uBD88\uB7C9\uC744 OK\uB85C \uD310\uC815", "Bad classified OK");
+    public string ValidationSetFalseReject => T("ThreeD.Workbench.ValidationSetFalseReject", "\uC591\uD488\uC744 NG\uB85C \uD310\uC815", "Good classified NG");
     public string ValidationSetExpected => T("ThreeD.Workbench.ValidationSetExpected", "\uAE30\uB300", "Expected");
     public string ValidationSetPredicted => T("ThreeD.Workbench.ValidationSetPredicted", "\uD310\uC815", "Predicted");
     public string ValidationSetDecision => T("ThreeD.Workbench.ValidationSetDecision", "\uACB0\uACFC", "Decision");
@@ -847,16 +846,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Source quality baseline");
     public string OutputCompareQualityDeltaSummaryFormat => T(
         "ThreeD.Workbench.OutputCompareQualityDeltaSummaryFormat",
-        "\uC6D0\uBCF8 \uC720\uD6A8 {0:N0} \u00B7 \uB204\uB77D {1:N0} \u2192 \uC900\uBE44 \uACB0\uACFC \uC720\uD6A8 {2:N0} ({3}) \u00B7 \uB204\uB77D {4:N0} ({5}) \u00B7 \uC774\uC0C1\uCE58 {6} \u00B7 {7}",
-        "Source valid {0:N0} \u00B7 missing {1:N0} \u2192 prepared valid {2:N0} ({3}) \u00B7 missing {4:N0} ({5}) \u00B7 outliers {6} \u00B7 {7}");
+        "\uC6D0\uBCF8 \uC720\uD6A8 {0:N0} \u00B7 \uB204\uB77D {1:N0} \u2192 \uCC98\uB9AC \uACB0\uACFC \uC720\uD6A8 {2:N0} ({3}) \u00B7 \uB204\uB77D {4:N0} ({5}) \u00B7 \uC81C\uC678 {6} \u00B7 {7}",
+        "Source valid {0:N0} \u00B7 missing {1:N0} \u2192 result valid {2:N0} ({3}) \u00B7 missing {4:N0} ({5}) \u00B7 excluded {6} \u00B7 {7}");
     public string OutputCompareQualityDeltaUnavailable => T(
         "ThreeD.Workbench.OutputCompareQualityDeltaUnavailable",
         "\uD488\uC9C8 \uBCC0\uD654 \uC815\uBCF4 \uC5C6\uC74C",
         "Quality delta unavailable");
     public string OutputComparePreparationQualitySummaryFormat => T(
         "ThreeD.Workbench.OutputComparePreparationQualitySummaryFormat",
-        "\uC6D0\uBCF8 {0} \u2192 \uC900\uBE44 \uACB0\uACFC {1} | {2}",
-        "Source {0} \u2192 prepared {1} | {2}");
+        "\uC6D0\uBCF8 {0} \u2192 \uCC98\uB9AC \uACB0\uACFC {1} | {2}",
+        "Source {0} \u2192 result {1} | {2}");
     public string OutputCompareOutliersNotEvaluated => T(
         "ThreeD.Workbench.OutputCompareOutliersNotEvaluated",
         "\uD3C9\uAC00\uD558\uC9C0 \uC54A\uC74C",
@@ -887,8 +886,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "source identity retained");
     public string DomainMaskReducedDetail => T(
         "ThreeD.Workbench.DomainMaskReducedDetail",
-        "도메인으로 축소됨",
-        "domain-reduced");
+        "유효 영역으로 제한",
+        "Limited to valid region");
     public string DomainMaskArtifactDetailFormat => T(
         "ThreeD.Workbench.DomainMaskArtifactDetailFormat",
         "{0} × {1} | 유효 {2:N0}개 | 누락 {3:N0}개 | {4} | {5} | {6}",
@@ -977,7 +976,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string DisplayedInViewer => T("ThreeD.Workbench.DisplayedInViewer", "\uBDF0\uC5B4\uC5D0 \uD45C\uC2DC\uB428", "Displayed in Viewer");
     public string ShowInViewer => T("ThreeD.Command.ShowInViewer", "\uBDF0\uC5B4\uC5D0 \uD45C\uC2DC", "Show in Viewer");
     public string PinToCompare => T("ThreeD.Command.PinToCompare", "\uBE44\uAD50\uC5D0 \uACE0\uC815", "Pin to Compare");
-    public string FocusStep => T("ThreeD.Command.FocusStep", "\uB2E8\uACC4 \uD3EC\uCEE4\uC2A4", "Focus Step");
+    public string FocusStep => T("ThreeD.Command.FocusStep", "\uD574\uB2F9 \uB3C4\uAD6C\uB85C \uC774\uB3D9", "Go to tool");
     public string DisplayedOutputsSummaryFormat => T("ThreeD.Workbench.DisplayedOutputsSummaryFormat", "\uB192\uC774 \uB370\uC774\uD130 {0} | \uCE21\uC815\u00B7\uAC80\uCD9C \uACB0\uACFC {1}", "{0} renderable | {1} evidence-only");
     public string DisplayableC3DData => T("ThreeD.Workbench.DisplayableC3DData", "C3D \uBDF0\uC5B4 \uB370\uC774\uD130 \uC0AC\uC6A9 \uAC00\uB2A5", "C3D viewer data available");
     public string DisplayableHeightImageData => T("ThreeD.Workbench.DisplayableHeightImageData", "편차 데이터 표시 가능", "Signed delta display available");
@@ -990,27 +989,25 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FlowMapReadOnly => T("ThreeD.Workbench.FlowMapReadOnly", "\uC77D\uAE30 \uC804\uC6A9 \u2022 \uC5F0\uACB0 \uC218\uC815 \uC5C6\uC74C", "Read-only • no connection edits");
     public string FlowMapInput => T("ThreeD.Workbench.FlowMapInput", "\uC785\uB825 \uD3EC\uD2B8", "Input port");
     public string FlowMapOutput => T("ThreeD.Workbench.FlowMapOutput", "\uCD9C\uB825 \uD3EC\uD2B8", "Output port");
-    public string PipelineEmptyHint => T("ThreeD.Workbench.PipelineEmptyHint", "\uC791\uC131\uB41C \uB3C4\uAD6C \uB2E8\uACC4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uB3C4\uAD6C \uC0C1\uC790 \uD56D\uBAA9\uC744 \uC120\uD0DD\uD558\uC5EC \uC774 \uB808\uC2DC\uD53C\uC5D0 \uCD94\uAC00\uD558\uC138\uC694.", "No taught tools yet. Select a Toolbox item and add it to this recipe.");
-    public string FlowMapEmptyHint => T("ThreeD.Workbench.FlowMapEmptyHint", "\uD2F0\uCE6D\uB41C \uB3C4\uAD6C \uB2E8\uACC4\uAC00 \uC5C6\uC5B4 \uD750\uB984\uC744 \uD45C\uC2DC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.", "No taught tool steps are available to map.");
-    public string NavigatorHint => T("ThreeD.Workbench.NavigatorHint", "\uAC80\uC0AC \uB2E8\uACC4\uB97C \uC120\uD0DD\uD574 \uC124\uC815\uACFC \uACB0\uACFC\uB97C \uD655\uC778\uD558\uC138\uC694. \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uACB0\uACFC \uC801\uC6A9\uC740 \uD544\uC694\uD55C \uB54C \uC9C1\uC811 \uC2E4\uD589\uD569\uB2C8\uB2E4.", "Select an inspection step to review its setup and result. Run Preview and Publish explicitly when needed.");
+    public string PipelineEmptyHint => T("ThreeD.Workbench.PipelineEmptyHint", "\uAC80\uC0AC \uB3C4\uAD6C\uB97C \uCD94\uAC00\uD558\uC138\uC694.", "Add an inspection tool.");
+    public string FlowMapEmptyHint => T("ThreeD.Workbench.FlowMapEmptyHint", "\uAC80\uC0AC \uB3C4\uAD6C\uB97C \uCD94\uAC00\uD558\uC138\uC694.", "Add an inspection tool.");
     public string RecipeSource => T("ThreeD.Workbench.RecipeSource", "\uB808\uC2DC\uD53C \uC785\uB825 \uB370\uC774\uD130", "Recipe source");
     public string RecipeNavigator => T("ThreeD.Workbench.RecipeNavigator", "\uAC80\uC0AC \uB2E8\uACC4 \uBAA9\uB85D", "Inspection steps");
     public string CompatibleToolCatalogTitle => T("ThreeD.Workbench.CompatibleToolCatalogTitle", "\uD638\uD658 \uB2E4\uC74C \uB3C4\uAD6C", "Compatible next tools");
-    public string CompatibleToolCatalogDetail => T("ThreeD.Workbench.CompatibleToolCatalogDetail", "\uD604\uC7AC \uC785\uB825\uB9CC \uD655\uC778\uD569\uB2C8\uB2E4. \uB3C4\uAD6C \uC120\uD0DD\uC740 \uB2E8\uACC4\u00B7\uC5F0\uACB0\u00B7\uC2E4\uD589\uC744 \uBC14\uAFB8\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Checks current inputs only. Selecting never adds, connects, or runs.");
     public string CompatibleToolCatalogSummaryFormat => T("ThreeD.Workbench.CompatibleToolCatalogSummaryFormat", "\uD638\uD658 {0}\uAC1C \u00B7 \uCC28\uB2E8 {1}\uAC1C", "{0} compatible \u00B7 {1} blocked");
     public string CompatibleToolCatalogEmpty => T("ThreeD.Workbench.CompatibleToolCatalogEmpty", "\uB2E4\uC74C \uB3C4\uAD6C \uCD94\uCC9C\uC744 \uC704\uD55C \uD604\uC7AC \uC785\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.", "No current inputs are available for a next-tool suggestion.");
     public string SelectCompatibleTool => T("ThreeD.Command.SelectCompatibleTool", "\uD234\uBC15\uC2A4\uC5D0\uC11C \uC120\uD0DD", "Select in Toolbox");
     public string AddCompatibleTool => T("ThreeD.Command.AddCompatibleTool", "\uCD94\uAC00", "Add");
-    public string AddCompatibleToolToolTip => T("ThreeD.Command.AddCompatibleToolToolTip", "\uD45C\uC2DC\uB41C \uC785\uB825\uC73C\uB85C \uAC80\uC0AC \uB2E8\uACC4\uB97C \uC9C1\uC811 \uCD94\uAC00\uD569\uB2C8\uB2E4. \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Explicitly add a step with the displayed inputs. It does not run.");
+    public string AddCompatibleToolToolTip => T("ThreeD.Command.AddCompatibleToolToolTip", "\uD45C\uC2DC\uB41C \uC785\uB825\uC744 \uC5F0\uACB0\uD574 \uB2E8\uACC4 \uCD94\uAC00", "Add a step using the displayed inputs");
     public string CompatibleToolBlocked => T("ThreeD.Workbench.CompatibleToolBlocked", "\uC785\uB825 \uB370\uC774\uD130 \uD488\uC9C8\uB85C \uCC28\uB2E8", "Blocked by source quality");
     public string CompatibleToolBlockerLabel => T("ThreeD.Workbench.CompatibleToolBlockerLabel", "\uB2E4\uC74C \uBBF8\uCDA9\uC871 \uC785\uB825", "Next missing input");
     public string CompatibleToolBlockerDetailFormat => T("ThreeD.Workbench.CompatibleToolBlockerDetailFormat", "{0}: {1} \uD544\uC694", "{0}: requires {1}");
-    public string RepairRoute => T("ThreeD.Command.RepairRoute", "\uACBD\uB85C \uC218\uC815", "Repair route");
-    public string RepairRouteToolTip => T("ThreeD.Command.RepairRouteToolTip", "\uBB38\uC81C \uB2E8\uACC4\uB85C \uC774\uB3D9\uD558\uACE0 \uC785\uB825 \uACBD\uB85C \uD3B8\uC9D1\uC744 \uC5FD\uB2C8\uB2E4. \uBBF8\uB9AC\uBCF4\uAE30, \uACB0\uACFC \uC801\uC6A9, \uAC80\uC0AC\uB294 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Focus the problem step and open input-route editing. Preview, Publish, and Run are not invoked.");
+    public string RepairRoute => T("ThreeD.Command.RepairRoute", "입력 연결 설정", "Edit input connections");
+    public string RepairRouteToolTip => T("ThreeD.Command.RepairRouteToolTip", "연결 문제가 있는 도구의 입력 설정을 엽니다.", "Open input settings for the tool with a connection problem.");
     public string AddInspectionStep => T("ThreeD.Workbench.AddInspectionStep", "\uAC80\uC0AC \uB2E8\uACC4 \uCD94\uAC00", "Add inspection step");
     public string StepProperties => T("ThreeD.Workbench.StepProperties", "\uB2E8\uACC4 \uC18D\uC131", "Step properties");
     public string NoRecipeStepSelected => T("ThreeD.Workbench.NoRecipeStepSelected", "\uB2E8\uACC4 \uC124\uC815 \uB300\uAE30", "Step setup is waiting");
-    public string NoRecipeStepSelectedDetail => T("ThreeD.Workbench.NoRecipeStepSelectedDetail", "\uB3C4\uAD6C \uB77C\uC774\uBE0C\uB7EC\uB9AC\uC5D0\uC11C \uB2E8\uACC4\uB97C \uCD94\uAC00\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uC785\uB825, \uC124\uC815\uAC12, \uCD9C\uB825 \uC124\uC815\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.", "Add a step from Tool Library to show its Inputs, Parameters, and Outputs here.");
+    public string NoRecipeStepSelectedDetail => T("ThreeD.Workbench.NoRecipeStepSelectedDetail", "\uAC80\uC0AC \uB3C4\uAD6C\uB97C \uC120\uD0DD\uD558\uC138\uC694.", "Select an inspection tool.");
     public string NoTaughtStepSelected => T("ThreeD.Workbench.NoTaughtStepSelected", "\uC120\uD0DD\uD55C \uD2F0\uCE6D \uB2E8\uACC4 \uC5C6\uC74C", "No taught step selected");
     public string SelectedPipelineStepTitleFormat => T("ThreeD.Workbench.SelectedPipelineStepTitleFormat", "\uB2E8\uACC4 {0}: {1}", "Step {0}: {1}");
     public string RecipePipelineTeachReview => T("ThreeD.Workbench.RecipePipelineTeachReview", "\uB808\uC2DC\uD53C \uD30C\uC774\uD504\uB77C\uC778 / \uD2F0\uCE6D \uAC80\uD1A0", "Recipe Pipeline / Teach Review");
@@ -1039,12 +1036,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string TypedParameters => T("ThreeD.Label.TypedParameters", "\uB3C4\uAD6C \uC124\uC815", "Typed parameters");
     public string StepAdapterNoStepSelected => T("ThreeD.Workbench.StepAdapterNoStepSelected", "\uC120\uD0DD\uD55C \uB2E8\uACC4 \uC5C6\uC74C", "No step selected");
     public string StepAdapterPartiallySupported => T("ThreeD.Workbench.StepAdapterPartiallySupported", "\uBD80\uBD84 \uC9C0\uC6D0 - \uC124\uC815\uAC12\uC740 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uBCF4\uC874\uB428", "Partially supported - parameters are preserved read-only");
-    public string StepAdapterReady => T("ThreeD.Workbench.StepAdapterReady", "\uC815\uC2DD \uC5B4\uB311\uD130 \uC900\uBE44\uB428", "Typed adapter ready");
-    public string StepAdapterReadyUnmappedFormat => T("ThreeD.Workbench.StepAdapterReadyUnmappedFormat", "\uC815\uC2DD \uC5B4\uB311\uD130 \uC900\uBE44\uB428 | \uB9E4\uD551\uB418\uC9C0 \uC54A\uC740 {0}\uAC1C \uBCF4\uC874\uB428", "Typed adapter ready | {0} unmapped preserved");
+    public string StepAdapterReady => T("ThreeD.Workbench.StepAdapterReady", "\uC124\uC815 \uD3B8\uC9D1 \uAC00\uB2A5", "Settings available");
+    public string StepAdapterReadyUnmappedFormat => T("ThreeD.Workbench.StepAdapterReadyUnmappedFormat", "\uD3B8\uC9D1\uD560 \uC218 \uC5C6\uB294 \uC124\uC815 {0}\uAC1C \u00B7 \uC800\uC7A5\uAC12 \uC720\uC9C0", "{0} settings cannot be edited · stored values preserved");
     public string StepParameterSelectTypedTool => T(
         "ThreeD.Workbench.StepParameterSelectTypedTool",
-        "\uB3C4\uAD6C\uB97C \uC120\uD0DD\uD574 \uC124\uC815\uAC12\uC744 \uC785\uB825\uD558\uC138\uC694. \uC88C\uD45C \uBCC0\uD658 \uC801\uC6A9\uC5D0\uB294 \uCD94\uAC00 \uC124\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
-        "Select a typed tool to teach parameters. Apply XYZ Affine has a fixed no-parameter A2 contract.");
+        "\uB3C4\uAD6C\uB97C \uC120\uD0DD\uD558\uC138\uC694.",
+        "Select a tool.");
     public string StepParameterUnsupportedEditor => T(
         "ThreeD.Workbench.StepParameterUnsupportedEditor",
         "\uC774 \uB2E8\uACC4\uB294 \uBCF4\uC874\uB418\uC9C0\uB9CC \uC544\uC9C1 \uB3C4\uAD6C \uC124\uC815 \uD3B8\uC9D1\uAE30\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
@@ -1057,7 +1054,6 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.Workbench.StepParameterPendingChanges",
         "\uC124\uC815\uAC12\uC744 \uC801\uC6A9\uD558\uAC70\uB098 \uBCC0\uACBD\uC744 \uCDE8\uC18C\uD558\uC138\uC694.",
         "Apply or discard the parameter changes.");
-    public string StepPropertiesEditDetail => T("ThreeD.Workbench.StepPropertiesEditDetail", "\uD3B8\uC9D1\uC740 \uC791\uC131\uB41C \uB808\uC2DC\uD53C\uB9CC \uBC14\uAFC9\uB2C8\uB2E4. \uC9C0\uC6D0 \uB3C4\uAD6C\uB294 \uBBF8\uB9AC\uBCF4\uAE30\uB85C \uC9C1\uC811 \uC2E4\uD589\uD569\uB2C8\uB2E4.", "Editing changes only the authored recipe. Use Preview explicitly to execute a supported typed step.");
     public string SelectedToolExampleLabel => T("ThreeD.Workbench.SelectedToolExampleLabel", "입력 예시", "Example");
     public string SelectedToolExpectedOverlayLabel => T("ThreeD.Workbench.SelectedToolExpectedOverlayLabel", "예상 오버레이", "Expected overlay");
     public string SelectedToolEmptyExample => T(
@@ -1074,13 +1070,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string OutputDisabled => T("ThreeD.Workbench.OutputDisabled", "생성 안 함", "Disabled");
     public string Discard => T("ThreeD.Command.Discard", "\uBCC0\uACBD \uCDE8\uC18C", "Discard");
     public string ApplyParameters => T("ThreeD.Command.ApplyParameters", "\uC124\uC815\uAC12 \uC801\uC6A9", "Apply parameters");
-    public string Produces => T("ThreeD.Label.Produces", "\uC0B0\uCD9C \uC815\uC2DD", "Produces");
+    public string Produces => T("ThreeD.Label.Produces", "\uCD9C\uB825 \uD615\uC2DD", "Output type");
     public string OutputEntity => T("ThreeD.Label.OutputEntity", "\uCD9C\uB825 \uB370\uC774\uD130", "Output entity");
-    public string ExpectedData => T("ThreeD.Label.ExpectedData", "\uAE30\uB300 \uB370\uC774\uD130", "Expected data");
-    public string InputEntities => T("ThreeD.Label.InputEntities", "\uC785\uB825 \uB370\uC774\uD130(\uC138\uBBF8\uCF5C\uB860\uC73C\uB85C \uAD6C\uBD84)", "Input entities (separate with ;)");
-    public string ToolboxSequenceHint => T("ThreeD.Workbench.ToolboxSequenceHint", "\uB808\uC2DC\uD53C\uB97C \uC21C\uC11C\uB300\uB85C \uAD6C\uC131\uD558\uC138\uC694: \uC900\uBE44, \uAC80\uCD9C, \uAD6C\uC131, \uC815\uB82C, \uCE21\uC815, \uAC80\uD1A0.", "Build the recipe in order: prepare, feature, construct, align, measure, then review.");
+    public string ExpectedData => T("ThreeD.Label.ExpectedData", "\uD544\uC218 \uC785\uB825 \uD615\uC2DD", "Required input type");
+    public string InputEntities => T("ThreeD.Label.InputEntities", "\uC785\uB825 \uB370\uC774\uD130 ID (;\uB85C \uAD6C\uBD84)", "Input data IDs (separate with ;)");
     public string SelectedRoute => T("ThreeD.Workbench.SelectedRoute", "\uC120\uD0DD\uD55C \uAC80\uC0AC \uB2E8\uACC4", "Selected inspection step");
-    public string SelectedStepActionsHint => T("ThreeD.Workbench.SelectedStepActionsHint", "\uC774 \uB2E8\uACC4\uC758 \uC0C1\uC138 \uC124\uC815\uC744 \uC5F4\uAC70\uB098 \uC21C\uC11C\uB97C \uBC14\uAFB8\uACE0, \uD544\uC694 \uC5C6\uC73C\uBA74 \uC0AD\uC81C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Open this step's detailed settings, change its order, or remove it.");
     public string OpenSelectedToolLab => T("ThreeD.Command.OpenSelectedToolLab", "\uC0C1\uC138 \uC124\uC815 \uC5F4\uAE30", "Open detailed settings");
     public string RemoveStep => T("ThreeD.Command.RemoveStep", "\uB2E8\uACC4 \uC0AD\uC81C", "Remove step");
     public string ToolLabReview => T("ThreeD.ToolLab.Review", "도구 설정", "Tool settings");
@@ -1113,8 +1107,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string SurfaceRoiEditor => T("ThreeD.Workbench.SurfaceRoiEditor", "\uD45C\uBA74 ROI \uD3B8\uC9D1", "Surface ROI editing");
     public string SurfaceRoiEditorDetail => T(
         "ThreeD.Workbench.SurfaceRoiEditorDetail",
-        "ROI \uAD50\uCCB4\uB97C \uC2DC\uC791\uD55C \uB4A4 \uBDF0\uC5B4 \uD578\uB4E4\uB85C \uC774\uB3D9\u00B7\uD06C\uAE30 \uC870\uC808\uD558\uAC70\uB098 \uC544\uB798 \uAC12\uC744 \uD3B8\uC9D1\uD558\uC138\uC694. \uC801\uC6A9 \uC804\uAE4C\uC9C0 \uB808\uC2DC\uD53C\uC640 \uAC80\uC0AC \uACB0\uACFC\uB294 \uBCC0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "Start Replace ROI, then move or resize with Viewer handles or edit the values below. The recipe and inspection result stay unchanged until Apply.");
+        "\uD578\uB4E4 \uB610\uB294 \uC88C\uD45C\uAC12\uC73C\uB85C ROI\uB97C \uC870\uC815\uD558\uC138\uC694. Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C",
+        "Adjust the ROI with handles or coordinates. Enter applies · Esc cancels");
     public string RoiRow => T("ThreeD.Workbench.RoiRow", "\uC2DC\uC791 Z (\uD589)", "Start Z (row)");
     public string RoiColumn => T("ThreeD.Workbench.RoiColumn", "\uC2DC\uC791 X (\uC5F4)", "Start X (column)");
     public string RoiRowCount => T("ThreeD.Workbench.RoiRowCount", "Z \uAE38\uC774 (\uD589)", "Z length (rows)");
@@ -1127,16 +1121,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string OrderedVertices => T("ThreeD.Workbench.OrderedVertices", "\uC21C\uC11C\uAC00 \uC788\uB294 \uAF2D\uC9D3\uC810", "ordered vertices");
     public string OrderedPolygonVerticesReadyFormat => T(
         "ThreeD.Workbench.OrderedPolygonVerticesReadyFormat",
-        "{0}\uAC1C \uC21C\uC11C \uAF2D\uC9D3\uC810 \uC900\uBE44\uB428 \u00B7 Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C",
-        "{0} ordered polygon vertices ready \u00B7 Enter applies \u00B7 Esc cancels");
+        "\uAF2D\uC9D3\uC810 {0}\uAC1C \u00B7 Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C",
+        "{0} vertices \u00B7 Enter applies \u00B7 Esc cancels");
     public string TransientCandidateEditProgress => T(
         "ThreeD.Workbench.TransientCandidateEditProgress",
-        "\uBDF0\uC5B4 \uD578\uB4E4\uC640 \uC22B\uC790 \uAC12\uC73C\uB85C \uC784\uC2DC \uD6C4\uBCF4\uB97C \uD3B8\uC9D1\uD569\uB2C8\uB2E4. Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C.",
-        "Viewer handles and numeric values edit one transient candidate. Enter applies; Esc cancels.");
+        "\uD578\uB4E4\uACFC \uC22B\uC790\uB85C \uC601\uC5ED\uC744 \uC870\uC815\uD558\uC138\uC694. Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C",
+        "Adjust the region with handles or values. Enter applies · Esc cancels");
     public string GridPolygonCaptureInstruction => T(
         "ThreeD.Workbench.GridPolygonCaptureInstruction",
-        "\uC138 \uAC1C \uC774\uC0C1\uC758 \uC21C\uC11C\uAC00 \uC788\uB294 \uAF2D\uC9D3\uC810\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uD3B8\uC9D1\uD558\uC138\uC694. \uC801\uC6A9/Enter\uB294 \uC724\uACFD\uC744 \uD655\uC815\uD558\uACE0, \uCDE8\uC18C/Escape\uB294 \uBC84\uB9BD\uB2C8\uB2E4.",
-        "Pick or edit three or more ordered vertices. Apply/Enter commits the outline; Cancel/Escape discards it.");
+        "\uAF2D\uC9D3\uC810 3\uAC1C \uC774\uC0C1\uC744 \uC21C\uC11C\uB300\uB85C \uC9C0\uC815\uD558\uC138\uC694. Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C",
+        "Set at least three vertices in order. Enter applies · Esc cancels");
     public string GridPolygonSourceFrameInvalid => T(
         "ThreeD.Workbench.GridPolygonSourceFrameInvalid",
         "\uB2E4\uAC01\uD615\uC758 \uAF2D\uC9D3\uC810\uC740 \uC785\uB825 \uACA9\uC790 \uC548\uC758 \uC720\uD6A8\uD55C \uC88C\uD45C\uC5EC\uC57C \uD569\uB2C8\uB2E4. \uC810\uC774 \uACB9\uCE58\uAC70\uB098 \uD55C \uC9C1\uC120\uC5D0 \uB193\uC774\uC9C0 \uC54A\uB3C4\uB85D \uC21C\uC11C\uB300\uB85C \uC9C0\uC815\uD558\uC138\uC694.",
@@ -1151,16 +1145,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string LandmarkCorrespondenceRows => T("ThreeD.Workbench.LandmarkCorrespondenceRows", "\uB79C\uB4DC\uB9C8\uD06C \uB300\uC751 \uD589", "Landmark correspondence rows");
     public string SelectionRequirementUsesExistingEntities => T(
         "ThreeD.Workbench.SelectionRequirementUsesExistingEntities",
-        "\uC774 \uB2E8\uACC4\uB294 \uC785\uB825 \uB370\uC774\uD130 \uB610\uB294 \uC55E\uC120 \uB370\uC774\uD130\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uC120\uD0DD\uD558\uAC70\uB098 \uD3B8\uC9D1\uD574\uB3C4 \uBDF0\uC5B4 \uC9C0\uC815\uC744 \uC2DC\uC791\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "This step consumes the source or earlier typed entities. Selecting or editing it never starts Viewer capture.");
+        "\uC785\uB825 \uB370\uC774\uD130 \uB610\uB294 \uC55E\uC120 \uB3C4\uAD6C\uC758 \uB370\uC774\uD130\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.",
+        "Uses source data or an upstream tool output.");
     public string SelectionCaptureGeometryOnly => T(
         "ThreeD.Workbench.SelectionCaptureGeometryOnly",
-        " \uC9C0\uC815\uC740 \uD615\uC0C1\uB9CC \uC800\uC7A5\uD558며 \uAC80\uC0AC \uC54C고\uB9AC\uC998을 \uC2E4\uD589\uD558지 \uC54A습\uB2C8\uB2E4.",
-        " Capture stores geometry only; it never runs an inspection algorithm.");
+        " \uC9C0\uC815\uD55C \uD615\uC0C1\uC744 \uC800\uC7A5\uD569\uB2C8\uB2E4.",
+        " Saves the specified geometry.");
     public string LandmarkCorrespondenceRequirementDetail => T(
         "ThreeD.Workbench.LandmarkCorrespondenceRequirementDetail",
-        "\uC801\uC6A9\uB41C \uAD50\uC810 4\uAC1C\uC5D0 \uAE30\uC900 \uC88C\uD45C\uB97C \uB300\uC751\uC2DC\uD0A4\uACE0 \uAE30\uC900 \uC88C\uD45C\uACC4\u00B7\uB2E8\uC704\u00B7\uCD9C\uCC98\u00B7\uBC84\uC804\uACFC \uBE44\uD3C9\uBA74\uC131 \uC784\uACC4\uAC12\uC744 \uC785\uB825\uD558\uC138\uC694. \uAC12\uC744 \uD3B8\uC9D1\uD574\uB3C4 \uACC4\uC0B0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
-        "Enter four Published CornerAnchor mappings, reference frame/unit/provenance/revision, and an explicit non-planarity threshold. Editing never runs the tool.");
+        "\uC801\uC6A9\uB41C \uAD50\uC810 4\uAC1C\uC5D0 \uAE30\uC900 \uC88C\uD45C\uB97C \uB300\uC751\uC2DC\uD0A4\uACE0 \uC88C\uD45C\uACC4\u00B7\uB2E8\uC704\u00B7\uCD9C\uCC98\u00B7\uBC84\uC804\uACFC \uBE44\uD3C9\uBA74\uC131 \uC784\uACC4\uAC12\uC744 \uC785\uB825\uD558\uC138\uC694.",
+        "Match reference coordinates to four applied intersections. Enter the frame, unit, provenance, revision and non-planarity threshold.");
     public string NoToolSelected => T("ThreeD.Workbench.NoToolSelected", "\uC120\uD0DD\uB41C \uB3C4\uAD6C \uC5C6\uC74C", "No tool selected");
     public string SelectedToolTitleFormat => T("ThreeD.Workbench.SelectedToolTitleFormat", "{0} / {1}", "{0} / {1}");
     public string NoSelectedToolState => T("ThreeD.Workbench.NoSelectedToolState", "\uC120\uD0DD \uC5C6\uC74C", "No selection");
@@ -1216,7 +1210,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
             "Grid polygon selection"),
         _ => kind
     };
-    public string NoRecipeOwnedRegion => T("ThreeD.Workbench.NoRecipeOwnedRegion", "\uB808\uC2DC\uD53C \uC18C\uC720 \uC601\uC5ED \uC5C6\uC74C", "No recipe-owned region.");
+    public string NoRecipeOwnedRegion => T("ThreeD.Workbench.NoRecipeOwnedRegion", "\uC5F0\uACB0\uB41C \uC601\uC5ED \uC5C6\uC74C", "No connected region");
     public string SelectedToolInputFormat => T("ThreeD.Workbench.SelectedToolInputFormat", "\uC785\uB825 {0}", "Input {0}");
     public string SelectedToolInputNotAssigned => T("ThreeD.Workbench.SelectedToolInputNotAssigned", "\uD560\uB2F9\uB418\uC9C0 \uC54A\uC74C", "Not assigned");
     public string SelectedToolOutputValueLabel => T("ThreeD.Workbench.SelectedToolOutputValueLabel", "\uAC12", "Value");
@@ -1224,11 +1218,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.Workbench.SelectedToolOutputDisabledDetailFormat",
         "단계 '{0}'의 결과 표시가 꺼져 있습니다. 미리보기와 검사에서 이 결과나 검토 정보를 만들지 않습니다.",
         "Step '{0}' output is disabled. Preview and Run do not produce this result or its review information.");
-    public string SelectedToolRemovedOutliersLabel => T("ThreeD.Workbench.SelectedToolRemovedOutliersLabel", "제거된 이상치", "Removed outliers");
+    public string SelectedToolRemovedOutliersLabel => T("ThreeD.Workbench.SelectedToolRemovedOutliersLabel", "제외한 셀", "Excluded cells");
     public string SelectedToolReferenceRmsLabel => T("ThreeD.Workbench.SelectedToolReferenceRmsLabel", "참조 RMS", "Reference RMS");
     public string SelectedToolOutputMissingCellsLabel => T("ThreeD.Workbench.SelectedToolOutputMissingCellsLabel", "출력 누락 셀", "Output missing cells");
     public string SelectedToolOutputCellsLabel => T("ThreeD.Workbench.SelectedToolOutputCellsLabel", "출력 셀", "Output cells");
-    public string SelectedToolSignedDeltaLabel => T("ThreeD.Workbench.SelectedToolSignedDeltaLabel", "부호 델타 셀", "Signed-delta cells");
+    public string SelectedToolSignedDeltaLabel => T("ThreeD.Workbench.SelectedToolSignedDeltaLabel", "높이차 셀", "Height-difference cells");
     public string SelectedToolOutputPreviewRunningStatus => T("ThreeD.Workbench.SelectedToolOutputPreviewRunningStatus", "미리보기 실행 중", "Preview running");
     public string RoiCaptureReadyProgress => T(
         "ThreeD.Workbench.RoiCaptureReadyProgress",
@@ -1244,10 +1238,10 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Left-click the opposite corner.");
     public string RoiCaptureReadyInstruction => T(
         "ThreeD.Workbench.RoiCaptureReadyInstruction",
-        "ROI \uADF8\uB9AC\uAE30\uAC00 \uB05D\uB0AC\uC2B5\uB2C8\uB2E4. \uCD94\uAC00 ROI\uB294 \uADF8\uB824\uC9C0\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBE48 \uACF3 \uB4DC\uB798\uADF8\uB85C \uBCF4\uAE30\uB97C \uD68C\uC804\uD558\uACE0, \uBAA8\uC11C\uB9AC\u00B7\uC911\uC559\u00B7\uB178\uB780 Y\u2195 \uD578\uB4E4\uC744 \uC870\uC815\uD55C \uB4A4 Enter \uB610\uB294 \uC801\uC6A9\uC744 \uB204\uB974\uC138\uC694.",
-        "ROI drawing is complete; no additional ROI will be drawn. Drag empty space to orbit, adjust corners, center, or the yellow Y\u2195 handle, then press Enter or Apply.");
+        "\uD578\uB4E4\uB85C \uC601\uC5ED \uC870\uC815 \u00B7 Enter \uC801\uC6A9 \u00B7 Esc \uCDE8\uC18C",
+        "Adjust the region with handles \u00B7 Enter applies \u00B7 Esc cancels");
     public string PlaneFlatnessRoiTeaching => T("ThreeD.Workbench.PlaneFlatnessRoiTeaching", "\uD3C9\uBA74\uB3C4 ROI \uD2F0\uCE6D \uC21C\uC11C", "Plane Flatness ROI teaching order");
-    public string PlaneFlatnessRoiTeachingDetail => T("ThreeD.Workbench.PlaneFlatnessRoiTeachingDetail", "1. \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Measurement ROI. Teaching never runs inspection.");
+    public string PlaneFlatnessRoiTeachingDetail => T("ThreeD.Workbench.PlaneFlatnessRoiTeachingDetail", "\uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the reference-plane ROI, then the measurement ROI.");
     public string ReferenceRoi => T("ThreeD.Workbench.ReferenceRoi", "\uAE30\uC900 \uD3C9\uBA74 ROI", "Reference ROI");
     public string MeasurementRoi => T("ThreeD.Workbench.MeasurementRoi", "\uCE21\uC815 ROI", "Measurement ROI");
     public string RoiComplete => T("ThreeD.Workbench.RoiComplete", "\uC644\uB8CC", "Complete");
@@ -1266,16 +1260,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ExistingCompatibleRoi => T("ThreeD.Workbench.ExistingCompatibleRoi", "\uC7AC\uC0AC\uC6A9\uD560 \uD638\uD658 ROI", "Compatible ROI to reuse");
     public string ReferenceRoiRequiredFirst => T("ThreeD.Workbench.ReferenceRoiRequiredFirst", "\uBA3C\uC800 \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the Reference ROI first.");
     public string NoRoiTaught => T("ThreeD.Workbench.NoRoiTaught", "\uC9C0\uC815\uB41C ROI \uC5C6\uC74C", "No ROI taught");
-    public string NoRecipeOwnedSelectionRouted => T("ThreeD.Workbench.NoRecipeOwnedSelectionRouted", "\uC774 \uB2E8\uACC4\uC5D0 \uB808\uC2DC\uD53C \uC18C\uC720 \uC120\uD0DD\uC774 \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC74C", "No recipe-owned selection is routed to this step.");
+    public string NoRecipeOwnedSelectionRouted => T("ThreeD.Workbench.NoRecipeOwnedSelectionRouted", "\uC774 \uB3C4\uAD6C\uC5D0 \uC5F0\uACB0\uB41C \uC601\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.", "No region is connected to this tool.");
     public string GapFlushRoiTeaching => T("ThreeD.Workbench.GapFlushRoiTeaching", "Gap / Flush ROI \uD2F0\uCE6D \uC21C\uC11C", "Gap / Flush ROI teaching order");
-    public string GapFlushRoiTeachingDetail => T("ThreeD.Workbench.GapFlushRoiTeachingDetail", "1. \uCCAB \uBC88\uC9F8 ROI\uC640 2. \uB458\uC9F8 ROI\uB97C U\uCD95 \uBC29\uD5A5 \uC21C\uC11C\uB85C \uC9C0\uC815\uD558\uC138\uC694. ROI \uC21C\uC11C\uAC00 Gap\uACFC Flush\uC758 \uBD80\uD638\uB97C \uACB0\uC815\uD558\uBA70, \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. First ROI, then 2. Second ROI in U-axis order. ROI order defines the Gap/Flush sign; teaching never runs inspection.");
+    public string GapFlushRoiTeachingDetail => T("ThreeD.Workbench.GapFlushRoiTeachingDetail", "\uB450 ROI\uB97C U\uCD95 \uBC29\uD5A5 \uC21C\uC11C\uB85C \uC9C0\uC815\uD558\uC138\uC694. ROI \uC21C\uC11C\uAC00 Gap\uACFC Flush\uC758 \uBD80\uD638\uB97C \uACB0\uC815\uD569\uB2C8\uB2E4.", "Teach both ROIs in U-axis order. Their order defines the Gap and Flush signs.");
     public string VolumeRoiTeaching => T("ThreeD.Workbench.VolumeRoiTeaching", "\uCCB4\uC801 ROI \uD2F0\uCE6D \uC21C\uC11C", "Volume ROI teaching order");
-    public string VolumeRoiTeachingDetail => T("ThreeD.Workbench.VolumeRoiTeachingDetail", "1. \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uCCB4\uC801 \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Volume measurement ROI. Teaching never runs inspection.");
+    public string VolumeRoiTeachingDetail => T("ThreeD.Workbench.VolumeRoiTeachingDetail", "\uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 \uCCB4\uC801 \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the reference-plane ROI, then the volume-measurement ROI.");
     public string CompletenessRoiTeaching => T("ThreeD.Workbench.CompletenessRoiTeaching", "\uC644\uC804\uC131 \uC140 \uADF8\uB9AC\uB4DC ROI \uD2F0\uCE6D \uC21C\uC11C", "Completeness cell-grid ROI teaching order");
-    public string CompletenessRoiTeachingDetail => T("ThreeD.Workbench.CompletenessRoiTeachingDetail", "1. \uAE30\uC900 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uC140 \uADF8\uB9AC\uB4DC\uB97C \uBC30\uCE58\uD560 \uAC80\uC0AC ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uACC4\uC0B0\uC774\uB098 \uD310\uC815\uC744 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Inspection Grid ROI. Teaching never calculates metrics or applies acceptance.");
+    public string CompletenessRoiTeachingDetail => T("ThreeD.Workbench.CompletenessRoiTeachingDetail", "\uAE30\uC900 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 \uC140 \uADF8\uB9AC\uB4DC\uB97C \uBC30\uCE58\uD560 \uAC80\uC0AC ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the reference ROI, then the inspection ROI for the cell grid.");
     public string InspectionGridRoi => T("ThreeD.Workbench.InspectionGridRoi", "\uAC80\uC0AC \uADF8\uB9AC\uB4DC ROI", "Inspection Grid ROI");
     public string CrossSectionSelection => T("ThreeD.Workbench.CrossSectionSelection", "\uB2E8\uBA74 \uD589 \uAD6C\uAC04", "Cross-section row segment");
-    public string CrossSectionSelectionDetail => T("ThreeD.Workbench.CrossSectionSelectionDetail", "A3\uC758 \uAC19\uC740 \uD589\uC5D0\uC11C \uC2DC\uC791 \uC140\uACFC \uB05D \uC140\uC744 \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Pick the start and end cells on the same A3 row. Teaching never runs inspection.");
+    public string CrossSectionSelectionDetail => T("ThreeD.Workbench.CrossSectionSelectionDetail", "A3\uC758 \uAC19\uC740 \uD589\uC5D0\uC11C \uC2DC\uC791 \uC140\uACFC \uB05D \uC140\uC744 \uC9C0\uC815\uD558\uC138\uC694.", "Pick the start and end cells on the same A3 row.");
     public string FirstRoi => T("ThreeD.Workbench.FirstRoi", "\uCCAB \uBC88\uC9F8 ROI", "First ROI");
     public string SecondRoi => T("ThreeD.Workbench.SecondRoi", "\uB458\uC9F8 ROI", "Second ROI");
     public string FirstRoiRequiredFirst => T("ThreeD.Workbench.FirstRoiRequiredFirst", "\uBA3C\uC800 \uCCAB \uBC88\uC9F8 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the First ROI first.");
@@ -1311,7 +1305,6 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string CurrentRecipe => T("ThreeD.RecipeCenter.CurrentRecipe", "\uD604\uC7AC \uB808\uC2DC\uD53C", "Current recipe");
     public string RecentRecipes => T("ThreeD.RecipeCenter.RecentRecipes", "\uCD5C\uADFC \uB808\uC2DC\uD53C", "Recent recipes");
     public string FirstRecipeSetup => T("ThreeD.RecipeCenter.FirstSetup", "새 레시피 설정", "New recipe setup");
-    public string FirstRecipeSetupDetail => T("ThreeD.RecipeCenter.FirstSetupDetail", "레시피 이름과 저장 폴더를 정한 뒤 먼저 만드세요. 분류·검사 대상·설명, C3D 입력, 시작 작업은 선택 사항입니다. 설정 복원은 파일을 열거나 검사를 실행하지 않습니다.", "Choose a recipe name and folder, then create it first. Category, inspection target, description, C3D input, and starter are optional. Restoring setup never opens a file or runs inspection.");
     public string FirstRecipeFolder => T("ThreeD.RecipeCenter.FirstFolder", "레시피 폴더", "Recipe folder");
     public string FirstRecipeBrowse => T("ThreeD.RecipeCenter.FirstBrowse", "찾아보기", "Browse");
     public string FirstRecipeSource => T("ThreeD.RecipeCenter.FirstSource", "C3D 입력", "C3D input");
@@ -1323,23 +1316,23 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RecipeInfoFieldTooLong => T("ThreeD.RecipeCenter.InfoTooLong", "검사 대상·분류·설명은 각각 500자 이내로 입력하세요.", "Inspection target, category, and description must each be 500 characters or fewer.");
     public string RecipeInfoEdit => T("ThreeD.RecipeCenter.InfoEdit", "정보 편집", "Edit information");
     public string RecipeInfoEditTitle => T("ThreeD.RecipeCenter.InfoEditTitle", "레시피 정보 수정", "Edit recipe information");
-    public string RecipeInfoEditDetail => T("ThreeD.RecipeCenter.InfoEditDetail", "열린 레시피의 설명만 바꿉니다. 적용 후 레시피를 저장하세요. 검사 조건과 기존 결과는 바뀌지 않습니다.", "Edit the open recipe description. Save the recipe after applying. Inspection conditions and existing results remain unchanged.");
+    public string RecipeInfoEditDetail => T("ThreeD.RecipeCenter.InfoEditDetail", "레시피 설명을 수정한 뒤 저장하세요.", "Save the recipe after editing its description.");
     public string RecipeInfoApply => T("ThreeD.RecipeCenter.InfoApply", "정보 적용", "Apply information");
     public string FirstRecipeNoStarter => T("ThreeD.RecipeCenter.FirstNoStarter", "비어 있는 레시피", "Empty recipe");
-    public string FirstRecipeNoStarterDetail => T("ThreeD.RecipeCenter.FirstNoStarterDetail", "단계를 추가하지 않습니다. C3D 입력만 연결하고 저장합니다.", "Adds no step. The C3D input is linked and saved.");
+    public string FirstRecipeNoStarterDetail => T("ThreeD.RecipeCenter.FirstNoStarterDetail", "C3D 입력만 연결", "Connect C3D input only");
     public string FirstRecipeThicknessStarter => T("ThreeD.RecipeCenter.FirstThicknessStarter", "두께 측정", "Thickness measurement");
-    public string FirstRecipeThicknessStarterDetail => T("ThreeD.RecipeCenter.FirstThicknessStarterDetail", "이 C3D 입력에 두께 단계 1개를 추가합니다. ROI 티칭과 미리보기는 직접 실행합니다.", "Adds one Thickness step for this C3D input. ROI teaching and Preview stay explicit.");
-    public string FirstRecipeRememberSetup => T("ThreeD.RecipeCenter.FirstRemember", "이 워크스페이스에서 이 설정 기억", "Remember this setup in this workspace");
+    public string FirstRecipeThicknessStarterDetail => T("ThreeD.RecipeCenter.FirstThicknessStarterDetail", "두께 측정 도구 1개 추가", "Add one thickness tool");
+    public string FirstRecipeRememberSetup => T("ThreeD.RecipeCenter.FirstRemember", "이 작업공간에서 설정 기억", "Remember settings in this workspace");
     public string FirstRecipeTargetFile => T("ThreeD.RecipeCenter.FirstTarget", "생성할 파일", "Target file");
     public string FirstRecipeReset => T("ThreeD.RecipeCenter.FirstReset", "기본값으로 재설정", "Reset to defaults");
     public string FirstRecipeCreate => T("ThreeD.RecipeCenter.FirstCreate", "레시피 만들기", "Create recipe");
     public string CompatibleVariant => T("ThreeD.RecipeCenter.CompatibleVariant", "같은 격자 변형 만들기", "Create grid-compatible variant");
     public string CompatibleVariantSetup => T("ThreeD.RecipeCenter.CompatibleVariantSetup", "같은 격자 C3D 변형", "Grid-compatible C3D variant");
-    public string CompatibleVariantSetupDetail => T("ThreeD.RecipeCenter.CompatibleVariantSetupDetail", "현재 단계, 직접 C3D 격자 ROI, 설정값을 유지하고 같은 크기의 다른 C3D 입력으로 복제합니다. 미리보기, 결과 적용, 검사는 실행하지 않습니다.", "Keep the current steps, direct C3D grid ROIs, and parameters while rebinding to another C3D input with the same grid size. Preview, Publish, and Run are not invoked.");
+    public string CompatibleVariantSetupDetail => T("ThreeD.RecipeCenter.CompatibleVariantSetupDetail", "같은 격자 크기의 C3D로 복제합니다. ROI 위치를 확인하세요.", "Copy to a C3D with the same grid dimensions. Check ROI positions.");
     public string CompatibleVariantStarter => T("ThreeD.RecipeCenter.CompatibleVariantStarter", "현재 레시피 설정 유지", "Keep current recipe setup");
-    public string CompatibleVariantStarterDetail => T("ThreeD.RecipeCenter.CompatibleVariantStarterDetail", "단계, 직접 C3D 격자 ROI, 설정값과 입력 경로를 유지합니다. 새 C3D의 격자 크기가 같을 때만 만들 수 있습니다.", "Keeps steps, direct C3D grid ROIs, parameters, and routes. Creation is allowed only when the new C3D has the same grid size.");
+    public string CompatibleVariantStarterDetail => T("ThreeD.RecipeCenter.CompatibleVariantStarterDetail", "기존 도구·ROI·설정값 유지 · 격자 크기가 같은 입력 필요", "Keep tools, ROIs and settings · matching grid dimensions required");
     public string CompatibleVariantCreate => T("ThreeD.RecipeCenter.CompatibleVariantCreate", "변형 만들기", "Create variant");
-    public string CompatibleVariantReady => T("ThreeD.RecipeCenter.CompatibleVariantReady", "같은 셀 ROI를 복사합니다. 복사 후 미리보기에서 위치를 확인하세요. 만들기 전에는 현재 레시피나 검사 결과가 변경되지 않습니다.", "The same cell ROIs will be copied. Check their position in Preview after copying. The current recipe and results remain unchanged until Create.");
+    public string CompatibleVariantReady => T("ThreeD.RecipeCenter.CompatibleVariantReady", "복사한 ROI 위치를 확인하세요.", "Check the copied ROI positions.");
     public string CompatibleVariantCurrentRecipeRequired => T("ThreeD.RecipeCenter.CompatibleVariantCurrentRequired", "먼저 저장된 레시피와 읽을 수 있는 C3D 입력을 여세요.", "Open a saved recipe with a readable C3D input first.");
     public string CompatibleVariantSelectionUnsupported => T("ThreeD.RecipeCenter.CompatibleVariantSelectionUnsupported", "이 레시피에는 재사용할 수 없는 점, 박스, 대응점 또는 파생 높이장 선택이 있습니다. 직접 C3D 격자 ROI 레시피만 변형으로 만들 수 있습니다.", "This recipe contains point, box, correspondence, or derived-height-field selections that cannot be reused safely. Only direct C3D grid-ROI recipes can create this variant.");
     public string CompatibleVariantSourceMustDiffer => T("ThreeD.RecipeCenter.CompatibleVariantSourceMustDiffer", "현재 레시피와 다른 C3D 입력을 선택하세요.", "Select a C3D input different from the current recipe source.");
@@ -1360,10 +1353,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FirstRecipeSourceMustBeC3D => T("ThreeD.RecipeCenter.FirstSourceMustBeC3D", "C3D 입력 파일을 선택하세요.", "Select a C3D input file.");
     public string FirstRecipeStarterRequired => T("ThreeD.RecipeCenter.FirstStarterRequired", "시작 작업을 선택하세요.", "Select a task starter.");
     public string FirstRecipeAlreadyExists => T("ThreeD.RecipeCenter.FirstAlreadyExists", "같은 이름의 레시피가 이미 있습니다. 다른 이름을 입력하세요.", "A recipe with this name already exists. Enter another name.");
-    public string FirstRecipeReadyToCreate => T("ThreeD.RecipeCenter.FirstReady", "설정이 준비되었습니다. 만들기 전에는 파일 열기, 단계 추가 또는 검사가 실행되지 않습니다.", "Setup is ready. No file is opened, step added, or inspection run before Create.");
     public string FirstRecipeTargetUnavailable => T("ThreeD.RecipeCenter.FirstTargetUnavailable", "이름과 레시피 폴더를 입력하면 생성할 파일이 표시됩니다.", "Enter a name and recipe folder to see the target file.");
     public string FirstRecipeStarterUnavailable => T("ThreeD.RecipeCenter.FirstStarterUnavailable", "선택한 시작 작업을 현재 입력에 추가할 수 없습니다.", "The selected task starter cannot be added to the current input.");
-    public string FirstRecipeThicknessStarterApplied => T("ThreeD.RecipeCenter.FirstThicknessApplied", "두께 시작 단계가 추가되었습니다. 검사는 실행되지 않았습니다.", "The Thickness starter was added. Inspection was not run.");
+    public string FirstRecipeThicknessStarterApplied => T("ThreeD.RecipeCenter.FirstThicknessApplied", "두께 시작 단계를 추가했습니다.", "Thickness starter added.");
     public string FirstRecipeSetupRemembered => T("ThreeD.RecipeCenter.FirstRemembered", "이 워크스페이스의 설정을 저장했습니다.", "The setup was saved for this workspace.");
     public string FirstRecipeSetupNotRemembered => T("ThreeD.RecipeCenter.FirstNotRemembered", "워크스페이스 설정을 저장하지 않았습니다.", "The workspace setup was not saved.");
     public string RecipeNameLabel => T("ThreeD.RecipeCenter.RecipeNameLabel", "\uB808\uC2DC\uD53C \uC774\uB984", "Recipe name");
@@ -1377,7 +1369,6 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RemoveFromRecentToolTip => T("ThreeD.RecipeCenter.RemoveFromRecentToolTip", "\uD30C\uC77C\uC740 \uC0AD\uC81C\uD558\uC9C0 \uC54A\uACE0 \uCD5C\uADFC \uBAA9\uB85D\uC5D0\uC11C\uB9CC \uC81C\uAC70\uD569\uB2C8\uB2E4.", "Remove only from the recent list; the file is not deleted.");
     public string Available => T("ThreeD.RecipeCenter.Available", "\uC5F4\uAE30 \uAC00\uB2A5", "Available");
     public string Unavailable => T("ThreeD.RecipeCenter.Unavailable", "\uD30C\uC77C \uC5C6\uC74C", "Unavailable");
-    public string RecipeCenterDetail => T("ThreeD.RecipeCenter.Detail", "\uC0C8 \uAC80\uC0AC\uB97C \uC2DC\uC791\uD558\uAC70\uB098 \uC774\uC804 \uB808\uC2DC\uD53C\uB97C \uC5F4\uACE0, \uD604\uC7AC \uC791\uC5C5\uC758 \uC800\uC7A5 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.", "Start a new inspection or open a previous recipe, then review the current session's save state.");
     public string SourceNotSelected => T("ThreeD.RecipeCenter.SourceNotSelected", "3D \uC785\uB825 \uBBF8\uC120\uD0DD", "3D input not selected");
     public string SourceUnsupportedFormat => T("ThreeD.RecipeCenter.SourceUnsupportedFormat", "\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uD615\uC2DD", "Unsupported format");
     public string SourceMissing => T("ThreeD.RecipeCenter.SourceMissing", "\uC785\uB825 \uB370\uC774\uD130 \uD30C\uC77C \uC5C6\uC74C \u00B7 \uB2E4\uC2DC \uC5F0\uACB0 \uD544\uC694", "Source missing \u00B7 relink required");
@@ -1410,8 +1401,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RecipeHealthExecutionBlocked => T("ThreeD.Workbench.RecipeHealthExecutionBlocked", "실행 차단", "Execution blocked");
     public string RecipeHealthStalePreview => T("ThreeD.Workbench.RecipeHealthStalePreview", "오래된 미리보기", "Stale Preview");
     public string RecipeHealthPublished => T("ThreeD.Workbench.RecipeHealthPublished", "적용됨", "Published");
-    public string RecipeHealthReadyDetail => T("ThreeD.Workbench.RecipeHealthReadyDetail", "미리보기를 실행할 준비가 되었습니다.", "Ready for explicit Preview.");
-    public string RecipeHealthStalePreviewDetail => T("ThreeD.Workbench.RecipeHealthStalePreviewDetail", "입력과 설정값을 확인한 뒤 직접 다시 미리보기 하세요.", "Review inputs and parameters, then Preview explicitly again.");
+    public string RecipeHealthReadyDetail => string.Empty;
+    public string RecipeHealthStalePreviewDetail => T("ThreeD.Workbench.RecipeHealthStalePreviewDetail", "입력과 설정값을 확인한 뒤 미리보기를 다시 실행하세요.", "Review the inputs and parameters, then run Preview again.");
     public string RecipeHealthPublishedDetail => T("ThreeD.Workbench.RecipeHealthPublishedDetail", "적용된 검사 결과가 있습니다.", "Current Published evidence is available.");
     public string RecipeHealthNoStep => T("ThreeD.Workbench.RecipeHealthNoStep", "선택한 단계 없음", "No step selected");
     public string RecipeHealthNoStepDetail => T("ThreeD.Workbench.RecipeHealthNoStepDetail", "다음 요구사항을 선택하여 필요한 단계를 여세요.", "Select the next requirement to reveal its owning step.");
@@ -1449,16 +1440,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FlowPortCurrentDetailFormat => T("ThreeD.Workbench.FlowPortCurrentDetailFormat", "\uCD9C\uB825 '{0}'\uC744(\uB97C) \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Typed output '{0}' is current.");
     public string FlowPortIncompatible => T("ThreeD.Workbench.FlowPortIncompatible", "\uD638\uD658\uB418\uC9C0 \uC54A\uB294 \uC785\uB825", "Incompatible input");
     public string FlowPortIncompatibleDetailFormat => T("ThreeD.Workbench.FlowPortIncompatibleDetailFormat", "\uC785\uB825 '{0}'\uC740(\uB294) {1}\uC785\uB2C8\uB2E4. {2} \uB370\uC774\uD130\uB97C \uC5F0\uACB0\uD558\uC138\uC694.", "Input '{0}' is {1}. Repair the route with a {2} input.");
-    public string FlowConnectionIdle => T("ThreeD.Workbench.FlowConnectionIdle", "출력 포트를 선택한 뒤 연결할 호환 입력 포트를 선택하세요. 연결 변경만으로 검사를 실행하지 않습니다.", "Select an output port, then its compatible input. Editing a route never runs inspection.");
-    public string FlowConnectionEmpty => T("ThreeD.Workbench.FlowConnectionEmpty", "도구를 추가한 뒤 출력 포트와 입력 포트를 차례로 선택하세요.", "Add a tool, then select an output and an input port in order.");
-    public string FlowConnectionChooseInputFormat => T("ThreeD.Workbench.FlowConnectionChooseInputFormat", "{0} 출력이 선택되었습니다. 연결할 입력 포트를 선택하세요. Escape로 취소할 수 있습니다.", "{0} output selected. Choose an input port; press Escape to cancel.");
-    public string FlowConnectionSaved => T("ThreeD.Workbench.FlowConnectionSaved", "입력 경로를 변경했습니다. 레시피를 저장한 뒤 필요하면 검사를 직접 실행하세요.", "Input route changed. Save the recipe, then run inspection explicitly if needed.");
+    public string FlowConnectionIdle => T("ThreeD.Workbench.FlowConnectionIdle", "출력과 호환되는 입력에 연결하세요.", "Connect an output to a compatible input.");
+    public string FlowConnectionEmpty => T("ThreeD.Workbench.FlowConnectionEmpty", "검사 도구를 추가하세요.", "Add an inspection tool.");
+    public string FlowConnectionChooseInputFormat => T("ThreeD.Workbench.FlowConnectionChooseInputFormat", "{0} → 입력 포트 선택 · Esc 취소", "{0} → select an input port · Esc cancels");
+    public string FlowConnectionSaved => T("ThreeD.Workbench.FlowConnectionSaved", "입력 연결을 변경했습니다.", "Input connection changed.");
     public string FlowConnectionAlreadyConnected => T("ThreeD.Workbench.FlowConnectionAlreadyConnected", "이 출력은 이미 입력에 연결되어 있습니다.", "This output is already connected to the input.");
     public string FlowConnectionRejected => T("ThreeD.Workbench.FlowConnectionRejected", "호환되지 않거나 순서가 맞지 않는 출력입니다. 기존 입력 경로를 유지했습니다.", "That output is incompatible or out of order. The existing route was kept.");
-    public string FlowConnectionCancelled => T("ThreeD.Workbench.FlowConnectionCancelled", "도구 연결을 취소했습니다. 저장된 입력 경로는 변경되지 않았습니다.", "Tool connection cancelled. The saved input route was not changed.");
+    public string FlowConnectionCancelled => T("ThreeD.Workbench.FlowConnectionCancelled", "도구 연결을 취소했습니다.", "Tool connection cancelled.");
     public string FlowConnectionCancel => T("ThreeD.Workbench.FlowConnectionCancel", "연결 취소", "Cancel connection");
     public string FlowConnectionOutputPort => T("ThreeD.Workbench.FlowConnectionOutputPort", "출력 포트", "Output port");
-    public string FlowConnectionOutputPortHelp => T("ThreeD.Workbench.FlowConnectionOutputPortHelp", "선택한 출력에서 호환 입력 포트로 연결을 시작합니다.", "Start a route from this output to a compatible input port.");
+    public string FlowConnectionOutputPortHelp => T("ThreeD.Workbench.FlowConnectionOutputPortHelp", "호환 입력에 연결", "Connect to a compatible input");
     public string FlowConnectionInputPort => T("ThreeD.Workbench.FlowConnectionInputPort", "입력 포트", "Input port");
     public string FlowConnectionInputPortHelp => T("ThreeD.Workbench.FlowConnectionInputPortHelp", "선택한 출력의 연결 대상입니다. 호환성과 순서를 검증합니다.", "Target for the selected output. Compatibility and route order are validated.");
 

@@ -238,13 +238,17 @@ internal static class NumericDisplayVerification
             }
             using (var workbench = new ToolWorkbenchViewModel(Path.Combine(folder, "recent.json")))
             {
-                Check("precise recipe opens", workbench.TryOpenTeachingRecipe(Path.Combine(folder, "precision.ov3d-recipe.json"), out _));
+                Check("precise recipe opens", workbench.TryOpenTeachingRecipe(WorkbenchSettingsVerificationFixture.CreatePrecisionRecipe(folder), out _));
                 var draft = (ThicknessStepProperties)workbench.SelectedStepPropertyDraft!;
                 var before = (draft.MinimumThickness, draft.MaximumThickness);
                 var grid = new RecipeStepPropertyGridHost { SelectedObject = draft, IsCompactPresentation = true };
                 window.Content = grid;
                 window.Dispatcher.Invoke(DispatcherPriority.Input, new Action(window.UpdateLayout));
-                Check("real recipe untouched Apply retains its exact draft", grid.CommitPendingEdit(out _) && workbench.TryApplySelectedStepParameterDraft(out _)
+                var beforeParameters = string.Join(";", workbench.SelectedPipelineStep!.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}"));
+                var committed = grid.CommitPendingEdit(out var commitMessage);
+                var applied = workbench.TryApplySelectedStepParameterDraft(out var applyMessage);
+                lines.Add($"PrecisionApply|committed={committed}|applied={applied}|dirty={workbench.IsDirty}|before={before}|after={(draft.MinimumThickness, draft.MaximumThickness)}|parametersBefore={beforeParameters}|parametersAfter={string.Join(";", workbench.SelectedPipelineStep.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}"))}|commit={commitMessage}|apply={applyMessage}");
+                Check("real recipe untouched Apply retains its exact draft", committed && applied
                     && before == (draft.MinimumThickness, draft.MaximumThickness) && !workbench.IsDirty);
                 var saved = Path.Combine(folder, "saved-precision.ov3d-recipe.json");
                 Check("precise recipe saves", workbench.TrySaveTeachingRecipe(saved, out _));

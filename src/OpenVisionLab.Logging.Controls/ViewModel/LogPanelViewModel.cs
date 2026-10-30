@@ -122,19 +122,19 @@ namespace OpenVisionLab.Logging.Controls.ViewModel
 
         public string EmptyText => T("Log.Empty");
 
-        public string EmptyTitleText => T("Log.EmptyTitle", LocalText("실행 로그 대기", "Run log is waiting"));
+        public string EmptyTitleText => T("Log.EmptyTitle", LocalText("기록 없음", "No entries"));
 
         public string EmptyDetailText => T(
             "Log.EmptyDetail",
             LocalText(
-                "이미지 로드, Preview, Run, 도구 검증 이벤트가 여기에 표시됩니다.",
-                "Image load, Preview, Run, and tool verification events appear here."));
+                "",
+                ""));
 
         public string EmptyActionHintText => T(
             "Log.EmptyActionHint",
             LocalText(
-                "오류나 경고가 있으면 상세 모드에서 필터링할 수 있습니다.",
-                "Use Details mode to filter warnings and errors."));
+                "",
+                ""));
 
         public string ModeToolTip => T("Log.Tooltip.Mode");
 

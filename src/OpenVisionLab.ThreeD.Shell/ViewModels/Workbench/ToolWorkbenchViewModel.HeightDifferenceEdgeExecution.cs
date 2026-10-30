@@ -16,8 +16,11 @@ public sealed partial class ToolWorkbenchViewModel
         heightDifferenceEdgeExecutionOwner.CurrentOutput;
     internal bool TryGetPublishedHeightDifferenceEdgeOutput(
         string outputEntityId,
-        out C3DHeightDifferenceEdgePointSet? output) =>
-        heightDifferenceEdgeExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DHeightDifferenceEdgePointSet? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightDifferenceEdgePointSet>(outputEntityId, out output)) return output is not null;
+        return heightDifferenceEdgeExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
     public IReadOnlyList<string> HeightDifferenceEdgeComparisonAxisOptions =>
         heightDifferenceEdgeExecutionOwner.ComparisonAxisOptions;
     public IReadOnlyList<string> HeightDifferenceEdgePolarityOptions =>

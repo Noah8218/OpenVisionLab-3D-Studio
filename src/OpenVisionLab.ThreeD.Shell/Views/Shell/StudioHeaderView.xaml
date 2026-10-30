@@ -98,11 +98,12 @@
                     <ControlTemplate TargetType="ui:Button">
                         <Border x:Name="Chrome" Padding="{TemplateBinding Padding}" CornerRadius="4" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <ContentPresenter Content="{TemplateBinding Icon}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <ContentPresenter x:Name="ActionIcon" Content="{TemplateBinding Icon}" Margin="0,0,6,0" VerticalAlignment="Center" />
                                 <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="Content" Value="{x:Null}"><Setter TargetName="ActionIcon" Property="Margin" Value="0" /></Trigger>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>
                             <Trigger Property="IsPressed" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /></Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
@@ -140,11 +141,10 @@
                                Visibility="{Binding IsAuthoringWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}"
                                AutomationProperties.AutomationId="LoadTeachingInputButton"
                                AutomationProperties.Name="{app:ThreeDText Key=ThreeD.R19.LoadInput, Korean='3D 입력 불러오기', English='Load 3D input'}" />
-                    <ui:Button Style="{StaticResource HeaderActionStyle}"
-                               Content="{app:ThreeDText Key=ThreeD.Studio.SaveShort, Korean='저장', English='Save'}"
+                    <ui:Button Width="30" Padding="6,2" Style="{StaticResource HeaderActionStyle}"
                                Icon="{ui:SymbolIcon Save24, FontSize=16}"
                                Command="{Binding Workbench.SaveTeachingRecipeCommand}"
-                               ToolTip="Ctrl+S"
+                               ToolTip="{app:ThreeDText Key=ThreeD.Studio.SaveTip, Korean='레시피 저장 (Ctrl+S)', English='Save recipe (Ctrl+S)'}"
                                AutomationProperties.AutomationId="SaveTeachingRecipeHeaderButton"
                                AutomationProperties.Name="{app:ThreeDText Key=ThreeD.R19.SaveRecipe, Korean='레시피 저장', English='Save recipe'}" />
                 </StackPanel>
@@ -188,6 +188,10 @@
                         <MenuItem Header="{Binding Localization.ResultsWorkspaceTitle}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Review}" />
                         <MenuItem Header="{Binding Localization.AdvancedLayout}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Expert}" />
                         <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.ResetLayout, Korean='레이아웃 초기화', English='Reset layout'}" Click="ResetLayout_Click" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.Studio.SaveFullWindowPng, Korean='전체 창 PNG 저장', English='Save full window PNG'}"
+                                  Command="{x:Static app:MainWindow.SaveFullWindowPngCommand}"
+                                  InputGestureText="Ctrl+Shift+F12"
+                                  AutomationProperties.AutomationId="SaveFullWindowPng" />
                     </MenuItem>
                     <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.ToolsMenu, Korean='_도구', English='_Tools'}">
                         <MenuItem StaysOpenOnClick="True">
@@ -229,7 +233,11 @@
                         <MenuItem Header="{Binding Localization.Calibrate}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Calibrate}" />
                     </MenuItem>
                     <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Margin="0" Header="{app:ThreeDText Key=ThreeD.R19.HelpMenu, Korean='_도움말', English='_Help'}">
-                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.UiGuide, Korean='화면 사용 안내', English='Workspace guide'}" Command="{Binding OpenUiContractCommand}" />
+                        <MenuItem Header="{app:ThreeDText Key=ThreeD.R19.UiGuide, Korean='뷰어 사용법', English='Viewer help'}" Command="{Binding Workbench.ToggleViewerHelpCommand}">
+                            <MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Style.Triggers>
+                                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="False" /><Condition Binding="{Binding IsInspectWorkspaceSelected}" Value="False" /><Condition Binding="{Binding IsValidateWorkspaceSelected}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="IsEnabled" Value="False" /></MultiDataTrigger>
+                            </Style.Triggers></Style></MenuItem.Style>
+                        </MenuItem>
                     </MenuItem>
                 </Menu>
             </shell:StudioTitleBarView.MenuContent>

@@ -1028,6 +1028,58 @@ internal static class SourceQualityWorkspaceVerification
                 && !viewModel.IsAcquisitionLowCoverageFlagDraft
                 && viewModel.HasPendingAcquisitionProvenanceChanges;
 
+            var applied = viewModel.AppliedAcquisitionProvenance;
+            var languageRoundTrip = true;
+            foreach (var language in new[] { OpenVisionLanguage.English, OpenVisionLanguage.Korean })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                host.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, new Action(view.UpdateLayout));
+                var choices = FindVisualDescendants<ComboBox>(view).Where(combo =>
+                    AutomationProperties.GetAutomationId(combo) is "SourceAcquisitionProvenanceState" or "SourceAcquisitionDirectionState").ToArray();
+                languageRoundTrip &= choices.Length == 2 && choices.All(combo => combo.SelectedItem is not null)
+                    && viewModel.SelectedAcquisitionStateOption?.State == ToolRecipeAcquisitionProvenanceState.Available
+                    && viewModel.SelectedAcquisitionDirectionStateOption?.State == ToolRecipeAcquisitionDirectionState.Unavailable
+                    && viewModel.IsAcquisitionTransparentFlagDraft && !viewModel.IsAcquisitionReflectiveFlagDraft
+                    && viewModel.HasPendingAcquisitionProvenanceChanges && !viewModel.HasAcquisitionValidationError
+                    && ReferenceEquals(applied, viewModel.AppliedAcquisitionProvenance);
+            }
+
+            var renderedChoices = new List<string>();
+            viewModel.LoadAcquisitionProvenance(
+                new ToolRecipeAcquisitionProvenance(
+                    ToolRecipeAcquisitionProvenanceState.Unavailable,
+                    "No acquisition provenance was supplied.",
+                    "Acquisition conditions are unknown.",
+                    ToolRecipeAcquisitionDirection.CreateUnavailable("frame.c3d-grid-index"),
+                    [new(ToolRecipeAcquisitionLimitationKind.Clipped, ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored)]),
+                "frame.c3d-grid-index");
+            var unavailableApplied = viewModel.AppliedAcquisitionProvenance;
+            foreach (var language in new[] { OpenVisionLanguage.English, OpenVisionLanguage.Korean, OpenVisionLanguage.English })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                host.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, new Action(view.UpdateLayout));
+                foreach (var combo in FindVisualDescendants<ComboBox>(view).Where(combo =>
+                    AutomationProperties.GetAutomationId(combo) is "SourceAcquisitionProvenanceState" or "SourceAcquisitionDirectionState"))
+                {
+                    var direction = AutomationProperties.GetAutomationId(combo) == "SourceAcquisitionDirectionState";
+                    var expected = direction ? ThreeDLocalization.Shared.SourceAcquisitionDirectionUnavailable : ThreeDLocalization.Shared.SourceAcquisitionUnavailable;
+                    var visibleText = string.Join(" / ", FindVisualDescendants<TextBlock>(combo).Where(text => text.IsVisible).Select(text => text.Text));
+                    var selectionLabel = combo.SelectionBoxItem switch
+                    {
+                        SourceAcquisitionProvenanceStateOption option => option.Label,
+                        SourceAcquisitionDirectionStateOption option => option.Label,
+                        string text => text,
+                        _ => string.Empty
+                    };
+                    renderedChoices.Add($"{language}:{AutomationProperties.GetAutomationId(combo)}:index={combo.SelectedIndex},selection={selectionLabel},visible={visibleText}");
+                    languageRoundTrip &= combo.SelectedIndex >= 0 && selectionLabel == expected && visibleText.Contains(expected, StringComparison.Ordinal);
+                }
+                languageRoundTrip &= viewModel.SelectedAcquisitionStateOption?.State == ToolRecipeAcquisitionProvenanceState.Unavailable
+                    && viewModel.SelectedAcquisitionDirectionStateOption?.State == ToolRecipeAcquisitionDirectionState.Unavailable
+                    && viewModel.IsAcquisitionClippedFlagDraft && !viewModel.HasPendingAcquisitionProvenanceChanges
+                    && !viewModel.HasAcquisitionValidationError && ReferenceEquals(unavailableApplied, viewModel.AppliedAcquisitionProvenance);
+            }
+
             var flagsPanel = FindVisualDescendants<WrapPanel>(view).SingleOrDefault(panel =>
                 AutomationProperties.GetAutomationId(panel)
                 == "SourceAcquisitionLimitationFlags");
@@ -1048,11 +1100,12 @@ internal static class SourceQualityWorkspaceVerification
             var passed = allRendered
                 && initialBinding
                 && twoWayBinding
+                && languageRoundTrip
                 && flagsPanel is not null
                 && provenanceEditor is not null;
             return new(
                 passed,
-                $"apartment=STA|rendered={allRendered}|initial={initialBinding}|twoWay={twoWayBinding}|panel={flagsPanel is not null}|editor={provenanceEditor is not null}|screenshot={screenshotPath}");
+                $"apartment=STA|rendered={allRendered}|initial={initialBinding}|twoWay={twoWayBinding}|languageRoundTrip={languageRoundTrip}|choices={string.Join(";", renderedChoices)}|panel={flagsPanel is not null}|editor={provenanceEditor is not null}|screenshot={screenshotPath}");
         }
         catch (Exception exception)
         {

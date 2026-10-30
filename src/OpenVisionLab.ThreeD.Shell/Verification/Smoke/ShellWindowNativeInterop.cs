@@ -78,17 +78,24 @@ internal static class ShellWindowNativeInterop
                 Y = (int)SystemParameters.VirtualScreenTop
             },
             MonitorDefaultToNearest);
+        return TryGetMonitorWorkArea(leftmostMonitor, out workArea);
+    }
+
+    public static bool TryGetWindowWorkArea(IntPtr windowHandle, out Rect workArea) =>
+        TryGetMonitorWorkArea(MonitorFromWindow(windowHandle, MonitorDefaultToNearest), out workArea);
+
+    private static bool TryGetMonitorWorkArea(IntPtr monitor, out Rect workArea)
+    {
         var monitorInfo = new MonitorInfo
         {
             Size = Marshal.SizeOf<MonitorInfo>()
         };
-        if (leftmostMonitor != IntPtr.Zero
-            && GetMonitorInfo(leftmostMonitor, ref monitorInfo))
+        if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref monitorInfo))
         {
             var dpiX = 96u;
             var dpiY = 96u;
             GetDpiForMonitor(
-                leftmostMonitor,
+                monitor,
                 EffectiveDpi,
                 out dpiX,
                 out dpiY);

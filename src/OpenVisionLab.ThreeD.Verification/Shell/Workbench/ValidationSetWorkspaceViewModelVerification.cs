@@ -30,6 +30,7 @@ internal static class ValidationSetWorkspaceViewModelVerification
             total++;
             if (condition) passed++;
             lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
+            Console.WriteLine($"ValidationWorkspace {total}: {(condition ? "PASS" : "FAIL")} | {name}");
         }
 
         try
@@ -272,6 +273,20 @@ internal static class ValidationSetWorkspaceViewModelVerification
                 await pending;
                 Check("workspace Dispose cancels preview publication and releases cache", previewWorkspace.ValidationMismatchPreviews.Count == 0 && previewWorkspace.IsDisposed, "Window0; no viewer frame mutation");
             }
+            var headlessPreviewCompleted = await Task.Run(async () =>
+            {
+                _ = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                using var headless = CreateWorkspace();
+                headless.SetValidationSetSources([passPath]);
+                headless.SelectedValidationSetSample = headless.AllSamples[0];
+                headless.SetValidationSampleRoleCommand.Execute("Bad");
+                await headless.RunValidationSetAsync();
+                await headless.ValidationMismatchPreviewTask.WaitAsync(TimeSpan.FromSeconds(5));
+                return Thread.CurrentThread.GetApartmentState() == ApartmentState.MTA
+                    && headless.ValidationMismatchPreviews.ContainsKey(passPath);
+            });
+            Check("headless preview ignores an incidental non-pumping worker Dispatcher", headlessPreviewCompleted,
+                "Actual C3D mismatch preview completes on an MTA worker without pumping its Dispatcher.");
             using (var reloadPreview = CreateWorkspace())
             {
                 var replacePath = Path.Combine(fixtureRoot, "preview-replaced-input.c3d");
@@ -341,7 +356,8 @@ internal static class ValidationSetWorkspaceViewModelVerification
                 firstMismatch?.Order == 2 && review.SelectedValidationSetSample?.Order == 3 && comparisons == 0,
                 $"first={firstMismatch?.Order};next={review.SelectedValidationSetSample?.Order}");
             Check("distribution limits come from execution evidence with full numeric precision",
-                review.ValidationDistributionOutputs.Single() is { Minimum: 7.75, Maximum: 8.25, Points.Count: 6 } output && output.Points[1].Value == 8.1,
+                review.ValidationDistributionOutputs.Single() is { Minimum: 7.75, Maximum: 8.25, Points.Count: 5 } output && output.Points[1].Value == 8.1
+                && output.Points.All(point => point.Sample.HasExpectation),
                 review.ValidationDistributionOutputs.Single().RangeText);
             review.OpenValidationSetComparisonCommand.Execute(reviewSamples[1]);
             Check("card comparison selects its actual sample before the explicit comparison request", review.SelectedValidationSetSample?.Order == 2 && comparisons == 1,
@@ -355,7 +371,7 @@ internal static class ValidationSetWorkspaceViewModelVerification
                 review.ValidationSetAdjustmentCount == 7 && review.ValidationSetMatchCount == 2
                 && review.ValidationSetAdjustmentPendingCount == 2 && review.ValidationSetAdjustmentErrorCount == 1
                 && review.ValidationSetHeldOutCompletedCount == 2 && review.ValidationSetHeldOutPendingCount == 1
-                && review.ValidationSetMismatchCount == 4,
+                && review.ValidationSetMismatchCount == 3,
                 "Held-out Error counts as a completed execution and an error, never as an adjustment Match");
             review.SetValidationSetFilterCommand.Execute("Error");
             Check("error filter includes held-out execution errors", review.ValidationSetSamples.Select(sample => sample.Order).SequenceEqual([5, 9]), "Both actual error rows remain reachable");
@@ -518,7 +534,8 @@ internal static class ValidationSetWorkspaceViewModelVerification
             && workbench.SelectedValidationDistributionReadout.Contains("× NG") && workbench.SelectedValidationDistributionReadout.Contains("7.75 – 8.25"), workbench.SelectedValidationDistributionReadout.Replace('\n', '|'));
         workbench.SelectedValidationSetSample = rows[2];
         check("selected real Error readout preserves NaN and lacks recorded limits", workbench.SelectedValidationDistributionReadout.Contains("NaN raw-height")
-            && !workbench.SelectedValidationDistributionReadout.Contains("7.75") && firstMean.RangeText.Contains("—"), workbench.SelectedValidationDistributionReadout.Replace('\n', '|'));
+            && !workbench.SelectedValidationDistributionReadout.Contains("7.75")
+            && (workbench.SelectedValidationDistributionReadout.Contains("기록된 허용 범위 없음") || workbench.SelectedValidationDistributionReadout.Contains("No recorded limits")), workbench.SelectedValidationDistributionReadout.Replace('\n', '|'));
         workbench.SelectedValidationDistributionOutput = secondMean;
         check("missing next step readout does not borrow another sample value or range", !workbench.SelectedValidationDistributionReadout.Contains("12.00")
             && !workbench.SelectedValidationDistributionReadout.Contains("11.75"), workbench.SelectedValidationDistributionReadout.Replace('\n', '|'));

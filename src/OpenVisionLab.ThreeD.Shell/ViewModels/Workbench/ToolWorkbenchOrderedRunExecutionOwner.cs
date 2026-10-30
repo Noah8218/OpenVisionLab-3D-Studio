@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading;
+using System.Text.Json;
 using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -32,8 +33,16 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private readonly Action stateChanged;
     private readonly Action<ToolWorkbenchOrderedRunCompletedEventArgs> completed;
     private readonly Action invalidated;
+    private readonly Action? clearTeachingOutputs;
+    private readonly Func<ToolRecipeDocument, ToolRecipeOrderedGraphExecutionResult, CancellationToken, Task>? applyTeachingOutputs;
     private readonly RelayCommand cancelCommand;
     private readonly RelayCommand retryRecordSaveCommand;
+
+    private readonly Dictionary<string, (string Step, string Context, ToolRecipeOrderedGraphStepResult? Result, string? Path)> publishedOutputs = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<string, InspectionQueueHeightMapSnapshot> heightMaps = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<string, (string Authored, ToolRecipeSelection Rebound)> runSelections = new(StringComparer.OrdinalIgnoreCase);
 
     private bool isRunning;
     private int runGate;
@@ -48,6 +57,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     private volatile bool hasPendingRecordSave;
     private bool wasLastRunCancelled;
     private string summary;
+    private (ToolRecipeOrderedGraphExecutionResult? Result, string? RecordPath, InspectionRunRecord? Record, string Summary)? teachingRunBeforeInspection;
 
     public ToolWorkbenchOrderedRunExecutionOwner(
         Func<ToolRecipeDocument> createDocument,
@@ -64,7 +74,9 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         Action invalidated,
         Func<ToolRecipeDocument, string, (bool CanRun, string Message)>? getInspectionCapability = null,
         Func<string?>? getSavedRecipeSha256 = null,
-        Action<string, ResultStatus?, bool>? recordExecution = null)
+        Action<string, ResultStatus?, bool>? recordExecution = null,
+        Action? clearTeachingOutputs = null,
+        Func<ToolRecipeDocument, ToolRecipeOrderedGraphExecutionResult, CancellationToken, Task>? applyTeachingOutputs = null)
     {
         this.createDocument = createDocument ?? throw new ArgumentNullException(nameof(createDocument));
         this.getCapability = getCapability ?? throw new ArgumentNullException(nameof(getCapability));
@@ -83,6 +95,8 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         this.getInspectionCapability = getInspectionCapability;
         this.getSavedRecipeSha256 = getSavedRecipeSha256;
         this.recordExecution = recordExecution;
+        this.clearTeachingOutputs = clearTeachingOutputs;
+        this.applyTeachingOutputs = applyTeachingOutputs;
 
         summary = localize(
             "저장된 현재 레시피를 직접 실행하면 검사 기록이 생성됩니다.",
@@ -103,6 +117,7 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
     public RelayCommand RetryRecordSaveCommand => retryRecordSaveCommand;
 
     public ToolRecipeOrderedGraphExecutionResult? Result => result;
+    internal IReadOnlyDictionary<string, InspectionQueueHeightMapSnapshot> HeightMaps => new Dictionary<string, InspectionQueueHeightMapSnapshot>(heightMaps, StringComparer.OrdinalIgnoreCase);
 
     public string? RecordPath => recordPath;
 
@@ -126,6 +141,10 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         recordPath = null;
         record = null;
         completedRun = null;
+        teachingRunBeforeInspection = null;
+        publishedOutputs.Clear();
+        heightMaps.Clear();
+        runSelections.Clear();
         hasPendingRecordSave = false;
         isRunning = false;
     }
@@ -225,11 +244,24 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                 appendLog("Run", summary);
                 return false;
             }
+            if (requestedSourcePath is not null)
+                teachingRunBeforeInspection ??= (result, recordPath, record, summary);
+            else
+                teachingRunBeforeInspection = null;
             completedRun = null;
             result = null;
             recordPath = null;
             record = null;
+            heightMaps.Clear();
             SetRunning(true);
+            if (requestedSourcePath is null)
+            {
+                publishedOutputs.Clear();
+                runSelections.Clear();
+                foreach (var step in document.Steps)
+                    publishedOutputs[step.OutputEntityId] = (step.Id, document.CreateStepExecutionContext(step.Id), null, null);
+                clearTeachingOutputs?.Invoke();
+            }
             summary = localize(
                 $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
                 $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
@@ -266,6 +298,41 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
                     return false;
                 }
 
+                foreach (var stepResult in execution.Steps.Where(item => item.RuntimeOutput is not null))
+                {
+                    currentToken.ThrowIfCancellationRequested();
+                    string? path = null;
+                    if (stepResult.RuntimeOutput is C3DHeightFieldSnapshot map)
+                    {
+                        path = await MaterializeOutputAsync(map, currentToken);
+                        currentToken.ThrowIfCancellationRequested();
+                        heightMaps[map.EntityId] = new(map.EntityId, stepResult.ToolId, path, map.ContentSha256,
+                            map.RootSourceSha256, map.Unit, map.FrameId, map.Width, map.Height, map.GridOriginColumn, map.GridOriginRow);
+                    }
+                    if (requestedSourcePath is null)
+                    {
+                        var context = document.CreateStepExecutionContext(stepResult.StepId);
+                        if (createDocument().CreateStepExecutionContext(stepResult.StepId) != context)
+                            throw new InvalidDataException("The input or conditions changed during ordered Run.");
+                        publishedOutputs[stepResult.OutputEntityId] = (stepResult.StepId, context, stepResult, path);
+                    }
+                }
+                if (requestedSourcePath is null && applyTeachingOutputs is not null)
+                {
+                    await applyTeachingOutputs(document, execution, currentToken);
+                    currentToken.ThrowIfCancellationRequested();
+                    if (Volatile.Read(ref disposalState) != 0) return false;
+                }
+
+                if (requestedSourcePath is null)
+                {
+                    foreach (var selection in document.Selections ?? [])
+                    {
+                        var rebound = execution.ReboundDocument.Selections?.FirstOrDefault(item => item.Id == selection.Id);
+                        if (rebound?.SourceBinding.OwnerEntityId is not null)
+                            runSelections[selection.Id] = (JsonSerializer.Serialize(selection with { Name = string.Empty }), rebound);
+                    }
+                }
                 result = execution;
                 foreach (var step in getPipelineSteps())
                 {
@@ -304,6 +371,15 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
             }
             catch (OperationCanceledException) when (currentToken.IsCancellationRequested)
             {
+                if (requestedSourcePath is null)
+                {
+                    foreach (var id in publishedOutputs.Keys.ToArray())
+                    {
+                        var entry = publishedOutputs[id];
+                        publishedOutputs[id] = (entry.Step, entry.Context, null, null);
+                    }
+                    clearTeachingOutputs?.Invoke();
+                }
                 return CompleteCancelledRun();
             }
         }
@@ -313,6 +389,16 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         }
         catch (Exception exception)
         {
+            if (isRunning) heightMaps.Clear();
+            if (requestedSourcePath is null && isRunning)
+            {
+                foreach (var id in publishedOutputs.Keys.ToArray())
+                {
+                    var entry = publishedOutputs[id];
+                    publishedOutputs[id] = (entry.Step, entry.Context, null, null);
+                }
+                clearTeachingOutputs?.Invoke();
+            }
             if (Volatile.Read(ref disposalState) == 0 && isRunning)
                 recordExecution?.Invoke(localize($"현재 레시피 실행 중 오류가 발생했습니다: {exception.Message}", $"The current recipe Run failed: {exception.Message}"), ResultStatus.Error, false);
             throw;
@@ -338,8 +424,75 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         }
     }
 
+    internal bool TryGetPublishedOutput<T>(string id, out T? output) where T : class
+    {
+        output = null;
+        if (!publishedOutputs.TryGetValue(id, out var entry)) return false;
+        if (Volatile.Read(ref disposalState) == 0 && !IsRunning && entry.Result?.RuntimeOutput is T value
+            && createDocument().Steps.Any(step => step.Id == entry.Step)
+            && createDocument().CreateStepExecutionContext(entry.Step) == entry.Context) output = value;
+        return true;
+    }
+
+    internal ToolRecipeSelection? GetCurrentRunSelection(ToolRecipeSelection selection)
+    {
+        if (IsRunning || !runSelections.TryGetValue(selection.Id, out var cached)
+            || cached.Rebound.SourceBinding.OwnerEntityId is not { } ownerId
+            || GetPublishedStep(ownerId) is null
+            || cached.Authored != JsonSerializer.Serialize(selection with { Name = string.Empty })) return null;
+        return cached.Rebound with { Name = selection.Name };
+    }
+
+    internal ToolRecipeDocument WithCurrentRunSelections(ToolRecipeDocument document) => document with
+    {
+        Selections = document.Selections?.Select(selection => GetCurrentRunSelection(selection) ?? selection).ToArray()
+    };
+
+    internal bool OwnsOutput(string id) => publishedOutputs.ContainsKey(id);
+
+    internal ToolRecipeOrderedGraphStepResult? GetPublishedStep(string id) =>
+        TryGetPublishedOutput<object>(id, out var output) && output is not null ? publishedOutputs[id].Result : null;
+
+    internal string? GetMaterializedPath(string id) => publishedOutputs.TryGetValue(id, out var entry) ? entry.Path : null;
+
+    internal string? GetPublishedPath(string id) => GetPublishedStep(id) is not null ? GetMaterializedPath(id) : null;
+
+    internal IReadOnlyList<ToolRecipeOrderedGraphStepResult> GetPublishedSteps() => publishedOutputs.Keys
+        .Select(GetPublishedStep).OfType<ToolRecipeOrderedGraphStepResult>().ToArray();
+
+    internal IReadOnlyList<string> BeginSelectedExecution(ToolWorkbenchPipelineStepItem step)
+    {
+        var outputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { step.OutputEntityId };
+        var document = createDocument();
+        foreach (var candidate in getPipelineSteps())
+            if (document.DependsOnEntity(candidate.Id, step.OutputEntityId)) outputs.Add(candidate.OutputEntityId);
+        foreach (var id in outputs)
+        {
+            if (!publishedOutputs.TryGetValue(id, out var entry)) continue;
+            if (id == step.OutputEntityId) publishedOutputs.Remove(id);
+            else publishedOutputs[id] = (entry.Step, entry.Context, null, null);
+        }
+        Invalidate(string.Empty);
+        return outputs.ToArray();
+    }
+
+    private static Task<string> MaterializeOutputAsync(C3DHeightFieldSnapshot map, CancellationToken token) => Task.Run(() =>
+    {
+        var root = Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        var folder = Path.Combine(string.IsNullOrWhiteSpace(root)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenVisionLab", "3DStudio")
+            : Path.GetFullPath(root), "Preview");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, $"ordered-{map.ContentSha256}.c3d");
+        var temporary = path + ".tmp." + Guid.NewGuid().ToString("N");
+        try { map.SaveC3D(temporary); token.ThrowIfCancellationRequested(); File.Move(temporary, path, true); }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        return path;
+    }, token);
+
     private bool CompleteCancelledRun()
     {
+        heightMaps.Clear();
         if (Volatile.Read(ref disposalState) != 0)
         {
             return false;
@@ -499,7 +652,9 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
             return;
         }
 
-        if (result is null && recordPath is null)
+        var hadTeachingRun = teachingRunBeforeInspection is not null;
+        teachingRunBeforeInspection = null;
+        if (result is null && recordPath is null && !hadTeachingRun)
         {
             return;
         }
@@ -511,6 +666,27 @@ internal sealed class ToolWorkbenchOrderedRunExecutionOwner : IDisposable
         summary = invalidationSummary;
         NotifyStateChanged();
         invalidated();
+    }
+
+    public bool RestoreTeachingRun()
+    {
+        if (IsRunning || HasPendingRecordSave || Volatile.Read(ref disposalState) != 0
+            || teachingRunBeforeInspection is not { } teachingRun) return false;
+
+        teachingRunBeforeInspection = null;
+        result = teachingRun.Result;
+        recordPath = teachingRun.RecordPath;
+        record = teachingRun.Record;
+        summary = teachingRun.Summary;
+        completedRun = null;
+        wasLastRunCancelled = false;
+        foreach (var step in getPipelineSteps())
+        {
+            var executed = result?.Steps.FirstOrDefault(item => item.StepId == step.Id);
+            step.State = executed is null ? "Not run" : $"Run {executed.Result.Status}";
+        }
+        NotifyStateChanged();
+        return true;
     }
 
     private void SetRunning(bool value)

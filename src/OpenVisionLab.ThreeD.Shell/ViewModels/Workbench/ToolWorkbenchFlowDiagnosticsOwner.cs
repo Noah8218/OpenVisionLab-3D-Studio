@@ -675,9 +675,12 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
     {
         var producingStep = steps.FirstOrDefault(step =>
             string.Equals(step.OutputEntityId, inputId, StringComparison.OrdinalIgnoreCase));
+        var artifact = artifacts.FirstOrDefault(item =>
+            string.Equals(item.Id, inputId, StringComparison.OrdinalIgnoreCase));
         if (producingStep is not null)
         {
-            if (string.Equals(producingStep.State, "Published", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(artifact?.State, "Published", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(producingStep.State, "Published", StringComparison.OrdinalIgnoreCase))
             {
                 return new FlowPortAssessment(
                     "Ready",
@@ -705,8 +708,6 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
                 1);
         }
 
-        var artifact = artifacts.FirstOrDefault(item =>
-            string.Equals(item.Id, inputId, StringComparison.OrdinalIgnoreCase));
         if (artifact is null)
         {
             return new FlowPortAssessment(

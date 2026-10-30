@@ -35,7 +35,7 @@ internal static class ToolSettingsLayoutVerification
         {
             OpenVisionLab.OpenVisionLanguageService.SetLanguage(OpenVisionLab.OpenVisionLanguage.Korean, save: false);
             using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent.json"));
-            var recipePath = Path.Combine(root, "noise.ov3d-recipe.json");
+            var recipePath = WorkbenchSettingsVerificationFixture.CreateNoiseRecipe(root);
             Check("fixture opens", workbench.TryOpenTeachingRecipe(recipePath, out var message), message);
             var original = File.ReadAllBytes(recipePath);
             var source = workbench.Source.Path;
@@ -134,6 +134,22 @@ internal static class ToolSettingsLayoutVerification
                 Check($"{size.w} English detail captions render", new[] { "DetailParametersTab", "DetailIoTab", "DetailProcessingTab", "DetailHelpTab" }
                     .All(name => english.FindName(name) is RadioButton { IsVisible: true, ActualWidth: > 55 }), "Values / I/O / Process / Help");
                 WpfScreenshotCapture.Save(WpfScreenshotCapture.Capture(english).Bitmap, Path.Combine(root, $"settings-english-{size.w}.png"));
+                host.Content = null;Settle();
+                var rail = new OpenVisionLab.ThreeD.Shell.Views.Shell.StudioNavigationRailView
+                {
+                    HorizontalAlignment = HorizontalAlignment.Left, Height = size.body,
+                    DataContext = new { SelectedLanguageOption = new { Language = OpenVisionLab.OpenVisionLanguage.English } }
+                };
+                host.Content = rail;Settle();rail.ApplyResponsiveWidthForVerification(size.w);Settle();
+                foreach (var name in new[] { "AuthoringModeButton", "ValidateModeButton", "InspectionModeButton", "ResultsModeButton" })
+                {
+                    var route = (RadioButton)rail.FindName(name);
+                    var text = Descendants<TextBlock>(route).Single(text => text.Text is "Teach" or "Validate" or "Inspect" or "Records");
+                    var measured = new FormattedText(text.Text, System.Globalization.CultureInfo.CurrentUICulture, text.FlowDirection,
+                        new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, text.Foreground, VisualTreeHelper.GetDpi(text).PixelsPerDip);
+                    Check($"{size.w}/{name} English caption fits on one line", measured.WidthIncludingTrailingWhitespace <= text.ActualWidth + .5
+                        && text.ActualHeight <= measured.Height + 1, $"text={text.Text};measured={measured.WidthIncludingTrailingWhitespace:F2}x{measured.Height:F2};actual={text.ActualWidth:F2}x{text.ActualHeight:F2}");
+                }
                 host.Content = null;Settle();OpenVisionLab.OpenVisionLanguageService.SetLanguage(OpenVisionLab.OpenVisionLanguage.Korean, save: false);
             }
         }

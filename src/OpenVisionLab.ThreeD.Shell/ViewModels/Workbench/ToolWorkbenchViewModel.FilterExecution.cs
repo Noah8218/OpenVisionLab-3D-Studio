@@ -62,6 +62,12 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepFilter =>
         string.Equals(SelectedPipelineStep?.ToolId, "filter", StringComparison.Ordinal);
 
+    public bool IsSelectedStepNinePointCompensation => SelectedPipelineStep?.ToolId == ToolRecipeNinePointSurfaceCompensationExecution.ToolId;
+    public IReadOnlyList<NinePointSurfaceControlRow> NinePointCompensationRows => ninePointExecutionOwner.Rows;
+    public string NinePointCompensationSummary => ninePointExecutionOwner.Summary;
+    public C3DHeightImageFrame? NinePointPreviewFrame => ninePointExecutionOwner.PreviewFrame;
+    public string NinePointPreviewKind { get => ninePointExecutionOwner.PreviewKind; set => ninePointExecutionOwner.PreviewKind = value; }
+
     public bool IsFilterPreviewRunning => isFilterPreviewRunning;
     public bool IsSelectedStepPreviewRunning => selectedStepExecutionOwner.IsRunning;
     public bool HasCurrentFilterPreview => filterPreviewOutput is not null && !isFilterPreviewStale;
@@ -205,6 +211,10 @@ public sealed partial class ToolWorkbenchViewModel
                 CancelEditableRegionPreview,
                 () => IsEditableRegionPreviewRunning,
                 RefreshEditableRegionExecutionState),
+            ["nine-point-surface-compensation"] = new(
+                ninePointExecutionOwner.PreviewAsync, ninePointExecutionOwner.CanPreview, ninePointExecutionOwner.Publish,
+                () => ninePointExecutionOwner.HasCurrent && SelectedPipelineStep is { } step && !ninePointExecutionOwner.IsPublished(step.OutputEntityId),
+                ninePointExecutionOwner.Cancel, () => ninePointExecutionOwner.IsRunning, ninePointExecutionOwner.Refresh),
             ["level-surface"] = new(
                 PreviewSelectedLevelSurfaceAsync,
                 CanPreviewSelectedLevelSurface,
@@ -525,8 +535,53 @@ public sealed partial class ToolWorkbenchViewModel
         orderedRunExecutionOwner.Invalidate(summary);
     }
 
+    private void ClearOrderedTeachingOutputs()
+    {
+        ninePointExecutionOwner.Clear();
+        RefreshFilterStateFromOwner();
+    }
+
+    private async Task ApplyOrderedTeachingOutputsAsync(ToolRecipeDocument document, ToolRecipeOrderedGraphExecutionResult execution,
+        CancellationToken token)
+    {
+        foreach (var result in execution.Steps)
+        {
+            if (result.NinePointCompensation is not { Output: not null } compensation) continue;
+            var step = PipelineSteps.Single(item => item.Id == result.StepId);
+            await ninePointExecutionOwner.ApplyOrderedRunAsync(step, compensation, document.CreateStepExecutionContext(step.Id), token, orderedRunExecutionOwner.GetMaterializedPath(result.OutputEntityId));
+        }
+        token.ThrowIfCancellationRequested();
+    }
+
+    private C3DConnectedRegionArtifact? GetPublishedConnectedRegion(string id) =>
+        orderedRunExecutionOwner.TryGetPublishedOutput<C3DConnectedRegionArtifact>(id, out var output)
+            ? output : connectedRegionExecutionOwner.TryGetPublishedArtifact(id);
+
+    private C3DEditableRegionArtifact? GetPublishedEditableRegion(string id) =>
+        orderedRunExecutionOwner.TryGetPublishedOutput<C3DEditableRegionArtifact>(id, out var output)
+            ? output : editableRegionExecutionOwner.TryGetPublishedArtifact(id);
+
+    private C3DGridDomainArtifact? GetPublishedGridDomain(string id) =>
+        orderedRunExecutionOwner.TryGetPublishedOutput<C3DGridDomainArtifact>(id, out var output)
+            ? output : gridPolygonDomainExecutionOwner.TryGetPublishedArtifact(id);
+
+    private (C3DHeightFieldSnapshot Output, C3DOutlierCellMap Mask)? GetPublishedOutlierInput(string id)
+    {
+        if (!orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightFieldSnapshot>(id, out var output))
+            return removeOutlierExecutionOwner.TryGetPublishedInput(id);
+        return output is not null && orderedRunExecutionOwner.GetPublishedStep(id)?.OutlierMask is { } mask ? (output, mask) : null;
+    }
+
+    private void OnOrderedRunStateChanged()
+    {
+        if (artifactNavigatorOwner is not null) RebuildArtifactRegistryAndNavigator();
+        NotifyOrderedRunState();
+    }
+
     private void NotifyOrderedRunState()
     {
+        if (!isOrderedRunRunning && teachingSelectionStoreOwner is not null)
+            RecipeSession.SetValidation(RecipeSession.Validation, RecipeSession.StorageValidation, ValidateSelectionSourceBindings());
         OnPropertyChanged(nameof(IsOrderedRunRunning));
         OnPropertyChanged(nameof(HasOrderedRunResult));
         OnPropertyChanged(nameof(CurrentOrderedRunResult));
@@ -541,6 +596,8 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(CanOpenRecipeInfoEditor));
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
         OnPropertyChanged(nameof(IsRecipeSaveBlocked));
+        (SaveTeachingRecipeCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (SaveTeachingRecipeAsCommand as RelayCommand)?.RaiseCanExecuteChanged();
         sourceLoadOwner?.RefreshCommandStates();
         RefreshFlowConnectionCommands();
         OnPropertyChanged(nameof(OrderedRunStatus));

@@ -271,7 +271,7 @@
         </Grid.RowDefinitions>
 
         <DockPanel x:Name="ViewerCommandRows" Grid.Row="0" Margin="2,2,-2,-2" MinHeight="36" VerticalAlignment="Top" LastChildFill="False">
-            <ToggleButton x:Name="ViewerHelpButton" DockPanel.Dock="Right" Style="{StaticResource ViewerLayoutIconToggleStyle}" Margin="0,6,8,6" Command="{Binding ToggleViewerHelpCommand}" IsChecked="{Binding IsViewerHelpOpen, Mode=OneWay}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='조작 방법', English='Viewer controls'}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='조작 방법', English='Viewer controls'}" AutomationProperties.AutomationId="ViewerHelpButton"><ui:SymbolIcon Symbol="Keyboard24" FontSize="16" /></ToggleButton>
+            <ToggleButton x:Name="ViewerHelpButton" DockPanel.Dock="Right" Style="{StaticResource ViewerLayoutIconToggleStyle}" Margin="0,6,8,6" Command="{Binding ToggleViewerHelpCommand}" IsChecked="{Binding IsViewerHelpOpen, Mode=OneWay}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='뷰어 사용법', English='Viewer help'}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='뷰어 사용법', English='Viewer help'}" AutomationProperties.AutomationId="ViewerHelpButton"><ui:SymbolIcon Symbol="Keyboard24" FontSize="16" /></ToggleButton>
             <Border x:Name="ViewerLayoutToolbar"
                     Margin="8,6,8,6"
                     Padding="0"
@@ -408,17 +408,15 @@
             <Border Width="350" MaxHeight="580" Padding="16" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="6" TextElement.Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" KeyboardNavigation.TabNavigation="Cycle">
                 <Border.InputBindings><KeyBinding Key="Escape" Command="{Binding ToggleViewerHelpCommand}" /></Border.InputBindings>
                 <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-                    <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" Text="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='조작 방법', English='Viewer controls'}" />
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" Text="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='뷰어 사용법', English='Viewer help'}" />
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Text="{views:ThreeDText Key=ThreeD.Viewer.MouseHelp, Korean='왼쪽 드래그: 선택한 회전·이동 도구. 휠: 확대·축소. 오른쪽 클릭: 뷰어 메뉴. 큐브 면: 표준 시점. 초기화: 전체 형상을 초기 시점으로 맞춤.', English='Left drag: rotate or move with the selected tool. Wheel: zoom. Right click: viewer menu. Cube face: standard view. Home: fit the complete shape to its initial view.'}" />
                     <TextBlock FontFamily="Consolas" TextWrapping="Wrap" LineHeight="24" Text="{views:ThreeDText Key=ThreeD.Viewer.KeyboardHelp, Korean='F  전체 맞춤&#xA;R  회전&#xA;M  이동&#xA;1  3D 단일 창&#xA;2  높이 영상&#xA;3  3D + 높이&#xA;Ctrl+1  1개 창&#xA;Ctrl+2  좌우 2개 창&#xA;Ctrl+4  4개 창&#xA;Esc  현재 두 점 측정 취소', English='F  Fit all&#xA;R  Rotate&#xA;M  Move&#xA;1  Single 3D pane&#xA;2  Height image&#xA;3  3D + height&#xA;Ctrl+1  One pane&#xA;Ctrl+2  Two side-by-side panes&#xA;Ctrl+4  Four panes&#xA;Esc  Cancel the current two-point measurement'}" />
-                    <TextBlock Margin="0,12,0,12" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Viewer.DisplayOnlyHelp, Korean='영역 표시와 시점 변경은 검사 결과나 저장된 ROI를 바꾸지 않습니다. 영역 편집은 적용·취소 버튼으로 확정합니다.', English='Region visibility and camera changes preserve inspection results and saved regions. Confirm region edits with Apply or Cancel.'}" />
                     <Button x:Name="ViewerHelpCloseButton" Command="{Binding ToggleViewerHelpCommand}" Content="{views:ThreeDText Key=ThreeD.Common.Close, Korean='닫기', English='Close'}" />
                 </StackPanel></ScrollViewer>
             </Border>
         </Popup>
         <Border Grid.Row="3" Panel.ZIndex="20" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20" Background="{DynamicResource ThreeD.PanelBrush}">
             <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
-                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsInspectionFileView}" Value="True" /><Condition Binding="{Binding InspectionQueue.HasSelectedSample}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
                 <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsValidationSampleView}" Value="True" /><Condition Binding="{Binding HasSelectedValidationSetSample}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
             </Style.Triggers></Style></Border.Style>
             <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap">

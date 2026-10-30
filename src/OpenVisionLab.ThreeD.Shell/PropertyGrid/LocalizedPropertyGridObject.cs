@@ -14,7 +14,7 @@ internal static class LocalizedPropertyGridObject
         ["RawHeightMinusDatumPlanePredictedRawHeight"] = "원시 높이에서 기준면 높이를 뺌",
         ["Median"] = "중앙값",
         ["PreserveMask"] = "누락 위치 유지",
-        ["AvailableNeighbors"] = "사용 가능한 주변 셀",
+        ["AvailableNeighbors"] = "경계 안 이웃 셀",
         ["KeepAtOrAboveThreshold"] = "임계값 이상 유지",
         ["KeepAtOrBelowThreshold"] = "임계값 이하 유지",
         ["LocalMedianAbsoluteDeviation"] = "주변 중앙값과의 높이차",
@@ -78,7 +78,8 @@ internal static class LocalizedPropertyGridObject
     };
 
     internal static string LocalizeOption(string value) => OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English
-        ? value : OptionTranslations.GetValueOrDefault(value, value);
+        ? value == "Raw source + Published A1" ? "Raw source + applied transform matrix" : value
+        : OptionTranslations.GetValueOrDefault(value, value);
 
 
     public static object Create(object source, bool includeAdvanced = true, bool? acceptanceOnly = null) =>
@@ -297,6 +298,11 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
             "WidthTolerance" => "변환 맵의 기준 단위, 0 이상. 기대 단면 폭에서 허용하는 양쪽 차이입니다.",
             "ExpectedHeightRange" => "변환 맵의 기준 단위, 0 이상. 지정한 행 단면 높이의 최대−최소 기대값입니다.",
             "HeightTolerance" => "변환 맵의 기준 단위, 0 이상. 기대 단면 높이 범위에서 허용하는 양쪽 차이입니다.",
+            "MaximumClosestApproachDistance" => "원본 좌표 단위, 0 이상. 두 직선의 XYZ 최근접 거리가 이 값 이하여야 합니다. 물리 교정값은 아닙니다.",
+            "MinimumAcuteAngleDegrees" => "도 단위, 0~90. 두 직선의 예각이 이 값보다 작으면 제외합니다.",
+            "MaximumSupportExtension" => "원본 좌표 단위, 0 이상. 피팅 구간 밖으로 연장할 수 있는 거리이며 0이면 연장하지 않습니다.",
+            "MaximumConditionEstimate" => "원본 확장 행렬의 무한대 노름 조건 추정값이 이 유한 상한을 넘으면 계산을 거부합니다.",
+            "ArithmeticResidualWarning" => "기준 좌표 단위의 잔차 경고값. 초과해도 계산 근거로 남기며 검사 OK/NG로 판정하지 않습니다.",
             "MaximumPeakToValleyRawHeight" => "입력 높이 단위, 0 초과. 적용된 수동 기준면에 대한 잔차의 최대−최소 허용값이며 물리 교정값이 아닙니다.",
             "OutputRole" => "공백이 아닌 결과 역할 이름. 출력의 의미를 식별하며 값을 계산하지 않습니다.",
             "ResidualPolicy" => "같은 셀의 입력 높이에서 기준면 예측 높이를 뺀 잔차를 사용합니다.",
@@ -340,6 +346,9 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
             }
             : name switch
             {
+                "MiddleRow" => "가운데 행",
+                "MiddleColumn" => "가운데 열",
+                "TargetHeight" => "보정 기준 높이",
                 "AffineIndependencePolicy" => "대응점 독립 조건",
                 "ArithmeticResidualWarning" => "산술 잔차 경고",
                 "BoundaryPolicy" => "경계 처리",
@@ -512,9 +521,10 @@ internal sealed class LocalizedPropertyGridObject<T>(T source, bool includeAdvan
 
     private static string LocalizeCategory(string category) =>
         OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English
-            ? category
+            ? category == "A2 contract" ? "Transform conditions" : category
             : category switch
             {
+                "Reference points" => "기준점",
                 "Acceptance" => "허용 기준",
                 "A3 publish policy" => "결과 적용 조건",
                 "A3 reference grid" => "기준 그리드",

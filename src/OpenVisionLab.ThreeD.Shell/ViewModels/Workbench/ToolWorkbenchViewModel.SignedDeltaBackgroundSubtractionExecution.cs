@@ -45,11 +45,16 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshSelectedToolWorkspaceProjection();
     }
 
-    internal bool TryGetPublishedSignedDeltaOutput(string entityId, out C3DSignedHeightDeltaArtifact? output) =>
-        signedDeltaBackgroundExecutionOwner.TryGetPublishedOutput(entityId, out output);
+    internal bool TryGetPublishedSignedDeltaOutput(string entityId, out C3DSignedHeightDeltaArtifact? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DSignedHeightDeltaArtifact>(entityId, out output)) return output is not null;
+        return signedDeltaBackgroundExecutionOwner.TryGetPublishedOutput(entityId, out output);
+    }
 
     internal C3DSignedHeightDeltaArtifact? GetRenderableSignedDeltaArtifact(string? entityId)
     {
+        if (entityId is not null && orderedRunExecutionOwner.TryGetPublishedOutput<C3DSignedHeightDeltaArtifact>(entityId, out var ordered))
+            return ordered is not null && ordered.TryValidate(out _) ? ordered : null;
         var output = CurrentSignedDeltaPreviewOutput;
         return output is not null
                && !IsSignedDeltaPreviewStale

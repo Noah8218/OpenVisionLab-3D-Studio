@@ -371,9 +371,9 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     {
         var unmappedCount = step.Parameters.Count(parameter => !mappedNames.Contains(parameter.Name));
         return unmappedCount == 0
-            ? localization?.StepAdapterReady ?? "Typed adapter ready"
+            ? localization?.StepAdapterReady ?? "Settings available"
             : string.Format(
-                localization?.StepAdapterReadyUnmappedFormat ?? "Typed adapter ready | {0} unmapped preserved",
+                localization?.StepAdapterReadyUnmappedFormat ?? "{0} settings cannot be edited · stored values preserved",
                 unmappedCount);
     }
 
@@ -424,8 +424,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         : Draft is null
             ? localization?.StepParameterUnsupportedEditor
                 ?? "This step is preserved, but no typed parameter editor is available yet."
-            : localization?.StepParameterMatchesRecipe
-                ?? "Parameters match the committed recipe. Editing does not run Preview or Publish.";
+            : string.Empty;
 
     private void SetStateCore(bool pending, string message)
     {

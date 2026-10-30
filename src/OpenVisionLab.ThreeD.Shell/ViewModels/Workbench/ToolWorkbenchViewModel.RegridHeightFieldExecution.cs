@@ -17,8 +17,11 @@ public sealed partial class ToolWorkbenchViewModel
         regridHeightFieldExecutionOwner.IsPreviewPublished;
     internal C3DTransformedHeightField? CurrentRegridHeightFieldOutput =>
         regridHeightFieldExecutionOwner.CurrentOutput;
-    internal bool TryGetPublishedRegridHeightFieldOutput(string outputEntityId, out C3DTransformedHeightField? output) =>
-        regridHeightFieldExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    internal bool TryGetPublishedRegridHeightFieldOutput(string outputEntityId, out C3DTransformedHeightField? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DTransformedHeightField>(outputEntityId, out output)) return output is not null;
+        return regridHeightFieldExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
     public string RegridHeightFieldExecutionSummary =>
         regridHeightFieldExecutionOwner.ExecutionSummary;
     public string RegridHeightFieldOutputHashSummary =>

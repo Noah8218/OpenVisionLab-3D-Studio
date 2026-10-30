@@ -76,6 +76,7 @@ public static class InspectionRunRecordJson
         }
 
         if (string.IsNullOrWhiteSpace(record.RunId)
+            || !Enum.IsDefined(record.WorkflowKind)
             || record.Recipe is null
             || record.Source is null
             || record.Artifacts is null
@@ -89,6 +90,17 @@ public static class InspectionRunRecordJson
         {
             throw new InvalidDataException(
                 "Run Record is missing a required identity, source, tool, status, or elapsed-time field.");
+        }
+
+        if (record.Metrics is null
+            || record.Metrics.Any(metric => metric is null)
+            || (record.Steps is { } resultSteps && resultSteps.Any(step => step is not null
+                && (step.Metrics is null
+                    || step.Metrics.Any(metric => metric is null)
+                    || step.Overlays is null
+                    || step.Overlays.Any(overlay => overlay is null)))))
+        {
+            throw new InvalidDataException("Run Record contains incomplete metric or step overlay data.");
         }
 
         if (record.Steps is { } steps

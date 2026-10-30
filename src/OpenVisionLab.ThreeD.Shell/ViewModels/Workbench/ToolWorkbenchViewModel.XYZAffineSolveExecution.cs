@@ -17,8 +17,11 @@ public sealed partial class ToolWorkbenchViewModel
         xyzAffineExecutionOwner.CurrentSolveOutput;
     internal bool TryGetPublishedAffineSolveOutput(
         string outputEntityId,
-        out C3DAffineTransform3D? output) =>
-        xyzAffineExecutionOwner.TryGetPublishedSolveOutput(outputEntityId, out output);
+        out C3DAffineTransform3D? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DAffineTransform3D>(outputEntityId, out output)) return output is not null;
+        return xyzAffineExecutionOwner.TryGetPublishedSolveOutput(outputEntityId, out output);
+    }
     public string AffineSolveExecutionSummary => xyzAffineExecutionOwner.SolveSummary;
     public string AffineSolveOutputHashSummary => xyzAffineExecutionOwner.SolveOutputHashSummary;
     public string AffineSolveUpstreamSummary => xyzAffineExecutionOwner.SolveUpstreamSummary;

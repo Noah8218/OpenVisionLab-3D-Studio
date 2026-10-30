@@ -64,6 +64,9 @@ public sealed class C3DInvalidCellMap
         return CreateCore(width, height, values, expectedMissingCellCount);
     }
 
+    internal static C3DInvalidCellMap CreateScalarMap(int width, int height, ReadOnlySpan<double> values, int missingCount) =>
+        CreateCore(width, height, values, missingCount);
+
     private static C3DInvalidCellMap CreateCore(
         int width,
         int height,

@@ -15,7 +15,7 @@ internal static class RunRecordHistoryExecution
     {
         try
         {
-            EnsureDistinctReportPaths(reportPath, csvReportPath, jsonReportPath);
+            EnsureDistinctReportPaths(rootPath, reportPath, csvReportPath, jsonReportPath);
             var result = RunRecordHistoryQuery.Read(rootPath, options);
             WriteReport(reportPath, result);
             if (csvReportPath is not null)
@@ -47,6 +47,7 @@ internal static class RunRecordHistoryExecution
     }
 
     private static void EnsureDistinctReportPaths(
+        string rootPath,
         string reportPath,
         string? csvReportPath,
         string? jsonReportPath)
@@ -60,6 +61,25 @@ internal static class RunRecordHistoryExecution
             throw new ArgumentException(
                 "Run Record history report output paths must be different.",
                 nameof(csvReportPath));
+        }
+
+        var fullRootPath = Path.GetFullPath(rootPath);
+        foreach (var fullPath in fullPaths)
+        {
+            if (!string.Equals(Path.GetFileName(fullPath), "run-record.json", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var relativePath = Path.GetRelativePath(fullRootPath, fullPath);
+            if (!Path.IsPathRooted(relativePath)
+                && relativePath != ".."
+                && !relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "Run Record history reports must not replace source run-record.json files inside the history directory.",
+                    nameof(reportPath));
+            }
         }
     }
 

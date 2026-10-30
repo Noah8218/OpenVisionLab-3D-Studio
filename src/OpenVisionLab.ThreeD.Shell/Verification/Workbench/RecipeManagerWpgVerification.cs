@@ -216,7 +216,7 @@ internal static class RecipeManagerWpgVerification
             window.Show();
             OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellWindowNativeInterop.AppendWindowMonitorEvidence(window, reportPath + ".monitor.txt");
             Layout();
-            var enumEditor = FindVisualChildren<ComboBox>(representative).First();
+            var enumEditor = FindVisualChildren<System.Windows.Controls.WpfPropertyGrid.Controls.EnumDropdown>(representative).Single();
             Check("enum consumer preserves its real source and complete localized caption", enumEditor.FontSize == 13 && Math.Abs(enumEditor.ActualHeight - 30) <= 0.5 && enumEditor.ItemTemplate is not null
                 && FindVisualChildren<TextBlock>(enumEditor).Any(text => text.IsVisible && text.Text == "Rising")
                 && representative.VisiblePropertyCount == 3, $"height={enumEditor.ActualHeight:F2}; font={enumEditor.FontSize}; selected={enumEditor.SelectedValue}");
@@ -281,7 +281,7 @@ internal static class RecipeManagerWpgVerification
             var kernelUnit = FindVisualChildren<TextBlock>(representative).Single(text => text.IsVisible && text.Text == "cells");
             Check("filter kernel caption, cell unit and input width match HTML field roles", FindVisualChildren<TextBlock>(representative).Any(text => text.IsVisible && text.Text == "Kernel size")
                 && kernelUnit.FontSize == 12 && Math.Abs(kernelEditor.ActualWidth + kernelUnit.ActualWidth + 6 - representative.ActualWidth) <= 0.5
-                && Math.Abs(kernelEditor.ActualHeight - 30) <= 0.5, $"editor={kernelEditor.ActualWidth:F2}; unit={kernelUnit.ActualWidth:F2}; host={representative.ActualWidth:F2}");
+                && Math.Abs(kernelEditor.ActualHeight - 32) <= 0.5, $"editor={kernelEditor.ActualWidth:F2}x{kernelEditor.ActualHeight:F2}; unit={kernelUnit.ActualWidth:F2}; host={representative.ActualWidth:F2}");
             Capture(representative, "representative-filter-cell-unit");
 
             window.Close();
@@ -297,8 +297,9 @@ internal static class RecipeManagerWpgVerification
                 {
                     var width = panelWidth - 4;
                     using var workbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, $"recent-{language}-{width:F0}.json"));
-                    workbench.SetC3DSource(sourcePath);
-                    var step = AddTool(workbench, "thickness");
+                    if (!workbench.TryOpenTeachingRecipe(WorkbenchSettingsVerificationFixture.CreatePrecisionRecipe(fixtureRoot), out var fixtureMessage))
+                        throw new InvalidOperationException(fixtureMessage);
+                    var step = workbench.SelectedPipelineStep!;
                     var view = new Views.Workbench.SelectedToolWorkspaceView { Width = width, DataContext = workbench };
                     window = new Window
                     {
@@ -315,29 +316,37 @@ internal static class RecipeManagerWpgVerification
                     var draftBar = (Border)view.FindName("SelectedToolDraftBar");
                     var run = (Button)view.FindName("PreviewActionButton");
                     var menu = (Button)view.FindName("SelectedToolFooterMenuButton");
+                    var undo = FindVisualChildren<Button>(view).Single(button => AutomationProperties.GetAutomationId(button) == "UndoSelectedToolParametersFooter");
                     var apply = (Button)view.FindName("SelectedToolFooterApplyButton");
                     var discard = (Button)view.FindName("SelectedToolFooterDiscardButton");
                     var conditions = (RecipeStepPropertyGridHost)view.FindName("StepPropertyGrid");
                     var acceptance = (RecipeStepPropertyGridHost)view.FindName("AcceptancePropertyGrid");
                     var logCount = workbench.RunLog.Count;
-                    var requiredSections = FindVisualChildren<Expander>(view).Where(section => section.IsVisible && ReferenceEquals(section.Style, view.FindResource("RequiredSettingsSectionStyle"))).ToArray();
-                    var requiredHeaders = requiredSections.Select(section => (TextBlock)section.Template.FindName("RequiredSettingsHeader", section)).ToArray();
-                    Check("Teaching section captions use the HTML type and color roles", requiredHeaders.Length >= 4
+                    ((RadioButton)view.FindName("EditorAllTab")).SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+                    Layout();
+                    var requiredHeaders = FindVisualChildren<Expander>(view).Where(section => section.IsVisible)
+                        .Select(section => section.Template.FindName("RequiredSettingsHeader", section)).OfType<TextBlock>().ToArray();
+                    Check("Teaching condition page captions retain the approved type and color roles", requiredHeaders.Length > 0
                         && requiredHeaders.All(header => header.FontFamily.Source == "Segoe UI Variable Text, Segoe UI, Malgun Gothic" && header.FontSize == 12
                             && header.FontWeight.ToOpenTypeWeight() == 650 && Math.Abs(header.ActualHeight - 17.4) <= 0.05 && header.Foreground.ToString() == "#FFADB9C6"),
                         $"{label}; headers={requiredHeaders.Length}; heights={string.Join(",", requiredHeaders.Select(header => header.ActualHeight.ToString("F2")))}");
                     var sampleField = FindVisualChildren<TextBox>(conditions).Single(editor => AutomationProperties.GetAutomationId(editor) == nameof(ThicknessStepProperties.MinimumValidSampleCount));
+                    var conditionPageVisible = sampleField.IsVisible && ReferenceEquals(conditions.SelectedObject, workbench.SelectedStepPropertyDraft);
+                    ((RadioButton)view.FindName("EditorJudgmentTab")).SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+                    Layout();
                     var minimumField = FindVisualChildren<TextBox>(acceptance).Single(editor => AutomationProperties.GetAutomationId(editor) == nameof(ThicknessStepProperties.MinimumThickness));
-                    var sampleToLimitGap = minimumField.TranslatePoint(new Point(), view).Y - sampleField.TranslatePoint(new Point(), view).Y;
-                    Check("Teaching condition-to-decision spacing matches the localhost HTML", Math.Abs(sampleToLimitGap - 110.78125) <= 0.05
-                        && requiredSections.All(section => section.Margin == new Thickness()), $"{label}; gap={sampleToLimitGap:F5}; expected=110.78125");
+                    Check("v5 condition and decision pages expose their existing drafts without execution", conditionPageVisible && minimumField.IsVisible
+                        && ReferenceEquals(acceptance.SelectedObject, workbench.SelectedStepPropertyDraft) && workbench.RunLog.Count == logCount
+                        && !workbench.IsSelectedStepPreviewRunning && !workbench.IsOrderedRunRunning, label);
                     Check("fixed footer compensates docking inset with HTML padding", footer.IsVisible && Math.Abs(footer.ActualWidth - panelWidth) <= 0.5
                         && footer.Margin == new Thickness(-2, 0, -2, 0)
                         && footer.Padding == new Thickness(12, 10, 12, 10) && footer.BorderThickness == new Thickness(0, 1, 0, 0), $"{label}; width={footer.ActualWidth:F2}; padding={footer.Padding}");
                     Check("run and menu geometry match HTML", Math.Abs(run.ActualHeight - 34) <= 0.5 && Math.Abs(menu.ActualHeight - 34) <= 0.5
-                        && Math.Abs(menu.ActualWidth - 30) <= 0.5 && Math.Abs(run.ActualWidth - (panelWidth - 60)) <= 0.5
-                        && Math.Abs(menu.TranslatePoint(new Point(), footer).X - run.TranslatePoint(new Point(run.ActualWidth, 0), footer).X - 6) <= 0.5
-                        && run.FontSize == 13, $"{label}; run={run.ActualWidth:F2}x{run.ActualHeight:F2}; menu={menu.ActualWidth:F2}x{menu.ActualHeight:F2}");
+                        && Math.Abs(menu.ActualWidth - 30) <= 0.5 && Math.Abs(run.ActualWidth + undo.ActualWidth + menu.ActualWidth + 36 - panelWidth) <= 0.5
+                        && Math.Abs(undo.TranslatePoint(new Point(), footer).X - run.TranslatePoint(new Point(run.ActualWidth, 0), footer).X - 6) <= 0.5
+                        && Math.Abs(menu.TranslatePoint(new Point(), footer).X - undo.TranslatePoint(new Point(undo.ActualWidth, 0), footer).X - 6) <= 0.5
+                        && ReferenceEquals(undo.Command, workbench.UndoSelectedStepParametersCommand)
+                        && run.FontSize == 13, $"{label}; run={run.ActualWidth:F2}x{run.ActualHeight:F2}; undo={undo.ActualWidth:F2}; menu={menu.ActualWidth:F2}x{menu.ActualHeight:F2}");
                     Check("normal footer has no draft action gap or execution", draftBar.Visibility == Visibility.Collapsed && !apply.IsVisible && !discard.IsVisible
                         && workbench.RunLog.Count == logCount && !workbench.IsSelectedStepPreviewRunning && !workbench.IsOrderedRunRunning, label);
                     Check("footer keeps existing command and dual-grid commit owners", ReferenceEquals(run.Command, workbench.RunSelectedStepCommand)
@@ -388,9 +397,11 @@ internal static class RecipeManagerWpgVerification
                     Layout();
                     var labSections = FindVisualChildren<Expander>(view).Where(section => section.IsVisible && ReferenceEquals(section.Style, view.FindResource("RequiredSettingsSectionStyle"))).ToArray();
                     var labHeaders = labSections.Select(section => (TextBlock)section.Template.FindName("RequiredSettingsHeader", section)).ToArray();
-                    Check("Lab section presentation retains its existing margin and caption roles", labSections.Length >= 4
+                    Check("Lab section presentation retains its existing margin and caption roles", labSections.Select(section => section.Name).OrderBy(name => name)
+                        .SequenceEqual(new[] { "AcceptanceLimitsExpander", "RegionsExpander", "SelectedToolOutputSummary" })
                         && labSections.All(section => section.Margin == new Thickness(0, 0, 0, 7))
-                        && labHeaders.All(header => header.FontWeight == FontWeights.SemiBold && header.Foreground.ToString() == "#FFE4E9EF" && header.Margin == new Thickness(0, 0, 0, 6)), label);
+                        && labHeaders.All(header => header.FontWeight == FontWeights.SemiBold && header.Foreground.ToString() == "#FFE4E9EF" && header.Margin == new Thickness(0, 0, 0, 6)),
+                        $"{label};sections={labSections.Length};margins={string.Join(';', labSections.Select(section => section.Margin))};headers={string.Join(';', labHeaders.Select(header => $"{header.FontWeight}/{header.Foreground}/{header.Margin}"))};condition={sampleField.IsVisible};decision={minimumField.IsVisible}");
                     Check("Lab preserves body actions and hides Teaching footer", footer.Visibility == Visibility.Collapsed
                         && FindVisualChildren<Button>(view).Any(button => button.IsVisible && AutomationProperties.GetAutomationId(button) == "ApplySelectedToolParameters"
                             && ReferenceEquals(Behaviors.CommitPropertyGridCommandBehavior.GetCommand(button), workbench.ApplySelectedStepParameterDraftCommand))

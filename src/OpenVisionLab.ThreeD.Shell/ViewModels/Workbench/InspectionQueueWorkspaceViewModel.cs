@@ -42,6 +42,9 @@ public enum InspectionQueueRunScope
     FailedAndError
 }
 
+public sealed record InspectionQueueHeightMapSnapshot(string EntityId, string ToolId, string Path, string ContentSha256,
+    string RootSourceSha256, string Unit, string FrameId, int Width, int Height, int OriginColumn, int OriginRow);
+
 public sealed record InspectionQueueRunOutcome(
     bool WasCancelled,
     InspectionRunRecord? Record,
@@ -50,6 +53,7 @@ public sealed record InspectionQueueRunOutcome(
     bool RecordSaveFailed = false)
 {
     public IReadOnlyDictionary<string, HeightMeasurementColorSnapshot> MeasurementColors { get; init; } = new Dictionary<string, HeightMeasurementColorSnapshot>();
+    public IReadOnlyDictionary<string, InspectionQueueHeightMapSnapshot> HeightMaps { get; init; } = new Dictionary<string, InspectionQueueHeightMapSnapshot>();
 }
 
 public sealed record InspectionQueueExportRow(
@@ -249,10 +253,10 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         (SelectedSample?.Steps ?? []).Where(item => !ShowOnlyFailedSteps || item.Status == nameof(ResultStatus.Fail)).ToArray();
     public IReadOnlyList<InspectionQueueOutputResultItem> VisibleOutputResults => VisibleStepResults.SelectMany(step => step.Outputs).ToArray();
     public string SelectedResultNotice => SelectedSample is not { } sample
-        ? Localize("결과를 볼 파일을 선택하세요.", "Select a file to view its results.")
+        ? string.Empty
         : sample.Steps.Count == 0
             ? sample.State == InspectionQueueItemState.Untested
-                ? Localize("미검사 · 검사 버튼을 눌러 실행하세요.", "Untested · use Inspect to run this file.")
+                ? Localize("미검사", "Untested")
                 : $"{sample.StateText} · {sample.Message}"
             : ShowOnlyFailedSteps && VisibleStepResults.Count == 0
                 ? Localize("선택 파일에 NG 단계가 없습니다.", "The selected file has no failed steps.") : string.Empty;
@@ -655,8 +659,8 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         OnPropertyChanged(nameof(ProgressText));
         foreach (var item in targets) item.BeginRun();
         SetLocalizedSummary(
-            $"저장된 레시피 {Path.GetFileName(recipePath)}을(를) 입력 {targets.Count}개에 순서대로 실행합니다.",
-            $"Running saved recipe {Path.GetFileName(recipePath)} sequentially on {targets.Count} input(s).");
+            $"파일 {targets.Count}개 검사 중",
+            $"Inspecting {targets.Count} files");
         RefreshCounts();
         RefreshCommands();
         _ = ObserveRunAsync(RunTargetsAsync(document, recipePath, targets));
@@ -703,7 +707,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
                     {
                         pendingRecordSample = item;
                         pendingRecordDocument = document;
-                        item.SetPendingRecord(outcome.Record, outcome.Message, document, outcome.MeasurementColors);
+                        item.SetPendingRecord(outcome.Record, outcome.Message, document, outcome.MeasurementColors, outcome.HeightMaps);
                         SummaryText = Localize($"검사 중단 · 계산 결과를 보존했습니다. 기록 저장 재시도가 필요합니다. {outcome.Message}", $"Inspection stopped · calculation retained. Retry saving its Run Record. {outcome.Message}");
                         SelectedSampleChanged?.Invoke(this, new InspectionQueueSelectionChangedEventArgs(item));
                         return;
@@ -723,7 +727,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
                     }
                     else
                     {
-                        item.SetRecord(outcome.Record, outcome.RecordPath, document, outcome.MeasurementColors);
+                        item.SetRecord(outcome.Record, outcome.RecordPath, document, outcome.MeasurementColors, outcome.HeightMaps);
                     }
 
                     if (ReferenceEquals(SelectedSample, item))
@@ -867,11 +871,11 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             var outcome = retryRecordSave();
             if (outcome.RecordSaveFailed || outcome.Record is null || outcome.RecordPath is null)
             {
-                item.SetPendingRecord(outcome.Record, outcome.Message, pendingRecordDocument, outcome.MeasurementColors);
+                item.SetPendingRecord(outcome.Record, outcome.Message, pendingRecordDocument, outcome.MeasurementColors, outcome.HeightMaps);
                 SummaryText = outcome.Message;
                 return;
             }
-            item.SetRecord(outcome.Record, outcome.RecordPath, pendingRecordDocument, outcome.MeasurementColors);
+            item.SetRecord(outcome.Record, outcome.RecordPath, pendingRecordDocument, outcome.MeasurementColors, outcome.HeightMaps);
             pendingRecordSample = null;
             pendingRecordDocument = null;
             completedRunTargetCount++;
@@ -883,7 +887,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException
             or ArgumentException or InvalidOperationException or NotSupportedException or OverflowException)
         {
-            item.SetPendingRecord(item.Record, exception.Message, pendingRecordDocument, item.MeasurementColors);
+            item.SetPendingRecord(item.Record, exception.Message, pendingRecordDocument, item.MeasurementColors, item.HeightMaps);
             SummaryText = exception.Message;
         }
         finally
@@ -901,7 +905,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         totalRunTargetCount = 0;
         completedRunTargetCount = 0;
         UpdateProgress();
-        SetLocalizedSummary("새 검사 목록을 준비했습니다. 이전 기록은 보존되며 검사는 실행을 기다립니다.", "A new inspection queue is ready. Previous records are retained; inspection waits for explicit Run.");
+        SetLocalizedSummary("새 검사 목록을 만들었습니다.", "New inspection list created.");
         SelectedSampleChanged?.Invoke(this, new InspectionQueueSelectionChangedEventArgs(SelectedSample));
         RefreshCounts();
         RefreshCommands();
@@ -1162,7 +1166,11 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
         {
             if (ReferenceEquals(record, value)) return;
             record = value;
-            if (value is null) MeasurementColors = new Dictionary<string, HeightMeasurementColorSnapshot>();
+            if (value is null)
+            {
+                MeasurementColors = new Dictionary<string, HeightMeasurementColorSnapshot>();
+                HeightMaps = new Dictionary<string, InspectionQueueHeightMapSnapshot>();
+            }
             OnPropertyChanged();
             OnPropertyChanged(nameof(RunId));
             OnPropertyChanged(nameof(RecordedAtText));
@@ -1231,12 +1239,15 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
     }
 
     public IReadOnlyDictionary<string, HeightMeasurementColorSnapshot> MeasurementColors { get; private set; } = new Dictionary<string, HeightMeasurementColorSnapshot>();
+    public IReadOnlyDictionary<string, InspectionQueueHeightMapSnapshot> HeightMaps { get; private set; } = new Dictionary<string, InspectionQueueHeightMapSnapshot>();
 
     public void SetRecord(InspectionRunRecord value, string path, ToolRecipeDocument? document = null,
-        IReadOnlyDictionary<string, HeightMeasurementColorSnapshot>? measurementColors = null)
+        IReadOnlyDictionary<string, HeightMeasurementColorSnapshot>? measurementColors = null,
+        IReadOnlyDictionary<string, InspectionQueueHeightMapSnapshot>? heightMaps = null)
     {
         Record = value;
         MeasurementColors = measurementColors ?? new Dictionary<string, HeightMeasurementColorSnapshot>();
+        HeightMaps = heightMaps ?? new Dictionary<string, InspectionQueueHeightMapSnapshot>();
         RunRecordPath = Path.GetFullPath(path);
         Steps = (value.Steps ?? []).Select(step => InspectionQueueStepResultItem.FromRecord(
             step, document?.Steps.FirstOrDefault(authored => authored.Id == step.Id))).ToArray();
@@ -1260,10 +1271,12 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
     }
 
     public void SetPendingRecord(InspectionRunRecord? value, string reason, ToolRecipeDocument? document,
-        IReadOnlyDictionary<string, HeightMeasurementColorSnapshot>? measurementColors = null)
+        IReadOnlyDictionary<string, HeightMeasurementColorSnapshot>? measurementColors = null,
+        IReadOnlyDictionary<string, InspectionQueueHeightMapSnapshot>? heightMaps = null)
     {
         Record = value;
         MeasurementColors = measurementColors ?? new Dictionary<string, HeightMeasurementColorSnapshot>();
+        HeightMaps = heightMaps ?? new Dictionary<string, InspectionQueueHeightMapSnapshot>();
         RunRecordPath = null;
         Steps = (value?.Steps ?? []).Select(step => InspectionQueueStepResultItem.FromRecord(step, document?.Steps.FirstOrDefault(authored => authored.Id == step.Id))).ToArray();
         Message = reason;

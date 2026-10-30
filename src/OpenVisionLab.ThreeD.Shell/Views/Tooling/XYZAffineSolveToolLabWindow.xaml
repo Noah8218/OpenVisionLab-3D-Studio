@@ -33,11 +33,11 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PreviewMatrix, Korean='행렬 미리보기', English='Preview matrix'}" Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PreviewTip, Korean='연결된 적용 좌표 대응 쌍에서 임시 어파인 행렬 하나를 직접 계산합니다.', English='Explicitly calculate one temporary affine matrix from the routed Applied CorrespondenceSet'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PreviewAction, Korean='XYZ 어파인 계산 미리보기', English='Preview XYZ Affine Solve'}" />
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PreviewTip, Korean='연결한 대응점으로 XYZ 변환 계산', English='Calculate an XYZ transform from connected point pairs'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PreviewAction, Korean='XYZ 어파인 계산 미리보기', English='Preview XYZ Affine Solve'}" />
                     <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.RefreshInput, Korean='입력 새로고침', English='Refresh input'}" Icon="{ui:SymbolIcon ArrowSync24}"
-                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ShowInputTip, Korean='행렬을 계산하지 않고 입력 데이터 뷰어를 새로 고칩니다.', English='Refresh the source viewer without solving'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ShowInputAction, Korean='XYZ 어파인 계산 입력 새로고침', English='Refresh XYZ Affine Solve input'}" />
+                               Click="RefreshViewsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ShowInputTip, Korean='입력 보기 새로고침', English='Refresh input view'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.ShowInputAction, Korean='XYZ 어파인 계산 입력 새로고침', English='Refresh XYZ Affine Solve input'}" />
                     <ui:Button Content="{i18n:ThreeDText Key=ThreeD.ToolLab.PublishMatrix, Korean='행렬 결과 적용', English='Apply matrix'}" Icon="{ui:SymbolIcon CheckmarkCircle24}"
-                               Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PublishTip, Korean='행렬을 다시 계산하거나 점군을 변환하지 않고 현재 계산 결과를 레시피에 적용합니다.', English='Apply the current matrix Preview without recalculation or point-cloud application'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PublishAction, Korean='변환 행렬 결과 적용', English='Apply XYZ Affine Solve output'}" />
+                               Command="{Binding PublishSelectedStepCommand}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.PublishAction, Korean='변환 행렬 결과 적용', English='Apply XYZ Affine Solve output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -73,7 +73,16 @@
                             <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineSolveOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
                         </StackPanel>
                         <Border Grid.Row="1" Margin="0,12,0,12" Padding="10" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-                            <TextBlock FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineSolveMatrixSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=AffineMatrixText}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock x:Name="AffineMatrixText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineSolveMatrixSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
                         </Border>
 
                     </Grid>

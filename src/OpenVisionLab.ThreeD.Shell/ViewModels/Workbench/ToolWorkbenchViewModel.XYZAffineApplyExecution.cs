@@ -17,8 +17,11 @@ public sealed partial class ToolWorkbenchViewModel
         xyzAffineExecutionOwner.CurrentApplyOutput;
     internal bool TryGetPublishedAffineApplyOutput(
         string outputEntityId,
-        out C3DTransformedPointCloud? output) =>
-        xyzAffineExecutionOwner.TryGetPublishedApplyOutput(outputEntityId, out output);
+        out C3DTransformedPointCloud? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DTransformedPointCloud>(outputEntityId, out output)) return output is not null;
+        return xyzAffineExecutionOwner.TryGetPublishedApplyOutput(outputEntityId, out output);
+    }
     internal bool TryRegisterSyntheticPublishedAffineApplyOutputForSmoke(
         C3DTransformedPointCloud output,
         out string message) =>

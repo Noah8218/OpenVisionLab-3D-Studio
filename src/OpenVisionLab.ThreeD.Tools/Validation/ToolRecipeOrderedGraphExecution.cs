@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -24,6 +27,12 @@ public sealed record ToolRecipeOrderedGraphStepResult(
 {
     public ToolRecipeSemanticIdentityEvidence? SemanticIdentityEvidence { get; init; }
     public HeightMeasurementColorSnapshot? ColorSnapshot { get; init; }
+    [JsonIgnore]
+    public object? RuntimeOutput { get; init; }
+    [JsonIgnore]
+    public C3DOutlierCellMap? OutlierMask { get; init; }
+    [JsonIgnore]
+    public C3DNinePointSurfaceCompensationEvaluation? NinePointCompensation { get; init; }
 }
 
 public sealed record ToolRecipeSemanticIdentityEvidence(
@@ -164,6 +173,14 @@ public static class ToolRecipeOrderedGraphExecution
                             []),
                         null)
                     : ToolRecipeOrderedGraphStepExecutor.Execute(rebound, step, artifacts, cancellationToken);
+                var semanticFingerprint = (execution.Output as ToolRecipeHeightMeasurementOutput)?.SemanticFingerprint;
+                if (step.ToolId == ToolRecipeNinePointSurfaceCompensationExecution.ToolId && execution.Output is C3DHeightFieldSnapshot compensated)
+                {
+                    semanticFingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n",
+                        ToolRecipeNinePointSurfaceCompensationExecution.Semantics,
+                        VisionSdkHeightMapInspection.PackageId, VisionSdkHeightMapInspection.PackageVersion,
+                        rebound.CreateStepExecutionContext(step.Id), compensated.ContentSha256))));
+                }
                 steps.Add(new ToolRecipeOrderedGraphStepResult(
                     index + 1,
                     step.Id,
@@ -179,14 +196,15 @@ public static class ToolRecipeOrderedGraphExecution
                     execution.LevelFrame?.ContentSha256,
                     execution.LevelFrameQuality?.ContentSha256,
                     execution.FrameChain?.ContentSha256,
-                    execution.Output is ToolRecipeHeightMeasurementOutput measurementOutput
-                        ? measurementOutput.SemanticFingerprint
-                        : null,
+                    semanticFingerprint,
                     execution.Output is ToolRecipeHeightMeasurementOutput gateMeasurement
                         ? gateMeasurement.ConnectedRegionGate
                         : null,
                     execution.SignedDeltaBackgroundSubtraction)
                 {
+                    RuntimeOutput = execution.Output,
+                    OutlierMask = execution.OutlierMask,
+                    NinePointCompensation = execution.NinePointCompensation,
                     ColorSnapshot = (execution.Output as ToolRecipeHeightMeasurementOutput)?.ColorSnapshot,
                     SemanticIdentityEvidence = execution.Output is ToolRecipeHeightMeasurementOutput
                     {
@@ -196,7 +214,10 @@ public static class ToolRecipeOrderedGraphExecution
                             ToolRecipeHeightMeasurementExecution.SemanticFingerprintAlgorithmVersion,
                             VisionSdkHeightMapInspection.PackageId,
                             VisionSdkHeightMapInspection.PackageVersion)
-                        : null
+                        : step.ToolId == ToolRecipeNinePointSurfaceCompensationExecution.ToolId && semanticFingerprint is not null
+                            ? new ToolRecipeSemanticIdentityEvidence(ToolRecipeNinePointSurfaceCompensationExecution.Semantics,
+                                VisionSdkHeightMapInspection.PackageId, VisionSdkHeightMapInspection.PackageVersion)
+                            : null
                 });
 
                 if (!step.OutputEnabled)
@@ -364,7 +385,8 @@ public static class ToolRecipeOrderedGraphExecution
                 {
                     return selection;
                 }
-                if (string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.OrdinalIgnoreCase)
+                if ((string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.OrdinalIgnoreCase))
                     && !string.IsNullOrWhiteSpace(selection.SourceBinding.OwnerEntityId))
                 {
                     return selection with

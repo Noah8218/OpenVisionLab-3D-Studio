@@ -146,7 +146,8 @@
                             <StackPanel Margin="0,10,0,0">
                                 <ui:Button HorizontalAlignment="Stretch"
                                            AutomationProperties.AutomationId="LoadRepeatabilityStudyButton"
-                                           Content="{shell:ThreeDText Key=ThreeD.Calibration.LoadStudy, Korean='반복성 스터디 열기', English='Load Study'}"
+                                           Content="{shell:ThreeDText Key=ThreeD.Calibration.OpenDataShort, Korean='데이터 열기', English='Open data'}"
+                                           ToolTip="{shell:ThreeDText Key=ThreeD.Calibration.LoadStudy, Korean='반복성 데이터 열기', English='Open repeatability data'}"
                                            Icon="{ui:SymbolIcon FolderOpen24}"
                                            Command="{Binding LoadStudyCommand}" />
                                 <ui:Button Margin="0,6,0,0"

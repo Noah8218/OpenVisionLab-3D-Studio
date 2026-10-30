@@ -80,7 +80,7 @@
                                      GroupName="InspectionTask"
                                      IsChecked="{Binding DataContext.IsThicknessTaskSelected, ElementName=TaskWorkspaceRoot, Mode=TwoWay}" />
                         <RadioButton Margin="0,4,0,0"
-                                     Content="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.Warpage, Korean='워페이지', English='Warpage'}"
+                                     Content="{i18n:ThreeDText Key=ThreeD.Shell.TaskWorkspace.Warpage, Korean='휨', English='Warpage'}"
                                      GroupName="InspectionTask"
                                      IsChecked="{Binding DataContext.IsWarpageTaskSelected, ElementName=TaskWorkspaceRoot, Mode=TwoWay}" />
                         <Separator Margin="0,13,0,2" />

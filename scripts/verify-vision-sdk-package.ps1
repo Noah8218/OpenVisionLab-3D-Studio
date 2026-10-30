@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261017.physical-edge-gap-flush.1.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261029.nine-point-compensation.1.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261017.physical-edge-gap-flush.1.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261029.nine-point-compensation.1.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -85,11 +85,11 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.3.0-dev.20261017.physical-edge-gap-flush.1" -or $sourceCommit -ne "456eb2af7a62962144757d967538594fde79e481") {
+    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.3.0-dev.20261029.nine-point-compensation.1" -or $sourceCommit -ne "cdaa08d04ed569be5aba95324f2d851b7bad637b") {
         throw "OpenVisionLab Vision SDK package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
 
-    $computeVersion = "3.3.0-dev.20261017.physical-edge-gap-flush.1"
+    $computeVersion = "3.3.0-dev.20261029.nine-point-compensation.1"
     $computeDependency = $metadata.SelectSingleNode("n:dependencies/n:group/n:dependency[@id='OpenVisionLab.Compute']", $namespaceManager)
     if ($null -eq $computeDependency -or [string]$computeDependency.version -ne $computeVersion) {
         throw "Vision3D must declare the pinned OpenVisionLab.Compute dependency."

@@ -142,6 +142,9 @@
                     <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /></Trigger>
                 </ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding NextRecipeHealthIssueDetail}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            </Style.Triggers>
         </Style>
         <ControlTemplate x:Key="FlowNodeExpanderTemplate" TargetType="Expander">
                 <StackPanel>
@@ -549,7 +552,7 @@
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Source.Name}" TextWrapping="Wrap" ToolTip="{Binding Source.Path}" />
                             <TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeInputContract">
-                                <Run Text="{Binding SourceQuality.GridValue, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Source.Unit, Mode=OneWay}" />
+                                <Run Text="{Binding SourceQuality.GridValue, Mode=OneWay}" /><Run Text=" · " /><InlineUIContainer BaselineAlignment="Baseline"><TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Source.Unit, Mode=OneWay}" TextWrapping="NoWrap" /></InlineUIContainer>
                             </TextBlock>
                             <WrapPanel x:Name="SourceEvidenceBadges">
                                 <Button x:Name="SourceQualityBadge" Margin="0,3,6,0" HorizontalAlignment="Left" Style="{StaticResource FlowSourceQualityBadgeStyle}" Command="{Binding SelectSourceQualityCommand}" ToolTip="{Binding Localization.OpenSourceQuality}" AutomationProperties.Name="{Binding Localization.OpenSourceQuality}">
@@ -671,7 +674,11 @@
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{Binding SelectedRecipeHealthDetail}"
                                TextWrapping="Wrap"
-                               AutomationProperties.Name="{Binding SelectedRecipeHealthDetail}" />
+                               AutomationProperties.Name="{Binding SelectedRecipeHealthDetail}">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedRecipeHealthDetail}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                        </Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -857,7 +864,7 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                         <TextBlock x:Name="FlowHeaderOrder" VerticalAlignment="Center" FontSize="10.5" FontFamily="Consolas" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Order}" />
                                         <ui:SymbolIcon x:Name="FlowHeaderTypeIcon" Grid.Column="1" FontSize="13" Margin="5,0,0,0" VerticalAlignment="Center"><ui:SymbolIcon.Style><Style TargetType="ui:SymbolIcon"><Setter Property="Symbol" Value="Cube24" /><Style.Triggers><DataTrigger Binding="{Binding ToolId}" Value="filter"><Setter Property="Symbol" Value="Filter24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="thickness"><Setter Property="Symbol" Value="Ruler24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="level-surface"><Setter Property="Symbol" Value="AlignBottom24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="plane-flatness"><Setter Property="Symbol" Value="AlignCenterHorizontal24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="warpage"><Setter Property="Symbol" Value="DataLine24" /></DataTrigger></Style.Triggers></Style></ui:SymbolIcon.Style></ui:SymbolIcon>
-                                        <TextBlock x:Name="FlowHeaderName" Grid.Column="2" Margin="6,0" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding ToolName}" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="FlowHeaderName" Grid.Column="2" Margin="6,0" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" behaviors:WordBoundaryWrapBehavior.Text="{Binding ToolName}" ToolTip="{Binding ToolName}" TextWrapping="Wrap" />
                                         <Border x:Name="FlowHeaderState" Grid.Column="3" Margin="3,0" CornerRadius="9" BorderThickness="1" BorderBrush="{StaticResource FlowCardBorderBrush}" VerticalAlignment="Center">
                                         <TextBlock  Padding="4,1" MaxWidth="65" VerticalAlignment="Center" FontSize="10.5" Text="{Binding FlowNodeStatusLabel}" TextWrapping="Wrap">
                                             <TextBlock.Style><Style TargetType="TextBlock">
@@ -1028,7 +1035,7 @@
             </ListBox.ItemTemplate>
             </ListBox>
                     <TextBlock Grid.Row="2" Margin="22,16,14,16" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{views:ThreeDText Key=ThreeD.Flow.EmptyRecipe, Korean='도구를 추가해 검사 흐름을 구성하세요.', English='Add a tool to build the inspection flow.'}">
+                               Text="{views:ThreeDText Key=ThreeD.Flow.EmptyRecipe, Korean='검사 도구를 추가하세요.', English='Add an inspection tool.'}">
                         <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
                             <DataTrigger Binding="{Binding PipelineSteps.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                         </Style.Triggers></Style></TextBlock.Style>

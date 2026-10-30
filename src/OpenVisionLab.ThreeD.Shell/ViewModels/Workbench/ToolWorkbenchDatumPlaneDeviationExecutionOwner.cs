@@ -476,8 +476,8 @@ internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner : IDisposab
                 out _,
                 out var message))
             {
-                step.State = "Ready";
-                executionSummary = "Ready for explicit Preview. Published plane and source residual calculation will not run implicitly.";
+                step.State = isPreviewStale ? "Preview stale" : "Ready";
+                if (!isPreviewStale) executionSummary = "Ready for explicit Preview. Published plane and source residual calculation will not run implicitly.";
             }
             else
             {

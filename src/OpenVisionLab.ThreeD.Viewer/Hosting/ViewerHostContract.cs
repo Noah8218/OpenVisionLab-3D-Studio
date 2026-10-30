@@ -16,12 +16,24 @@ public sealed record ViewerTeachingResultLabel(
             SourceBinding: { GridWidth: > 0, GridHeight: > 0 } binding }
         && !string.IsNullOrWhiteSpace(binding.ContentSha256)
         && rectangle.RowCount <= binding.GridHeight - rectangle.Row && rectangle.ColumnCount <= binding.GridWidth - rectangle.Column;
-    public string Caption => !IsCurrent ? $"↻ {ValueText}" : Status switch
+    public string? RegionName { get; init; }
+    public string? StateText { get; init; }
+    public string Caption
     {
-        ResultStatus.Error => $"! {ValueText}",
-        ResultStatus.Fail => $"× {ValueText} NG",
-        _ => ValueText
-    };
+        get
+        {
+            var text = Value is null || string.IsNullOrWhiteSpace(Unit) ? ValueText : $"{ValueText} {Unit}";
+            var stateText = !IsCurrent ? $"↻ {text}" : Status switch
+            {
+                ResultStatus.Error => $"! {ValueText}",
+                ResultStatus.Fail => $"× {text} NG",
+                ResultStatus.Pass => $"{text} OK",
+                _ => text
+            };
+            var caption = string.IsNullOrWhiteSpace(RegionName) ? stateText : $"{RegionName} · {stateText}";
+            return string.IsNullOrWhiteSpace(StateText) ? caption : $"{caption}\n{StateText}";
+        }
+    }
     public string Description => $"{ToolName} · {MetricName} · {(Value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? ValueText)} {Unit}";
 }
 

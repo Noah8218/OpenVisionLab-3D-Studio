@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
@@ -44,11 +45,7 @@ internal static class ShellOrderedRunRecordWriter
         ArgumentNullException.ThrowIfNull(execution);
 
         var identity = capturedIdentity ?? OrderedRunRecordIdentity.Create(recipePath, sourcePath);
-        var root = Path.GetFullPath(outputRoot ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenVisionLab",
-            "ThreeDStudio",
-            "Runs"));
+        var root = ResolveRoot(outputRoot);
 
         var baseRunId = identity.RunId;
         var runId = baseRunId;
@@ -78,7 +75,48 @@ internal static class ShellOrderedRunRecordWriter
         return new ShellOrderedRunRecordArtifact(record, jsonPath, reportPath);
     }
 
-    public static void Save(ShellOrderedRunRecordArtifact artifact, ToolRecipeOrderedGraphExecutionResult execution)
+    public static ShellOrderedRunRecordArtifact WriteValidationSample(ToolRecipeValidationSampleResult sample, string? outputRoot = null)
+    {
+        var execution = sample.Execution ?? throw new InvalidDataException("No completed execution evidence is available for this sample.");
+        var document = execution.ReboundDocument;
+        if (string.IsNullOrWhiteSpace(execution.SourceContentSha256))
+            throw new InvalidDataException("The validation input identity was not captured; no Run Record was saved.");
+        var sourceLength = document.Source.ByteLength ?? throw new InvalidDataException("The validation input length was not captured.");
+        var root = ResolveRoot(outputRoot);
+        Directory.CreateDirectory(root);
+        var snapshotPath = Path.Combine(root, $"recipe.tmp.{Guid.NewGuid():N}.json");
+        try
+        {
+            // Persist the executed draft, never the currently open or saved recipe.
+            ToolRecipeDocumentStore.SaveNew(snapshotPath, document);
+            var recordedAt = DateTimeOffset.UtcNow;
+            var recipeSha = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(snapshotPath)));
+            var identity = new OrderedRunRecordIdentity(recordedAt, $"validation-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeSha[..12].ToLowerInvariant()}",
+                snapshotPath, recipeSha, Path.GetFullPath(sample.SourcePath), execution.SourceContentSha256, sourceLength);
+            var prepared = Prepare(snapshotPath, document, sample.SourcePath, execution, root, identity);
+            var snapshotTarget = Path.Combine(Path.GetDirectoryName(prepared.JsonPath)!, "recipe.ov3d-recipe.json");
+            var artifact = prepared with
+            {
+                Record = prepared.Record with
+                {
+                    WorkflowKind = RunRecordWorkflowKind.Validation,
+                    Recipe = prepared.Record.Recipe with { Path = snapshotTarget },
+                    Message = $"{sample.Message} | Expected: {sample.EffectiveExpectation} | Usage: {sample.EffectiveUsage}"
+                }
+            };
+            Save(artifact, execution, snapshotPath);
+            return artifact;
+        }
+        finally
+        {
+            if (File.Exists(snapshotPath)) File.Delete(snapshotPath);
+        }
+    }
+
+    private static string ResolveRoot(string? outputRoot) => Path.GetFullPath(outputRoot ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenVisionLab", "ThreeDStudio", "Runs"));
+
+    public static void Save(ShellOrderedRunRecordArtifact artifact, ToolRecipeOrderedGraphExecutionResult execution, string? recipeSnapshotPath = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(execution);
@@ -90,6 +128,8 @@ internal static class ShellOrderedRunRecordWriter
         var stagedReportPath = Path.Combine(stagingDirectory, "ordered-run.txt");
         try
         {
+            if (recipeSnapshotPath is not null)
+                File.Copy(recipeSnapshotPath, Path.Combine(stagingDirectory, "recipe.ov3d-recipe.json"));
             File.WriteAllText(
                 stagedReportPath,
                 CreateReport(artifact.Record, execution),

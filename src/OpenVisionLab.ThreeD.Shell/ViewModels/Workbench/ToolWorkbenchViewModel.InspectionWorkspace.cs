@@ -173,6 +173,7 @@ public sealed partial class ToolWorkbenchViewModel
             orderedRunExecutionOwner.Summary,
             orderedRunExecutionOwner.HasPendingRecordSave)
         {
+            HeightMaps = orderedRunExecutionOwner.HeightMaps,
             MeasurementColors = orderedRunExecutionOwner.Result?.Steps.Where(step => step.ColorSnapshot is not null)
                 .ToDictionary(step => step.StepId, step => step.ColorSnapshot!) ?? new Dictionary<string, HeightMeasurementColorSnapshot>()
         };
@@ -394,7 +395,9 @@ public sealed partial class ToolWorkbenchViewModel
             IsSelectedStepPropertyGridSupported,
             HasPendingStepParameterChanges,
             StepParameterEditStatus == "Thickness limits must be finite and ordered."
-                ? Localize("두께는 유한한 수로 입력하고 최소 두께를 최대 두께 이하로 설정하세요.", "Enter finite thickness values and set the minimum at or below the maximum.") : StepParameterEditStatus,
+                ? Localize("두께는 유한한 수로 입력하고 최소 두께를 최대 두께 이하로 설정하세요.", "Enter finite thickness values and set the minimum at or below the maximum.")
+                : StepParameterEditStatus == "Maximum P2V raw height must be finite and greater than zero."
+                    ? OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.LocalizeRuntimeText(StepParameterEditStatus, "ToolLabSummary") : StepParameterEditStatus,
             ArtifactRegistry.ToArray(),
             DisplayedOutputs.ToArray(),
             CreateSelectedToolOutputEvidence(),
@@ -605,6 +608,7 @@ public sealed partial class ToolWorkbenchViewModel
         return output with
         {
             ValueLabel = step.ToolId == "height-difference-edge" ? Localize("검출 포인트", "Detected points")
+                : step.ToolId == ToolRecipeNinePointSurfaceCompensationExecution.ToolId ? Localize("9점 기준면 편차(P–V)", "9-point plane deviation (P–V)")
                 : step.ToolId == "filter" ? Localization.SelectedToolOutputCellsLabel : Localization.SelectedToolOutputValueLabel,
             ResultStatus = Localize("계산됨", "Calculated"),
             Reason = step.ToolId == "height-difference-edge" ? Localize("에지 포인트를 계산했습니다.", "Edge points calculated.")
@@ -614,6 +618,10 @@ public sealed partial class ToolWorkbenchViewModel
 
     private SelectedToolOutputEvidence CaptureSelectedToolOutputEvidence()
     {
+        if (IsSelectedStepNinePointCompensation && ninePointExecutionOwner.Current is { Numerical: { } ninePoint } corrected)
+            return new SelectedToolOutputEvidence("P–V", ninePoint.ReferencePeakToValley.ToString("R", CultureInfo.InvariantCulture),
+                corrected.Output!.Unit, "Calculated", HasExecutionResult: true)
+            { ExecutionStatus = corrected.Result.Status };
         if (IsSelectedStepFilter && filterPreviewOutput is { } filter)
             return new SelectedToolOutputEvidence(Localization.SelectedToolOutputCellsLabel,
                 filter.ValidCount.ToString(CultureInfo.InvariantCulture), "count", "Calculated",

@@ -331,7 +331,7 @@
             </StackPanel>
         </Grid>
         <Border Grid.Row="4" Padding="12,8" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource ThreeD.ValidationFooterSurfaceBrush}">
-            <TextBlock x:Name="SamplesMeaningGuide" FontSize="11.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.SamplesMeaningGuide, Korean='OK/NG는 기대 판정입니다. 보류는 조정에서 제외됩니다. 역할 변경 후 검증을 다시 실행하세요.', English='OK/NG is the expected verdict. Held-out samples are excluded from adjustment. Run validation again after changing a role.'}" TextWrapping="Wrap" />
+            <TextBlock x:Name="SamplesMeaningGuide" FontSize="11.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.SamplesMeaningGuide, Korean='보류 샘플은 조정에서 제외됩니다. 기대 판정·용도를 바꾸면 다시 검증하세요.', English='Held-out samples are excluded from adjustment. Revalidate after changing the expected decision or use.'}" TextWrapping="Wrap" />
         </Border>
     </Grid>
 </UserControl>

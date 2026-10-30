@@ -14,6 +14,7 @@ internal static class ShellVerificationCommandRouter
     private static readonly (string Option, ReportVerifier Verify)[] Commands =
     [
         ("--verify-source-quality-workspace", SourceQualityWorkspaceVerification.Verify),
+        ("--verify-path-input", PathInputVerification.Verify),
         ("--verify-recipe-manager-wpg", RecipeManagerWpgVerification.Verify),
         ("--verify-settings-field-presentation", RecipeManagerWpgVerification.VerifyFieldPresentation),
         ("--verify-height-measurement-cancellation", HeightMeasurementCancellationVerification.Verify),
@@ -31,6 +32,7 @@ internal static class ShellVerificationCommandRouter
         ("--verify-c3d-texture", C3DTexturePresentationVerification.Verify),
         ("--verify-c3d-texture-popup", C3DTexturePresentationVerification.VerifyPopup),
         ("--verify-texture-selection-identity", C3DTexturePresentationVerification.VerifySelectionIdentity),
+        ("--verify-texture-layout-reattach", C3DTexturePresentationVerification.VerifyLayoutReattach),
         ("--verify-number-summary-display", NumericDisplayVerification.VerifyReadOnlyFormatting),
         ("--verify-measurement-number-text", NumericDisplayVerification.VerifyMeasurementText),
         ("--verify-selected-tool-input-choice", SelectedToolInputChoiceVerification.Verify),

@@ -58,7 +58,7 @@
                                             <TextBlock Grid.Column="1" Text="{Binding PlacementTarget.DataContext.GalleryName, RelativeSource={RelativeSource AncestorType=ToolTip}}" TextTrimming="CharacterEllipsis" FontSize="12.5" FontWeight="650" LineHeight="18.125" LineStackingStrategy="BlockLineHeight" />
                                         </Grid>
                                         <TextBlock Margin="0,2,0,0" Text="{Binding PlacementTarget.DataContext.GalleryPreviewSummary, RelativeSource={RelativeSource AncestorType=ToolTip}}" TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="16.675" LineStackingStrategy="BlockLineHeight" />
-                                        <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Data.PreviewDisplayHint, Korean='클릭 활성 창 · Shift 다른 창', English='Click active pane · Shift other pane'}" FontSize="11" Foreground="{DynamicResource ThreeD.DataMutedTextBrush}" LineHeight="15.95" LineStackingStrategy="BlockLineHeight" />
+                                        <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Data.PreviewDisplayHint, Korean='Shift+클릭: 다른 창', English='Shift+click: other pane'}" FontSize="11" Foreground="{DynamicResource ThreeD.DataMutedTextBrush}" LineHeight="15.95" LineStackingStrategy="BlockLineHeight" />
                                     </StackPanel>
         </DataTemplate>
         <Style x:Key="GalleryPopupStyle" TargetType="ToolTip" BasedOn="{StaticResource {x:Type ToolTip}}">
@@ -215,7 +215,7 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Border Padding="10,6" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1">
             <TextBlock Style="{StaticResource GalleryHintStyle}"
-                       Text="{views:ThreeDText Key=ThreeD.Data.GalleryHint, Korean='흐름 순서 · 이미지를 누르면 뷰어에 표시 · 마우스를 올리면 크게', English='Flow order · Click an image to show it in the viewer · Hover to enlarge'}" />
+                       Text="{views:ThreeDText Key=ThreeD.Data.GalleryHint, Korean='검사 흐름 순서', English='Inspection flow order'}" />
         </Border>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8" AutomationProperties.AutomationId="RecipeDataGalleryScroll">
             <ItemsControl x:Name="RecipeDataGallery" ItemsSource="{Binding DisplayedOutputs}">

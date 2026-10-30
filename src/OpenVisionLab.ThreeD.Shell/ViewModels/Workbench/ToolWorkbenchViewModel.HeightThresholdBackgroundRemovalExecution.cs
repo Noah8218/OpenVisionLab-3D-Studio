@@ -51,6 +51,9 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal bool TryGetPublishedHeightThresholdOutput(
         string outputEntityId,
-        out C3DHeightFieldSnapshot? output) =>
-        heightThresholdExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DHeightFieldSnapshot? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightFieldSnapshot>(outputEntityId, out output)) return output is not null;
+        return heightThresholdExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 }

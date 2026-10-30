@@ -16,6 +16,80 @@ namespace OpenVisionLab.ThreeD.Shell;
 
 internal static class C3DTexturePresentationVerification
 {
+    public static bool VerifyLayoutReattach(string reportPath, out string summary)
+    {
+        var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        var lines = new List<string> { "Boundary|Current texture preferences across transient coordinator detach/reattach; no Window, OpenGL or SDK execution." };
+        var passed = 0;
+        void Check(string name, bool condition)
+        {
+            lines.Add($"{(condition ? "PASS" : "FAIL")} | {name}");
+            if (!condition) throw new InvalidOperationException(name);
+            passed++;
+        }
+        try
+        {
+            using var workbench = new OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchViewModel(Path.Combine(root, "recent-texture.json"));
+            using var other = new OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchViewModel(Path.Combine(root, "recent-other.json"));
+            using var viewer = new OpenVisionThreeDViewerControl(false);
+            using var links = new OpenVisionLab.ThreeD.Shell.Coordination.ViewerWorkspaceLinkCoordinator();
+            var source = Path.Combine(root, "texture-grid.C3D");
+            workbench.SetC3DSource(source, markDirty: false);
+            other.RecipeName = "Other texture scope";
+            other.SetC3DSource(source, markDirty: false);
+            Check("owned source loads", viewer.LoadC3DSource(source));
+            links.SetWorkbench(workbench);
+            links.SetMainViewer(viewer);
+            links.RestoreDisplayProfiles(new Dictionary<string, OpenVisionLab.ThreeD.Data.HeightDisplayProfile>
+            {
+                ["main/3d"] = new(new(), new Dictionary<string, string>(), string.Empty)
+            });
+            var dirty = workbench.IsDirty;
+            var inspection = viewer.HostState.Inspection;
+            Check("new texture selection becomes visible", viewer.TryLoadC3DTexture(Path.Combine(root, "quadrants.png"))
+                && viewer.HostState.Presentation.C3DTextureVisible);
+            links.SetWorkbench(null);
+            links.SetMainViewer(null);
+            links.SetWorkbench(workbench);
+            links.SetMainViewer(viewer);
+            Check("reattachment retains the newly selected texture", viewer.HostState.Presentation.HasC3DTexture
+                && viewer.HostState.Presentation.C3DTextureVisible && viewer.HostState.Presentation.C3DTextureName == "quadrants.png");
+            viewer.TrySetC3DTextureVisible(false);
+            links.SetWorkbench(null);
+            links.SetMainViewer(null);
+            links.SetWorkbench(workbench);
+            links.SetMainViewer(viewer);
+            Check("reattachment preserves explicit hidden state", viewer.HostState.Presentation.HasC3DTexture
+                && !viewer.HostState.Presentation.C3DTextureVisible);
+            viewer.TryClearC3DTexture();
+            links.SetWorkbench(null);
+            links.SetMainViewer(null);
+            links.SetWorkbench(workbench);
+            links.SetMainViewer(viewer);
+            Check("reattachment does not resurrect a removed texture", !viewer.HostState.Presentation.HasC3DTexture);
+            Check("texture can be selected again", viewer.TryLoadC3DTexture(Path.Combine(root, "quadrants.png")));
+            Check("Save As retains the current source texture", workbench.TrySaveTeachingRecipe(Path.Combine(root, "saved-texture.ov3d-recipe.json"), out var saveMessage)
+                && viewer.HostState.Presentation.C3DTextureVisible && viewer.HostState.Presentation.C3DTextureName == "quadrants.png");
+            var savedProfiles = links.CaptureDisplayProfiles();
+            Check("saved recipe scope captures its texture for reload", savedProfiles["main/3d"].Textures?.Count > 0
+                && savedProfiles["main/3d"].RecipeContext.Length > 0);
+            links.SetWorkbench(other);
+            Check("different recipe context does not inherit the texture", !viewer.HostState.Presentation.HasC3DTexture);
+            Check("presentation does not dirty or execute the original recipe", workbench.IsDirty == dirty
+                && viewer.HostState.Inspection.PreviewStatus == inspection.PreviewStatus
+                && viewer.HostState.Inspection.PublishedResultCount == inspection.PublishedResultCount);
+            summary = $"C3D texture layout reattachment: Pass ({passed} checks)";
+            File.WriteAllLines(reportPath, lines.Append(summary));
+            return true;
+        }
+        catch (Exception exception)
+        {
+            summary = $"C3D texture layout reattachment: Fail after {passed} checks: {exception}";
+            File.WriteAllLines(reportPath, lines.Append(summary));
+            return false;
+        }
+    }
+
     public static bool VerifySelectionIdentity(string reportPath, out string summary)
     {
         var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
@@ -168,8 +242,16 @@ internal static class C3DTexturePresentationVerification
             viewer.UseTopView();
             Settle(window);
             var before = viewer.HostState;
+            var gl = ((SharpGL.WPF.OpenGLControl)viewer.FindName("Viewport")).OpenGL;
+            gl.MakeCurrent();
+            while (gl.GetError() != SharpGL.OpenGL.GL_NO_ERROR) { }
+            gl.Enable(uint.MaxValue);
+            Check("controlled earlier GL failure produces an error flag", gl.GetError() == SharpGL.OpenGL.GL_INVALID_ENUM);
+            gl.Enable(uint.MaxValue);
             Check("actual texture attachment reaches the renderer", viewer.TryLoadC3DTexture(chosen));
             Settle(window);
+            Check("an earlier GL error cannot reject the first valid texture upload", viewer.HostState.Presentation.C3DTextureVisible
+                && viewer.HostState.Presentation.C3DTextureError.Length == 0);
             var resource = typeof(OpenVisionThreeDViewerControl).GetField("c3dRenderResources", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(viewer)!;
             int Counter(string name) => (int)resource.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(resource)!;
             uint Handle() => (uint)resource.GetType().GetField("TextureId", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(resource)!;
@@ -221,8 +303,24 @@ internal static class C3DTexturePresentationVerification
             Check("texture operations retain inspection and source identity", viewer.HostState.Inspection.PreviewReferenceToken == before.Inspection.PreviewReferenceToken
                 && viewer.HostState.Inspection.PublishedResultCount == before.Inspection.PublishedResultCount
                 && viewer.HostState.Sources.CurrentC3DSourcePath == before.Sources.CurrentC3DSourcePath);
+            gl.MakeCurrent();
+            var limit = new int[1];
+            gl.GetInteger(0x0D33, limit);
+            var oversized = Path.Combine(root, "over-context-limit.png");
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(limit[0] + 1, 1, 96, 96, PixelFormats.Bgra32, null, new byte[(limit[0] + 1) * 4], (limit[0] + 1) * 4)));
+            using (var stream = File.Create(oversized)) encoder.Save(stream);
+            Check("oversized image decodes before the GL limit check", viewer.TryLoadC3DTexture(oversized));
+            Settle(window);
+            Check("a genuine context limit failure remains visible and releases the texture", !viewer.HostState.Presentation.C3DTextureVisible
+                && viewer.HostState.Presentation.C3DTextureError.Contains("pixel image limit", StringComparison.Ordinal)
+                && Handle() == 0 && Counter("TextureReleaseCount") == 3);
+            Check("explicit valid selection recovers after the GL limit failure", viewer.TryLoadC3DTexture(chosen));
+            Settle(window);
+            Check("recovery uploads exactly one replacement", viewer.HostState.Presentation.C3DTextureVisible
+                && viewer.HostState.Presentation.C3DTextureError.Length == 0 && Counter("TextureUploadCount") == 4);
             viewer.Dispose();
-            Check("Dispose retires the final texture without a release failure", Handle() == 0 && Counter("TextureReleaseCount") == 3 && Counter("TextureReleaseFailureCount") == 0);
+            Check("Dispose retires the final texture without a release failure", Handle() == 0 && Counter("TextureReleaseCount") == 4 && Counter("TextureReleaseFailureCount") == 0);
             summary = $"C3D texture presentation verification: Pass ({passed} checks)";
             File.WriteAllLines(reportPath, lines.Append(summary));
             return true;

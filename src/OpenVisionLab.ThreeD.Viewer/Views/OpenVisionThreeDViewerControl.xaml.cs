@@ -538,7 +538,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
         ArgumentNullException.ThrowIfNull(output);
         workbenchOverlayRenderer.PrepareAffineApply(output);
-        viewModel.C3DSampleVisible = !standaloneReferenceDisplay;
+        viewModel.SetWorkbenchResultScene(standaloneReferenceDisplay);
         viewModel.SetWorkbenchAffineApply(output, isPublished);
         RenderNow();
     }
@@ -559,7 +559,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
         ArgumentNullException.ThrowIfNull(output);
         workbenchOverlayRenderer.PrepareRegridHeightField(output);
-        viewModel.C3DSampleVisible = !standaloneReferenceDisplay;
+        viewModel.SetWorkbenchResultScene(standaloneReferenceDisplay);
         viewModel.SetWorkbenchRegridHeightField(output, isPublished);
         RenderNow();
     }

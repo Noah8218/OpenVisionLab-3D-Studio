@@ -2,6 +2,7 @@ using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 
 internal static class PhysicalEdgeGapFlushExperimentVerification
 {
@@ -409,6 +410,24 @@ internal static class PhysicalEdgeGapFlushExperimentVerification
         var after = ToolRecipeOrderedGraphExecution.Execute(reopened, sourcePath);
         var lastBefore = before.Steps.LastOrDefault();
         var lastAfter = after.Steps.LastOrDefault();
+        var identity = OrderedRunRecordIdentity.Create(recipePath, sourcePath);
+        var record = OrderedRunRecordFactory.Create(identity, reopened, after, "NotCompared",
+            new InspectionRunArtifacts("recorded.txt", null, null, null, null, null));
+        var recordPath = Path.Combine(directory, "physical.record.json");
+        InspectionRunRecordJson.Write(recordPath, record);
+        var roundtrip = InspectionRunRecordJson.Read(recordPath);
+        var htmlPath = Path.Combine(directory, "physical.html");
+        var csvPath = Path.Combine(directory, "physical.csv");
+        InspectionRunRecordReports.WriteHtml(htmlPath, roundtrip);
+        InspectionRunRecordReports.WriteCsv(csvPath, roundtrip);
+        var message = lastAfter?.Result.Message ?? string.Empty;
+        var reportsPreserveAdmission = message.Contains("state=Limited;tolerance=NotEvaluated;gap=3;flush=4", StringComparison.Ordinal)
+            && roundtrip.Steps?.LastOrDefault()?.Status == ResultStatus.Warning
+            && roundtrip.Steps.Last().Message == message
+            && File.ReadAllText(htmlPath).Contains(System.Net.WebUtility.HtmlEncode(message), StringComparison.Ordinal)
+            && File.ReadAllText(csvPath).Contains("\"" + message.Replace("\"", "\"\"") + "\"", StringComparison.Ordinal)
+            && identity.SourceSha256 == OrderedRunRecordIdentity.Create(recipePath, sourcePath).SourceSha256
+            && storedBytes.SequenceEqual(File.ReadAllBytes(recipePath));
         var passed = before.Steps.Count == 6 && after.Steps.Count == 6
             && before.Status == ResultStatus.Warning && after.Status == ResultStatus.Warning
             && lastAfter?.Result.Status == ResultStatus.Warning
@@ -417,8 +436,8 @@ internal static class PhysicalEdgeGapFlushExperimentVerification
             && !string.IsNullOrWhiteSpace(lastAfter.OutputContentSha256)
             && lastAfter.OutputContentSha256 == lastBefore?.OutputContentSha256
             && lastAfter.Evidence == lastBefore?.Evidence
-            && restoredProfile && loadPreservedFiles;
-        return (passed, $"before={before.Status}/{before.Steps.Count};after={after.Status}/{after.Steps.Count};restoredProfile={restoredProfile};loadPreservedFiles={loadPreservedFiles};hash={lastAfter?.OutputContentSha256};result={lastAfter?.Evidence};message={after.Message}");
+            && restoredProfile && loadPreservedFiles && reportsPreserveAdmission;
+        return (passed, $"before={before.Status}/{before.Steps.Count};after={after.Status}/{after.Steps.Count};restoredProfile={restoredProfile};loadPreservedFiles={loadPreservedFiles};reportsPreserveAdmission={reportsPreserveAdmission};hash={lastAfter?.OutputContentSha256};result={lastAfter?.Evidence};message={after.Message}");
     }
 
     private static (bool Passed, string Evidence) VerifyProductRuleContactPolicy()

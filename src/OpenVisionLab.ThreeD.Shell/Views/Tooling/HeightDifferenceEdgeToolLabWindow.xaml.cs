@@ -32,6 +32,10 @@ public partial class HeightDifferenceEdgeToolLabWindow : ToolLabWindowBase
             || string.IsNullOrWhiteSpace(Workbench.CurrentFilterPreviewPath)
             || !File.Exists(Workbench.CurrentFilterPreviewPath))
         {
+            inputViewer.ClearC3DTeachingSource(Workbench.Localization.Resolve(
+                "ThreeD.ToolLab.Edge.NoInput", "적용된 필터 입력 없음", "No applied filter input"));
+            outputViewer.ClearC3DTeachingSource(Workbench.Localization.Resolve(
+                "ThreeD.ToolLab.Edge.NoOutput", "결과 없음", "No result"));
             return;
         }
 

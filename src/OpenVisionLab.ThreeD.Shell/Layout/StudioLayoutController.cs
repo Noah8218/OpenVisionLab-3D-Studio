@@ -320,8 +320,8 @@ internal sealed class StudioLayoutController : IDisposable
                 "No saved layout was found; the default layout is active."),
             StudioLayoutLoadStatus.Restored => ThreeDLocalization.Shared.Resolve(
                 "ThreeD.Shell.Layout.Restored",
-                "저장한 화면 배치를 불러왔습니다.",
-                "Saved layout restored."),
+                "",
+                ""),
             StudioLayoutLoadStatus.RestoredWithFallback => ThreeDLocalization.Shared.Resolve(
                 "ThreeD.Shell.Layout.RestoredWithFallback",
                 "안전하지 않은 화면 배치라 기본값으로 열었습니다.",
@@ -339,8 +339,8 @@ internal sealed class StudioLayoutController : IDisposable
 
     private static string FormatLayoutResetStatus() => ThreeDLocalization.Shared.Resolve(
         "ThreeD.Shell.Layout.Reset",
-        "화면 배치를 기본값으로 되돌렸습니다. 레시피와 실행 상태는 유지했습니다.",
-        "Layout reset to defaults. Recipe and run state were unchanged.");
+        "화면 배치를 초기화했습니다.",
+        "Layout reset.");
 
     private static string FormatLayoutResetFailureStatus(Exception exception) =>
         ThreeDLocalization.Shared.Resolve(

@@ -232,7 +232,8 @@ internal sealed class ToolWorkbenchArtifactNavigatorOwner : INotifyPropertyChang
         or "line-intersection"
         or "landmark-correspondence"
         or "xyz-affine-solve"
-        or "xyz-affine-apply";
+        or "xyz-affine-apply"
+        or "re-grid-height-map";
 
     private static IEnumerable<ToolWorkbenchNavigatorItem> EnumerateNavigatorItems(
         IEnumerable<ToolWorkbenchNavigatorItem> roots)

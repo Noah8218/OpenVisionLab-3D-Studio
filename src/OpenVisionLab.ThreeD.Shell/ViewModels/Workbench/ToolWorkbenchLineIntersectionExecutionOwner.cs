@@ -491,8 +491,8 @@ internal sealed class ToolWorkbenchLineIntersectionExecutionOwner : IDisposable
                 out _,
                 out var message))
             {
-                step.State = "Ready";
-                executionSummary = "Ready for explicit Preview. Upstream line construction or fitting will not run implicitly.";
+                step.State = isPreviewStale ? "Preview stale" : "Ready";
+                if (!isPreviewStale) executionSummary = "Ready for explicit Preview. Upstream line construction or fitting will not run implicitly.";
             }
             else
             {

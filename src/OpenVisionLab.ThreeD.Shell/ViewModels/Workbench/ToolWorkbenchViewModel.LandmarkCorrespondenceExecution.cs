@@ -22,8 +22,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal bool TryGetPublishedLandmarkCorrespondenceOutput(
         string outputEntityId,
-        out C3DLandmarkCorrespondenceSet? output) =>
-        landmarkCorrespondenceExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DLandmarkCorrespondenceSet? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DLandmarkCorrespondenceSet>(outputEntityId, out output)) return output is not null;
+        return landmarkCorrespondenceExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 
     internal bool TryRegisterSyntheticPublishedLandmarkCorrespondenceOutputForSmoke(
         C3DLandmarkCorrespondenceSet output,

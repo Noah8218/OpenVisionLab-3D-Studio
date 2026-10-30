@@ -88,8 +88,8 @@ public sealed record VisionSdkInspectionEvaluation(
 public static class VisionSdkHeightMapInspection
 {
     public const string PackageId = "OpenVisionLab.Vision3D";
-    public const string PackageVersion = "3.3.0-dev.20261017.physical-edge-gap-flush.1";
-    public const string PackageSourceCommit = "456eb2af7a62962144757d967538594fde79e481";
+    public const string PackageVersion = "3.3.0-dev.20261029.nine-point-compensation.1";
+    public const string PackageSourceCommit = "cdaa08d04ed569be5aba95324f2d851b7bad637b";
 
     public static string PackageAssemblyName => typeof(SdkHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 

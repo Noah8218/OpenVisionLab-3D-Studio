@@ -65,11 +65,13 @@ internal sealed class ViewerWorkbenchOverlayRenderer
     private int[]? affineApplyLocatorToPointIndex;
     private int[]? affineApplyRenderedPointIndexes;
     private AffineApplyDisplayFrame affineApplyDisplayFrame;
+    private Vector3[] affineApplyFitPositions = [];
     private C3DTransformedHeightField? regridHeightFieldRenderOutput;
     private Vector3[]? regridHeightFieldPositions;
     private bool[]? regridHeightFieldPopulated;
     private Vector3 regridHeightFieldDisplayCenter;
     private float regridHeightFieldDisplayScale = 1f;
+    private Vector3[] regridHeightFieldFitPositions = [];
 
     public ViewerWorkbenchOverlayRenderer(ViewerWorkbenchOverlayCallbacks callbacks)
     {
@@ -77,6 +79,7 @@ internal sealed class ViewerWorkbenchOverlayRenderer
     }
 
     internal C3DTransformedHeightField? RegridHeightFieldRenderOutput => regridHeightFieldRenderOutput;
+    internal IReadOnlyList<Vector3> WorkbenchFitPositions => [.. affineApplyFitPositions, .. regridHeightFieldFitPositions];
 
     internal bool HasManagedData =>
         affineApplyRenderOutput is not null
@@ -84,7 +87,9 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         || affineApplyRenderedPointIndexes is not null
         || regridHeightFieldRenderOutput is not null
         || regridHeightFieldPositions is not null
-        || regridHeightFieldPopulated is not null;
+        || regridHeightFieldPopulated is not null
+        || affineApplyFitPositions.Length > 0
+        || regridHeightFieldFitPositions.Length > 0;
 
     internal void PrepareAffineApply(C3DTransformedPointCloud output)
     {
@@ -123,6 +128,10 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         affineApplyLocatorToPointIndex = locators;
         affineApplyRenderedPointIndexes = rendered.ToArray();
         affineApplyDisplayFrame = AffineApplyDisplayFrame.Create(minimumX, maximumX, minimumY, maximumY, minimumZ, maximumZ);
+        affineApplyFitPositions = points.Count == 0 ? [] : CreateFitBounds(new Vector3(
+            (float)((maximumX - minimumX) * affineApplyDisplayFrame.Scale * 0.5),
+            (float)((maximumY - minimumY) * affineApplyDisplayFrame.Scale * 0.5),
+            (float)((maximumZ - minimumZ) * affineApplyDisplayFrame.Scale * 0.5)));
     }
 
     internal void ClearAffineApply()
@@ -131,6 +140,7 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         affineApplyLocatorToPointIndex = null;
         affineApplyRenderedPointIndexes = null;
         affineApplyDisplayFrame = default;
+        affineApplyFitPositions = [];
     }
 
     internal void PrepareRegridHeightField(C3DTransformedHeightField output)
@@ -170,6 +180,10 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         regridHeightFieldPopulated = populated;
         regridHeightFieldDisplayCenter = center;
         regridHeightFieldDisplayScale = scale;
+        regridHeightFieldFitPositions = output.PopulatedCellCount == 0 ? [] : CreateFitBounds(new Vector3(
+            (float)((maximumX - minimumX) * scale * 0.5),
+            (float)((maximumY - minimumY) * scale * 0.5),
+            (float)((maximumZ - minimumZ) * scale * 0.5)));
     }
 
     internal void ClearRegridHeightField()
@@ -179,6 +193,7 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         regridHeightFieldPopulated = null;
         regridHeightFieldDisplayCenter = default;
         regridHeightFieldDisplayScale = 1f;
+        regridHeightFieldFitPositions = [];
     }
 
     internal void Clear()
@@ -392,6 +407,14 @@ internal sealed class ViewerWorkbenchOverlayRenderer
 
     private Vector3 CreateRegridDisplayPosition(int row, int column, double height) =>
         (CreateRegridReferencePosition(row, column, height) - regridHeightFieldDisplayCenter) * regridHeightFieldDisplayScale;
+
+    private static Vector3[] CreateFitBounds(Vector3 halfSize) =>
+    [
+        new(-halfSize.X, -halfSize.Y, -halfSize.Z), new(halfSize.X, -halfSize.Y, -halfSize.Z),
+        new(-halfSize.X, halfSize.Y, -halfSize.Z), new(halfSize.X, halfSize.Y, -halfSize.Z),
+        new(-halfSize.X, -halfSize.Y, halfSize.Z), new(halfSize.X, -halfSize.Y, halfSize.Z),
+        new(-halfSize.X, halfSize.Y, halfSize.Z), new(halfSize.X, halfSize.Y, halfSize.Z)
+    ];
 
     private readonly record struct AffineApplyDisplayFrame(
         double CenterX,

@@ -28,6 +28,9 @@ public sealed record ToolRecipeValidationSampleResult(
     TimeSpan Duration,
     IReadOnlyList<ToolRecipeValidationStepResult> Steps)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ToolRecipeOrderedGraphExecutionResult? Execution { get; init; }
+
     public ToolRecipeValidationExpectation? Expectation { get; init; }
     public ToolRecipeValidationUsage? Usage { get; init; }
     public ToolRecipeValidationExpectation EffectiveExpectation => ToolRecipeValidationSampleDefinition.ResolveExpectation(Role, Expectation);
@@ -202,7 +205,7 @@ public static class ToolRecipeValidationSetExecution
                 execution.Status,
                 execution.Message,
                 stopwatch.Elapsed,
-                steps);
+                steps) { Execution = execution };
         }
         catch (OperationCanceledException)
         {

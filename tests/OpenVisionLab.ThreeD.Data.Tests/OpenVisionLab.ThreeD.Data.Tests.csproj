@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
+    <ProjectReference Include="..\..\src\OpenVisionLab.ThreeD.Reporting\OpenVisionLab.ThreeD.Reporting.csproj" />
   </ItemGroup>
 
 </Project>

@@ -44,7 +44,7 @@ public sealed class BinaryPlyVertexReader : IDisposable
             propertyIndices = Properties
                 .Select((name, index) => (name, index))
                 .ToDictionary(item => item.name, item => item.index, StringComparer.Ordinal);
-            buffer = new byte[checked(DefaultChunkVertexCount * RecordByteCount)];
+            buffer = new byte[checked((int)Math.Min(VertexCount, DefaultChunkVertexCount) * RecordByteCount)];
             remainingVertexCount = VertexCount;
         }
         catch

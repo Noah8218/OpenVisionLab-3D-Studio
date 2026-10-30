@@ -4,6 +4,7 @@
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:shellViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              AutomationProperties.AutomationId="MachineExchangeWorkspace">
     <Grid Background="{DynamicResource ThreeD.PanelBrush}"
@@ -44,29 +45,15 @@
                         CornerRadius="4">
                     <StackPanel>
                         <TextBlock FontSize="14" FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Setup, Korean='한 번만 설정', English='One-time setup'}" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="ExchangeRootTextBox"
-                                     MinWidth="320"
-                                     Height="32"
-                                     Padding="8,4"
-                                     VerticalContentAlignment="Center"
-                                     IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
-                                     Text="{Binding IntegrationExchange.ExchangeRoot, UpdateSourceTrigger=PropertyChanged}"
-                                     AutomationProperties.AutomationId="IntegrationExchangeRoot"
-                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Exchange.ExchangeFolderAccessible, Korean='Machine Studio 교환 폴더', English='Machine Studio exchange folder'}"
-                                     ToolTip="{Binding IntegrationExchange.ExchangeRoot}" />
-                            <ui:Button Grid.Column="1"
-                                       Margin="8,0,0,0"
-                                       Appearance="Secondary"
-                                       Icon="{ui:SymbolIcon FolderOpen24}"
-                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Browse, Korean='찾아보기', English='Browse'}"
-                                       Command="{Binding IntegrationExchange.BrowseExchangeRootCommand}" />
-                        </Grid>
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Setup, Korean='연결 설정', English='Connection settings'}" />
+                        <shellViews:PathInput Height="32"
+                                              IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
+                                              Text="{Binding IntegrationExchange.ExchangeRoot, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              BrowseCommand="{Binding IntegrationExchange.BrowseExchangeRootCommand}"
+                                              BrowseText="{views:ThreeDText Key=ThreeD.Exchange.Browse, Korean='찾아보기', English='Browse'}"
+                                              InputAutomationId="IntegrationExchangeRoot"
+                                              BrowseAutomationId="BrowseIntegrationExchangeRoot"
+                                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Exchange.ExchangeFolderAccessible, Korean='Machine Studio 교환 폴더', English='Machine Studio exchange folder'}" />
                         <WrapPanel Margin="0,10,0,0">
                             <ui:Button Margin="0,0,8,0"
                                        Appearance="Primary"
@@ -94,7 +81,7 @@
                             <StackPanel Margin="0,8,0,0">
                                 <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
-                                           Text="{views:ThreeDText Key=ThreeD.Exchange.TcpSetupHint, Korean='기본값: 이 3D는 127.0.0.1:45103에서 수신하고 2D 127.0.0.1:45102에 연결합니다. 공유 키는 세션 메모리 또는 환경 변수에만 보관됩니다.', English='Defaults: this 3D listener uses 127.0.0.1:45103 and connects to 2D at 127.0.0.1:45102. The shared key stays only in session memory or the environment variable.'}" />
+                                           Text="{views:ThreeDText Key=ThreeD.Exchange.TcpSetupHint, Korean='공유 키는 세션 메모리 또는 환경 변수에만 보관됩니다.', English='The shared key is kept only in session memory or an environment variable.'}" />
                                 <Grid Margin="0,9,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="132" />

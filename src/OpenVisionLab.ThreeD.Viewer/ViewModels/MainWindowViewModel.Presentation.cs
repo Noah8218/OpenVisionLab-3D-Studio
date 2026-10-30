@@ -190,14 +190,15 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
+        var hasFittedHeightGeometry = C3DSampleVisible || AffineApplyHudVisible || RegridHeightFieldHudVisible;
         var minimumDistance = GlbSampleVisible
             ? Math.Max(0.05, importedMeshFitDistance * 0.02)
-            : C3DSampleVisible
+            : hasFittedHeightGeometry
                 ? Math.Max(0.05, c3dFitDistance * 0.01)
                 : 2.4;
         var maximumDistance = GlbSampleVisible
             ? Math.Max(20.0, importedMeshFitDistance * 2.5)
-            : C3DSampleVisible
+            : hasFittedHeightGeometry
                 ? Math.Max(20.0, c3dFitDistance * 8.0)
             : LazSampleVisible
                 ? Math.Max(20.0, lazFitDistance * 2.5)

@@ -10,7 +10,8 @@ internal sealed record ToolRecipeOrderedGraphStepExecution(
     C3DLevelFrameArtifact? LevelFrame = null,
     C3DLevelFrameQualityEvidence? LevelFrameQuality = null,
     C3DLevelSurfaceCoordinateFrameChain? FrameChain = null,
-    C3DSignedHeightDeltaArtifact? SignedDeltaBackgroundSubtraction = null);
+    C3DSignedHeightDeltaArtifact? SignedDeltaBackgroundSubtraction = null,
+    C3DNinePointSurfaceCompensationEvaluation? NinePointCompensation = null);
 
 /// <summary>
 /// Selects and invokes the typed adapter for one ordered recipe step.
@@ -21,6 +22,7 @@ internal static class ToolRecipeOrderedGraphStepExecutor
 {
     private static readonly HashSet<string> SupportedToolIds = new(StringComparer.Ordinal)
     {
+        "nine-point-surface-compensation",
         "filter",
         "height-threshold-background-removal",
         "remove-outlier-pixels",
@@ -75,6 +77,12 @@ internal static class ToolRecipeOrderedGraphStepExecutor
     {
         switch (step.ToolId)
         {
+            case "nine-point-surface-compensation":
+            {
+                var input = Required<C3DHeightFieldSnapshot>(artifacts, step.InputEntityIds[0], step);
+                var evaluation = ToolRecipeNinePointSurfaceCompensationExecution.Execute(document, step.Id, input, cancellationToken: cancellationToken);
+                return new(evaluation.Result, evaluation.Output, NinePointCompensation: evaluation);
+            }
             case "filter":
             {
                 var evaluation = ToolRecipeFilterExecution.Execute(document, step.Id, cancellationToken: cancellationToken);

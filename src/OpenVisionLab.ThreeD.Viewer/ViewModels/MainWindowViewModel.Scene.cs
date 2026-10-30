@@ -336,6 +336,21 @@ public sealed partial class MainWindowViewModel
         UpdateCameraStatus();
     }
 
+    internal void SetWorkbenchResultScene(bool standaloneReferenceDisplay)
+    {
+        C3DSampleVisible = !standaloneReferenceDisplay;
+        if (!standaloneReferenceDisplay) return;
+
+        CubeVisible = false;
+        PointCloudVisible = false;
+        GlbSampleVisible = false;
+        LazSampleVisible = false;
+        MeasurementVisible = false;
+        SelectionOverlayVisible = false;
+        ResultOverlayVisible = false;
+        SampleResultOverlayVisible = false;
+    }
+
     public void UseEmptyTeachingScene(string status)
     {
         HudDetailsVisible = true;

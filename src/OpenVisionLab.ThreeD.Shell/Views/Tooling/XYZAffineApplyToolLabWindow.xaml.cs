@@ -36,7 +36,8 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
         var sourcePath = Path.GetFullPath(Workbench.Source.Path);
         if (!string.Equals(displayedSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
         {
-            sourceViewer.ShowC3DWorkbenchResult(sourcePath, "Raw C3D | A2 source (column / raw-height / row)");
+            sourceViewer.ShowC3DWorkbenchResult(sourcePath, Workbench.Localization.Resolve(
+                "ThreeD.ToolLab.AffineApply.SourceStatus", "원본 높이 데이터 · 열/원시 높이/행", "Raw height data · column/raw height/row"));
             displayedSourcePath = sourcePath;
         }
         UpdateOutputViewer();
@@ -54,7 +55,8 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
         // C3D surface into the output viewer: this keeps waiting/stale states
         // explicit and avoids an unnecessary second full C3D load.
         outputViewer.ClearWorkbenchAffineApply();
-        outputViewer.ClearC3DTeachingSource("A1 Publish required | output remains empty until A2 Preview succeeds.");
+        outputViewer.ClearC3DTeachingSource(Workbench.Localization.Resolve(
+            "ThreeD.ToolLab.AffineApply.NoOutput", "변환된 점군 결과 없음", "No transformed point cloud result"));
     }
 
     private void OnWorkbenchPropertyChanged(object? sender, PropertyChangedEventArgs args)

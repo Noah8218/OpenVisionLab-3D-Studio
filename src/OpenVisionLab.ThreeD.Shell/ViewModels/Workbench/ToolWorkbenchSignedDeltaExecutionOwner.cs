@@ -199,7 +199,7 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
         }
 
         var recipeDirectory = GetRecipeDirectory(recipePath);
-        var sidecarPath = GetSidecarPath(recipeDirectory, recipePath, output.OutputEntityId);
+        var sidecarPath = GetSidecarPath(recipeDirectory, recipePath, output.ContentSha256);
         C3DSignedHeightDeltaArtifactStore.Save(sidecarPath, output);
         var relativePath = Path.GetRelativePath(recipeDirectory, sidecarPath);
         appendLog("Save", $"Signed Delta evidence sidecar saved: {sidecarPath}.");
@@ -411,13 +411,10 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
     private static string GetRecipeDirectory(string recipePath) =>
         Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory;
 
-    private static string GetSidecarPath(string recipeDirectory, string recipePath, string outputEntityId) =>
+    private static string GetSidecarPath(string recipeDirectory, string recipePath, string contentSha256) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.signed-delta.{Sanitize(outputEntityId)}{C3DSignedHeightDeltaArtifactStore.FileExtension}");
-
-    private static string Sanitize(string value) =>
-        string.Concat(value.Select(character => char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.signed-delta.{contentSha256}{C3DSignedHeightDeltaArtifactStore.FileExtension}");
 
     private static ToolRecipeSignedDeltaSidecarReference CreateSidecarReference(
         string relativePath,

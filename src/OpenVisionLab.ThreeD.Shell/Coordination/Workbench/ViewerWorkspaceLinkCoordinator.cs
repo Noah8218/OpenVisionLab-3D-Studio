@@ -47,6 +47,9 @@ internal sealed class ViewerWorkspaceLinkCoordinator : IDisposable
 
         if (workbench is not null)
         {
+            var displays = CaptureDisplayProfiles();
+            storedDisplays.Clear();
+            foreach (var entry in displays) storedDisplays[entry.Key] = entry.Value;
             workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
             workbench.SharedHeightCursor.PropertyChanged -= OnSharedHeightCursorChanged;
             foreach (var pane in Panes()) pane.PropertyChanged -= OnPanePropertyChanged;
@@ -180,7 +183,7 @@ internal sealed class ViewerWorkspaceLinkCoordinator : IDisposable
         var identity = current.RecipePath is { } path ? Path.GetFullPath(path).ToUpperInvariant() : "unsaved:" + current.RecipeName;
         var next = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
         if (recipeContext == next) return;
-        if (recipeContext.Length > 0)
+        if (recipeContext.Length > 0 && !current.IsRecipeSaving)
         {
             synchronizingLinkedHeightDisplayRange = true;
             try

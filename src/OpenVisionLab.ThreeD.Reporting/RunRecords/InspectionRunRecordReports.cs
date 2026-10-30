@@ -29,6 +29,11 @@ public static class InspectionRunRecordReports
         var tableHeader = hasSteps
             ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Stage timing</th><th>Output SHA-256</th><th>Semantic fingerprint</th><th>Algorithm definition</th><th>SDK package</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
             : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
+        // Preserve recorded reasons even when a step has no metric or only a limited measurement.
+        var stepEvidenceSection = hasSteps
+            ? "<h2>Step evidence</h2><dl>" + string.Join(Environment.NewLine, record.Steps!.Select(step =>
+                $"<dt>{Encode(step.Id)} ({step.Status})</dt><dd>{Encode(step.Message)}</dd>")) + "</dl>"
+            : string.Empty;
         var timingSection = FormatTimingHtml(record.Timing);
         var sourceQualitySection =
             FormatSourceQualityHtml(record.SourceQualityEvidence);
@@ -66,6 +71,7 @@ public static class InspectionRunRecordReports
             <dt>Platform</dt><dd>{{Encode(FormatPlatform(record.ExecutionEnvironment))}}</dd>
           </dl>
           <p>{{Encode(record.Message)}}</p>
+          {{stepEvidenceSection}}
           {{timingSection}}
           {{sourceQualitySection}}
           {{completenessSection}}
@@ -619,7 +625,7 @@ public static class InspectionRunRecordReports
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
     {
-        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,semanticFingerprint,algorithmDefinitionVersion,sdkPackageId,sdkPackageVersion,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,sourceFrameId,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason,sourceQualityMeasurementState,sourceQualityMeasurementEvidence,sourceQualityCalibrationId,sourceQualityCalibrationFrameId,sourceQualityCalibrationExpiresAtUtc" };
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,semanticFingerprint,algorithmDefinitionVersion,sdkPackageId,sdkPackageVersion,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,sourceFrameId,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason,sourceQualityMeasurementState,sourceQualityMeasurementEvidence,sourceQualityCalibrationId,sourceQualityCalibrationFrameId,sourceQualityCalibrationExpiresAtUtc,stepMessage" };
         lines.AddRange(record.Steps!.SelectMany(step =>
         {
             var stepRows = step.Metrics.Count == 0
@@ -706,7 +712,8 @@ public static class InspectionRunRecordReports
             Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.Evidence ?? string.Empty),
             Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.CalibrationId ?? string.Empty),
             Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.CalibrationFrameId ?? string.Empty),
-            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.ExpiresAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty));
+            Csv(record.SourceQualityEvidence?.Report?.EffectiveMeasurementEvidence.ExpiresAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(step.Message));
 
     private static string FormatHtmlStepRow(
         InspectionRunStepResult step,

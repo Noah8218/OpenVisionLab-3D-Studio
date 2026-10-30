@@ -430,7 +430,7 @@ public sealed partial class ToolWorkbenchViewModel
             _ => !IsReadOnlySampleView && CanEditFlowConnection && !HasPendingFlowConnection && HasSelectedStepParameterHistory);
         applySelectedStepParameterDraftCommand = new RelayCommand(
             _ => TryApplySelectedStepParameterDraft(out var _),
-            _ => IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
+            _ => CanEditSelectedStepParameters && IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
         discardSelectedStepParameterDraftCommand = new RelayCommand(
             _ => DiscardSelectedStepParameterDraft(),
             _ => IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
@@ -564,6 +564,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     public bool TryApplySelectedStepParameterDraft(out string message)
     {
+        if (IsReadOnlySampleView)
+        {
+            message = Localization.ResultsWorkspaceImmutable;
+            return false;
+        }
         if (SelectedPipelineStep is not { } step)
         {
             message = "The selected step changed. Discard the draft and select the step again.";

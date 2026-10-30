@@ -710,6 +710,18 @@ internal static class ToolArtifactNavigatorVerification
                 && connectedRegionWorkbench.PipelineSteps.Single(step => step.ToolId == "connected-region").OutputContract == "ConnectedRegionArtifact",
                 $"opened={connectedRegionOpened};message={connectedRegionOpenMessage};contract={connectedRegionArtifact?.Contract};state={connectedRegionArtifact?.State};node={connectedRegionArtifact?.NodeKind}");
 
+            var requestedLab = string.Empty;
+            var selectedLabStep = new ToolWorkbenchPipelineStepItem("step.regrid-ui", workbench.Tools.Single(tool => tool.Id == "re-grid-height-map"), string.Empty, "regrid-output");
+            var labNavigator = new ToolWorkbenchArtifactNavigatorOwner(new ToolWorkbenchArtifactProjection(),
+                () => throw new InvalidOperationException("Opening settings must not rebuild artifacts."), () => selectedLabStep,
+                _ => throw new InvalidOperationException("Opening settings must preserve selection."), id => requestedLab = id);
+            var canOpenRegrid = labNavigator.OpenSelectedToolLabCommand.CanExecute(null);
+            labNavigator.OpenSelectedToolLabCommand.Execute(null);
+            Check("Regrid settings use the public lab route without executing or changing selection",
+                canOpenRegrid && requestedLab == "re-grid-height-map" && selectedLabStep.Id == "step.regrid-ui", requestedLab);
+            selectedLabStep = new ToolWorkbenchPipelineStepItem("step.no-lab", workbench.Tools.Single(tool => tool.Id == "thickness"), string.Empty, "measurement-output");
+            Check("Tools without a lab remain unavailable", !labNavigator.OpenSelectedToolLabCommand.CanExecute(null), selectedLabStep.ToolId);
+
             workbench.Dispose();
             workbench.Dispose();
             Check(

@@ -1,4 +1,5 @@
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 
 namespace OpenVisionLab.ThreeD.Viewer.Models;
 
@@ -9,7 +10,11 @@ public sealed record TeachingCaptureRequest(
     int RequiredPointCount,
     string RootSourceId,
     string FrameId,
-    ToolRecipeSelectionSourceBinding SourceBinding);
+    ToolRecipeSelectionSourceBinding SourceBinding)
+{
+    // The host supplies its current Published snapshot; the Viewer separately checks the visible bytes.
+    public C3DHeightFieldSnapshot? PublishedHeightField { get; init; }
+}
 
 public sealed record TeachingCaptureState(
     bool IsActive,

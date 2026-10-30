@@ -204,7 +204,7 @@ public static class RunRecordHistoryQuery
             record.Source.EntityId,
             record.Source.Path,
             record.ElapsedMilliseconds,
-            stepCount);
+            stepCount) { WorkflowKind = record.WorkflowKind };
     }
 
     private static bool IsTransientPath(string rootPath, string candidatePath)
@@ -324,6 +324,9 @@ public sealed record RunRecordHistoryEntry(
     string SourceEntityId,
     string SourcePath,
     double ElapsedMilliseconds,
-    int StepCount);
+    int StepCount)
+{
+    public RunRecordWorkflowKind WorkflowKind { get; init; }
+}
 
 public sealed record RunRecordHistoryIssue(string JsonPath, string Reason);

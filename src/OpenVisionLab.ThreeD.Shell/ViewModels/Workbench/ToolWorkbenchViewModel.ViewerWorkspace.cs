@@ -25,10 +25,11 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand RunCurrentValidationSetCommand => IsInspectionFileView ? InspectionQueue.RunCheckedCommand : RunValidationSetCommand;
     public ICommand CancelCurrentWorkspaceCommand => IsInspectionFileView ? InspectionQueue.StopCommand : IsValidationSampleView ? CancelValidationSetCommand : CancelActiveWorkbenchEditCommand;
 
-    internal void SetInspectionFileView(bool value)
+    internal bool SetInspectionFileView(bool value)
     {
-        if (isInspectionFileView == value) return;
+        if (isInspectionFileView == value) return false;
         isInspectionFileView = value;
+        var restoredTeachingRun = !value && orderedRunExecutionOwner.RestoreTeachingRun();
         OnPropertyChanged(nameof(IsInspectionFileView));
         OnPropertyChanged(nameof(IsReadOnlySampleView));
         OnPropertyChanged(nameof(IsCurrentSourceHeaderStatusVisible));
@@ -39,6 +40,7 @@ public sealed partial class ToolWorkbenchViewModel
         selectedStepExecutionOwner.RefreshSelectedStepState();
         RefreshHeightImageRoiProjection();
         viewerWorkspaceViewModel.RefreshInspectionFileContext();
+        return restoredTeachingRun;
     }
 
     internal void SetValidationSampleView(bool value)

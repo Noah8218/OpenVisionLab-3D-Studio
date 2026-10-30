@@ -31,8 +31,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal bool TryGetPublishedDatumPlaneDeviationOutput(
         string outputEntityId,
-        out C3DDatumPlaneDeviationFeature? output) =>
-        datumPlaneDeviationExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DDatumPlaneDeviationFeature? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DDatumPlaneDeviationFeature>(outputEntityId, out output)) return output is not null;
+        return datumPlaneDeviationExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 
     internal bool TryGetCurrentDatumPlaneDeviationInputs(
         out C3DThreePointPlaneFeature? plane,

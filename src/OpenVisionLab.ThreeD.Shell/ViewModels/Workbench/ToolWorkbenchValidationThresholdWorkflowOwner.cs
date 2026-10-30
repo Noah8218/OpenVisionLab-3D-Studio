@@ -260,27 +260,27 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                 "Analyzing the Validation Set. Apply remains unavailable until it completes.")
             : !HasValidationThresholdAssistantAnalysis
                 ? localize(
-                    "분석을 실행하면 결정론적 임계값 후보가 생성됩니다.",
-                    "Run analysis to generate deterministic threshold candidates.")
+                    "임계값 후보를 분석하세요.",
+                    "Analyze threshold candidates.")
                 : !HasSelectedValidationThresholdCandidate
                     ? localize(
-                        "후보를 선택한 뒤 제안을 만들 수 있습니다.",
-                        "Select a candidate to create a proposal.")
+                        "후보를 선택하세요.",
+                        "Select a candidate.")
                     : IsValidationThresholdCandidateApplied
                         ? localize(
-                            "설정창에 입력했습니다. 설정값 적용과 검사 실행은 별도입니다.",
-                            "Applied to the PropertyGrid draft only. Normal Apply and execution remain separate.")
+                            "설정창에 입력했습니다. 적용 전입니다.",
+                            "Entered in the parameter draft. Apply is pending.")
                         : IsValidationThresholdReviewActive
                             ? localize(
-                                "추천 설정을 확인 중입니다. 설정값 적용 전에는 레시피와 검사 상태가 변하지 않습니다.",
-                                "Reviewing the proposal. Recipe and execution remain unchanged until Apply.")
+                                "추천 설정 검토 중",
+                                "Reviewing the proposed settings.")
                             : HasValidationThresholdAssistantProposal
                                 ? localize(
-                                    "추천 설정이 준비되었습니다. 확인한 뒤 설정창에 입력하세요.",
-                                    "Proposal ready. Review it before applying to the draft.")
+                                    "추천 설정을 검토하세요.",
+                                    "Review the proposed settings.")
                                 : localize(
-                                    "선택한 후보로 추천 설정을 준비하세요.",
-                                    "Create a draft proposal from the selected candidate.");
+                                    "선택한 후보로 설정을 제안하세요.",
+                                    "Propose settings from the selected candidate.");
 
     public ValidationThresholdCandidateRow? SelectedValidationThresholdCandidate
     {
@@ -650,9 +650,8 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                 return;
             }
 
-            ValidationThresholdCorrectionSummary =
-                "Corrected development replay canceled. Held-out replay remains locked.";
-            ValidationSetProgressText = localize("?ъ슜??痍⑥냼", "Canceled");
+            ValidationThresholdCorrectionSummary = localize("조정 샘플 재검증을 취소했습니다. 보류 샘플 검증은 시작할 수 없습니다.", "Adjustment sample revalidation canceled. Held-out validation remains locked.");
+            ValidationSetProgressText = localize("사용자 취소", "Canceled");
         }
         catch (ObjectDisposedException) when (IsDisposed)
         {

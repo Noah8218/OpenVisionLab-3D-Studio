@@ -23,7 +23,7 @@ public static class RecipeRecentFileStore
         try
         {
             var entries = JsonSerializer.Deserialize<string[]>(File.ReadAllBytes(path)) ?? [];
-            return Normalize(entries, maximumEntries);
+            return Normalize(entries, maximumEntries, skipInvalidPaths: true);
         }
         catch (JsonException)
         {
@@ -70,11 +70,22 @@ public static class RecipeRecentFileStore
         }
     }
 
-    private static string[] Normalize(IEnumerable<string> paths, int maximumEntries)
+    private static string[] Normalize(IEnumerable<string> paths, int maximumEntries, bool skipInvalidPaths = false)
     {
         return paths
             .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(Path.GetFullPath)
+            .Select(path =>
+            {
+                try
+                {
+                    return Path.GetFullPath(path);
+                }
+                catch (ArgumentException) when (skipInvalidPaths)
+                {
+                    return null;
+                }
+            })
+            .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(maximumEntries)
             .ToArray();

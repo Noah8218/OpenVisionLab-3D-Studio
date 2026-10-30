@@ -1,6 +1,8 @@
 using System.IO;
 using System.Threading;
 using System.Windows;
+using System.Windows.Interop;
+using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Localization;
@@ -14,6 +16,7 @@ public abstract class ToolLabWindowBase : Window, IDisposable
     private readonly string expectedToolId;
     private readonly string expectedStepMismatchMessage;
     private List<OpenVisionThreeDViewerControl>? ownedViewers = new();
+    private HwndSource? windowSource;
     private int disposalState;
     private string labStepId = string.Empty;
 
@@ -99,6 +102,8 @@ public abstract class ToolLabWindowBase : Window, IDisposable
         Loaded -= OnLoaded;
         Activated -= OnActivated;
         Closed -= OnClosed;
+        if (windowSource is { IsDisposed: false }) windowSource.RemoveHook(ShellWindowNativeInterop.ConstrainMaximizeToWorkArea);
+        windowSource = null;
 
         var viewers = Interlocked.Exchange(ref ownedViewers, null);
         if (viewers is not null)
@@ -115,10 +120,31 @@ public abstract class ToolLabWindowBase : Window, IDisposable
     protected static bool HasSourcePath(string sourcePath) =>
         !string.IsNullOrWhiteSpace(sourcePath) && File.Exists(sourcePath);
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        windowSource = PresentationSource.FromVisual(this) as HwndSource;
+        windowSource?.AddHook(ShellWindowNativeInterop.ConstrainMaximizeToWorkArea);
+    }
+
+    private void ConstrainInitialBounds()
+    {
+        if (WindowState != WindowState.Normal) return;
+        var handle = new WindowInteropHelper(Owner ?? this).Handle;
+        ShellWindowNativeInterop.TryGetWindowWorkArea(handle, out var area);
+        Width = Math.Max(MinWidth, Math.Min(Width, area.Width));
+        Height = Math.Max(MinHeight, Math.Min(Height, area.Height));
+        var left = Owner is { } owner ? owner.Left + (owner.ActualWidth - Width) / 2 : Left;
+        var top = Owner is { } parent ? parent.Top + (parent.ActualHeight - Height) / 2 : Top;
+        Left = Math.Clamp(left, area.Left, Math.Max(area.Left, area.Right - Width));
+        Top = Math.Clamp(top, area.Top, Math.Max(area.Top, area.Bottom - Height));
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         if (!IsDisposed)
         {
+            ConstrainInitialBounds();
             RefreshViews();
         }
     }

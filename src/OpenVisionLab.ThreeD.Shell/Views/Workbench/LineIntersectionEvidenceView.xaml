@@ -23,7 +23,7 @@
             </StackPanel>
             <Border Grid.Column="1"
                     Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
-                    ToolTip="{i18n:ThreeDText Key=ThreeD.Workbench.IntersectionEvidence.ReadOnlyTip, Korean='이 창은 기록만 표시하며 검사를 실행하지 않습니다.', English='This pane reports evidence only; it never runs the inspection.'}"
+
                     AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.IntersectionEvidence.ReadOnlyAction, Korean='읽기 전용 교점 정보', English='Read-only intersection evidence'}">
                 <StackPanel Orientation="Horizontal">
                     <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Symbol="Document24" />

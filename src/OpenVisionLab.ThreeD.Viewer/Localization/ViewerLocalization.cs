@@ -47,8 +47,8 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
         ("C3D Gap / Flush", "C3D 갭 / 플러시"),
         ("C3D Volume", "C3D 체적"),
         ("C3D Cross-section Dimensions", "C3D 단면 치수"),
-        ("C3D Warpage ROI", "C3D 워페이지 ROI"),
-        ("C3D Warpage", "C3D 워페이지"),
+        ("C3D Warpage ROI", "C3D 휨 ROI"),
+        ("C3D Warpage", "C3D 휨"),
         ("C3D Height Profile", "C3D 높이 단면"),
         ("C3D Alignment", "C3D 정렬"),
         ("Plane Distance Measurement", "평면 거리 측정"),
@@ -98,7 +98,7 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
         ("matches current display", "현재 표시와 동일"),
         ("points", "포인트"),
         ("stride", "간격"),
-        ("budget", "예산"),
+        ("budget", "최대 표시 점 수"),
         ("C3D points", "C3D 포인트"),
         ("LAZ/LAS points", "LAZ/LAS 포인트"),
         ("LAZ/LAS loading", "LAZ/LAS 불러오는 중"),
@@ -302,11 +302,11 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
         (") to (", ") ~ ("),
         ("C3D sample loaded; no measurement tool published", "C3D 샘플 로드됨; 적용된 측정 도구 없음"),
         ("No recipe source is ready.", "레시피 입력 데이터가 준비되지 않음."),
-        (" mesh loaded; measurement tools pending", " 메시 로드됨; 측정 도구 준비 중"),
+        (" mesh loaded; measurement tools pending", " 메시 불러옴 · 보기 전용"),
         ("LAZ header loaded; compressed point records not decoded yet", "LAZ 헤더 로드됨; 압축 포인트 레코드는 아직 디코드되지 않음"),
-        ("LAZ/LAS point decode loaded; XYZ/RGB sampled points rendered.", "LAZ/LAS 포인트 디코드 로드됨; XYZ/RGB 샘플 포인트 렌더링됨."),
+        ("LAZ/LAS point decode loaded; XYZ/RGB sampled points rendered.", "점군 불러옴"),
         ("Distance and height delta: reset after point-cloud density change", "포인트 점군 밀도 변경 후 거리 및 높이 차이 초기화됨"),
-        ("Inputs validated; explicit Preview requested.", "입력 검증됨; 미리보기 요청됨."),
+        ("Inputs validated; explicit Preview requested.", "입력 확인 · 미리보기 요청됨"),
         ("Pick P2 to measure distance and height delta.", "거리와 높이 차이를 측정하려면 P2를 선택하세요."),
         ("Distance and height delta: pending", "거리 및 높이 차이: 대기"),
         ("point pick:", "포인트 선택:"),
@@ -501,6 +501,117 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
     public string LocalizeRuntimeText(object? value, string? mode = null)
     {
         var text = value?.ToString() ?? string.Empty;
+        var scopedToolLab = mode is "HeightDifferenceEdgeSummary" or "LandmarkCorrespondenceSummary";
+        if (scopedToolLab) mode = "ToolLabSummary";
+        if (string.Equals(mode, "MeasurementMetric", StringComparison.Ordinal) && text == "ValidSampleCount")
+            return OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English ? "Valid sample count" : "유효 데이터 수";
+        if (string.Equals(mode, "ToolLabSummary", StringComparison.Ordinal))
+        {
+            var korean = OpenVisionLanguageService.CurrentLanguage != OpenVisionLanguage.English;
+            if (text is "No matrix evidence until Preview completes."
+                or "No source-to-reference matrix until Preview completes."
+                or "No transformed point evidence until Preview completes."
+                or "No residual evidence until Preview completes."
+                or "No correspondence evidence until Preview completes."
+                or "No corner evidence until Preview completes."
+                or "No reference-grid evidence until Preview completes."
+                or "Publish the current A2 TransformedPointCloud first. A1/A2 are not executed implicitly.") return string.Empty;
+            var missingInputs = Regex.Match(text, @"^Step \d+ '.+' requires (\d+) input entity ID\(s\)\.$", RegexOptions.CultureInvariant);
+            if (missingInputs.Success)
+                return korean ? $"도구 입력 {missingInputs.Groups[1].Value}개를 연결하세요." : $"Connect {missingInputs.Groups[1].Value} tool inputs.";
+            if (Regex.IsMatch(text, @"^Step \d+ selection role '(?:line-points|plane-points)' requires 1 point-set selection\(s\); found 0\.$", RegexOptions.CultureInvariant))
+                return korean ? "입력점이 연결되지 않았습니다." : "No input point set is connected.";
+            var filterCounts = Regex.Match(text, @"^Preview ready \| valid (.+) \| missing (.+) \| preprocessing only, no OK/NG$", RegexOptions.CultureInvariant);
+            if (filterCounts.Success)
+                return korean ? $"유효 {filterCounts.Groups[1].Value}셀 · 결측 {filterCounts.Groups[2].Value}셀 · 판정 없음"
+                    : $"Valid {filterCounts.Groups[1].Value} cells · missing {filterCounts.Groups[2].Value} cells · no judgment";
+            var filterOutput = Regex.Match(text, @"^Filtered Surface \| SHA-256 [0-9a-fA-F]{12} \| (Published|Preview only)$", RegexOptions.CultureInvariant);
+            if (filterOutput.Success)
+                return filterOutput.Groups[1].Value == "Published" ? (korean ? "필터 결과 · 적용됨" : "Filter result · applied")
+                    : (korean ? "필터 결과 · 미적용" : "Filter result · not applied");
+            if (text.StartsWith("Published output ", StringComparison.Ordinal) && text.EndsWith(" | preprocessing only, no OK/NG", StringComparison.Ordinal))
+                return korean ? "적용됨 · 판정 없음" : "Applied · no judgment";
+            if (scopedToolLab)
+            {
+                var edgeInput = Regex.Match(text, @"^(.+) \| (Published \| current|Preview only \| publish required|does not match current Filter output|no current Filter Preview)$", RegexOptions.CultureInvariant);
+                if (edgeInput.Success)
+                {
+                    var state = edgeInput.Groups[2].Value switch
+                    {
+                        "Published | current" => korean ? "적용됨 · 현재 입력과 일치" : "Applied · current",
+                        "Preview only | publish required" => korean ? "미적용 · 필터 결과 적용 필요" : "Not applied · apply the filter result",
+                        "does not match current Filter output" => korean ? "현재 필터 결과와 입력이 다릅니다." : "Input differs from the current filter result.",
+                        _ => korean ? "현재 필터 결과 없음 · 미리보기와 적용 필요" : "No current filter result · preview and apply required"
+                    };
+                    return $"{edgeInput.Groups[1].Value} | {state}";
+                }
+                var edgeCounts = Regex.Match(text, @"^Preview ready \| points (.+)/(.+) \| eligible pairs (.+) \| missing skips (.+) \| no OK/NG$", RegexOptions.CultureInvariant);
+                if (edgeCounts.Success)
+                    return korean ? $"미적용 · 검출 스캔라인 {edgeCounts.Groups[1].Value}/{edgeCounts.Groups[2].Value} · 비교 쌍 {edgeCounts.Groups[3].Value} · 결측 제외 {edgeCounts.Groups[4].Value}쌍 · 판정 없음"
+                        : $"Not applied · edges on {edgeCounts.Groups[1].Value}/{edgeCounts.Groups[2].Value} scanlines · eligible pairs {edgeCounts.Groups[3].Value} · missing pairs skipped {edgeCounts.Groups[4].Value} · no judgment";
+                var appliedFeature = Regex.Match(text, @"^Published exact Preview as .+ \| SHA-256 [0-9a-fA-F]{64} \| (feature extraction only, no OK/NG|correspondence evidence only, no affine matrix or OK/NG)$", RegexOptions.CultureInvariant);
+                if (appliedFeature.Success)
+                    return appliedFeature.Groups[1].Value.StartsWith("feature", StringComparison.Ordinal)
+                        ? (korean ? "적용됨 · 에지 추출 · 판정 없음" : "Applied · edge extraction · no judgment")
+                        : (korean ? "적용됨 · 기준점 대응 · 변환 행렬 계산·판정 없음" : "Applied · landmark correspondence · no transform matrix or judgment");
+                var correspondenceInputs = Regex.Match(text, @"^(\d+)/4 authored rows \| (.+)$", RegexOptions.CultureInvariant);
+                if (correspondenceInputs.Success)
+                {
+                    var rows = correspondenceInputs.Groups[2].Value.Split(" | ", StringSplitOptions.None);
+                    if (int.TryParse(correspondenceInputs.Groups[1].Value, out var rowCount) && rowCount == rows.Length
+                        && rows.All(row => row.EndsWith(": Published", StringComparison.Ordinal) || row.EndsWith(": missing/stale", StringComparison.Ordinal)))
+                    {
+                        var missingRows = rows.Select((row, index) => (row, index))
+                            .Where(item => item.row.EndsWith(": missing/stale", StringComparison.Ordinal)).Select(item => item.index + 1).ToArray();
+                        var summary = korean ? $"{rowCount}/4쌍 · 적용 {rowCount - missingRows.Length}쌍" : $"{rowCount}/4 pairs · {rowCount - missingRows.Length} applied";
+                        return missingRows.Length == 0 ? summary : summary + (korean
+                            ? $" · 결과 없음·갱신 필요: {string.Join(", ", missingRows)}행"
+                            : $" · missing or stale: rows {string.Join(", ", missingRows)}");
+                    }
+                }
+                var correspondenceRows = Regex.Match(text, @"^(\d+)/4 rows taught\. (Correspondence Preview remains blocked\.|v1 accepts exactly four; remove the extra rows\.)$", RegexOptions.CultureInvariant);
+                if (correspondenceRows.Success)
+                    return correspondenceRows.Groups[2].Value.StartsWith("v1", StringComparison.Ordinal)
+                        ? (korean ? $"{correspondenceRows.Groups[1].Value}/4쌍 · 초과한 대응 쌍을 삭제하세요." : $"{correspondenceRows.Groups[1].Value}/4 pairs · remove the extra pairs.")
+                        : (korean ? $"{correspondenceRows.Groups[1].Value}/4쌍 · 미리보기에는 4쌍이 필요합니다." : $"{correspondenceRows.Groups[1].Value}/4 pairs · preview requires four pairs.");
+                var correspondenceEvidence = Regex.Match(text, @"^(Preview ready \| )?(\d+) pairs \| source rank (\d+)/4 \| reference rank (\d+)/4 \| normalized volume (.+) / (.+?)( \| no affine matrix or OK/NG)?$", RegexOptions.CultureInvariant);
+                if (correspondenceEvidence.Success)
+                {
+                    var summary = korean
+                        ? $"{correspondenceEvidence.Groups[2].Value}쌍 · 입력 랭크 {correspondenceEvidence.Groups[3].Value}/4 · 기준 랭크 {correspondenceEvidence.Groups[4].Value}/4 · 정규화 체적 {correspondenceEvidence.Groups[5].Value} / {correspondenceEvidence.Groups[6].Value}"
+                        : $"{correspondenceEvidence.Groups[2].Value} pairs · source rank {correspondenceEvidence.Groups[3].Value}/4 · reference rank {correspondenceEvidence.Groups[4].Value}/4 · normalized volume {correspondenceEvidence.Groups[5].Value} / {correspondenceEvidence.Groups[6].Value}";
+                    return correspondenceEvidence.Groups[1].Success
+                        ? (korean ? "미적용 · " : "Not applied · ") + summary + (korean ? " · 변환 행렬 계산·판정 없음" : " · no transform matrix or judgment")
+                        : summary;
+                }
+                var toolState = text switch
+                {
+                    "Height Difference Edge Preview is running from the exact Published Filter output." => korean ? "적용된 필터 결과에서 에지 검출 중" : "Detecting edges in the applied filter result",
+                    "The routed Filter output is not current and Published." => korean ? "현재 필터 결과를 적용하세요." : "Apply the current filter result.",
+                    "Preview canceled. Published Filter output and authored recipe were not changed." => korean ? "미리보기를 취소했습니다. 적용된 필터 결과는 유지됩니다." : "Preview cancelled. The applied filter result is retained.",
+                    "Input, search band, parameter, route, or output changed. Preview again before Publish." => korean ? "입력·검색 영역·설정·연결·출력이 바뀌었습니다. 적용 전에 다시 미리보기를 실행하세요." : "Input, search band, settings, connections or output changed. Preview again before applying.",
+                    "Teach four explicit CornerAnchor/reference pairs and the reference descriptor, then publish every named CornerAnchor before Preview." => korean ? "교점과 기준점 4쌍 및 기준 좌표 정보를 설정하고 교점 결과를 적용하세요." : "Define four anchor/reference pairs and reference information, then apply the anchor results.",
+                    "No correspondence rows. Teach exactly four Published CornerAnchor/reference mappings before Preview." => korean ? "대응 쌍 없음 · 적용된 교점과 기준점을 4쌍 연결하세요." : "No pairs · connect four applied anchors to reference points.",
+                    "Landmark Correspondence Preview validates only the four exact Published CornerAnchors and explicit reference coordinates." => korean ? "적용된 교점 4개와 기준 좌표 검증 중" : "Validating four applied corner anchors and reference coordinates",
+                    "Preview canceled. Published CornerAnchors and authored recipe were not changed." => korean ? "미리보기를 취소했습니다. 적용된 교점과 레시피는 유지됩니다." : "Preview cancelled. Applied corner anchors and the recipe are retained.",
+                    "Recipe, correspondence row, descriptor, or published CornerAnchor changed. Preview again before Publish." => korean ? "레시피·대응 쌍·기준 정보·적용된 교점이 바뀌었습니다. 적용 전에 다시 미리보기를 실행하세요." : "Recipe, pairs, reference information or applied anchors changed. Preview again before applying.",
+                    "Four rows exist, but reference unit/provenance/revision and a normalized tetrahedron-volume threshold are required." => korean ? "4/4쌍 · 기준 단위·출처·리비전과 유효한 정규화 사면체 체적 한계값이 필요합니다." : "4/4 pairs · reference unit, provenance, revision and a valid normalized tetrahedron-volume threshold are required.",
+                    "Four correspondence rows and reference descriptor are taught. Preview validates only current Published anchors; no affine matrix is calculated." => korean ? "4/4쌍 · 현재 적용된 교점만 검증 · 변환 행렬 계산 없음" : "4/4 pairs · only current applied anchors are validated · no transform matrix is calculated",
+                    _ => null
+                };
+                if (toolState is not null) return toolState;
+            }
+            var filterState = text switch
+            {
+                "Median Preview is running from the verified C3D source bytes." => korean ? "필터 미리보기 중" : "Running filter preview",
+                "Preview canceled. Source and authored recipe were not changed." => korean ? "미리보기를 취소했습니다." : "Preview cancelled.",
+                "Input or conditions changed. Run again for the current result." => korean ? "입력이나 설정이 바뀌었습니다. 다시 미리보기를 실행하세요." : "Input or settings changed. Preview again.",
+                "Source, routing, output, or Kernel changed. Preview again before Publish." => korean ? "입력이나 설정이 바뀌었습니다. 적용 전에 다시 미리보기를 실행하세요." : "Input or settings changed. Preview again before applying.",
+                _ => null
+            };
+            if (filterState is not null) return filterState;
+        }
+
         if (string.Equals(mode, "ProfileCursor", StringComparison.Ordinal))
         {
             const string rawHeightUnit = " raw-height";
@@ -537,10 +648,24 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
 
         if (OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English)
         {
-            if (string.Equals(mode, "ToolLabSummary", StringComparison.Ordinal)
-                && text == "Ready for explicit Preview. A1 solves a matrix only; Apply is a separate future tool.")
+            if (string.Equals(mode, "ToolLabSummary", StringComparison.Ordinal))
             {
-                return "Preview ready. This tool solves the transform matrix. Apply it with the XYZ Transform tool.";
+                return text switch
+                {
+                    "Ready for explicit Preview. Pick capture and source resolution never run implicitly." => string.Empty,
+                    "Ready for explicit Preview. Filter will not run implicitly." => string.Empty,
+                    "Ready for explicit Preview. Upstream line construction or fitting will not run implicitly." => string.Empty,
+                    "Ready for explicit Preview. Published plane and source residual calculation will not run implicitly." => string.Empty,
+                    "Ready for explicit Preview. Line Intersection and Affine will not run implicitly." => string.Empty,
+                    "Ready for explicit Preview. A1 solves a matrix only; Apply is a separate future tool." => "Compute the transform matrix. Transform points with Apply XYZ Affine.",
+                    "Ready for explicit Preview. A2 creates an ordered transformed point cloud only; A3 re-grid is separate." => "Create the transformed point cloud. Use Re-grid Height Map to create a height map.",
+                    "Ready for explicit Preview. A3 preserves holes, rejects out-of-bounds points, and only enables Publish after the authored coverage gate." => "Missing cells are retained and out-of-bounds points are rejected. Apply requires the configured coverage limit.",
+                    "Route one current Published CorrespondenceSet. Upstream tools do not run implicitly." => "Connect the current applied correspondence set.",
+                    "Route the raw recipe C3D first and the current Published AffineTransform3D second. Upstream tools do not run implicitly." => "Connect the raw C3D source first and the current applied transform matrix second.",
+                    "Publish A2 TransformedPointCloud first; upstream tools do not run implicitly." => "Apply the XYZ transformed point cloud first.",
+                    "Publish the current A2 TransformedPointCloud first. A1/A2 are not executed implicitly." => "Apply the current XYZ transformed point cloud first.",
+                    _ => Format(text, mode, "Selection", "Pick")
+                };
             }
             return Format(text, mode, "Selection", "Pick");
         }
@@ -572,6 +697,7 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
                 "Teach the explicit gap, acute-angle, and support-extension limits, then publish both named line-geometry inputs before Preview." => "최근접 거리·최소 예각·직선 연장 조건을 정하고 두 직선 결과를 적용한 뒤 미리보기를 실행하세요.",
                 "Two routed published line inputs are required." => "적용된 두 직선 결과를 입력으로 연결하세요.",
                 "Raw source, Published PlaneFeature, and GridRectangle are required." => "원본 높이 데이터·적용된 기준 평면·사각형 영역을 입력으로 연결하세요.",
+                "Maximum P2V raw height must be finite and greater than zero." => "최대 원시 높이 P2V는 0보다 큰 유한한 수여야 합니다.",
                 "One routed landmark-correspondence selection is required." => "기준점 대응 정보를 입력으로 연결하세요.",
                 "Teach four explicit CornerAnchor/reference pairs and the reference descriptor, then publish every named CornerAnchor before Preview." => "교점과 기준점의 대응 쌍 네 개 및 기준 좌표계 정보를 설정하고, 각 교점 결과를 적용한 뒤 미리보기를 실행하세요.",
                 "No correspondence rows. Teach exactly four Published CornerAnchor/reference mappings before Preview." => "대응점이 없습니다. 적용된 교점과 기준점의 대응 쌍 네 개를 설정한 뒤 미리보기를 실행하세요.",
@@ -579,28 +705,28 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
                 "No recipe-owned GridRectangle routed" => "레시피의 사각형 영역이 연결되지 않았습니다.",
                 "Missing routed height field" => "입력 높이 데이터를 연결하세요.",
                 "One current Published CorrespondenceSet must be routed from Landmark Correspondence." => "기준점 대응 도구에서 적용한 현재 대응점 정보를 입력으로 연결하세요.",
-                "Route one current Published CorrespondenceSet. Upstream tools do not run implicitly." => "적용된 현재 대응점 정보를 입력으로 연결하세요. 연결된 도구는 자동으로 실행되지 않습니다.",
+                "Route one current Published CorrespondenceSet. Upstream tools do not run implicitly." => "적용된 현재 대응점 정보를 입력으로 연결하세요.",
                 "No matrix evidence until Preview completes." => "미리보기를 완료하면 변환 행렬의 계산 결과를 확인할 수 있습니다.",
                 "No source-to-reference matrix until Preview completes." => "미리보기를 완료하면 원본에서 기준 좌표계로의 변환 행렬을 확인할 수 있습니다.",
                 "Route the raw recipe C3D first and one current Published AffineTransform3D second." => "첫 번째 입력에는 원본 높이 데이터를, 두 번째 입력에는 적용된 현재 변환 행렬을 연결하세요.",
-                "Route the raw recipe C3D first and the current Published AffineTransform3D second. Upstream tools do not run implicitly." => "원본 높이 데이터와 적용된 현재 변환 행렬을 차례로 연결하세요. 연결된 도구는 자동으로 실행되지 않습니다.",
+                "Route the raw recipe C3D first and the current Published AffineTransform3D second. Upstream tools do not run implicitly." => "원본 높이 데이터와 적용된 현재 변환 행렬을 차례로 연결하세요.",
                 "No transformed point evidence until Preview completes." => "미리보기를 완료하면 변환 점군 정보를 확인할 수 있습니다.",
-                "Publish A2 TransformedPointCloud first; upstream tools do not run implicitly." => "먼저 XYZ 변환 점군 결과를 적용하세요. 연결된 도구는 자동으로 실행되지 않습니다.",
-                "Publish the current A2 TransformedPointCloud first. A1/A2 are not executed implicitly." => "먼저 현재 XYZ 변환 점군 결과를 적용하세요. 변환 행렬 계산·좌표 변환은 자동으로 실행되지 않습니다.",
+                "Publish A2 TransformedPointCloud first; upstream tools do not run implicitly." => "먼저 XYZ 변환 점군 결과를 적용하세요.",
+                "Publish the current A2 TransformedPointCloud first. A1/A2 are not executed implicitly." => "먼저 현재 XYZ 변환 점군 결과를 적용하세요.",
                 "No affine output hash until Preview completes." => "미리보기를 완료하면 변환 행렬의 출력 식별 정보를 확인할 수 있습니다.",
                 "No TransformedPointCloud hash until Preview completes." => "미리보기를 완료하면 변환 점군의 출력 식별 정보를 확인할 수 있습니다.",
                 "No TransformedHeightField hash until Preview completes." => "미리보기를 완료하면 변환 높이 격자의 출력 식별 정보를 확인할 수 있습니다.",
                 "Capture exactly two ordered C3D grid cells, teach an output role, then Preview explicitly." => "높이 데이터에서 두 점을 순서대로 선택하고 출력 이름을 정한 뒤 미리보기를 실행하세요.",
                 "Capture exactly two ordered grid-cell picks before Preview." => "미리보기 전에 높이 데이터에서 두 점을 순서대로 선택하세요.",
                 "No output hash until Preview completes." => "미리보기를 완료하면 출력 식별 정보를 확인할 수 있습니다.",
-                "Ready for explicit Preview. Pick capture and source resolution never run implicitly." => "미리보기 준비됨. 점 선택과 높이 확인은 자동으로 실행되지 않습니다.",
-                "Ready for explicit Preview. Filter will not run implicitly." => "미리보기 준비됨. 필터는 자동으로 실행되지 않습니다.",
-                "Ready for explicit Preview. Upstream line construction or fitting will not run implicitly." => "미리보기 준비됨. 연결된 직선 구성·피팅은 자동으로 실행되지 않습니다.",
-                "Ready for explicit Preview. Published plane and source residual calculation will not run implicitly." => "미리보기 준비됨. 기준면과 높이 편차는 자동으로 계산하지 않습니다.",
-                "Ready for explicit Preview. Line Intersection and Affine will not run implicitly." => "미리보기 준비됨. 교점 구하기와 좌표 변환은 자동으로 실행되지 않습니다.",
-                "Ready for explicit Preview. A1 solves a matrix only; Apply is a separate future tool." => "미리보기 준비됨. 이 도구는 변환 행렬을 구합니다. 좌표 변환 적용은 별도 도구에서 실행하세요.",
-                "Ready for explicit Preview. A2 creates an ordered transformed point cloud only; A3 re-grid is separate." => "미리보기 준비됨. 순서를 유지한 변환 점군을 만듭니다. 높이 격자 변환은 별도 도구에서 실행하세요.",
-                "Ready for explicit Preview. A3 preserves holes, rejects out-of-bounds points, and only enables Publish after the authored coverage gate." => "미리보기 준비됨. 결측을 유지하고 격자 밖의 점은 허용하지 않습니다. 설정한 유효 비율을 통과해야 결과를 적용할 수 있습니다.",
+                "Ready for explicit Preview. Pick capture and source resolution never run implicitly." => string.Empty,
+                "Ready for explicit Preview. Filter will not run implicitly." => string.Empty,
+                "Ready for explicit Preview. Upstream line construction or fitting will not run implicitly." => string.Empty,
+                "Ready for explicit Preview. Published plane and source residual calculation will not run implicitly." => string.Empty,
+                "Ready for explicit Preview. Line Intersection and Affine will not run implicitly." => string.Empty,
+                "Ready for explicit Preview. A1 solves a matrix only; Apply is a separate future tool." => "변환 행렬을 계산합니다. 좌표 변환은 XYZ 어파인 적용 도구에서 실행하세요.",
+                "Ready for explicit Preview. A2 creates an ordered transformed point cloud only; A3 re-grid is separate." => "변환 점군을 만듭니다. 높이 맵은 재격자화 도구에서 만드세요.",
+                "Ready for explicit Preview. A3 preserves holes, rejects out-of-bounds points, and only enables Publish after the authored coverage gate." => "결측을 유지하며 격자 밖의 점은 사용할 수 없습니다. 유효 셀 비율 기준을 통과해야 적용할 수 있습니다.",
                 "No residual evidence until Preview completes." => "미리보기를 완료하면 높이 편차를 확인할 수 있습니다.",
                 "No correspondence evidence until Preview completes." => "미리보기를 완료하면 기준점 대응을 확인할 수 있습니다.",
                 "No corner evidence until Preview completes." => "미리보기를 완료하면 교점을 확인할 수 있습니다.",

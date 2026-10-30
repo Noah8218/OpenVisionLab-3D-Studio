@@ -442,14 +442,18 @@
                                    FontSize="11"
                                    TextWrapping="Wrap"
                                    TextTrimming="None"
-                                   Margin="0,3,0,0" />
+                                   Margin="0,3,0,0">
+                            <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers></Style></TextBlock.Style>
+                        </TextBlock>
                         <TextBlock AutomationProperties.AutomationId="LogPanelEmptyActionHint"
                                    Text="{Binding EmptyActionHintText}"
                                    Foreground="{StaticResource MutedTextBrush}"
                                    FontSize="10.5"
                                    TextWrapping="Wrap"
                                    TextTrimming="None"
-                                   Margin="0,3,0,0" />
+                                   Margin="0,3,0,0">
+                            <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers></Style></TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </Grid>
             </Border>

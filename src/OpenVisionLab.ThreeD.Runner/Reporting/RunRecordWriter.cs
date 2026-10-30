@@ -54,6 +54,7 @@ internal static class RunRecordWriter
             viewerContractPath is null ? "NotCompared" : "Matched",
             CreateArtifacts(options, runnerReportPath, viewerContractPath))
         {
+            WorkflowKind = RunRecordWorkflowKind.Inspection,
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
             Step = step,
             Timing = CreateToolTiming(result.Elapsed.TotalMilliseconds),
@@ -125,6 +126,7 @@ internal static class RunRecordWriter
             viewerContractPath is null ? "NotCompared" : "Matched",
             CreateArtifacts(options, runnerReportPath, viewerContractPath))
         {
+            WorkflowKind = RunRecordWorkflowKind.Inspection,
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
             Steps = steps,
             SourceQualityEvidence =
@@ -217,6 +219,7 @@ internal static class RunRecordWriter
             "NotCompared",
             CreateArtifacts(options, runnerReportPath, viewerContractPath: null))
         {
+            WorkflowKind = RunRecordWorkflowKind.Inspection,
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
             SourceQualityEvidence =
                 InspectionRunSourceQualityEvidence.Available(

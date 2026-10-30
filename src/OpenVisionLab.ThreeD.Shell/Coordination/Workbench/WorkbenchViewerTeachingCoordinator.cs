@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
@@ -79,16 +80,16 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         object? sender,
         ToolWorkbenchTeachingCaptureRequestEventArgs args)
     {
+        C3DHeightFieldSnapshot? publishedHeightField = null;
         if (string.Equals(args.SourceBinding.Format, "HeightField", StringComparison.Ordinal))
         {
-            if (!workbench.TryGetPublishedRoiCropOutput(
-                    args.SourceBinding.OwnerEntityId ?? string.Empty,
-                    out var croppedHeightField)
-                || croppedHeightField is null
-                || string.IsNullOrWhiteSpace(workbench.CurrentRoiCropPreviewPath)
-                || !viewer.ShowC3DWorkbenchResult(
-                    workbench.CurrentRoiCropPreviewPath,
-                    $"Published ROI / Crop | {croppedHeightField.Width} x {croppedHeightField.Height}"))
+            if (!workbench.TryGetPublishedTeachingHeightField(args.SourceBinding.OwnerEntityId ?? string.Empty,
+                    out publishedHeightField, out var heightFieldPath)
+                || publishedHeightField is null || string.IsNullOrWhiteSpace(heightFieldPath)
+                || !string.Equals(args.RootSourceId, workbench.Source.Id, StringComparison.OrdinalIgnoreCase)
+                || !ToolRecipeSelectionSourceBindingVerifier.Verify(publishedHeightField, args.SourceBinding).IsCurrent
+                || !viewer.ShowC3DWorkbenchResult(heightFieldPath,
+                    $"{args.SelectionName} | {publishedHeightField.Width} x {publishedHeightField.Height}"))
             {
                 workbench.RejectTeachingSelectionCapture(
                     "The ROI owner HeightField is not currently Published or displayable.");
@@ -128,7 +129,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
             args.RequiredPointCount,
             args.RootSourceId,
             args.FrameId,
-            args.SourceBinding);
+            args.SourceBinding) { PublishedHeightField = publishedHeightField };
         if (!viewer.BeginC3DTeachingCapture(request, args.ExistingSelection, out var message))
         {
             workbench.RejectTeachingSelectionCapture(message);
@@ -238,8 +239,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.SelectedPipelineStep)
             or nameof(ToolWorkbenchViewModel.SelectedStepTeachingSelection))
         {
-            SyncSelectedSelection();
-            SyncCompletenessCellOverlays();
+            SyncAppliedSelections();
         }
 
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.HasCurrentMeasurementPreview)

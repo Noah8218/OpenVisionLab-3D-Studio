@@ -42,9 +42,21 @@ public sealed class ResultsTrendPlot : FrameworkElement
     private static void OnPointsChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         var plot = (ResultsTrendPlot)sender;
+        var selected = args.OldValue is IReadOnlyList<ResultsTrendPoint> previous && plot.selectedIndex >= 0 && plot.selectedIndex < previous.Count
+            ? previous[plot.selectedIndex] : null;
         plot.renderedPoints.Clear();
         plot.hoverIndex = plot.pressedIndex = -1;
         plot.selectedIndex = 0;
+        if (selected is not null && args.NewValue is IReadOnlyList<ResultsTrendPoint> current)
+        {
+            for (var index = 0; index < current.Count; index++)
+            {
+                if (!string.Equals(current[index].Record.Path, selected.Record.Path, StringComparison.OrdinalIgnoreCase)
+                    || current[index].Metric.Key != selected.Metric.Key) continue;
+                plot.selectedIndex = index;
+                break;
+            }
+        }
         plot.ToolTip = null;
         if (plot.IsMouseCaptured) plot.ReleaseMouseCapture();
     }

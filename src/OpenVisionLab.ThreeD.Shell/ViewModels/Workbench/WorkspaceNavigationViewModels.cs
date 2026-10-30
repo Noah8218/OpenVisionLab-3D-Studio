@@ -23,6 +23,7 @@ public sealed class ResultsWorkspaceViewModel : INotifyPropertyChanged, IDisposa
     private bool showOnlySelectedTool;
     private ResultsHistorySection historySection;
     private ResultsMeasurementOption? selectedMeasurement;
+    private bool refreshingMeasurementOptions;
     private IReadOnlyList<RunRecordRecentItem> history = [];
     private ResultsRunSnapshot? openedRecord;
     private readonly HashSet<string> hiddenTeachingResultLabels = new(StringComparer.Ordinal);
@@ -107,13 +108,19 @@ public sealed class ResultsWorkspaceViewModel : INotifyPropertyChanged, IDisposa
         get => selectedMeasurement;
         set
         {
-            if (selectedMeasurement?.Key == value?.Key) return;
+            if (refreshingMeasurementOptions || selectedMeasurement?.Key == value?.Key) return;
             selectedMeasurement = value;
             OnPropertyChanged();
             RefreshTrend();
         }
     }
 
+
+    public void RefreshLocalization()
+    {
+        RefreshMeasurementOptions();
+        OnPropertyChanged(nameof(HistorySummary));
+    }
 
     public void SelectSection(ResultsWorkspaceSection section) => ActiveSection = section;
 
@@ -136,17 +143,32 @@ public sealed class ResultsWorkspaceViewModel : INotifyPropertyChanged, IDisposa
     public void RefreshHistory(IReadOnlyList<RunRecordRecentItem> records)
     {
         history = records;
+        RefreshMeasurementOptions();
+        RefreshTrend();
+    }
+
+    private void RefreshMeasurementOptions()
+    {
         Measurements = history.Where(item => item.Snapshot is not null)
             .SelectMany(item => item.Snapshot!.Metrics)
             .Where(metric => metric.IsFinite)
             .DistinctBy(metric => metric.Key)
-            .Select(metric => new ResultsMeasurementOption(metric.Key, $"{metric.ToolName} · {metric.Name}", metric.Unit))
+            .Select(metric => new ResultsMeasurementOption(metric.Key, $"{metric.ToolName} · {metric.DisplayName}", metric.Unit))
             .ToArray();
-        selectedMeasurement = Measurements.FirstOrDefault(item => item.Key == selectedMeasurement?.Key)
+        var selection = Measurements.FirstOrDefault(item => item.Key == selectedMeasurement?.Key)
             ?? Measurements.FirstOrDefault();
-        OnPropertyChanged(nameof(Measurements));
-        OnPropertyChanged(nameof(SelectedMeasurement));
-        RefreshTrend();
+        // Publish new items before restoring selection; ignore their transient two-way clear.
+        refreshingMeasurementOptions = true;
+        try
+        {
+            OnPropertyChanged(nameof(Measurements));
+            selectedMeasurement = selection;
+            OnPropertyChanged(nameof(SelectedMeasurement));
+        }
+        finally
+        {
+            refreshingMeasurementOptions = false;
+        }
     }
 
     public void SetOpenedRecord(InspectionRunRecord? record)
@@ -227,9 +249,12 @@ public sealed class ResultsWorkspaceViewModel : INotifyPropertyChanged, IDisposa
         teachingResultContext = recipeContext;
         teachingResultRows = rows.ToArray();
         var keys = new HashSet<string>(StringComparer.Ordinal);
+        var repeatedRoiTools = teachingResultRows.Where(row => row.Step.ToolId is "thickness" or "warpage")
+            .GroupBy(row => row.Step.ToolId).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.Ordinal);
         foreach (var row in teachingResultRows)
         {
-            var id = row.Step.DualRoiRouting?.SecondRegionSelectionId;
+            var id = row.Step.DualRoiRouting?.SecondRegionSelectionId
+                ?? (row.Step.ToolId == "thickness" ? row.Step.InputEntityIds.ElementAtOrDefault(2) : null);
             var anchor = id is not null ? selections.FirstOrDefault(selection => selection.Id == id)
                 : row.Step.FlowInputs.Select(input => input.Selection).FirstOrDefault(selection => selection?.GridRectangle is not null);
             var metric = ToolWorkbenchViewModel.SelectPrimaryMeasurementMetric(row.Step.ToolId, row.Metrics);
@@ -240,7 +265,11 @@ public sealed class ResultsWorkspaceViewModel : INotifyPropertyChanged, IDisposa
             {
                 snapshot = new(row.Step.Id, row.Step.ToolName, metric?.Name ?? row.OutputName,
                     isError ? null : metric?.Value, isError ? ThreeDLocalization.Shared.Resolve("ThreeD.Results.Error", "오류", "Error") : row.DisplayValue,
-                    row.Unit, row.ExecutionStatus, row.IsCurrent, anchor);
+                    row.Unit, row.ExecutionStatus, row.IsCurrent, anchor)
+                {
+                    RegionName = repeatedRoiTools.Contains(row.Step.ToolId) ? anchor.Name : null,
+                    StateText = repeatedRoiTools.Contains(row.Step.ToolId) && (row.ExecutionStatus is null || !row.IsCurrent) ? row.StatusText : null
+                };
                 if (!snapshot.IsValid) snapshot = null;
             }
             var key = snapshot is null ? string.Empty : TeachingResultLabelKey(snapshot);

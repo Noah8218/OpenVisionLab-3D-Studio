@@ -8,6 +8,8 @@ using OpenVisionLab.ThreeD.Reporting.RunRecords;
 
 internal static class RunRecordReportVerification
 {
+    private const string StepMessage = "state=Limited;tolerance=NotEvaluated; <candidate>, \"second\"\r\nunavailable";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -87,13 +89,23 @@ internal static class RunRecordReportVerification
                 && measurementCsv.Contains("frame.calibrated")));
             var orderedHtml = File.ReadAllText(Path.Combine(directory, "en-US", "ordered.html"));
             var orderedCsv = File.ReadAllText(Path.Combine(directory, "en-US", "ordered.csv"));
+            checks.Add(("ordered-step-message-html-escaped", orderedHtml.Contains(
+                "state=Limited;tolerance=NotEvaluated; &lt;candidate&gt;, &quot;second&quot;\r\nunavailable", StringComparison.Ordinal)
+                && !orderedHtml.Contains("<candidate>", StringComparison.Ordinal)));
+            checks.Add(("ordered-step-message-csv-quoted", orderedCsv.Contains(
+                "\"state=Limited;tolerance=NotEvaluated; <candidate>, \"\"second\"\"\r\nunavailable\"", StringComparison.Ordinal)
+                && orderedCsv.Split(Environment.NewLine)[0].EndsWith(
+                    ",sourceQualityCalibrationExpiresAtUtc,stepMessage", StringComparison.Ordinal)));
+            checks.Add(("ordered-empty-step-message-retained", orderedHtml.Contains("No metrics; diagnosis retained.", StringComparison.Ordinal)
+                && orderedCsv.Contains("No metrics; diagnosis retained.", StringComparison.Ordinal)));
             var orderedJsonPath = Path.Combine(directory, "ordered-roundtrip.json");
             InspectionRunRecordJson.Write(orderedJsonPath, cases.Single(item => item.Name == "ordered").Record);
             var orderedRoundtrip = InspectionRunRecordJson.Read(orderedJsonPath);
             var orderedStep = orderedRoundtrip.Steps?.LastOrDefault();
             checks.Add(("ordered-semantic-evidence-roundtrip", orderedRoundtrip.SchemaVersion == InspectionRunRecord.CurrentSchemaVersion
                 && orderedRoundtrip.Source.FrameId == "frame.ordered"
-                && orderedStep?.SemanticFingerprint?.Length == 64
+                && orderedStep?.Message == StepMessage
+                && orderedStep.SemanticFingerprint?.Length == 64
                 && orderedStep.AlgorithmEvidence?.SdkPackageId == "OpenVisionLab.Vision3D"));
             checks.Add(("ordered-semantic-evidence-exported", orderedHtml.Contains("Semantic fingerprint", StringComparison.Ordinal)
                 && orderedHtml.Contains("height-measurement-execution-v1", StringComparison.Ordinal)
@@ -151,7 +163,7 @@ internal static class RunRecordReportVerification
             new InspectionRunArtifacts("recorded.txt", null, null, null, null, null));
         var timing = InspectionRunTiming.Available(InspectionRunTiming.StopwatchClock, 1.25, [new("tool-execution", 1.25)], "recorded timing");
         var step = new InspectionRunStepResult(1, "metric-step", "tool-id", "tool<&>", ["source", "reference"], "result",
-            ResultStatus.Warning, "recorded result", 1.25, [metric], [new("overlay<&>", OverlayKind.Point, "label", null, "source")])
+            ResultStatus.Warning, StepMessage, 1.25, [metric], [new("overlay<&>", OverlayKind.Point, "label", null, "source")])
         {
             Timing = timing,
             OutputContentSha256 = new string('C', 64),
@@ -172,7 +184,7 @@ internal static class RunRecordReportVerification
         {
             SchemaVersion = InspectionRunRecord.CurrentSchemaVersion,
             Source = context.Source with { FrameId = "frame.ordered" },
-            Steps = [step with { RecipeIndex = 0, Id = "empty-step", Metrics = [], Overlays = [], Timing = null }, step],
+            Steps = [step with { RecipeIndex = 0, Id = "empty-step", Message = "No metrics; diagnosis retained.", Metrics = [], Overlays = [], Timing = null }, step],
             Timing = InspectionRunTiming.Unavailable("no overall observation")
         };
         var measurementSnapshot = C3DHeightFieldSnapshot.CreateForVerification(

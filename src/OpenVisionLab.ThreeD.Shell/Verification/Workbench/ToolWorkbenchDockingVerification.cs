@@ -81,7 +81,7 @@ internal static class ToolWorkbenchDockingVerification
         try
         {
             OpenVisionLab.OpenVisionLanguageService.SetLanguage(OpenVisionLab.OpenVisionLanguage.Korean, save: false);
-            var template = ToolRecipeDocumentStore.Load(Path.Combine(root, "native-group-fixture", "noise.ov3d-recipe.json"));
+            var template = ToolRecipeDocumentStore.Load(WorkbenchSettingsVerificationFixture.CreateNoiseRecipe(root));
             using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent.json"));
             ShellWindowNativeInterop.TryGetLeftmostWorkArea(out var area);
             host = new Window { Style = new Style(typeof(Window)), WindowStyle = WindowStyle.None, ShowInTaskbar = false,
@@ -165,7 +165,7 @@ internal static class ToolWorkbenchDockingVerification
         try
         {
             OpenVisionLab.OpenVisionLanguageService.SetLanguage(OpenVisionLab.OpenVisionLanguage.Korean, save: false);
-            var template = ToolRecipeDocumentStore.Load(Path.Combine(root, "native-group-fixture", "noise.ov3d-recipe.json"));
+            var template = ToolRecipeDocumentStore.Load(WorkbenchSettingsVerificationFixture.CreateNoiseRecipe(root));
             using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent.json"));
             ShellWindowNativeInterop.TryGetLeftmostWorkArea(out var area);
             host = new Window
@@ -269,7 +269,8 @@ internal static class ToolWorkbenchDockingVerification
         {
             OpenVisionLab.OpenVisionLanguageService.SetLanguage(OpenVisionLab.OpenVisionLanguage.Korean, save: false);
             using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent.json"));
-            Check("modern fixture opens", workbench.TryOpenTeachingRecipe(Path.Combine(root, "native-group-fixture", "noise.ov3d-recipe.json"), out var message), message);
+            var fixtureRecipe = WorkbenchSettingsVerificationFixture.CreateNoiseRecipe(root);
+            Check("modern fixture opens", workbench.TryOpenTeachingRecipe(fixtureRecipe, out var message), message);
             var view = new SelectedToolWorkspaceView { DataContext = workbench, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Width = 290, Height = 704 };
             ShellWindowNativeInterop.TryGetLeftmostWorkArea(out var area);
             host = new Window { Content = view, Style = new Style(typeof(Window)), WindowStyle = WindowStyle.None, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.Manual, Left = area.Left, Top = area.Top, Width = 1280, Height = 760 };
@@ -353,7 +354,7 @@ internal static class ToolWorkbenchDockingVerification
                 WpfScreenshotCapture.Save(WpfScreenshotCapture.Capture(view).Bitmap, Path.Combine(root, $"modern-noise-{size.width}.png"));
                 Check($"{size.width} edits preserve source/ROI and explicit execution", workbench.Source.Path == originalSource && workbench.GetCurrentAppliedTeachingSelections().SequenceEqual(originalRegions)
                     && runCount == workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") && !workbench.IsSelectedStepPreviewRunning, "no new measurement call");
-                Check($"{size.width} fresh reopen restores the existing draft", workbench.TryOpenTeachingRecipe(Path.Combine(root, "native-group-fixture", "noise.ov3d-recipe.json"), out message) && !workbench.IsDirty && !workbench.HasPendingStepParameterChanges, message);Settle();
+                Check($"{size.width} fresh reopen restores the existing draft", workbench.TryOpenTeachingRecipe(fixtureRecipe, out message) && !workbench.IsDirty && !workbench.HasPendingStepParameterChanges, message);Settle();
             }
             Check("complex fixture opens", workbench.TryOpenTeachingRecipe(Path.Combine(root, "native-group-fixture", "grouped.ov3d-recipe.json"), out message), message);Settle();
             foreach (var size in new[] { (width: 1280, height: 760, pane: 290d, body: 704d), (width: 1920, height: 1040, pane: 320d, body: 970d) })
@@ -418,7 +419,7 @@ internal static class ToolWorkbenchDockingVerification
             surface.RowDefinitions.Add(new RowDefinition());
             surface.Children.Add(header);
             _ = ShellWindowNativeInterop.TryGetLeftmostWorkArea(out var workArea);
-            host = new Window { Title = "3D common header verification", Content = surface, Width = 1280, Height = 760, WindowStyle = WindowStyle.None, Left = workArea.Left, Top = workArea.Top, WindowStartupLocation = WindowStartupLocation.Manual };
+            host = new Window { Title = "3D common header verification", Content = surface, Width = 1280, Height = 760, WindowStyle = WindowStyle.None, Left = workArea.Left, Top = workArea.Top, WindowStartupLocation = WindowStartupLocation.Manual, Topmost = verifyNativePointer };
             System.Windows.Shell.WindowChrome.SetWindowChrome(host, new System.Windows.Shell.WindowChrome { CaptionHeight = 40, ResizeBorderThickness = new Thickness(6), GlassFrameThickness = new Thickness(0), UseAeroCaptionButtons = false });
             host.Show();
             host.Activate();
@@ -461,7 +462,8 @@ internal static class ToolWorkbenchDockingVerification
             Check("Header preserves input/save commands", ReferenceEquals(input.Command, shell.Workbench.LoadC3DSourceCommand) && ReferenceEquals(save.Command, shell.Workbench.SaveTeachingRecipeCommand) && input.ToolTip?.ToString() == "Ctrl+Shift+O", input.ToolTip?.ToString() ?? "missing");
             shell.Workbench.RecipeName = "검사기준-장착방향과표면상태를확인하는긴레시피-" + new string('X', 120);
             Settle();
-            Check("Long dirty recipe trims its name while state and tooltip stay available", recipe.ActualWidth <= 380 && nameText.TextTrimming == TextTrimming.CharacterEllipsis && title.IsRecipeModified && state.Text == shell.Workbench.Localization.Modified && title.RecipeDetailText.Contains(shell.Workbench.RecipeName), $"width={recipe.ActualWidth};state={state.Text}");
+            Check("Long dirty recipe trims its name while state and tooltip stay available", recipe.ActualWidth <= 380 && nameText.TextTrimming == TextTrimming.CharacterEllipsis && title.IsRecipeModified && shell.Workbench.IsDirty
+                && state.Text == shell.Workbench.HeaderRecipeSaveStateText && title.RecipeDetailText.Contains(shell.Workbench.RecipeName), $"width={recipe.ActualWidth};state={state.Text}");
             Capture("header-long-modified-1280");
             var sawSaving = false;
             var rejectedReentry = false;
@@ -492,8 +494,13 @@ internal static class ToolWorkbenchDockingVerification
             Capture("header-keyboard-focus-1280");
             foreach (var button in verifyNativePointer ? new ButtonBase[] { recipe, input, save, (Button)title.FindName("MinimizeWindowButton"), (Button)title.FindName("MaximizeRestoreWindowButton"), (Button)title.FindName("CloseWindowButton") } : Array.Empty<ButtonBase>())
             {
+                var windowHandle = new System.Windows.Interop.WindowInteropHelper(host).Handle;
+                ShellWindowNativeInterop.SetForegroundWindow(windowHandle);
                 host.Activate();
                 SettleNativeInput();
+                var activationWait = System.Diagnostics.Stopwatch.StartNew();
+                while (!ShellWindowNativeInterop.IsForegroundWindow(windowHandle) && activationWait.Elapsed < TimeSpan.FromSeconds(30))
+                    SettleNativeInput();
                 if (!host.IsActive) throw new InvalidOperationException("Owned header test window could not be activated; pointer injection stopped.");
                 var resetLocation = surface.PointToScreen(new Point(400, 150));
                 ShellWindowNativeInterop.SetCursorPos((int)resetLocation.X, (int)resetLocation.Y);
@@ -505,7 +512,7 @@ internal static class ToolWorkbenchDockingVerification
                 ShellWindowNativeInterop.GetCursorPos(out var cursor);
                 var hit = host.InputHitTest(button.TranslatePoint(new Point(button.ActualWidth / 2, button.ActualHeight / 2), host));
                 Check($"Native pointer hover {id}", host.IsActive && button.IsMouseOver, $"active={host.IsActive};windowState={host.WindowState};hover={button.IsMouseOver};target={location};cursor={cursor.X},{cursor.Y};hit={hit?.GetType().Name};directlyOver={Mouse.DirectlyOver?.GetType().Name};captured={Mouse.Captured?.GetType().Name};mouse={Mouse.GetPosition(button)}");
-                var windowHandle = new System.Windows.Interop.WindowInteropHelper(host).Handle;
+                lines.Add($"INPUTGUARD | foreground={ShellWindowNativeInterop.IsForegroundWindow(windowHandle)};exactPointer={cursor.X == (int)location.X && cursor.Y == (int)location.Y};ownedHandle={windowHandle};target={location.X:R},{location.Y:R}");
                 if (!ShellWindowNativeInterop.IsForegroundWindow(windowHandle) || cursor.X != (int)location.X || cursor.Y != (int)location.Y || !button.IsMouseOver)
                     throw new InvalidOperationException("Owned control was not under the active pointer; global pointer injection stopped.");
                 if (id == "CloseWindowButton")
@@ -923,13 +930,15 @@ internal static class ToolWorkbenchDockingVerification
             var names = FindVisualDescendants<TextBlock>(item).Where(text => HasVisiblePresentationPath(text) && text.Text == first.ToolName).ToArray();
             Check("long name wraps and remains available", names.Length == 1 && names[0].TextWrapping == TextWrapping.Wrap && names[0].ActualHeight > 25, $"name={names.FirstOrDefault()?.ActualWidth}x{names.FirstOrDefault()?.ActualHeight}");
             Check("long title receives a full header row", names.Length == 1 && names[0].ActualWidth >= 140, $"titleWidth={names.FirstOrDefault()?.ActualWidth};card={view.FlowCardWidth}");
-            Check("result value and unit use existing projection", FindVisualDescendants<TextBlock>(item).Any(text => text.Text == "8.123456789 raw-height" && text.TextWrapping == TextWrapping.Wrap), first.ResultValueSummary);
+            Check("result value and unit use existing projection", FindVisualDescendants<TextBlock>(item).Any(text => text.Text == "8.12 raw-height" && text.TextWrapping == TextWrapping.Wrap)
+                && first.ResultValueSummary == "8.123456789 raw-height", first.ResultValueSummary);
             Capture("flow-long-name-values");
             details.IsExpanded = false;
             Settle(262);
             Check("long compound folded name and value grow without trimming", item.ActualHeight > 68
                 && FindVisualDescendants<TextBlock>(item).Any(text => HasVisiblePresentationPath(text) && text.Text == first.ToolName && text.TextTrimming == TextTrimming.None)
-                && FindVisualDescendants<TextBlock>(item).Any(text => HasVisiblePresentationPath(text) && text.Text == first.ResultValueSummary), $"height={item.ActualHeight};value={first.ResultValueSummary}");
+                && FindVisualDescendants<TextBlock>(item).Any(text => HasVisiblePresentationPath(text) && text.Text == "8.12 raw-height")
+                && first.ResultValueSummary == "8.123456789 raw-height", $"height={item.ActualHeight};value={first.ResultValueSummary}");
             Capture("flow-long-compound-collapsed");
             details.IsExpanded = true;
             first.UpdateResultPresentation(string.Empty, string.Empty, false, false);
@@ -1810,7 +1819,8 @@ internal static class ToolWorkbenchDockingVerification
                 outputDetailScroller.ScrollToBottom();
                 SettleFileList(completeTransitions: true);
                 WpfScreenshotCapture.Save(WpfScreenshotCapture.Capture(ownerPathWorkbench).Bitmap, Path.ChangeExtension(reportPath, ".d22-output-details-1280.png"));
-                Check("v3 output details retain the exact stored metrics and original execution limits", FindVisualDescendants<TextBlock>(outputDetails).Any(label => label.Text.Contains("Mean: 8.2500000000000018 raw-height", StringComparison.Ordinal))
+                Check("v3 output details format values while retaining the exact stored metrics and original execution limits", FindVisualDescendants<TextBlock>(outputDetails).Any(label => label.Text.Contains("Mean: 8.25 raw-height", StringComparison.Ordinal))
+                    && executionQueue.SelectedStepResult!.Outputs[0].Measurement?.Value == 8.250000000000002
                     && FindVisualDescendants<TextBlock>(outputDetails).Any(label => label.Text == "7.75–8.25 raw-height") && !executionQueue.IsRunning,
                     $"details={outputDetails.IsExpanded};limits={executionQueue.SelectedStepResult?.Limits}");
                 outputDetails.IsExpanded = false;
@@ -1822,8 +1832,10 @@ internal static class ToolWorkbenchDockingVerification
                     var valueLabels = FindVisualDescendants<TextBlock>(outputGrid).Where(label => label.DataContext is InspectionQueueOutputResultItem && label.IsVisible).ToArray();
                     var resultScroller = FindVisualDescendants<ScrollViewer>(outputGrid).First();
                     Check($"v3 output values, units and causes wrap or scroll without disabling access at{resultWidth:0}px", outputGrid.HorizontalScrollBarVisibility == ScrollBarVisibility.Auto
-                        && valueLabels.Any(label => label.Text == "8.250000000000002 raw-height" && label.TextWrapping == TextWrapping.Wrap)
-                        && valueLabels.Any(label => label.Text == "0.12345678901234566 ratio")
+                        && valueLabels.Any(label => label.Text == "8.25 raw-height" && label.TextWrapping == TextWrapping.Wrap)
+                        && valueLabels.Any(label => label.Text == "0.12 ratio")
+                        && executionQueue.VisibleOutputResults[0].Measurement?.Value == 8.250000000000002
+                        && executionQueue.VisibleOutputResults[1].Measurement?.Value == 0.12345678901234567
                         && valueLabels.Where(label => label.TextWrapping == TextWrapping.Wrap).All(label => label.ActualHeight + label.Margin.Top + label.Margin.Bottom + 1 >= label.DesiredSize.Height)
                         && resultScroller.ViewportWidth > 0 && resultsHeader.ActualHeight == 34 && !executionQueue.IsRunning,
                         $"labels={valueLabels.Length};viewport={resultScroller.ViewportWidth}x{resultScroller.ViewportHeight};extent={resultScroller.ExtentWidth}x{resultScroller.ExtentHeight};text={string.Join(";", valueLabels.Select(label => $"{label.Text}:{label.ActualHeight}+{label.Margin.Top + label.Margin.Bottom}/{label.DesiredSize.Height}"))}");
@@ -1855,7 +1867,7 @@ internal static class ToolWorkbenchDockingVerification
                     Check($"D25{d25Width:0} output rows show exact secondary range and keep two-way selection", outputGrid.Items.Count == 2
                         && executionQueue.VisibleOutputResults[1].Limits == "≤ 0.3 mm"
                         && d25Labels.Any(label => label.Text == executionQueue.VisibleOutputResults[1].Limits)
-                        && d25Labels.Any(label => label.Text == executionQueue.VisibleOutputResults[1].ValueWithUnit)
+                        && d25Labels.Any(label => label.Text == "0.35 mm") && executionQueue.VisibleOutputResults[1].Measurement?.Value == .34567890123456789
                         && ReferenceEquals(outputGrid.SelectedItem, executionQueue.SelectedOutputResult) && ReferenceEquals(executionQueue.SelectedOutputResult?.Step, executionQueue.SelectedStepResult)
                         && ReferenceEquals(d25FixtureRecord, executionQueue.Samples[0].Record) && !executionQueue.IsRunning, $"range={executionQueue.VisibleOutputResults[1].Limits};value={executionQueue.VisibleOutputResults[1].ValueWithUnit}");
                     Check($"D25{d25Width:0} density, wrapped headers and complete numeric cells remain readable", outputGrid.MinRowHeight == 35 && outputGrid.FontSize == 12.5
@@ -1878,10 +1890,10 @@ internal static class ToolWorkbenchDockingVerification
                     var d25RangeRect = d25RangeLabel.TransformToAncestor(outputGrid).TransformBounds(new Rect(d25RangeLabel.RenderSize));
                     Check($"D25{d25Width:0} secondary range remains reachable at the bottom after resize", d25RangeRect.Top >= 0 && d25RangeRect.Bottom <= outputGrid.ActualHeight + 1
                         && !executionQueue.IsRunning, $"range={d25RangeRect};gridHeight={outputGrid.ActualHeight}");
-                    var d25ValueLabel = FindVisualDescendants<TextBlock>(outputGrid).Single(label => label.IsVisible && label.Text == executionQueue.VisibleOutputResults[1].ValueWithUnit);
-                    var d25NumericText = new FormattedText(executionQueue.VisibleOutputResults[1].Value, CultureInfo.InvariantCulture, d25ValueLabel.FlowDirection,
+                    var d25ValueLabel = FindVisualDescendants<TextBlock>(outputGrid).Single(label => label.IsVisible && label.Text == "0.35 mm");
+                    var d25NumericText = new FormattedText("0.35", CultureInfo.InvariantCulture, d25ValueLabel.FlowDirection,
                         new Typeface(d25ValueLabel.FontFamily, d25ValueLabel.FontStyle, d25ValueLabel.FontWeight, d25ValueLabel.FontStretch), d25ValueLabel.FontSize, d25ValueLabel.Foreground, VisualTreeHelper.GetDpi(d25ValueLabel).PixelsPerDip);
-                    Check($"D25{d25Width:0} the exact numeric value fits one line before the unit", d25NumericText.Width <= d25ValueLabel.ActualWidth + .5,
+                    Check($"D25{d25Width:0} the displayed numeric value fits one line before the unit", d25NumericText.Width <= d25ValueLabel.ActualWidth + .5,
                         $"numericWidth={d25NumericText.Width};available={d25ValueLabel.ActualWidth};value={executionQueue.VisibleOutputResults[1].Value}");
                     WpfScreenshotCapture.Save(WpfScreenshotCapture.Capture(ownerPathWorkbench).Bitmap, Path.ChangeExtension(reportPath, $".d25-output-bottom-{d25Cycle}-{d25Width:0}.png"));
                 }
@@ -1944,7 +1956,7 @@ internal static class ToolWorkbenchDockingVerification
                             && shapes.Any(shape => shape.Geometry is StreamGeometry) && shapes.Any(shape => shape.Geometry is RectangleGeometry)
                             && double.IsFinite(drawing.Bounds.Top) && drawing.Bounds.Bottom <= 24.3 && !executionQueue.IsRunning,
                             $"size={plot.ActualWidth}x{plot.ActualHeight};shapes={shapes.Length};bounds={drawing.Bounds};range={plot.Summary?.RangeText}");
-                        var numericLabels = FindVisualDescendants<TextBlock>(resultSummaryGrid).Where(label => label.IsVisible && label.DataContext is InspectionQueueMeasurementSummary && label.Text is "8.125" or "8.3125" or "8.5").ToArray();
+                        var numericLabels = FindVisualDescendants<TextBlock>(resultSummaryGrid).Where(label => label.IsVisible && label.DataContext is InspectionQueueMeasurementSummary && label.Text is "8.13" or "8.31" or "8.5").ToArray();
                         Check($"D24 summary uses9columns and visible12.5px monospace values without clipping at{width:0}px", resultSummaryGrid.Columns.Count == 9 && resultSummaryGrid.MinRowHeight == 35
                             && numericLabels.Length == 3 && numericLabels.All(label => label.FontSize == 12.5 && label.FontFamily.Source.Contains("Cascadia Mono", StringComparison.Ordinal)
                                 && label.TextWrapping == TextWrapping.Wrap && label.ActualHeight + label.Margin.Top + label.Margin.Bottom + 1 >= label.DesiredSize.Height)

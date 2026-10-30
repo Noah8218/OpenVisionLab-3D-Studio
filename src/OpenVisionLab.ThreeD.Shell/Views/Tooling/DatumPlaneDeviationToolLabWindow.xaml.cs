@@ -25,27 +25,44 @@ public partial class DatumPlaneDeviationToolLabWindow : ToolLabWindowBase
 
     public override void RefreshViews()
     {
-        if (!HasSourcePath(Workbench.Source.Path)) return;
-        inputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Input raw C3D | Published datum plane and recipe-owned ROI");
-        outputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Output raw C3D | read-only residual overlay; source unchanged");
-        if (Workbench.CurrentDatumPlaneDeviationOutput is { } output
-            && string.Equals(Workbench.SelectedPipelineStep?.Id, LabStepId, StringComparison.OrdinalIgnoreCase)
-            && Workbench.TryGetCurrentDatumPlaneDeviationInputs(out var plane, out var selection)
-            && plane is not null && selection is not null)
+        ClearDatumPlaneDeviationResult();
+        if (!HasSourcePath(Workbench.Source.Path))
+        {
+            var status = Workbench.Localization.Resolve("ThreeD.ToolLab.SourceFileUnavailable", "입력 파일을 찾을 수 없습니다. 경로를 확인하세요.", "Source file not found. Check the path.");
+            inputViewer.ClearC3DTeachingSource(status);
+            outputViewer.ClearC3DTeachingSource(status);
+            return;
+        }
+        var sourcePath = System.IO.Path.GetFullPath(Workbench.Source.Path);
+        var inputCamera = inputViewer.CaptureCameraState();
+        var outputCamera = outputViewer.CaptureCameraState();
+        var preserveInputCamera = string.Equals(inputViewer.CurrentC3DSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase);
+        var preserveOutputCamera = string.Equals(outputViewer.CurrentC3DSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase);
+        var inputLoaded = inputViewer.ShowC3DWorkbenchResult(sourcePath, "Input raw C3D | Published datum plane and recipe-owned ROI");
+        var outputLoaded = outputViewer.ShowC3DWorkbenchResult(sourcePath, "Output raw C3D | read-only residual overlay; source unchanged");
+        if (inputLoaded && preserveInputCamera) inputViewer.TryApplyCameraState(inputCamera);
+        if (outputLoaded && preserveOutputCamera) outputViewer.TryApplyCameraState(outputCamera);
+        if (!inputLoaded) inputViewer.ClearC3DTeachingSource(inputViewer.HostState.ViewerStatus);
+        if (!outputLoaded) outputViewer.ClearC3DTeachingSource(outputViewer.HostState.ViewerStatus);
+        if (!inputLoaded || !outputLoaded || !IsActiveStep) return;
+        if (Workbench.TryGetCurrentDatumPlaneDeviationInputs(out var plane, out var selection) && plane is not null && selection is not null)
         {
             inputViewer.ShowWorkbenchThreePointPlane(plane, true);
-            outputViewer.ShowWorkbenchDatumPlaneDeviation(plane, selection, output, Workbench.IsDatumPlaneDeviationPreviewPublished);
+            if (Workbench.HasCurrentDatumPlaneDeviationPreview && Workbench.CurrentDatumPlaneDeviationOutput is { } output)
+                outputViewer.ShowWorkbenchDatumPlaneDeviation(plane, selection, output, Workbench.IsDatumPlaneDeviationPreviewPublished);
         }
     }
 
     public void ShowDatumPlaneDeviationResult(ToolWorkbenchDatumPlaneDeviationDisplayRequestEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        if (!HasSourcePath(Workbench.Source.Path)) return;
-        inputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Input raw C3D | Published datum-plane evidence");
-        outputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Output raw C3D | read-only residual overlay; source unchanged");
-        inputViewer.ShowWorkbenchThreePointPlane(args.Plane, true);
-        outputViewer.ShowWorkbenchDatumPlaneDeviation(args.Plane, args.MeasurementSelection, args.Output, args.IsPublished);
+        RefreshViews();
+    }
+
+    public void ClearDatumPlaneDeviationResult()
+    {
+        inputViewer.ClearWorkbenchThreePointPlane();
+        outputViewer.ClearWorkbenchDatumPlaneDeviation();
     }
 
     private void ShowInputsButton_Click(object sender, RoutedEventArgs args) => RefreshViews();

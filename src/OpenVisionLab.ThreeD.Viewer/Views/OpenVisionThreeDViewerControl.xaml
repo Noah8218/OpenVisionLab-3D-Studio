@@ -590,7 +590,7 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.SelectedEntity, Korean='선택한 데이터', English='Selected Entity'}" />
                 <TextBlock FontWeight="SemiBold"
                            Text="{Binding SelectedEntity, Converter={StaticResource ViewerRuntimeTextConverter}}" />
-                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PickCoordinate, Korean='픽 좌표', English='Pick Coordinate'}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.PickCoordinate, Korean='선택 좌표', English='Selected coordinates'}" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding PickCoordinate, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="{localization:ViewerText Key=ThreeD.Viewer.Measurement, Korean='측정', English='Measurement'}" />

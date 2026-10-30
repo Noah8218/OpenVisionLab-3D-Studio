@@ -10,6 +10,64 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Tools;
 
 internal static class ToolDatumPlaneDeviationWorkbenchVerification
 {
+    public static bool VerifyRejectedDiagnostic(string recipePath, string reportPath, out string summary)
+    {
+        var checks = new List<(string Name, bool Passed, string Detail)>();
+        void Check(string name, bool passed, string detail) => checks.Add((name, passed, detail));
+        var recipeBytes = File.ReadAllBytes(recipePath);
+        var document = ToolRecipeDocumentStore.Load(recipePath);
+        var datumStep = document.Steps.Single(step => step.ToolId == "datum-plane-raw-height-deviation");
+        var root = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "datum-diagnostic-profile");
+        Directory.CreateDirectory(root);
+        OpenVisionLanguageService.Load();
+        var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+        try
+        {
+            foreach (var language in new[] { OpenVisionLanguage.Korean, OpenVisionLanguage.English, OpenVisionLanguage.Korean })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-recipes.json"));
+                if (!workbench.TryOpenTeachingRecipe(recipePath, out var openMessage)) throw new InvalidDataException(openMessage);
+                workbench.SelectPipelineStep(datumStep.Id);
+                var original = workbench.SelectedPipelineStep!.Parameters.Single(parameter => parameter.Name == "MaximumPeakToValleyRawHeight").Value;
+                var draft = (DatumPlaneDeviationStepProperties)workbench.SelectedStepPropertyDraft!;
+                var actionsBefore = workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
+                draft.MaximumPeakToValleyRawHeight = -1;
+                workbench.MarkSelectedStepParameterDraftDirty();
+                var rejected = !workbench.TryApplySelectedStepParameterDraft(out _);
+                var expectedParameterStatus = language == OpenVisionLanguage.Korean
+                    ? "최대 원시 높이 P2V는 0보다 큰 유한한 수여야 합니다."
+                    : "Maximum P2V raw height must be finite and greater than zero.";
+                Check($"{language} rejected limit reaches the displayed projection", rejected
+                    && workbench.StepParameterEditStatus == "Maximum P2V raw height must be finite and greater than zero."
+                    && workbench.SelectedToolWorkspace.ParameterStatus == expectedParameterStatus,
+                    $"raw={workbench.StepParameterEditStatus}; display={workbench.SelectedToolWorkspace.ParameterStatus}");
+                Check($"{language} rejection preserves the committed value and execution boundary",
+                    workbench.SelectedPipelineStep.Parameters.Single(parameter => parameter.Name == "MaximumPeakToValleyRawHeight").Value == original
+                    && !workbench.RunSelectedStepCommand.CanExecute(null)
+                    && actionsBefore == workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run"), $"committed={original}");
+                draft.MaximumPeakToValleyRawHeight = double.Parse(original, System.Globalization.CultureInfo.InvariantCulture);
+                workbench.MarkSelectedStepParameterDraftDirty();
+                Check($"{language} valid Apply recovers without execution", workbench.TryApplySelectedStepParameterDraft(out _)
+                    && workbench.StepParameterEditStatus != "Maximum P2V raw height must be finite and greater than zero."
+                    && !workbench.HasPendingStepParameterChanges
+                    && actionsBefore == workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run"), workbench.StepParameterEditStatus);
+            }
+        }
+        catch (Exception exception)
+        {
+            Check("Diagnostic verification execution", false, exception.ToString());
+        }
+        finally
+        {
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+        }
+        Check("Diagnostic verification preserves the recipe file", recipeBytes.SequenceEqual(File.ReadAllBytes(recipePath)), recipePath);
+        summary = $"Datum rejected diagnostic: {checks.Count(item => item.Passed)}/{checks.Count} passed.";
+        File.WriteAllLines(reportPath, checks.Select(item => $"{(item.Passed ? "PASS" : "FAIL")} | {item.Name} | {item.Detail}").Prepend(summary));
+        return checks.All(item => item.Passed);
+    }
+
     public static bool Verify(string reportPath, out string summary)
     {
         var lines = new List<string> { "OpenVisionLab 3D Datum Plane Raw-Height Deviation Workbench verification" };

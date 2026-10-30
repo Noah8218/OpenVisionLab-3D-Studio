@@ -31,15 +31,35 @@ public sealed partial class OpenVisionThreeDViewerControl
 {
     private void HandleFitAllCommand()
     {
-        var fitted = viewModel.IsOrthographicView
+        var fitted = TryFitWorkbenchResult() || (viewModel.IsOrthographicView
             ? TryFitCurrentC3DOrthographic("Orthographic view fitted to all C3D data")
-            : TryFitCurrentC3D(useTopInspectionView: false, "Fit all C3D height grid");
+            : TryFitCurrentC3D(useTopInspectionView: false, "Fit all C3D height grid"));
         if (!fitted)
         {
             viewModel.FitAll();
         }
 
         RenderNow();
+    }
+
+    private bool TryFitWorkbenchResult()
+    {
+        if (viewModel.C3DSampleVisible || viewModel.CubeVisible || viewModel.PointCloudVisible
+            || viewModel.GlbSampleVisible || viewModel.LazSampleVisible) return false;
+        var positions = workbenchOverlayRenderer.WorkbenchFitPositions;
+        if (positions.Count == 0) return false;
+        var aspect = Math.Max(1.0, Viewport.ActualWidth) / Math.Max(1.0, Viewport.ActualHeight);
+        if (viewModel.IsOrthographicView)
+        {
+            var fit = CameraMath.FitOrthographicPositions(positions, viewModel.YawDegrees, viewModel.PitchDegrees, aspect);
+            viewModel.ApplyTopOrthographicFit(fit.Target, fit.Height, fit.Distance, "Fit all visible entities", preserveOrientation: !viewModel.IsTopOrthographicView);
+        }
+        else
+        {
+            var fit = CameraMath.FitPositions(positions, viewModel.YawDegrees, viewModel.PitchDegrees, FieldOfViewDegrees, aspect);
+            viewModel.ApplyC3DCameraFit(fit.Target, fit.Distance, useTopInspectionView: false, "Fit all visible entities");
+        }
+        return true;
     }
 
     private void HandleTopViewCommand()

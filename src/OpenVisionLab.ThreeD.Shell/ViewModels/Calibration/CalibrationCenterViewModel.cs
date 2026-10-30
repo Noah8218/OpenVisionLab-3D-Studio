@@ -41,12 +41,12 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
     private LoadedThicknessRepeatabilityStudy? loadedStudy;
     private ThicknessRepeatabilityInputValidation? inputValidation;
     private ThicknessRepeatabilityEvaluation? evaluation;
-    private string repeatabilityOperationStatus = "No repeatability study loaded";
+    private string repeatabilityOperationStatus = "No repeatability data loaded";
     private int disposalState;
 
     public CalibrationCenterViewModel()
     {
-        repeatabilityOperationStatus = L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
+        repeatabilityOperationStatus = L("반복성 데이터를 불러오지 않았습니다.", "No repeatability data loaded");
         loadStudyCommand = new RelayCommand(_ => LoadStudyRequested?.Invoke(this, EventArgs.Empty));
         calculateCommand = new RelayCommand(_ => CalculateRepeatability(), _ => CanCalculate);
         validateCommand = new RelayCommand(_ => { }, _ => false);
@@ -168,9 +168,9 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
         ? L("계산하지 않음", "Not calculated")
         : L($"종합 결과: {LocalizeResultStatus(evaluation.Result.Status)}", $"Aggregate result: {evaluation.Result.Status}");
     public string RepeatabilityMapHint => evaluation is not null
-        ? L("대표값 스터디에는 포인트별 변동 데이터가 없습니다.", "Per-point variation is unavailable for this representative-value study")
+        ? L("대표값 데이터에는 포인트별 변동 데이터가 없습니다.", "Per-point variation is unavailable in representative-value data")
         : loadedStudy is not null
-            ? L("검증된 스터디 입력이 준비되었습니다.", "Verified study inputs are ready")
+            ? L("반복성 데이터 불러옴", "Repeatability data loaded")
             : L("반복 측정값을 불러와 포인트별 변동을 비교하세요.", "Load repeated measurements to compare per-point variation");
     public string RepeatabilityChartState => evaluation is not null
         ? L($"{evaluation.RunCount}회 포함 | {LocalizeResultStatus(evaluation.Result.Status)}", $"{evaluation.RunCount} included runs | {evaluation.Result.Status}")
@@ -267,7 +267,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
         loadedStudy = null;
         inputValidation = null;
         evaluation = null;
-        repeatabilityOperationStatus = L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
+        repeatabilityOperationStatus = L("반복성 데이터를 불러오지 않았습니다.", "No repeatability data loaded");
         SelectedRepeatabilityRun = null;
         RepeatabilityRuns.Clear();
         RepeatabilityChartValues.Clear();
@@ -326,15 +326,15 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
         ? L($"계산 완료 | {LocalizeResultStatus(evaluation.Result.Status)}", $"Calculated | {evaluation.Result.Status}")
         : loadedStudy is not null
             ? inputValidation?.IsReady == true
-                ? L("검증된 입력이 계산 준비되었습니다.", "Verified inputs are ready to calculate.")
+                ? L("입력 확인됨", "Input checked")
                 : L("스터디 입력이 유효하지 않습니다.", "Study inputs are invalid.")
-            : L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
+            : L("반복성 데이터를 불러오지 않았습니다.", "No repeatability data loaded");
 
     private void RefreshLanguage()
     {
         if (loadedStudy is null)
         {
-            repeatabilityOperationStatus = L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
+            repeatabilityOperationStatus = L("반복성 데이터를 불러오지 않았습니다.", "No repeatability data loaded");
         }
         else
         {

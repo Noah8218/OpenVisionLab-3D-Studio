@@ -70,15 +70,25 @@ public static class ToolRecipeThresholdCorrectionEvidenceStore
                 != ToolRecipeThresholdCorrectionEvidence.CurrentContractVersion
             || string.IsNullOrWhiteSpace(evidence.RecipeName)
             || string.IsNullOrWhiteSpace(evidence.RecipeSourceSha256)
+            || evidence.Proposal is null
             || evidence.Proposal.ContractVersion
                 != ToolRecipeThresholdParameterProposal.CurrentContractVersion
             || string.IsNullOrWhiteSpace(evidence.Proposal.CandidateId)
             || string.IsNullOrWhiteSpace(evidence.Proposal.StepId)
+            || evidence.Proposal.Changes is null
             || evidence.Proposal.Changes.Count == 0
+            || evidence.Proposal.Changes.Any(change => change is null)
+            || evidence.Proposal.Candidate is null
+            || evidence.Proposal.Candidate.Decisions is null
+            || evidence.Proposal.Candidate.Decisions.Any(decision => decision is null)
+            || evidence.HeldOutSamples is null
             || evidence.HeldOutSamples.Count == 0
             || evidence.HeldOutSamples.Any(sample =>
-                string.IsNullOrWhiteSpace(sample.SourcePath)
-                || string.IsNullOrWhiteSpace(sample.SampleIdentity)))
+                sample is null
+                || string.IsNullOrWhiteSpace(sample.SourcePath)
+                || string.IsNullOrWhiteSpace(sample.SampleIdentity)
+                || sample.Metrics is null
+                || sample.Metrics.Any(metric => metric is null)))
         {
             throw new InvalidDataException(
                 "Threshold correction evidence identity, proposal, or Held-out replay is incomplete.");
@@ -86,6 +96,20 @@ public static class ToolRecipeThresholdCorrectionEvidenceStore
 
         if (evidence.ManualCorrection is { } manual)
         {
+            if (manual.ParameterChanges is null
+                || manual.ParameterChanges.Any(change => change is null)
+                || manual.BeforeDevelopmentSamples is null
+                || manual.BeforeDevelopmentSamples.Any(sample => sample is null
+                    || sample.Metrics is null
+                    || sample.Metrics.Any(metric => metric is null))
+                || manual.AfterDevelopmentSamples is null
+                || manual.AfterDevelopmentSamples.Any(sample => sample is null
+                    || sample.Metrics is null
+                    || sample.Metrics.Any(metric => metric is null)))
+            {
+                throw new InvalidDataException("Manual threshold correction evidence is incomplete or internally inconsistent.");
+            }
+
             var beforeKeys = manual.BeforeDevelopmentSamples.Select(
                 SampleKey).ToArray();
             var afterKeys = manual.AfterDevelopmentSamples.Select(

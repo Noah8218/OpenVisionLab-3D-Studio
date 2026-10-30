@@ -47,6 +47,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private readonly ToolWorkbenchEditableRegionExecutionOwner editableRegionExecutionOwner;
     private readonly ToolWorkbenchLevelSurfaceExecutionOwner levelSurfaceExecutionOwner;
     private readonly ToolWorkbenchRoiCropExecutionOwner roiCropExecutionOwner;
+    private readonly ToolWorkbenchNinePointSurfaceCompensationExecutionOwner ninePointExecutionOwner;
     private readonly ToolWorkbenchTwoPointLineExecutionOwner twoPointLineExecutionOwner;
     private readonly ToolWorkbenchHeightDifferenceEdgeExecutionOwner heightDifferenceEdgeExecutionOwner;
     private readonly ToolWorkbenchLineFitExecutionOwner lineFitExecutionOwner;
@@ -234,12 +235,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             CreateOrderedRunSummary,
             Localize,
             (category, message) => AppendLog(category, message),
-            NotifyOrderedRunState,
+            OnOrderedRunStateChanged,
             args => OrderedRunCompleted?.Invoke(this, args),
             () => OrderedRunInvalidated?.Invoke(this, EventArgs.Empty),
             (document, sourcePath) => TryGetInspectionInputCapability(document, sourcePath),
             () => RecipeSession.SavedSha256,
-            runLogOwner.AppendExecution);
+            runLogOwner.AppendExecution,
+            ClearOrderedTeachingOutputs,
+            ApplyOrderedTeachingOutputsAsync);
         filterExecutionOwner = new ToolWorkbenchFilterExecutionOwner(
             CanShowFilterSource,
             ShowFilterSource,
@@ -263,6 +266,27 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             args => FilterDisplayRequested?.Invoke(this, args),
             summary => MarkHeightDifferenceEdgePreviewStale(summary),
             RefreshFilterStateFromOwner);
+        ninePointExecutionOwner = new ToolWorkbenchNinePointSurfaceCompensationExecutionOwner(
+            () => SelectedPipelineStep, CreateDocument,
+            () => IsSourceReadyForRecipe && !HasPendingStepParameterChanges,
+            () => RecipePath, TryGetCurrentPublishedHeightField,
+            args => FilterDisplayRequested?.Invoke(this, args),
+            () =>
+            {
+                OnPropertyChanged(nameof(IsSelectedStepNinePointCompensation));
+                OnPropertyChanged(nameof(NinePointCompensationRows));
+                OnPropertyChanged(nameof(NinePointCompensationSummary));
+                OnPropertyChanged(nameof(NinePointPreviewFrame));
+                OnPropertyChanged(nameof(NinePointPreviewKind));
+                RefreshFilterStateFromOwner();
+                RecipeSession.SetValidation(RecipeSession.Validation, RecipeSession.StorageValidation, ValidateSelectionSourceBindings());
+                OnPropertyChanged(nameof(CanSaveTeachingRecipe));
+                OnPropertyChanged(nameof(IsRecipeSaveBlocked));
+                OnPropertyChanged(nameof(RecipeStateSummary));
+                OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
+                NotifyHeaderRecipeState();
+                NotifyOrderedRunState();
+            }, Localize);
         heightThresholdExecutionOwner = new ToolWorkbenchHeightThresholdExecutionOwner(
             () => string.Equals(
                 SelectedPipelineStep?.ToolId,
@@ -316,7 +340,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             () => HasPendingStepParameterChanges,
             CreateDocument,
             () => RecipePath,
-            entityId => removeOutlierExecutionOwner.TryGetPublishedInput(entityId),
+            GetPublishedOutlierInput,
             sender => ReferenceEquals(sender, Source),
             (category, message) => AppendLog(category, message),
             RefreshConnectedRegionStateFromOwner);
@@ -345,8 +369,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             CreateDocument,
             () => RecipePath,
             TryGetCurrentPublishedHeightField,
-            entityId => (object?)connectedRegionExecutionOwner.TryGetPublishedArtifact(entityId)
-                ?? gridPolygonDomainExecutionOwner.TryGetPublishedArtifact(entityId),
+            entityId => (object?)GetPublishedConnectedRegion(entityId)
+                ?? GetPublishedGridDomain(entityId),
             sender => ReferenceEquals(sender, Source),
             (category, message) => AppendLog(category, message),
             args => FilterDisplayRequested?.Invoke(this, args),
@@ -361,7 +385,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             () => HasPendingStepParameterChanges,
             CreateDocument,
             () => RecipePath,
-            entityId => connectedRegionExecutionOwner.TryGetPublishedArtifact(entityId),
+            entityId => GetPublishedConnectedRegion(entityId),
             (category, message) => AppendLog(category, message),
             RefreshEditableRegionStateFromOwner);
         levelSurfaceExecutionOwner = new ToolWorkbenchLevelSurfaceExecutionOwner(
@@ -645,32 +669,33 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 outputEntityId,
                 out var croppedOutput)
                 ? croppedOutput
-                : null,
+                : ninePointExecutionOwner.GetPublishedOutput(outputEntityId)?.Output,
             outputEntityId => TryGetPublishedRegridHeightFieldOutput(
                 outputEntityId,
                 out var output)
                 ? output
                 : null,
-            entityId => editableRegionExecutionOwner.TryGetPublishedArtifact(entityId),
+            GetPublishedEditableRegion,
             outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
                 item.OutputEntityId,
                 outputEntityId,
                 StringComparison.OrdinalIgnoreCase)),
-            CreateDocument,
+            () => orderedRunExecutionOwner.WithCurrentRunSelections(CreateDocument()),
             (category, message) => AppendLog(category, message),
             UpdateMeasurementCompletenessPresentation,
             RefreshHeightMeasurementStateFromOwner,
             entityId => TryGetCurrentPublishedHeightField(entityId),
-            entityId => connectedRegionExecutionOwner.TryGetPublishedArtifact(entityId));
+            entityId => GetPublishedConnectedRegion(entityId));
         selectedStepExecutionOwner = new ToolWorkbenchSelectedStepExecutionOwner(
             () => SelectedPipelineStep,
             CreateSelectedStepExecutionRoutes(),
             AppendLog,
-            step => CreateDocument().CreateStepExecutionContext(step.Id),
+            CaptureSelectedStepExecutionContext,
             () => { OnPropertyChanged(nameof(IsSelectedStepPreviewRunning)); RefreshSelectedToolWorkspaceProjection(); },
             () => !IsRecipeMutationBlocked && !IsReadOnlySampleView && !IsTeachingSelectionCaptureActive,
             CaptureSelectedToolOutputEvidence,
-            RecordSelectedExecution);
+            RecordSelectedExecution,
+            step => ninePointExecutionOwner.WithdrawOutputs(orderedRunExecutionOwner.BeginSelectedExecution(step)));
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
         orientedBoxEventCoordinator = CreateOrientedBoxEventCoordinator();
@@ -844,6 +869,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 datumPlaneDeviationExecutionOwner,
                 threePointPlaneExecutionOwner,
                 roiCropExecutionOwner,
+                ninePointExecutionOwner,
                 domainMaskExecutionOwner,
                 gridPolygonDomainExecutionOwner,
                 connectedRegionExecutionOwner,
@@ -1142,6 +1168,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
                 OnPropertyChanged(nameof(IsSelectedStepSurfaceMatch));
                 OnPropertyChanged(nameof(IsSelectedStepGridPolygonDomain));
+                OnPropertyChanged(nameof(IsSelectedStepNinePointCompensation));
                 OnPropertyChanged(nameof(IsSurfaceMatchExperimentVisible));
                 NotifySourceQualityWorkspaceState();
                 openSelectedToolLabCommand.RaiseCanExecuteChanged();
@@ -1154,6 +1181,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                     RefreshStepCommands();
                     RefreshNavigatorSelection();
                 }
+                OnPropertyChanged(nameof(NinePointCompensationRows));
+                OnPropertyChanged(nameof(NinePointCompensationSummary));
+                OnPropertyChanged(nameof(NinePointPreviewFrame));
+                OnPropertyChanged(nameof(NinePointPreviewKind));
             }
             finally
             {
@@ -1354,7 +1385,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     public string CorrespondenceReferenceRevision
     {
         get => landmarkCorrespondenceEditorOwner.ReferenceRevision;
-        set => landmarkCorrespondenceEditorOwner.ReferenceRevision = value;
+        set
+        {
+            if (IsDisposed || IsRecipeSaving || IsRecipeMutationBlocked || IsReadOnlySampleView) return;
+            landmarkCorrespondenceEditorOwner.ReferenceRevision = value;
+            landmarkCorrespondenceEditorOwner.ApplyReferenceRevisionEdit();
+        }
     }
 
     public double CorrespondenceMinimumNormalizedTetrahedronVolume
@@ -1365,6 +1401,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
     public bool HasSelectedPipelineStep => SelectedPipelineStep is not null;
     public bool CanEditRecipe => !IsRecipeMutationBlocked;
+    public bool CanEditSelectedStepParameters => CanEditRecipe && !IsReadOnlySampleView;
     public bool CanEditFlowConnection => !IsDisposed
         && !IsRecipeMutationBlocked
         && !HasPendingStepParameterChanges
@@ -1408,6 +1445,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         || IsGridPolygonDomainPreviewRunning
         || IsDomainMaskPreviewRunning
         || IsEditableRegionPreviewRunning
+        || ninePointExecutionOwner?.IsRunning == true
         || IsLevelSurfacePreviewRunning
         || IsRoiCropPreviewRunning
         || IsEdgePreviewRunning
@@ -1900,6 +1938,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         {
             if (sourcePathChanged)
             {
+                ninePointExecutionOwner.Clear();
                 ClearFilterPreview("Source changed; Preview is required.");
                 ClearHeightThresholdPreview(
                     "Source changed; Height Threshold Background Removal Preview is required.");
@@ -2108,7 +2147,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             else
             {
                 var signedDeltaSidecar = signedDeltaBackgroundExecutionOwner.PersistPublishedSidecar(fullPath);
-                ToolRecipeDocumentStore.Save(fullPath, CreateDocument(fullPath, signedDeltaSidecar), out savedSha256);
+                var document = CreateDocument(fullPath, signedDeltaSidecar);
+                if (RecipeSession.SavedSha256 is not { } previousSha
+                    || !string.Equals(RecipePath, fullPath, StringComparison.OrdinalIgnoreCase)
+                    || saveBackups[fullPath] is not { } savedSnapshotPath
+                    || !ToolRecipeDocumentStore.TrySaveLandmarkReferenceRevisions(fullPath, document, savedSnapshotPath, previousSha, out savedSha256))
+                {
+                    ToolRecipeDocumentStore.Save(fullPath, document, out savedSha256);
+                }
             }
             SaveValidationSetDefinition(fullPath, markClean: false);
             SaveValidationThresholdCorrectionEvidence(fullPath);
@@ -2175,6 +2221,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             }
             isRecipeSaving = false;
             NotifyHeaderRecipeState();
+            NotifyOrderedRunState();
         }
     }
 
@@ -2234,6 +2281,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             LoadValidationThresholdCorrectionEvidence(document, correctionEvidence);
             RecipeSession.AcceptSavedIdentity(savedSha256);
             SetDirty(false);
+            NotifyOrderedRunState();
             recipeSaveFailure = string.Empty;
             NotifyHeaderRecipeState();
             RecordRecentRecipe(fullPath);
@@ -2406,6 +2454,18 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         }
 
         IReadOnlyList<ToolRecipeParameter>? parameters = null;
+        if (tool.Id == ToolRecipeNinePointSurfaceCompensationExecution.ToolId)
+        {
+            var prepared = TryGetCurrentPublishedHeightField(input.Split(';')[0]);
+            var rows = prepared?.Height ?? SourceSession.SourceBinding?.GridHeight ?? 3;
+            var columns = prepared?.Width ?? SourceSession.SourceBinding?.GridWidth ?? 3;
+            var target = prepared?.Mean ?? SourceQuality.Report?.Height.Mean ?? 1.0;
+            if (!double.IsFinite(target) || target == 0.0) target = 1.0;
+            parameters = new NinePointSurfaceCompensationStepProperties
+            {
+                MiddleRow = Math.Max(1, (rows - 1) / 2), MiddleColumn = Math.Max(1, (columns - 1) / 2), TargetHeight = target
+            }.Parameters().Select(pair => new ToolRecipeParameter(pair.Key, pair.Value)).ToArray();
+        }
         if (string.Equals(tool.Id, "domain-mask", StringComparison.Ordinal)
             && input.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length == 3)
         {
@@ -3427,6 +3487,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
 
         var before = CreateDocument();
         var previous = teachingSelectionStoreOwner.Find(selection.Id);
+        var isReferenceRevisionEdit = previous is { CorrespondenceDescriptor: { } descriptor }
+            && selection.CorrespondenceDescriptor is { } nextDescriptor
+            && selection == (previous with { CorrespondenceDescriptor = descriptor with { ReferenceRevision = nextDescriptor.ReferenceRevision } });
         MutateRecipe(() =>
         {
             teachingSelectionStoreOwner.Upsert(selection);
@@ -3443,7 +3506,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             {
                 AddInputEntity(SelectedPipelineStep, selection.Id);
             }
-            PromoteRecipeSchemaForSelection();
+            if (!isReferenceRevisionEdit) PromoteRecipeSchemaForSelection();
         });
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
         MarkRoiCropPreviewStaleIfNeeded(selection);
@@ -3515,6 +3578,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             ClearDomainMaskPreview(previewStatus);
             ClearEditableRegionPreview(previewStatus);
             ClearLevelSurfacePreview(previewStatus);
+            ninePointExecutionOwner.Clear();
             ClearRoiCropPreview(previewStatus);
             ClearPhysicalEdgeGapFlushPreview(previewStatus);
             if (markDirty)
@@ -3595,6 +3659,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         {
             CompleteWorkspaceProjectionUpdate();
         }
+    }
+
+    private string CaptureSelectedStepExecutionContext(ToolWorkbenchPipelineStepItem step)
+    {
+        var document = CreateDocument();
+        // Saving attaches output evidence, not new execution inputs. Keep persisted document fingerprints unchanged.
+        var executionDocument = document with
+        {
+            Steps = document.Steps.Select(item => item with { SignedDeltaSidecar = null }).ToArray()
+        };
+        return executionDocument.CreateStepExecutionContext(step.Id);
     }
 
     private ToolRecipeDocument CreateDocument() => CreateDocument(documentPath: null);
@@ -3833,6 +3908,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             RefreshEditableRegionExecutionState();
             RefreshLevelSurfaceExecutionState();
             RefreshRoiCropExecutionState();
+            ninePointExecutionOwner.Refresh();
+            OnPropertyChanged(nameof(IsSelectedStepNinePointCompensation));
+            OnPropertyChanged(nameof(NinePointCompensationRows));
+            OnPropertyChanged(nameof(NinePointCompensationSummary));
+            OnPropertyChanged(nameof(NinePointPreviewFrame));
             RefreshHeightDifferenceEdgeExecutionState();
             RefreshTwoPointLineExecutionState();
             RefreshThreePointPlaneExecutionState();
@@ -3982,6 +4062,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private ToolWorkbenchPublishedSelectionBindingState GetPublishedSelectionBindingState(
         ToolRecipeSelection selection)
     {
+        selection = orderedRunExecutionOwner.GetCurrentRunSelection(selection) ?? selection;
         if (string.Equals(
             selection.SourceBinding.Format,
             "TransformedHeightField",
@@ -4007,10 +4088,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             "HeightField",
             StringComparison.Ordinal))
         {
-            if (!TryGetPublishedRoiCropOutput(
-                    selection.SourceBinding.OwnerEntityId ?? string.Empty,
-                    out var output)
-                || output is null)
+            var ownerId = selection.SourceBinding.OwnerEntityId ?? string.Empty;
+            if (!TryGetPublishedTeachingHeightField(ownerId, out var output, out _) || output is null)
             {
                 return ToolWorkbenchPublishedSelectionBindingState.Unavailable;
             }
@@ -4076,6 +4155,28 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             SelectedStepSelectionRequirement,
             PipelineSteps);
 
+    internal bool TryGetPublishedTeachingHeightField(string entityId, out C3DHeightFieldSnapshot? output, out string? path)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightFieldSnapshot>(entityId, out output))
+        {
+            path = output is null ? null : orderedRunExecutionOwner.GetPublishedPath(entityId);
+            return output is not null && path is not null;
+        }
+        if (ninePointExecutionOwner.GetPublishedOutput(entityId) is { } compensated)
+        {
+            output = compensated.Output;
+            path = compensated.Path;
+            return true;
+        }
+        if (TryGetPublishedRoiCropOutput(entityId, out output) && output is not null)
+        {
+            path = CurrentRoiCropPreviewPath;
+            return !string.IsNullOrWhiteSpace(path);
+        }
+        path = null;
+        return false;
+    }
+
     private bool TryGetSelectionCaptureContext(
         ToolWorkbenchPipelineStepItem step,
         out ToolRecipeSelectionSourceBinding binding,
@@ -4098,11 +4199,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                     frameId = transformed.ReferenceFrameId;
                     return true;
                 }
-                if (TryGetPublishedRoiCropOutput(step.InputEntityIds[0], out var cropped)
-                    && cropped is not null)
+                if (TryGetPublishedTeachingHeightField(step.InputEntityIds[0], out var heightField, out _)
+                    && heightField is not null)
                 {
-                    binding = ToolRecipeSelectionSourceBindingVerifier.FromHeightField(cropped);
-                    frameId = cropped.FrameId;
+                    binding = ToolRecipeSelectionSourceBindingVerifier.FromHeightField(heightField);
+                    frameId = heightField.FrameId;
                     return true;
                 }
                 binding = null!;
@@ -4401,6 +4502,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         }
 
         if (args.PropertyName is nameof(ToolWorkbenchPipelineStepItem.CanonicalState)
+            or nameof(ToolWorkbenchPipelineStepItem.SignedDeltaSidecar)
             or nameof(ToolWorkbenchPipelineStepItem.CanonicalStateKey)
             or nameof(ToolWorkbenchPipelineStepItem.CanonicalStateLabel)
             or nameof(ToolWorkbenchPipelineStepItem.CanonicalStateAccessibleName)
@@ -4459,6 +4561,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         MarkEditableRegionPreviewStaleIfNeeded(sender);
         MarkLevelSurfacePreviewStaleIfNeeded(sender);
         MarkRoiCropPreviewStaleIfNeeded(sender);
+        ninePointExecutionOwner.Refresh();
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
         MarkTwoPointLinePreviewStaleIfNeeded(sender);
         MarkThreePointPlanePreviewStaleIfNeeded(sender);
@@ -4658,6 +4761,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        if (propertyName is nameof(IsReadOnlySampleView) or nameof(CanEditRecipe))
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanEditSelectedStepParameters)));
+            applySelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
+        }
         if (propertyName is nameof(IsSelectedStepPreviewRunning)
             or nameof(IsValidationSetRunning)
             or nameof(IsOrderedRunRunning)
@@ -4686,7 +4794,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             or nameof(IsPhysicalEdgeGapFlushPreviewRunning))
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRecipeMutationBlocked)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanEditRecipe)));
+            OnPropertyChanged(nameof(CanEditRecipe));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanOpenRecipeInfoEditor)));
             openRecipeInfoEditorCommand?.RaiseCanExecuteChanged();
             (OpenRecentTeachingRecipeCommand as RelayCommand)?.RaiseCanExecuteChanged();

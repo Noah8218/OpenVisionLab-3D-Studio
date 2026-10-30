@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Viewer.Localization;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -72,6 +73,7 @@ public sealed record ResultsStoredMetric(
     string Unit, ResultStatus? Status, ResultStatus ExecutionStatus, string SettingsIdentity)
 {
     public bool IsFinite => double.IsFinite(Value);
+    public string DisplayName => ViewerLocalization.Shared.LocalizeRuntimeText(Name, "MeasurementMetric");
     public string ValueText => IsFinite ? Value.ToString("0.##", CultureInfo.CurrentCulture) : "—";
     public string StatusText => Status?.ToString() ?? "—";
 }

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 
@@ -22,7 +23,38 @@ public static class ToolRecipeDocumentStore
 
     public static void SaveNew(string path, ToolRecipeDocument document) => SaveCore(path, document, overwrite: false);
 
-    private static string SaveCore(string path, ToolRecipeDocument document, bool overwrite)
+    public static bool TrySaveLandmarkReferenceRevisions(string path, ToolRecipeDocument document, string savedSnapshotPath, string savedSha256, out string sha256)
+    {
+        sha256 = string.Empty;
+        var savedBytes = File.ReadAllBytes(savedSnapshotPath);
+        if (!Convert.ToHexString(SHA256.HashData(savedBytes)).Equals(savedSha256, StringComparison.OrdinalIgnoreCase)) return false;
+        var previous = Load(savedSnapshotPath);
+        if (previous.Selections is not { } previousSelections || document.Selections is not { } selections || previousSelections.Count != selections.Count) return false;
+
+        var previousJson = JsonSerializer.SerializeToNode(previous, JsonOptions)!;
+        var currentJson = JsonSerializer.SerializeToNode(document, JsonOptions)!;
+        previousJson["source"]!["path"] = ResolveSourcePath(path, previous.Source.Path);
+        currentJson["source"]!["path"] = ResolveSourcePath(path, document.Source.Path);
+        var savedJson = JsonNode.Parse(File.ReadAllText(savedSnapshotPath))!;
+        var changed = false;
+        for (var index = 0; index < selections.Count; index++)
+        {
+            if (previousSelections[index].Kind != ToolRecipeSelectionKinds.LandmarkCorrespondenceSet
+                || previousSelections[index].CorrespondenceDescriptor is not { } previousDescriptor
+                || selections[index].CorrespondenceDescriptor is not { } descriptor
+                || descriptor.ReferenceRevision == previousDescriptor.ReferenceRevision) continue;
+            currentJson["selections"]![index]!["correspondenceDescriptor"]!["referenceRevision"] = previousDescriptor.ReferenceRevision;
+            savedJson["selections"]![index]!["correspondenceDescriptor"]!["referenceRevision"] = descriptor.ReferenceRevision;
+            changed = true;
+        }
+
+        if (!changed || !JsonNode.DeepEquals(previousJson, currentJson)) return false;
+        // Keep field presence from the saved recipe only for a revision-only edit.
+        sha256 = SaveCore(path, document, overwrite: true, savedJson.ToJsonString(JsonOptions));
+        return true;
+    }
+
+    private static string SaveCore(string path, ToolRecipeDocument document, bool overwrite, string? serializedJson = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var validation = ToolRecipeValidator.ValidateForStorage(document);
@@ -38,7 +70,7 @@ public static class ToolRecipeDocumentStore
         try
         {
             var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-                .GetBytes(JsonSerializer.Serialize(document, JsonOptions));
+                .GetBytes(serializedJson ?? JsonSerializer.Serialize(document, JsonOptions));
             using (var stream = new FileStream(
                        temporaryPath,
                        FileMode.CreateNew,
@@ -80,7 +112,15 @@ public static class ToolRecipeDocumentStore
 
         stream.Position = 0;
         sha256 = Convert.ToHexString(SHA256.HashData(stream));
-        return document;
+        // Storage validation permits these collections to be empty drafts.
+        // Parameters remain null when catalog defaults must be restored.
+        return document with
+        {
+            References = document.References ?? [],
+            Steps = (document.Steps ?? []).Select(step => step.InputEntityIds is null
+                ? step with { InputEntityIds = [] }
+                : step).ToArray()
+        };
     }
 
     private static void VerifyCurrentSelectionBindings(string documentPath, ToolRecipeDocument document)

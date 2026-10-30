@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows.Input;
 using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -17,6 +18,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     public event EventHandler? SelectValidationSetSourcesRequested;
     public event EventHandler? ValidationSetComparisonRequested;
+    public event EventHandler<ToolWorkbenchValidationRunCompletedEventArgs>? ValidationRunCompleted
+    {
+        add => validationSetWorkspace.RunCompleted += value;
+        remove => validationSetWorkspace.RunCompleted -= value;
+    }
 
     public ReadOnlyObservableCollection<ValidationSetSampleRow> ValidationSetSamples => validationSetWorkspace.ValidationSetSamples;
 
@@ -313,6 +319,7 @@ public sealed partial class ToolWorkbenchViewModel
     public void SetValidationSetSources(IEnumerable<string> sourcePaths) => validationSetWorkspace.SetValidationSetSources(sourcePaths);
 
     internal Task RunValidationSetAsync() => validationSetWorkspace.RunValidationSetAsync();
+    internal void ReportValidationRunRecordSave(string message, bool failed) => validationSetWorkspace.ReportRunRecordSave(message, failed);
 
     internal Task RevalidateValidationThresholdCorrectionAsync() => validationSetWorkspace.RevalidateValidationThresholdCorrectionAsync();
 
@@ -351,4 +358,9 @@ public sealed partial class ToolWorkbenchViewModel
         ResultStatus.Warning => Localize("경고", "Warning"),
         _ => Localize("오류", "Error")
     };
+}
+
+public sealed class ToolWorkbenchValidationRunCompletedEventArgs(ToolRecipeValidationSetResult result) : EventArgs
+{
+    public ToolRecipeValidationSetResult Result { get; } = result;
 }

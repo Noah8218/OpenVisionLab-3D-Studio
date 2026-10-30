@@ -83,7 +83,8 @@ internal sealed class SourceQualityAcquisitionProvenanceEditor : INotifyProperty
         get => selectedAcquisitionStateOption;
         set
         {
-            if (SetField(ref selectedAcquisitionStateOption, value))
+            // Replacing translated options briefly clears the ComboBox; neither list has an empty choice.
+            if (value is not null && SetField(ref selectedAcquisitionStateOption, value))
             {
                 NotifyAcquisitionDraftProperties();
             }
@@ -179,7 +180,7 @@ internal sealed class SourceQualityAcquisitionProvenanceEditor : INotifyProperty
         get => selectedAcquisitionDirectionStateOption;
         set
         {
-            if (SetField(ref selectedAcquisitionDirectionStateOption, value))
+            if (value is not null && SetField(ref selectedAcquisitionDirectionStateOption, value))
             {
                 NotifyAcquisitionDraftProperties();
             }
@@ -463,9 +464,10 @@ internal sealed class SourceQualityAcquisitionProvenanceEditor : INotifyProperty
                 ToolRecipeAcquisitionDirectionState.Unavailable,
                 localization.SourceAcquisitionDirectionUnavailable)
         ];
+        // Publish the new items before restoring selection; WPF clears selection as ItemsSource changes.
+        OnPropertyChanged(nameof(AcquisitionDirectionStateOptions));
         selectedAcquisitionDirectionStateOption = acquisitionDirectionStateOptions.First(option =>
             option.State == selectedState);
-        OnPropertyChanged(nameof(AcquisitionDirectionStateOptions));
         OnPropertyChanged(nameof(SelectedAcquisitionDirectionStateOption));
         OnPropertyChanged(nameof(IsAcquisitionDirectionAvailable));
     }
@@ -529,9 +531,10 @@ internal sealed class SourceQualityAcquisitionProvenanceEditor : INotifyProperty
                 ToolRecipeAcquisitionProvenanceState.Unavailable,
                 localization.SourceAcquisitionUnavailable)
         ];
+        // Publish the new items before restoring selection; WPF clears selection as ItemsSource changes.
+        OnPropertyChanged(nameof(AcquisitionStateOptions));
         selectedAcquisitionStateOption = acquisitionStateOptions.First(option =>
             option.State == selectedState);
-        OnPropertyChanged(nameof(AcquisitionStateOptions));
         OnPropertyChanged(nameof(SelectedAcquisitionStateOption));
         OnPropertyChanged(nameof(IsAcquisitionStateAvailable));
     }

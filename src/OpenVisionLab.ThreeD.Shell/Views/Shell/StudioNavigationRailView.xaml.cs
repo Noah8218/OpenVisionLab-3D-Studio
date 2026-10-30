@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Shell;
 
@@ -102,8 +103,17 @@ public partial class StudioNavigationRailView : UserControl
     {
         if (sender is MenuItem { Tag: string toolId })
         {
+            RailUtilityMenu.IsExpanded = false;
             ToolLabRequested?.Invoke(this, new StudioToolLabRequestEventArgs(toolId));
         }
+    }
+
+    private void OnUtilityMenuPreviewKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Escape || !RailUtilityMenu.IsExpanded) return;
+        RailUtilityMenu.IsExpanded = false;
+        if (RailUtilityMenu.Template.FindName("UtilityToggle", RailUtilityMenu) is UIElement toggle) toggle.Focus();
+        args.Handled = true;
     }
 }
 

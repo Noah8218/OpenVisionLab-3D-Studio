@@ -1911,7 +1911,6 @@
                                                     <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding DataContext.OpenValidationMismatchSectionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="SlideText24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.InputSection, Korean='입력 단면 보기', English='View input section'}" /></StackPanel></Button>
                                                     <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding DataContext.ValidationWorkspace.OpenMismatchDistributionCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ChartMultiple24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.ValueDistribution, Korean='값 분포', English='Value distribution'}" /></StackPanel></Button>
                                                 </WrapPanel>
-                                                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.NoAutomaticCorrection, Korean='허용 범위와 영역은 자동으로 바꾸지 않습니다.', English='Limits and regions are not changed automatically.'}" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Grid>
                                     </DataTemplate></ListBox.ItemTemplate>
@@ -1950,12 +1949,12 @@
                                                 <WrapPanel Margin="0,6,0,0">
                                                     <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ProposeValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ProposeDraft, Korean='초안 제안', English='Propose draft'}" />
                                                     <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ReviewValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ReviewDraft, Korean='초안 검토', English='Review draft'}" />
-                                                    <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ApplyValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ApplyDraft, Korean='후보를 티칭 초안으로', English='Candidate to Teach draft'}" />
+                                                    <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ApplyValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ApplyDraft, Korean='설정창에 입력', English='Enter in settings'}" />
                                                 </WrapPanel>
                                                 <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ValidationThresholdAssistantSummary}" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Border>
-                                        <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.ManualLimits, Korean='허용 범위는 사용자가 정합니다. 후보는 초안에 입력되며 티칭에서 적용해야 바뀝니다.', English='The operator sets limits. Candidates are drafts and require Apply in Teach.'}" />
+                                        <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.ManualLimits, Korean='후보 입력 후 티칭에서 적용하세요.', English='Apply the entered candidate in Teach.'}" />
                                     </StackPanel>
                                 </ScrollViewer>
                             </Grid>
@@ -1985,13 +1984,13 @@
                                           IsReadOnly="True"
                                           ItemsSource="{Binding ValidationEvidenceDistributions}"
                                           HeadersVisibility="Column"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.LabeledMetricDistributionsAccessible, Korean='단계·영역별 라벨링된 측정값 분포', English='Per-step and per-region labeled metric distributions'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.LabeledMetricDistributionsAccessible, Korean='도구·영역별 측정값 분포', English='Measurement distributions by tool and region'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="78" Header="{Binding ValidationSetScope, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Scope}" />
                                         <DataGridTextColumn Width="130" Header="{Binding ValidationSetOwner, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding OwnerName}" />
                                         <DataGridTextColumn Width="150" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding MetricName}" />
-                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.GoodDevelopment, Korean='양품 · 개발', English='Good · development'}" Binding="{Binding Good}" />
-                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.BadDevelopment, Korean='불량 · 개발', English='Bad · development'}" Binding="{Binding Bad}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.GoodDevelopment, Korean='양품 · 조정용', English='Good · adjustment'}" Binding="{Binding Good}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.BadDevelopment, Korean='불량 · 조정용', English='Bad · adjustment'}" Binding="{Binding Bad}" />
                                         <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.HeldOutExcluded, Korean='홀드아웃 · 제외', English='Held-out · excluded'}" Binding="{Binding HeldOut}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
@@ -2248,7 +2247,7 @@
                                           ItemsSource="{Binding ValidationThresholdDevelopmentSamples}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdDevelopmentEvidence, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='개발 보정 전후 정보', English='Before and after development correction evidence'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='조정 샘플 변경 전후', English='Adjustment samples before and after'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="58" Header="{shell:ThreeDText Key=ThreeD.Validation.Stage, Korean='단계', English='Stage'}" Binding="{Binding Stage}" />
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
@@ -2280,7 +2279,7 @@
                                           SelectionMode="Single"
                                           SelectionUnit="FullRow"
                                           HeadersVisibility="Column"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DeterministicThresholdCandidatesAccessible, Korean='검토 전용 결정론적 임계값 후보', English='Review-only deterministic threshold candidates'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DeterministicThresholdCandidatesAccessible, Korean='임계값 후보', English='Threshold candidates'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="92" Header="{Binding ValidationSetScope, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Scope}" />
                                         <DataGridTextColumn Width="125" Header="{Binding ValidationSetOwner, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding OwnerName}" />

@@ -141,6 +141,10 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
                 EditableRegionStepProperties.MappedNames,
                 EditableRegionStepProperties.From,
                 TryCreateEditableRegionParameters),
+            ["nine-point-surface-compensation"] = Create<NinePointSurfaceCompensationStepProperties>(
+                NinePointSurfaceCompensationStepProperties.MappedNames,
+                NinePointSurfaceCompensationStepProperties.From,
+                TryCreateNinePointParameters),
             ["level-surface"] = Create<LevelSurfaceStepProperties>(
                 LevelSurfaceStepProperties.MappedNames,
                 LevelSurfaceStepProperties.From,
@@ -261,6 +265,14 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
         values = EmptyParameters;
         message = "This step has no typed parameter adapter.";
         return false;
+    }
+
+    private static bool TryCreateNinePointParameters(object draft, out IReadOnlyDictionary<string, string> values, out string message)
+    {
+        if (!TryGetDraft<NinePointSurfaceCompensationStepProperties>(draft, out var properties, out values, out message)
+            || !properties.TryValidate(out message)) return false;
+        values = properties.Parameters();
+        return true;
     }
 
     private static bool TryCreateFilterParameters(

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell;
+using OpenVisionLab.ThreeD.Shell.PropertyGrid;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -66,6 +67,8 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
     /// a copied parameter model.
     /// </summary>
     public object? ParameterDraft => parameterDraft;
+    public bool HasAcceptanceParameters => parameterDraft is not null
+        && TypeDescriptor.GetProperties(LocalizedPropertyGridObject.Create(parameterDraft, acceptanceOnly: true)).Count > 0;
     public bool IsParameterEditorSupported => isParameterEditorSupported;
     public bool HasPendingParameterChanges => hasPendingParameterChanges;
     public string ParameterStatus => parameterStatus;
@@ -111,6 +114,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(ParameterDraft));
+        OnPropertyChanged(nameof(HasAcceptanceParameters));
         OnPropertyChanged(nameof(IsParameterEditorSupported));
         OnPropertyChanged(nameof(HasPendingParameterChanges));
         OnPropertyChanged(nameof(ParameterStatus));
@@ -352,18 +356,13 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
         step is null
             ? localization.Resolve(
                 "ThreeD.Workbench.SelectedToolHelpEmpty",
-                "검사 단계를 선택하면 입력, 설정값, 영역, 출력, 작성 안내가 표시됩니다.",
-                "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance.")
+                "",
+                "")
             : $"{step.Tool.DisplayDescription} "
               + localization.Resolve(
                   "ThreeD.Workbench.SelectedToolHelpInputs",
                   $"필수 입력: {step.InputContractDisplay}.",
                   $"Required inputs: {step.InputContract}.")
-              + " "
-              + localization.Resolve(
-                  "ThreeD.Workbench.SelectedToolHelpAuthoring",
-                  "입력과 영역을 확인하고 설정값을 적용한 뒤 선택 도구를 실행하세요.",
-                  "Confirm inputs and regions, apply parameters, then run the selected tool.")
               + " "
               + localization.Resolve(
                   "ThreeD.Workbench.SelectedToolHelpOutput",
@@ -402,8 +401,8 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Set the reference and measurement ROIs, confirm the limits, then run the selected tool."),
                 localization.Resolve(
                     "ThreeD.Workbench.ThicknessExpectedOverlay",
-                    "예상: 기준면에서 측정면까지의 부호 있는 H축 두께와 유효 샘플·허용값 상태가 표시됩니다. 원본 높이와 티칭 ROI는 변경되지 않습니다.",
-                    "Expected: signed H-axis thickness from the fitted reference surface to the measurement surface is shown with valid-sample and tolerance status. Source heights and taught ROIs remain unchanged."));
+                    "기준면 대비 부호 있는 H축 두께, 유효 샘플 수와 허용값 상태",
+                    "Signed H-axis thickness relative to the fitted reference surface, valid-sample count, and tolerance status"));
         }
 
         if (string.Equals(step.ToolId, "height-threshold-background-removal", StringComparison.OrdinalIgnoreCase))
@@ -415,8 +414,8 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Set the input height threshold and keep direction, then run the selected tool."),
                 localization.Resolve(
                     "ThreeD.Workbench.HeightThresholdBackgroundRemovalExpectedOverlay",
-                    "예상: 원본과 동일한 격자의 별도 출력에 유지 셀과 결측 셀이 표시되고, 원본·기존 결측·설정값 정보는 그대로 보존됩니다.",
-                    "Expected: a separate same-grid output shows retained and missing cells while the source, existing missing cells, and parameter evidence remain preserved."));
+                    "원본과 같은 격자의 별도 출력에 유지 셀과 결측 셀을 표시합니다.",
+                    "Retained and missing cells in a separate output with the same grid as the source."));
         }
 
         if (string.Equals(step.ToolId, "signed-delta-background-subtraction", StringComparison.OrdinalIgnoreCase))
@@ -616,6 +615,7 @@ public sealed record SelectedToolInputItem(
     public bool IsRegionInput => RequiredContract.Contains("GridRectangle", StringComparison.OrdinalIgnoreCase)
         || RequiredContract.Contains("GridPolygon selection", StringComparison.OrdinalIgnoreCase);
     public bool IsMapInput => Preview is not null;
+    public bool HasAssignedMapInput => IsMapInput && !string.IsNullOrWhiteSpace(EntityId);
     public string RequiredContractDisplay => ThreeDLocalization.Shared.ContractLabel(RequiredContract);
 }
 

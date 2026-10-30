@@ -102,6 +102,38 @@ public sealed class C3DDerivedRoundTripTests
         }
     }
 
+    [Theory]
+    [InlineData(null, "frame.c3d-grid-index", "unit")]
+    [InlineData("", "frame.c3d-grid-index", "unit")]
+    [InlineData("   ", "frame.c3d-grid-index", "unit")]
+    [InlineData("raw-height", null, "frameId")]
+    [InlineData("raw-height", "", "frameId")]
+    [InlineData("raw-height", "   ", "frameId")]
+    public void VerifiedLoadRejectsMissingUnitOrFrame(string? unit, string? frameId, string parameterName)
+    {
+        var source = C3DHeightFieldSnapshot.CreateForVerification("source.metadata", 1, 1, [1d]);
+        var path = GetPath("verified-metadata.C3D");
+        try
+        {
+            source.SaveC3D(path);
+            var exception = Assert.ThrowsAny<ArgumentException>(() => C3DHeightFieldSnapshot.LoadVerified(
+                path,
+                source.EntityId,
+                unit!,
+                frameId!,
+                source.ByteLength,
+                source.ContentSha256,
+                source.Width,
+                source.Height,
+                TestContext.Current.CancellationToken));
+            Assert.Equal(parameterName, exception.ParamName);
+        }
+        finally
+        {
+            TryDelete(path);
+        }
+    }
+
     private static byte[] EncodeLegacy(double value)
     {
         var bytes = new byte[sizeof(float)];

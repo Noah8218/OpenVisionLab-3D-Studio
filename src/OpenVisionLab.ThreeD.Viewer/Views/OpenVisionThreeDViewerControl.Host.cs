@@ -165,7 +165,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             renderContextLifetime.RecordContextUnavailable();
         }
 
-        ClearManagedDataReferencesAfterDispose();
+        ClearManagedDataReferencesAfterDispose(dispatcherAccess);
         viewerLifetimeCancellation.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -224,7 +224,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     /// is intentionally left intact for its existing host contract; this
     /// boundary only drops data owned by the control itself.
     /// </summary>
-    private void ClearManagedDataReferencesAfterDispose()
+    private void ClearManagedDataReferencesAfterDispose(bool dispatcherAccess)
     {
         c3dSample = null;
         viewModel.C3DTexture.ReleaseImage();
@@ -255,7 +255,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         teachingGridRectangleDragStart = null;
         teachingGridRectangleAutomaticHeights.Clear();
         teachingResultCaptionCache.Clear();
-        TeachingResultCaptions.Children.Clear();
+        if (dispatcherAccess) TeachingResultCaptions.Children.Clear();
         workbenchOverlayRenderer.Clear();
         ClearSurfaceMatchRenderData();
     }

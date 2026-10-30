@@ -864,8 +864,8 @@ internal static class ToolRecipeTeachingVerification
                     }
                 };
                 Check(
-                    "selected step adapter status keeps the existing English ready label",
-                    alignment.SelectedStepAdapterStatus == "Typed adapter ready",
+                    "selected step adapter status uses the concise English label",
+                    alignment.SelectedStepAdapterStatus == "Settings available",
                     alignment.SelectedStepAdapterStatus);
                 Check(
                     "alignment status refresh causes no Preview, Publish, or Run action",
@@ -880,7 +880,7 @@ internal static class ToolRecipeTeachingVerification
                 Check(
                     "selected step adapter status refreshes its localized label without changing state",
                     adapterStatusNotifications == 1
-                    && alignment.SelectedStepAdapterStatus == "\uC815\uC2DD \uC5B4\uB311\uD130 \uC900\uBE44\uB428",
+                    && alignment.SelectedStepAdapterStatus == "\uC124\uC815 \uD3B8\uC9D1 \uAC00\uB2A5",
                     $"notifications={adapterStatusNotifications}; status={alignment.SelectedStepAdapterStatus}");
             }
             finally
@@ -915,11 +915,11 @@ internal static class ToolRecipeTeachingVerification
                 Check(
                     "selected-tool workspace initial defaults localize without recipe state",
                     englishInitialParameterStatus == englishInitialParameterStatusExpected
-                    && englishInitialHelp == "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance."
+                    && string.IsNullOrEmpty(englishInitialHelp)
                     && englishInitialCommonState == "Empty"
                     && englishInitialOutputPolicy == englishInitialOutputPolicyExpected
                     && koreanInitialParameterStatus == workbench.Localization.StepParameterSelectTypedTool
-                    && koreanInitialHelp != englishInitialHelp
+                    && string.IsNullOrEmpty(koreanInitialHelp)
                     && koreanInitialCommonState == workbench.Localization.StateLabel(InspectionStepState.Empty)
                     && koreanInitialOutputPolicy == workbench.Localization.OutputEnabled
                     && englishInitialParameterStatus != koreanInitialParameterStatus
@@ -1007,18 +1007,16 @@ internal static class ToolRecipeTeachingVerification
                 var englishDescriptionFailures = englishDescriptions
                     .Where(item => !item.Value.Contains("Input:", StringComparison.Ordinal)
                         || !item.Value.Contains("Result:", StringComparison.Ordinal)
-                        || !item.Value.Contains("Next:", StringComparison.Ordinal)
                         || item.Value.Length > 420
                         || internalProse.Any(term => item.Value.Contains(term, StringComparison.OrdinalIgnoreCase)))
                     .Select(item => $"{item.Key}={item.Value}")
                     .ToArray();
                 Check(
-                    "English catalog descriptions expose purpose, result, and next action",
+                    "English catalog descriptions expose inputs and results without mandatory procedural narration",
                     englishDescriptions.Count == workbench.Tools.Count
                     && englishDescriptions.Values.All(description =>
                         description.Contains("Input:", StringComparison.Ordinal)
                         && description.Contains("Result:", StringComparison.Ordinal)
-                        && description.Contains("Next:", StringComparison.Ordinal)
                         && description.Length <= 420)
                     && englishDescriptions.Values.All(description =>
                         internalProse.All(term => !description.Contains(term, StringComparison.OrdinalIgnoreCase))),
@@ -1032,18 +1030,16 @@ internal static class ToolRecipeTeachingVerification
                 var koreanDescriptionFailures = koreanDescriptions
                     .Where(item => !item.Value.Contains("입력:", StringComparison.Ordinal)
                         || !item.Value.Contains("결과:", StringComparison.Ordinal)
-                        || !item.Value.Contains("다음:", StringComparison.Ordinal)
                         || item.Value.Length > 420
                         || internalProse.Any(term => item.Value.Contains(term, StringComparison.OrdinalIgnoreCase)))
                     .Select(item => $"{item.Key}={item.Value}")
                     .ToArray();
                 Check(
-                    "Korean catalog descriptions expose purpose, result, and next action",
+                    "Korean catalog descriptions expose inputs and results without mandatory procedural narration",
                     koreanDescriptions.Count == workbench.Tools.Count
                     && koreanDescriptions.Values.All(description =>
                         description.Contains("입력:", StringComparison.Ordinal)
                         && description.Contains("결과:", StringComparison.Ordinal)
-                        && description.Contains("다음:", StringComparison.Ordinal)
                         && description.Length <= 420)
                     && koreanDescriptions.Values.All(description =>
                         internalProse.All(term => !description.Contains(term, StringComparison.OrdinalIgnoreCase))),
@@ -1908,18 +1904,20 @@ internal static class ToolRecipeTeachingVerification
             try
             {
                 OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                var parameterActionLogCount = workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
                 var englishParameterStatus = workbench.StepParameterEditStatus;
                 OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
                 var koreanParameterStatus = workbench.StepParameterEditStatus;
                 workbench.MarkSelectedStepParameterDraftDirty();
                 var koreanPendingParameterStatus = workbench.StepParameterEditStatus;
                 Check(
-                    "step parameter lifecycle status localizes and refreshes without executing inspection",
-                    englishParameterStatus == "Parameters match the committed recipe. Editing does not run Preview or Publish."
-                    && koreanParameterStatus == workbench.Localization.StepParameterMatchesRecipe
+                    "normal parameter status stays quiet; pending changes localize without inspection",
+                    string.IsNullOrEmpty(englishParameterStatus)
+                    && string.IsNullOrEmpty(koreanParameterStatus)
                     && koreanPendingParameterStatus == workbench.Localization.StepParameterPendingChanges
-                    && englishParameterStatus != koreanParameterStatus
-                    && workbench.HasPendingStepParameterChanges,
+                    && !string.IsNullOrWhiteSpace(koreanPendingParameterStatus)
+                    && workbench.HasPendingStepParameterChanges
+                    && workbench.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == parameterActionLogCount,
                     $"en={englishParameterStatus}; ko={koreanParameterStatus}; pending={koreanPendingParameterStatus}; pendingState={workbench.HasPendingStepParameterChanges}");
             }
             finally
@@ -1983,8 +1981,8 @@ internal static class ToolRecipeTeachingVerification
                 var koreanSelectionSummary = workbench.SelectedStepTeachingSelectionSummary;
                 Check(
                     "selected-step teaching-selection fallback localizes without creating a selection",
-                    englishSelectionSummary == "No recipe-owned selection is routed to this step."
-                    && koreanSelectionSummary == "\uC774 \uB2E8\uACC4\uC5D0 \uB808\uC2DC\uD53C \uC18C\uC720 \uC120\uD0DD\uC774 \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC74C"
+                    englishSelectionSummary == "No region is connected to this tool."
+                    && koreanSelectionSummary == "\uC774 \uB3C4\uAD6C\uC5D0 \uC5F0\uACB0\uB41C \uC601\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
                     && workbench.SelectedStepTeachingSelection is null,
                     $"en={englishSelectionSummary}; ko={koreanSelectionSummary}");
             }

@@ -61,16 +61,6 @@
                                            Text="{Binding State}" />
                             </Border>
                         </Grid>
-                        <Border Margin="0,7,0,0"
-                                Padding="7,4"
-                                Background="{DynamicResource ThreeD.CommandBarBrush}"
-                                CornerRadius="2">
-                            <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource ThreeD.PassBrush}"
-                                       Text="{Binding Localization.SourceQualityViewOnly}"
-                                       TextWrapping="Wrap" />
-                        </Border>
                     </StackPanel>
                 </Border>
 

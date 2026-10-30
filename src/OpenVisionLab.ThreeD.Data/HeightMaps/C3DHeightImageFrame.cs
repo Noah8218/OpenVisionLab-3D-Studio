@@ -1,5 +1,8 @@
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.Vision3D.FeatureExtraction;
+using OpenVisionLab.Vision3D.Geometry;
 
 namespace OpenVisionLab.ThreeD.Data;
 
@@ -219,6 +222,28 @@ public sealed class C3DHeightImageFrame
             values,
             pixels,
             Convert.ToHexString(SHA256.HashData(pixels)));
+    }
+
+    /// <summary>Projects SDK scalar evidence without treating a finite zero model height as C3D missing data.</summary>
+    public static C3DHeightImageFrame CreateScalarMap(HeightMap3D source, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (source.PlanarUnit != "grid-index" || source.ColumnPitch != 1.0 || source.RowPitch != 1.0
+            || source.OriginX != Math.Truncate(source.OriginX) || source.OriginY != Math.Truncate(source.OriginY))
+            throw new InvalidDataException("Scalar evidence requires a native grid-index map with integer origins.");
+        var values = source.CopyValues();
+        var summary = new HeightDistributionStatisticsTool().Execute(values,
+            new HeightDistributionStatisticsOptions { ZeroIsMissing = false, BinCount = 1 });
+        if (!summary.Success || !summary.HasFiniteSamples) throw new InvalidDataException(summary.Message);
+        var mask = C3DInvalidCellMap.CreateScalarMap(source.Columns, source.Rows, values, summary.MissingSampleCount);
+        var pixels = RenderPixels(values, mask, C3DHeightImagePalette.Height, summary.Minimum, summary.Maximum,
+            C3DHeightImageInvalidOverlayMode.Hidden, cancellationToken);
+        var contentHash = Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(values.AsSpan())));
+        return new C3DHeightImageFrame(source.SourceId, $"height-map://{contentHash}", contentHash, source.HeightUnit, source.FrameId,
+            source.Columns, source.Rows, summary.ValidSampleCount, summary.MissingSampleCount, summary.Minimum, summary.Maximum,
+            summary.Mean, summary.Minimum, summary.Maximum, checked((int)source.OriginX), checked((int)source.OriginY),
+            mask, values, pixels, Convert.ToHexString(SHA256.HashData(pixels)));
     }
 
     public C3DHeightImageDisplayFrame CreateDisplayFrame(

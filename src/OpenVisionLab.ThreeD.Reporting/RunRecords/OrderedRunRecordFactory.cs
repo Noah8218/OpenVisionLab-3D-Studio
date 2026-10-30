@@ -52,6 +52,7 @@ public static class OrderedRunRecordFactory
             viewerRunnerMatchState,
             artifacts)
         {
+            WorkflowKind = RunRecordWorkflowKind.Inspection,
             ExecutionEnvironment = executionEnvironment,
             Steps = steps,
             SourceQualityEvidence = execution.SourceQuality is null

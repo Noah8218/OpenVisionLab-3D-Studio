@@ -18,8 +18,11 @@ public sealed partial class ToolWorkbenchViewModel
     public string RoiCropOutputSummary => roiCropExecutionOwner.OutputSummary;
 
     public Task<bool> PreviewSelectedRoiCropAsync() => roiCropExecutionOwner.PreviewAsync();
-    internal bool TryGetPublishedRoiCropOutput(string outputEntityId, out C3DHeightFieldSnapshot? output) =>
-        roiCropExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    internal bool TryGetPublishedRoiCropOutput(string outputEntityId, out C3DHeightFieldSnapshot? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DHeightFieldSnapshot>(outputEntityId, out output)) return output is not null;
+        return roiCropExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
     private bool CanPreviewSelectedRoiCrop() => roiCropExecutionOwner.CanPreview();
     private void PublishSelectedRoiCrop() => roiCropExecutionOwner.Publish();
     private void CancelRoiCropPreview() => roiCropExecutionOwner.Cancel();

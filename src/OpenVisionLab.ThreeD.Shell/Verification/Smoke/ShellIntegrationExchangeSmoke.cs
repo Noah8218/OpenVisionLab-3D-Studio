@@ -99,7 +99,7 @@ internal static class ShellIntegrationExchangeSmoke
         if (requestedState.Equals("input-focus", StringComparison.OrdinalIgnoreCase))
         {
             var input = FindVisualDescendants<TextBox>(shellWindow)
-                .FirstOrDefault(textBox => textBox.Name == "ExchangeRootTextBox");
+                .FirstOrDefault(textBox => System.Windows.Automation.AutomationProperties.GetAutomationId(textBox) == "IntegrationExchangeRoot");
             if (input is null)
             {
                 return Failure("Integration exchange folder input was not available.");
@@ -323,7 +323,7 @@ internal static class ShellIntegrationExchangeSmoke
             }
 
             var input = FindVisualDescendants<TextBox>(workspace)
-                .First(textBox => textBox.Name == "ExchangeRootTextBox");
+                .First(textBox => System.Windows.Automation.AutomationProperties.GetAutomationId(textBox) == "IntegrationExchangeRoot");
             input.Focus();
             if (!input.MoveFocus(new System.Windows.Input.TraversalRequest(
                     System.Windows.Input.FocusNavigationDirection.Next))

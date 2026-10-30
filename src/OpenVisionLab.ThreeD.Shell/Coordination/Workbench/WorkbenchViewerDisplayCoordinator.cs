@@ -21,6 +21,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     private string? displayedEvidenceSamplePath;
     private bool isInspectionDisplayActive;
     private bool disposed;
+    private bool orderedRunWasRunning;
 
     public WorkbenchViewerDisplayCoordinator(
         ShellMainWindowViewModel shell,
@@ -127,6 +128,20 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         object? sender,
         PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(ToolWorkbenchViewModel.IsOrderedRunRunning))
+        {
+            var completed = orderedRunWasRunning && !workbench.IsOrderedRunRunning;
+            orderedRunWasRunning = workbench.IsOrderedRunRunning;
+            if (completed && !workbench.IsReadOnlySampleView && workbench.CurrentOrderedRunResult is { } execution)
+            {
+                var output = execution.Steps.LastOrDefault(step => step.RuntimeOutput is OpenVisionLab.ThreeD.Data.C3DHeightFieldSnapshot);
+                if (output is not null && workbench.TryGetPublishedTeachingHeightField(output.OutputEntityId, out var map, out var path)
+                    && map is not null && path is not null)
+                    OnFilterDisplayRequested(workbench, new ToolWorkbenchFilterDisplayRequestEventArgs(path, map.ContentSha256, false, output.ToolName));
+            }
+        }
+        if (args.PropertyName == nameof(ToolWorkbenchViewModel.SelectedPipelineStep) && shell.IsInspectWorkspaceSelected)
+            ShowSelectedInspectionSample(workbench.InspectionQueue.SelectedSample, loadRecord: false);
         if (args.PropertyName == nameof(ToolWorkbenchViewModel.HasTeachingResults)) RefreshTeachingResultLabels();
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.SelectedValidationSetSample)
             or nameof(ToolWorkbenchViewModel.SelectedValidationSetStep))
@@ -170,7 +185,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         }
     }
 
-    private void ShowSelectedInspectionSample(InspectionQueueSampleItem? sample)
+    private void ShowSelectedInspectionSample(InspectionQueueSampleItem? sample, bool loadRecord = true)
     {
         if (sample is null)
         {
@@ -194,9 +209,47 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
 
         workbench.BeginHeightImageSourceLoad();
         var fullPath = Path.GetFullPath(sample.SourcePath);
+        var label = $"Inspection input | {sample.FileName}";
+        if (sample.Record is { } record && workbench.SelectedPipelineStep is { } selected)
+        {
+            var id = selected.InputEntityIds.FirstOrDefault();
+            if (id is not null && sample.HeightMaps.TryGetValue(id, out var map))
+            {
+                try
+                {
+                    var identity = OpenVisionLab.ThreeD.Data.ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(map.Path);
+                    if (!string.Equals(record.Source.Sha256, map.RootSourceSha256, StringComparison.OrdinalIgnoreCase)
+                        || !string.Equals(identity.ContentSha256, map.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                        || identity.GridWidth != map.Width || identity.GridHeight != map.Height)
+                        throw new InvalidDataException(workbench.Localization.Resolve("ThreeD.Inspection.OutputMapChanged", "검사 결과 맵이 기록과 다릅니다. 다시 검사하세요.", "The output map differs from its Run Record. Run the inspection again."));
+                    fullPath = map.Path;
+                    label = $"{selected.ToolName} | {sample.FileName}";
+                    InheritHeightMapTexture(map.ContentSha256, map.RootSourceSha256, map.Width, map.Height, map.OriginColumn, map.OriginRow);
+                }
+                catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+                {
+                    displayedEvidenceSamplePath = null;
+                    viewer.ClearC3DTeachingSource(exception.Message);
+                    workbench.HeightImageViewer.ClearSource();
+                    RefreshViewerSourceState();
+                    return;
+                }
+            }
+            else if (id is not null && !string.Equals(id, workbench.Source.Id, StringComparison.OrdinalIgnoreCase)
+                && workbench.PipelineSteps.Any(step => step.OutputEntityId == id
+                    && step.ToolId is "nine-point-surface-compensation" or "filter" or "height-threshold-background-removal"
+                        or "remove-outlier-pixels" or "domain-mask" or "level-surface" or "roi-crop"))
+            {
+                displayedEvidenceSamplePath = null;
+                viewer.ClearC3DTeachingSource(workbench.Localization.NoCurrentDisplayableOutput);
+                workbench.HeightImageViewer.ClearSource();
+                RefreshViewerSourceState();
+                return;
+            }
+        }
         if (!string.Equals(displayedEvidenceSamplePath, fullPath, StringComparison.OrdinalIgnoreCase))
         {
-            if (!viewer.ShowC3DWorkbenchResult(fullPath, $"Inspection input | {sample.FileName}"))
+            if (!viewer.ShowC3DWorkbenchResult(fullPath, label))
             {
                 viewer.ClearC3DTeachingSource(workbench.Localization.SourceUnreadable);
                 displayedEvidenceSamplePath = null;
@@ -211,6 +264,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
             RefreshViewerSourceState();
         }
 
+        if (!loadRecord) return;
         if (sample.CanOpenCurrentRunRecord
             && shell.LoadRunRecord(sample.RunRecordPath!, out _))
         {
@@ -276,6 +330,8 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     private void RestoreAuthoredSourceDisplay()
     {
         if (!isInspectionDisplayActive && displayedEvidenceSamplePath is null) return;
+        if (workbench.CurrentOrderedRunRecordPath is not { } teachingRecordPath || !shell.LoadRunRecord(teachingRecordPath, out _))
+            shell.ClearCurrentRunEvidenceForRecipeContext();
         if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path))
         {
             displayedEvidenceSamplePath = null;
@@ -309,6 +365,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
             return;
         }
 
+        if (!args.IsSource) InheritHeightMapTexture(args.ContentSha256);
         var hashLabel = args.ContentSha256.Length >= 12
             ? args.ContentSha256[..12]
             : args.ContentSha256;
@@ -322,6 +379,31 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         }
 
         WriteViewerError();
+    }
+
+    private void InheritHeightMapTexture(string contentSha256)
+    {
+        foreach (var step in workbench.PipelineSteps)
+        {
+            if (!workbench.TryGetPublishedTeachingHeightField(step.OutputEntityId, out var output, out _) || output is null
+                || !string.Equals(output.ContentSha256, contentSha256, StringComparison.OrdinalIgnoreCase)) continue;
+            InheritHeightMapTexture(contentSha256, output.RootSourceSha256, output.Width, output.Height,
+                output.GridOriginColumn, output.GridOriginRow);
+            return;
+        }
+    }
+
+    private void InheritHeightMapTexture(string contentSha256, string rootSha256, int width, int height, int originColumn, int originRow)
+    {
+        // These C3D preparation outputs retain XY; cropped or regridded maps do not inherit a full-source texture.
+        var settings = viewer.CaptureC3DTextureSettings();
+        if (settings.ContainsKey(contentSha256) || !settings.TryGetValue(rootSha256, out var original)
+            || original.GridWidth != width || original.GridHeight != height || originColumn != 0 || originRow != 0) return;
+        var derived = new Dictionary<string, OpenVisionLab.ThreeD.Data.HeightTextureImageSettings>(settings, StringComparer.OrdinalIgnoreCase)
+        {
+            [contentSha256] = original
+        };
+        viewer.RestoreC3DTextureSettings(derived);
     }
 
     private void OnArtifactDisplayRequested(
@@ -545,14 +627,22 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     private void OnThreePointPlaneDisplayCleared(object? sender, EventArgs args) =>
         viewer.ClearWorkbenchThreePointPlane();
 
-    private void OnDatumPlaneDeviationDisplayCleared(object? sender, EventArgs args) =>
+    private void OnDatumPlaneDeviationDisplayCleared(object? sender, EventArgs args)
+    {
         viewer.ClearWorkbenchDatumPlaneDeviation();
+        if (toolLabs.DatumPlaneDeviation is { IsVisible: true } datumPlaneDeviation)
+            datumPlaneDeviation.ClearDatumPlaneDeviationResult();
+    }
 
     private void OnLineFitDisplayCleared(object? sender, EventArgs args) =>
         viewer.ClearWorkbenchLineFit();
 
-    private void OnLineIntersectionDisplayCleared(object? sender, EventArgs args) =>
+    private void OnLineIntersectionDisplayCleared(object? sender, EventArgs args)
+    {
         viewer.ClearWorkbenchLineIntersection();
+        if (toolLabs.LineIntersection is { IsVisible: true } lineIntersection)
+            lineIntersection.ClearLineIntersectionResult();
+    }
 
     private void OnLandmarkCorrespondenceDisplayCleared(object? sender, EventArgs args) =>
         viewer.ClearWorkbenchLandmarkCorrespondence();

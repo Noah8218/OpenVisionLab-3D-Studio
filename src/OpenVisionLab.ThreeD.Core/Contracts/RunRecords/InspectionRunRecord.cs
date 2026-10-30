@@ -17,7 +17,7 @@ public sealed record InspectionRunRecord(
     string ViewerRunnerMatchState,
     InspectionRunArtifacts Artifacts)
 {
-    public const string CurrentSchemaVersion = "1.10";
+    public const string CurrentSchemaVersion = "1.11";
 
     public static bool SupportsSchemaVersion(string? schemaVersion) =>
         schemaVersion is "1.0"
@@ -30,7 +30,11 @@ public sealed record InspectionRunRecord(
             or "1.7"
             or "1.8"
             or "1.9"
-            or "1.10";
+            or "1.10"
+            or "1.11";
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public RunRecordWorkflowKind WorkflowKind { get; init; }
 
     public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
     public InspectionRunStep? Step { get; init; }
@@ -57,6 +61,13 @@ public sealed record InspectionRunRecord(
         get;
         init;
     }
+}
+
+public enum RunRecordWorkflowKind
+{
+    Unknown,
+    Inspection,
+    Validation
 }
 
 public enum InspectionRunSourceQualityEvidenceState

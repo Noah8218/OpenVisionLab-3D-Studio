@@ -21,6 +21,210 @@ internal static class ToolRecipeOrderedRunVerification
         Converters = { new JsonStringEnumConverter() }
     };
 
+    public static bool VerifyOutputHandoff(string manifestPath, string reportPath, out string summary)
+    {
+        var lines = new List<string> { "Ordered output handoff: actual typed SDK results through Workbench; no Window or Viewer constructed." };
+        var passed = 0;
+        var total = 0;
+        void Check(string name, bool ok, string detail = "") { total++; if (ok) passed++; lines.Add($"{(ok ? "PASS" : "FAIL")} | {name} | {detail}"); }
+        var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        Directory.CreateDirectory(root);
+        var previous = Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", root);
+        try
+        {
+            using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            foreach (var fixture in manifest.RootElement.EnumerateArray())
+            {
+                var name = fixture.GetProperty("name").GetString()!;
+                try
+                {
+                    using var workbench = new ToolWorkbenchViewModel(Path.Combine(root, name + "-recent.json"));
+                    if (!workbench.TryOpenTeachingRecipe(fixture.GetProperty("recipe").GetString()!, out var message))
+                        throw new InvalidDataException(message);
+                    var sourceId = workbench.Source.Id;
+                    var sourcePath = workbench.Source.Path;
+                    var ran = workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult();
+                    var result = workbench.CurrentOrderedRunResult;
+                    Check(name + " executes its authored graph", ran && result is not null
+                        && result.Steps.Count == fixture.GetProperty("expectedSteps").GetInt32(), workbench.OrderedRunCapabilitySummary);
+                    var publishedIds = (result?.Steps ?? []).Where(step => step.RuntimeOutput is not null)
+                        .Select(step => step.OutputEntityId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    Check(name + " published outputs are ready in the flow", result is not null
+                        && !workbench.FlowPortDiagnostics.Any(item => item.Port == "Input"
+                            && item.Step.InputEntityIds.Any(publishedIds.Contains)),
+                        string.Join(" | ", workbench.FlowPortDiagnostics.Select(item => $"{item.Step.Id}:{item.Kind}:{item.Detail}")));
+                    foreach (var executed in result?.Steps ?? [])
+                    {
+                        var artifact = workbench.ArtifactRegistry.Single(item => item.Id == executed.OutputEntityId);
+                        Check(name + ": " + executed.StepId + " retains the exact typed output", executed.RuntimeOutput is not null
+                            && artifact.State == "Published" && artifact.ContentSha256 == executed.OutputContentSha256,
+                            $"{executed.ToolId};{executed.Result.Status};{artifact.State};{executed.Result.Message}");
+                        if (executed.RuntimeOutput is C3DHeightFieldSnapshot height)
+                        {
+                            var target = workbench.GetRenderableC3DTarget(height.EntityId);
+                            Check(name + ": " + executed.StepId + " can display the actual map", target is not null
+                                && ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(target.C3DPath).ContentSha256 == height.ContentSha256
+                                && workbench.TryGetCurrentPublishedHeightField(height.EntityId)?.ContentSha256 == height.ContentSha256);
+                        }
+                        if (executed.RuntimeOutput is C3DSignedHeightDeltaArtifact delta)
+                            Check(name + " retains signed zero/negative map without C3D conversion",
+                                workbench.GetRenderableSignedDeltaArtifact(delta.OutputEntityId)?.ContentSha256 == delta.ContentSha256);
+                        if (executed.RuntimeOutput is C3DTransformedHeightField transformed)
+                            Check(name + " retains the physical reference frame",
+                                workbench.TryGetPublishedRegridHeightFieldOutput(executed.OutputEntityId, out var field)
+                                && field?.ContentSha256 == transformed.ContentSha256 && artifact.Unit == transformed.ReferenceUnit
+                                && artifact.FrameId == transformed.ReferenceFrameId);
+                    }
+                    if (name == "affine-chain" && ran)
+                    {
+                        var line = result!.Steps.First(item => item.ToolId == "three-d-line-fit");
+                        var authored = ToolRecipeDocumentStore.Load(fixture.GetProperty("recipe").GetString()!);
+                        var affineStep = authored.Steps.Single(step => step.ToolId == "xyz-affine-solve");
+                        var changed = authored with { Steps = authored.Steps.Select(step => step.Id != line.StepId ? step : step with
+                        {
+                            Parameters = step.Parameters!.Select((parameter, index) => index == 0 ? parameter with { Value = parameter.Value + "-changed" } : parameter).ToArray()
+                        }).ToArray() };
+                        Check("structured correspondence rows retain their producer dependencies", authored.DependsOnEntity(affineStep.Id, line.OutputEntityId)
+                            && authored.CreateStepExecutionContext(affineStep.Id) != changed.CreateStepExecutionContext(affineStep.Id));
+                        var referenceLabel = authored.Selections!.First(selection => selection.Rows?.Count > 0).Rows![0].ReferenceLandmarkId;
+                        var unrelated = authored.Steps.First(step => step.Id == line.StepId) with
+                        {
+                            Id = "step.unrelated-reference-label",
+                            OutputEntityId = referenceLabel,
+                            InputEntityIds = [authored.Source.Id]
+                        };
+                        var withLabelCollision = authored with { Steps = [.. authored.Steps, unrelated] };
+                        var changedLabelCollision = withLabelCollision with
+                        {
+                            Steps = [.. authored.Steps, unrelated with { OutputEnabled = false }]
+                        };
+                        Check("inline reference landmark labels are not producer dependencies",
+                            !withLabelCollision.DependsOnEntity(affineStep.Id, referenceLabel)
+                            && withLabelCollision.CreateStepExecutionContext(affineStep.Id) == changedLabelCollision.CreateStepExecutionContext(affineStep.Id));
+                        var measurementStep = result.Steps.Single(item => item.ToolId == "thickness");
+                        workbench.SelectPipelineStep(measurementStep.StepId);
+                        var canMeasure = workbench.RunSelectedStepCommand.CanExecute(null);
+                        workbench.RunSelectedStepCommand.Execute(null);
+                        var measurementSettled = SpinWait.SpinUntil(() => !workbench.IsSelectedStepPreviewRunning, TimeSpan.FromSeconds(30));
+                        Check("individual measurement consumes the full-run map and rebound ROI", canMeasure && measurementSettled
+                            && !workbench.HasSelectedStepFlowProblem
+                            && workbench.PipelineSteps.Single(step => step.Id == measurementStep.StepId).State == "Published");
+                        workbench.SelectPipelineStep(line.StepId);
+                        var canRun = workbench.RunSelectedStepCommand.CanExecute(null);
+                        workbench.RunSelectedStepCommand.Execute(null);
+                        var settled = SpinWait.SpinUntil(() => !workbench.IsSelectedStepPreviewRunning, TimeSpan.FromSeconds(30));
+                        Check("line fit consumes the full-run edge without regenerating it", canRun && settled
+                            && workbench.TryGetPublishedLineFitOutput(line.OutputEntityId, out var fitted) && fitted is not null);
+                        Check("selected producer rerun withdraws its downstream results", workbench.CurrentOrderedRunResult is null
+                            && workbench.ArtifactRegistry.Single(item => item.Id == result.Steps.Single(step => step.ToolId == "xyz-affine-solve").OutputEntityId).State == "Declared");
+                    }
+                    Check(name + " keeps the raw input identity", sourceId == workbench.Source.Id && sourcePath == workbench.Source.Path);
+                }
+                catch (Exception exception) { Check(name + " fixture", false, exception.ToString()); }
+            }
+        }
+        catch (Exception exception) { Check("handoff manifest", false, exception.ToString()); }
+        finally { Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", previous); }
+        summary = $"Ordered output handoff: {passed}/{total}";
+        File.WriteAllLines(reportPath, lines.Append(summary));
+        return total > 0 && passed == total;
+    }
+
+    public static bool VerifyLinkedInspectionQueue(string fixturePath, string reportPath, out string summary)
+    {
+        var lines = new List<string> { "Linked MAP repeated inspection and per-input output identity; no Window or Viewer constructed." };
+        var passed = 0;
+        var total = 0;
+        void Check(string name, bool ok, string detail = "") { total++; if (ok) passed++; lines.Add($"{(ok ? "PASS" : "FAIL")} | {name} | {detail}"); }
+        var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
+        Directory.CreateDirectory(root);
+        var previous = Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", root);
+        var previousContext = SynchronizationContext.Current;
+        var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(dispatcher));
+        bool WaitUntil(Func<bool> done, double seconds)
+        {
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            while (!done() && elapsed.Elapsed < TimeSpan.FromSeconds(seconds))
+            {
+                var frame = new System.Windows.Threading.DispatcherFrame();
+                dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() => frame.Continue = false));
+                System.Windows.Threading.Dispatcher.PushFrame(frame);
+                Thread.Sleep(10);
+            }
+            return done();
+        }
+        bool Await(Task<bool> task)
+        {
+            if (!WaitUntil(() => task.IsCompleted, 45)) throw new TimeoutException("Linked inspection did not finish.");
+            return task.GetAwaiter().GetResult();
+        }
+        try
+        {
+            using var shell = CreateShell(root, "linked-queue", Path.Combine(root, "records"));
+            var workbench = shell.Workbench;
+            if (!workbench.TryOpenTeachingRecipe(fixturePath, out var message)) throw new InvalidDataException(message);
+            var source = C3DHeightFieldSnapshot.LoadIdentified(workbench.Source.Path, workbench.Source.Id, workbench.Source.Unit, workbench.Source.FrameId);
+            var variantValues = source.Values.ToArray();
+            for (var row = 58; row < 96; row++)
+                for (var column = 58; column < 168; column++) variantValues[row * source.Width + column] += 100;
+            var variantPath = Path.Combine(root, "variant.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("owned-variant", source.Width, source.Height, variantValues).SaveC3D(variantPath);
+            var missingValues = source.Values.ToArray();
+            missingValues[0] = double.NaN;
+            var missingPath = Path.Combine(root, "missing-reference.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification("owned-missing", source.Width, source.Height, missingValues).SaveC3D(missingPath);
+            Check("teaching baseline creates its own output", Await(workbench.RunTeachingRecipeAsync())
+                && workbench.TryGetPublishedTeachingHeightField("output.flat-coupons", out _, out _));
+            workbench.TryGetPublishedTeachingHeightField("output.flat-coupons", out var teaching, out _);
+            var originalPath = workbench.Source.Path;
+            var queue = workbench.InspectionQueue;
+            queue.AddSources([originalPath, variantPath, missingPath]);
+            queue.RunAllCommand.Execute(null);
+            Check("three queued inputs finish explicitly", WaitUntil(() => !queue.IsRunning, 45)
+                && queue.AllCount == 3);
+            foreach (var sample in queue.Samples)
+            {
+                var missing = sample.SourcePath == missingPath;
+                if (missing)
+                {
+                    Check("failed producer exposes no earlier sample map", sample.Record?.Status == ResultStatus.Error && sample.HeightMaps.Count == 0);
+                    continue;
+                }
+                var expected = sample.SourcePath == variantPath ? 1588d : 1488d;
+                var metric = sample.Record?.Steps?.Single(step => step.Id == "step.thickness.1").Metrics.Single(value => value.Name == "Mean");
+                var map = sample.HeightMaps.GetValueOrDefault("output.flat-coupons");
+                Check("queued thickness uses this sample's corrected map", metric?.Value == expected && map is not null
+                    && map.RootSourceSha256 == sample.Record!.Source.Sha256,
+                    $"{sample.FileName};value={metric?.Value};root={map?.RootSourceSha256}");
+                if (map is not null)
+                {
+                    var actual = C3DHeightFieldSnapshot.LoadIdentified(map.Path, map.EntityId, map.Unit, map.FrameId);
+                    Check("queued display file matches the actual measured surface", actual.ContentSha256 == map.ContentSha256
+                        && actual.Values.Span[70 * actual.Width + 80] == 10000 + expected);
+                }
+            }
+            Check("inspection leaves the taught source and output separate", workbench.Source.Path == originalPath
+                && workbench.TryGetPublishedTeachingHeightField("output.flat-coupons", out var retained, out _)
+                && retained?.ContentSha256 == teaching?.ContentSha256);
+            var failed = queue.Samples.Single(sample => sample.SourcePath == missingPath);
+            File.Copy(variantPath, missingPath, true);
+            queue.SelectedSample = failed;
+            queue.RunSelectedCommand.Execute(null);
+            var recovered = WaitUntil(() => !queue.IsRunning, 30);
+            Check("valid retry replaces the failed sample's output identity", recovered && failed.Record?.Steps?.Count == 12
+                && failed.HeightMaps.TryGetValue("output.flat-coupons", out var retry) && retry.RootSourceSha256 == failed.Record.Source.Sha256
+                && retry.RootSourceSha256 != source.ContentSha256);
+        }
+        catch (Exception exception) { Check("linked repeated inspection", false, exception.ToString()); }
+        finally { SynchronizationContext.SetSynchronizationContext(previousContext); Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", previous); }
+        summary = $"Linked inspection queue: {passed}/{total}";
+        File.WriteAllLines(reportPath, lines.Append(summary));
+        return total > 0 && passed == total;
+    }
+
     public static bool Verify(string reportPath, out string summary)
     {
         var fullReportPath = Path.GetFullPath(reportPath);
@@ -599,6 +803,7 @@ internal static class ToolRecipeOrderedRunVerification
                 recordSaveFailureDetail);
             VerifySavedRecipeContext(root, runRoot, passDocument, Check);
             VerifyRealQueueRecordRecovery(root, passRecipePath, Check);
+            VerifyTeachingInspectionContext(root, passRecipePath, Check);
             Check(
                 "Thickness Pass metric remains exact",
                 recordStep?.Metrics.Single(metric => metric.Name == "Mean").Value is { } mean
@@ -1871,6 +2076,64 @@ internal static class ToolRecipeOrderedRunVerification
     }
 
     private static string ComputeHashBytes(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
+
+    private static void VerifyTeachingInspectionContext(string root, string recipePath, Action<string, bool, string> check)
+    {
+        using var shell = CreateShell(root, "teaching-inspection-context", Path.Combine(root, "context-runs"));
+        if (!shell.Workbench.TryOpenTeachingRecipe(recipePath, out var message)) throw new InvalidOperationException(message);
+        shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+        var runs = 0;
+        shell.Workbench.OrderedRunCompleted += (_, _) => runs++;
+        shell.Workbench.RunTeachingRecipeAsync().GetAwaiter().GetResult();
+        var teachingResult = shell.Workbench.CurrentOrderedRunResult;
+        var teachingRecord = shell.Workbench.CurrentOrderedRunRecord;
+        var teachingRecordPath = shell.Workbench.CurrentOrderedRunRecordPath;
+        var sourceBefore = shell.Workbench.Source.Path;
+        var recipeBytes = File.ReadAllBytes(recipePath);
+        var ngPath = Path.Combine(root, "context-ng.C3D");
+        var errorPath = Path.Combine(root, "context-error.C3D");
+        C3DHeightFieldSnapshot.CreateForVerification("source.c3d.height-map", 4, 4,
+            [10, 10, 10, 10, 10, 10, 10, 10, 18, 18, 18, 18, 18, 18, 18, 18]).SaveC3D(ngPath);
+        C3DHeightFieldSnapshot.CreateForVerification("source.c3d.height-map", 4, 4,
+            [10, 10, 10, 10, 10, 10, 10, 10, float.NaN, float.NaN, float.NaN, float.NaN, float.NaN, float.NaN, float.NaN, float.NaN]).SaveC3D(errorPath);
+        shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
+        var queue = shell.Workbench.InspectionQueue;
+        queue.AddSources([ngPath, errorPath]);
+        queue.RunAllCommand.Execute(null);
+        if (!SpinWait.SpinUntil(() => !queue.IsRunning, TimeSpan.FromSeconds(15))) throw new TimeoutException("Context fixture inspection did not finish.");
+        check("inspection retains independent NG and Error records", runs == 3 && teachingResult?.Status == ResultStatus.Pass
+            && queue.Samples[0].State == InspectionQueueItemState.Fail && queue.Samples[1].State == InspectionQueueItemState.Error,
+            $"runs={runs};states={string.Join(',', queue.Samples.Select(sample => sample.State))}");
+        var records = queue.Samples.Select(sample => (sample.Record, sample.RunRecordPath, Bytes: File.ReadAllBytes(sample.RunRecordPath!))).ToArray();
+        queue.SelectedSample = queue.Samples[0];
+        shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+        check("inspection to teaching restores its own result without executing", runs == 3
+            && ReferenceEquals(teachingResult, shell.Workbench.CurrentOrderedRunResult)
+            && ReferenceEquals(teachingRecord, shell.Workbench.CurrentOrderedRunRecord)
+            && teachingRecordPath == shell.Workbench.CurrentOrderedRunRecordPath
+            && shell.Workbench.TeachingResults is [{ IsCurrent: true, ExecutionStatus: ResultStatus.Pass }]
+            && shell.InspectionSteps.All(step => step.Status == ResultStatus.Pass.ToString())
+            && shell.Workbench.Source.Path == sourceBefore && !shell.Workbench.IsDirty && recipeBytes.SequenceEqual(File.ReadAllBytes(recipePath)),
+            $"runs={runs};teaching={shell.Workbench.OrderedRunStatus};source={shell.Workbench.Source.Path}");
+        shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
+        shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+        check("repeated navigation preserves recorded inspection bytes and teaching identity", runs == 3
+            && ReferenceEquals(teachingResult, shell.Workbench.CurrentOrderedRunResult)
+            && records.Select((record, index) => ReferenceEquals(record.Record, queue.Samples[index].Record)
+                && record.Bytes.SequenceEqual(File.ReadAllBytes(record.RunRecordPath!))).All(value => value), "No Preview, Run, recipe save, or record rewrite on navigation.");
+        using var freshShell = CreateShell(root, "inspection-before-teaching", Path.Combine(root, "fresh-context-runs"));
+        if (!freshShell.Workbench.TryOpenTeachingRecipe(recipePath, out message)) throw new InvalidOperationException(message);
+        freshShell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
+        freshShell.Workbench.InspectionQueue.AddSources([errorPath]);
+        var freshRuns = 0;
+        freshShell.Workbench.OrderedRunCompleted += (_, _) => freshRuns++;
+        freshShell.Workbench.InspectionQueue.RunAllCommand.Execute(null);
+        if (!SpinWait.SpinUntil(() => !freshShell.Workbench.InspectionQueue.IsRunning, TimeSpan.FromSeconds(15))) throw new TimeoutException("No-teaching-result fixture did not finish.");
+        freshShell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+        check("return before any teaching run shows no foreign inspection result", freshRuns == 1
+            && !freshShell.Workbench.HasOrderedRunResult && !freshShell.Workbench.HasTeachingResults && freshShell.InspectionSteps.Count == 0,
+            $"runs={freshRuns};teachingRows={freshShell.Workbench.TeachingResults.Count};recordSteps={freshShell.InspectionSteps.Count}");
+    }
 
     private static void VerifyRealQueueRecordRecovery(string root, string recipePath, Action<string, bool, string> check)
     {

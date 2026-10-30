@@ -36,6 +36,10 @@ namespace OpenVisionLab.ThreeD.Shell;
 
 public partial class MainWindow : Window
 {
+    public static System.Windows.Input.RoutedUICommand SaveFullWindowPngCommand { get; } =
+        new("Save full window PNG", nameof(SaveFullWindowPngCommand), typeof(MainWindow));
+
+    private readonly ShellWindowScreenshotController _windowScreenshot;
     private readonly OpenVisionThreeDViewerControl _viewer;
     private readonly ShellMainWindowViewModel _viewModel;
     private readonly EventHandler<ViewerHostStateChangedEventArgs> _viewerHostStateChangedHandler;
@@ -92,6 +96,7 @@ public partial class MainWindow : Window
         _nominalActualPreviewWaiter = new ShellNominalActualPreviewWaiter(
             () => _viewer.HostState.NominalActualState);
         InitializeComponent();
+        _windowScreenshot = new ShellWindowScreenshotController(this);
         _viewModel = new ShellMainWindowViewModel(
             _commandLineArguments.GetValue("--recipe-comparison-contract"),
             _commandLineArguments.GetValue("--recipe-comparison-report"),
@@ -513,6 +518,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _isClosed = true;
+        _windowScreenshot.Dispose();
         _shellSmokeScenario.Dispose();
         _viewerHost.Dispose();
         StopImportDialogSmokeTimer();

@@ -7,7 +7,7 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.WindowTitle, Korean='라인 교점 도구 실험실 | OpenVisionLab 3D Studio', English='Line Intersection Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.WindowTitle, Korean='직선 교점 도구 실험실 | OpenVisionLab 3D Studio', English='Line Intersection Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1600"
         Height="920"
         MinWidth="1120"
@@ -30,7 +30,7 @@
             <RowDefinition Height="280" />
         </Grid.RowDefinitions>
 
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Subtitle, Korean='라인 교점 도구 실험실', English='Line Intersection Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Subtitle, Korean='직선 교점 도구 실험실', English='Line Intersection Tool Lab'}" />
 
         <Border Grid.Row="1"
                 Margin="16,16,16,0"
@@ -45,22 +45,26 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+                <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.TextBrush}" AutomationProperties.AutomationId="ToolLabSourceLoadError">
+                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Content.HostState.Sources.CurrentC3DSourcePath, ElementName=InputViewerHost}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    <Run Text="{i18n:ThreeDText Key=ThreeD.ToolLab.SourceLoadError, Korean='입력을 열 수 없습니다. 파일을 확인하세요.', English='Cannot open the input. Check the file.'}" /><Run Text=" " /><Run Text="{Binding Content.HostState.ViewerStatus, ElementName=InputViewerHost, Mode=OneWay}" />
+                </TextBlock>
                 <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
                                ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PreviewTip, Korean='적용된 두 피팅 라인을 직접 평가합니다.', English='Explicitly evaluate the two applied fitted lines'}"
-                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PreviewAction, Korean='라인 교점 미리보기', English='Preview Line Intersection'}" />
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PreviewAction, Korean='직선 교점 미리보기', English='Preview Line Intersection'}" />
                     <ui:Button Margin="0,0,6,0" Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon Branch24}"
                                Click="ShowInputsButton_Click"
                                ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.ShowInputTip, Korean='적용된 두 직선 오버레이를 새로 고칩니다.', English='Refresh the two exact applied LineFeature overlays'}"
-                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.ShowInputAction, Korean='라인 교점 입력 보기', English='Show Line Intersection inputs'}" />
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.ShowInputAction, Korean='직선 교점 입력 보기', English='Show Line Intersection inputs'}" />
                     <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
-                               ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PublishTip, Korean='다시 실행하지 않고 현재 코너 앵커 미리보기를 적용합니다.', English='Apply the current corner-anchor Preview without running again'}"
-                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PublishAction, Korean='라인 교점 출력 적용', English='Apply Line Intersection output'}" />
+
+                               AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.PublishAction, Korean='직선 교점 출력 적용', English='Apply Line Intersection output'}" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -98,8 +102,8 @@
                         <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                             <StackPanel>
                                     <DockPanel><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Output, Korean=' | 코너 앵커 정보', English=' | Corner Anchor Evidence'}" /></DockPanel>
-                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LineIntersectionExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding LineIntersectionExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LineIntersectionEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LineIntersectionExecutionSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding LineIntersectionExecutionSummary}" Value="Recipe opened; Preview is required."><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Content.HostState.Sources.CurrentC3DSourcePath, ElementName=InputViewerHost}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Content.HostState.Sources.CurrentC3DSourcePath, ElementName=OutputViewerHost}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                                <TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LineIntersectionEvidenceSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding HasCurrentLineIntersectionPreview}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Content.HostState.Sources.CurrentC3DSourcePath, ElementName=InputViewerHost}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding Content.HostState.Sources.CurrentC3DSourcePath, ElementName=OutputViewerHost}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                 <Expander Margin="0,5,0,0" IsExpanded="False" Header="{i18n:ThreeDText Key=ThreeD.ToolLab.OutputDetails, Korean='출력 정보', English='Output details'}"><TextBlock TextWrapping="Wrap" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="LineIntersectionOutputHashSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock></Expander>
                             </StackPanel>
                         </Border>

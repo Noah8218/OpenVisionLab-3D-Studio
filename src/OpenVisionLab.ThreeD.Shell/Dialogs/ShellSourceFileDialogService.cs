@@ -97,8 +97,8 @@ internal sealed class ShellSourceFileDialogService
     {
         var dialog = new OpenFileDialog
         {
-            Title = DialogText("ThreeD.FileDialog.LoadRepeatability.Title", "두께 반복성 연구 불러오기", "Load Thickness Repeatability Study"),
-            Filter = DialogText("ThreeD.FileDialog.LoadRepeatability.Filter", "두께 반복성 연구 (*.json)|*.json|모든 파일 (*.*)|*.*", "Thickness Repeatability Study (*.json)|*.json|All files (*.*)|*.*"),
+            Title = DialogText("ThreeD.FileDialog.LoadRepeatability.Title", "두께 반복성 데이터 열기", "Open thickness repeatability data"),
+            Filter = DialogText("ThreeD.FileDialog.LoadRepeatability.Filter", "두께 반복성 데이터 (*.json)|*.json|모든 파일 (*.*)|*.*", "Thickness repeatability data (*.json)|*.json|All files (*.*)|*.*"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -174,7 +174,7 @@ internal sealed class ShellSourceFileDialogService
                 .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
             error = paths.Count == 0
-                ? (english ? "The selected folder has no C3D files at its top level." : "선택한 폴더의 최입력에 C3D 파일이 없습니다.")
+                ? (english ? "The selected folder has no C3D files at its top level." : "선택한 폴더의 최상위에 C3D 파일이 없습니다.")
                 : string.Empty;
             return true;
         }

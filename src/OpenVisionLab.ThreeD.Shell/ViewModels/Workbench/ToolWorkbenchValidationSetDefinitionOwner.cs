@@ -241,8 +241,8 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                 sample.Order,
                 sample.SourcePath,
                 sample.Role,
-                "저장된 역할을 불러왔습니다. 전체 실행을 기다립니다.",
-                "Saved expectations and use loaded; waiting for explicit Run All.") with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }));
+                "미검증",
+                "Not validated") with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }));
         SetDefinitionDirtyCore(false);
         onDefinitionChanged(true);
         return true;
@@ -270,8 +270,8 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
             "Pending",
             localize("대기", "Pending"),
             localize(
-                koreanMessage ?? "미실행 · '샘플 세트 실행'을 선택하세요.",
-                englishMessage ?? "Not run · choose Run sample set."),
+                koreanMessage ?? "미검증",
+                englishMessage ?? "Not validated"),
             string.Empty,
             []);
 

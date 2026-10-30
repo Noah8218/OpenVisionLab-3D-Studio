@@ -21,6 +21,7 @@ internal sealed class ToolWorkbenchRenderableC3DCatalogOwner
         "remove-outlier-pixels",
         "domain-mask",
         "level-surface",
+        "nine-point-surface-compensation",
         "roi-crop"
     ];
 

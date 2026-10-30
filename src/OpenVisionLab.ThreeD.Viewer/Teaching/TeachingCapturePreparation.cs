@@ -19,6 +19,16 @@ internal static class TeachingCapturePreparation
         C3DTransformedHeightField? transformedHeightField)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var isHeightField = string.Equals(request.SourceBinding.Format, "HeightField", StringComparison.Ordinal);
+        if (isHeightField)
+        {
+            if (request.PublishedHeightField is not { } published
+                || !ToolRecipeSelectionSourceBindingVerifier.Verify(published, request.SourceBinding).IsCurrent
+                || !string.Equals(request.FrameId, published.FrameId, StringComparison.Ordinal))
+            {
+                return Failure("The ROI owner HeightField is not currently Published or its identity changed.");
+            }
+        }
         var isTransformedHeightField = string.Equals(
             request.SourceBinding.Format,
             "TransformedHeightField",
@@ -45,10 +55,10 @@ internal static class TeachingCapturePreparation
         }
 
         if (!isTransformedHeightField
-            && (!string.Equals(
+            && ((!isHeightField && !string.Equals(
                     request.SourceBinding.Format,
                     "C3D",
-                    StringComparison.OrdinalIgnoreCase)
+                    StringComparison.OrdinalIgnoreCase))
                 || request.SourceBinding.GridWidth != c3dSource!.Value.Width
                 || request.SourceBinding.GridHeight != c3dSource.Value.Height))
         {

@@ -29,6 +29,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
     private readonly Action<ToolWorkbenchPipelineStepItem, bool, ResultStatus?, string, string, bool>? recordExecution;
     private readonly Dictionary<ToolWorkbenchPipelineStepItem, (SelectedToolOutputEvidence Output, string Context)> completedResults = [];
     private readonly Action notifyRunningChanged;
+    private readonly Action<ToolWorkbenchPipelineStepItem>? executionStarting;
     private readonly Func<bool> canStartExecution;
     private ToolWorkbenchSelectedStepExecutionRoute? activeRoute;
     private bool commandCanceled;
@@ -45,7 +46,8 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
         Action? notifyRunningChanged = null,
         Func<bool>? canStartExecution = null,
         Func<SelectedToolOutputEvidence>? captureOutput = null,
-        Action<ToolWorkbenchPipelineStepItem, bool, ResultStatus?, string, string, bool>? recordExecution = null)
+        Action<ToolWorkbenchPipelineStepItem, bool, ResultStatus?, string, string, bool>? recordExecution = null,
+        Action<ToolWorkbenchPipelineStepItem>? executionStarting = null)
     {
         this.getSelectedStep = getSelectedStep ?? throw new ArgumentNullException(nameof(getSelectedStep));
         this.routes = routes ?? throw new ArgumentNullException(nameof(routes));
@@ -55,6 +57,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
         this.canStartExecution = canStartExecution ?? (() => true);
         this.captureOutput = captureOutput ?? (() => SelectedToolOutputEvidence.Empty);
         this.recordExecution = recordExecution;
+        this.executionStarting = executionStarting;
 
         RunCommand = new RelayCommand(_ => StartCommandPreview(publish: true), _ => CanStartCommandPreview());
         PreviewCommand = new RelayCommand(
@@ -102,6 +105,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
             return Task.FromResult(false);
         }
 
+        if (getSelectedStep() is { } step) executionStarting?.Invoke(step);
         return route.PreviewAsync();
     }
 
@@ -122,6 +126,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
 
     public bool CanPublish() =>
         !IsDisposed
+        && canStartExecution()
         && getSelectedStep() is { OutputEnabled: true }
         && TryGetCurrentRoute(out var route)
         && route.CanPublish();
@@ -205,6 +210,7 @@ internal sealed class ToolWorkbenchSelectedStepExecutionOwner : IDisposable
             activeRoute = TryGetCurrentRoute(out var route) ? route : null;
             var step = getSelectedStep();
             var context = step is null ? string.Empty : captureContext(step);
+            if (step is not null) executionStarting?.Invoke(step);
             if (step is not null && completedResults.TryGetValue(step, out var previous))
                 completedResults[step] = (previous.Output, string.Empty);
             RefreshCommandStates();

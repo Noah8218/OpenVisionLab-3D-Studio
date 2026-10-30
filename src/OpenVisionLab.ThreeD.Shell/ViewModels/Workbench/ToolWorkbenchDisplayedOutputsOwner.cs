@@ -362,6 +362,7 @@ public sealed class ToolWorkbenchDisplayedOutputItem : INotifyPropertyChanged
     public string GalleryName => NodeKind == "Source" ? Label("원본 높이 맵", "Original height map") : PipelineStep?.ToolId switch
     {
         "remove-outlier-pixels" => Label("정리된 높이 맵", "Cleaned height map"),
+        "nine-point-surface-compensation" => Label("보정 높이 맵", "Compensated height map"),
         "level-surface" => Label("수평 높이 맵", "Leveled height map"),
         "datum-plane-raw-height-deviation" => Label("평면 편차 맵", "Plane deviation map"),
         "filter" => Label("필터 높이 맵", "Filtered height map"),

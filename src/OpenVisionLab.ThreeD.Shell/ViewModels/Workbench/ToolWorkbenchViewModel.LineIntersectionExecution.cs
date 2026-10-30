@@ -22,8 +22,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal bool TryGetPublishedLineIntersectionOutput(
         string outputEntityId,
-        out C3DLineIntersectionFeature? output) =>
-        lineIntersectionExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DLineIntersectionFeature? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DLineIntersectionFeature>(outputEntityId, out output)) return output is not null;
+        return lineIntersectionExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 
     internal bool TryRegisterSyntheticPublishedLineIntersectionOutputForSmoke(
         C3DLineIntersectionFeature output,

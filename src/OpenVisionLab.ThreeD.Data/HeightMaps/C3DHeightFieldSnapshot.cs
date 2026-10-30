@@ -162,6 +162,8 @@ public sealed class C3DHeightFieldSnapshot
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(unit);
+        ArgumentException.ThrowIfNullOrWhiteSpace(frameId);
         cancellationToken.ThrowIfCancellationRequested();
         var fullPath = Path.GetFullPath(path);
         var (byteLength, hash, width, height, values) = C3DHeightFieldBinaryCodec.ParseAndHash(fullPath, cancellationToken);

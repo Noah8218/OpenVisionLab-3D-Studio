@@ -72,6 +72,7 @@ internal sealed class ToolWorkbenchArtifactProjection
 
         var output = artifact.PipelineStep?.ToolId switch
         {
+            "nine-point-surface-compensation" => snapshot.GetNinePointOutput?.Invoke(artifact.Id),
             "roi-crop" => snapshot.RoiCrop.Output,
             "level-surface" => snapshot.LevelSurface.Output,
             "domain-mask" => snapshot.DomainMask.Output,
@@ -158,6 +159,8 @@ internal sealed class ToolWorkbenchArtifactProjection
                 "DisabledOutput");
         }
 
+        if (snapshot.ProjectOrderedArtifact?.Invoke(step) is { } ordered) return ordered;
+
         if (string.Equals(step.ToolId, "roi-crop", StringComparison.Ordinal)
             && snapshot.RoiCrop.Output is { } cropOutput)
         {
@@ -197,6 +200,12 @@ internal sealed class ToolWorkbenchArtifactProjection
                 PreparationQualityDelta = qualityDelta
             };
         }
+
+        if (step.ToolId == "nine-point-surface-compensation" && snapshot.GetNinePointOutput?.Invoke(step.OutputEntityId) is { } corrected)
+            return new ToolWorkbenchArtifactItem(corrected.EntityId, step.ToolName, "HeightField",
+                snapshot.IsNinePointPublished?.Invoke(step.OutputEntityId) == true ? "Published" : "Preview",
+                source.Id, source.Id, corrected.Unit, corrected.FrameId, corrected.ContentSha256,
+                $"{corrected.Width} × {corrected.Height} · {corrected.Unit}", step, "HeightField");
 
         if (string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal)
             && snapshot.LevelSurface.Output is { } leveledOutput
@@ -959,4 +968,7 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     ToolWorkbenchArtifactPreview<C3DSignedHeightDeltaArtifact>? SignedDeltaBackgroundSubtraction = null,
     Func<string, C3DHeightFieldSnapshot?>? GetPublishedFilterOutput = null,
     Func<string, C3DHeightDifferenceEdgePointSet?>? GetPublishedHeightDifferenceEdgeOutput = null,
-    SourceQualityReport? SourceQuality = null);
+    SourceQualityReport? SourceQuality = null,
+    Func<string, C3DHeightFieldSnapshot?>? GetNinePointOutput = null,
+    Func<string, bool>? IsNinePointPublished = null,
+    Func<ToolWorkbenchPipelineStepItem, ToolWorkbenchArtifactItem?>? ProjectOrderedArtifact = null);

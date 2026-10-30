@@ -84,8 +84,8 @@ internal sealed class ShellEvidenceDialogController
         var dialog = new OpenFolderDialog
         {
             Title = english
-                ? "Export Privacy-Safe Support Bundle"
-                : "개인정보 안전 지원 번들 내보내기",
+                ? "Save support ZIP"
+                : "지원 자료 ZIP 저장",
             Multiselect = false
         };
         if (dialog.ShowDialog(owner) == true

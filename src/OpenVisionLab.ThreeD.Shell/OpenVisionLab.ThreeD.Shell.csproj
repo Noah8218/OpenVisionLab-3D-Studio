@@ -124,6 +124,38 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\LICENSE"
+          Link="LICENSE"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\NOTICE"
+          Link="NOTICE"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\Shell\Dirkster.AvalonDock.4.74.1.LICENSE"
+          Link="licenses\Dirkster.AvalonDock\LICENSE"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\Shell\OpenTK.redist.glfw.3.3.0-pre20200830200122.COPYING.md"
+          Link="licenses\OpenTK.redist.glfw\COPYING.md"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\Shell\log4net.3.3.1.LICENSE"
+          Link="licenses\log4net\LICENSE"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\Shell\log4net.3.3.1.NOTICE"
+          Link="licenses\log4net\NOTICE"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\Shell\WPF-UI.4.3.0.LICENSE.md"
+          Link="licenses\WPF-UI\LICENSE.md"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\Shell\WPF-UI.4.3.0.ThirdPartyNotices.txt"
+          Link="licenses\WPF-UI\ThirdPartyNotices.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\OpenVisionLab.Logging\log4net.config"
           Link="log4net.config"
           CopyToOutputDirectory="PreserveNewest" />

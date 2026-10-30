@@ -434,6 +434,10 @@ public partial class RecipeStepPropertyGridHost : UserControl
         {
             caption.SetCurrentValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
             caption.SetCurrentValue(TextBlock.TextTrimmingProperty, TextTrimming.None);
+            if (caption.DataContext is System.Windows.Controls.WpfPropertyGrid.PropertyItem { Name: "PairCountPolicy" } property)
+            {
+                caption.SetBinding(Behaviors.WordBoundaryWrapBehavior.TextProperty, new Binding(nameof(property.DisplayName)) { Source = property });
+            }
         }
         foreach (var combo in FindVisualChildren<ComboBox>(InnerGrid))
         {

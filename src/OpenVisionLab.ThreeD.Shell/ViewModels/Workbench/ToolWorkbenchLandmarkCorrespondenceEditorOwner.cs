@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
 
 /// <summary>
-/// Owns landmark-correspondence editor state and explicit row commits.
+/// Owns landmark-correspondence editor state, revision edits and explicit row commits.
 /// It creates recipe selections only through the injected teaching-store seam.
 /// </summary>
 internal sealed class ToolWorkbenchLandmarkCorrespondenceEditorOwner
@@ -282,6 +282,23 @@ internal sealed class ToolWorkbenchLandmarkCorrespondenceEditorOwner
     {
         addOrUpdateRowCommand.RaiseCanExecuteChanged();
         removeSelectedRowCommand.RaiseCanExecuteChanged();
+    }
+
+    public void ApplyReferenceRevisionEdit()
+    {
+        var context = getContext();
+        if (!context.IsCorrespondenceStep
+            || context.Selection is not { CorrespondenceDescriptor: { } descriptor } selection
+            || string.Equals(descriptor.ReferenceRevision, ReferenceRevision, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        persistSelection(selection with
+        {
+            CorrespondenceDescriptor = descriptor with { ReferenceRevision = ReferenceRevision }
+        });
+        notifyAppliedSelectionsChanged();
     }
 
     private bool CanEditRows

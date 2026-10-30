@@ -43,8 +43,8 @@ roadmaps do not belong in this tree.
 
 The canonical version is in `Directory.Build.props`. An authorized versioned
 source update must agree with README's current version and recent history.
-Keep the latest ten real README history entries; preserve older traceability in
-Git history. Use Semantic Versioning and retain development suffixes until
+Keep README's current-version link aligned with CHANGELOG.md, which owns the
+version history; preserve older traceability in Git history. Use Semantic Versioning and retain development suffixes until
 the appropriate release is qualified.
 
 Commit, push, tag, release publication, and deployment are separate actions.

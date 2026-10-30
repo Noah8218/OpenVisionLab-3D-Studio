@@ -54,7 +54,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
     private string sharedKeyStatusText = string.Empty;
     private string lastTcpTransferText = L("NoTcpTransfer", "TCP 전송 기록이 없습니다.", "No TCP transfer has run.");
     private string rejectionReason = string.Empty;
-    private string statusText = L("Restore", "설정을 복원했습니다. 폴더를 스캔하거나 작업을 실행하지 않았습니다.", "Setup restored. No folder was scanned and no action was run.");
+    private string statusText = L("Restore", "설정을 복원했습니다.", "Setup restored.");
     private string selectedSummary = L("ChooseRefresh", "새로고침을 눌러 Machine Studio 검사 요청을 찾으세요.", "Choose Refresh to find Machine Studio handoffs.");
     private string currentRunRecordSummary = L("NoRunRecord", "선택한 검사 기록이 없습니다.", "No Run Record is selected.");
     private string selectedInputArtifactPath = string.Empty;
@@ -489,7 +489,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
         if (dialogHost.TrySelectExchangeRoot(initialDirectory, title, out var path))
         {
             ExchangeRoot = path;
-            StatusText = L("FolderSelected", "교환 폴더를 선택했습니다. 설정 저장을 눌러 기억하세요.", "Exchange folder selected. Choose Save setup to remember it.");
+            StatusText = L("FolderSelected", "교환 폴더 변경 · 미저장", "Exchange folder changed · not saved");
         }
     }
 
@@ -517,8 +517,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             TcpPeerPortText = tcp.PeerPort.ToString(CultureInfo.InvariantCulture);
             StatusText = L(
                 "Saved",
-                "교환 폴더와 TCP 주소를 저장했습니다. 공유 키는 저장하지 않으며 수신 시작, 새로고침, 검토는 각각 별도의 작업입니다.",
-                "Exchange folder and TCP endpoints saved. The shared key is not saved; listening, refresh, and review remain separate explicit actions.");
+                "교환 폴더와 TCP 주소를 저장했습니다.",
+                "Exchange folder and TCP endpoints saved.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -540,7 +540,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             Transactions.Clear();
             SelectedTransaction = null;
             LastTcpTransferText = L("NoTcpTransfer", "TCP 전송 기록이 없습니다.", "No TCP transfer has run.");
-            StatusText = L("Reset", "교환 설정을 초기화했습니다. 네트워크 또는 검사 요청 작업은 실행하지 않았습니다.", "Exchange setup reset. No network or handoff action was run.");
+            StatusText = L("Reset", "교환 설정을 초기화했습니다.", "Exchange setup reset.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -562,7 +562,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                 ?? Transactions.FirstOrDefault();
             StatusText = Transactions.Count == 0
                 ? L("NoneFound", "Machine Studio 검사 요청을 찾지 못했습니다.", "No Machine Studio handoff was found.")
-                : string.Format(L("FoundFormat", "검사 요청 {0}개를 찾았습니다. 활성 레시피에는 아무것도 불러오지 않았습니다.", "Found {0} handoff(s). Nothing was loaded into the active recipe."), Transactions.Count);
+                : string.Format(L("FoundFormat", "검사 요청 {0}개를 찾았습니다.", "Found {0} handoff(s)."), Transactions.Count);
             return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
@@ -597,7 +597,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
             var status = transactionWorkflow.Review(root, selected, rejectionReason);
             RefreshHandoffs(selected.TransactionId);
             StatusText = status == IntegrationAcknowledgementStatus.Accepted
-                ? L("Accepted", "승인 응답을 저장했습니다. 레시피를 불러오거나 검사를 실행하지 않았습니다. 상대에게 보내려면 선택 항목 전송을 누르세요.", "ACK recorded in the local transaction. No recipe was loaded and no inspection was run. Choose Push selected transaction to return it to the TCP peer.")
+                ? L("Accepted", "승인 응답을 저장했습니다. 상대에게 보내려면 선택 항목 전송을 누르세요.", "ACK recorded locally. Choose Push selected transaction to send it to the TCP peer.")
                 : L("Rejected", "거부 응답을 저장했습니다. 상대에게 보내려면 선택 항목 전송을 누르세요.", "Rejected ACK recorded in the local transaction. Choose Push selected transaction to return it to the TCP peer.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
@@ -761,8 +761,8 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged, IAsyncD
                         endpoint);
                     StatusText = L(
                         "TcpStarted",
-                        "TCP 수신을 시작했습니다. 요청을 받아도 검토 응답, 레시피 열기, 미리보기, 결과 적용, 검사 또는 결과 저장은 자동으로 실행되지 않습니다.",
-                        "TCP listening started. Receipt alone never ACKs, loads a recipe, Previews, Publishes, Runs, or creates a Result.");
+                        "TCP 수신 중입니다. 받은 요청을 검토한 뒤 승인 또는 거절하세요.",
+                        "TCP listening. Review received requests, then accept or reject them.");
                 }
             }
             finally

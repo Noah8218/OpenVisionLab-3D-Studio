@@ -18,8 +18,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     internal bool TryGetPublishedLineFitOutput(
         string outputEntityId,
-        out C3DLineFeature? output) =>
-        lineFitExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+        out C3DLineFeature? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DLineFeature>(outputEntityId, out output)) return output is not null;
+        return lineFitExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
 
     public C3DLineFeaturePointDiagnostic? SelectedLineFitDiagnostic =>
         lineFitExecutionOwner.SelectedDiagnostic;

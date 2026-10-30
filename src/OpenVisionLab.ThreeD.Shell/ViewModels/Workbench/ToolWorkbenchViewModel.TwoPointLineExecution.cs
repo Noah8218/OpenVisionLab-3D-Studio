@@ -19,8 +19,11 @@ public sealed partial class ToolWorkbenchViewModel
         twoPointLineExecutionOwner.IsPreviewPublished;
     internal C3DTwoPointLineFeature? CurrentTwoPointLineOutput =>
         twoPointLineExecutionOwner.CurrentOutput;
-    internal bool TryGetPublishedTwoPointLineOutput(string outputEntityId, out C3DTwoPointLineFeature? output) =>
-        twoPointLineExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    internal bool TryGetPublishedTwoPointLineOutput(string outputEntityId, out C3DTwoPointLineFeature? output)
+    {
+        if (orderedRunExecutionOwner.TryGetPublishedOutput<C3DTwoPointLineFeature>(outputEntityId, out output)) return output is not null;
+        return twoPointLineExecutionOwner.TryGetPublishedOutput(outputEntityId, out output);
+    }
     internal bool TryGetPublishedLineGeometry(string outputEntityId, out IC3DLineGeometry? output)
     {
         if (TryGetPublishedTwoPointLineOutput(outputEntityId, out var picked) && picked is not null)

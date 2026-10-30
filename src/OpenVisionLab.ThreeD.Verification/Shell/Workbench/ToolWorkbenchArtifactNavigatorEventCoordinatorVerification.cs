@@ -1628,8 +1628,8 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                         .Single(item => item.Id == qualityDeltaOutput.EntityId);
                     Check(
                         "domain-mask detail localizes while preserving reduction evidence, output identity, grid, valid/missing counts, and source quality",
-                        englishDomainMaskArtifact.Detail.Contains("domain-reduced", StringComparison.Ordinal)
-                        && koreanDomainMaskArtifact.Detail.Contains("도메인으로 축소됨", StringComparison.Ordinal)
+                        englishDomainMaskArtifact.Detail.Contains("Limited to valid region", StringComparison.Ordinal)
+                        && koreanDomainMaskArtifact.Detail.Contains("유효 영역으로 제한", StringComparison.Ordinal)
                         && englishDomainMaskArtifact.Detail.Contains("valid 4", StringComparison.Ordinal)
                         && koreanDomainMaskArtifact.Detail.Contains("유효 4개", StringComparison.Ordinal)
                         && englishDomainMaskArtifact.Detail.Contains("missing 0", StringComparison.Ordinal)

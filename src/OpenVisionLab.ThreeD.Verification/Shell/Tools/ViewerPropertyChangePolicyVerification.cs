@@ -315,7 +315,7 @@ internal static class ViewerPropertyChangePolicyVerification
             sectionProfileState.Visible
             && sectionProfileState.SampleCount == 3
             && sectionProfileState.Summary.Contains("section", StringComparison.Ordinal)
-            && sectionProfileState.Range.Contains("min 0.500", StringComparison.Ordinal)
+            && sectionProfileState.Range.Contains("min 0.5,", StringComparison.Ordinal)
             && sectionProfileState.PathData == "M 0,30 L 240,12",
             $"visible={sectionProfileState.Visible}|samples={sectionProfileState.SampleCount}|summary={sectionProfileState.Summary}|range={sectionProfileState.Range}|path={sectionProfileState.PathData}");
         hostViewModel.SetLazSampleSource("laz-path", "Sample LAZ");

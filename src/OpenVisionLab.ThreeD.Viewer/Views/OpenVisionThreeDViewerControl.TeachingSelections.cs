@@ -1078,10 +1078,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             TeachingRoiHeightHandleOverlay.Visibility = Visibility.Collapsed;
             TeachingOrientedBoxHandleOverlay.Visibility = Visibility.Collapsed;
-            return;
         }
 
-        if (viewModel.C3DSampleVisible)
+        if (c3dSample is not null && viewModel.C3DSampleVisible)
         {
             foreach (var selection in viewModel.RepeatPreviewTeachingSelections.Where(IsSelectionForCurrentC3DGrid))
             {
@@ -1147,8 +1146,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         workbenchOverlayRenderer.DrawAffineApply(gl);
         workbenchOverlayRenderer.DrawRegridHeightField(gl);
         workbenchOverlayRenderer.DrawRegridTeachingSelectionOverlays(gl);
-        UpdateTeachingRoiHeightHandleOverlay();
-        UpdateTeachingOrientedBoxHandleOverlay();
+        if (c3dSample is not null)
+        {
+            UpdateTeachingRoiHeightHandleOverlay();
+            UpdateTeachingOrientedBoxHandleOverlay();
+        }
 
         gl.LineWidth(1.0f);
         gl.PointSize(1.0f);

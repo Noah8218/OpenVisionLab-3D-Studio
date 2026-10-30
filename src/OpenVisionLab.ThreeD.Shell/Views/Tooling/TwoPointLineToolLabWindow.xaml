@@ -7,7 +7,7 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.WindowTitle, Korean='2포인트 라인 도구 실험실 | OpenVisionLab 3D Studio', English='2-Point Line Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.WindowTitle, Korean='2점 직선 도구 실험실 | OpenVisionLab 3D Studio', English='2-Point Line Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1600" Height="920" MinWidth="1120" MinHeight="700"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -22,15 +22,15 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="280" />
         </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Subtitle, Korean='2포인트 라인 도구 실험실', English='2-Point Line Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Subtitle, Korean='2점 직선 도구 실험실', English='2-Point Line Tool Lab'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12" Background="{DynamicResource ThreeD.PanelHeaderBrush}" BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.ShowPicks, Korean='포인트 보기', English='Show picks'}" Icon="{ui:SymbolIcon Eye24}" Click="ShowInputsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksTip, Korean='현재 입력 데이터와 구성된 선분을 표시합니다.', English='Show the exact current source and constructed segment'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksAction, Korean='2포인트 라인 입력 보기', English='Show 2-Point Line inputs'}" />
-                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{Binding Localization.Preview}" Icon="{ui:SymbolIcon Play24}" Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewTip, Korean='작성된 포인트에 현재 원본 높이 데이터 값을 직접 해석합니다.', English='Resolve current raw C3D values for the authored picks'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewAction, Korean='2포인트 라인 미리보기', English='Preview 2-Point Line'}" />
-                    <ui:Button Content="{Binding Localization.Publish}" Icon="{ui:SymbolIcon CheckmarkCircle24}" Command="{Binding PublishSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishTip, Korean='다시 실행하지 않고 현재 2포인트 라인 미리보기를 적용합니다.', English='Apply the current 2-Point Line Preview without running again'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishAction, Korean='2포인트 라인 적용', English='Apply 2-Point Line'}" />
+                    <ui:Button Margin="0,0,6,0" Content="{i18n:ThreeDText Key=ThreeD.ToolLab.ShowPicks, Korean='포인트 보기', English='Show picks'}" Icon="{ui:SymbolIcon Eye24}" Click="ShowInputsButton_Click" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksTip, Korean='현재 입력 데이터와 구성된 선분을 표시합니다.', English='Show the exact current source and constructed segment'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.ShowPicksAction, Korean='2점 직선 입력 보기', English='Show 2-Point Line inputs'}" />
+                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="{Binding Localization.Preview}" Icon="{ui:SymbolIcon Play24}" Command="{Binding PreviewSelectedStepCommand}" ToolTip="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewTip, Korean='선택한 점 2개로 직선 계산', English='Calculate a line from two selected points'}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PreviewAction, Korean='2점 직선 미리보기', English='Preview 2-Point Line'}" />
+                    <ui:Button Content="{Binding Localization.Publish}" Icon="{ui:SymbolIcon CheckmarkCircle24}" Command="{Binding PublishSelectedStepCommand}" AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.PublishAction, Korean='2점 직선 적용', English='Apply 2-Point Line'}" />
                 </WrapPanel>
             </Grid>
         </Border>

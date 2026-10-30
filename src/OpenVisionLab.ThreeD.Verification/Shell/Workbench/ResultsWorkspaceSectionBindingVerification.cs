@@ -18,6 +18,91 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 
 internal static class ResultsWorkspaceSectionBindingVerification
 {
+    public static bool VerifyCopyState(string reportPath, out string summary)
+    {
+        var passed = false;
+        var result = string.Empty;
+        var thread = new Thread(() => passed = VerifyCopyStateOnSta(reportPath, out result));
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        summary = result;
+        return passed;
+    }
+
+    private static bool VerifyCopyStateOnSta(string reportPath, out string summary)
+    {
+        var checks = new List<(string Name, bool Passed)>();
+        var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+        try
+        {
+            using var workspace = new ResultsWorkspaceViewModel();
+            var notifications = new List<string?>();
+            workspace.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+            foreach (var language in new[] { OpenVisionLanguage.English, OpenVisionLanguage.Korean })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                notifications.Clear();
+                workspace.RefreshLocalization();
+                checks.Add(($"EmptyHistorySummaryNotifies-{language}", notifications.Contains(nameof(workspace.HistorySummary))
+                    && workspace.HistorySummary == (language == OpenVisionLanguage.Korean
+                        ? "저장 기록 0개 · 유한 측정값 0개" : "0 saved records · 0 finite values")));
+            }
+
+            var metric = new InspectionRunMetric("ValidSampleCount", MetricKind.Count, 12960, "count", ResultStatus.Pass);
+            var saved = new InspectionRunRecord(InspectionRunRecord.CurrentSchemaVersion, "copy-state",
+                DateTimeOffset.Parse("2026-10-27T00:00:00Z"), new("ToolRecipe", "1", "fixture.ov3d-recipe.json", new string('A', 64)),
+                new("input", Path.Combine(Path.GetDirectoryName(Path.GetFullPath(reportPath))!, "not-loaded.C3D"), new string('1', 64), 0, "raw-height"),
+                "Thickness", ResultStatus.Pass, "Saved", 12, [new("Mean", MetricKind.Deviation, 8, "raw-height", ResultStatus.Pass), metric], [], "Stored", new("", null, null, null, null, null));
+            var snapshot = ResultsRunSnapshot.FromRecord(saved)!;
+            workspace.RefreshHistory([new("copy-state.json", "copy-state", "", "Pass", 1, true) { Snapshot = snapshot }]);
+            var selector = new ComboBox { DataContext = workspace, DisplayMemberPath = "DisplayName" };
+            selector.SetBinding(ItemsControl.ItemsSourceProperty, new Binding(nameof(workspace.Measurements)));
+            selector.SetBinding(Selector.SelectedItemProperty, new Binding(nameof(workspace.SelectedMeasurement)) { Mode = BindingMode.TwoWay });
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            selector.SelectedIndex = 1;
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            var storedMetric = snapshot.Metrics.Single(item => item.Name == "ValidSampleCount");
+            var key = storedMetric.Key;
+            var points = workspace.TrendPoints;
+            checks.Add(("ControlSelectionUpdatesMetric", workspace.SelectedMeasurement?.Key == key
+                && workspace.TrendPoints.Single().Metric.Value == 12960));
+            foreach (var language in new[] { OpenVisionLanguage.English, OpenVisionLanguage.Korean, OpenVisionLanguage.English })
+            {
+                OpenVisionLanguageService.SetLanguage(language, save: false);
+                workspace.RefreshLocalization();
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                var label = language == OpenVisionLanguage.Korean ? "유효 데이터 수" : "Valid sample count";
+                checks.Add(($"MetricDisplayName-{language}", storedMetric.DisplayName == label
+                    && workspace.Measurements.Single(item => item.Key == key).DisplayName == $"Thickness · {label}"));
+                checks.Add(($"LanguagePreservesStoredValuesAndSelection-{language}", workspace.SelectedMeasurement?.Key == key
+                    && selector.SelectedItem is ResultsMeasurementOption selected && selected.Key == key
+                    && ReferenceEquals(points, workspace.TrendPoints) && !workspace.InputPreview.IsLoading
+                    && storedMetric.Name == "ValidSampleCount" && storedMetric.Value == 12960
+                    && storedMetric.Unit == "count" && storedMetric.Key == key));
+            }
+            checks.Add(("UnknownMetricNamesArePreserved", (storedMetric with { Name = "operator-custom-name" }).DisplayName == "operator-custom-name"));
+            workspace.RefreshHistory([]);
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            checks.Add(("EmptyHistoryClearsControlAndTrend", selector.SelectedItem is null
+                && workspace.SelectedMeasurement is null && workspace.TrendPoints.Count == 0));
+            BindingOperations.ClearAllBindings(selector);
+        }
+        catch (Exception exception)
+        {
+            checks.Add(($"Unexpected-{exception.GetBaseException().Message}", false));
+        }
+        finally
+        {
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+        }
+        var passed = checks.All(check => check.Passed);
+        summary = $"Result={(passed ? "PASS" : "FAIL")}|{checks.Count(check => check.Passed)}/{checks.Count}";
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        File.WriteAllLines(reportPath, checks.Select(check => $"{check.Name}={(check.Passed ? "PASS" : "FAIL")}").Append(summary));
+        return passed;
+    }
+
     public static bool Verify(string reportPath, out string summary)
     {
         List<(string Name, bool Passed, string Detail)>? checks = null;

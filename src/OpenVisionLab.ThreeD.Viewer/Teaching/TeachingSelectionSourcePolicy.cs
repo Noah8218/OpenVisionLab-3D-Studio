@@ -6,8 +6,9 @@ namespace OpenVisionLab.ThreeD.Viewer.Teaching;
 /// Applies the Viewer rule for deciding whether a persisted teaching
 /// selection still belongs to the currently loaded C3D grid. The rule is
 /// WPF/OpenGL-neutral so the View only supplies the current source snapshot.
-/// Optional binding metadata is intentionally ignored here to preserve the
-/// existing C3D selection compatibility contract.
+/// A derived HeightField can be displayed through its byte-identical C3D
+/// export. Capture/editing contracts remain separate. Optional binding
+/// metadata stays neutral for existing C3D selection compatibility.
 /// </summary>
 internal static class TeachingSelectionSourcePolicy
 {
@@ -16,11 +17,12 @@ internal static class TeachingSelectionSourcePolicy
         TeachingCaptureSourceSnapshot source)
     {
         ArgumentNullException.ThrowIfNull(selection);
-        return string.Equals(
+        var isC3DGrid = string.Equals(
                 selection.SourceBinding.Format,
                 "C3D",
                 StringComparison.OrdinalIgnoreCase)
-            && string.Equals(
+            || string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.OrdinalIgnoreCase);
+        return isC3DGrid && string.Equals(
                 selection.SourceBinding.ContentSha256,
                 source.ContentSha256,
                 StringComparison.OrdinalIgnoreCase)
