@@ -13,7 +13,15 @@ public static class ToolRecipeGridPolygonRasterizer
         ToolRecipeGridPolygon? polygon,
         int gridWidth,
         int gridHeight)
+        => Rasterize(polygon, gridWidth, gridHeight, CancellationToken.None);
+
+    public static ToolRecipeGridPolygonRasterization Rasterize(
+        ToolRecipeGridPolygon? polygon,
+        int gridWidth,
+        int gridHeight,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (gridWidth <= 0 || gridHeight <= 0)
         {
             return new(
@@ -24,6 +32,7 @@ public static class ToolRecipeGridPolygonRasterizer
         }
 
         var errors = ToolRecipeGridPolygonGeometry.Validate(polygon, gridWidth, gridHeight);
+        cancellationToken.ThrowIfCancellationRequested();
         if (errors.Count > 0)
         {
             return new(
@@ -40,6 +49,7 @@ public static class ToolRecipeGridPolygonRasterizer
         {
             for (var column = 0; column < gridWidth; column++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (ContainsCellCenter(vertices, row, column))
                 {
                     cells.Add(new ToolRecipeGridPolygonCell(row, column));
@@ -47,7 +57,11 @@ public static class ToolRecipeGridPolygonRasterizer
             }
         }
 
-        return new(gridWidth, gridHeight, cells.ToArray(), Array.Empty<string>());
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = new ToolRecipeGridPolygonRasterization(
+            gridWidth, gridHeight, cells.ToArray(), Array.Empty<string>());
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
     }
 
     private static bool ContainsCellCenter(

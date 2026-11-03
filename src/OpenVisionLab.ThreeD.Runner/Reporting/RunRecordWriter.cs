@@ -400,28 +400,76 @@ internal static class RunRecordWriter
 
     private static string? RunGit(string workingDirectory, params string[] arguments)
     {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        return RunProcess(startInfo);
+    }
+
+    private static string? RunProcess(ProcessStartInfo startInfo)
+    {
+        using var process = new Process { StartInfo = startInfo };
+        using var cancellation = new CancellationTokenSource();
+        var started = false;
+        Task? completion = null;
         try
         {
-            using var process = new Process
-            {
-                StartInfo = new ProcessStartInfo("git")
-                {
-                    WorkingDirectory = workingDirectory,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
-            foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
             if (!process.Start()) return null;
-            var output = process.StandardOutput.ReadToEnd().Trim();
-            if (!process.WaitForExit(3000) || process.ExitCode != 0) return null;
-            return output;
+            started = true;
+            cancellation.CancelAfter(3000);
+            var output = process.StandardOutput.ReadToEndAsync(cancellation.Token);
+            var error = process.StandardError.ReadToEndAsync(cancellation.Token);
+            completion = Task.WhenAll(output, error, process.WaitForExitAsync(cancellation.Token));
+            completion.WaitAsync(cancellation.Token).GetAwaiter().GetResult();
+            return process.ExitCode == 0 ? output.GetAwaiter().GetResult().Trim() : null;
         }
-        catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+        catch (Exception exception) when (
+            exception is InvalidOperationException
+                or System.ComponentModel.Win32Exception
+                or IOException
+                or OperationCanceledException)
         {
             return null;
+        }
+        finally
+        {
+            cancellation.Cancel();
+            if (started)
+            {
+                try
+                {
+                    // The drain/completion deadline and cleanup wait are separate;
+                    // OS process start/termination calls are not a realtime guarantee.
+                    if (!process.HasExited) process.Kill(entireProcessTree: true);
+                    if (!process.WaitForExit(1000))
+                    {
+                        Console.Error.WriteLine("Run Record metadata process cleanup did not finish within its wait.");
+                    }
+                }
+                catch (Exception exception) when (
+                    exception is InvalidOperationException
+                        or System.ComponentModel.Win32Exception
+                        or NotSupportedException
+                        or AggregateException)
+                {
+                    Console.Error.WriteLine($"Run Record metadata process cleanup failed: {exception.Message}");
+                }
+            }
+
+            if (completion is not null)
+            {
+                _ = completion.ContinueWith(
+                    task => { _ = task.Exception; },
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
         }
     }
 

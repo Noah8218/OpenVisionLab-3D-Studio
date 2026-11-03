@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261029.nine-point-compensation.1.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-rc.1.integration.20261102.138.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-dev.20261029.nine-point-compensation.1.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.3.0-rc.1.integration.20261102.138.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -58,7 +58,8 @@ try {
         "README.md",
         "docs/three-d-inspection.md",
         "lib/netstandard2.0/OpenVisionLab.Vision3D.dll",
-        "lib/netstandard2.0/OpenVisionLab.Vision3D.xml")) {
+        "lib/netstandard2.0/OpenVisionLab.Vision3D.xml",
+        "lib/netstandard2.0/OpenVisionLab.Vision3D.pdb")) {
         if ($entries -notcontains $requiredEntry) {
             throw "OpenVisionLab Vision SDK package is missing required entry: $requiredEntry"
         }
@@ -85,13 +86,13 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.3.0-dev.20261029.nine-point-compensation.1" -or $sourceCommit -ne "cdaa08d04ed569be5aba95324f2d851b7bad637b") {
+    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.3.0-rc.1.integration.20261102.138" -or $sourceCommit -ne "a550fadeec5b35103d1288743aa6746e4e4a60a2") {
         throw "OpenVisionLab Vision SDK package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
 
-    $computeVersion = "3.3.0-dev.20261029.nine-point-compensation.1"
+    $computeVersion = "3.3.0-rc.1.integration.20261102.138"
     $computeDependency = $metadata.SelectSingleNode("n:dependencies/n:group/n:dependency[@id='OpenVisionLab.Compute']", $namespaceManager)
-    if ($null -eq $computeDependency -or [string]$computeDependency.version -ne $computeVersion) {
+    if ($null -eq $computeDependency -or [string]$computeDependency.version -ne ("[" + $computeVersion + "]")) {
         throw "Vision3D must declare the pinned OpenVisionLab.Compute dependency."
     }
     $computeName = "OpenVisionLab.Compute.$computeVersion.nupkg"
@@ -104,7 +105,7 @@ try {
     }
     $computeArchive = [System.IO.Compression.ZipFile]::OpenRead($computePath)
     try {
-        foreach ($requiredEntry in @("OpenVisionLab.Compute.nuspec", "LICENSE", "NOTICE", "README.md", "lib/netstandard2.0/OpenVisionLab.Compute.dll", "lib/netstandard2.0/OpenVisionLab.Compute.xml")) {
+        foreach ($requiredEntry in @("OpenVisionLab.Compute.nuspec", "LICENSE", "NOTICE", "README.md", "lib/netstandard2.0/OpenVisionLab.Compute.dll", "lib/netstandard2.0/OpenVisionLab.Compute.xml", "lib/netstandard2.0/OpenVisionLab.Compute.pdb")) {
             if (@($computeArchive.Entries.FullName) -notcontains $requiredEntry) {
                 throw "OpenVisionLab.Compute package is missing required entry: $requiredEntry"
             }

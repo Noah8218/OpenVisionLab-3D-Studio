@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -37,7 +38,12 @@ public static class C3DWarpageRule
     public const string ToolName = "C3D Warpage";
 
     public static C3DWarpageEvaluation Evaluate(C3DWarpageInput input)
+    { return Evaluate(input, CancellationToken.None); }
+
+        public static C3DWarpageEvaluation Evaluate(C3DWarpageInput input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            C3DWarpageEvaluation Complete(C3DWarpageEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         ArgumentNullException.ThrowIfNull(input);
 
         var package = VisionSdkHeightMapInspection.EvaluateWarpage(
@@ -56,7 +62,7 @@ public static class C3DWarpageRule
                 new VisionSdkGridRoi(input.Roi.Row, input.Roi.Column, input.Roi.RowCount, input.Roi.ColumnCount),
                 input.Acceptance.MaximumPeakToValley,
                 input.Acceptance.MaximumRms,
-                input.MinimumValidSamples));
+                input.MinimumValidSamples), cancellationToken);
 
         var metrics = OrderMetrics(package.Result.Metrics);
         var result = new ToolResult(
@@ -74,7 +80,7 @@ public static class C3DWarpageRule
                     input.SourceEntityId)]
                 : []);
 
-        return new C3DWarpageEvaluation(
+        return Complete(new C3DWarpageEvaluation(
             result,
             package.HasMeasurement,
             package.PackageResultStatus,
@@ -87,7 +93,7 @@ public static class C3DWarpageRule
             MetricValue(metrics, "PlaneSlopeX"),
             MetricValue(metrics, "PlaneSlopeY"),
             MetricValue(metrics, "PlaneIntercept"),
-            MetricCount(metrics, "ValidSampleCount"));
+            MetricCount(metrics, "ValidSampleCount")));
     }
 
     private static IReadOnlyList<Metric> OrderMetrics(IReadOnlyList<Metric> metrics)

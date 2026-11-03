@@ -9,6 +9,10 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 internal static class SignedDeltaViewerInterchangeVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var fullReportPath = Path.GetFullPath(reportPath);
@@ -65,6 +69,7 @@ internal static class SignedDeltaViewerInterchangeVerification
                 && json.Contains("NaN", StringComparison.Ordinal),
                 $"schema={reopened.SchemaVersion};artifact={reopened.ContentSha256};values={reopened.Values.Count};zero={reopened.ZeroDeltaSampleCount};missing={reopened.MissingEitherSampleCount};namedNaN={json.Contains("NaN", StringComparison.Ordinal)}");
 
+            stageCompleted?.Invoke("signed-first-check");
             var frame = C3DHeightImageFrame.Create(reopened);
             var zeroCell = frame.TryGetCell(0, 0, out var zero)
                 && zero.IsValid
@@ -277,7 +282,7 @@ internal static class SignedDeltaViewerInterchangeVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"ERROR | exception | {exception.GetType().Name}: {exception.Message}");
+            Check("exception", false, exception.ToString());
         }
         finally
         {

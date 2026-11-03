@@ -30,6 +30,18 @@ public sealed record HeightDeviationRecipe(
         var recipe = JsonSerializer.Deserialize<HeightDeviationRecipe>(stream, JsonOptions)
             ?? throw new InvalidDataException($"Recipe is empty: {path}");
 
+        Validate(recipe);
+        return recipe;
+    }
+
+    public void Save(string path)
+    {
+        Validate(this);
+        LegacyRecipeJsonStore.Save(path, this, JsonOptions);
+    }
+
+    private static void Validate(HeightDeviationRecipe recipe)
+    {
         if (string.IsNullOrWhiteSpace(recipe.RecipeType)
             || !recipe.RecipeType.Equals(SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
         {
@@ -80,15 +92,6 @@ public sealed record HeightDeviationRecipe(
         {
             ValidateCrossSection(crossSection, recipe.Source.EntityId);
         }
-
-        return recipe;
-    }
-
-    public void Save(string path)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        using var stream = File.Create(path);
-        JsonSerializer.Serialize(stream, this, JsonOptions);
     }
 
     private static void ValidateTransform(ModelTransform transform)
@@ -300,6 +303,18 @@ public sealed record LazTwoPointMeasurementRecipe(
         var recipe = JsonSerializer.Deserialize<LazTwoPointMeasurementRecipe>(stream, JsonOptions)
             ?? throw new InvalidDataException($"Recipe is empty: {path}");
 
+        Validate(recipe);
+        return recipe;
+    }
+
+    public void Save(string path)
+    {
+        Validate(this);
+        LegacyRecipeJsonStore.Save(path, this, JsonOptions);
+    }
+
+    private static void Validate(LazTwoPointMeasurementRecipe recipe)
+    {
         if (string.IsNullOrWhiteSpace(recipe.RecipeType)
             || !recipe.RecipeType.Equals(SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
         {
@@ -337,14 +352,6 @@ public sealed record LazTwoPointMeasurementRecipe(
         }
 
         ValidateAcceptance(recipe.Acceptance);
-        return recipe;
-    }
-
-    public void Save(string path)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        using var stream = File.Create(path);
-        JsonSerializer.Serialize(stream, this, JsonOptions);
     }
 
     private static void ValidateAcceptance(LazTwoPointMeasurementRecipeAcceptance? acceptance)

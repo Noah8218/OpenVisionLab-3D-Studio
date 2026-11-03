@@ -43,7 +43,7 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1"
                         CornerRadius="3">
-                    <logView:LogPanelView />
+                    <logView:LogPanelView x:Name="ApplicationLogPanel" />
                 </Border>
             </Grid>
         </TabItem>

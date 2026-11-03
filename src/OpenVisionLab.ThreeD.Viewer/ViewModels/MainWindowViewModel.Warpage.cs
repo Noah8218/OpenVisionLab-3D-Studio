@@ -18,8 +18,6 @@ public sealed partial class MainWindowViewModel
     private const string WarpageDefaultFrameId = "frame.c3d-grid-index";
     private readonly RelayCommand teachWarpageRoiCommand;
     private readonly RelayCommand previewWarpageCommand;
-    private ToolResult? c3dWarpagePreview;
-    private bool c3dWarpagePreviewActive;
     private bool warpageConfigured;
     private string warpageStepId = WarpageStepId;
     private string warpageSourceEntityId = C3DWarpageEntityId;
@@ -254,16 +252,7 @@ public sealed partial class MainWindowViewModel
     public void SetWarpagePreview(C3DWarpageEvaluation evaluation)
     {
         ArgumentNullException.ThrowIfNull(evaluation);
-        c3dHeightDeviationPreview = null;
-        ClearThicknessPreview();
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
         WarpageConfigured = true;
-        c3dWarpagePreview = evaluation.Result;
-        c3dWarpagePreviewActive = true;
         WarpageVisible = true;
         WarpagePeakToValley = evaluation.PeakToValley;
         WarpageRms = evaluation.Rms;
@@ -277,10 +266,8 @@ public sealed partial class MainWindowViewModel
             CultureInfo.InvariantCulture,
             $"Best-fit ROI row {evaluation.Roi.Row}, column {evaluation.Roi.Column}, size {evaluation.Roi.RowCount} x {evaluation.Roi.ColumnCount} | valid {evaluation.ValidSampleCount:N0} | residual {evaluation.MinimumResidual:0.##}..{evaluation.MaximumResidual:0.##} {WarpageUnit} | package {evaluation.PackageResultStatus}/{evaluation.PackageErrorCode} | declared scalar, uncalibrated");
 
-        inspectionSession.Activate(ViewerInspectionKind.C3DWarpage);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DWarpage, evaluation.Result);
+        ResultOverlayVisible = true;
         SelectedColorMode = "Deviation";
         SelectedSelectionMode = WarpageRoiSelectionMode;
         SelectedEntity = "C3D Warpage";
@@ -294,8 +281,6 @@ public sealed partial class MainWindowViewModel
 
     public void ClearWarpagePreview()
     {
-        c3dWarpagePreview = null;
-        c3dWarpagePreviewActive = false;
         WarpageVisible = false;
         WarpagePeakToValley = double.NaN;
         WarpageRms = double.NaN;
@@ -308,6 +293,7 @@ public sealed partial class MainWindowViewModel
         WarpageDetails = WarpageConfigured
             ? string.Create(CultureInfo.InvariantCulture, $"Best-fit grid ROI row {WarpageRoiRow}, column {WarpageRoiColumn}, size {WarpageRoiRowCount} x {WarpageRoiColumnCount} | declared scalar, uncalibrated")
             : "Best-fit residuals use declared raw-height only; physical calibration is not inferred.";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DWarpage);
     }
 
     public void ClearWarpageRecipeStep()
@@ -336,16 +322,13 @@ public sealed partial class MainWindowViewModel
 
     public void InvalidateWarpagePreview(string reason)
     {
-        if (!c3dWarpagePreviewActive)
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DWarpage))
         {
             return;
         }
 
         ClearWarpagePreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }

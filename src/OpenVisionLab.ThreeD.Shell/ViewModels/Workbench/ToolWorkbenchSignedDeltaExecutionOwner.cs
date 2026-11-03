@@ -59,7 +59,7 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
     public bool IsSelectedStep => !IsDisposed && isSelectedStep();
     public bool IsDisposed => Volatile.Read(ref disposalState) != 0;
     public bool IsPreviewRunning => !IsDisposed && isRunning;
-    public bool HasCurrentPreview => !IsDisposed && preview?.Output is not null && !isStale;
+    public bool HasCurrentPreview => !IsDisposed && !isRunning && preview?.Output is not null && !isStale;
     public bool IsPreviewStale => !IsDisposed && isStale;
     public bool IsPreviewPublished => !IsDisposed && isPublished;
     public C3DSignedHeightDeltaArtifact? CurrentOutput => IsDisposed ? null : preview?.Output;
@@ -88,31 +88,50 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
     {
         if (IsDisposed || !CanPreview() || getSelectedPipelineStep() is not { } step) return false;
         var cancellation = new CancellationTokenSource();
+        var cancellationToken = cancellation.Token;
         var previous = Interlocked.Exchange(ref previewCancellation, cancellation);
         CancelAndDispose(previous);
         if (IsDisposed)
         {
-            CancelAndDispose(cancellation);
+            if (ReferenceEquals(Interlocked.CompareExchange(ref previewCancellation, null, cancellation), cancellation))
+                CancelAndDispose(cancellation);
             return false;
         }
 
-        SetRunning(true);
-        isStale = false;
-        isPublished = false;
-        step.State = "Preview running";
-        SetSummary("Signed Delta Background Subtraction Preview is verifying the saved background and preserving finite zero.");
-        appendLog("Preview", $"Signed Delta Background Subtraction Preview started: {step.Id}.");
         try
         {
+            preview = null;
+            isStale = false;
+            isPublished = false;
+            SetRunning(true);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentPreview(cancellation)) return false;
+            step.State = "Preview running";
+            SetSummary("Signed Delta Background Subtraction Preview is verifying the saved background and preserving finite zero.");
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentPreview(cancellation)) return false;
+            appendLog("Preview", $"Signed Delta Background Subtraction Preview started: {step.Id}.");
             var document = createDocument();
+            var context = document.CreateStepExecutionContext(step.Id);
+            var recipeDirectory = GetRecipeDirectory();
             var evaluation = await Task.Run(
                 () => ToolRecipeSignedDeltaBackgroundSubtractionExecution.Execute(
                     document,
                     step.Id,
-                    recipeDirectory: GetRecipeDirectory(),
-                    cancellationToken: cancellation.Token),
-                cancellation.Token);
+                    recipeDirectory: recipeDirectory,
+                    cancellationToken: cancellationToken),
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsCurrentPreview(cancellation)) return false;
+            if (!ReferenceEquals(step, getSelectedPipelineStep())
+                || !string.Equals(context, createDocument().CreateStepExecutionContext(step.Id), StringComparison.Ordinal)
+                || !string.Equals(recipeDirectory, GetRecipeDirectory(), StringComparison.OrdinalIgnoreCase))
+            {
+                isStale = true;
+                step.State = "Preview stale";
+                SetSummary("Input or conditions changed. Preview again for the current signed-delta result.");
+                return false;
+            }
             if (evaluation.Result.Status is not (ResultStatus.Pass or ResultStatus.Warning)
                 || evaluation.Output is null)
             {
@@ -131,7 +150,7 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
         }
         catch (OperationCanceledException)
         {
-            if (!IsCurrentPreview(cancellation)) return false;
+            if (!OwnsPreview(cancellation)) return false;
             step.State = "Ready";
             SetSummary("Preview canceled. Source, saved background, and authored recipe were not changed.");
             appendLog("Preview", "Signed Delta Background Subtraction Preview canceled.");
@@ -360,6 +379,8 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
         var cancellation = Interlocked.Exchange(ref previewCancellation, null);
         CancelAndDispose(cancellation);
         preview = null;
+        // The detached request's finally cannot release this state or a newer request's state.
+        isRunning = false;
         isStale = false;
         isPublished = false;
         SetSummary(summary);
@@ -400,7 +421,11 @@ internal sealed class ToolWorkbenchSignedDeltaExecutionOwner : IDisposable
         }
     }
 
-    private bool IsCurrentPreview(CancellationTokenSource cancellation) => !IsDisposed && ReferenceEquals(Volatile.Read(ref previewCancellation), cancellation);
+    private bool OwnsPreview(CancellationTokenSource cancellation) =>
+        !IsDisposed && ReferenceEquals(Volatile.Read(ref previewCancellation), cancellation);
+
+    private bool IsCurrentPreview(CancellationTokenSource cancellation) =>
+        OwnsPreview(cancellation) && !cancellation.IsCancellationRequested;
 
     private string GetRecipeDirectory()
     {

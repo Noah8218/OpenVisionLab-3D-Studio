@@ -118,9 +118,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private double recipeRoiRightHalfDepth = 2.500;
     private int recipeRoiMaxSampledPoints = 55000;
     private ToolResult previewToolResult = CreateNotRunToolResult();
-    private ToolResult? c3dHeightDeviationPreview;
-    private ToolResult? c3dThicknessPreview;
-    private bool c3dThicknessPreviewActive;
     private bool thicknessConfigured;
     private string thicknessStepId = ThicknessStepId;
     private string thicknessSourceEntityId = C3DEntityId;
@@ -144,8 +141,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private int thicknessValidSampleCount;
     private int thicknessBelowLowerLimitCount;
     private int thicknessAboveUpperLimitCount;
-    private ToolResult? c3dPlaneFlatnessPreview;
-    private bool c3dPlaneFlatnessPreviewActive;
     private bool planeFlatnessConfigured;
     private string planeFlatnessStepId = PlaneFlatnessStepId;
     private string planeFlatnessSourceEntityId = C3DEntityId;
@@ -167,8 +162,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private double planeFlatnessRms = double.NaN;
     private int planeFlatnessReferenceSampleCount;
     private int planeFlatnessMeasurementSampleCount;
-    private ToolResult? c3dPointPairDimensionsPreview;
-    private bool c3dPointPairDimensionsPreviewActive;
     private bool pointPairDimensionsConfigured;
     private string pointPairDimensionsStepId = PointPairDimensionsStepId;
     private string pointPairDimensionsSourceEntityId = C3DEntityId;
@@ -188,8 +181,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private double pointPairDistance = double.NaN;
     private double pointPairWidth = double.NaN;
     private double pointPairAngleDegrees = double.NaN;
-    private ToolResult? c3dGapFlushPreview;
-    private bool c3dGapFlushPreviewActive;
     private bool gapFlushConfigured;
     private string gapFlushStepId = GapFlushStepId;
     private string gapFlushSourceEntityId = C3DEntityId;
@@ -211,8 +202,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private double gapFlushModelFlush = double.NaN;
     private int gapFlushLeftPointCount;
     private int gapFlushRightPointCount;
-    private ToolResult? c3dVolumePreview;
-    private bool c3dVolumePreviewActive;
     private bool volumeConfigured;
     private bool volumeVisible;
     private string volumeSummary = "Volume: preview not run";
@@ -230,8 +219,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private string volumeUnit = "model^3";
     private int volumeMaxSampledPoints = VolumeMaxSampledPoints;
     private bool volumeEnabled = true;
-    private ToolResult? c3dCrossSectionPreview;
-    private bool c3dCrossSectionPreviewActive;
     private bool crossSectionConfigured;
     private bool crossSectionVisible;
     private string crossSectionSummary = "Cross-section: preview not run";
@@ -646,14 +633,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref c3DSampleVisible, value))
             {
                 ViewerStatus = value ? "C3D sample visible" : "C3D sample hidden";
-                if (ResultOverlayVisible)
-                {
-                    ApplyActivePreviewResult();
-                }
-                else
-                {
-                    RefreshSceneContracts();
-                }
+                RefreshDeviationLegend(PreviewToolResult);
+                RefreshSceneContracts();
 
                 RefreshC3DHeightDistributionLegend();
                 RefreshCommandCanExecute();
@@ -989,18 +970,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref resultOverlayVisible, value))
             {
-                if (value)
-                {
-                    ApplyActivePreviewResult();
-                }
-                else
-                {
-                    inspectionSession.Reset();
-                    PreviewToolResult = CreateNotRunToolResult();
-                    ResultSummary = FormatToolResult(PreviewToolResult);
-                    RefreshSceneContracts();
-                }
-
+                RefreshDeviationLegend(PreviewToolResult);
+                RefreshSceneContracts();
                 ViewerStatus = value ? "Result overlay visible" : "Result overlay hidden";
             }
         }

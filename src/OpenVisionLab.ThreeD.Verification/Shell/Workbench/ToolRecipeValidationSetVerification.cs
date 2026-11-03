@@ -15,6 +15,10 @@ internal static class ToolRecipeValidationSetVerification
         Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
 
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         var lines = new List<string> { "Validation Set ordered graph verification" };
         var passed = 0;
@@ -120,6 +124,7 @@ internal static class ToolRecipeValidationSetVerification
                 ToolRecipeValidationSetExecution.CanExecute(document, out var capability),
                 capability);
 
+            stageCompleted?.Invoke("validation-first-check");
             var originalPath = document.Source.Path;
             var originalHash = document.Source.ContentSha256;
             var result = ToolRecipeValidationSetExecution.Execute(
@@ -847,7 +852,7 @@ internal static class ToolRecipeValidationSetVerification
                     completenessProposals.Select(item =>
                         item.Message)));
             var completenessRecipePath = completenessFixture.RecipePath;
-            var completenessWorkbench = new ToolWorkbenchViewModel(
+            using var completenessWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(
                     artifactRoot,
                     "recent-completeness-threshold.json"));
@@ -1074,7 +1079,7 @@ internal static class ToolRecipeValidationSetVerification
                 ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(
                     thresholdEvidenceStoreRecipe));
 
-            var thresholdWorkbench = new ToolWorkbenchViewModel(
+            using var thresholdWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(
                     artifactRoot,
                     "recent-threshold-review.json"));
@@ -1193,7 +1198,7 @@ internal static class ToolRecipeValidationSetVerification
                     ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(
                         thresholdAppliedRecipePath)),
                 thresholdSaveMessage);
-            var reopenedThresholdWorkbench = new ToolWorkbenchViewModel(
+            using var reopenedThresholdWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(
                     artifactRoot,
                     "recent-threshold-reopened.json"));
@@ -1247,7 +1252,7 @@ internal static class ToolRecipeValidationSetVerification
                             sample.Order,
                             sample.SourcePath,
                             sample.Role)).ToArray()));
-            var manualWorkbench = new ToolWorkbenchViewModel(
+            using var manualWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(
                     artifactRoot,
                     "recent-threshold-manual-correction.json"));
@@ -1366,7 +1371,7 @@ internal static class ToolRecipeValidationSetVerification
                     ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(
                         savedManualRecipePath)),
                 manualSaveMessage);
-            var reopenedManualWorkbench = new ToolWorkbenchViewModel(
+            using var reopenedManualWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(
                     artifactRoot,
                     "recent-threshold-manual-reopen.json"));
@@ -1552,32 +1557,12 @@ internal static class ToolRecipeValidationSetVerification
                 && ownerStateChanges == 2,
                 $"running={ownerWasRunning};canceled={ownerCanceled};idle={!executionOwner.IsRunning};stateChanges={ownerStateChanges}");
 
-            var disposalOwner = new ToolWorkbenchValidationSetExecutionOwner(() => { });
-            using var disposalProgressEntered = new ManualResetEventSlim();
-            using var releaseDisposalProgress = new ManualResetEventSlim();
-            var disposalExecution = disposalOwner.ExecuteAsync(
-                graphDocument,
-                [
-                    new ToolRecipeValidationSampleInput(
-                        graphPassPath,
-                        ToolRecipeValidationSampleRole.Good)
-                ],
-                new BlockingValidationProgress(
-                    disposalProgressEntered,
-                    releaseDisposalProgress));
-            var disposalStarted = disposalProgressEntered.Wait(TimeSpan.FromSeconds(5));
-            disposalOwner.Dispose();
-            disposalOwner.Dispose();
-            releaseDisposalProgress.Set();
-            var disposalCanceled = false;
-            try
-            {
-                disposalExecution.GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                disposalCanceled = true;
-            }
+            var disposalBoundary = VerifyProgressGateBoundary(graphDocument, graphPassPath,
+                disposeWhileBlocked: true, stageCompleted, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
+            var disposalOwner = disposalBoundary.Owner;
+            var disposalStarted = disposalBoundary.Started;
+            var disposalCanceled = disposalBoundary.Canceled;
+            lines.Add("GATE-LIFETIME | disposal | " + disposalBoundary.Observation);
             Check(
                 "execution owner disposal cancels the active replay idempotently",
                 disposalStarted
@@ -1587,44 +1572,12 @@ internal static class ToolRecipeValidationSetVerification
                 && !disposalOwner.CanStart,
                 $"started={disposalStarted};canceled={disposalCanceled};disposed={disposalOwner.IsDisposed};running={disposalOwner.IsRunning};canStart={disposalOwner.CanStart}");
 
-            var gatedOwner = new ToolWorkbenchValidationSetExecutionOwner(() => { });
-            using var validationProgressEntered = new ManualResetEventSlim();
-            using var releaseValidationProgress = new ManualResetEventSlim();
-            var blockingProgress = new BlockingValidationProgress(
-                validationProgressEntered,
-                releaseValidationProgress);
-            var gatedExecution = gatedOwner.ExecuteAsync(
-                graphDocument,
-                [
-                    new ToolRecipeValidationSampleInput(
-                        graphPassPath,
-                        ToolRecipeValidationSampleRole.Good)
-                ],
-                blockingProgress);
-            var progressStarted = validationProgressEntered.Wait(TimeSpan.FromSeconds(5));
-            var duplicateRejected = false;
-            if (progressStarted)
-            {
-                var duplicateExecution = gatedOwner.ExecuteAsync(
-                    graphDocument,
-                    [
-                        new ToolRecipeValidationSampleInput(
-                            graphPassPath,
-                            ToolRecipeValidationSampleRole.Good)
-                    ],
-                    new Progress<ToolRecipeValidationProgress>());
-                try
-                {
-                    duplicateExecution.GetAwaiter().GetResult();
-                }
-                catch (InvalidOperationException)
-                {
-                    duplicateRejected = true;
-                }
-            }
-
-            releaseValidationProgress.Set();
-            gatedExecution.GetAwaiter().GetResult();
+            var concurrentBoundary = VerifyProgressGateBoundary(graphDocument, graphPassPath,
+                disposeWhileBlocked: false, stageCompleted, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
+            var gatedOwner = concurrentBoundary.Owner;
+            var progressStarted = concurrentBoundary.Started;
+            var duplicateRejected = concurrentBoundary.DuplicateRejected;
+            lines.Add("GATE-LIFETIME | concurrent | " + concurrentBoundary.Observation);
             Check(
                 "validation execution owner rejects a concurrent replay without replacing cancellation state",
                 progressStarted
@@ -1678,7 +1631,7 @@ internal static class ToolRecipeValidationSetVerification
                 $"started={completedCommandStarted};running={completedCommandOwner.IsCommandRunning};restarted={restartedCommand};failureCount={commandFailureCount}");
             completedCommandOwner.Dispose();
 
-            var workbench = new ToolWorkbenchViewModel(Path.Combine(artifactRoot, "recent-validation-set.json"));
+            using var workbench = new ToolWorkbenchViewModel(Path.Combine(artifactRoot, "recent-validation-set.json"));
             Check(
                 "workbench reopens the full graph recipe",
                 workbench.TryOpenTeachingRecipe(graphRecipePath, out var openMessage),
@@ -1738,7 +1691,7 @@ internal static class ToolRecipeValidationSetVerification
                 "selected failed step retains metric and overlay evidence",
                 workbench.SelectedValidationSetStep is { Metrics.Count: > 0, Overlays.Count: > 0 },
                 $"step={workbench.SelectedValidationSetStep?.ToolName};metrics={workbench.SelectedValidationSetStep?.Metrics.Count};overlays={workbench.SelectedValidationSetStep?.Overlays.Count}");
-            var navigationShell = new ShellMainWindowViewModel(
+            using var navigationShell = new ShellMainWindowViewModel(
                 recentRecipesPath: Path.Combine(
                     artifactRoot,
                     "recent-validation-teach-navigation.json"));
@@ -1866,7 +1819,7 @@ internal static class ToolRecipeValidationSetVerification
                     ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(
                         savedGraphRecipe)),
                 saveMessage);
-            var reopenedWorkbench = new ToolWorkbenchViewModel(
+            using var reopenedWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(artifactRoot, "recent-reopened-validation-set.json"));
             Check(
                 "workbench reopen restores roles without execution",
@@ -1922,9 +1875,13 @@ internal static class ToolRecipeValidationSetVerification
                 && !workbench.ReplayValidationThresholdHeldOutCommand.CanExecute(null),
                 $"before={hadThresholdWorkflowStateBeforeDispose};evidence={workbench.HasValidationEvidence};candidates={workbench.HasValidationThresholdCandidates};analysis={workbench.HasValidationThresholdAssistantAnalysis};proposal={workbench.HasValidationThresholdAssistantProposal};parameterChanges={workbench.HasValidationThresholdParameterChanges};heldOut={workbench.HasValidationThresholdHeldOutEvidence};development={workbench.HasValidationThresholdDevelopmentEvidence}");
         }
+        catch (ValidationGateIncompleteException)
+        {
+            throw; // Retain outstanding tasks/events; no partial report or cleanup-success claim.
+        }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | unhandled verification exception | {exception}");
+            Check("unhandled verification exception", false, exception.ToString());
         }
 
         Directory.CreateDirectory(GetReportDirectory(reportPath));
@@ -1933,19 +1890,150 @@ internal static class ToolRecipeValidationSetVerification
         return total > 0 && passed == total;
     }
 
+    internal sealed record ValidationGateObservation(
+        bool Started, bool Released, bool OwnerDisposed, int TrackedTasks,
+        int PendingTasks, bool EntryHandleClosed, bool ReleaseHandleClosed);
+
+    internal sealed record ValidationGateResult(
+        ToolWorkbenchValidationSetExecutionOwner Owner, bool Started,
+        bool Canceled, bool DuplicateRejected, ValidationGateObservation Observation);
+
     private sealed class BlockingValidationProgress(
-        ManualResetEventSlim entered,
-        ManualResetEventSlim release) : IProgress<ToolRecipeValidationProgress>
+        ManualResetEventSlim entered, ManualResetEventSlim release,
+        TimeSpan maximumWait) : IProgress<ToolRecipeValidationProgress>
     {
         public void Report(ToolRecipeValidationProgress value)
         {
             if (value.CompletedStatus is null)
             {
                 entered.Set();
-                release.Wait();
+                if (!release.Wait(maximumWait))
+                    throw new TimeoutException("Owned Validation Set progress gate was not released within its finite safety bound.");
             }
         }
     }
+
+    internal sealed class ValidationGateIncompleteException : TimeoutException
+    {
+        private readonly ValidationGateState state;
+        internal ValidationGateIncompleteException(ValidationGateState state, Exception? failure)
+            : base("Validation Set gate tasks did not settle; retain owner, events and fixture, never report cleanup success.", failure)
+        { this.state = state; Data["ValidationGateObservation"] = state.Observe(); }
+        internal ValidationGateObservation Observation => state.Observe();
+        internal bool TryObserveCleanup(TimeSpan timeout)
+        {
+            if (timeout <= TimeSpan.Zero) return false;
+            Exception? failure = null;
+            var settled = state.Finish(cancel: true, timeout, ref failure);
+            Data["ValidationGateObservation"] = state.Observe();
+            if (failure is not null) Data["LateCleanupFailure"] = failure;
+            return settled && failure is null;
+        }
+    }
+
+    internal sealed class ValidationGateState
+    {
+        internal readonly ToolWorkbenchValidationSetExecutionOwner Owner = new(() => { });
+        internal readonly ManualResetEventSlim Entered = new();
+        internal readonly ManualResetEventSlim Release = new();
+        internal readonly List<Task> Tasks = [];
+        internal readonly Microsoft.Win32.SafeHandles.SafeWaitHandle EntryHandle;
+        internal readonly Microsoft.Win32.SafeHandles.SafeWaitHandle ReleaseHandle;
+        internal Task? Primary;
+        internal Task? ObservedDuplicateRejection;
+        internal bool Started, Released, Canceled;
+        internal ValidationGateState()
+        { EntryHandle = Entered.WaitHandle.SafeWaitHandle; ReleaseHandle = Release.WaitHandle.SafeWaitHandle; }
+        internal ValidationGateObservation Observe() => new(Started, Released, Owner.IsDisposed,
+            Tasks.Count, Tasks.Count(task => !task.IsCompleted), EntryHandle.IsClosed, ReleaseHandle.IsClosed);
+        internal bool Finish(bool cancel, TimeSpan timeout, ref Exception? failure)
+        {
+            // Release before any disposal/wait. An unexpected assertion or
+            // callback must not strand the worker inside IProgress.Report.
+            try { if (!Released) { Release.Set(); Released = true; } }
+            catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+            if (cancel)
+            {
+                try { Owner.Dispose(); }
+                catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+            }
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            foreach (var task in Tasks)
+            {
+                if (ReferenceEquals(task, ObservedDuplicateRejection) && task.IsCompleted) continue;
+                var remaining = timeout - clock.Elapsed;
+                if (!task.IsCompleted && remaining <= TimeSpan.Zero) continue;
+                try { task.WaitAsync(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero).GetAwaiter().GetResult(); }
+                catch (TimeoutException) when (!task.IsCompleted) { }
+                catch (OperationCanceledException) when (ReferenceEquals(task, Primary) && cancel) { Canceled = true; }
+                catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+            }
+            if (Tasks.Any(task => !task.IsCompleted))
+            {
+                // Cancellation is a request. Leave events alive until the
+                // actual tracked work completes, preserving late observation.
+                try { Owner.Dispose(); }
+                catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+                return false;
+            }
+            try { Owner.Dispose(); }
+            catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+            try { if (!EntryHandle.IsClosed) Entered.Dispose(); }
+            catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+            try { if (!ReleaseHandle.IsClosed) Release.Dispose(); }
+            catch (Exception exception) { failure = CombineGateFailure(failure, exception); }
+            return EntryHandle.IsClosed && ReleaseHandle.IsClosed;
+        }
+    }
+
+    private static Exception CombineGateFailure(Exception? first, Exception next) => first is null ? next
+        : ReferenceEquals(first, next) ? first : new AggregateException("Validation Set gate work or cleanup failed.", first, next);
+
+    internal static ValidationGateResult VerifyProgressGateBoundary(
+        ToolRecipeDocument document, string sourcePath, bool disposeWhileBlocked,
+        Action<string>? stageCompleted, TimeSpan entryTimeout, TimeSpan settleTimeout)
+    {
+        if (entryTimeout <= TimeSpan.Zero || settleTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(entryTimeout));
+        var state = new ValidationGateState(); Exception? failure = null; bool duplicateRejected = false, settled = false;
+        try
+        {
+            var progress = new BlockingValidationProgress(state.Entered, state.Release,
+                entryTimeout + settleTimeout + TimeSpan.FromSeconds(5));
+            var samples = new[] { new ToolRecipeValidationSampleInput(sourcePath, ToolRecipeValidationSampleRole.Good) };
+            var primary = state.Owner.ExecuteAsync(document, samples, progress);
+            state.Primary = primary; state.Tasks.Add(primary);
+            state.Started = state.Entered.Wait(entryTimeout);
+            if (state.Started) stageCompleted?.Invoke(disposeWhileBlocked ? "disposal-gate-entered" : "concurrent-gate-entered");
+            if (disposeWhileBlocked)
+            {
+                state.Owner.Dispose();
+                state.Owner.Dispose();
+            }
+            else if (state.Started)
+            {
+                var duplicate = state.Owner.ExecuteAsync(document, samples, new Progress<ToolRecipeValidationProgress>());
+                state.Tasks.Add(duplicate);
+                try { duplicate.WaitAsync(settleTimeout).GetAwaiter().GetResult(); }
+                catch (InvalidOperationException)
+                { duplicateRejected = true; state.ObservedDuplicateRejection = duplicate; }
+            }
+        }
+        catch (Exception exception) { failure = exception; }
+        finally
+        {
+            settled = state.Finish(disposeWhileBlocked || failure is not null, settleTimeout, ref failure);
+        }
+        if (!settled) throw new ValidationGateIncompleteException(state, failure);
+        var observation = state.Observe();
+        if (failure is not null)
+        {
+            failure.Data["ValidationGateObservation"] = observation;
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+        return new(state.Owner, state.Started, state.Canceled, duplicateRejected, observation);
+    }
+
 
     private static ToolRecipeThresholdCandidate CreateMappingCandidate(
         ToolRecipeStep step,

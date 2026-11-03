@@ -949,7 +949,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SetLazSampleBounds(min, max);
     }
 
-    private void SetC3DSampleStatus()
+    private void SetC3DSampleStatus() => SetC3DSampleStatus(preserveInspectionState: false);
+
+    private void SetC3DSampleStatus(bool preserveInspectionState)
     {
         ResetC3DGridHoverForSourceChange();
         ResetProfileIfSourceChanged();
@@ -984,7 +986,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dSample.Width, c3dSample.Height, c3dSample.IsSignedDelta, c3dSample.DisplayUnit);
         viewModel.C3DTexture.SetSource(c3dSample);
         UpdateHeightMapFromC3D();
-        UpdateSectionProfileFromC3D();
+        if (!preserveInspectionState) UpdateSectionProfileFromC3D();
     }
 
     private void SetGlbSampleStatus()
@@ -1080,7 +1082,9 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         try
         {
-            var texture = DecodeTexture(importedMesh.BaseColorTexture!.Bytes);
+            var limit = new int[1];
+            gl.GetInteger(0x0D33, limit); // GL_MAX_TEXTURE_SIZE for this context, as in the C3D upload owner.
+            var texture = DecodeTexture(importedMesh.BaseColorTexture!.Bytes, limit[0]);
             var ids = new uint[1];
             gl.GenTextures(1, ids);
             var textureId = ids[0];
@@ -1107,7 +1111,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             importedMeshTextureState.RecordUpload(importedMesh, textureId, uploadSummary);
             return true;
         }
-        catch (Exception ex) when (ex is InvalidOperationException or IOException or NotSupportedException)
+        catch (Exception ex) when (IsImportedMeshTextureFailure(ex))
         {
             ReleaseImportedMeshTexture(gl);
             importedMeshTextureState.RecordUploadFailure($"upload failed: {ex.Message}");
@@ -1115,26 +1119,14 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
-    private static (int Width, int Height, byte[] Pixels) DecodeTexture(byte[] encodedImage)
-    {
-        using var stream = new MemoryStream(encodedImage);
-        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        if (decoder.Frames.Count == 0)
-        {
-            throw new InvalidOperationException("Texture image has no frames.");
-        }
+    private static (int Width, int Height, byte[] Pixels) DecodeTexture(byte[] encodedImage, int maximumTextureDimension) =>
+        TextureImageDecoder.DecodeBgra32(encodedImage, requireSingleFrame: false, maximumTextureDimension: maximumTextureDimension);
 
-        BitmapSource source = decoder.Frames[0];
-        if (source.Format != PixelFormats.Bgra32)
-        {
-            source = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
-        }
-
-        var stride = source.PixelWidth * 4;
-        var pixels = new byte[stride * source.PixelHeight];
-        source.CopyPixels(pixels, stride, 0);
-        return (source.PixelWidth, source.PixelHeight, pixels);
-    }
+    // InvalidDataException is a sibling of IOException, not its subtype.
+    // Keep expected texture-data failures local without catching cancellation,
+    // allocation failures or unrelated program errors.
+    private static bool IsImportedMeshTextureFailure(Exception exception) =>
+        exception is InvalidOperationException or IOException or InvalidDataException or NotSupportedException;
 
     private void UpdateHeightMapFromC3D()
     {
@@ -1218,80 +1210,21 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ReloadDefaultC3DSample()
     {
-        var sourcePath = c3dSample?.SourcePath ?? samplePathResolver.Resolve(DefaultC3DSamplePath);
-        var pointPairStep = viewModel.CreatePointPairDimensionsRecipeStep();
-        var restoreThicknessPreview = viewModel.ThicknessVisible;
-        var restoreWarpagePreview = viewModel.WarpageVisible;
-        var restorePointPairPreview = viewModel.PointPairDimensionsVisible;
-        var restoreFlatnessPreview = viewModel.PlaneFlatnessVisible;
-        var restoreVolumePreview = viewModel.VolumeVisible;
-        var restoreCrossSectionPreview = viewModel.CrossSectionVisible;
+        if (c3dSample is not { } currentSample) return;
+
+        C3DHeightGrid renderSample;
         try
         {
-            c3dSample = c3dSample is not null
-                ? c3dSample.WithMaxRenderedPoints(viewModel.C3DMaxRenderedPoints)
-                : string.IsNullOrWhiteSpace(sourcePath)
-                    ? null
-                    : C3DSourceLoadPreparation.LoadSynchronously(sourcePath, viewModel.C3DMaxRenderedPoints);
+            renderSample = currentSample.WithMaxRenderedPoints(viewModel.C3DMaxRenderedPoints);
         }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
+        catch (Exception ex) when (ex is ArgumentException or OverflowException)
         {
-            c3dSample = null;
-            viewModel.ViewerStatus = $"C3D render-density reload failed: {ex.Message}";
+            viewModel.ViewerStatus = $"C3D render-density update failed; current source retained: {ex.Message}";
+            return;
         }
 
-        twoPointFirst = null;
-        twoPointSecond = null;
-        roiEditingSession.Reset();
-        viewModel.ClearTwoPointMeasurement();
-        viewModel.ClearRoiStepMeasurement();
-        SetC3DSampleStatus();
-        if (c3dSample is not null && restoreThicknessPreview)
-        {
-            PreviewC3DThickness();
-        }
-        else if (c3dSample is not null && restoreWarpagePreview)
-        {
-            PreviewC3DWarpage();
-        }
-        else if (c3dSample is not null && pointPairStep is not null)
-        {
-            try
-            {
-                var first = c3dSample.ReadPoint(pointPairStep.First.Row, pointPairStep.First.Column);
-                var second = c3dSample.ReadPoint(pointPairStep.Second.Row, pointPairStep.Second.Column);
-                SetTwoPointMeasurement(first, second, updatePointPairReferences: false);
-                if (restorePointPairPreview)
-                {
-                    PreviewC3DPointPairDimensions();
-                }
-            }
-            catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentOutOfRangeException)
-            {
-                viewModel.InvalidatePointPairDimensionsPreview($"C3D reload invalidated point references: {ex.Message}");
-            }
-        }
-        else if (restoreCrossSectionPreview)
-        {
-            PreviewC3DCrossSection();
-        }
-        else if (restoreVolumePreview)
-        {
-            PreviewC3DVolume();
-        }
-        else if (restoreFlatnessPreview)
-        {
-            PreviewC3DPlaneFlatness();
-        }
-        else if (c3dSample is not null)
-        {
-            HeightDeviationRuleCoordinator.ApplyToViewModel(
-                viewModel,
-                c3dSample,
-                viewModel.RecipeSourceName,
-                viewModel.RecipePeakTolerance,
-                viewModel.RecipeSourceUnit);
-        }
+        c3dSample = renderSample;
+        SetC3DSampleStatus(preserveInspectionState: true);
     }
 
 }

@@ -15,6 +15,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 {
+    private const int ArtifactSchemaVersion = 2;
     private readonly Func<bool> isSelectedStepDomainMask;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
     private readonly Func<bool> isSourceReadyForRecipe;
@@ -38,6 +39,8 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
     private string? previewDetectionEntityId;
     private string? previewDomainArtifactId;
     private int? previewSelectedRegionIndex;
+    private string? previewProducerStepId;
+    private string? previewProducerContextSha256;
     private string executionSummary =
         "Select Domain / Mask after publishing a Connected Region or Grid Polygon Domain, then Preview.";
     private int disposalState;
@@ -103,6 +106,8 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         previewDetectionEntityId = null;
         previewDomainArtifactId = null;
         previewSelectedRegionIndex = null;
+        previewProducerStepId = null;
+        previewProducerContextSha256 = null;
         isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -165,9 +170,15 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         try
         {
             var document = createDocument();
+            if (!TryFindProducer(document, step.Id, step.OutputEntityId, out var producer))
+            {
+                step.State = "Taught / needs correction";
+                SetSummary("Domain / Mask producer is missing or ambiguous in the current recipe.");
+                return false;
+            }
             if (!TryResolveInputs(
                     document,
-                    step,
+                    producer,
                     out var source,
                     out var detectionSource,
                     out var domain,
@@ -189,13 +200,16 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 return false;
             }
 
+            if (!IsCurrentPreview(cancellation)) return false;
+            var producerContextSha256 = CreateProducerContextSha256(
+                document, producer, source, detectionSource, domain, selectedRegionIndex);
             var evaluation = await Task.Run(
                 () => detectionSource is not null
                     && domain is C3DConnectedRegionArtifact detectedRegion
                     && selectedRegionIndex is { } detectedIndex
                     ? ToolRecipeDomainMaskExecution.Execute(
                         document,
-                        step.Id,
+                        producer.Id,
                         source,
                         detectionSource,
                         detectedRegion,
@@ -205,13 +219,13 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                     {
                         C3DConnectedRegionArtifact connectedRegion => ToolRecipeDomainMaskExecution.Execute(
                             document,
-                            step.Id,
+                            producer.Id,
                             source,
                             connectedRegion,
                             cancellationToken),
                         C3DGridDomainArtifact gridDomain => ToolRecipeDomainMaskExecution.Execute(
                             document,
-                            step.Id,
+                            producer.Id,
                             source,
                             gridDomain,
                             cancellationToken),
@@ -239,6 +253,8 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 previewDetectionEntityId = null;
                 previewDomainArtifactId = null;
                 previewSelectedRegionIndex = null;
+                previewProducerStepId = null;
+                previewProducerContextSha256 = null;
                 step.State = "Error";
                 SetSummary(evaluation.Result.Message);
                 if (IsCurrentPreview(cancellation))
@@ -249,11 +265,27 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 return false;
             }
 
+            var contextReady = TryGetProducerContext(createDocument(), producer.Id, producer.OutputEntityId, out var currentContext, out _);
+            if (!IsCurrentPreview(cancellation)) return false;
+            if (!contextReady
+                || !string.Equals(producerContextSha256, currentContext, StringComparison.OrdinalIgnoreCase))
+            {
+                preview = null;
+                previewPath = null;
+                previewProducerStepId = null;
+                previewProducerContextSha256 = null;
+                isPreviewStale = true;
+                step.State = "Preview stale";
+                SetSummary("Domain / Mask producer context changed during Preview. Preview again before Publish.");
+                return false;
+            }
             preview = evaluation.Output;
             previewInputEntityId = source.EntityId;
             previewDetectionEntityId = detectionSource?.EntityId;
             previewDomainArtifactId = DescribeDomain(domain).ArtifactId;
             previewSelectedRegionIndex = selectedRegionIndex;
+            previewProducerStepId = producer.Id;
+            previewProducerContextSha256 = producerContextSha256;
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
             SaveC3DAtomically(evaluation.Output, previewPath);
             if (!IsCurrentPreview(cancellation))
@@ -339,9 +371,13 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 
     public void Publish()
     {
+        MarkStaleIfUpstreamChanged();
         if (IsDisposed
+            || isPreviewRunning
             || getSelectedPipelineStep() is not { } step
-            || !HasCurrentPreview)
+            || !HasCurrentPreview
+            || !string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(step.OutputEntityId, preview!.EntityId, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -382,13 +418,14 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 
         var selected = getSelectedPipelineStep();
         var isSelectedParameter = sender is ToolWorkbenchParameterItem parameter
+            && string.Equals(selected?.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
             && (selected?.Parameters.Contains(parameter) ?? false);
-        if (selected is { } step
-            && (isSourceChangeEvent(sender)
-                || ReferenceEquals(sender, step)
-                || isSelectedParameter))
+        if (isSourceChangeEvent(sender)
+            || sender is ToolWorkbenchPipelineStepItem changedStep
+                && string.Equals(changedStep.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || isSelectedParameter)
         {
-            MarkStale(step, "Source, Domain / Mask routing, or upstream identity changed. Preview again before Publish.");
+            MarkStale("Source, Domain / Mask routing, or upstream identity changed. Preview again before Publish.");
         }
     }
 
@@ -397,28 +434,17 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         if (IsDisposed
             || preview is null
             || isPreviewStale
-            || isPreviewRunning
-            || getSelectedPipelineStep() is not { } step
-            || step.InputEntityIds.Count is not (2 or 3))
+            || isPreviewRunning)
         {
             return;
         }
 
         var document = createDocument();
-        if (!TryResolveInputs(
-                document,
-                step,
-                out var source,
-                out var detectionSource,
-                out var domain,
-                out var selectedRegionIndex,
-                out _)
-            || !string.Equals(previewInputEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(previewDetectionEntityId, detectionSource?.EntityId, StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(previewDomainArtifactId, DescribeDomain(domain).ArtifactId, StringComparison.OrdinalIgnoreCase)
-            || previewSelectedRegionIndex != selectedRegionIndex)
+        if (!TryGetProducerContext(document, previewProducerStepId, preview.EntityId, out var currentContext, out _)
+            || string.IsNullOrWhiteSpace(previewProducerContextSha256)
+            || !string.Equals(previewProducerContextSha256, currentContext, StringComparison.OrdinalIgnoreCase))
         {
-            MarkStale(step, "Raw source, detection source, selected region, or Domain / Mask artifact changed. Preview again before Publish.");
+            MarkStale("Raw source, detection source, selected region, or Domain / Mask artifact changed. Preview again before Publish.");
         }
     }
 
@@ -439,6 +465,8 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         previewDetectionEntityId = null;
         previewDomainArtifactId = null;
         previewSelectedRegionIndex = null;
+        previewProducerStepId = null;
+        previewProducerContextSha256 = null;
         isPreviewStale = false;
         isPreviewPublished = false;
         SetSummary(summary);
@@ -485,8 +513,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             return;
         }
 
-        var step = getSelectedPipelineStep();
-        if (step is null
+        MarkStaleIfUpstreamChanged();
+        if (isPreviewStale
+            || !isPreviewPublished
+            || string.IsNullOrWhiteSpace(previewProducerContextSha256)
+            || !TryFindProducer(createDocument(), previewProducerStepId, preview.EntityId, out var step)
             || string.IsNullOrWhiteSpace(previewInputEntityId)
             || string.IsNullOrWhiteSpace(previewDomainArtifactId))
         {
@@ -520,7 +551,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 preview.Unit,
                 preview.FrameId,
                 preview.Provenance,
-                new FileInfo(c3dPath).Length);
+                new FileInfo(c3dPath).Length,
+                ArtifactSchemaVersion,
+                previewProducerContextSha256);
             WriteTextAtomically(
                 sidecarPath,
                 JsonSerializer.Serialize(sidecar, new JsonSerializerOptions { WriteIndented = true }));
@@ -565,6 +598,20 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         var recipeDirectory = GetRecipeDirectory(recipePath);
         var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
         var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
+        // A partial modern pair is a failed publication; never mix naming versions.
+        if (!File.Exists(sidecarPath) && !File.Exists(c3dPath))
+        {
+            var legacyId = SanitizeLegacy(step.OutputEntityId);
+            if (document.Steps.Count(candidate =>
+                    string.Equals(candidate.ToolId, "domain-mask", StringComparison.Ordinal)
+                    && string.Equals(SanitizeLegacy(candidate.OutputEntityId), legacyId, StringComparison.OrdinalIgnoreCase)) != 1)
+            {
+                appendLog("Warning", "Domain / Mask legacy artifact restore skipped: ambiguous output filename.");
+                return;
+            }
+            sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId, legacy: true);
+            c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId, legacy: true);
+        }
         if (!File.Exists(sidecarPath) || !File.Exists(c3dPath))
         {
             return;
@@ -579,6 +626,12 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 return;
             }
 
+            if (record.SchemaVersion != ArtifactSchemaVersion
+                || record.ProducerContextSha256 is not { Length: 64 } savedContext
+                || !savedContext.All(Uri.IsHexDigit))
+            {
+                throw new InvalidDataException("Domain / Mask sidecar has no verifiable current producer context. Preview and Publish again.");
+            }
             if (!string.Equals(record.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.StepId, step.Id, StringComparison.OrdinalIgnoreCase))
             {
@@ -602,6 +655,11 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
                 return;
             }
 
+            var currentContext = CreateProducerContextSha256(document, step, source, detectionSource, domain, selectedRegionIndex);
+            if (!string.Equals(savedContext, currentContext, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("Domain / Mask sidecar producer context does not match the current raw, detection, domain, or recipe inputs.");
+            }
             if (!string.Equals(record.SourceEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.DomainArtifactId, DescribeDomain(domain).ArtifactId, StringComparison.OrdinalIgnoreCase))
             {
@@ -661,6 +719,8 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             previewDetectionEntityId = detectionSource?.EntityId;
             previewDomainArtifactId = DescribeDomain(domain).ArtifactId;
             previewSelectedRegionIndex = selectedRegionIndex;
+            previewProducerStepId = step.Id;
+            previewProducerContextSha256 = currentContext;
             isPreviewStale = false;
             isPreviewPublished = true;
             if (getSelectedPipelineStep() is { } selected
@@ -685,6 +745,83 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
             appendLog("Warning", $"Domain / Mask output restore skipped: {exception.Message}");
         }
     }
+
+    private static bool TryFindProducer(
+        ToolRecipeDocument document,
+        string? stepId,
+        string outputEntityId,
+        out ToolRecipeStep producer)
+    {
+        var matches = document.Steps.Where(step =>
+            string.Equals(step.ToolId, "domain-mask", StringComparison.Ordinal)
+            && string.Equals(step.Id, stepId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(step.OutputEntityId, outputEntityId, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
+        producer = matches.Length == 1 ? matches[0] : null!;
+        return matches.Length == 1;
+    }
+
+    private bool TryGetProducerContext(
+        ToolRecipeDocument document,
+        string? stepId,
+        string outputEntityId,
+        out string? contextSha256,
+        out string reason)
+    {
+        contextSha256 = null;
+        reason = "Domain / Mask producer or its Published inputs are no longer current.";
+        if (!isSourceReadyForRecipe()
+            || !TryFindProducer(document, stepId, outputEntityId, out var producer)) return false;
+        var validation = ToolRecipeValidator.ValidateForStepExecution(document, producer.Id);
+        if (!validation.IsValid)
+        {
+            reason = string.Join(" ", validation.Errors);
+            return false;
+        }
+        try
+        {
+            if (!TryResolveInputs(document, producer, out var source, out var detection, out var domain, out var index, out reason)) return false;
+            contextSha256 = CreateProducerContextSha256(document, producer, source, detection, domain, index);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or JsonException or NotSupportedException)
+        {
+            reason = exception.Message;
+            return false;
+        }
+    }
+
+    private static string CreateProducerContextSha256(
+        ToolRecipeDocument document,
+        ToolRecipeStep producer,
+        C3DHeightFieldSnapshot source,
+        C3DHeightFieldSnapshot? detection,
+        object domain,
+        int? selectedRegionIndex)
+    {
+        // Exclude the raw file location and descriptive names. Keep the exact
+        // authored dependency/policy payload and resolved data/domain identities.
+        var portable = document with { Source = document.Source with { Path = string.Empty } };
+        var description = DescribeDomain(domain);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            Contract = "OpenVisionLab.DomainMask.ProducerContext.v1",
+            Recipe = portable.CreateStepExecutionContext(producer.Id),
+            Source = SnapshotContext(source),
+            Detection = SnapshotContext(detection),
+            Domain = new { description.Kind, ArtifactId = description.ArtifactId.ToUpperInvariant(), ContentSha256 = description.Hash.ToUpperInvariant(), description.Count },
+            SelectedRegionIndex = selectedRegionIndex
+        });
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static object? SnapshotContext(C3DHeightFieldSnapshot? source) => source is null ? null : new
+    {
+        EntityId = source.EntityId.ToUpperInvariant(),
+        ContentSha256 = source.ContentSha256.ToUpperInvariant(),
+        RootSourceSha256 = source.RootSourceSha256.ToUpperInvariant(),
+        source.ByteLength, source.Width, source.Height, source.GridOriginColumn, source.GridOriginRow,
+        source.Unit, source.FrameId, source.ScalarMeaning
+    };
 
     private bool TryResolveInputs(
         ToolRecipeDocument document,
@@ -829,7 +966,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         return true;
     }
 
-    private void MarkStale(ToolWorkbenchPipelineStepItem step, string summary)
+    private void MarkStale(string summary)
     {
         if (IsDisposed)
         {
@@ -838,7 +975,9 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
 
         isPreviewStale = true;
         isPreviewPublished = false;
-        step.State = "Preview stale";
+        if (getSelectedPipelineStep() is { } step
+            && string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase))
+            step.State = "Preview stale";
         SetSummary(summary);
     }
 
@@ -912,18 +1051,33 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         return Path.Combine(directory, $"domain-mask-{hash}.c3d");
     }
 
-    private static string GetArtifactC3DPath(string recipeDirectory, string recipePath, string outputEntityId) =>
+    private static string GetArtifactC3DPath(string recipeDirectory, string recipePath, string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.domain-mask.{Sanitize(outputEntityId)}.c3d");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.domain-mask.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.c3d");
 
-    private static string GetArtifactSidecarPath(string recipeDirectory, string recipePath, string outputEntityId) =>
+    private static string GetArtifactSidecarPath(string recipeDirectory, string recipePath, string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.domain-mask.{Sanitize(outputEntityId)}.json");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.domain-mask.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.json");
 
-    private static string Sanitize(string value) =>
-        string.Concat(value.Select(character => char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
+    // Ordinal-ignore-case logical identity, encoded as exact UTF-16LE code units.
+    // '~' cannot occur in a legacy sanitized ID, so new writes cannot alias old paths.
+    private static string Sanitize(string value)
+    {
+        var canonical = value.ToUpperInvariant();
+        var bytes = new byte[checked(canonical.Length * 2)];
+        for (var index = 0; index < canonical.Length; index++)
+        {
+            bytes[index * 2] = (byte)(canonical[index] & 0xff);
+            bytes[index * 2 + 1] = (byte)(canonical[index] >> 8);
+        }
+        return "v2~" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static string SanitizeLegacy(string value) =>
+        string.Concat(value.Select(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
 
     private sealed record DomainMaskArtifactRecord(
         string StepId,
@@ -938,5 +1092,7 @@ internal sealed class ToolWorkbenchDomainMaskExecutionOwner : IDisposable
         string Unit,
         string FrameId,
         string Provenance,
-        long ByteLength);
+        long ByteLength,
+        int SchemaVersion = 1,
+        string? ProducerContextSha256 = null);
 }

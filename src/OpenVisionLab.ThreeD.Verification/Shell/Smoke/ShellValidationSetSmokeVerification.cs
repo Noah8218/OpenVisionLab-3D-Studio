@@ -12,6 +12,13 @@ internal static class ShellValidationSetSmokeVerification
         string artifactDirectory,
         string reportPath,
         out string summary)
+        => VerifyWithStageObserver(artifactDirectory, reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string artifactDirectory,
+        string reportPath,
+        out string summary,
+        Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
@@ -70,7 +77,7 @@ internal static class ShellValidationSetSmokeVerification
                     [],
                     []));
 
-            var noOpWorkbench = new ToolWorkbenchViewModel(
+            using var noOpWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(root, "no-op-recent.json"));
             var noOpActivationCount = 0;
             var noOpState = ShellValidationSetSmoke.Configure(
@@ -90,7 +97,7 @@ internal static class ShellValidationSetSmokeVerification
                 && noOpWorkbench.ValidationSetSamples.Count == 0,
                 $"stateEmpty={ReferenceEquals(noOpState, ShellValidationSetSmokeState.Empty)};activations={noOpActivationCount};samples={noOpWorkbench.ValidationSetSamples.Count}");
 
-            var incompleteWorkbench = new ToolWorkbenchViewModel(
+            using var incompleteWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(root, "incomplete-recent.json"));
             var incompleteState = ShellValidationSetSmoke.Configure(
                 [
@@ -113,7 +120,8 @@ internal static class ShellValidationSetSmokeVerification
                 && string.IsNullOrWhiteSpace(incompleteWorkbench.RecipePath),
                 $"stateEmpty={ReferenceEquals(incompleteState, ShellValidationSetSmokeState.Empty)};samples={incompleteWorkbench.ValidationSetSamples.Count};recipe={incompleteWorkbench.RecipePath}");
 
-            var workbench = new ToolWorkbenchViewModel(
+            stageCompleted?.Invoke("initial-checks-complete");
+            using var workbench = new ToolWorkbenchViewModel(
                 Path.Combine(root, "configured-recent.json"));
             var activationCount = 0;
             var evidenceExpansionCount = 0;
@@ -196,7 +204,7 @@ internal static class ShellValidationSetSmokeVerification
                 && workbench.IsValidationThresholdExpanded,
                 $"run={state.RunRequested};thresholdTask={state.ThresholdSelectionTask is not null};sectionTask={state.SectionSelectionTask is not null};comparisonTask={state.ComparisonTask is not null};activations={activationCount};evidence={evidenceExpansionCount};thresholds={thresholdExpansionCount};section={activeSection};evidenceExpanded={workbench.IsValidationEvidenceExpanded};thresholdExpanded={workbench.IsValidationThresholdExpanded};evidenceAtCallback={evidenceExpandedAtCallback};thresholdAtCallback={thresholdExpandedAtCallback}");
 
-            var comparisonWorkbench = new ToolWorkbenchViewModel(
+            using var comparisonWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(root, "comparison-recent.json"));
             var comparisonRequested = false;
             comparisonWorkbench.ValidationSetComparisonRequested +=
@@ -242,7 +250,7 @@ internal static class ShellValidationSetSmokeVerification
                 && workbench.IsValidationSetDefinitionDirty,
                 $"recipe={workbench.RecipePath};source={workbench.Source.Path};steps={workbench.PipelineSteps.Count};validationDefinitionDirty={workbench.IsValidationSetDefinitionDirty}");
 
-            var invalidWorkbench = new ToolWorkbenchViewModel(
+            using var invalidWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(root, "invalid-recent.json"));
             var invalidThrown = false;
             var invalidMessage = string.Empty;
@@ -279,7 +287,7 @@ internal static class ShellValidationSetSmokeVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | unexpected exception | {exception}");
+            Check("unexpected exception", false, exception.ToString());
         }
 
         var passedAll = total > 0 && passed == total;

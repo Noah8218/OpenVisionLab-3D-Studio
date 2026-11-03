@@ -28,7 +28,19 @@ internal static class C3DMemoryMeasurementVerification
     ];
 
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
+        => VerifyWithCancellation(reportPath, out summary, stageCompleted, CancellationToken.None);
+
+    internal static bool VerifyWithCancellation(
+        string reportPath, out string summary, Action<string>? stageCompleted, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var verificationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        verificationCancellation.CancelAfter(TimeSpan.FromSeconds(60));
+        var token = verificationCancellation.Token;
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var fullReportPath = Path.GetFullPath(reportPath);
         var reportDirectory = Path.GetDirectoryName(fullReportPath)!;
@@ -41,13 +53,17 @@ internal static class C3DMemoryMeasurementVerification
             $"Runtime: {Environment.Version}",
             $"MaxRenderedPoints: {MaxRenderedPoints.ToString(CultureInfo.InvariantCulture)}",
             "ObservationBoundary: process private/working-set and managed heap sampling; GPU context upload is outside this CPU verifier.",
-            "PolicyBoundary: observations are not a product memory budget or universal leak-free claim."
+            "PolicyBoundary: observations are not a product memory budget or universal leak-free claim.",
+            "ObservationImplementation: bounded STA workers enclose the unchanged forced-GC/sampler/CPU procedures; worker orchestration changes measurement overhead. Prior byte/peak observations are not bitwise comparison targets."
         };
         var passed = 0;
         var total = 0;
+        var fixtureCleanupDeferred = false;
+        var cleaningUp = false;
 
         void Check(string name, bool condition, string detail)
         {
+            if (!cleaningUp) token.ThrowIfCancellationRequested();
             total++;
             lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
             if (condition)
@@ -57,8 +73,14 @@ internal static class C3DMemoryMeasurementVerification
         }
 
         var fixturePaths = new List<string>();
+        DirectoryInfo? ownedFixtureDirectory = null;
         try
         {
+            ownedFixtureDirectory = Directory.CreateTempSubdirectory("ovl-memory-verification-");
+            var fixtureDirectory = ownedFixtureDirectory.FullName;
+            lines.Add($"FixtureDirectory: {fixtureDirectory}");
+            stageCompleted?.Invoke("memory-fixture-directory-created");
+            stageCompleted?.Invoke("memory-before-admission");
             var admittedBoundary = C3DMemoryAdmissionPolicy.Evaluate(4096, 4096);
             var rejectedBoundary = C3DMemoryAdmissionPolicy.Evaluate(4097, 4096);
             Check(
@@ -72,7 +94,8 @@ internal static class C3DMemoryMeasurementVerification
                 && rejectedBoundary.SampleCount > C3DMemoryAdmissionPolicy.MaxSupportedSampleCount,
                 $"admitted={rejectedBoundary.IsAdmitted};cells={rejectedBoundary.SampleCount};reason={rejectedBoundary.Reason}");
 
-            var oversizedHeaderPath = Path.Combine(reportDirectory, "oversized-header-only.C3D");
+            stageCompleted?.Invoke("memory-admission-boundary-checked");
+            var oversizedHeaderPath = Path.Combine(fixtureDirectory, "oversized-header-only.C3D");
             fixturePaths.Add(oversizedHeaderPath);
             WriteHeaderOnlyFixture(oversizedHeaderPath, 4097, 4096);
             var admissionRejectedBeforePayloadAllocation = false;
@@ -92,11 +115,13 @@ internal static class C3DMemoryMeasurementVerification
                 admissionRejectedBeforePayloadAllocation,
                 $"rejected={admissionRejectedBeforePayloadAllocation};reason={admissionReason?.ToString() ?? "none"};path={oversizedHeaderPath}");
 
+            stageCompleted?.Invoke("memory-oversized-header-checked");
             foreach (var scale in Scales)
             {
-                var fixturePath = Path.Combine(reportDirectory, $"{scale.Name}.C3D");
+                token.ThrowIfCancellationRequested();
+                var fixturePath = Path.Combine(fixtureDirectory, $"{scale.Name}.C3D");
                 fixturePaths.Add(fixturePath);
-                WriteFixture(fixturePath, scale.Width, scale.Height);
+                WriteFixture(fixturePath, scale.Width, scale.Height, token);
                 var info = new FileInfo(fixturePath);
                 var expectedBytes = checked(8L + (long)scale.Width * scale.Height * sizeof(float));
                 Check(
@@ -110,25 +135,62 @@ internal static class C3DMemoryMeasurementVerification
                         fixturePath,
                         oversizedHeaderPath,
                         lines,
-                        Check);
+                        Check, token);
                 }
 
-                MeasureScale(fixturePath, scale.Width, scale.Height, scale.Name, lines, Check);
+                MeasureScale(fixturePath, scale.Width, scale.Height, scale.Name, lines, Check, token);
             }
         }
+        catch (VerificationStaIncompleteException exception)
+        {
+            fixtureCleanupDeferred = true;
+            exception.Data["FixtureDirectory"] = ownedFixtureDirectory?.FullName;
+            exception.Data["FixtureCleanupDeferred"] = true;
+            throw;
+        }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        { throw new OperationCanceledException("Memory verification canceled; no result committed.", exception, cancellationToken); }
+        catch (OperationCanceledException exception) when (token.IsCancellationRequested)
+        { throw new TimeoutException("Memory verification60s work deadline; no result committed.", exception); }
         catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or OverflowException or OutOfMemoryException)
         {
-            lines.Add($"FAIL | verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("verifier exception", false, exception.ToString());
         }
         finally
         {
+            cleaningUp = true;
+            if (!fixtureCleanupDeferred)
+            {
             foreach (var fixturePath in fixturePaths)
             {
-                TryDelete(fixturePath);
-                TryDelete(Path.ChangeExtension(fixturePath, ".derived.C3D"));
+                var fixtureFailure = TryDelete(fixturePath);
+                if (fixtureFailure is not null)
+                {
+                    Check("fixture cleanup", false, $"path={fixturePath};failure={fixtureFailure}");
+                }
+
+                var derivedPath = Path.ChangeExtension(fixturePath, ".derived.C3D");
+                var derivedFailure = TryDelete(derivedPath);
+                if (derivedFailure is not null)
+                {
+                    Check("fixture cleanup", false, $"path={derivedPath};failure={derivedFailure}");
+                }
+            }
+            try
+            {
+                if (ownedFixtureDirectory is not null && Directory.Exists(ownedFixtureDirectory.FullName))
+                    DeleteOwnedFixtureDirectory(ownedFixtureDirectory);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Check("fixture-directory cleanup", false, exception.ToString());
+            }
             }
         }
 
+        stageCompleted?.Invoke("memory-before-report");
+        cancellationToken.ThrowIfCancellationRequested();
+        token.ThrowIfCancellationRequested();
         var succeeded = passed == total && total > 0;
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         File.WriteAllLines(fullReportPath, lines);
@@ -142,12 +204,14 @@ internal static class C3DMemoryMeasurementVerification
         int height,
         string scaleName,
         List<string> lines,
-        Action<string, bool, string> check)
+        Action<string, bool, string> check,
+        CancellationToken cancellationToken)
     {
         C3DHeightFieldSnapshot? snapshot = null;
         C3DHeightGrid? grid = null;
         C3DHeightGridRenderProxy? renderProxy = null;
         Vector3[]? positions = null;
+        var workerUnsettled = false;
         try
         {
             snapshot = Measure(
@@ -157,8 +221,8 @@ internal static class C3DMemoryMeasurementVerification
                     fixturePath,
                     $"memory.{scaleName}",
                     "raw-height",
-                    "frame.c3d-grid-index"),
-                lines);
+                    "frame.c3d-grid-index", cancellationToken),
+                lines, cancellationToken);
             check(
                 $"{scaleName} raw snapshot identity",
                 snapshot.Width == width
@@ -169,8 +233,8 @@ internal static class C3DMemoryMeasurementVerification
             grid = Measure(
                 "raw-grid-load",
                 scaleName,
-                () => C3DHeightGrid.Load(fixturePath, MaxRenderedPoints),
-                lines);
+                () => C3DHeightGrid.Load(fixturePath, MaxRenderedPoints, cancellationToken, progress: null),
+                lines, cancellationToken);
             check(
                 $"{scaleName} raw grid identity",
                 grid.Width == width
@@ -179,7 +243,7 @@ internal static class C3DMemoryMeasurementVerification
                 && grid.Points.Length <= MaxRenderedPoints,
                 $"width={grid.Width};height={grid.Height};points={grid.Points.Length};stride={grid.PointStride};totalMs={grid.LoadPerformance.TotalMilliseconds:F3}");
 
-            var derivedValues = new OffsetHeightValues(snapshot.Values, 0.25);
+            var derivedValues = new OffsetHeightValues(snapshot.Values, 0.25, cancellationToken);
             var derivedOutputPath = Path.Combine(
                 Path.GetDirectoryName(fixturePath)!,
                 $"{Path.GetFileNameWithoutExtension(fixturePath)}.derived.C3D");
@@ -190,7 +254,7 @@ internal static class C3DMemoryMeasurementVerification
                     $"derived.{scaleName}",
                     derivedValues,
                     $"memory-measurement:{scaleName}"),
-                lines);
+                lines, cancellationToken);
             check(
                 $"{scaleName} derived snapshot preserves dimensions",
                 derived.Width == width
@@ -207,7 +271,7 @@ internal static class C3DMemoryMeasurementVerification
                     derived.SaveC3D(derivedOutputPath);
                     return new FileInfo(derivedOutputPath).Length;
                 },
-                lines);
+                lines, cancellationToken);
             check(
                 $"{scaleName} encoded output has expected length",
                 File.Exists(derivedOutputPath)
@@ -219,13 +283,13 @@ internal static class C3DMemoryMeasurementVerification
                 scaleName,
                 () =>
                 {
-                    var proxy = C3DHeightGridRenderProxy.Create(grid);
+                    var proxy = C3DHeightGridRenderProxy.Create(grid, cancellationToken);
                     var cache = new C3DRenderPositionCache();
                     var renderPositions = cache.GetOrCreate(proxy, ModelTransform.Identity);
                     positions = renderPositions;
                     return (proxy, renderPositions);
                 },
-                lines).proxy;
+                lines, cancellationToken).proxy;
             check(
                 $"{scaleName} render copy is bounded",
                 renderProxy.Points.Length == grid.Points.Length
@@ -240,35 +304,63 @@ internal static class C3DMemoryMeasurementVerification
                     renderProxy.Points,
                     positions!,
                     static (_, _) => (0.62, 0.82, 1.0)),
-                lines);
+                lines, cancellationToken);
             check(
                 $"{scaleName} GPU vertex payload is complete",
                 vertices.Length == checked(renderProxy.Points.Length * 6),
                 $"floats={vertices.Length};bytes={(long)vertices.Length * sizeof(float)};gpuUpload=outside-cpu-verifier");
         }
+        catch (VerificationStaIncompleteException)
+        {
+            workerUnsettled = true;
+            throw;
+        }
         finally
         {
+            if (!workerUnsettled)
+            {
             positions = null;
             renderProxy = null;
             grid = null;
             snapshot = null;
-            ForceCollection();
+            }
         }
+        // Successful-scale post-collection uses the same GC protocol. A failed
+        // or canceled scale never masks its failure with another GC wait.
+        ForceCollection(cancellationToken);
     }
 
     private static T Measure<T>(
         string stage,
         string scaleName,
         Func<T> action,
-        List<string> lines)
+        List<string> lines,
+        CancellationToken cancellationToken = default,
+        Action<string, object>? samplerObserver = null,
+        TimeSpan? cleanupTimeout = null,
+        Action? collectionOverride = null)
     {
-        ForceCollection();
-        using var sampler = new MemorySampler();
-        sampler.Start();
-        var start = Stopwatch.GetTimestamp();
-        var result = action();
-        var elapsedMilliseconds = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-        var observation = sampler.Stop();
+        T result = default!;
+        var elapsedMilliseconds = 0.0;
+        MemoryObservation observation = default;
+        var lifetime = VerificationStaOperation.Run(
+            () => { (collectionOverride ?? CollectGarbage)(); return new MemorySampler(); },
+            (sampler, token) =>
+            {
+                sampler.Start();
+                samplerObserver?.Invoke("started", sampler);
+                token.ThrowIfCancellationRequested();
+                var start = Stopwatch.GetTimestamp();
+                result = action();
+                token.ThrowIfCancellationRequested();
+                elapsedMilliseconds = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+                samplerObserver?.Invoke("stop-enter", sampler);
+                observation = sampler.Stop();
+                return Task.CompletedTask;
+            },
+            sampler => { samplerObserver?.Invoke("release-enter", sampler); sampler.Dispose(); },
+            cancellationToken, TimeSpan.FromSeconds(60), cleanupTimeout ?? TimeSpan.FromSeconds(10));
+        lines.Add($"WORKER-LIFETIME | scale={scaleName};stage={stage};{lifetime}");
         lines.Add(
             string.Create(
                 CultureInfo.InvariantCulture,
@@ -276,13 +368,14 @@ internal static class C3DMemoryMeasurementVerification
         return result;
     }
 
-    private static void WriteFixture(string path, int width, int height)
+    private static void WriteFixture(string path, int width, int height, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var expectedBytes = checked(8L + (long)width * height * sizeof(float));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         using var stream = new FileStream(
             path,
-            FileMode.Create,
+            FileMode.CreateNew,
             FileAccess.Write,
             FileShare.Read,
             SampleBufferBytes,
@@ -296,6 +389,7 @@ internal static class C3DMemoryMeasurementVerification
         var index = 0L;
         while (index < (long)width * height)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var sampleCount = Math.Min(buffer.Length / sizeof(float), (long)width * height - index);
             for (var offset = 0; offset < sampleCount; offset++)
             {
@@ -321,29 +415,33 @@ internal static class C3DMemoryMeasurementVerification
         Span<byte> header = stackalloc byte[8];
         BinaryPrimitives.WriteInt32LittleEndian(header, width);
         BinaryPrimitives.WriteInt32LittleEndian(header[4..], height);
-        File.WriteAllBytes(path, header.ToArray());
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        stream.Write(header);
     }
 
     private static void VerifyViewerRetention(
         string validFixturePath,
         string oversizedHeaderPath,
         List<string> lines,
-        Action<string, bool, string> check)
+        Action<string, bool, string> check,
+        CancellationToken cancellationToken = default)
     {
         Exception? failure = null;
         var validLoaded = false;
         var rejected = false;
         var retained = false;
         var retainedPath = string.Empty;
-        var thread = new Thread(() =>
+        VerificationStaObservation? lifetime = null;
+        try
         {
-            OpenVisionThreeDViewerControl? control = null;
-            try
-            {
-                control = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
-                validLoaded = control.LoadC3DSource(validFixturePath);
+            lifetime = VerificationStaOperation.Run(
+                () => new OpenVisionThreeDViewerControl(loadDefaultSamples: false),
+                async (control, token) =>
+                {
+                validLoaded = await control.LoadC3DSourceAsync(validFixturePath, token);
                 var currentPath = control.CurrentC3DSourcePath;
-                rejected = !control.LoadC3DSource(oversizedHeaderPath);
+                token.ThrowIfCancellationRequested();
+                rejected = !await control.LoadC3DSourceAsync(oversizedHeaderPath, token);
                 retainedPath = control.CurrentC3DSourcePath ?? string.Empty;
                 retained = !string.IsNullOrWhiteSpace(currentPath)
                     && string.Equals(currentPath, retainedPath, StringComparison.OrdinalIgnoreCase)
@@ -351,19 +449,18 @@ internal static class C3DMemoryMeasurementVerification
                         Path.GetFullPath(validFixturePath),
                         retainedPath,
                         StringComparison.OrdinalIgnoreCase);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-            finally
-            {
-                control?.Dispose();
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+                },
+                control => control.Dispose(), cancellationToken,
+                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(10));
+        }
+        catch (VerificationStaIncompleteException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            failure = exception;
+            lifetime = exception.Data["VerificationStaObservation"] as VerificationStaObservation;
+        }
+        lines.Add($"STA-LIFETIME | {lifetime};failure={failure}");
 
         check(
             "Viewer retains the current source after oversized admission rejection",
@@ -372,14 +469,35 @@ internal static class C3DMemoryMeasurementVerification
         lines.Add("ViewerRetentionBoundary|current-source-preserved=true|display-mutation-on-rejection=false|gpu-context=not-initialized");
     }
 
-    private static void ForceCollection()
+    private static void ForceCollection(
+        CancellationToken cancellationToken = default, Action? collectionOverride = null,
+        TimeSpan? workTimeout = null, TimeSpan? cleanupTimeout = null)
+    {
+        VerificationStaOperation.Run(
+            () => new object(),
+            (_, token) => { (collectionOverride ?? CollectGarbage)(); token.ThrowIfCancellationRequested(); return Task.CompletedTask; },
+            _ => { }, cancellationToken, workTimeout ?? TimeSpan.FromSeconds(60), cleanupTimeout ?? TimeSpan.FromSeconds(10));
+    }
+
+    private static void CollectGarbage()
     {
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
     }
 
-    private static void TryDelete(string path)
+    private static void DeleteOwnedFixtureDirectory(DirectoryInfo directory)
+    {
+        var resolved = Path.GetFullPath(directory.FullName);
+        var temporaryRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+        if (!string.Equals(Path.GetDirectoryName(resolved), temporaryRoot, StringComparison.OrdinalIgnoreCase)
+            || !Path.GetFileName(resolved).StartsWith("ovl-memory-verification-", StringComparison.Ordinal)
+            || (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("Verifier fixture directory no longer matches its owned temporary root.");
+        Directory.Delete(resolved, recursive: true);
+    }
+
+    private static Exception? TryDelete(string path)
     {
         try
         {
@@ -388,15 +506,19 @@ internal static class C3DMemoryMeasurementVerification
                 File.Delete(path);
             }
         }
-        catch (IOException)
+        catch (IOException exception)
         {
+            return exception;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException exception)
         {
+            return exception;
         }
+
+        return null;
     }
 
-    private sealed class OffsetHeightValues(ReadOnlyMemory<double> source, double offset) : IReadOnlyList<double>
+    private sealed class OffsetHeightValues(ReadOnlyMemory<double> source, double offset, CancellationToken cancellationToken) : IReadOnlyList<double>
     {
         public int Count => source.Length;
 
@@ -404,6 +526,7 @@ internal static class C3DMemoryMeasurementVerification
         {
             get
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var value = source.Span[index];
                 return double.IsFinite(value) ? value + offset : value;
             }
@@ -463,10 +586,22 @@ internal static class C3DMemoryMeasurementVerification
 
         public void Dispose()
         {
-            cancellation.Cancel();
-            samplingTask?.GetAwaiter().GetResult();
-            cancellation.Dispose();
-            process.Dispose();
+            try
+            {
+                cancellation.Cancel();
+                samplingTask?.GetAwaiter().GetResult();
+            }
+            finally
+            {
+                try
+                {
+                    cancellation.Dispose();
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            }
         }
 
         private async Task SampleLoop()

@@ -78,6 +78,11 @@ public partial class MainWindow : Window
     private readonly ShellSmokeScenarioRunner _shellSmokeScenario;
     private DispatcherTimer? _importDialogSmokeTimer;
     private bool _isClosed;
+    private bool _closeDrainStarted;
+    private bool _allowFinalClose;
+    private bool _shellResourcesReleased;
+    private Task? _viewModelShutdownTask;
+    private DispatcherOperation? _finalCloseOperation;
     private ShellValidationSetSmokeState validationSetSmoke =
         ShellValidationSetSmokeState.Empty;
 
@@ -292,7 +297,7 @@ public partial class MainWindow : Window
                     && ReferenceEquals(Workspace.ViewerContent, _viewer),
                 UpdateExpertViewerLayout = Workspace.UpdateLayout,
                 RequestVisibleFrame = _viewer.RequestVisibleFrame,
-                IsClosed = () => _isClosed
+                IsClosed = () => _isClosed || _closeDrainStarted
             });
         _startupViewerProjection = new ShellStartupViewerProjectionCoordinator(
             new ShellStartupViewerProjectionCallbacks
@@ -483,7 +488,7 @@ public partial class MainWindow : Window
                 ValidationSetSmoke = validationSetSmoke,
                 StartImportDialogSmokeTimer = StartImportDialogSmokeTimer,
                 ConfigureResultsSectionFromCommandLine = _startupCoordinator.ApplyResultsSection,
-                IsClosed = () => _isClosed,
+                IsClosed = () => _isClosed || _closeDrainStarted,
                 ShutdownApplication = exitCode => Application.Current.Shutdown(exitCode)
             });
         _shellSmokeScenario.Attach();
@@ -495,6 +500,14 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        // The posted final close continues the single admission made before disposal.
+        if (_allowFinalClose) return;
+        if (_closeDrainStarted)
+        {
+            e.Cancel = true;
+            return;
+        }
+
         if (!_startupConfiguration.IsAutomatedShellRun
             && !_workbenchLifecycle.TryResolveWorkbenchChanges("closing 3D Studio"))
         {
@@ -502,8 +515,22 @@ public partial class MainWindow : Window
             return;
         }
 
-        _studioLayout.Save();
         base.OnClosing(e);
+        if (e.Cancel) return;
+
+        _closeDrainStarted = true;
+        e.Cancel = true;
+        IsEnabled = false;
+        try
+        {
+            _studioLayout.Save();
+        }
+        catch (Exception exception)
+        {
+            LogShutdownFailure("layout save", exception);
+        }
+        ReleaseShellResources();
+        _ = DrainAndCloseAsync();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -518,45 +545,107 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _isClosed = true;
-        _windowScreenshot.Dispose();
-        _shellSmokeScenario.Dispose();
-        _viewerHost.Dispose();
-        StopImportDialogSmokeTimer();
+        _finalCloseOperation?.Abort();
+        _finalCloseOperation = null;
+        ReleaseShellResources();
+        var shutdownTask = GetViewModelShutdownTask();
+        if (!shutdownTask.IsCompleted)
+        {
+            OVLog.Write(LogCategory.System, LogLevel.Warning,
+                "Shell closed before ViewModel shutdown completed; forced dispatcher shutdown may prevent the drain.");
+        }
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio shutdown.");
-        _viewer.HostStateChanged -= _viewerHostStateChangedHandler;
-        _requestCoordinator.Dispose();
-        _workbenchViewerDisplay.Dispose();
-        _workbenchViewerTeaching.Dispose();
-        _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
-        _viewModel.InspectionTaskChanged -= _inspectionTaskChangedHandler;
-        Loaded -= EnsureWorkbenchViewerSourceConsistency;
-        _studioLayout.Dispose();
-        _workbenchLifecycle.Dispose();
-        _toolLabWindows.Dispose();
-        ToolWorkbench.Dispose();
+        base.OnClosed(e);
+    }
+
+    private void ReleaseShellResources()
+    {
+        if (_shellResourcesReleased) return;
+        _shellResourcesReleased = true;
+        // Retain teardown order and attempt each owned boundary even if an earlier release fails.
+        void Release(Action release)
+        {
+            try { release(); }
+            catch (Exception exception) { LogShutdownFailure("resource release", exception); }
+        }
+
+        Release(_windowScreenshot.Dispose);
+        Release(_shellSmokeScenario.Dispose);
+        Release(_viewerHost.Dispose);
+        Release(StopImportDialogSmokeTimer);
+        Release(() => _viewer.HostStateChanged -= _viewerHostStateChangedHandler);
+        Release(_requestCoordinator.Dispose);
+        Release(_workbenchViewerDisplay.Dispose);
+        Release(_workbenchViewerTeaching.Dispose);
+        Release(() => _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler);
+        Release(() => _viewModel.InspectionTaskChanged -= _inspectionTaskChangedHandler);
+        Release(() => Loaded -= ApplyViewerProjectionOnLoaded);
+        Release(() => Loaded -= EnsureWorkbenchViewerSourceConsistency);
+        Release(_studioLayout.Dispose);
+        Release(_workbenchLifecycle.Dispose);
+        Release(_toolLabWindows.Dispose);
+        Release(ToolWorkbench.Dispose);
         if (Workspace.ProfileContent is Views.Workbench.HeightProfileView advancedHeightProfileView)
         {
-            advancedHeightProfileView.Dispose();
+            Release(advancedHeightProfileView.Dispose);
         }
-        _viewer.Dispose();
+        Release(_viewer.Dispose);
+        // Retire Preview/Run requests before an asynchronous Integration shutdown can yield.
+        // Shell VM disposal later reuses the same idempotent Workbench lifetime boundary.
+        Release(_viewModel.Workbench.Dispose);
+    }
+
+    private Task GetViewModelShutdownTask() =>
+        _viewModelShutdownTask ??= DisposeViewModelAsync();
+
+    private async Task DisposeViewModelAsync()
+    {
         try
         {
-            _viewModel.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            await _viewModel.DisposeAsync();
         }
         catch (Exception exception)
         {
-            OVLog.Write(
-                LogCategory.System,
-                LogLevel.Error,
-                $"Shell ViewModel shutdown failed: {exception.GetBaseException().Message}");
+            LogShutdownFailure("ViewModel shutdown", exception);
         }
-        base.OnClosed(e);
     }
+
+    private async Task DrainAndCloseAsync()
+    {
+        await GetViewModelShutdownTask();
+        if (_isClosed) return;
+        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            OVLog.Write(LogCategory.System, LogLevel.Warning,
+                "Shell final close could not be posted because the dispatcher is shutting down.");
+            return;
+        }
+
+        try
+        {
+            // Always post, including synchronous disposal: the first OnClosing must unwind first.
+            _finalCloseOperation = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            {
+                _finalCloseOperation = null;
+                if (_isClosed) return;
+                _allowFinalClose = true;
+                Close();
+            }));
+        }
+        catch (InvalidOperationException exception)
+        {
+            LogShutdownFailure("final close scheduling", exception);
+        }
+    }
+
+    private static void LogShutdownFailure(string stage, Exception exception) =>
+        OVLog.Write(LogCategory.System, LogLevel.Error,
+            $"Shell {stage} failed: {exception.GetBaseException().Message}");
 
     private void StartImportDialogSmokeTimer()
     {
         StopImportDialogSmokeTimer();
-        if (_isClosed)
+        if (_isClosed || _closeDrainStarted)
         {
             return;
         }
@@ -593,7 +682,7 @@ public partial class MainWindow : Window
     private void OnImportDialogSmokeTimerTick(object? sender, EventArgs args)
     {
         StopImportDialogSmokeTimer();
-        if (_isClosed)
+        if (_isClosed || _closeDrainStarted)
         {
             return;
         }

@@ -306,10 +306,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return true;
             }
 
-            var regridSelectionPoint = new ToolRecipeSelectionPoint(
-                new ToolRecipeGridCellLocator("grid-cell", regridPoint.Row, regridPoint.Column),
-                new ToolRecipeXyz(regridPoint.ReferencePosition.X, regridPoint.ReferencePosition.Y, regridPoint.ReferencePosition.Z),
-                regridPoint.Height);
+            var regridSelectionPoint = regridPoint.ToTeachingSelectionPoint();
             viewModel.TryAddTeachingCapturePoint(regridSelectionPoint, out var regridCaptureMessage);
             viewModel.SelectedEntity = "TransformedHeightField Teaching Selection Candidate";
             viewModel.PickCoordinate = $"row {regridPoint.Row}, col {regridPoint.Column}, H {regridPoint.Height:G6}";

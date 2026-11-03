@@ -6,6 +6,10 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 internal static class ToolWorkbenchLifetimeCoordinatorVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var lines = new List<string>
@@ -65,6 +69,8 @@ internal static class ToolWorkbenchLifetimeCoordinatorVerification
                 events.SequenceEqual(expectedEvents),
                 $"actual={string.Join(',', events)}");
 
+            stageCompleted?.Invoke("lifetime-first-check");
+
             var allResources = beforeCancellationResources
                 .Concat(afterCancellationResources)
                 .Cast<RecordingResource>()
@@ -80,7 +86,7 @@ internal static class ToolWorkbenchLifetimeCoordinatorVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("verifier exception", false, exception.ToString());
         }
 
         var succeeded = passed == total && total > 0;

@@ -69,8 +69,8 @@ internal sealed class ViewerWorkbenchOverlayRenderer
     private C3DTransformedHeightField? regridHeightFieldRenderOutput;
     private Vector3[]? regridHeightFieldPositions;
     private bool[]? regridHeightFieldPopulated;
-    private Vector3 regridHeightFieldDisplayCenter;
-    private float regridHeightFieldDisplayScale = 1f;
+    private (double X, double Y, double Z) regridHeightFieldDisplayCenter;
+    private double regridHeightFieldDisplayScale = 1d;
     private Vector3[] regridHeightFieldFitPositions = [];
 
     public ViewerWorkbenchOverlayRenderer(ViewerWorkbenchOverlayCallbacks callbacks)
@@ -148,7 +148,7 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         ArgumentNullException.ThrowIfNull(output);
 
         var profile = output.ReferenceGridProfile;
-        var rawPositions = new Vector3[output.Cells.Count];
+        var positions = new Vector3[output.Cells.Count];
         var populated = new bool[output.Cells.Count];
         var minimumX = double.PositiveInfinity; var maximumX = double.NegativeInfinity;
         var minimumY = double.PositiveInfinity; var maximumY = double.NegativeInfinity;
@@ -157,26 +157,31 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         {
             var index = cell.Row * output.ColumnCount + cell.Column;
             if (!cell.HasValue) continue;
-            var u = (cell.Column + 0.5) * profile.PitchU;
-            var v = (cell.Row + 0.5) * profile.PitchV;
-            var x = profile.Origin.X + (u * profile.UAxis.X) + (v * profile.VAxis.X) + (cell.Height * profile.HAxis.X);
-            var y = profile.Origin.Y + (u * profile.UAxis.Y) + (v * profile.VAxis.Y) + (cell.Height * profile.HAxis.Y);
-            var z = profile.Origin.Z + (u * profile.UAxis.Z) + (v * profile.VAxis.Z) + (cell.Height * profile.HAxis.Z);
-            rawPositions[index] = new Vector3((float)x, (float)y, (float)z);
+            var (x, y, z) = CreateRegridReferenceCoordinates(profile, cell.Row, cell.Column, cell.Height);
             populated[index] = true;
             minimumX = Math.Min(minimumX, x); maximumX = Math.Max(maximumX, x);
             minimumY = Math.Min(minimumY, y); maximumY = Math.Max(maximumY, y);
             minimumZ = Math.Min(minimumZ, z); maximumZ = Math.Max(maximumZ, z);
         }
-        var span = Math.Max(1e-12, Math.Max(maximumX - minimumX, Math.Max(maximumY - minimumY, maximumZ - minimumZ)));
-        var center = new Vector3((float)((minimumX + maximumX) * 0.5), (float)((minimumY + maximumY) * 0.5), (float)((minimumZ + maximumZ) * 0.5));
-        var scale = (float)(C3DHeightGrid.ViewerHorizontalSpan * 0.78 / span);
-        for (var index = 0; index < rawPositions.Length; index++)
+        (double X, double Y, double Z) center = default;
+        var scale = 1d;
+        if (output.PopulatedCellCount > 0)
         {
-            if (populated[index]) rawPositions[index] = (rawPositions[index] - center) * scale;
+            var span = Math.Max(1e-12, Math.Max(maximumX - minimumX, Math.Max(maximumY - minimumY, maximumZ - minimumZ)));
+            center = (minimumX * 0.5 + maximumX * 0.5, minimumY * 0.5 + maximumY * 0.5, minimumZ * 0.5 + maximumZ * 0.5);
+            scale = C3DHeightGrid.ViewerHorizontalSpan * 0.78 / span;
+            // Retain double reference coordinates until after centering/scaling.
+            // A second pass avoids allocating a full-resolution double XYZ cache.
+            foreach (var cell in output.Cells)
+            {
+                if (!cell.HasValue) continue;
+                var index = cell.Row * output.ColumnCount + cell.Column;
+                positions[index] = MapRegridReferencePosition(
+                    CreateRegridReferenceCoordinates(profile, cell.Row, cell.Column, cell.Height), center, scale);
+            }
         }
         regridHeightFieldRenderOutput = output;
-        regridHeightFieldPositions = rawPositions;
+        regridHeightFieldPositions = positions;
         regridHeightFieldPopulated = populated;
         regridHeightFieldDisplayCenter = center;
         regridHeightFieldDisplayScale = scale;
@@ -192,7 +197,7 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         regridHeightFieldPositions = null;
         regridHeightFieldPopulated = null;
         regridHeightFieldDisplayCenter = default;
-        regridHeightFieldDisplayScale = 1f;
+        regridHeightFieldDisplayScale = 1d;
         regridHeightFieldFitPositions = [];
     }
 
@@ -395,18 +400,27 @@ internal sealed class ViewerWorkbenchOverlayRenderer
         gl.End();
     }
 
-    private Vector3 CreateRegridReferencePosition(int row, int column, double height)
+    private static (double X, double Y, double Z) CreateRegridReferenceCoordinates(
+        C3DReferenceGridProfile profile, int row, int column, double height)
     {
-        var profile = regridHeightFieldRenderOutput!.ReferenceGridProfile;
         var u = (column + 0.5) * profile.PitchU; var v = (row + 0.5) * profile.PitchV;
-        return new Vector3(
-            (float)(profile.Origin.X + u * profile.UAxis.X + v * profile.VAxis.X + height * profile.HAxis.X),
-            (float)(profile.Origin.Y + u * profile.UAxis.Y + v * profile.VAxis.Y + height * profile.HAxis.Y),
-            (float)(profile.Origin.Z + u * profile.UAxis.Z + v * profile.VAxis.Z + height * profile.HAxis.Z));
+        return (
+            profile.Origin.X + u * profile.UAxis.X + v * profile.VAxis.X + height * profile.HAxis.X,
+            profile.Origin.Y + u * profile.UAxis.Y + v * profile.VAxis.Y + height * profile.HAxis.Y,
+            profile.Origin.Z + u * profile.UAxis.Z + v * profile.VAxis.Z + height * profile.HAxis.Z);
     }
 
+    private (double X, double Y, double Z) CreateRegridReferencePosition(int row, int column, double height) =>
+        CreateRegridReferenceCoordinates(regridHeightFieldRenderOutput!.ReferenceGridProfile, row, column, height);
+
+    private static Vector3 MapRegridReferencePosition(
+        (double X, double Y, double Z) reference, (double X, double Y, double Z) center, double scale) => new(
+        (float)((reference.X - center.X) * scale),
+        (float)((reference.Y - center.Y) * scale),
+        (float)((reference.Z - center.Z) * scale));
+
     private Vector3 CreateRegridDisplayPosition(int row, int column, double height) =>
-        (CreateRegridReferencePosition(row, column, height) - regridHeightFieldDisplayCenter) * regridHeightFieldDisplayScale;
+        MapRegridReferencePosition(CreateRegridReferencePosition(row, column, height), regridHeightFieldDisplayCenter, regridHeightFieldDisplayScale);
 
     private static Vector3[] CreateFitBounds(Vector3 halfSize) =>
     [
@@ -445,4 +459,11 @@ internal sealed class ViewerWorkbenchOverlayRenderer
     }
 }
 
-internal readonly record struct ViewerRegridHeightFieldPick(int Row, int Column, double Height, Vector3 ReferencePosition);
+internal readonly record struct ViewerRegridHeightFieldPick(
+    int Row, int Column, double Height, (double X, double Y, double Z) ReferencePosition)
+{
+    public ToolRecipeSelectionPoint ToTeachingSelectionPoint() => new(
+        new ToolRecipeGridCellLocator("grid-cell", Row, Column),
+        new ToolRecipeXyz(ReferencePosition.X, ReferencePosition.Y, ReferencePosition.Z),
+        Height);
+}

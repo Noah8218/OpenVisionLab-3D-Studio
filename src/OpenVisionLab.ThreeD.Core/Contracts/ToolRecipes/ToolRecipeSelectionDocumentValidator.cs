@@ -411,6 +411,7 @@ internal static class ToolRecipeSelectionDocumentValidator
             {
                 referenceFrames.Add(row.ReferenceFrameId.Trim());
                 if (descriptor is not null
+                    && !string.IsNullOrWhiteSpace(descriptor.ReferenceFrameId)
                     && !string.Equals(row.ReferenceFrameId.Trim(), descriptor.ReferenceFrameId.Trim(), StringComparison.Ordinal))
                 {
                     errors.Add($"{rowLabel} reference frame must match the correspondence descriptor.");

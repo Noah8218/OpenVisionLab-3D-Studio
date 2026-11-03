@@ -1300,8 +1300,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
+        // Legacy pointer-smoke payload keeps reference XYZ in Vector3.
+        // This compatibility conversion does not feed the product's double
+        // ToTeachingSelectionPoint path or the centered display cache.
         point = new HeightGridPoint(
-            regridPoint.ReferencePosition,
+            new System.Numerics.Vector3(
+                (float)regridPoint.ReferencePosition.X,
+                (float)regridPoint.ReferencePosition.Y,
+                (float)regridPoint.ReferencePosition.Z),
             regridPoint.Height,
             0,
             (float)regridPoint.Height,

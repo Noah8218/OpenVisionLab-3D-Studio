@@ -8,6 +8,10 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 internal static class ToolWorkbenchTeachingSelectionEventCoordinatorVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var lines = new List<string>
@@ -106,6 +110,8 @@ internal static class ToolWorkbenchTeachingSelectionEventCoordinatorVerification
                     && landmarkCallbacks == 1,
                 $"store={storeCallbacks};capture={captureCallbacks};state={captureStateCallbacks};landmark={landmarkCallbacks}");
 
+            stageCompleted?.Invoke("teaching-first-check");
+
             coordinator.Dispose();
             coordinator.Dispose();
             var storeBeforeDispose = storeCallbacks;
@@ -125,7 +131,7 @@ internal static class ToolWorkbenchTeachingSelectionEventCoordinatorVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("verifier exception", false, exception.ToString());
         }
 
         var succeeded = passed == total && total > 0;

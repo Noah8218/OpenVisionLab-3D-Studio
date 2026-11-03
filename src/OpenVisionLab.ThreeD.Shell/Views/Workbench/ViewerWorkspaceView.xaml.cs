@@ -5,6 +5,8 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.Coordination;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
@@ -36,7 +38,10 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     private HeightProfileView? popoutProfile;
     private Window? ownerWindow;
     private readonly ViewerWorkspaceLinkCoordinator linkCoordinator = new();
-    private string loadedAuxiliaryPath = string.Empty;
+    private LoadedAuxiliaryDisplay? loadedAuxiliaryDisplay;
+    private SignedDisplayIdentity? loadedAuxiliarySignedDisplay;
+    private readonly object refreshOperationGate = new();
+    private DispatcherOperation? refreshOperation;
     private bool subscriptionsAttached;
     private bool roiFocusRatioApplied;
     private ViewerWorkspaceLayout roiFocusLayout;
@@ -44,6 +49,19 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     private GridLength roiFocusSecondLength;
     private int disposalState;
     private (GridLength FirstRow, GridLength SecondRow, GridLength FirstColumn, GridLength SecondColumn)? paneRestoreLengths;
+
+    private sealed record AuxiliaryDisplayInput(string Path, string CandidateId, string Contract,
+        bool IsSource, ToolRecipeSelectionSourceBinding? SourceBinding, string RootSourceId,
+        string Unit, string FrameId, string? ArtifactHash, int? Width, int? Height,
+        long Length, long LastWriteTicks)
+    {
+        public bool HasAdmittedIdentity => SourceBinding?.ContentSha256.Length == 64 || ArtifactHash?.Length == 64;
+    }
+
+    private sealed record LoadedAuxiliaryDisplay(AuxiliaryDisplayInput Input, ToolRecipeSelectionSourceBinding Binding);
+    private sealed record SignedDisplayIdentity(string CandidateId, string Contract, ViewerWorkspaceCandidateKind Kind,
+        string Path, string EntityId, string Hash, string Unit, string FrameId,
+        int Width, int Height, int OriginColumn, int OriginRow);
 
     public ViewerWorkspaceView()
     {
@@ -105,6 +123,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             return;
         }
 
+        CancelPendingRefresh();
         DetachSubscriptions();
         AttachMainViewer(null);
 
@@ -135,7 +154,8 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         AuxiliaryViewerPresentationBar.ViewerHost = null;
         AuxiliaryEmptyText.Visibility = Visibility.Visible;
         heightImageViewer = null;
-        loadedAuxiliaryPath = string.Empty;
+        loadedAuxiliaryDisplay = null;
+        loadedAuxiliarySignedDisplay = null;
 
         var currentAuxiliaryViewer = auxiliaryViewer;
         auxiliaryViewer = null;
@@ -297,7 +317,10 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             return;
         }
 
+        CancelPendingRefresh();
         DetachSubscriptions();
+        loadedAuxiliaryDisplay = null;
+        loadedAuxiliarySignedDisplay = null;
         workbench = args.NewValue as ToolWorkbenchViewModel;
         AttachSubscriptions();
         RefreshWorkspace();
@@ -310,12 +333,16 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             return;
         }
 
+        CancelPendingRefresh();
         AttachSubscriptions();
-        RefreshWorkspace();
+        RefreshWorkspace(revalidateUnknown: true);
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs args) =>
+    private void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        CancelPendingRefresh();
         DetachSubscriptions();
+    }
 
     private void AttachSubscriptions()
     {
@@ -334,6 +361,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
         workbench.AppliedTeachingSelectionsChanged += OnAppliedSelectionsChanged;
         workbench.CompareCandidates.CollectionChanged += OnCompareCandidatesChanged;
+        workbench.ArtifactRegistry.CollectionChanged += OnCompareCandidatesChanged;
         linkCoordinator.SetWorkbench(workbench);
         AttachMainViewer(MainViewerContent as OpenVisionThreeDViewerControl);
         subscriptionsAttached = true;
@@ -358,6 +386,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
             workbench.AppliedTeachingSelectionsChanged -= OnAppliedSelectionsChanged;
             workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
+            workbench.ArtifactRegistry.CollectionChanged -= OnCompareCandidatesChanged;
         }
 
         linkCoordinator.SetWorkbench(null);
@@ -417,9 +446,12 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
 
     private void OnViewerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(ViewerWorkspaceSession.Layout)
-            or nameof(ViewerWorkspaceSession.MainContentId)
-            or nameof(ViewerWorkspaceSession.AuxiliaryContentId)
+        if (args.PropertyName is nameof(ViewerWorkspaceSession.MainContentId)
+            or nameof(ViewerWorkspaceSession.AuxiliaryContentId))
+        {
+            QueueRefresh();
+        }
+        else if (args.PropertyName is nameof(ViewerWorkspaceSession.Layout)
             or nameof(ViewerWorkspaceSession.IsMainContentExplicitlyCleared)
             or nameof(ViewerWorkspaceSession.IsAuxiliaryContentExplicitlyCleared)
             or nameof(ViewerWorkspaceSession.IsCameraLinked))
@@ -437,11 +469,14 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         {
             UpdateRoiFocusRatio();
         }
-        else if (args.PropertyName is nameof(ToolWorkbenchViewModel.EffectiveViewerLayout)
-            or nameof(ToolWorkbenchViewModel.EffectiveMainViewerContentId)
-            or nameof(ToolWorkbenchViewModel.EffectiveAuxiliaryViewerContentId))
+        else if (args.PropertyName == nameof(ToolWorkbenchViewModel.EffectiveViewerLayout))
         {
             RefreshWorkspace();
+        }
+        else if (args.PropertyName is nameof(ToolWorkbenchViewModel.EffectiveMainViewerContentId)
+            or nameof(ToolWorkbenchViewModel.EffectiveAuxiliaryViewerContentId))
+        {
+            QueueRefresh();
         }
         else if (args.PropertyName == nameof(ToolWorkbenchViewModel.MaximizedViewerSlotId))
         {
@@ -450,13 +485,44 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
     }
 
     private void OnCompareCandidatesChanged(object? sender, NotifyCollectionChangedEventArgs args) =>
-        RefreshWorkspace();
+        QueueRefresh();
 
-    private void RefreshWorkspace()
+    private void QueueRefresh()
+    {
+        if (Volatile.Read(ref disposalState) != 0 || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        lock (refreshOperationGate)
+        {
+            if (refreshOperation?.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing) return;
+            try
+            {
+                refreshOperation = Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(RefreshFromDispatcher));
+            }
+            catch (InvalidOperationException) { refreshOperation = null; }
+        }
+    }
+
+    private void RefreshFromDispatcher()
+    {
+        lock (refreshOperationGate) refreshOperation = null;
+        if (Volatile.Read(ref disposalState) == 0 && IsLoaded) RefreshWorkspace();
+    }
+
+    private void CancelPendingRefresh()
+    {
+        DispatcherOperation? operation;
+        lock (refreshOperationGate)
+        {
+            operation = refreshOperation;
+            refreshOperation = null;
+        }
+        if (operation?.Status == DispatcherOperationStatus.Pending) operation.Abort();
+    }
+
+    private void RefreshWorkspace(bool revalidateUnknown = false)
     {
         ApplyLayout(workbench?.EffectiveViewerLayout ?? ViewerWorkspaceLayout.Single);
         RefreshMainViewer();
-        RefreshAuxiliaryViewer();
+        RefreshAuxiliaryViewer(revalidateUnknown);
         RefreshLowerViewers();
         SyncRoiDisplay();
         UpdateRoiFocusRatio();
@@ -732,8 +798,9 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
         roiFocusRatioApplied = false;
     }
 
-    private void RefreshAuxiliaryViewer()
+    private void RefreshAuxiliaryViewer(bool revalidateUnknown = false)
     {
+        if (Volatile.Read(ref disposalState) != 0) return;
         var currentWorkbench = workbench;
         var candidate = currentWorkbench?.GetViewerWorkspaceCandidate(
             currentWorkbench.EffectiveAuxiliaryViewerContentId);
@@ -743,13 +810,7 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
                     && currentWorkbench.HasEffectiveSignedDeltaOutput
                     && !currentWorkbench.IsInspectionInputView))
         {
-            loadedAuxiliaryPath = string.Empty;
-            AuxiliaryViewerHost.Content = null;
-            AuxiliaryViewerPresentationBar.ViewerHost = null;
-            AuxiliaryEmptyText.Visibility = Visibility.Visible;
-            popout?.SetViewerContent(
-                null,
-                currentWorkbench?.Localization.ViewerAuxiliaryNoOutput ?? "No real 3D output is available");
+            ClearAuxiliaryDisplay();
             return;
         }
 
@@ -782,31 +843,111 @@ public partial class ViewerWorkspaceView : UserControl, IDisposable
             SidePanelsVisible = false
         };
         auxiliaryViewer.SetWorkspaceHeaderHost(IsAuxiliaryInlineVisible ? AuxiliaryPaneMenuHost : null, IsCompactChrome);
-        linkCoordinator.SetAuxiliaryViewer(auxiliaryViewer);
         auxiliaryViewer.TrySetHudDetailsVisible(false);
         var signedFrame = currentWorkbench.AuxiliaryViewerPane.HeightImage.Frame is { IsSignedDelta: true } delta ? delta : null;
-        var displayPath = signedFrame?.SourcePath ?? candidate.SourcePath;
-        if (!string.Equals(loadedAuxiliaryPath, displayPath, StringComparison.OrdinalIgnoreCase))
+        if (signedFrame is not null)
         {
-            if (signedFrame is not null)
+            var identity = new SignedDisplayIdentity(candidate.Id, candidate.Contract, candidate.Kind,
+                signedFrame.SourcePath, signedFrame.SourceEntityId, signedFrame.SourceContentSha256,
+                signedFrame.Unit, signedFrame.FrameId, signedFrame.Width, signedFrame.Height,
+                signedFrame.GridOriginColumn, signedFrame.GridOriginRow);
+            if (loadedAuxiliarySignedDisplay != identity
+                || !string.Equals(auxiliaryViewer.CurrentC3DSourcePath, signedFrame.SourcePath, StringComparison.Ordinal))
             {
-                if (!auxiliaryViewer.ShowSignedDeltaFrame(signedFrame)) return;
+                loadedAuxiliaryDisplay = null;
+                loadedAuxiliarySignedDisplay = null;
+                linkCoordinator.SetAuxiliaryViewer(null);
+                if (!auxiliaryViewer.ShowSignedDeltaFrame(signedFrame)
+                    || !string.Equals(auxiliaryViewer.CurrentC3DSourcePath, signedFrame.SourcePath, StringComparison.Ordinal)
+                    || !ReferenceEquals(currentWorkbench, workbench)
+                    || !ReferenceEquals(currentWorkbench.AuxiliaryViewerPane.HeightImage.Frame, signedFrame)
+                    || !string.Equals(currentWorkbench.EffectiveAuxiliaryViewerContentId, candidate.Id, StringComparison.OrdinalIgnoreCase))
+                {
+                    ClearAuxiliaryDisplay();
+                    return;
+                }
+                loadedAuxiliarySignedDisplay = identity;
             }
-            else if (candidate.IsSource)
+        }
+        else
+        {
+            if (!TryCaptureAuxiliaryInput(currentWorkbench, candidate, out var input))
             {
-                auxiliaryViewer.LoadC3DSource(candidate.SourcePath);
+                ClearAuxiliaryDisplay();
+                return;
             }
-            else
+            var cacheHit = loadedAuxiliaryDisplay is { } previous && previous.Input == input
+                && (!revalidateUnknown || input.HasAdmittedIdentity)
+                && auxiliaryViewer.TryGetCurrentC3DSourceBinding(input.Path, out var currentBinding)
+                && currentBinding == previous.Binding;
+            if (!cacheHit)
             {
-                auxiliaryViewer.ShowC3DWorkbenchResult(
-                    candidate.SourcePath,
-                    $"{candidate.DisplayName} | {candidate.State}");
+                loadedAuxiliaryDisplay = null;
+                loadedAuxiliarySignedDisplay = null;
+                linkCoordinator.SetAuxiliaryViewer(null);
+                var loaded = candidate.IsSource
+                    ? auxiliaryViewer.LoadC3DSource(input.Path)
+                    : auxiliaryViewer.ShowC3DWorkbenchResult(input.Path, $"{candidate.DisplayName} | {candidate.State}");
+                var currentCandidate = currentWorkbench.GetViewerWorkspaceCandidate(currentWorkbench.EffectiveAuxiliaryViewerContentId);
+                if (!loaded || !auxiliaryViewer.TryGetCurrentC3DSourceBinding(input.Path, out var binding)
+                    || binding.ContentSha256.Length != 64 || !ReferenceEquals(currentWorkbench, workbench)
+                    || currentCandidate is null || !TryCaptureAuxiliaryInput(currentWorkbench, currentCandidate, out var afterLoad)
+                    || afterLoad != input
+                    || input.SourceBinding is { } admitted
+                        && (!string.Equals(admitted.ContentSha256, binding.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                            || admitted.GridWidth != binding.GridWidth || admitted.GridHeight != binding.GridHeight))
+                {
+                    ClearAuxiliaryDisplay();
+                    return;
+                }
+                loadedAuxiliaryDisplay = new(input, binding);
             }
-
-            loadedAuxiliaryPath = displayPath;
         }
 
+        linkCoordinator.SetAuxiliaryViewer(auxiliaryViewer);
         PresentAuxiliaryContent(currentWorkbench.AuxiliaryViewerPane.IsSection ? AuxiliaryPaneProfile : auxiliaryViewer, currentWorkbench);
+    }
+
+    private static bool TryCaptureAuxiliaryInput(ToolWorkbenchViewModel workbench,
+        ViewerWorkspaceCandidateItem candidate, out AuxiliaryDisplayInput input)
+    {
+        input = null!;
+        try
+        {
+            var path = Path.GetFullPath(candidate.SourcePath);
+            var file = new FileInfo(path);
+            if (!file.Exists) return false;
+            var artifact = workbench.ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Id, candidate.Id, StringComparison.OrdinalIgnoreCase));
+            var source = candidate.IsSource ? workbench.SourceSession.SourceBinding : null;
+            input = new(path, candidate.Id, candidate.Contract, candidate.IsSource, source,
+                candidate.IsSource ? workbench.Source.Id : artifact?.RootSourceId ?? string.Empty,
+                candidate.IsSource ? workbench.Source.Unit : artifact?.Unit ?? string.Empty,
+                candidate.IsSource ? workbench.Source.FrameId : artifact?.FrameId ?? string.Empty,
+                artifact?.ContentSha256, source?.GridWidth ?? artifact?.GridWidth, source?.GridHeight ?? artifact?.GridHeight,
+                file.Length, file.LastWriteTimeUtc.Ticks);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private void ClearAuxiliaryDisplay()
+    {
+        loadedAuxiliaryDisplay = null;
+        loadedAuxiliarySignedDisplay = null;
+        linkCoordinator.SetAuxiliaryViewer(null);
+        var status = workbench?.Localization.ViewerAuxiliaryNoOutput ?? "No real 3D output is available";
+        if (auxiliaryViewer?.CurrentC3DSourcePath is not null) auxiliaryViewer.ClearC3DTeachingSource(status);
+        AuxiliaryViewerHost.Content = null;
+        AuxiliaryViewerPresentationBar.ViewerHost = null;
+        AuxiliaryViewerPresentationBar.DialogPlacementTarget = null;
+        AuxiliaryViewerPresentationBar.Visibility = Visibility.Collapsed;
+        if (popoutProfile is not null) popoutProfile.ViewerHost = null;
+        AuxiliaryEmptyText.Visibility = Visibility.Visible;
+        popout?.SetViewerContent(null, status);
     }
 
     private void RefreshLowerViewers()

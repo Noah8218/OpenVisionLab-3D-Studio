@@ -41,8 +41,11 @@ public sealed partial class ToolWorkbenchViewModel
     public void ReportC3DSourceLoadProgress(double percent) =>
         sourceLoadOwner.ReportC3DSourceLoadProgress(percent);
 
-    public void CompleteC3DSourceLoad(string path, long elapsedMilliseconds) =>
+    public void CompleteC3DSourceLoad(string path, long elapsedMilliseconds)
+    {
         sourceLoadOwner.CompleteC3DSourceLoad(path, elapsedMilliseconds);
+        OnPropertyChanged(nameof(HasEffectiveMainGeometry));
+    }
 
     public void CancelC3DSourceLoad(long elapsedMilliseconds) =>
         sourceLoadOwner.CancelC3DSourceLoad(elapsedMilliseconds);
@@ -50,6 +53,9 @@ public sealed partial class ToolWorkbenchViewModel
     public void FailC3DSourceLoad(string path, long elapsedMilliseconds) =>
         sourceLoadOwner.FailC3DSourceLoad(path, elapsedMilliseconds);
 
-    public void CompleteViewerOnlyImport(string path, string format, long elapsedMilliseconds) =>
+    public void CompleteViewerOnlyImport(string path, string format, long elapsedMilliseconds)
+    {
         sourceLoadOwner.CompleteViewerOnlyImport(path, format, elapsedMilliseconds);
+        OnPropertyChanged(nameof(HasEffectiveMainGeometry));
+    }
 }

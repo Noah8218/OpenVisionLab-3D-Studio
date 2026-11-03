@@ -23,11 +23,24 @@ internal static class C3DInputStabilityVerification
     private const long ComparablePayloadBytes = 1_048_576;
 
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
+        => VerifyWithCancellation(reportPath, out summary, stageCompleted, CancellationToken.None);
+
+    internal static bool VerifyWithCancellation(
+        string reportPath, out string summary, Action<string>? stageCompleted, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var verificationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        verificationCancellation.CancelAfter(TimeSpan.FromSeconds(60));
+        var token = verificationCancellation.Token;
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var fullReportPath = Path.GetFullPath(reportPath);
         var reportDirectory = Path.GetDirectoryName(fullReportPath)!;
-        var fixtureDirectory = Path.Combine(reportDirectory, "fixtures");
+        DirectoryInfo? ownedFixtureDirectory = null;
+        string? fixtureDirectory = null;
         Directory.CreateDirectory(reportDirectory);
 
         var lines = new List<string>
@@ -43,9 +56,12 @@ internal static class C3DInputStabilityVerification
         var passed = 0;
         var total = 0;
         var cleanupFailed = false;
+        var fixtureCleanupDeferred = false;
+        var cleaningUp = false;
 
         void Check(string name, bool condition, string detail)
         {
+            if (!cleaningUp) token.ThrowIfCancellationRequested();
             total++;
             lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
             if (condition)
@@ -57,7 +73,10 @@ internal static class C3DInputStabilityVerification
         var generatedPaths = new List<string>();
         try
         {
-            Directory.CreateDirectory(fixtureDirectory);
+            ownedFixtureDirectory = Directory.CreateTempSubdirectory("ovl-input-stability-");
+            fixtureDirectory = ownedFixtureDirectory.FullName;
+            lines.Add($"FixtureDirectory: {fixtureDirectory}");
+            stageCompleted?.Invoke("input-fixture-directory-created");
             var minimalPath = Path.Combine(fixtureDirectory, "minimal-nodata.C3D");
             WriteC3D(minimalPath, 2, 2, [1.0f, 0.0f, float.NaN, -2.0f]);
             generatedPaths.Add(minimalPath);
@@ -72,15 +91,17 @@ internal static class C3DInputStabilityVerification
                     .ToArray());
             generatedPaths.Add(regularPath);
 
-            VerifyNormalC3D(minimalPath, regularPath, Check, lines);
-            VerifyHashAndNoData(minimalPath, Check, lines);
+            VerifyNormalC3D(minimalPath, regularPath, Check, lines, token);
+            VerifyHashAndNoData(minimalPath, Check, lines, token);
+            stageCompleted?.Invoke("input-small-fixtures-checked");
 
             foreach (var fixture in CreateMalformedFixtures())
             {
+                token.ThrowIfCancellationRequested();
                 var fixturePath = Path.Combine(fixtureDirectory, fixture.Name + ".C3D");
-                File.WriteAllBytes(fixturePath, fixture.Bytes);
+                WriteNewFixtureBytes(fixturePath, fixture.Bytes);
                 generatedPaths.Add(fixturePath);
-                VerifyMalformedC3D(fixturePath, fixture, Check, lines);
+                VerifyMalformedC3D(fixturePath, fixture, Check, lines, token);
             }
 
             var lockedPath = Path.Combine(fixtureDirectory, "locked-source.C3D");
@@ -94,21 +115,21 @@ internal static class C3DInputStabilityVerification
                        bufferSize: 4096,
                        options: FileOptions.SequentialScan))
             {
-                VerifyLockedC3D(lockedPath, Check, lines);
+                VerifyLockedC3D(lockedPath, Check, lines, token);
             }
 
             var corruptLazPath = Path.Combine(fixtureDirectory, "corrupt-input.laz");
-            File.WriteAllBytes(corruptLazPath, Encoding.ASCII.GetBytes("not-a-LAS-or-LAZ"));
+            WriteNewFixtureBytes(corruptLazPath, Encoding.ASCII.GetBytes("not-a-LAS-or-LAZ"));
             generatedPaths.Add(corruptLazPath);
 
             var unsupportedPath = Path.Combine(fixtureDirectory, "unsupported-layout.xyz");
-            File.WriteAllText(unsupportedPath, "unsupported viewer-only layout", Encoding.UTF8);
+            WriteNewFixtureText(unsupportedPath, "unsupported viewer-only layout");
             generatedPaths.Add(unsupportedPath);
             VerifyViewerOnlyInputs(
                 corruptLazPath,
                 unsupportedPath,
                 Check,
-                lines);
+                lines, token);
 
             VerifyViewerRetention(
                 regularPath,
@@ -118,8 +139,19 @@ internal static class C3DInputStabilityVerification
                     Path.Combine(fixtureDirectory, "oversized-header.C3D")
                 ],
                 Check,
-                lines);
+                lines, token);
         }
+        catch (VerificationStaIncompleteException exception)
+        {
+            fixtureCleanupDeferred = true;
+            exception.Data["FixtureDirectory"] = fixtureDirectory;
+            exception.Data["FixtureCleanupDeferred"] = true;
+            throw;
+        }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        { throw new OperationCanceledException("Input verification canceled; no result committed.", exception, cancellationToken); }
+        catch (OperationCanceledException exception) when (token.IsCancellationRequested)
+        { throw new TimeoutException("Input verification 60s work deadline; no result committed.", exception); }
         catch (Exception exception) when (exception is IOException
             or InvalidDataException
             or ArgumentException
@@ -128,33 +160,38 @@ internal static class C3DInputStabilityVerification
             or UnauthorizedAccessException
             or NotSupportedException)
         {
-            lines.Add($"FAIL | unexpected verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("unexpected verifier exception", false, exception.ToString());
         }
         finally
         {
+            cleaningUp = true;
+            if (!fixtureCleanupDeferred)
+            {
             foreach (var generatedPath in generatedPaths)
             {
                 if (!TryDelete(generatedPath))
                 {
                     cleanupFailed = true;
-                    lines.Add($"FAIL | fixture cleanup | path={generatedPath}");
+                    Check("fixture cleanup", false, $"path={generatedPath}");
                 }
             }
 
             try
             {
-                if (Directory.Exists(fixtureDirectory))
-                {
-                    Directory.Delete(fixtureDirectory, recursive: true);
-                }
+                if (ownedFixtureDirectory is not null && Directory.Exists(ownedFixtureDirectory.FullName))
+                    DeleteOwnedFixtureDirectory(ownedFixtureDirectory);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 cleanupFailed = true;
-                lines.Add($"FAIL | fixture-directory cleanup | {exception.Message}");
+                Check("fixture-directory cleanup", false, exception.ToString());
+            }
             }
         }
 
+        stageCompleted?.Invoke("input-before-report");
+        cancellationToken.ThrowIfCancellationRequested();
+        token.ThrowIfCancellationRequested();
         var succeeded = passed == total
             && total > 0
             && !cleanupFailed
@@ -169,14 +206,14 @@ internal static class C3DInputStabilityVerification
         string minimalPath,
         string regularPath,
         Action<string, bool, string> check,
-        List<string> lines)
+        List<string> lines, CancellationToken cancellationToken)
     {
         var minimalSnapshot = C3DHeightFieldSnapshot.LoadIdentified(
             minimalPath,
             "input-stability.minimal",
             "raw-height",
-            "frame.c3d-grid-index");
-        var minimalGrid = C3DHeightGrid.Load(minimalPath, maxRenderedPoints: 0);
+            "frame.c3d-grid-index", cancellationToken);
+        var minimalGrid = C3DHeightGrid.Load(minimalPath, 0, cancellationToken, progress: null);
         check(
             "minimal C3D loads through Snapshot and HeightGrid owners",
             minimalSnapshot.Width == 2
@@ -190,8 +227,8 @@ internal static class C3DInputStabilityVerification
             regularPath,
             "input-stability.regular",
             "raw-height",
-            "frame.c3d-grid-index");
-        var regularGrid = C3DHeightGrid.Load(regularPath, maxRenderedPoints: 0);
+            "frame.c3d-grid-index", cancellationToken);
+        var regularGrid = C3DHeightGrid.Load(regularPath, 0, cancellationToken, progress: null);
         check(
             "regular C3D loads without render-point allocation",
             regularSnapshot.Width == RegularWidth
@@ -210,15 +247,15 @@ internal static class C3DInputStabilityVerification
     private static void VerifyHashAndNoData(
         string path,
         Action<string, bool, string> check,
-        List<string> lines)
+        List<string> lines, CancellationToken cancellationToken)
     {
         var expectedHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
         var snapshot = C3DHeightFieldSnapshot.LoadIdentified(
             path,
             "input-stability.hash",
             "raw-height",
-            "frame.c3d-grid-index");
-        var grid = C3DHeightGrid.Load(path, maxRenderedPoints: 0);
+            "frame.c3d-grid-index", cancellationToken);
+        var grid = C3DHeightGrid.Load(path, 0, cancellationToken, progress: null);
         check(
             "same-stream C3D hash identity remains canonical",
             string.Equals(snapshot.ContentSha256, expectedHash, StringComparison.OrdinalIgnoreCase)
@@ -246,15 +283,15 @@ internal static class C3DInputStabilityVerification
         string path,
         C3DFixture fixture,
         Action<string, bool, string> check,
-        List<string> lines)
+        List<string> lines, CancellationToken cancellationToken)
     {
         var snapshotObservation = Observe(() =>
             C3DHeightFieldSnapshot.LoadIdentified(
                 path,
                 $"input-stability.{fixture.Name}",
                 "raw-height",
-                "frame.c3d-grid-index"));
-        var gridObservation = Observe(() => C3DHeightGrid.Load(path, maxRenderedPoints: 0));
+                "frame.c3d-grid-index", cancellationToken), cancellationToken);
+        var gridObservation = Observe(() => C3DHeightGrid.Load(path, 0, cancellationToken, progress: null), cancellationToken);
 
         VerifyTopologyObservation(
             $"Snapshot rejects {fixture.Name}",
@@ -291,15 +328,15 @@ internal static class C3DInputStabilityVerification
     private static void VerifyLockedC3D(
         string path,
         Action<string, bool, string> check,
-        List<string> lines)
+        List<string> lines, CancellationToken cancellationToken)
     {
         var snapshotObservation = Observe(() =>
             C3DHeightFieldSnapshot.LoadIdentified(
                 path,
                 "input-stability.locked",
                 "raw-height",
-                "frame.c3d-grid-index"));
-        var gridObservation = Observe(() => C3DHeightGrid.Load(path, maxRenderedPoints: 0));
+                "frame.c3d-grid-index", cancellationToken), cancellationToken);
+        var gridObservation = Observe(() => C3DHeightGrid.Load(path, 0, cancellationToken, progress: null), cancellationToken);
         check(
             "locked C3D Snapshot fails with a controlled I/O error",
             snapshotObservation.Error is IOException or UnauthorizedAccessException,
@@ -316,16 +353,13 @@ internal static class C3DInputStabilityVerification
         string corruptLazPath,
         string unsupportedPath,
         Action<string, bool, string> check,
-        List<string> lines)
+        List<string> lines, CancellationToken cancellationToken)
     {
         var lasPath = Path.GetFullPath(Path.Combine("3D", "PublicSamples", "PointCloud", "interesting.las"));
         var lazPath = Path.GetFullPath(Path.Combine("3D", "PublicSamples", "PointCloud", "xyzrgb_manuscript.laz"));
-        using var lazLoadCoordinator = new LazPointCloudLoadCoordinator(new LazPointCloudSampleCache());
-        var viewerOnlyCoordinator = new ViewerOnlySourceLoadCoordinator(lazLoadCoordinator);
 
         var las = ObserveViewerOnlyLoad(
-            viewerOnlyCoordinator,
-            ViewerOnlySourceLoadCoordinator.Prepare(lasPath, 16));
+            ViewerOnlySourceLoadCoordinator.Prepare(lasPath, 16), cancellationToken);
         check(
             "supported LAS input loads through the existing Viewer-only owner",
             las.Error is null
@@ -333,8 +367,7 @@ internal static class C3DInputStabilityVerification
             $"exists={File.Exists(lasPath)};format={las.Result?.Format ?? "none"};sampled={las.Result?.PointCloud?.SampledPointView.Count.ToString(CultureInfo.InvariantCulture) ?? "0"};elapsedMs={las.ElapsedMilliseconds:F3};error={las.Error?.GetType().Name ?? "none"}");
 
         var laz = ObserveViewerOnlyLoad(
-            viewerOnlyCoordinator,
-            ViewerOnlySourceLoadCoordinator.Prepare(lazPath, 16));
+            ViewerOnlySourceLoadCoordinator.Prepare(lazPath, 16), cancellationToken);
         check(
             "supported LAZ input reaches the existing decoder boundary",
             laz.Error is null
@@ -342,8 +375,7 @@ internal static class C3DInputStabilityVerification
             $"exists={File.Exists(lazPath)};format={laz.Result?.Format ?? "none"};sampled={laz.Result?.PointCloud?.SampledPointView.Count.ToString(CultureInfo.InvariantCulture) ?? "0"};elapsedMs={laz.ElapsedMilliseconds:F3};error={laz.Error?.GetType().Name ?? "none"}");
 
         var corrupt = ObserveViewerOnlyLoad(
-            viewerOnlyCoordinator,
-            ViewerOnlySourceLoadCoordinator.Prepare(corruptLazPath, 16));
+            ViewerOnlySourceLoadCoordinator.Prepare(corruptLazPath, 16), cancellationToken);
         check(
             "corrupt LAZ input fails with a controlled decoder error",
             corrupt.Error is IOException
@@ -355,8 +387,7 @@ internal static class C3DInputStabilityVerification
             $"error={corrupt.Error?.GetType().Name ?? "none"};elapsedMs={corrupt.ElapsedMilliseconds:F3};message={Clean(corrupt.Error?.Message)}");
 
         var unsupported = ObserveViewerOnlyLoad(
-            viewerOnlyCoordinator,
-            ViewerOnlySourceLoadCoordinator.Prepare(unsupportedPath, 16));
+            ViewerOnlySourceLoadCoordinator.Prepare(unsupportedPath, 16), cancellationToken);
         check(
             "unsupported Viewer-only layout fails before decoder dispatch",
             unsupported.Error is NotSupportedException,
@@ -370,7 +401,8 @@ internal static class C3DInputStabilityVerification
         string validPath,
         IReadOnlyList<string> rejectedPaths,
         Action<string, bool, string> check,
-        List<string> lines)
+        List<string> lines,
+        CancellationToken cancellationToken = default)
     {
         var loaded = false;
         var rejected = true;
@@ -380,19 +412,21 @@ internal static class C3DInputStabilityVerification
         var afterPath = string.Empty;
         var beforeHash = string.Empty;
         var failure = default(Exception);
-        var thread = new Thread(() =>
+        VerificationStaObservation? lifetime = null;
+        try
         {
-            OpenVisionThreeDViewerControl? control = null;
-            try
-            {
-                control = new OpenVisionThreeDViewerControl(loadDefaultSamples: false);
-                loaded = control.LoadC3DSource(validPath);
+            lifetime = VerificationStaOperation.Run(
+                () => new OpenVisionThreeDViewerControl(loadDefaultSamples: false),
+                async (control, token) =>
+                {
+                loaded = await control.LoadC3DSourceAsync(validPath, token);
                 beforePath = control.CurrentC3DSourcePath ?? string.Empty;
                 var hasBeforeBinding = control.TryGetCurrentC3DSourceBinding(validPath, out var beforeBinding);
                 beforeHash = hasBeforeBinding ? beforeBinding.ContentSha256 : string.Empty;
                 foreach (var rejectedPath in rejectedPaths)
                 {
-                    var accepted = control.LoadC3DSource(rejectedPath);
+                    token.ThrowIfCancellationRequested();
+                    var accepted = await control.LoadC3DSourceAsync(rejectedPath, token);
                     rejected &= !accepted;
                     afterPath = control.CurrentC3DSourcePath ?? string.Empty;
                     pathRetained &= string.Equals(beforePath, afterPath, StringComparison.OrdinalIgnoreCase);
@@ -402,19 +436,18 @@ internal static class C3DInputStabilityVerification
                         && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(beforeBinding, afterBinding)
                         && string.Equals(beforeHash, afterBinding.ContentSha256, StringComparison.OrdinalIgnoreCase);
                 }
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-            finally
-            {
-                control?.Dispose();
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+                },
+                control => control.Dispose(), cancellationToken,
+                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(10));
+        }
+        catch (VerificationStaIncompleteException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            failure = exception;
+            lifetime = exception.Data["VerificationStaObservation"] as VerificationStaObservation;
+        }
+        lines.Add($"STA-LIFETIME | {lifetime};failure={failure}");
 
         check(
             "Viewer retains the current C3D source after malformed and oversized rejection",
@@ -456,9 +489,9 @@ internal static class C3DInputStabilityVerification
             null)
     ];
 
-    private static InputObservation Observe(Action action)
+    private static InputObservation Observe(Action action, CancellationToken cancellationToken)
     {
-        ForceCollection();
+        ForceCollection(cancellationToken);
         using var process = Process.GetCurrentProcess();
         process.Refresh();
         var privateStart = process.PrivateMemorySize64;
@@ -468,7 +501,9 @@ internal static class C3DInputStabilityVerification
         try
         {
             action();
+            cancellationToken.ThrowIfCancellationRequested();
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
         {
             error = exception;
@@ -483,18 +518,37 @@ internal static class C3DInputStabilityVerification
     }
 
     private static ViewerOnlyObservation ObserveViewerOnlyLoad(
-        ViewerOnlySourceLoadCoordinator coordinator,
-        ViewerOnlySourceLoadRequest request)
+        ViewerOnlySourceLoadRequest request, CancellationToken cancellationToken,
+        Func<CancellationToken, Task>? beforeLoad = null,
+        TimeSpan? cleanupTimeout = null,
+        Action<string, object>? ownerObserver = null)
     {
         var start = Stopwatch.GetTimestamp();
         try
         {
-            var result = coordinator.LoadAsync(request).GetAwaiter().GetResult();
+            ViewerOnlySourceLoadResult? result = null;
+            VerificationStaOperation.Run(
+                () => new LazPointCloudLoadCoordinator(new LazPointCloudSampleCache()),
+                async (lazCoordinator, token) =>
+                {
+                    ownerObserver?.Invoke("created", lazCoordinator);
+                    var coordinator = new ViewerOnlySourceLoadCoordinator(lazCoordinator);
+                    if (beforeLoad is not null) await beforeLoad(token);
+                    token.ThrowIfCancellationRequested();
+                    result = await coordinator.LoadAsync(request, token);
+                    // Existing coordinator can return a canceled/null result.
+                    // A caller cancellation must never become an observation success.
+                    token.ThrowIfCancellationRequested();
+                },
+                lazCoordinator => { lazCoordinator.Dispose(); ownerObserver?.Invoke("disposed", lazCoordinator); },
+                cancellationToken, TimeSpan.FromSeconds(60), cleanupTimeout ?? TimeSpan.FromSeconds(10));
             return new ViewerOnlyObservation(
                 result,
                 null,
                 Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
+        catch (VerificationStaIncompleteException) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
         {
             return new ViewerOnlyObservation(
@@ -516,7 +570,7 @@ internal static class C3DInputStabilityVerification
         int height,
         IReadOnlyList<float> values)
     {
-        File.WriteAllBytes(path, CreateC3DBytes(width, height, values));
+        WriteNewFixtureBytes(path, CreateC3DBytes(width, height, values));
     }
 
     private static byte[] CreateC3DBytes(
@@ -553,6 +607,30 @@ internal static class C3DInputStabilityVerification
             ? "none"
             : value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
 
+    private static void DeleteOwnedFixtureDirectory(DirectoryInfo directory)
+    {
+        var resolved = Path.GetFullPath(directory.FullName);
+        var temporaryRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+        if (!string.Equals(Path.GetDirectoryName(resolved), temporaryRoot, StringComparison.OrdinalIgnoreCase)
+            || !Path.GetFileName(resolved).StartsWith("ovl-input-stability-", StringComparison.Ordinal)
+            || (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("Verifier fixture directory no longer matches its owned temporary root.");
+        Directory.Delete(resolved, recursive: true);
+    }
+
+    private static void WriteNewFixtureBytes(string path, byte[] bytes)
+    {
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        stream.Write(bytes);
+    }
+
+    private static void WriteNewFixtureText(string path, string text)
+    {
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        using var writer = new StreamWriter(stream, Encoding.UTF8);
+        writer.Write(text);
+    }
+
     private static bool TryDelete(string path)
     {
         try
@@ -574,7 +652,17 @@ internal static class C3DInputStabilityVerification
         }
     }
 
-    private static void ForceCollection()
+    private static void ForceCollection(
+        CancellationToken cancellationToken, Action? collectionOverride = null,
+        TimeSpan? workTimeout = null, TimeSpan? cleanupTimeout = null)
+    {
+        VerificationStaOperation.Run(
+            () => new object(),
+            (_, token) => { (collectionOverride ?? CollectGarbage)(); token.ThrowIfCancellationRequested(); return Task.CompletedTask; },
+            _ => { }, cancellationToken, workTimeout ?? TimeSpan.FromSeconds(60), cleanupTimeout ?? TimeSpan.FromSeconds(10));
+    }
+
+    private static void CollectGarbage()
     {
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();

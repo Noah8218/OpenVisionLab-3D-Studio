@@ -50,7 +50,7 @@ public sealed class C3DHeightFieldSnapshot
             {
                 BinCount = 1,
                 ZeroIsMissing = false
-            });
+            }, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (!summary.Success)
         {

@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -30,6 +31,8 @@ public static class C3DDatumPlaneDeviationRule
         C3DDatumPlaneDeviationInput input,
         CancellationToken cancellationToken = default)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            C3DDatumPlaneDeviationEvaluation Complete(C3DDatumPlaneDeviationEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         ArgumentNullException.ThrowIfNull(input);
         try
         {
@@ -46,7 +49,7 @@ public static class C3DDatumPlaneDeviationRule
                         0d,
                         1d,
                         1d,
-                        input.RawSource.Values.ToArray(),
+                        CopyValues(input.RawSource.Values, cancellationToken),
                         input.RawSource.Unit,
                         input.RawSource.FrameId),
                     new VisionSdkGridRoi(rectangle.Row, rectangle.Column, rectangle.RowCount, rectangle.ColumnCount),
@@ -56,18 +59,18 @@ public static class C3DDatumPlaneDeviationRule
                     input.Plane.PlaneOffset,
                     input.MaximumPeakToValleyRawHeight,
                     input.MinimumValidSampleCount,
-                    input.MinimumAbsoluteNormalY));
+                    input.MinimumAbsoluteNormalY), cancellationToken);
 
             var metrics = OrderMetrics(package.Result.Metrics);
             if (!package.HasMeasurement)
             {
-                return new C3DDatumPlaneDeviationEvaluation(
+                return Complete(new C3DDatumPlaneDeviationEvaluation(
                     new ToolResult(ToolName, ResultStatus.Error, package.Result.Message, package.Result.Elapsed, metrics, []),
-                    null);
+                    null));
             }
 
             var outputStatus = package.Result.Status;
-            var samples = CreateDisplaySamples(input, rectangle, cancellationToken);
+            var samples = CreateDisplaySamples(input, rectangle, metrics, cancellationToken);
             var output = C3DDatumPlaneDeviationFeature.Create(
                 input.OutputEntityId,
                 input.Plane,
@@ -90,7 +93,7 @@ public static class C3DDatumPlaneDeviationRule
                 samples,
                 $"datum-plane:{input.Plane.ContentSha256};selection:{C3DDatumPlaneDeviationFeature.CalculateMeasurementSelectionContentSha256(input.MeasurementSelection)}");
 
-            return new C3DDatumPlaneDeviationEvaluation(
+            return Complete(new C3DDatumPlaneDeviationEvaluation(
                 new ToolResult(
                     ToolName,
                     outputStatus,
@@ -104,7 +107,7 @@ public static class C3DDatumPlaneDeviationRule
                         new Overlay("overlay.c3d-datum-deviation-roi", OverlayKind.Box, "Datum-plane raw-height measurement rectangle", outputStatus, input.RawSource.EntityId),
                         new Overlay("overlay.c3d-datum-deviation-map", OverlayKind.ColorMap, "Read-only sampled raw-height residual overlay", outputStatus, input.RawSource.EntityId)
                     ]),
-                output);
+                output));
         }
         catch (OperationCanceledException)
         {
@@ -112,7 +115,7 @@ public static class C3DDatumPlaneDeviationRule
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidDataException or InvalidOperationException or OverflowException)
         {
-            return new C3DDatumPlaneDeviationEvaluation(new ToolResult(ToolName, ResultStatus.Error, exception.Message, TimeSpan.Zero, [], []), null);
+            return Complete(new C3DDatumPlaneDeviationEvaluation(new ToolResult(ToolName, ResultStatus.Error, exception.Message, TimeSpan.Zero, [], []), null));
         }
     }
 
@@ -121,6 +124,19 @@ public static class C3DDatumPlaneDeviationRule
     /// This is intentionally callable by readiness checks without evaluating
     /// residuals or producing a Preview result.
     /// </summary>
+    private static double[] CopyValues(ReadOnlyMemory<double> source, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!cancellationToken.CanBeCanceled) return source.ToArray();
+        var result = new double[source.Length];
+        for (var index = 0; index < result.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            result[index] = source.Span[index];
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
     public static void ValidateInput(C3DDatumPlaneDeviationInput input)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(input.StepId);
@@ -161,18 +177,38 @@ public static class C3DDatumPlaneDeviationRule
     private static IReadOnlyList<C3DDatumPlaneDeviationOverlaySample> CreateDisplaySamples(
         C3DDatumPlaneDeviationInput input,
         ToolRecipeGridRectangle rectangle,
+        IReadOnlyList<Metric> metrics,
         CancellationToken cancellationToken)
     {
-        var area = checked((long)rectangle.RowCount * rectangle.ColumnCount);
-        var stride = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(area / (double)C3DDatumPlaneDeviationFeature.MaximumOverlaySampleCount)));
+        cancellationToken.ThrowIfCancellationRequested();
+        var minimumStride = 1;
+        var maximumStride = Math.Max(rectangle.RowCount, rectangle.ColumnCount);
+        // Bound the actual grid cardinality, including partial edge rows and columns.
+        while (minimumStride < maximumStride)
+        {
+            var candidateStride = minimumStride + (maximumStride - minimumStride) / 2;
+            var rowSampleCount = 1L + (rectangle.RowCount - 1L) / candidateStride;
+            var columnSampleCount = 1L + (rectangle.ColumnCount - 1L) / candidateStride;
+            if (rowSampleCount * columnSampleCount > C3DDatumPlaneDeviationFeature.MaximumOverlaySampleCount)
+            {
+                minimumStride = candidateStride + 1;
+            }
+            else
+            {
+                maximumStride = candidateStride;
+            }
+        }
+        var stride = minimumStride;
         var samples = new List<C3DDatumPlaneDeviationOverlaySample>();
         var values = input.RawSource.Values.Span;
-        for (var row = rectangle.Row; row < rectangle.Row + rectangle.RowCount; row += stride)
+        var rowEnd = (long)rectangle.Row + rectangle.RowCount;
+        var columnEnd = (long)rectangle.Column + rectangle.ColumnCount;
+        for (var row = (long)rectangle.Row; row < rowEnd; row += stride)
         {
-            for (var column = rectangle.Column; column < rectangle.Column + rectangle.ColumnCount; column += stride)
+            for (var column = (long)rectangle.Column; column < columnEnd; column += stride)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var rawHeight = values[row * input.RawSource.Width + column];
+                var rawHeight = values[checked((int)(row * input.RawSource.Width + column))];
                 if (!double.IsFinite(rawHeight)
                     || !VisionSdkHeightMapInspection.TryCalculateDatumPlaneRawHeightResidual(
                         input.Plane.NormalX, input.Plane.NormalY, input.Plane.NormalZ, input.Plane.PlaneOffset,
@@ -180,10 +216,26 @@ public static class C3DDatumPlaneDeviationRule
                 {
                     continue;
                 }
-                samples.Add(new C3DDatumPlaneDeviationOverlaySample(row, column, rawHeight, residual));
+                samples.Add(new C3DDatumPlaneDeviationOverlaySample((int)row, (int)column, rawHeight, residual));
             }
         }
-        if (samples.Count == 0) throw new InvalidDataException("Datum-plane display sampling found no finite residual samples.");
+        if (samples.Count == 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // A completed SDK measurement has a finite minimum in this same ROI,
+            // even when every point on the display lattice is missing.
+            var row = MetricCount(metrics, "MinimumResidualRow");
+            var column = MetricCount(metrics, "MinimumResidualColumn");
+            if (row < rectangle.Row || row >= rowEnd || column < rectangle.Column || column >= columnEnd)
+            {
+                throw new InvalidDataException("Datum-plane minimum residual location is outside the measurement rectangle.");
+            }
+            samples.Add(new C3DDatumPlaneDeviationOverlaySample(
+                row,
+                column,
+                values[checked((int)((long)row * input.RawSource.Width + column))],
+                MetricValue(metrics, "MinimumRawHeightResidual")));
+        }
         return samples;
     }
 

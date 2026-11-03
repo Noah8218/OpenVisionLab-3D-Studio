@@ -373,6 +373,9 @@
                                    BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
                                    BorderThickness="0"
                                    AnchorablePaneControlStyle="{StaticResource OpenVisionTopAnchorablePaneStyle}">
+            <avalonDock:DockingManager.Theme>
+                <avalonDock:GenericTheme />
+            </avalonDock:DockingManager.Theme>
             <avalonDock:LayoutRoot>
                 <avalonDock:LayoutPanel x:Name="workspaceRootPanel"
                                         Orientation="Vertical">

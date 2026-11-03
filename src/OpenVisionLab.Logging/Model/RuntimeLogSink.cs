@@ -1,16 +1,23 @@
 ﻿using log4net.Appender;
 using log4net.Core;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Text;
 
 namespace OpenVisionLab.Logging.Model
 {
 	public class RuntimeLogSink : AppenderSkeleton
 	{
-		private readonly ConcurrentQueue<string> _logQueue = new ConcurrentQueue<string>();
+		// Bounds apply only to the live display buffer, never to file appenders.
+		private const int MaximumQueuedRecords = 8192;
+		private const long MaximumQueuedBytes = 8L * 1024 * 1024;
+		private const int MaximumReadBytes = 256 * 1024;
+		private readonly Queue<string> _logQueue = new Queue<string>();
 		private readonly object _syncRoot = new object();
 		private string _lastRenderedMessage;
 		private long _lastTimestampTicks;
+		private long _queuedBytes;
+		private long _droppedRecords;
+		private long _pendingDroppedRecords;
 
 		public RuntimeLogSink()
 		{
@@ -24,13 +31,30 @@ namespace OpenVisionLab.Logging.Model
 			}
 
 			string renderedMessage = loggingEvent.RenderedMessage ?? string.Empty;
-			if (ShouldSkipDuplicate(renderedMessage, loggingEvent.TimeStamp))
+			lock (_syncRoot)
 			{
-				return;
-			}
+				// An oversized display entry must not be retained in the duplicate cache.
+				if ((long)renderedMessage.Length * sizeof(char) > MaximumQueuedBytes - 128)
+				{
+					_lastRenderedMessage = null;
+					RecordDrop();
+					return;
+				}
+				if (ShouldSkipDuplicate(renderedMessage, loggingEvent.TimeStamp))
+				{
+					return;
+				}
 
-			string logMessage = string.Format("[{0}]{1}", loggingEvent.TimeStamp.ToString("yyyy-MM-dd HH:mm:ss.fff"), renderedMessage);
-			_logQueue.Enqueue(logMessage);
+				string logMessage = string.Format("[{0}]{1}", loggingEvent.TimeStamp.ToString("yyyy-MM-dd HH:mm:ss.fff"), renderedMessage);
+				long bytes = BufferBytes(logMessage);
+				while (_logQueue.Count >= MaximumQueuedRecords || _queuedBytes + bytes > MaximumQueuedBytes)
+				{
+					_queuedBytes -= BufferBytes(_logQueue.Dequeue());
+					RecordDrop();
+				}
+				_logQueue.Enqueue(logMessage);
+				_queuedBytes += bytes;
+			}
 		}
 
 		private bool ShouldSkipDuplicate(string renderedMessage, System.DateTime timestamp)
@@ -50,11 +74,39 @@ namespace OpenVisionLab.Logging.Model
 		public string ReadBuffer()
 		{
 			StringBuilder sb = new StringBuilder();
-			while (_logQueue.TryDequeue(out string log))
+			lock (_syncRoot)
 			{
-				sb.AppendLine(log);
+				if (_pendingDroppedRecords > 0)
+				{
+					sb.Append('[').Append(System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"))
+						.Append("][All][Warning][RuntimeLogSink] Display log overflow: ")
+						.Append(_pendingDroppedRecords).Append(" record(s) omitted; total ")
+						.Append(_droppedRecords).AppendLine(". File logging is unchanged.");
+					_pendingDroppedRecords = 0;
+				}
+				while (_logQueue.Count > 0)
+				{
+					long bytes = BufferBytes(_logQueue.Peek());
+					// Keep records whole; even a single long entry must eventually drain.
+					if (sb.Length > 0 && (long)sb.Length * sizeof(char) + bytes > MaximumReadBytes)
+					{
+						break;
+					}
+					string log = _logQueue.Dequeue();
+					_queuedBytes -= bytes;
+					sb.AppendLine(log);
+				}
 			}
 			return sb.ToString();
+		}
+
+		private static long BufferBytes(string message) =>
+			((long)message.Length + System.Environment.NewLine.Length) * sizeof(char);
+
+		private void RecordDrop()
+		{
+			_droppedRecords++;
+			_pendingDroppedRecords++;
 		}
 	}
 }

@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -36,7 +37,12 @@ public static class C3DThicknessRule
     public const string ToolName = "C3D Thickness";
 
     public static C3DThicknessEvaluation Evaluate(C3DThicknessInput input)
+    { return Evaluate(input, CancellationToken.None); }
+
+        public static C3DThicknessEvaluation Evaluate(C3DThicknessInput input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            C3DThicknessEvaluation Complete(C3DThicknessEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         ArgumentNullException.ThrowIfNull(input);
 
         var package = VisionSdkHeightMapInspection.EvaluateThickness(
@@ -55,7 +61,7 @@ public static class C3DThicknessRule
                 new VisionSdkGridRoi(input.Roi.Row, input.Roi.Column, input.Roi.RowCount, input.Roi.ColumnCount),
                 input.Acceptance.MinimumThickness,
                 input.Acceptance.MaximumThickness,
-                input.MinimumValidSamples));
+                input.MinimumValidSamples), cancellationToken);
 
         var metrics = OrderMetrics(package.Result.Metrics);
         var result = new ToolResult(
@@ -73,7 +79,7 @@ public static class C3DThicknessRule
                     input.SourceEntityId)]
                 : []);
 
-        return new C3DThicknessEvaluation(
+        return Complete(new C3DThicknessEvaluation(
             result,
             package.HasMeasurement,
             package.PackageResultStatus,
@@ -85,7 +91,7 @@ public static class C3DThicknessRule
             MetricValue(metrics, "Range"),
             MetricCount(metrics, "ValidSampleCount"),
             MetricCount(metrics, "BelowLowerLimitCount"),
-            MetricCount(metrics, "AboveUpperLimitCount"));
+            MetricCount(metrics, "AboveUpperLimitCount")));
     }
 
     private static IReadOnlyList<Metric> OrderMetrics(IReadOnlyList<Metric> metrics)

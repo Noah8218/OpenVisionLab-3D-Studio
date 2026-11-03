@@ -121,8 +121,12 @@ Copy-Item `
 
 [xml]$buildProperties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw
 $productVersion = [string]$buildProperties.Project.PropertyGroup.OpenVisionLabProductVersion
-$gitCommit = (& git -C $repoRoot rev-parse HEAD 2>$null)
-$gitStatus = (& git -C $repoRoot status --porcelain 2>$null)
+$global:LASTEXITCODE = $null
+$gitCommit = (& git -C $repoRoot rev-parse HEAD 2>$null | Out-String).Trim()
+$gitCommitExit = $global:LASTEXITCODE
+$global:LASTEXITCODE = $null
+$gitStatus = (& git -C $repoRoot status --porcelain 2>$null | Out-String).Trim()
+$gitStatusExit = $global:LASTEXITCODE
 $files = @(
     Get-ChildItem -LiteralPath $outputPath -Recurse -File |
         Sort-Object FullName |
@@ -141,8 +145,8 @@ $manifest = [ordered]@{
     runtimeIdentifier = $RuntimeIdentifier
     selfContained = $true
     separateDotNetInstallationRequired = $false
-    gitCommit = if ($gitCommit) { $gitCommit.Trim() } else { 'unknown' }
-    gitWorkingTree = if ($gitStatus) { 'dirty' } else { 'clean' }
+    gitCommit = if ($gitCommitExit -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitCommit)) { $gitCommit.Trim() } else { 'unknown' }
+    gitWorkingTree = if ($gitStatusExit -ne 0 -or $null -eq $gitStatusExit) { 'unknown' } elseif (-not [string]::IsNullOrWhiteSpace($gitStatus)) { 'dirty' } else { 'clean' }
     dotNetSdkVersion = (& dotnet --version).Trim()
     prerequisites = @(
         'Windows 10 build 19041 or later, or Windows 11, x64',

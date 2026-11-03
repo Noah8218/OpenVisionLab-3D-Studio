@@ -12,6 +12,13 @@ internal static class ShellSurfaceMatchSmokeVerification
         string artifactDirectory,
         string reportPath,
         out string summary)
+        => VerifyWithStageObserver(artifactDirectory, reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string artifactDirectory,
+        string reportPath,
+        out string summary,
+        Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
@@ -46,7 +53,8 @@ internal static class ShellSurfaceMatchSmokeVerification
 
         try
         {
-            var noOpWorkbench = new ToolWorkbenchViewModel();
+            using var noOpWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(directory, "surface-no-op-recent.json"));
             var noOpDirty = noOpWorkbench.IsDirty;
             var noOpSteps = noOpWorkbench.PipelineSteps.Count;
             var noOpSelections = noOpWorkbench.Selections.Count;
@@ -66,7 +74,8 @@ internal static class ShellSurfaceMatchSmokeVerification
                 && !noOpWorkbench.HasSurfaceMatchEvidence,
                 $"result={noOpResult};failure={noOpFailure};dirty={noOpDirty}->{noOpWorkbench.IsDirty};steps={noOpSteps}->{noOpWorkbench.PipelineSteps.Count};selections={noOpSelections}->{noOpWorkbench.Selections.Count};logs={noOpLogs}->{noOpWorkbench.RunLog.Count}");
 
-            var invalidWorkbench = new ToolWorkbenchViewModel();
+            using var invalidWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(directory, "surface-invalid-recent.json"));
             var invalidResult = ShellSurfaceMatchSmoke.TryConfigureEvidenceFromCommandLine(
                 ["shell", "--smoke-surface-match-model", modelPath],
                 invalidWorkbench,
@@ -79,10 +88,12 @@ internal static class ShellSurfaceMatchSmokeVerification
                     StringComparison.Ordinal),
                 $"result={invalidResult};failure={invalidFailure}");
 
+            stageCompleted?.Invoke("initial-checks-complete");
             var collectionModel = SurfaceModelArtifactStore.Load(collectionModelPath);
             var collectionScene = PreparedSceneArtifactStore.Load(collectionScenePath);
             var collection = SurfaceMatchCollectionArtifactStore.Load(collectionPath);
-            var invalidCollectionWorkbench = new ToolWorkbenchViewModel();
+            using var invalidCollectionWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(directory, "surface-invalid-collection-recent.json"));
             var invalidCollectionResult = ShellSurfaceMatchSmoke.TryConfigureEvidenceFromCommandLine(
                 [
                     "shell",
@@ -101,7 +112,8 @@ internal static class ShellSurfaceMatchSmokeVerification
                     StringComparison.Ordinal),
                 $"result={invalidCollectionResult};failure={invalidCollectionFailure}");
 
-            var singleWorkbench = new ToolWorkbenchViewModel();
+            using var singleWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(directory, "surface-single-recent.json"));
             var singleDisplayRequests = 0;
             singleWorkbench.SurfaceMatchDisplayRequested += (_, _) =>
                 singleDisplayRequests++;
@@ -133,7 +145,8 @@ internal static class ShellSurfaceMatchSmokeVerification
                 && singleWorkbench.RunLog.Count >= singleLogs,
                 $"result={singleResult};failure={singleFailure};evidence={singleWorkbench.HasSurfaceMatchEvidence};displayRequests={singleDisplayRequests};dirty={singleDirty}->{singleWorkbench.IsDirty};steps={singleSteps}->{singleWorkbench.PipelineSteps.Count};selections={singleSelections}->{singleWorkbench.Selections.Count};logs={singleLogs}->{singleWorkbench.RunLog.Count}");
 
-            var collectionWorkbench = new ToolWorkbenchViewModel();
+            using var collectionWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(directory, "surface-collection-recent.json"));
             var collectionDisplayRequests = 0;
             collectionWorkbench.SurfaceMatchDisplayRequested += (_, _) =>
                 collectionDisplayRequests++;
@@ -173,8 +186,7 @@ internal static class ShellSurfaceMatchSmokeVerification
         }
         catch (Exception exception)
         {
-            lines.Add(
-                $"FAIL | unexpected-exception | {exception.GetType().Name}: {exception.Message}");
+            Check("unexpected-exception", false, exception.ToString());
         }
 
         var allPassed = total > 0 && passed == total;

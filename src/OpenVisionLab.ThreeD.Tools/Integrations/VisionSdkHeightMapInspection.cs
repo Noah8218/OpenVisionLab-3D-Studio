@@ -1,3 +1,4 @@
+using System.Threading;
 using SdkHeightMap3D = OpenVisionLab.Vision3D.Geometry.HeightMap3D;
 using SdkHeightMapRoi = OpenVisionLab.Vision3D.Geometry.HeightMapRoi;
 using SdkHeightMapInputRequirements = OpenVisionLab.Vision3D.Inspection.HeightMapInputRequirements;
@@ -88,20 +89,25 @@ public sealed record VisionSdkInspectionEvaluation(
 public static class VisionSdkHeightMapInspection
 {
     public const string PackageId = "OpenVisionLab.Vision3D";
-    public const string PackageVersion = "3.3.0-dev.20261029.nine-point-compensation.1";
-    public const string PackageSourceCommit = "cdaa08d04ed569be5aba95324f2d851b7bad637b";
+    public const string PackageVersion = "3.3.0-rc.1.integration.20261102.138";
+    public const string PackageSourceCommit = "a550fadeec5b35103d1288743aa6746e4e4a60a2";
 
     public static string PackageAssemblyName => typeof(SdkHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 
     public static VisionSdkInspectionEvaluation EvaluateThickness(VisionSdkThicknessInspectionInput? input)
+    { return EvaluateThickness(input, CancellationToken.None); }
+
+        public static VisionSdkInspectionEvaluation EvaluateThickness(VisionSdkThicknessInspectionInput? input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            VisionSdkInspectionEvaluation Complete(VisionSdkInspectionEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         const string toolName = "OpenVisionLab Vision SDK Thickness";
         if (input is null)
         {
-            return Error(toolName, null, null, "Thickness inspection input is required.");
+            return Complete(Error(toolName, null, null, "Thickness inspection input is required."));
         }
 
-        return Execute(
+        return Complete(Execute(
             toolName,
             input.Source,
             input.Roi,
@@ -113,18 +119,23 @@ public static class VisionSdkHeightMapInspection
                 MinimumValidSamples = input.MinimumValidSamples,
                 MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
                 InputRequirements = ToSdkRequirements(input.Source!)
-            }).Execute(heightMap));
+            }).Execute(heightMap, cancellationToken), cancellationToken));
     }
 
     public static VisionSdkInspectionEvaluation EvaluateWarpage(VisionSdkWarpageInspectionInput? input)
+    { return EvaluateWarpage(input, CancellationToken.None); }
+
+        public static VisionSdkInspectionEvaluation EvaluateWarpage(VisionSdkWarpageInspectionInput? input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            VisionSdkInspectionEvaluation Complete(VisionSdkInspectionEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         const string toolName = "OpenVisionLab Vision SDK Warpage";
         if (input is null)
         {
-            return Error(toolName, null, null, "Warpage inspection input is required.");
+            return Complete(Error(toolName, null, null, "Warpage inspection input is required."));
         }
 
-        return Execute(
+        return Complete(Execute(
             toolName,
             input.Source,
             input.Roi,
@@ -136,19 +147,25 @@ public static class VisionSdkHeightMapInspection
                 MinimumValidSamples = input.MinimumValidSamples,
                 MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
                 InputRequirements = ToSdkRequirements(input.Source!)
-            }).Execute(heightMap));
+            }).Execute(heightMap, cancellationToken), cancellationToken));
     }
 
     public static VisionSdkInspectionEvaluation EvaluateDatumPlaneRawHeightDeviation(
         VisionSdkDatumPlaneRawHeightDeviationInspectionInput? input)
+    { return EvaluateDatumPlaneRawHeightDeviation(input, CancellationToken.None); }
+
+        public static VisionSdkInspectionEvaluation EvaluateDatumPlaneRawHeightDeviation(
+        VisionSdkDatumPlaneRawHeightDeviationInspectionInput? input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            VisionSdkInspectionEvaluation Complete(VisionSdkInspectionEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         const string toolName = "OpenVisionLab Vision SDK Datum Plane Raw-Height Deviation";
         if (input is null)
         {
-            return Error(toolName, null, null, "Datum-plane raw-height deviation input is required.");
+            return Complete(Error(toolName, null, null, "Datum-plane raw-height deviation input is required."));
         }
 
-        return Execute(
+        return Complete(Execute(
             toolName,
             input.Source,
             input.Roi,
@@ -165,7 +182,7 @@ public static class VisionSdkHeightMapInspection
                     MinimumAbsoluteNormalY = input.MinimumAbsoluteNormalY,
                     MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
                     InputRequirements = ToSdkRequirements(input.Source!)
-                }).Execute(heightMap));
+                }).Execute(heightMap, cancellationToken), cancellationToken));
     }
 
     public static bool TryCalculateDatumPlaneRawHeightResidual(
@@ -191,33 +208,38 @@ public static class VisionSdkHeightMapInspection
         string toolName,
         VisionSdkHeightMapInput? source,
         VisionSdkGridRoi? roi,
-        Func<SdkHeightMap3D, SdkInspectionResult> execute)
+        Func<SdkHeightMap3D, SdkInspectionResult> execute, CancellationToken cancellationToken)
     {
-        if (!TryCreateHeightMap(source, out var heightMap, out var errorMessage))
+            cancellationToken.ThrowIfCancellationRequested();
+            VisionSdkInspectionEvaluation Complete(VisionSdkInspectionEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
+        if (!TryCreateHeightMap(source, out var heightMap, out var errorMessage, cancellationToken))
         {
-            return Error(toolName, source, roi, errorMessage);
+            return Complete(Error(toolName, source, roi, errorMessage));
         }
 
         try
         {
-            return Translate(toolName, execute(heightMap!), source!, roi);
+            return Complete(Translate(toolName, execute(heightMap!), source!, roi, cancellationToken));
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
-            return Error(toolName, source, roi, $"OpenVisionLab Vision SDK execution failed: {exception.Message}");
+            return Complete(Error(toolName, source, roi, $"OpenVisionLab Vision SDK execution failed: {exception.Message}"));
         }
     }
 
     private static bool TryCreateHeightMap(
         VisionSdkHeightMapInput? source,
         out SdkHeightMap3D? heightMap,
-        out string errorMessage)
+        out string errorMessage, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            bool Complete(bool value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         heightMap = null;
         if (source is null)
         {
             errorMessage = "Declared height-map source is required.";
-            return false;
+            return Complete(false);
         }
 
         if (string.IsNullOrWhiteSpace(source.SourceEntityId)
@@ -227,13 +249,13 @@ public static class VisionSdkHeightMapInspection
             || string.IsNullOrWhiteSpace(source.FrameId))
         {
             errorMessage = "Source entity ID, planar unit, height unit, legacy unit, and frame ID are required.";
-            return false;
+            return Complete(false);
         }
 
         if (source.Values is null)
         {
             errorMessage = "Height-map values are required.";
-            return false;
+            return Complete(false);
         }
 
         try
@@ -246,21 +268,35 @@ public static class VisionSdkHeightMapInspection
                 source.OriginY,
                 source.ColumnPitch,
                 source.RowPitch,
-                source.Values as double[] ?? source.Values.ToArray(),
+                SnapshotValues(source.Values, cancellationToken),
                 source.EffectivePlanarUnit,
                 source.EffectiveHeightUnit,
                 source.FrameId,
-                source.SourceEntityId);
+                source.SourceEntityId, cancellationToken);
             errorMessage = string.Empty;
-            return true;
+            return Complete(true);
         }
         catch (Exception exception) when (exception is ArgumentException or ArgumentOutOfRangeException)
         {
             errorMessage = $"Declared height map is invalid: {exception.Message}";
-            return false;
+            return Complete(false);
         }
     }
 
+    private static double[] SnapshotValues(IReadOnlyList<double> values, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (values is double[] array) return array; // SDK creates its defensive copy.
+        if (!cancellationToken.CanBeCanceled) return values.ToArray();
+        var result = new List<double>();
+        foreach (var value in values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            result.Add(value);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return result.ToArray();
+    }
     private static SdkHeightMapRoi? ToSdkRoi(VisionSdkGridRoi? roi) =>
         roi is null
             ? null
@@ -280,8 +316,10 @@ public static class VisionSdkHeightMapInspection
         string toolName,
         SdkInspectionResult inspection,
         VisionSdkHeightMapInput source,
-        VisionSdkGridRoi? roi)
+        VisionSdkGridRoi? roi, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            VisionSdkInspectionEvaluation Complete(VisionSdkInspectionEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         var status = inspection.ResultStatus switch
         {
             SdkInspectionStatus.Passed => ResultStatus.Pass,
@@ -293,12 +331,12 @@ public static class VisionSdkHeightMapInspection
         ResultStatus? metricStatus = inspection.HasMeasurement ? null : ResultStatus.Error;
         var metrics = inspection.Metrics
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .Select(pair => new Metric(
+            .Select(pair => { cancellationToken.ThrowIfCancellationRequested(); return new Metric(
                 pair.Key,
                 ResolveMetricKind(pair.Key),
                 pair.Value,
                 ResolveMetricUnit(inspection, pair.Key, planarUnit, heightUnit),
-                metricStatus))
+                metricStatus); })
             .ToArray();
 
         if (metrics.Length == 0 && status == ResultStatus.Error)
@@ -314,7 +352,7 @@ public static class VisionSdkHeightMapInspection
             ];
         }
 
-        return new VisionSdkInspectionEvaluation(
+        return Complete(new VisionSdkInspectionEvaluation(
             new ToolResult(toolName, status, inspection.Message, inspection.Elapsed, metrics, []),
             inspection.HasMeasurement,
             inspection.ResultStatusName,
@@ -322,7 +360,7 @@ public static class VisionSdkHeightMapInspection
             roi,
             planarUnit,
             heightUnit,
-            inspection.CoordinateConvention);
+            inspection.CoordinateConvention));
     }
 
     private static VisionSdkInspectionEvaluation Error(

@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text.Json;
 using System.Threading;
 using System.Windows.Input;
 using OpenVisionLab;
@@ -73,6 +75,9 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
     private string validationThresholdCorrectionSummary =
         "Select a mapped candidate, then use Review before applying it to the PropertyGrid draft.";
     private int disposalState;
+    private int analysisInFlight;
+    private int analysisGeneration;
+    private string? activeAnalysisContext;
 
     public ToolWorkbenchValidationThresholdWorkflowOwner(
         ToolWorkbenchValidationSetExecutionOwner executionOwner,
@@ -432,6 +437,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             return;
         }
 
+        InvalidatePendingAnalysis();
         validationSetProgressText = string.Empty;
         validationSetProgress = 0;
         validationEvidenceReport = null;
@@ -473,30 +479,47 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             throw new OperationCanceledException();
         }
 
+        if (Interlocked.CompareExchange(ref analysisInFlight, 1, 0) != 0)
+            throw new InvalidOperationException("Validation threshold analysis is already running.");
+        try
+        {
         validationThresholdBeforeDevelopmentResult = null;
         ValidationSetProgress = 0;
         ValidationSetProgressText = localize(
             "반복 검증 준비 중",
             "Preparing repeat validation");
-        try
-        {
-            var progress = new Progress<ToolRecipeValidationProgress>(ReportProgress);
-            var result = await executionOwner.ExecuteAsync(
-                document,
-                sampleInputs,
-                progress);
-            if (IsDisposed)
+            // Detach the recipe's mutable lists/dictionaries before a worker
+            // receives it. This snapshot is owned by this one execution.
+            var snapshot = JsonSerializer.Deserialize<ToolRecipeDocument>(JsonSerializer.Serialize(document))
+                ?? throw new InvalidDataException("Validation analysis snapshot is empty.");
+            var inputs = sampleInputs.ToArray();
+            var context = ValidationSetWorkspaceViewModel.CreateValidationCalculationKey(snapshot);
+            var generation = Volatile.Read(ref analysisGeneration);
+            activeAnalysisContext = context;
+            var progress = new Progress<ToolRecipeValidationProgress>(value =>
             {
-                throw new OperationCanceledException();
-            }
-
-            projectSamples(result);
-            SetValidationEvidence(
-                ToolRecipeLabeledEvidenceAnalyzer.Analyze(document, result));
-            SetValidationThresholdEvidence(
-                ToolRecipeThresholdCandidateAnalyzer.Analyze(document, result));
-            validationThresholdBeforeDevelopmentResult =
-                CreateDevelopmentResult(result);
+                if (!IsDisposed && generation == Volatile.Read(ref analysisGeneration) && executionOwner.IsRunning)
+                    ReportProgress(value);
+            });
+            var analysisToken = CancellationToken.None;
+            var result = await executionOwner.ExecuteWithCompletionAsync(
+                snapshot,
+                inputs,
+                progress,
+                async (completed, token) =>
+                {
+                    analysisToken = token;
+                    var reports = await AnalyzeEvidenceAsync(snapshot, completed, token);
+                    EnsureAnalysisCurrent(context, generation, inputs, token);
+                    projectSamples(completed);
+                    EnsureAnalysisCurrent(context, generation, inputs, token);
+                    SetValidationEvidence(reports.Labeled);
+                    EnsureAnalysisCurrent(context, generation, inputs, token);
+                    SetValidationThresholdEvidence(reports.Thresholds);
+                    EnsureAnalysisCurrent(context, generation, inputs, token);
+                    validationThresholdBeforeDevelopmentResult = CreateDevelopmentResult(completed);
+                });
+            EnsureAnalysisCurrent(context, generation, inputs, analysisToken);
             return result;
         }
         catch (OperationCanceledException)
@@ -512,6 +535,58 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
         {
             throw new OperationCanceledException();
         }
+        finally
+        {
+            activeAnalysisContext = null;
+            Interlocked.Increment(ref analysisGeneration);
+            Volatile.Write(ref analysisInFlight, 0);
+        }
+    }
+
+    private static Task<(ToolRecipeLabeledEvidenceReport Labeled, ToolRecipeThresholdCandidateReport Thresholds)>
+        AnalyzeEvidenceAsync(ToolRecipeDocument snapshot, ToolRecipeValidationSetResult completed, CancellationToken token) =>
+        Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
+            var labeled = ToolRecipeLabeledEvidenceAnalyzer.Analyze(snapshot, completed);
+            token.ThrowIfCancellationRequested();
+            var thresholds = ToolRecipeThresholdCandidateAnalyzer.Analyze(snapshot, completed, token);
+            foreach (var sample in completed.Samples)
+            {
+                token.ThrowIfCancellationRequested();
+                using var stream = File.OpenRead(sample.SourcePath);
+                if (!string.Equals(Convert.ToHexString(SHA256.HashData(stream)), sample.SourceContentSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Validation input changed during analysis.");
+            }
+            token.ThrowIfCancellationRequested();
+            return (labeled, thresholds);
+        }, token);
+
+    public void CancelAnalysisIfContextChanged(ToolRecipeDocument document)
+    {
+        if (activeAnalysisContext is { } context
+            && !string.Equals(context, ValidationSetWorkspaceViewModel.CreateValidationCalculationKey(document), StringComparison.Ordinal))
+            InvalidatePendingAnalysis();
+    }
+
+    private void InvalidatePendingAnalysis()
+    {
+        Interlocked.Increment(ref analysisGeneration);
+        if (Interlocked.Exchange(ref activeAnalysisContext, null) is not null) executionOwner.Cancel();
+    }
+
+    private void EnsureAnalysisCurrent(string context, int generation,
+        IReadOnlyList<ToolRecipeValidationSampleInput> inputs, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        if (IsDisposed || generation != Volatile.Read(ref analysisGeneration)
+            || !string.Equals(context, ValidationSetWorkspaceViewModel.CreateValidationCalculationKey(createDocument()), StringComparison.Ordinal)
+            || inputs.Count != samples.Count
+            || inputs.Where((input, index) =>
+                !string.Equals(Path.GetFullPath(input.SourcePath), Path.GetFullPath(samples[index].SourcePath), StringComparison.OrdinalIgnoreCase)
+                || input.EffectiveExpectation != samples[index].EffectiveExpectation
+                || input.EffectiveUsage != samples[index].EffectiveUsage).Any())
+            throw new OperationCanceledException("Validation analysis context changed.", token);
     }
 
     public void CompleteAnalysis(int sampleCount)
@@ -545,6 +620,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             return;
         }
 
+        InvalidatePendingAnalysis();
         validationThresholdBeforeDevelopmentResult = null;
         validationEvidenceReport = null;
         validationThresholdReport = null;
@@ -821,6 +897,11 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             return;
         }
 
+        // Execution stays running through evidence publication. Refresh the
+        // bound stage and summary again when the shared owner returns idle.
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
         proposeValidationThresholdCandidateCommand.RaiseCanExecuteChanged();
         reviewValidationThresholdCandidateCommand.RaiseCanExecuteChanged();
         cancelValidationThresholdReviewCommand.RaiseCanExecuteChanged();

@@ -161,7 +161,16 @@ public sealed partial class ToolWorkbenchViewModel
     public string MaximizedViewerSlotId => viewerWorkspaceViewModel.MaximizedViewerSlotId;
     public ICommand ToggleViewerPaneMaximizedCommand => viewerWorkspaceViewModel.ToggleViewerPaneMaximizedCommand;
     public bool CanEditAuxiliaryViewerPin => viewerWorkspaceViewModel.CanEditAuxiliaryViewerPin;
-    public bool HasEffectiveMainGeometry => viewerWorkspaceViewModel.HasEffectiveMainGeometry;
+    public bool HasEffectiveMainGeometry => viewerWorkspaceViewModel.HasEffectiveMainGeometry
+        // Viewer-only mesh/cloud imports intentionally have no recipe C3D candidate.
+        // Expose that scene only in the unpinned teaching input view, never as inspection evidence.
+        || HasViewerOnlyImport
+            && !IsReadOnlySampleView
+            && !IsOutputCompareViewerActive
+            && IsInspectionInputView
+            && !HasInspectionStep
+            && !ViewerWorkspace.IsMainContentPinned
+            && !ViewerWorkspace.IsMainContentExplicitlyCleared;
     public bool HasEffectiveOutputGeometry => viewerWorkspaceViewModel.HasEffectiveOutputGeometry;
     public bool HasEffectiveSignedDeltaOutput => viewerWorkspaceViewModel.HasEffectiveSignedDeltaOutput;
     public ViewerWorkspaceLayout EffectiveViewerLayout => viewerWorkspaceViewModel.EffectiveViewerLayout;

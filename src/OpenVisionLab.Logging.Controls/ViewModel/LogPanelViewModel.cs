@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -47,6 +48,9 @@ namespace OpenVisionLab.Logging.Controls.ViewModel
         private string searchText = string.Empty;
         private string summaryText;
         private string latestSummaryText;
+        private volatile bool isActive = true;
+        private volatile bool isDisposed;
+        private int activationVersion;
 
         public LogPanelViewModel()
         {
@@ -246,17 +250,41 @@ namespace OpenVisionLab.Logging.Controls.ViewModel
             });
         }
 
-        public void Dispose()
+        public void Suspend()
         {
+            if (!isActive) return;
+            isActive = false;
+            Interlocked.Increment(ref activationVersion);
             QuickFilterRequested -= OnQuickFilterRequested;
             OpenVisionLanguageService.LanguageChanged -= OnLanguageChanged;
             refreshTimer.Stop();
+            logBufferReader.Suspend();
+        }
+
+        public void Resume()
+        {
+            if (isDisposed || isActive) return;
+            logBufferReader.Resume();
+            Interlocked.Increment(ref activationVersion);
+            isActive = true;
+            QuickFilterRequested += OnQuickFilterRequested;
+            OpenVisionLanguageService.LanguageChanged += OnLanguageChanged;
+            OnLanguageChanged(this, EventArgs.Empty);
+            refreshTimer.Start();
+        }
+
+        public void Dispose()
+        {
+            if (isDisposed) return;
+            isDisposed = true;
+            Suspend();
             refreshTimer.Tick -= RefreshTimer_Tick;
             logBufferReader.Dispose();
         }
 
         private void OnLanguageChanged(object sender, EventArgs e)
         {
+            if (!isActive || isDisposed) return;
             OnPropertyChanged(nameof(ModeButtonText));
             OnPropertyChanged(nameof(HeaderText));
             OnPropertyChanged(nameof(ActiveFilterText));
@@ -282,18 +310,23 @@ namespace OpenVisionLab.Logging.Controls.ViewModel
 
         private void OnQuickFilterRequested(LogPanelQuickFilterRequest request)
         {
-            if (request == null)
+            if (request == null || !isActive || isDisposed)
             {
                 return;
             }
 
+            var version = Volatile.Read(ref activationVersion);
             if (refreshTimer.Dispatcher.CheckAccess())
             {
                 ApplyQuickFilterCore(request);
                 return;
             }
 
-            refreshTimer.Dispatcher.BeginInvoke(new Action(() => ApplyQuickFilterCore(request)));
+            refreshTimer.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (isActive && !isDisposed && version == Volatile.Read(ref activationVersion))
+                    ApplyQuickFilterCore(request);
+            }));
         }
 
         private void ApplyQuickFilterCore(LogPanelQuickFilterRequest request)
@@ -309,6 +342,7 @@ namespace OpenVisionLab.Logging.Controls.ViewModel
 
         private void RefreshTimer_Tick(object sender, EventArgs e)
         {
+            if (!isActive || isDisposed) return;
             string[] newLogs = logBufferReader.GetLogs();
             if (newLogs.Length == 0)
             {

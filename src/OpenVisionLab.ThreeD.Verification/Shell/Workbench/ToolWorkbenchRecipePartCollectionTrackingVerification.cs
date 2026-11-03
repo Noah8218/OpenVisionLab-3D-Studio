@@ -6,6 +6,10 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 internal static class ToolWorkbenchRecipePartCollectionTrackingVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var lines = new List<string>
@@ -64,6 +68,8 @@ internal static class ToolWorkbenchRecipePartCollectionTrackingVerification
                 callbacks == 1,
                 $"callbacks={callbacks}");
 
+            stageCompleted?.Invoke("collection-first-check");
+
             step.Parameters.Remove(addedParameter);
             var callbacksBeforeRemovalMutation = callbacks;
             addedParameter.Value = "3";
@@ -74,7 +80,7 @@ internal static class ToolWorkbenchRecipePartCollectionTrackingVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("verifier exception", false, exception.ToString());
         }
 
         var succeeded = passed == total && total > 0;

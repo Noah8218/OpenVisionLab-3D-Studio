@@ -247,9 +247,28 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.
 
 - [기여 규칙과 버전 관리](AGENTS.md)
 
-현재 버전: `v0.8.0-dev` · [변경 이력](CHANGELOG.md)
+현재 버전: `v0.8.1-dev` · [변경 이력](CHANGELOG.md)
+
+## 합성 입력 검사 화면
+
+다음 화면은 합성 높이 맵을 사용합니다. 텍스처는 외관을 나타내며 측정값은
+높이 데이터에서 계산합니다. 센서 실측 정확도나 LAS 피킹 검증을 뜻하지 않습니다.
+
+![합성 입력의 도구 선택과 검사 결과](docs/assets/openvisionlab-3d-tools.gif)
+
+![합성 높이 맵의 워페이지 검사](docs/assets/openvisionlab-3d-warpage.gif)
+
+![결과 라벨 9개가 있는 두께 검사](docs/assets/openvisionlab-3d-thickness.gif)
+
+![Wide 레이아웃의 합성 텍스처 검사](docs/assets/openvisionlab-3d-texture-wide.png)
+
+![Compact 레이아웃의 합성 텍스처 검사](docs/assets/openvisionlab-3d-texture-compact.png)
 
 ## 상태와 제한
+
+- 최신 원격 Workbench 검사에서 도킹·렌더 정리, 임계값 후보 검토, 속성 편집기 초기 문구 항목이 실패했습니다. 원인은 분류 중이며 전체 CI 통과본이 아닙니다.
+
+- Dock 메뉴의 실제 복귀와 대좌표 LAS의 서로 다른 네 점 피킹은 아직 확인하지 못했습니다. 계산·미디어 검사 완료는 이 두 동작의 통과를 뜻하지 않습니다.
 
 - 현재 버전은 개발용 소스 스냅샷이며, 운영 환경 검증 완료를 뜻하지 않습니다. 태그·릴리스·배포는 별도 승인 단계입니다.
 - 측정 단위는 입력 데이터를 따릅니다. 포함된 예시는 `raw-height` 단위이며 보정된 카메라 촬영 데이터가 아닙니다.

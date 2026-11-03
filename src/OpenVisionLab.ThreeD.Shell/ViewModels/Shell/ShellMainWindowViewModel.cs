@@ -59,6 +59,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
     private readonly string? htmlReportPath;
     private readonly string? csvReportPath;
     private readonly ShellRunRecordPersistence runRecordPersistence;
+    private readonly CancellationTokenSource recentRunRecordsCancellation = new();
+    private Task recentRunRecordsTask = Task.CompletedTask;
+    private int recentRunRecordsGeneration;
     private readonly string? orderedRunRecordRoot;
     private readonly bool hasStartupEvidenceOverrides;
     private readonly ShellMainWindowEventCoordinator shellEventCoordinator;
@@ -247,17 +250,26 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         Interlocked.Exchange(ref disposalState, 1);
         pendingOrderedRunArtifact = null;
         pendingOrderedRunExecution = null;
+        recentRunRecordsCancellation.Cancel();
         try
         {
-            await IntegrationExchange.DisposeAsync().ConfigureAwait(false);
+            await recentRunRecordsTask.ConfigureAwait(false);
         }
         finally
         {
-            IntegrationExchange.PropertyChanged -= OnIntegrationExchangePropertyChanged;
-            shellEventCoordinator.Dispose();
-            Calibration.Dispose();
-            ResultsWorkspace.Dispose();
-            Workbench.Dispose();
+            try
+            {
+                await IntegrationExchange.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                recentRunRecordsCancellation.Dispose();
+                IntegrationExchange.PropertyChanged -= OnIntegrationExchangePropertyChanged;
+                shellEventCoordinator.Dispose();
+                Calibration.Dispose();
+                ResultsWorkspace.Dispose();
+                Workbench.Dispose();
+            }
         }
     }
 
@@ -1277,14 +1289,19 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             "Current recipe result unavailable");
     }
 
-    private void RefreshRecipeComparison(string? selectedRunRecordPath, bool useStartupOverrides)
+    private void RefreshRecipeComparison(
+        string? selectedRunRecordPath,
+        bool useStartupOverrides,
+        InspectionRunRecord? admittedRunRecord = null)
     {
         var root = ShellEvidencePathResolver.ResolveWorkspaceRoot();
-        currentRunRecordPath = ShellEvidencePathResolver.ResolveOptionalPath(root, selectedRunRecordPath);
-        ResetRunRecordComparison();
-        var runRecord = runRecordPersistence.Read(currentRunRecordPath);
-        currentResultsRecord = runRecord;
-        ResultsWorkspace.SetOpenedRecord(runRecord);
+        var resolvedRunRecordPath = ShellEvidencePathResolver.ResolveOptionalPath(root, selectedRunRecordPath);
+        var runRecord = admittedRunRecord ?? runRecordPersistence.Read(resolvedRunRecordPath);
+        if (!useStartupOverrides && resolvedRunRecordPath is not null && runRecord is null)
+        {
+            return;
+        }
+
         var contractPath = ShellEvidencePathResolver.ResolvePath(
             root,
             (useStartupOverrides ? comparisonContractPath : null) ?? runRecord?.Artifacts.ViewerContract,
@@ -1293,28 +1310,40 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             root,
             (useStartupOverrides ? comparisonReportPath : null) ?? runRecord?.Artifacts.RunnerTextReport,
             Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
-        currentContractPath = contractPath;
-        currentReportPath = reportPath;
-        currentShellScreenshotPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? shellScreenshotPath : null) ?? runRecord?.Artifacts.ViewerScreenshot);
-        currentHtmlReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? htmlReportPath : null) ?? runRecord?.Artifacts.HtmlReport);
-        currentCsvReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? csvReportPath : null) ?? runRecord?.Artifacts.CsvReport);
-        RefreshCommandCanExecute();
-
-        if (runRecord?.ViewerRunnerMatchState
-            == ShellOrderedRunRecordWriter.EvidenceState)
+        var resolvedShellScreenshotPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? shellScreenshotPath : null) ?? runRecord?.Artifacts.ViewerScreenshot);
+        var resolvedHtmlReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? htmlReportPath : null) ?? runRecord?.Artifacts.HtmlReport);
+        var resolvedCsvReportPath = ShellEvidencePathResolver.ResolveOptionalPath(root, (useStartupOverrides ? csvReportPath : null) ?? runRecord?.Artifacts.CsvReport);
+        foreach (var artifactPath in new[] { contractPath, reportPath, resolvedShellScreenshotPath, resolvedHtmlReportPath, resolvedCsvReportPath })
         {
-            RefreshShellOrderedRunRecord(root, runRecord);
-            return;
+            if (artifactPath is not null) _ = Path.GetFullPath(artifactPath);
         }
 
-        var contractLines = ReadLinesOrEmpty(contractPath);
-        var reportLines = ReadLinesOrEmpty(reportPath);
+        var isShellOrderedRunRecord = runRecord?.ViewerRunnerMatchState == ShellOrderedRunRecordWriter.EvidenceState;
+        string[] contractLines = isShellOrderedRunRecord ? [] : ReadLinesOrEmpty(contractPath);
+        string[] reportLines = isShellOrderedRunRecord ? [] : ReadLinesOrEmpty(reportPath);
         var recipePath = ShellEvidenceTextParser.ExtractRecipePath(root, reportLines);
         var uiEvidence = ShellEvidenceTextParser.ExtractUiEvidence(contractLines);
         var runnerEvidence = ShellEvidenceTextParser.ExtractRunnerEvidence(reportLines);
         var comparisonState = uiEvidence.Matches(runnerEvidence)
             ? "Runner/UI contract matched"
             : "Comparison evidence missing or different";
+
+        currentRunRecordPath = resolvedRunRecordPath;
+        ResetRunRecordComparison();
+        currentResultsRecord = runRecord;
+        ResultsWorkspace.SetOpenedRecord(runRecord);
+        currentContractPath = contractPath;
+        currentReportPath = reportPath;
+        currentShellScreenshotPath = resolvedShellScreenshotPath;
+        currentHtmlReportPath = resolvedHtmlReportPath;
+        currentCsvReportPath = resolvedCsvReportPath;
+        RefreshCommandCanExecute();
+
+        if (isShellOrderedRunRecord)
+        {
+            RefreshShellOrderedRunRecord(root, runRecord!);
+            return;
+        }
 
         RecipeComparisonSummary =
             $"{comparisonState}\nUI: {uiEvidence.ToolName} / {uiEvidence.Status}\nRunner: {runnerEvidence.ToolName} / {runnerEvidence.Status}\nUI metric: {uiEvidence.KeyMetricSummary}\nRunner metric: {runnerEvidence.KeyMetricSummary}";
@@ -2221,15 +2250,16 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         try
         {
             var fullPath = Path.GetFullPath(path);
-            var record = runRecordPersistence.Read(fullPath);
+            var read = runRecordPersistence.ReadDetailed(fullPath);
+            var record = read.Record;
             if (record is null)
             {
-                message = Localization.RunRecordOpenFailed;
+                message = read.FailureReason;
                 return false;
             }
 
+            RefreshRecipeComparison(fullPath, useStartupOverrides: false, admittedRunRecord: record);
             startupEvidenceActive = false;
-            RefreshRecipeComparison(fullPath, useStartupOverrides: false);
             message = fullPath;
             return true;
         }
@@ -2593,26 +2623,62 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     private void LoadRecentRunRecords()
     {
+        int generation = recentRunRecordsGeneration;
+        recentRunRecordsTask = LoadRecentRunRecordsAsync(generation);
+        // Non-UI consumers retain the former synchronous initialization contract.
+        if (uiSynchronizationContext is null)
+        {
+            recentRunRecordsTask.GetAwaiter().GetResult();
+        }
+    }
+
+    private async Task LoadRecentRunRecordsAsync(int generation)
+    {
+        var token = recentRunRecordsCancellation.Token;
         try
         {
-            foreach (var path in runRecordPersistence.LoadRecentPaths())
+            var rows = await Task.Run(() => runRecordPersistence.ReadRecentAsync(token), token)
+                .ConfigureAwait(false);
+            void Apply()
             {
-                RecentRunRecords.Add(CreateRecentRunRecordItem(
-                    path,
-                    runRecordPersistence.Read(path)));
+                if (token.IsCancellationRequested || Volatile.Read(ref disposalState) != 0
+                    || generation != recentRunRecordsGeneration) return;
+                foreach (var row in rows)
+                {
+                    RecentRunRecords.Add(CreateRecentRunRecordItem(row.Path, row.Result.Record));
+                }
+                SelectedRecentRunRecord = null;
+                ResultsWorkspace.RefreshHistory(RecentRunRecords.ToArray());
+                var unavailable = rows.Where(row => row.Result.Record is null).ToArray();
+                if (unavailable.Length > 0)
+                {
+                    StatusText = $"Viewer hosted | {unavailable.Length} recent Run Record(s) unavailable: "
+                        + string.Join("; ", unavailable.Select(row => row.Result.FailureReason).Distinct());
+                }
             }
-
-            SelectedRecentRunRecord = null;
-            ResultsWorkspace.RefreshHistory(RecentRunRecords.ToArray());
+            if (uiSynchronizationContext is null) Apply();
+            else uiSynchronizationContext.Post(_ => Apply(), null);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // Owner shutdown cancels the read; no history or success is published.
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            StatusText = $"Viewer hosted | recent Run Records unavailable: {exception.Message}";
+            void ApplyFailure()
+            {
+                if (!token.IsCancellationRequested && Volatile.Read(ref disposalState) == 0
+                    && generation == recentRunRecordsGeneration)
+                    StatusText = $"Viewer hosted | recent Run Records unavailable: {exception.Message}";
+            }
+            if (uiSynchronizationContext is null) ApplyFailure();
+            else uiSynchronizationContext.Post(_ => ApplyFailure(), null);
         }
     }
 
     private void RecordRecentRunRecord(string path, InspectionRunRecord record)
     {
+        recentRunRecordsGeneration++;
         var fullPath = Path.GetFullPath(path);
         var existing = RecentRunRecords.FirstOrDefault(item =>
             string.Equals(item.Path, fullPath, StringComparison.OrdinalIgnoreCase));

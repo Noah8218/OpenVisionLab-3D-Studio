@@ -12,11 +12,23 @@ internal static class ToolRecipeHeightThresholdBackgroundRemovalRunnerExecution
         string outputC3DPath,
         string reportPath)
     {
-        var fullReportPath = Path.GetFullPath(reportPath);
         try
         {
+            var fullReportPath = Path.GetFullPath(reportPath);
             var fullRecipePath = Path.GetFullPath(recipePath);
             var document = ToolRecipeDocumentStore.Load(fullRecipePath);
+            var fullOutputPath = Path.GetFullPath(outputC3DPath);
+            var declaredSourcePath = document.Source?.Path
+                ?? throw new InvalidDataException("Height-threshold recipe source path is required.");
+            var sourcePath = Path.IsPathFullyQualified(declaredSourcePath)
+                ? Path.GetFullPath(declaredSourcePath)
+                : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(fullRecipePath)!, declaredSourcePath));
+            ValidatePublicationPaths(
+                fullOutputPath,
+                fullReportPath,
+                out _,
+                ("recipe", fullRecipePath),
+                ("source", sourcePath));
             var evaluation = ToolRecipeHeightThresholdBackgroundRemovalExecution.Execute(
                 document,
                 stepId,
@@ -29,7 +41,6 @@ internal static class ToolRecipeHeightThresholdBackgroundRemovalRunnerExecution
                 return 5;
             }
 
-            var fullOutputPath = Path.GetFullPath(outputC3DPath);
             SaveC3DAtomically(evaluation.Output, fullOutputPath);
             var output = evaluation.Output;
             var evidence = evaluation.Evidence;
@@ -126,6 +137,74 @@ internal static class ToolRecipeHeightThresholdBackgroundRemovalRunnerExecution
             Console.Error.WriteLine(exception.Message);
             return 5;
         }
+    }
+
+    private static void ValidatePublicationPaths(
+        string outputPath,
+        string reportPath,
+        out bool reportPathIsSafe,
+        params (string Name, string Path)[] inputPaths)
+    {
+        reportPathIsSafe = false;
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var outputIdentity = ResolvePathIdentity(outputPath);
+        var reportIdentity = ResolvePathIdentity(reportPath);
+        var inputs = inputPaths.Select(input =>
+            (Name: input.Name, Path: ResolvePathIdentity(input.Path))).ToArray();
+        if (string.Equals(outputIdentity, reportIdentity, comparison))
+        {
+            throw new InvalidDataException("Runner output and report paths must differ.");
+        }
+
+        foreach (var input in inputs)
+        {
+            if (string.Equals(reportIdentity, input.Path, comparison))
+            {
+                throw new InvalidDataException($"Runner report path must differ from the {input.Name} path.");
+            }
+        }
+
+        reportPathIsSafe = true;
+        foreach (var input in inputs)
+        {
+            if (string.Equals(outputIdentity, input.Path, comparison))
+            {
+                throw new InvalidDataException($"Runner output path must differ from the {input.Name} path.");
+            }
+        }
+    }
+
+    private static string ResolvePathIdentity(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath)
+            ?? throw new ArgumentException("Runner path must have a root.", nameof(path));
+        var relativePath = Path.GetRelativePath(root, fullPath);
+        if (relativePath == ".") return Path.TrimEndingDirectorySeparator(fullPath);
+        var current = root;
+        foreach (var segment in relativePath.Split(
+                     [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                     StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+            FileSystemInfo entry = Directory.Exists(current)
+                ? new DirectoryInfo(current)
+                : new FileInfo(current);
+            if (entry.LinkTarget is not null)
+            {
+                var target = entry.ResolveLinkTarget(returnFinalTarget: true)
+                    ?? throw new InvalidDataException("Runner path link could not be resolved.");
+                current = Path.GetFullPath(target.FullName);
+            }
+            else if (entry.Exists && entry.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new InvalidDataException("Runner path has an unresolved reparse point.");
+            }
+        }
+
+        return Path.TrimEndingDirectorySeparator(current);
     }
 
     private static void SaveC3DAtomically(C3DHeightFieldSnapshot output, string path)

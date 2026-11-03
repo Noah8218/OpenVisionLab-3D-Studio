@@ -612,6 +612,11 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                         OnPropertyChanged(nameof(ValidationSetLastRunAt));
                     }
                 });
+            if (IsDisposed
+                || !string.Equals(capturedKey, CreateValidationCalculationKey(createDocument()), StringComparison.Ordinal)
+                || !samples.Select(input => (input.SourcePath, input.EffectiveExpectation, input.EffectiveUsage))
+                    .SequenceEqual(validationSetDefinitionOwner.Samples.Select(sample => (sample.SourcePath, sample.EffectiveExpectation, sample.EffectiveUsage))))
+                throw new OperationCanceledException("Validation run context changed before completion.");
             ValidationSetFilter = ValidationSetStatusFilter.All;
             RefreshValidationSetReviewSamples();
             NotifyValidationSetCountsChanged();
@@ -1012,6 +1017,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         addCurrentSourceToValidationSetCommand?.RaiseCanExecuteChanged();
         var document = createDocument();
         RefreshValidationRunBasis(document);
+        validationThresholdWorkflowOwner.CancelAnalysisIfContextChanged(document);
         if (ToolRecipeValidationSetExecution.CanExecute(document, out var message))
         {
             ValidationSetCapability = Localize(
@@ -1039,7 +1045,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         OnPropertyChanged(nameof(ValidationSetRunNoticeText));
     }
 
-    private static string CreateValidationCalculationKey(ToolRecipeDocument document) => JsonSerializer.Serialize(new
+    internal static string CreateValidationCalculationKey(ToolRecipeDocument document) => JsonSerializer.Serialize(new
     {
         Source = document.Source with { Name = string.Empty },
         Steps = document.Steps.Where(step => step.OutputEnabled)

@@ -2122,12 +2122,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         recipeSaveFailure = string.Empty;
         NotifyHeaderRecipeState();
         var saveBackups = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var saveWriteIdentities = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         var primarySaveStarted = false;
         var primarySaveCommitted = false;
         var retainSaveBackups = false;
         try
         {
             var fullPath = Path.GetFullPath(path);
+            var expectedRecipeSha256 = string.Equals(RecipePath, fullPath, StringComparison.OrdinalIgnoreCase)
+                ? RecipeSession.SavedSha256
+                : null;
+            // Dirty drafts still belong to the exact recipe that was opened.
+            if (expectedRecipeSha256 is not null)
+                ToolRecipeDocumentStore.VerifyUnchangedTarget(fullPath, expectedRecipeSha256);
             // A later sidecar failure must not leave a new recipe with old sample definitions.
             foreach (var savePath in new[] { fullPath, ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(fullPath), ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(fullPath) })
             {
@@ -2153,11 +2160,20 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                     || saveBackups[fullPath] is not { } savedSnapshotPath
                     || !ToolRecipeDocumentStore.TrySaveLandmarkReferenceRevisions(fullPath, document, savedSnapshotPath, previousSha, out savedSha256))
                 {
-                    ToolRecipeDocumentStore.Save(fullPath, document, out savedSha256);
+                    if (expectedRecipeSha256 is not null)
+                        ToolRecipeDocumentStore.SaveIfUnchanged(fullPath, document, expectedRecipeSha256, out savedSha256);
+                    else
+                        ToolRecipeDocumentStore.Save(fullPath, document, out savedSha256);
                 }
+                saveWriteIdentities[fullPath] = savedSha256;
             }
             SaveValidationSetDefinition(fullPath, markClean: false);
+            var validationSetPath = ToolRecipeValidationSetDefinitionStore.GetPathForRecipe(fullPath);
+            saveWriteIdentities[validationSetPath] = ReadSaveFileSha256(validationSetPath);
             SaveValidationThresholdCorrectionEvidence(fullPath);
+            var correctionPath = ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(fullPath);
+            saveWriteIdentities[correctionPath] = ReadSaveFileSha256(correctionPath);
+            ToolRecipeDocumentStore.VerifyUnchangedTarget(fullPath, savedSha256);
             primarySaveCommitted = true;
             if (RecipePath is { } previousPath && !string.Equals(previousPath, fullPath, StringComparison.OrdinalIgnoreCase)) EndStepRemovalHistory();
             RecipePath = fullPath;
@@ -2175,6 +2191,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             AppendLog("Teach", message);
             return true;
         }
+        catch (ToolRecipeSaveConflictException exception)
+        {
+            // Restoring A over the conflicting external B would destroy the edit we rejected.
+            retainSaveBackups = saveBackups.Count != 0;
+            message = exception.Message;
+            recipeSaveFailure = message;
+            AppendLog("Error", $"Teaching recipe save conflict | path={exception.TargetPath} | expected={exception.ExpectedSha256} | actual={exception.ActualSha256 ?? "missing"} | recovery={string.Join(", ", saveBackups.Values.OfType<string>())}");
+            return false;
+        }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException)
         {
             message = exception.Message;
@@ -2184,6 +2209,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
                 {
                     try
                     {
+                        var currentSha256 = ReadSaveFileSha256(savePath);
+                        var backupSha256 = backupPath is null ? null : ReadSaveFileSha256(backupPath);
+                        if (string.Equals(currentSha256, backupSha256, StringComparison.OrdinalIgnoreCase)) continue;
+                        // Only undo the bytes returned by the primary writer, or the sidecar
+                        // identity observed after its successful return. Unknown changes stay put.
+                        if (!saveWriteIdentities.TryGetValue(savePath, out var writtenSha256)
+                            || !string.Equals(currentSha256, writtenSha256, StringComparison.OrdinalIgnoreCase))
+                        {
+                            retainSaveBackups = true;
+                            message += Environment.NewLine + $"Save recovery required: {savePath}; recovery copy: {backupPath ?? "none"}.";
+                            AppendLog("Warning", $"Recipe save rollback skipped changed target | path={savePath} | backup={backupPath}");
+                            continue;
+                        }
                         if (backupPath is null)
                         {
                             if (File.Exists(savePath)) File.Delete(savePath);
@@ -2223,6 +2261,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             NotifyHeaderRecipeState();
             NotifyOrderedRunState();
         }
+    }
+
+    private static string? ReadSaveFileSha256(string path)
+    {
+        if (!File.Exists(path)) return null;
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
     }
 
     public bool TryOpenTeachingRecipe(string path, out string message)
@@ -3572,6 +3617,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             selectedStepExecutionOwner.ClearCompletedResults();
             ClearFilterPreview(previewStatus);
             ClearHeightThresholdPreview(previewStatus);
+            ClearSignedDeltaBackgroundSubtractionPreview(previewStatus);
             ClearRemoveOutlierPreview(previewStatus);
             ClearConnectedRegionPreview(previewStatus);
             ClearGridPolygonDomainPreview(previewStatus);

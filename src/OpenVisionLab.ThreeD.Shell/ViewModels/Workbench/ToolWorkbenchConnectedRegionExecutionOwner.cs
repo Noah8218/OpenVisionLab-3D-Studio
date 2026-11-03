@@ -30,6 +30,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
     private C3DConnectedRegionArtifact? connectedRegionPreview;
     private (C3DHeightFieldSnapshot Output, C3DOutlierCellMap Mask)? restoredUpstream;
     private string? connectedRegionPreviewPath;
+    private string? previewProducerStepId;
     private bool isConnectedRegionPreviewRunning;
     private bool isConnectedRegionPreviewStale;
     private bool isConnectedRegionPreviewPublished;
@@ -88,6 +89,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
         connectedRegionPreview = null;
         restoredUpstream = null;
         connectedRegionPreviewPath = null;
+        previewProducerStepId = null;
         isConnectedRegionPreviewRunning = false;
         isConnectedRegionPreviewStale = false;
         isConnectedRegionPreviewPublished = false;
@@ -95,6 +97,10 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
 
     internal C3DConnectedRegionArtifact? TryGetPublishedArtifact(string entityId)
     {
+        if (!IsDisposed && isConnectedRegionPreviewPublished && !isConnectedRegionPreviewStale
+            && connectedRegionPreview is { } current
+            && string.Equals(current.ArtifactId, entityId, StringComparison.OrdinalIgnoreCase))
+            MarkStaleIfUpstreamChanged();
         return !IsDisposed
             && isConnectedRegionPreviewPublished
             && !isConnectedRegionPreviewStale
@@ -196,6 +202,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
 
             connectedRegionPreview = evaluation.Output;
             connectedRegionPreviewPath = null;
+            previewProducerStepId = step.Id;
             if (!IsCurrentPreview(cancellation))
             {
                 return false;
@@ -258,9 +265,13 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
 
     public void PublishSelectedConnectedRegion()
     {
+        MarkStaleIfUpstreamChanged();
         if (IsDisposed
+            || isConnectedRegionPreviewRunning
             || getSelectedPipelineStep() is not { } step
-            || !HasCurrentConnectedRegionPreview)
+            || !HasCurrentConnectedRegionPreview
+            || !string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(step.OutputEntityId, connectedRegionPreview!.ArtifactId, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -277,6 +288,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
 
     public void PersistPublishedArtifactIfPossible()
     {
+        MarkStaleIfUpstreamChanged();
         if (IsDisposed
             || !isConnectedRegionPreviewPublished
             || isConnectedRegionPreviewStale
@@ -353,6 +365,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
             restoredUpstream = upstream;
             connectedRegionPreview = artifact;
             connectedRegionPreviewPath = artifactPath;
+            previewProducerStepId = recipeStep.Id;
             isConnectedRegionPreviewStale = false;
             isConnectedRegionPreviewPublished = true;
             if (getSelectedPipelineStep() is { } selected
@@ -399,22 +412,22 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
     {
         if (IsDisposed
             || connectedRegionPreview is null
-            || isConnectedRegionPreviewRunning)
+            || isConnectedRegionPreviewRunning
+            || isConnectedRegionPreviewStale)
         {
             return;
         }
 
         var selected = getSelectedPipelineStep();
-        var selectedIsConnectedRegion = IsSelectedStepConnectedRegion;
-        var isSelectedParameter = selectedIsConnectedRegion
+        var isSelectedParameter = string.Equals(selected?.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
             && sender is ToolWorkbenchParameterItem parameter
             && (selected?.Parameters.Contains(parameter) ?? false);
-        if (selected is { } selectedStep
-            && (isSourceChangeEvent(sender)
-                || ReferenceEquals(sender, selectedStep)
-                || isSelectedParameter))
+        if (isSourceChangeEvent(sender)
+            || sender is ToolWorkbenchPipelineStepItem changed
+                && string.Equals(changed.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || isSelectedParameter)
         {
-            MarkStale(selectedStep,
+            MarkStale(
                 "Source, routing, output, or Connected Region parameters changed. Preview again before Publish.");
         }
     }
@@ -424,14 +437,31 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
         if (IsDisposed
             || connectedRegionPreview is null
             || isConnectedRegionPreviewRunning
-            || getSelectedPipelineStep() is not { } step
-            || step.InputEntityIds.Count != 1)
+            || isConnectedRegionPreviewStale)
         {
             return;
         }
 
+        var document = createDocument();
+        var producers = document.Steps.Where(step =>
+            string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(step.ToolId, "connected-region", StringComparison.Ordinal)
+            && string.Equals(step.OutputEntityId, connectedRegionPreview.ArtifactId, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
+        if (producers.Length != 1 || producers[0].InputEntityIds.Count != 1
+            || !ToolRecipeValidator.ValidateForStepExecution(document, producers[0].Id).IsValid
+            || !MatchesAuthoredParameters(producers[0], connectedRegionPreview, out _))
+        {
+            MarkStale("Connected Region producer or parameters changed. Preview again before Publish.");
+            return;
+        }
+        var step = producers[0];
         var upstream = TryGetUpstream(step.InputEntityIds[0]);
         if (upstream is null
+            || !string.Equals(connectedRegionPreview.SourceEntityId, upstream.Value.Output.EntityId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(connectedRegionPreview.RootSourceSha256, upstream.Value.Output.RootSourceSha256, StringComparison.OrdinalIgnoreCase)
+            || connectedRegionPreview.GridWidth != upstream.Value.Output.Width || connectedRegionPreview.GridHeight != upstream.Value.Output.Height
+            || !string.Equals(connectedRegionPreview.Unit, upstream.Value.Output.Unit, StringComparison.Ordinal)
+            || !string.Equals(connectedRegionPreview.FrameId, upstream.Value.Output.FrameId, StringComparison.Ordinal)
             || !string.Equals(
                 connectedRegionPreview.SourceContentSha256,
                 upstream.Value.Output.ContentSha256,
@@ -441,7 +471,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
                 upstream.Value.Mask.Sha256,
                 StringComparison.OrdinalIgnoreCase))
         {
-            MarkStale(step, "Published upstream output or outlier mask changed. Preview again before Publish.");
+            MarkStale("Published upstream output or outlier mask changed. Preview again before Publish.");
         }
     }
 
@@ -459,6 +489,7 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
         connectedRegionPreview = null;
         restoredUpstream = null;
         connectedRegionPreviewPath = null;
+        previewProducerStepId = null;
         isConnectedRegionPreviewStale = false;
         isConnectedRegionPreviewPublished = false;
         SetSummary(summary);
@@ -502,16 +533,18 @@ internal sealed class ToolWorkbenchConnectedRegionExecutionOwner : IDisposable
             ? null
             : getPublishedRemoveOutlierInput(entityId) ?? TryGetRestoredUpstreamInput(entityId);
 
-    private void MarkStale(ToolWorkbenchPipelineStepItem step, string summary)
+    private void MarkStale(string summary)
     {
-        if (IsDisposed)
+        if (IsDisposed || isConnectedRegionPreviewStale)
         {
             return;
         }
 
         isConnectedRegionPreviewStale = true;
         isConnectedRegionPreviewPublished = false;
-        step.State = "Preview stale";
+        if (getSelectedPipelineStep() is { } step
+            && string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase))
+            step.State = "Preview stale";
         SetSummary(summary);
     }
 

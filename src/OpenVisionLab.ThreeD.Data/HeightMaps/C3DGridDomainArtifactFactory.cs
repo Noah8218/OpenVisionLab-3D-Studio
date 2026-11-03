@@ -14,11 +14,20 @@ public static class C3DGridDomainArtifactFactory
         string name,
         C3DHeightFieldSnapshot source,
         ToolRecipeSelection selection)
+        => Create(artifactId, name, source, selection, CancellationToken.None);
+
+    public static C3DGridDomainArtifact Create(
+        string artifactId,
+        string name,
+        C3DHeightFieldSnapshot source,
+        ToolRecipeSelection selection,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(selection);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (!string.Equals(selection.Kind, ToolRecipeSelectionKinds.GridPolygon, StringComparison.Ordinal)
             || selection.GridPolygon is null)
@@ -31,7 +40,9 @@ public static class C3DGridDomainArtifactFactory
         var rasterization = ToolRecipeGridPolygonRasterizer.Rasterize(
             selection.GridPolygon,
             source.Width,
-            source.Height);
+            source.Height,
+            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!rasterization.IsValid)
         {
             throw new InvalidDataException(
@@ -43,7 +54,16 @@ public static class C3DGridDomainArtifactFactory
                 "GridPolygon domain must cover at least one source-grid cell center.");
         }
 
-        return C3DGridDomainArtifact.Create(
+        var cells = new C3DGridDomainArtifactCell[rasterization.Cells.Count];
+        for (var index = 0; index < cells.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var cell = rasterization.Cells[index];
+            cells[index] = new C3DGridDomainArtifactCell(cell.Row, cell.Column);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var artifact = C3DGridDomainArtifact.Create(
             artifactId,
             name,
             source.EntityId,
@@ -55,9 +75,9 @@ public static class C3DGridDomainArtifactFactory
             source.FrameId,
             source.Width,
             source.Height,
-            rasterization.Cells
-                .Select(cell => new C3DGridDomainArtifactCell(cell.Row, cell.Column))
-                .ToArray());
+            cells);
+        cancellationToken.ThrowIfCancellationRequested();
+        return artifact;
     }
 
     private static void ValidateSelectionBinding(

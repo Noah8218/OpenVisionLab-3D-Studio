@@ -33,9 +33,7 @@ public sealed record C3DPointPairDimensionsRecipe(
     public void Save(string path)
     {
         ValidateRecipe(this);
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        using var stream = File.Create(path);
-        JsonSerializer.Serialize(stream, this, JsonOptions);
+        LegacyRecipeJsonStore.Save(path, this, JsonOptions);
     }
 
     private static void ValidateRecipe(C3DPointPairDimensionsRecipe recipe)

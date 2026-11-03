@@ -35,6 +35,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
 
     private CancellationTokenSource? cancellation;
     private C3DRoiCropEvaluation? preview;
+    private CropPreviewContext? previewContext;
     private string? previewPath;
     private bool isRunning;
     private bool isStale;
@@ -68,7 +69,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
 
     public bool IsSelected => !IsDisposed && isSelected();
     public bool IsRunning => !IsDisposed && isRunning;
-    public bool HasCurrentPreview => !IsDisposed && preview?.Output is not null && !isStale;
+    public bool HasCurrentPreview => !IsDisposed && previewContext is not null && preview?.Output is not null && !isStale;
     public bool IsStale => !IsDisposed && isStale;
     public bool IsPublished => !IsDisposed && isPublished;
     public C3DHeightFieldSnapshot? CurrentOutput => IsDisposed ? null : preview?.Output;
@@ -98,6 +99,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
             null);
         CancelAndDispose(currentCancellation);
         preview = null;
+        previewContext = null;
         previewPath = null;
         isRunning = false;
         isStale = false;
@@ -150,6 +152,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
             return false;
         }
 
+        previewContext = null;
         SetRunning(true);
         isStale = false;
         isPublished = false;
@@ -164,10 +167,11 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
         try
         {
             var document = createDocument();
+            var producerStepId = step.Id;
             var evaluation = await Task.Run(
                 () => ToolRecipeRoiCropExecution.Execute(
                     document,
-                    step.Id,
+                    producerStepId,
                     GetRecipeDirectory(),
                     cancellationToken),
                 cancellationToken);
@@ -196,6 +200,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
             }
 
             preview = evaluation;
+            previewContext = CapturePreviewContext(document, producerStepId);
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
             SaveC3DAtomically(evaluation.Output, previewPath);
             if (!IsCurrentPreview(currentCancellation))
@@ -270,7 +275,10 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
     {
         if (IsDisposed
             || getSelectedStep() is not { } step
-            || !HasCurrentPreview)
+            || previewContext is not { } context
+            || !HasCurrentPreview
+            || !string.Equals(step.Id, context.StepId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(step.OutputEntityId, context.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -296,12 +304,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
         try
         {
             var document = createDocument();
-            var step = document.Steps.FirstOrDefault(candidate =>
-                string.Equals(candidate.ToolId, "roi-crop", StringComparison.Ordinal));
-            if (step is null)
-            {
-                throw new InvalidDataException("ROI / Crop recipe step is missing.");
-            }
+            var step = RequireCurrentPreviewStep(document, output, sourceRegion);
 
             var source = RequireRecipeSource(document.Source);
             if (!string.Equals(output.RootSourceSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase))
@@ -347,14 +350,22 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
             onStateChanged();
         }
         catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+            exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or OverflowException)
         {
             if (IsDisposed)
             {
                 return;
             }
 
-            SetSummary($"Published in this session, but the ROI / Crop sidecar could not be saved: {exception.Message}");
+            if (exception is InvalidDataException or OverflowException)
+            {
+                InvalidatePreviewContext();
+                SetSummary($"ROI / Crop output is stale and was not saved: {exception.Message}");
+            }
+            else
+            {
+                SetSummary($"Published in this session, but the ROI / Crop sidecar could not be saved: {exception.Message}");
+            }
             appendLog("Error", $"ROI / Crop sidecar save failed: {exception.Message}");
         }
     }
@@ -378,6 +389,20 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
         var recipeDirectory = GetRecipeDirectory();
         var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
         var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
+        // A partial modern pair is a failed publication; never mix naming versions.
+        if (!File.Exists(sidecarPath) && !File.Exists(c3dPath))
+        {
+            var legacyId = SanitizeLegacy(step.OutputEntityId);
+            if (document.Steps.Count(candidate =>
+                    string.Equals(candidate.ToolId, "roi-crop", StringComparison.Ordinal)
+                    && string.Equals(SanitizeLegacy(candidate.OutputEntityId), legacyId, StringComparison.OrdinalIgnoreCase)) != 1)
+            {
+                appendLog("Warning", "ROI / Crop legacy artifact restore skipped: ambiguous output filename.");
+                return;
+            }
+            sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId, legacy: true);
+            c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId, legacy: true);
+        }
         var hasSidecar = File.Exists(sidecarPath);
         var hasC3D = File.Exists(c3dPath);
         var hasDownstreamArtifactReference = (document.Selections ?? []).Any(selection =>
@@ -472,6 +497,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
                     []),
                 restored,
                 selection.GridRectangle);
+            previewContext = CapturePreviewContext(document, step.Id);
             previewPath = c3dPath;
             isStale = false;
             isPublished = true;
@@ -523,19 +549,16 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
             return;
         }
         var step = getSelectedStep();
-        var isSelectedParameter = IsSelected
+        var isPreviewProducerSelected = IsSelected
+            && string.Equals(step?.Id, previewContext?.StepId, StringComparison.OrdinalIgnoreCase);
+        var isSelectedParameter = isPreviewProducerSelected
             && sender is ToolWorkbenchParameterItem parameter
             && (step?.Parameters.Contains(parameter) ?? false);
         var isSelection = sender is ToolRecipeSelection selection
-            && step?.InputEntityIds.Skip(1).Contains(selection.Id, StringComparer.OrdinalIgnoreCase) == true;
-        if (isSourceChangeEvent(sender) || (IsSelected && ReferenceEquals(sender, step)) || isSelectedParameter || isSelection)
+            && string.Equals(selection.Id, previewContext?.Selection.Id, StringComparison.OrdinalIgnoreCase);
+        if (isSourceChangeEvent(sender) || (isPreviewProducerSelected && ReferenceEquals(sender, step)) || isSelectedParameter || isSelection)
         {
-            isStale = true;
-            isPublished = false;
-            if (step is not null)
-            {
-                step.State = "Preview stale";
-            }
+            InvalidatePreviewContext();
             SetSummary("Source, crop ROI, routing, output, or fixed crop policy changed. Preview again before Publish.");
         }
     }
@@ -552,6 +575,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
             null);
         CancelAndDispose(currentCancellation);
         preview = null;
+        previewContext = null;
         previewPath = null;
         isStale = false;
         isPublished = false;
@@ -611,6 +635,72 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
         SetSummary($"Saved ROI / Crop output was not restored: {reason}");
         appendLog("Warning", $"ROI / Crop output restore skipped: {reason} | sidecar={sidecarPath}");
     }
+
+    private void InvalidatePreviewContext()
+    {
+        isStale = true;
+        isPublished = false;
+        if (getSelectedStep() is { } selected
+            && string.Equals(selected.Id, previewContext?.StepId, StringComparison.OrdinalIgnoreCase))
+        {
+            selected.State = "Preview stale";
+        }
+    }
+
+    private static CropPreviewContext CapturePreviewContext(ToolRecipeDocument document, string stepId)
+    {
+        var step = document.Steps.Single(candidate =>
+            string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase));
+        return new CropPreviewContext(step.Id, step.OutputEntityId, document.Source, FindCropSelection(document, step));
+    }
+
+    private ToolRecipeStep RequireCurrentPreviewStep(
+        ToolRecipeDocument document,
+        C3DHeightFieldSnapshot output,
+        ToolRecipeGridRectangle sourceRegion)
+    {
+        var context = previewContext
+            ?? throw new InvalidDataException("ROI / Crop cached producer context is missing. Preview again before Publish.");
+        if (!ToolRecipeRoiCropExecution.TryPrepare(document, context.StepId, GetRecipeDirectory(), out var input, out var message)
+            || input is null)
+        {
+            throw new InvalidDataException(message);
+        }
+
+        var source = input.Source;
+        if (!string.Equals(input.OutputEntityId, context.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(output.EntityId, context.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.EntityId, context.Source.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.ContentSha256, context.Source.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            || source.ByteLength != context.Source.ByteLength
+            || source.Width != context.Source.GridWidth
+            || source.Height != context.Source.GridHeight
+            || !string.Equals(source.Unit, context.Source.Unit, StringComparison.Ordinal)
+            || !string.Equals(source.FrameId, context.Source.FrameId, StringComparison.Ordinal)
+            || !string.Equals(input.Selection.Id, context.Selection.Id, StringComparison.OrdinalIgnoreCase)
+            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(input.Selection.SourceBinding, context.Selection.SourceBinding)
+            || input.Selection.GridRectangle != context.Selection.GridRectangle
+            || sourceRegion != context.Selection.GridRectangle
+            || !string.Equals(output.RootSourceSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            || output.Width != sourceRegion.ColumnCount
+            || output.Height != sourceRegion.RowCount
+            || output.GridOriginColumn != checked(source.GridOriginColumn + sourceRegion.Column)
+            || output.GridOriginRow != checked(source.GridOriginRow + sourceRegion.Row)
+            || !string.Equals(output.Unit, source.Unit, StringComparison.Ordinal)
+            || !string.Equals(output.FrameId, source.FrameId, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("ROI / Crop cached output does not match its producer, source, selection, or output context. Preview again before Publish.");
+        }
+
+        return document.Steps.Single(candidate =>
+            string.Equals(candidate.Id, context.StepId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private sealed record CropPreviewContext(
+        string StepId,
+        string OutputEntityId,
+        ToolRecipeSource Source,
+        ToolRecipeSelection Selection);
 
     private static ToolRecipeSource RequireRecipeSource(ToolRecipeSource source)
     {
@@ -731,20 +821,34 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner : IDisposable
     private static string GetArtifactC3DPath(
         string recipeDirectory,
         string recipePath,
-        string outputEntityId) =>
+        string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.roi-crop.{Sanitize(outputEntityId)}.c3d");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.roi-crop.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.c3d");
 
     private static string GetArtifactSidecarPath(
         string recipeDirectory,
         string recipePath,
-        string outputEntityId) =>
+        string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.roi-crop.{Sanitize(outputEntityId)}.json");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.roi-crop.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.json");
 
-    private static string Sanitize(string value) =>
+    // Ordinal-ignore-case logical identity, encoded as exact UTF-16LE code units.
+    // '~' cannot occur in a legacy sanitized ID, so new writes cannot alias old paths.
+    private static string Sanitize(string value)
+    {
+        var canonical = value.ToUpperInvariant();
+        var bytes = new byte[checked(canonical.Length * 2)];
+        for (var index = 0; index < canonical.Length; index++)
+        {
+            bytes[index * 2] = (byte)(canonical[index] & 0xff);
+            bytes[index * 2 + 1] = (byte)(canonical[index] >> 8);
+        }
+        return "v2~" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static string SanitizeLegacy(string value) =>
         string.Concat(value.Select(character =>
             char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
 

@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.3.0-dev.20261029.nine-point-compensation.1]" />
+    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.3.0-rc.1.integration.20261102.138]" />
     <PackageReference Include="Unofficial.laszip.netstandard" Version="5.6.2" />
   </ItemGroup>
 

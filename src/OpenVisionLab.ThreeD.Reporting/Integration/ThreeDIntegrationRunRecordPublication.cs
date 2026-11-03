@@ -69,18 +69,6 @@ public sealed class ThreeDIntegrationRunRecordPublication : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(transactionDirectory);
         EnsureNoReparsePointsForExternalFile(existingRunRecordPath, "Run Record");
 
-        var runRecord = InspectionRunRecordJson.Read(existingRunRecordPath);
-        if (string.IsNullOrWhiteSpace(runRecord.RunId))
-        {
-            throw new InvalidDataException("Run Record identity is required.");
-        }
-
-        if (correlationContext is not null)
-        {
-            EnsureRunRecordCorrelation(correlationContext, runRecord);
-        }
-
-        var (outcome, disposition) = MapStatus(runRecord.Status);
         var artifactsDirectory = Path.Combine(
             Path.GetFullPath(transactionDirectory),
             IntegrationTransactionLayout.ArtifactsDirectoryName);
@@ -99,13 +87,38 @@ public sealed class ThreeDIntegrationRunRecordPublication : IDisposable
                 Path.GetFullPath(existingRunRecordPath),
                 temporaryArtifactPath,
                 overwrite: false);
+            InspectionRunRecord runRecord;
+            IntegrationArtifactReference artifact;
+            IntegrationInspectionOutcome outcome;
+            IntegrationInspectionDisposition disposition;
+            IReadOnlyList<IntegrationMetric> metrics;
+            // Parse and hash the same owned snapshot while it cannot be rewritten.
+            using (var snapshot = new FileStream(
+                temporaryArtifactPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read))
+            {
+                runRecord = InspectionRunRecordJson.Read(temporaryArtifactPath);
+                if (string.IsNullOrWhiteSpace(runRecord.RunId))
+                {
+                    throw new InvalidDataException("Run Record identity is required.");
+                }
+                if (correlationContext is not null)
+                {
+                    EnsureRunRecordCorrelation(correlationContext, runRecord);
+                }
+                (outcome, disposition) = MapStatus(runRecord.Status);
+                metrics = CreateMetrics(runRecord);
+                artifact = new IntegrationArtifactReference(
+                    IntegrationArtifactRoles.RunRecord,
+                    runRecord.RunId,
+                    $"{IntegrationTransactionLayout.ArtifactsDirectoryName}/3d-run-record.json",
+                    snapshot.Length,
+                    Convert.ToHexString(SHA256.HashData(snapshot)));
+            }
             File.Move(temporaryArtifactPath, artifactPath);
             artifactPublished = true;
-            var artifact = CreateArtifactReference(
-                IntegrationArtifactRoles.RunRecord,
-                runRecord.RunId,
-                artifactPath,
-                $"{IntegrationTransactionLayout.ArtifactsDirectoryName}/3d-run-record.json");
             var evidence = CopyAdditionalEvidence(
                 transactionDirectory,
                 additionalEvidence,
@@ -117,7 +130,7 @@ public sealed class ThreeDIntegrationRunRecordPublication : IDisposable
                 artifactPath,
                 outcome,
                 disposition,
-                CreateMetrics(runRecord),
+                metrics,
                 evidence,
                 publishedEvidencePaths.ToArray());
         }

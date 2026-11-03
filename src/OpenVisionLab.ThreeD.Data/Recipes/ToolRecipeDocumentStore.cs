@@ -23,6 +23,31 @@ public static class ToolRecipeDocumentStore
 
     public static void SaveNew(string path, ToolRecipeDocument document) => SaveCore(path, document, overwrite: false);
 
+    public static void SaveIfUnchanged(string path, ToolRecipeDocument document, string expectedSha256, out string sha256)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedSha256);
+        sha256 = SaveCore(path, document, overwrite: true, expectedSha256: expectedSha256);
+    }
+
+    public static void VerifyUnchangedTarget(string path, string expectedSha256)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedSha256);
+        string? actualSha256;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            actualSha256 = Convert.ToHexString(SHA256.HashData(stream));
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            throw new ToolRecipeSaveConflictException(path, expectedSha256, actualSha256: null);
+        }
+
+        if (!string.Equals(actualSha256, expectedSha256, StringComparison.OrdinalIgnoreCase))
+            throw new ToolRecipeSaveConflictException(path, expectedSha256, actualSha256);
+    }
+
     public static bool TrySaveLandmarkReferenceRevisions(string path, ToolRecipeDocument document, string savedSnapshotPath, string savedSha256, out string sha256)
     {
         sha256 = string.Empty;
@@ -50,11 +75,11 @@ public static class ToolRecipeDocumentStore
 
         if (!changed || !JsonNode.DeepEquals(previousJson, currentJson)) return false;
         // Keep field presence from the saved recipe only for a revision-only edit.
-        sha256 = SaveCore(path, document, overwrite: true, savedJson.ToJsonString(JsonOptions));
+        sha256 = SaveCore(path, document, overwrite: true, savedJson.ToJsonString(JsonOptions), savedSha256);
         return true;
     }
 
-    private static string SaveCore(string path, ToolRecipeDocument document, bool overwrite, string? serializedJson = null)
+    private static string SaveCore(string path, ToolRecipeDocument document, bool overwrite, string? serializedJson = null, string? expectedSha256 = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var validation = ToolRecipeValidator.ValidateForStorage(document);
@@ -64,6 +89,7 @@ public static class ToolRecipeDocumentStore
         }
 
         var fullPath = Path.GetFullPath(path);
+        if (expectedSha256 is not null) VerifyUnchangedTarget(fullPath, expectedSha256);
         VerifyCurrentSelectionBindings(fullPath, document);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
@@ -83,6 +109,9 @@ public static class ToolRecipeDocumentStore
                 stream.Flush(flushToDisk: true);
             }
 
+            // This catches completed external edits, including edits during serialization.
+            // Hash comparison followed by rename is not a cross-process compare-and-swap.
+            if (expectedSha256 is not null) VerifyUnchangedTarget(fullPath, expectedSha256);
             File.Move(temporaryPath, fullPath, overwrite);
             return Convert.ToHexString(SHA256.HashData(bytes));
         }
@@ -171,4 +200,19 @@ public static class ToolRecipeDocumentStore
         var documentDirectory = Path.GetDirectoryName(documentPath) ?? Environment.CurrentDirectory;
         return Path.GetFullPath(Path.Combine(documentDirectory, sourcePath));
     }
+}
+
+public sealed class ToolRecipeSaveConflictException : IOException
+{
+    public ToolRecipeSaveConflictException(string path, string expectedSha256, string? actualSha256)
+        : base("The saved recipe changed outside this session. Reopen it before saving.")
+    {
+        TargetPath = Path.GetFullPath(path);
+        ExpectedSha256 = expectedSha256;
+        ActualSha256 = actualSha256;
+    }
+
+    public string TargetPath { get; }
+    public string ExpectedSha256 { get; }
+    public string? ActualSha256 { get; }
 }

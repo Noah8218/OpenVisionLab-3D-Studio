@@ -1499,6 +1499,8 @@ internal static class RunnerApplication
     {
         if (!fields.TryGetValue(name, out var text)
             || !double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var actual)
+            || !double.IsFinite(actual)
+            || !double.IsFinite(expected)
             || Math.Abs(actual - expected) > 1e-12)
         {
             throw new InvalidDataException(
@@ -1542,7 +1544,9 @@ internal static class RunnerApplication
             }
 
             var uiMetric = ParseMetricValue(uiMetricLine);
-            if (Math.Abs(uiMetric - runnerMetric.Value) > 0.001)
+            if (!double.IsFinite(uiMetric)
+                || !double.IsFinite(runnerMetric.Value)
+                || Math.Abs(uiMetric - runnerMetric.Value) > 0.001)
             {
                 throw new InvalidDataException($"{runnerMetric.Name} mismatch. UI={uiMetric:F3}, runner={runnerMetric.Value:F3}.");
             }

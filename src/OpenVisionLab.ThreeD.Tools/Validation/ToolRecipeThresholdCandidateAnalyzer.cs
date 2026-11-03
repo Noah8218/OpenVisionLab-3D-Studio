@@ -7,16 +7,26 @@ namespace OpenVisionLab.ThreeD.Tools;
 
 public static class ToolRecipeThresholdCandidateAnalyzer
 {
+    private const int MaximumGroups = 64;
+    private const int MaximumObservationsPerGroup = 32;
+    private const int MaximumDistinctValuesPerGroup = 32;
     public static ToolRecipeThresholdCandidateReport Analyze(
         ToolRecipeDocument document,
-        ToolRecipeValidationSetResult result)
+        ToolRecipeValidationSetResult result) => Analyze(document, result, CancellationToken.None);
+
+    public static ToolRecipeThresholdCandidateReport Analyze(
+        ToolRecipeDocument document,
+        ToolRecipeValidationSetResult result,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(result);
+        cancellationToken.ThrowIfCancellationRequested();
         var observations =
             ToolRecipeLabeledEvidenceAnalyzer.CollectObservations(
                 document,
                 result);
+        cancellationToken.ThrowIfCancellationRequested();
         var development = observations
             .Where(observation =>
                 observation.Role is ToolRecipeValidationSampleRole.Good
@@ -43,8 +53,26 @@ public static class ToolRecipeThresholdCandidateAnalyzer
                      .ThenBy(group => group.Key.MetricName, StringComparer.Ordinal)
                      .ThenBy(group => group.Key.Unit, StringComparer.Ordinal)
                      .ToArray();
+        if (groups.Length > MaximumGroups)
+        {
+            return UnsupportedWorkload(result, heldOut.Length,
+                "Threshold analysis supports at most 64 development metric groups.", cancellationToken);
+        }
+        // Admit the complete workload before calculating any candidates. Rejection
+        // must never return a partial report from the groups already analyzed.
         foreach (var group in groups)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (group.Count() > MaximumObservationsPerGroup
+                || group.Select(observation => observation.Value).Distinct().Count() > MaximumDistinctValuesPerGroup)
+            {
+                return UnsupportedWorkload(result, heldOut.Length,
+                    "Threshold analysis supports at most 32 observations and 32 distinct values per development metric group.", cancellationToken);
+            }
+        }
+        foreach (var group in groups)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             var groupObservations = group
                 .OrderBy(observation => observation.SampleOrder)
                 .ToArray();
@@ -82,7 +110,8 @@ public static class ToolRecipeThresholdCandidateAnalyzer
                 group.Key.OwnerName,
                 group.Key.MetricName,
                 group.Key.Unit,
-                groupObservations);
+                groupObservations,
+                cancellationToken);
             candidates.AddRange(groupCandidates);
             if (assistantMetric
                 && groupCandidates.All(candidate => candidate.ErrorCount > 0))
@@ -143,6 +172,7 @@ public static class ToolRecipeThresholdCandidateAnalyzer
             ? ResultStatus.Warning
             : ResultStatus.Pass;
 
+        cancellationToken.ThrowIfCancellationRequested();
         return new ToolRecipeThresholdCandidateReport(
             ToolRecipeThresholdCandidateReport.CurrentContractVersion,
             status,
@@ -162,6 +192,34 @@ public static class ToolRecipeThresholdCandidateAnalyzer
                 .ThenBy(warning => warning.MetricName, StringComparer.Ordinal)
                 .ThenBy(warning => warning.Kind)
                 .ToArray());
+    }
+
+    private static ToolRecipeThresholdCandidateReport UnsupportedWorkload(
+        ToolRecipeValidationSetResult result,
+        int heldOutObservationCount,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var heldOutIdentities = result.Samples
+            .Where(sample => sample.Role == ToolRecipeValidationSampleRole.HeldOut)
+            .OrderBy(sample => sample.Order)
+            .Select(sample => $"{sample.Order}:"
+                + (string.IsNullOrWhiteSpace(sample.SourceContentSha256)
+                    ? sample.SourcePath : sample.SourceContentSha256))
+            .ToArray();
+        return new ToolRecipeThresholdCandidateReport(
+            ToolRecipeThresholdCandidateReport.CurrentContractVersion,
+            ResultStatus.Error,
+            message,
+            result.Samples.Count(sample => sample.Role is ToolRecipeValidationSampleRole.Good
+                or ToolRecipeValidationSampleRole.Bad),
+            heldOutIdentities.Length,
+            heldOutObservationCount,
+            heldOutIdentities,
+            [],
+            [message],
+            []);
     }
 
     private static bool IsThresholdAssistantMetric(
@@ -304,15 +362,25 @@ public static class ToolRecipeThresholdCandidateAnalyzer
         string ownerName,
         string metricName,
         string unit,
-        IReadOnlyList<ToolRecipeMetricObservation> observations)
+        IReadOnlyList<ToolRecipeMetricObservation> observations,
+        CancellationToken cancellationToken)
     {
-        var sdkResult = new ThresholdCandidateAnalysisTool().Execute(
-            observations.Select((observation, index) =>
+        cancellationToken.ThrowIfCancellationRequested();
+        var sdkObservations = observations.Select((observation, index) =>
                 new ThresholdCandidateObservation(
                     index,
                     ToSdkClass(observation.Role),
                     observation.Value))
-                .ToArray());
+                .ToArray();
+        // The SDK accepts an IReadOnlyList and reads it again while scoring
+        // candidates. Preserve its API and arithmetic, but let those reads
+        // observe this execution's cancellation. Sorting/runtime operations
+        // that do not read observations are not independently interruptible.
+        IReadOnlyList<ThresholdCandidateObservation> sdkInput = cancellationToken.CanBeCanceled
+            ? new CancellationCheckedObservations(sdkObservations, cancellationToken)
+            : sdkObservations;
+        var sdkResult = new ThresholdCandidateAnalysisTool().Execute(sdkInput);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!sdkResult.Success)
         {
             throw new InvalidOperationException(sdkResult.Message);
@@ -328,6 +396,46 @@ public static class ToolRecipeThresholdCandidateAnalyzer
                 candidate,
                 observations))
             .ToArray();
+    }
+
+    private sealed class CancellationCheckedObservations(
+        IReadOnlyList<ThresholdCandidateObservation> observations,
+        CancellationToken cancellationToken) : IReadOnlyList<ThresholdCandidateObservation>
+    {
+        public int Count
+        {
+            get
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var count = observations.Count;
+                cancellationToken.ThrowIfCancellationRequested();
+                return count;
+            }
+        }
+
+        public ThresholdCandidateObservation this[int index]
+        {
+            get
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var observation = observations[index];
+                cancellationToken.ThrowIfCancellationRequested();
+                return observation;
+            }
+        }
+
+        public IEnumerator<ThresholdCandidateObservation> GetEnumerator()
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var observation in observations)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return observation;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private static ToolRecipeThresholdCandidate CreateCandidate(

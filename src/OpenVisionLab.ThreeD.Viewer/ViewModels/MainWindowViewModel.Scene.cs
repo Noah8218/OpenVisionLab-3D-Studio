@@ -312,7 +312,8 @@ public sealed partial class MainWindowViewModel
     public void UseC3DSmokeScene()
     {
         SampleResultOverlayVisible = false;
-        ClearC3DHeightDeviationPreview();
+        ClearInactiveC3DPreviewState();
+        ClearActivePreviewResult();
         HudDetailsVisible = true;
         CubeVisible = false;
         PointCloudVisible = false;
@@ -487,13 +488,8 @@ public sealed partial class MainWindowViewModel
 
     private void ClearC3DLinkedViews()
     {
-        ClearC3DHeightDeviationPreview();
-        ClearThicknessPreview();
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
+        ClearInactiveC3DPreviewState();
+        ClearActivePreviewResult();
         ClearHeightMap();
         ClearSectionProfile();
     }
@@ -504,6 +500,7 @@ public sealed partial class MainWindowViewModel
         SampleResultOverlayVisible = true;
         MeasurementVisible = true;
         SelectionOverlayVisible = true;
+        SetActivePreviewResult(ViewerInspectionKind.SyntheticHeightDeviation, CreateSyntheticHeightDeviationPreview());
         ResultOverlayVisible = true;
         SelectedSelectionMode = "Box ROI";
         SelectedEntity = "Result Overlay";
@@ -566,6 +563,8 @@ public sealed partial class MainWindowViewModel
 
     public void SetLazTwoPointMeasurementPreview(Vector3 first, Vector3 second, double heightDelta, string heightUnit)
     {
+        ClearInactiveC3DPreviewState(ViewerInspectionKind.LazTwoPointMeasurement);
+        ClearActivePreviewResult();
         inspectionSession.Activate(ViewerInspectionKind.LazTwoPointMeasurement);
         lazTwoPointPreviewFirst = first;
         lazTwoPointPreviewSecond = second;
@@ -593,13 +592,7 @@ public sealed partial class MainWindowViewModel
             SelectionSummary = TwoPointMeasurementSummary;
         }
 
-        if (inspectionSession.ActiveKind == ViewerInspectionKind.LazTwoPointMeasurement)
-        {
-            inspectionSession.Reset();
-            PreviewToolResult = CreateNotRunToolResult();
-            ResultSummary = FormatToolResult(PreviewToolResult);
-            RefreshSceneContracts();
-        }
+        ClearActivePreviewResult(ViewerInspectionKind.LazTwoPointMeasurement);
     }
 
     public void SetPlaneReferenceMeasurement(HeightFieldPlaneFitResult result, string referenceName)

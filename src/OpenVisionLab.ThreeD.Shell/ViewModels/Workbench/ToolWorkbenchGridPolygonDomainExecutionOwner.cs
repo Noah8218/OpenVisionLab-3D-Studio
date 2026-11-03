@@ -30,6 +30,7 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
     private string? previewPath;
     private string? previewInputEntityId;
     private string? previewSelectionId;
+    private string? previewProducerStepId;
     private bool isPreviewRunning;
     private bool isPreviewStale;
     private bool isPreviewPublished;
@@ -90,6 +91,7 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
         previewPath = null;
         previewInputEntityId = null;
         previewSelectionId = null;
+        previewProducerStepId = null;
         isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -170,6 +172,7 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
             preview = evaluation.Output;
             previewInputEntityId = source.EntityId;
             previewSelectionId = selection.Id;
+            previewProducerStepId = step.Id;
             previewPath = CreatePreviewPath(evaluation.Output.ContentSha256);
             C3DGridDomainArtifactStore.Save(previewPath, evaluation.Output);
             step.State = "Preview ready";
@@ -232,7 +235,9 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
     {
         if (IsDisposed
             || getSelectedPipelineStep() is not { } step
-            || !HasCurrentPreview)
+            || !HasCurrentPreview
+            || !string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(step.OutputEntityId, preview!.ArtifactId, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -266,13 +271,13 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
             return;
         }
 
-        if (getSelectedPipelineStep() is { } step
-            && (isSourceChangeEvent(sender)
-                || ReferenceEquals(sender, step)
-                || sender is ToolRecipeSelection selection
-                    && step.InputEntityIds.Contains(selection.Id, StringComparer.OrdinalIgnoreCase)))
+        if (isSourceChangeEvent(sender)
+            || sender is ToolWorkbenchPipelineStepItem changedStep
+                && string.Equals(changedStep.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || sender is ToolRecipeSelection selection
+                && string.Equals(selection.Id, previewSelectionId, StringComparison.OrdinalIgnoreCase))
         {
-            MarkStale(step, "Source, GridPolygon selection, or routing changed. Preview Grid Polygon Domain again before Publish.");
+            MarkStale("Source, GridPolygon selection, or routing changed. Preview Grid Polygon Domain again before Publish.");
         }
     }
 
@@ -281,15 +286,24 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
         if (IsDisposed
             || preview is null
             || isPreviewStale
-            || isPreviewRunning
-            || getSelectedPipelineStep() is not { } step
-            || step.InputEntityIds.Count != 2)
+            || isPreviewRunning)
         {
             return;
         }
 
-        var source = getPublishedHeightField(step.InputEntityIds[0]);
         var document = createDocument();
+        // An unrelated selected consumer does not own the cached Grid artifact.
+        var producers = document.Steps.Where(candidate =>
+            string.Equals(candidate.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(candidate.ToolId, "grid-polygon-domain", StringComparison.Ordinal)
+            && string.Equals(candidate.OutputEntityId, preview.ArtifactId, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (producers.Length != 1 || producers[0].InputEntityIds.Count != 2)
+        {
+            MarkStale("Source, GridPolygon selection, or routing changed. Preview Grid Polygon Domain again before Publish.");
+            return;
+        }
+        var step = producers[0];
+        var source = getPublishedHeightField(step.InputEntityIds[0]);
         var sourceIsRecipeSource = string.Equals(
             step.InputEntityIds[0],
             document.Source.Id,
@@ -325,7 +339,7 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
             || selectionContentSha256 is null
             || !string.Equals(preview.SelectionContentSha256, selectionContentSha256, StringComparison.OrdinalIgnoreCase))
         {
-            MarkStale(step, "Published HeightField or GridPolygon selection changed. Preview Grid Polygon Domain again before Publish.");
+            MarkStale("Published HeightField or GridPolygon selection changed. Preview Grid Polygon Domain again before Publish.");
         }
     }
 
@@ -342,6 +356,7 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
         previewPath = null;
         previewInputEntityId = null;
         previewSelectionId = null;
+        previewProducerStepId = null;
         isPreviewStale = false;
         isPreviewPublished = false;
         SetSummary(summary);
@@ -381,17 +396,18 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
             || !isPreviewPublished
             || isPreviewStale
             || preview is null
-            || string.IsNullOrWhiteSpace(getRecipePath())
-            || getSelectedPipelineStep() is not { } step)
+            || string.IsNullOrWhiteSpace(getRecipePath()))
         {
             return;
         }
 
         try
         {
+            MarkStaleIfUpstreamChanged();
+            if (isPreviewStale) return;
             var directory = Path.GetDirectoryName(Path.GetFullPath(getRecipePath()!))
                 ?? Environment.CurrentDirectory;
-            previewPath = GetArtifactPath(directory, getRecipePath()!, step.OutputEntityId);
+            previewPath = GetArtifactPath(directory, getRecipePath()!, preview.ArtifactId);
             C3DGridDomainArtifactStore.Save(previewPath, preview);
             appendLog("Save", $"Grid Polygon Domain artifact saved: {previewPath}.");
             onExecutionStateChanged();
@@ -422,6 +438,18 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
         var directory = Path.GetDirectoryName(Path.GetFullPath(getRecipePath()!))
             ?? Environment.CurrentDirectory;
         var path = GetArtifactPath(directory, getRecipePath()!, step.OutputEntityId);
+        if (!File.Exists(path))
+        {
+            var legacyId = SanitizeLegacy(step.OutputEntityId);
+            if (document.Steps.Count(candidate =>
+                    string.Equals(candidate.ToolId, "grid-polygon-domain", StringComparison.Ordinal)
+                    && string.Equals(SanitizeLegacy(candidate.OutputEntityId), legacyId, StringComparison.OrdinalIgnoreCase)) != 1)
+            {
+                appendLog("Warning", "Grid Polygon Domain legacy artifact restore skipped: ambiguous output filename.");
+                return;
+            }
+            path = GetArtifactPath(directory, getRecipePath()!, step.OutputEntityId, legacy: true);
+        }
         if (!File.Exists(path))
         {
             return;
@@ -460,6 +488,7 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
             previewPath = path;
             previewInputEntityId = source.EntityId;
             previewSelectionId = selection.Id;
+            previewProducerStepId = step.Id;
             isPreviewStale = false;
             isPreviewPublished = true;
             if (getSelectedPipelineStep() is { } selected
@@ -541,11 +570,13 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
         return true;
     }
 
-    private void MarkStale(ToolWorkbenchPipelineStepItem step, string summary)
+    private void MarkStale(string summary)
     {
         isPreviewStale = true;
         isPreviewPublished = false;
-        step.State = "Preview stale";
+        if (getSelectedPipelineStep() is { } step
+            && string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase))
+            step.State = "Preview stale";
         SetSummary(summary);
     }
 
@@ -598,12 +629,26 @@ internal sealed class ToolWorkbenchGridPolygonDomainExecutionOwner : IDisposable
     private static string GetArtifactPath(
         string recipeDirectory,
         string recipePath,
-        string outputEntityId) =>
+        string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.grid-polygon-domain.{Sanitize(outputEntityId)}.json");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.grid-polygon-domain.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.json");
 
-    private static string Sanitize(string value) =>
+    // Ordinal-ignore-case logical identity, encoded as exact UTF-16LE code units.
+    // '~' cannot occur in a legacy sanitized ID, so new writes cannot alias old paths.
+    private static string Sanitize(string value)
+    {
+        var canonical = value.ToUpperInvariant();
+        var bytes = new byte[checked(canonical.Length * 2)];
+        for (var index = 0; index < canonical.Length; index++)
+        {
+            bytes[index * 2] = (byte)(canonical[index] & 0xff);
+            bytes[index * 2 + 1] = (byte)(canonical[index] >> 8);
+        }
+        return "v2~" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static string SanitizeLegacy(string value) =>
         string.Concat(value.Select(character =>
             char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
 }

@@ -8,21 +8,27 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
 {
     public static int Run(string specificationPath, string reportPath)
     {
-        var fullReportPath = Path.GetFullPath(reportPath);
+        var fullReportPath = string.Empty;
+        var reportPathIsSafe = false;
         try
         {
+            fullReportPath = Path.GetFullPath(reportPath);
             var fullSpecificationPath = Path.GetFullPath(specificationPath);
             var specification = JsonSerializer.Deserialize<C3DPointCloudVoxelDownsampleRunnerSpecification>(
                 File.ReadAllText(fullSpecificationPath),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidDataException("Point-cloud voxel-downsample Runner specification is empty.");
             ArgumentException.ThrowIfNullOrWhiteSpace(specification.OutputPath);
-            var source = CreateSource(specification.Source);
+            var sourceSpecification = specification.Source
+                ?? throw new InvalidDataException("Point-cloud voxel-downsample source is required.");
             var outputPath = Path.GetFullPath(specification.OutputPath);
-            if (string.Equals(outputPath, Path.GetFullPath(source.SourcePath), StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidDataException("Point-cloud voxel-downsample output path must differ from the source path.");
-            }
+            ValidatePublicationPaths(
+                outputPath,
+                fullReportPath,
+                out reportPathIsSafe,
+                ("specification", fullSpecificationPath),
+                ("source", sourceSpecification.Path));
+            var source = CreateSource(sourceSpecification);
 
             if (File.Exists(outputPath))
             {
@@ -69,7 +75,8 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
             };
             WriteTextAtomically(
                 outputPath,
-                JsonSerializer.Serialize(outputDocument, new JsonSerializerOptions { WriteIndented = true }));
+                JsonSerializer.Serialize(outputDocument, new JsonSerializerOptions { WriteIndented = true }),
+                overwrite: false);
 
             var report = new
             {
@@ -179,10 +186,78 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
                 or InvalidOperationException
                 or OverflowException)
         {
-            TryWriteErrorReport(fullReportPath, exception);
+            if (reportPathIsSafe) TryWriteErrorReport(fullReportPath, exception);
             Console.Error.WriteLine(exception.Message);
             return 5;
         }
+    }
+
+    private static void ValidatePublicationPaths(
+        string outputPath,
+        string reportPath,
+        out bool reportPathIsSafe,
+        params (string Name, string Path)[] inputPaths)
+    {
+        reportPathIsSafe = false;
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var outputIdentity = ResolvePathIdentity(outputPath);
+        var reportIdentity = ResolvePathIdentity(reportPath);
+        var inputs = inputPaths.Select(input =>
+            (Name: input.Name, Path: ResolvePathIdentity(input.Path))).ToArray();
+        if (string.Equals(outputIdentity, reportIdentity, comparison))
+        {
+            throw new InvalidDataException("Runner output and report paths must differ.");
+        }
+
+        foreach (var input in inputs)
+        {
+            if (string.Equals(reportIdentity, input.Path, comparison))
+            {
+                throw new InvalidDataException($"Runner report path must differ from the {input.Name} path.");
+            }
+        }
+
+        reportPathIsSafe = true;
+        foreach (var input in inputs)
+        {
+            if (string.Equals(outputIdentity, input.Path, comparison))
+            {
+                throw new InvalidDataException($"Runner output path must differ from the {input.Name} path.");
+            }
+        }
+    }
+
+    private static string ResolvePathIdentity(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath)
+            ?? throw new ArgumentException("Runner path must have a root.", nameof(path));
+        var relativePath = Path.GetRelativePath(root, fullPath);
+        if (relativePath == ".") return Path.TrimEndingDirectorySeparator(fullPath);
+        var current = root;
+        foreach (var segment in relativePath.Split(
+                     [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                     StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+            FileSystemInfo entry = Directory.Exists(current)
+                ? new DirectoryInfo(current)
+                : new FileInfo(current);
+            if (entry.LinkTarget is not null)
+            {
+                var target = entry.ResolveLinkTarget(returnFinalTarget: true)
+                    ?? throw new InvalidDataException("Runner path link could not be resolved.");
+                current = Path.GetFullPath(target.FullName);
+            }
+            else if (entry.Exists && entry.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new InvalidDataException("Runner path has an unresolved reparse point.");
+            }
+        }
+
+        return Path.TrimEndingDirectorySeparator(current);
     }
 
     private static void TryWriteErrorReport(string fullReportPath, Exception exception)
@@ -208,8 +283,8 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
         }
     }
 
-    private static void WriteTextAtomically(string path, string text) =>
-        WriteAtomically(path, writer => writer.Write(text));
+    private static void WriteTextAtomically(string path, string text, bool overwrite = true) =>
+        WriteAtomically(path, writer => writer.Write(text), overwrite);
 
     private static void WriteLinesAtomically(string path, IEnumerable<string> lines) =>
         WriteAtomically(path, writer =>
@@ -220,7 +295,7 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
             }
         });
 
-    private static void WriteAtomically(string path, Action<StreamWriter> write)
+    private static void WriteAtomically(string path, Action<StreamWriter> write, bool overwrite = true)
     {
         var fullPath = Path.GetFullPath(path);
         var temporaryPath = $"{fullPath}.tmp.{Guid.NewGuid():N}";
@@ -244,7 +319,7 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
                 stream.Flush(flushToDisk: true);
             }
 
-            File.Move(temporaryPath, fullPath, overwrite: true);
+            File.Move(temporaryPath, fullPath, overwrite);
         }
         finally
         {
@@ -270,7 +345,9 @@ internal static class C3DPointCloudVoxelDownsampleRunnerExecution
             source.Unit,
             source.FrameId,
             source.CoordinateConvention,
-            source.Points?.Select(point => new C3DPoint3(point.X, point.Y, point.Z)).ToArray()
+            source.Points?.Select((point, index) => point is null
+                ? throw new InvalidDataException($"Point-cloud voxel-downsample source point at index {index} must not be null.")
+                : new C3DPoint3(point.X, point.Y, point.Z)).ToArray()
                 ?? throw new InvalidDataException("Point-cloud voxel-downsample source points are required."));
         if (snapshot.ByteLength != source.ByteLength
             || !string.Equals(snapshot.ContentSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase)

@@ -110,7 +110,7 @@ internal static class ToolRecipeThresholdCorrectionRunnerVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | unhandled verification exception | {exception}");
+            Check("unhandled verification exception", false, exception.ToString());
         }
 
         File.WriteAllLines(fullReportPath, lines);

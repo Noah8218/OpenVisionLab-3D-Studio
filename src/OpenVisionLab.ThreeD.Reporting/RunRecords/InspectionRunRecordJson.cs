@@ -63,12 +63,17 @@ public static class InspectionRunRecordJson
                          File.ReadAllText(fullPath, Encoding.UTF8),
                          Options)
                      ?? throw new InvalidDataException("Run Record JSON contains null.");
-        ValidateRead(record);
+        Validate(record);
         return record;
     }
 
-    private static void ValidateRead(InspectionRunRecord record)
+    public static void Validate(InspectionRunRecord? record)
     {
+        if (record is null)
+        {
+            throw new InvalidDataException("Run Record is required.");
+        }
+
         if (!InspectionRunRecord.SupportsSchemaVersion(record.SchemaVersion))
         {
             throw new InvalidDataException(
@@ -101,6 +106,12 @@ public static class InspectionRunRecordJson
                     || step.Overlays.Any(overlay => overlay is null)))))
         {
             throw new InvalidDataException("Run Record contains incomplete metric or step overlay data.");
+        }
+
+        if (record.Steps is { } inputSteps
+            && inputSteps.Any(step => step is not null && step.InputEntityIds is null))
+        {
+            throw new InvalidDataException("Run Record contains incomplete step input data.");
         }
 
         if (record.Steps is { } steps

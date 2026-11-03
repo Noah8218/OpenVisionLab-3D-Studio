@@ -5,10 +5,16 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Services;
+
+internal sealed record ShellRunRecordReadResult(
+    InspectionRunRecord? Record,
+    string FailureReason,
+    long BytesRead);
 
 /// <summary>
 /// Owns file-system operations for Shell Run Records.
@@ -18,6 +24,10 @@ namespace OpenVisionLab.ThreeD.Shell.Services;
 internal sealed class ShellRunRecordPersistence
 {
     public const int MaximumRecentRecords = RecipeRecentFileStore.MaximumEntries;
+    public const int MaximumRecordBytes = 4 * 1024 * 1024;
+    public const long MaximumRecentRecordBytes = 40L * 1024 * 1024;
+    public const int MaximumSteps = 4096;
+    public const int MaximumMetrics = 32768;
 
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
@@ -34,27 +44,123 @@ internal sealed class ShellRunRecordPersistence
         this.recentRunRecordsPath = recentRunRecordsPath;
     }
 
-    public InspectionRunRecord? Read(string? path)
+    public InspectionRunRecord? Read(string? path) => ReadDetailed(path).Record;
+
+    public ShellRunRecordReadResult ReadDetailed(
+        string? path,
+        CancellationToken cancellationToken = default) =>
+        ReadAsync(path, cancellationToken).GetAwaiter().GetResult();
+
+    public async Task<ShellRunRecordReadResult> ReadAsync(
+        string? path,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
-            return null;
+            return new(null, "The Run Record file is missing.", 0);
         }
 
+        long bytesRead = 0;
         try
         {
-            return JsonSerializer.Deserialize<InspectionRunRecord>(
-                File.ReadAllText(path),
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.Read, 65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            if (stream.Length > MaximumRecordBytes)
+            {
+                return new(null, "Run Records larger than 4 MiB cannot be opened. The file was not changed.", 0);
+            }
+            using var content = new MemoryStream((int)stream.Length);
+            var buffer = new byte[65536];
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int read = await stream.ReadAsync(buffer.AsMemory(0,
+                    (int)Math.Min(buffer.Length, MaximumRecordBytes + 1L - bytesRead)),
+                    cancellationToken).ConfigureAwait(false);
+                if (read == 0) break;
+                bytesRead += read;
+                if (bytesRead > MaximumRecordBytes)
+                {
+                    return new(null, "Run Records larger than 4 MiB cannot be opened. The file was not changed.", bytesRead);
+                }
+                content.Write(buffer, 0, read);
+            }
+            content.Position = 0;
+            // Preserve BOM detection from the former ReadAllText path.
+            using var reader = new StreamReader(content, Encoding.UTF8, true);
+            string json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            var record = JsonSerializer.Deserialize<InspectionRunRecord>(
+                json,
                 RunRecordJsonOptions);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (record is not null)
+            {
+                if ((record.Steps?.Count ?? (record.Step is null ? 0 : 1)) > MaximumSteps)
+                {
+                    return new(null, "Run Records support at most 4,096 steps. The file was not changed.", bytesRead);
+                }
+                long metrics = record.Metrics?.Count ?? 0;
+                if (record.Steps is not null)
+                {
+                    foreach (var step in record.Steps)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        metrics += step?.Metrics?.Count ?? 0;
+                        if (metrics > MaximumMetrics) break;
+                    }
+                }
+                if (metrics > MaximumMetrics)
+                {
+                    return new(null, "Run Records support at most 32,768 metrics. The file was not changed.", bytesRead);
+                }
+            }
+            InspectionRunRecordJson.Validate(record);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new(record, string.Empty, bytesRead);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
-            return null;
+            cancellationToken.ThrowIfCancellationRequested();
+            return new(null, exception.Message, bytesRead);
         }
     }
 
-    public IReadOnlyList<string> LoadRecentPaths() =>
-        RecipeRecentFileStore.Load(recentRunRecordsPath);
+    public async Task<IReadOnlyList<(string Path, ShellRunRecordReadResult Result)>> ReadRecentAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var results = new List<(string, ShellRunRecordReadResult)>();
+        long totalBytes = 0;
+        foreach (string path in LoadRecentPaths().Take(MaximumRecentRecords))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await ReadAsync(path, cancellationToken).ConfigureAwait(false);
+            totalBytes += result.BytesRead;
+            if (totalBytes > MaximumRecentRecordBytes)
+            {
+                result = new(null, "The recent Run Records exceed 40 MiB. Files were not changed.", result.BytesRead);
+            }
+            results.Add((path, result));
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return results;
+    }
+
+    public IReadOnlyList<string> LoadRecentPaths()
+    {
+        if (!File.Exists(recentRunRecordsPath)) return [];
+        // Hold a read-only, non-write-sharing lease through the existing parser:
+        // the index cannot grow or be replaced after the size admission check.
+        using var guard = new FileStream(recentRunRecordsPath,
+            FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (guard.Length > MaximumRecordBytes)
+        {
+            throw new IOException("The recent Run Record index is larger than 4 MiB. Files were not changed.");
+        }
+        return RecipeRecentFileStore.Load(recentRunRecordsPath);
+    }
 
     public void SaveRecentPaths(IEnumerable<string> paths) =>
         RecipeRecentFileStore.Save(recentRunRecordsPath, paths);

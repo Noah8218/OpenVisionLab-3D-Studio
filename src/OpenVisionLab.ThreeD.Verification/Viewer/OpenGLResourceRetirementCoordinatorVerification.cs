@@ -7,6 +7,10 @@ namespace OpenVisionLab.ThreeD.Verification.Viewer;
 internal static class OpenGLResourceRetirementCoordinatorVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var lines = new List<string>
@@ -50,6 +54,8 @@ internal static class OpenGLResourceRetirementCoordinatorVerification
                 telemetry.CallbackCount == 1 && telemetry.FailureCount == 0,
                 $"callbacks={telemetry.CallbackCount};failures={telemetry.FailureCount}");
 
+            stageCompleted?.Invoke("coordinator-first-two-checks");
+
             events.Clear();
             var failureTelemetry = new OpenGLResourceRetirementTelemetry();
             var failureCoordinator = new OpenGLResourceRetirementCoordinator(
@@ -76,7 +82,7 @@ internal static class OpenGLResourceRetirementCoordinatorVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("verifier exception", false, exception.ToString());
         }
 
         var succeeded = passed == total && total > 0;

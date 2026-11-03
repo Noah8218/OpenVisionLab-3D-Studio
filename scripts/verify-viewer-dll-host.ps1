@@ -4,11 +4,14 @@ param(
     [string]$Configuration = 'Release',
     [string]$ArtifactDirectory = 'artifacts/viewer-dll-host',
     [string]$ViewerBundlePath,
-    [switch]$NoRestore
+    [switch]$NoRestore,
+    [ValidateRange(1, 3600)]
+    [int]$ProcessTimeoutSeconds = 120
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'Verification.ProcessLifetime.ps1')
 $sampleProject = Join-Path $repoRoot 'samples/OpenVisionLab.ThreeD.Viewer.BinaryHost/OpenVisionLab.ThreeD.Viewer.BinaryHost.csproj'
 $artifactPath = if ([System.IO.Path]::IsPathRooted($ArtifactDirectory)) {
     [System.IO.Path]::GetFullPath($ArtifactDirectory)
@@ -130,12 +133,12 @@ $hostStart = @{
     FilePath = $hostExecutable
     ArgumentList = $runArguments
     WorkingDirectory = $repoRoot
-    Wait = $true
     PassThru = $true
     WindowStyle = 'Hidden'
 }
 $hostProcess = Start-Process @hostStart
-if ($hostProcess.ExitCode -ne 0) { throw "Binary Host runtime smoke failed with exit code $($hostProcess.ExitCode)." }
+$hostLifetime = Wait-VerificationOwnedProcess -Process $hostProcess -ExecutablePath $hostExecutable -ReportPath (Join-Path $artifactPath 'viewer-binary-host-process.json') -TimeoutSeconds $ProcessTimeoutSeconds
+if ($hostLifetime.ExitCode -ne 0) { throw "Binary Host runtime smoke failed with exit code $($hostLifetime.ExitCode)." }
 
 $requiredOutputs = @(
     'OpenVisionLab.ThreeD.Viewer.BinaryHost.exe',

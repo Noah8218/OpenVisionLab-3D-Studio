@@ -18,6 +18,20 @@ internal static class SurfaceEdgeWorkbenchParityVerification
         string runnerScorePath,
         string reportPath,
         out string summary)
+        => VerifyWithStageObserver(
+            modelPath, scenePath, executionPath, modelEdgePath, sceneEdgePath,
+            runnerScorePath, reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string modelPath,
+        string scenePath,
+        string executionPath,
+        string modelEdgePath,
+        string sceneEdgePath,
+        string runnerScorePath,
+        string reportPath,
+        out string summary,
+        Action<string>? stageCompleted)
     {
         var lines = new List<string>
         {
@@ -50,7 +64,7 @@ internal static class SurfaceEdgeWorkbenchParityVerification
                 modelEdges,
                 sceneEdges,
                 runnerScore.EdgeScore.MaximumCorrespondenceDistance);
-            var workbench = new ToolWorkbenchViewModel();
+            using var workbench = new ToolWorkbenchViewModel();
             var initialDirty = workbench.IsDirty;
             var initialStepCount = workbench.PipelineSteps.Count;
             ToolWorkbenchSurfaceMatchDisplayRequestEventArgs? request = null;
@@ -74,6 +88,7 @@ internal static class SurfaceEdgeWorkbenchParityVerification
                 "runner-and-workbench-score-hash-match",
                 runnerScore.ContentSha256 == workbenchScore.ContentSha256,
                 $"runner={runnerScore.ContentSha256};workbench={workbenchScore.ContentSha256}");
+            stageCompleted?.Invoke("workbench-owned-evidence-checked");
             Check(
                 "runner-and-workbench-surface-score-match",
                 runnerScore.SurfaceScore == workbenchScore.SurfaceScore,
@@ -143,8 +158,7 @@ internal static class SurfaceEdgeWorkbenchParityVerification
         }
         catch (Exception exception)
         {
-            lines.Add(
-                $"FAIL | unexpected-exception | {exception.GetType().Name}: {exception.Message}");
+            Check("unexpected-exception", false, exception.ToString());
         }
 
         var allPassed = passed == total && total > 0;

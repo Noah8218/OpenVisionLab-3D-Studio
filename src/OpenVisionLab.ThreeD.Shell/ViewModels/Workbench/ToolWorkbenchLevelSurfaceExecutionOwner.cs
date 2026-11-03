@@ -1,4 +1,6 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using static OpenVisionLab.ThreeD.Shell.ViewModels.Workbench.ToolWorkbenchCancellationSourceLifetime;
@@ -15,6 +17,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
 {
+    private const int ArtifactSchemaVersion = 2;
     private readonly Func<bool> isSelectedStepLevelSurface;
     private readonly Func<ToolWorkbenchPipelineStepItem?> getSelectedPipelineStep;
     private readonly Func<bool> isSourceReadyForRecipe;
@@ -29,6 +32,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
     private CancellationTokenSource? levelSurfacePreviewCancellation;
     private C3DLevelSurfaceEvaluation? levelSurfacePreview;
     private string? levelSurfacePreviewPath;
+    private string? levelSurfacePreviewStepId;
+    private string? levelSurfacePreviewProducerContextSha256;
     private bool isLevelSurfacePreviewRunning;
     private bool isLevelSurfacePreviewStale;
     private bool isLevelSurfacePreviewPublished;
@@ -138,6 +143,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         CancelAndDispose(currentCancellation);
         levelSurfacePreview = null;
         levelSurfacePreviewPath = null;
+        levelSurfacePreviewStepId = null;
+        levelSurfacePreviewProducerContextSha256 = null;
         isLevelSurfacePreviewRunning = false;
         isLevelSurfacePreviewStale = false;
         isLevelSurfacePreviewPublished = false;
@@ -189,8 +196,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         {
             var document = createDocument();
             var recipeDirectory = GetRecipeDirectory();
-            var evaluation = await Task.Run(
-                () => ToolRecipeLevelSurfaceExecution.Execute(
+            var preview = await Task.Run(
+                () => ExecutePreview(
                     document,
                     step.Id,
                     recipeDirectory,
@@ -201,10 +208,14 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 return false;
             }
 
+            var evaluation = preview.Evaluation;
+            levelSurfacePreviewStepId = step.Id;
+            levelSurfacePreviewProducerContextSha256 = preview.ProducerContextSha256;
             if (evaluation.Result.Status != ResultStatus.Pass
                 || evaluation.Output is null
                 || evaluation.Transform is null
                 || evaluation.LevelFrame is null
+                || evaluation.QualityEvidence is null
                 || evaluation.FrameChain is null)
             {
                 if (!IsCurrentPreview(currentCancellation))
@@ -309,7 +320,9 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
     {
         if (IsDisposed
             || getSelectedPipelineStep() is not { } step
-            || !HasCurrentLevelSurfacePreview)
+            || !HasCurrentLevelSurfacePreview
+            || !string.Equals(levelSurfacePreviewStepId, step.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(levelSurfacePreview?.Output?.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -362,7 +375,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         {
             isLevelSurfacePreviewStale = true;
             isLevelSurfacePreviewPublished = false;
-            if (selected is not null)
+            if (selected is not null
+                && string.Equals(selected.Id, levelSurfacePreviewStepId, StringComparison.OrdinalIgnoreCase))
             {
                 selected.State = "Preview stale";
             }
@@ -385,6 +399,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         CancelAndDispose(currentCancellation);
         levelSurfacePreview = null;
         levelSurfacePreviewPath = null;
+        levelSurfacePreviewStepId = null;
+        levelSurfacePreviewProducerContextSha256 = null;
         isLevelSurfacePreviewStale = false;
         isLevelSurfacePreviewPublished = false;
         SetLevelSurfaceSummary(summary);
@@ -432,10 +448,11 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 Output: { } output,
                 Transform: { } transform,
                 LevelFrame: { } levelFrame,
+                QualityEvidence: { } qualityEvidence,
                 FrameChain: { } frameChain
             }
             || string.IsNullOrWhiteSpace(getRecipePath())
-            || getSelectedPipelineStep() is not { } step)
+            || string.IsNullOrWhiteSpace(levelSurfacePreviewStepId))
         {
             return;
         }
@@ -444,6 +461,38 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         {
             var recipePath = getRecipePath()!;
             var recipeDirectory = GetRecipeDirectory(recipePath);
+            var document = createDocument();
+            var producers = document.Steps.Where(candidate =>
+                    string.Equals(candidate.Id, levelSurfacePreviewStepId, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(candidate.ToolId, "level-surface", StringComparison.Ordinal)
+                    && string.Equals(candidate.OutputEntityId, output.EntityId, StringComparison.OrdinalIgnoreCase))
+                .Take(2)
+                .ToArray();
+            if (producers.Length != 1)
+            {
+                MarkProducerContextStale("The published Level Surface producer is missing or ambiguous in the current recipe.");
+                return;
+            }
+
+            var step = producers[0];
+            var contextReady = TryPrepareProducerContext(
+                document, step.Id, recipeDirectory,
+                out var input, out var currentContextSha256, out var message);
+            if (!contextReady
+                || string.IsNullOrWhiteSpace(levelSurfacePreviewProducerContextSha256)
+                || !string.Equals(
+                    levelSurfacePreviewProducerContextSha256,
+                    currentContextSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                var reason = contextReady
+                    ? "Source, reference ROI, routing, output, or leveling policy changed."
+                    : message;
+                MarkProducerContextStale(reason);
+                return;
+            }
+
+            ValidateProducerEvidence(input!, transform, levelFrame, qualityEvidence);
             var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
             SaveC3DAtomically(output, c3dPath);
             var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
@@ -462,8 +511,10 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 levelSurfacePreview.OutputReferenceSlopeZ,
                 ToTransformRecord(transform),
                 ToLevelFrameRecord(levelFrame),
-                ToQualityRecord(levelSurfacePreview.QualityEvidence),
-                ToFrameChainRecord(frameChain));
+                ToQualityRecord(qualityEvidence),
+                ToFrameChainRecord(frameChain),
+                ArtifactSchemaVersion,
+                levelSurfacePreviewProducerContextSha256);
             WriteTextAtomically(
                 sidecarPath,
                 JsonSerializer.Serialize(sidecar, new JsonSerializerOptions { WriteIndented = true }));
@@ -489,6 +540,20 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         }
     }
 
+    private void MarkProducerContextStale(string reason)
+    {
+        isLevelSurfacePreviewStale = true;
+        isLevelSurfacePreviewPublished = false;
+        if (getSelectedPipelineStep() is { } selected
+            && string.Equals(selected.Id, levelSurfacePreviewStepId, StringComparison.OrdinalIgnoreCase))
+        {
+            selected.State = "Preview stale";
+        }
+
+        SetLevelSurfaceSummary(
+            $"Level Surface producer context is no longer current. Preview again before Publish. {reason}");
+    }
+
     public void RestorePublishedArtifact()
     {
         if (IsDisposed)
@@ -508,6 +573,20 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         var recipeDirectory = GetRecipeDirectory(recipePath);
         var sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId);
         var c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId);
+        // A partial modern pair is a failed publication; never mix naming versions.
+        if (!File.Exists(sidecarPath) && !File.Exists(c3dPath))
+        {
+            var legacyId = SanitizeLegacy(step.OutputEntityId);
+            if (document.Steps.Count(candidate =>
+                    string.Equals(candidate.ToolId, "level-surface", StringComparison.Ordinal)
+                    && string.Equals(SanitizeLegacy(candidate.OutputEntityId), legacyId, StringComparison.OrdinalIgnoreCase)) != 1)
+            {
+                appendLog("Warning", "Level Surface legacy artifact restore skipped: ambiguous output filename.");
+                return;
+            }
+            sidecarPath = GetArtifactSidecarPath(recipeDirectory, recipePath, step.OutputEntityId, legacy: true);
+            c3dPath = GetArtifactC3DPath(recipeDirectory, recipePath, step.OutputEntityId, legacy: true);
+        }
         if (!File.Exists(sidecarPath) || !File.Exists(c3dPath))
         {
             return;
@@ -524,6 +603,19 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 return;
             }
 
+            if (record.SchemaVersion != ArtifactSchemaVersion
+                || record.ProducerContextSha256 is not { Length: 64 }
+                || !record.ProducerContextSha256.All(Uri.IsHexDigit))
+            {
+                throw new InvalidDataException("Level Surface sidecar has no supported producer context. Preview again before Publish.");
+            }
+
+            if (record.Transform is null || record.Frame is null
+                || record.Quality is null || record.FrameChain is null)
+            {
+                throw new InvalidDataException("Level Surface sidecar producer evidence is incomplete.");
+            }
+
             if (!string.Equals(record.StepId, step.Id, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.OutputEntityId, record.OutputArtifactId, StringComparison.OrdinalIgnoreCase))
@@ -531,7 +623,19 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 throw new InvalidDataException("Level Surface sidecar and recipe output identities do not match.");
             }
 
-            var source = LoadRecipeSource(document);
+            if (!TryPrepareProducerContext(
+                    document, step.Id, recipeDirectory,
+                    out var input, out var currentContextSha256, out var message))
+            {
+                throw new InvalidDataException($"Level Surface current producer context is unavailable: {message}");
+            }
+
+            if (!string.Equals(record.ProducerContextSha256, currentContextSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("Level Surface sidecar producer context does not match the current source, reference ROIs, routing, or policies. Preview again before Publish.");
+            }
+
+            var source = input!.Source;
             if (!string.Equals(record.Transform.RootSourceEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.Transform.RootSourceSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(record.Frame.RootSourceEntityId, source.EntityId, StringComparison.OrdinalIgnoreCase)
@@ -576,9 +680,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 throw new InvalidDataException("Level Surface sidecar Level Frame hash could not be reproduced.");
             }
 
-            var qualityEvidence = record.Quality is null
-                ? null
-                : CreateQualityEvidence(record.Quality, levelFrame, transform);
+            var qualityEvidence = CreateQualityEvidence(record.Quality, levelFrame, transform);
+            ValidateProducerEvidence(input, transform, levelFrame, qualityEvidence);
             var frameChain = C3DLevelSurfaceRule.CreateFrameChain(source, output, transform, levelFrame, step.Id);
             if (record.FrameChain is { } chainRecord
                 && (!string.Equals(frameChain.ChainId, chainRecord.ChainId, StringComparison.Ordinal)
@@ -614,6 +717,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
                 qualityEvidence,
                 frameChain);
             levelSurfacePreviewPath = c3dPath;
+            levelSurfacePreviewStepId = step.Id;
+            levelSurfacePreviewProducerContextSha256 = currentContextSha256;
             isLevelSurfacePreviewStale = false;
             isLevelSurfacePreviewPublished = true;
             if (getSelectedPipelineStep() is { } selected
@@ -633,6 +738,18 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
             if (IsDisposed)
             {
                 return;
+            }
+
+            levelSurfacePreview = null;
+            levelSurfacePreviewPath = null;
+            levelSurfacePreviewStepId = null;
+            levelSurfacePreviewProducerContextSha256 = null;
+            isLevelSurfacePreviewStale = true;
+            isLevelSurfacePreviewPublished = false;
+            if (getSelectedPipelineStep() is { } selected
+                && string.Equals(selected.Id, step.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                selected.State = "Preview stale";
             }
 
             SetLevelSurfaceSummary($"Saved Level Surface output was not restored: {exception.Message}");
@@ -709,42 +826,191 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         }
     }
 
-    private static string GetArtifactC3DPath(string recipeDirectory, string recipePath, string outputEntityId) =>
+    private static string GetArtifactC3DPath(string recipeDirectory, string recipePath, string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.level-surface.{Sanitize(outputEntityId)}.c3d");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.level-surface.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.c3d");
 
-    private static string GetArtifactSidecarPath(string recipeDirectory, string recipePath, string outputEntityId) =>
+    private static string GetArtifactSidecarPath(string recipeDirectory, string recipePath, string outputEntityId, bool legacy = false) =>
         Path.Combine(
             recipeDirectory,
-            $"{Path.GetFileNameWithoutExtension(recipePath)}.level-surface.{Sanitize(outputEntityId)}.json");
+            $"{Path.GetFileNameWithoutExtension(recipePath)}.level-surface.{(legacy ? SanitizeLegacy(outputEntityId) : Sanitize(outputEntityId))}.json");
 
-    private static string Sanitize(string value) =>
-        string.Concat(value.Select(character => char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
-
-    private static C3DHeightFieldSnapshot LoadRecipeSource(ToolRecipeDocument document)
+    // Ordinal-ignore-case logical identity, encoded as exact UTF-16LE code units.
+    // '~' cannot occur in a legacy sanitized ID, so new writes cannot alias old paths.
+    private static string Sanitize(string value)
     {
-        if (document.Source is not
-            {
-                Path: { Length: > 0 } sourcePath,
-                ByteLength: { } byteLength,
-                ContentSha256: { Length: > 0 } contentSha256,
-                GridWidth: { } gridWidth,
-                GridHeight: { } gridHeight
-            })
+        var canonical = value.ToUpperInvariant();
+        var bytes = new byte[checked(canonical.Length * 2)];
+        for (var index = 0; index < canonical.Length; index++)
         {
-            throw new InvalidDataException("The Level Surface recipe source identity is incomplete.");
+            bytes[index * 2] = (byte)(canonical[index] & 0xff);
+            bytes[index * 2 + 1] = (byte)(canonical[index] >> 8);
+        }
+        return "v2~" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static string SanitizeLegacy(string value) =>
+        string.Concat(value.Select(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
+
+    private static (C3DLevelSurfaceEvaluation Evaluation, string? ProducerContextSha256) ExecutePreview(
+        ToolRecipeDocument document,
+        string stepId,
+        string recipeDirectory,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!TryPrepareProducerContext(
+                document, stepId, recipeDirectory,
+                out var input, out var contextSha256, out var message))
+        {
+            return (new C3DLevelSurfaceEvaluation(
+                new ToolResult(C3DLevelSurfaceRule.ToolName, ResultStatus.Error, message, TimeSpan.Zero, [], []),
+                null, null, double.NaN, double.NaN), null);
         }
 
-        return C3DHeightFieldSnapshot.LoadVerified(
-            sourcePath,
-            document.Source.Id,
-            document.Source.Unit,
-            document.Source.FrameId,
-            byteLength,
-            contentSha256,
-            gridWidth,
-            gridHeight);
+        // Capture the context of the exact prepared input passed to the existing
+        // rule. Save/Open may validate inputs, but never execute this rule.
+        return (C3DLevelSurfaceRule.Evaluate(input!, cancellationToken), contextSha256);
+    }
+
+    private static bool TryPrepareProducerContext(
+        ToolRecipeDocument document,
+        string stepId,
+        string recipeDirectory,
+        out C3DLevelSurfaceInput? input,
+        out string? contextSha256,
+        out string message)
+    {
+        input = null;
+        contextSha256 = null;
+        try
+        {
+            if (!ToolRecipeLevelSurfaceExecution.TryPrepare(document, stepId, recipeDirectory, out input, out message))
+            {
+                return false;
+            }
+
+            contextSha256 = CreateProducerContextSha256(input!);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            input = null;
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    private static string CreateProducerContextSha256(C3DLevelSurfaceInput input) =>
+        CalculateContextSha256(writer =>
+        {
+            writer.Write("OpenVisionLab.LevelSurface.ProducerExecutionContext.v1");
+            writer.Write(input.StepId);
+            writer.Write("level-surface");
+            writer.Write(input.OutputEntityId);
+            var source = input.Source;
+            writer.Write("C3D");
+            writer.Write(source.EntityId);
+            writer.Write(source.ByteLength);
+            writer.Write(source.ContentSha256.ToUpperInvariant());
+            writer.Write(source.RootSourceSha256.ToUpperInvariant());
+            writer.Write(source.Width);
+            writer.Write(source.Height);
+            writer.Write(source.GridOriginColumn);
+            writer.Write(source.GridOriginRow);
+            writer.Write(source.Unit);
+            writer.Write(source.FrameId);
+            writer.Write(source.ScalarMeaning);
+            writer.Write(input.ReferenceSelections.Count);
+            foreach (var selection in input.ReferenceSelections)
+            {
+                // Route order and the exact rectangle/source-binding payload
+                // belong to the producer, even when a selection ID is reused.
+                writer.Write(selection.Id);
+                writer.Write(CalculateContextSha256(selectionWriter =>
+                {
+                    selectionWriter.Write(selection.Id);
+                    selectionWriter.Write(selection.Kind);
+                    selectionWriter.Write(selection.RootSourceId);
+                    selectionWriter.Write(selection.FrameId);
+                    var binding = selection.SourceBinding;
+                    selectionWriter.Write(binding.Format);
+                    selectionWriter.Write(binding.ContentSha256.ToUpperInvariant());
+                    selectionWriter.Write(binding.GridWidth);
+                    selectionWriter.Write(binding.GridHeight);
+                    selectionWriter.Write(binding.OwnerEntityId ?? string.Empty);
+                    selectionWriter.Write((binding.RootSourceContentSha256 ?? string.Empty).ToUpperInvariant());
+                    selectionWriter.Write(binding.Unit ?? string.Empty);
+                    selectionWriter.Write(binding.FrameId ?? string.Empty);
+                    var rectangle = selection.GridRectangle!;
+                    selectionWriter.Write(rectangle.Row);
+                    selectionWriter.Write(rectangle.Column);
+                    selectionWriter.Write(rectangle.RowCount);
+                    selectionWriter.Write(rectangle.ColumnCount);
+                }));
+            }
+
+            // TryPrepare has validated all six authored parameters. Numeric
+            // spellings are canonicalized by using their parsed typed values.
+            writer.Write(C3DLevelingTransform.ContractVersion);
+            writer.Write(C3DLevelingTransform.ReferenceFitPolicy);
+            writer.Write(C3DLevelingTransform.LevelingPolicy);
+            writer.Write(C3DLevelingTransform.MissingValuePolicy);
+            writer.Write(C3DLevelingTransform.GridPolicy);
+            writer.Write(input.MinimumValidSampleCount);
+            writer.Write(input.MaximumReferenceRmsResidual);
+            writer.Write(C3DLevelFrameArtifact.ContractVersion);
+            writer.Write(C3DLevelFrameArtifact.FramePolicy);
+            writer.Write(C3DLevelFrameQualityEvidence.ContractVersion);
+            writer.Write(C3DLevelFrameQualityEvidence.CoverageSemantics);
+            writer.Write(C3DLevelFrameQualityEvidence.ConfidenceSemantics);
+            writer.Write(C3DLevelFrameQualityPolicy.PolicyId);
+            var qualityPolicy = C3DLevelFrameQualityPolicy.CompleteCoverage(input.MaximumReferenceRmsResidual);
+            writer.Write(qualityPolicy.MinimumReferenceCoverageRatio);
+            writer.Write(qualityPolicy.MaximumReferenceRmsResidual);
+        });
+
+    private static string CalculateContextSha256(Action<BinaryWriter> write)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            write(writer);
+        }
+
+        return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
+    }
+
+    private static void ValidateProducerEvidence(
+        C3DLevelSurfaceInput input,
+        C3DLevelingTransform transform,
+        C3DLevelFrameArtifact frame,
+        C3DLevelFrameQualityEvidence quality)
+    {
+        if (!string.Equals(transform.OutputEntityId, $"{input.OutputEntityId}.transform", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(frame.OutputEntityId, $"{input.OutputEntityId}.level-frame", StringComparison.OrdinalIgnoreCase)
+            || transform.ReferenceRegions.Count != input.ReferenceSelections.Count
+            || transform.ReferenceSampleCount < input.MinimumValidSampleCount
+            || transform.ReferenceResidualRms > input.MaximumReferenceRmsResidual
+            || quality.Policy != C3DLevelFrameQualityPolicy.CompleteCoverage(input.MaximumReferenceRmsResidual))
+        {
+            throw new InvalidDataException("Level Surface evidence does not match the current producer output or fit/quality policies.");
+        }
+
+        for (var index = 0; index < input.ReferenceSelections.Count; index++)
+        {
+            var selection = input.ReferenceSelections[index];
+            var rectangle = selection.GridRectangle!;
+            var region = transform.ReferenceRegions[index];
+            if (!string.Equals(region.SelectionId, selection.Id, StringComparison.OrdinalIgnoreCase)
+                || region.Row != rectangle.Row || region.Column != rectangle.Column
+                || region.RowCount != rectangle.RowCount || region.ColumnCount != rectangle.ColumnCount)
+            {
+                throw new InvalidDataException("Level Surface evidence does not match the current reference ROI geometry.");
+            }
+        }
     }
 
     private static LevelingTransformSidecarRecord ToTransformRecord(C3DLevelingTransform transform) =>
@@ -937,7 +1203,9 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner : IDisposable
         LevelingTransformSidecarRecord Transform,
         LevelFrameSidecarRecord Frame,
         QualityEvidenceSidecarRecord? Quality = null,
-        FrameChainSidecarRecord? FrameChain = null);
+        FrameChainSidecarRecord? FrameChain = null,
+        int SchemaVersion = 0,
+        string? ProducerContextSha256 = null);
 
     private sealed record LevelingTransformSidecarRecord(
         string OutputEntityId,

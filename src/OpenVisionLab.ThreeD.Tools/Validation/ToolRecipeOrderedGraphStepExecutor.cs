@@ -340,7 +340,12 @@ internal static class ToolRecipeOrderedGraphStepExecutor
             }
             case "landmark-correspondence":
             {
-                var anchors = artifacts.Values.OfType<C3DLineIntersectionFeature>().ToArray();
+                var selection = (document.Selections ?? []).SingleOrDefault(candidate =>
+                    string.Equals(candidate.Id, step.InputEntityIds[0], StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidDataException("Landmark Correspondence input must be an authored structured correspondence selection.");
+                var anchors = (selection.Rows ?? [])
+                    .Select(row => Required<C3DLineIntersectionFeature>(artifacts, row.SourceEntityId, step))
+                    .ToArray();
                 var evaluation = ToolRecipeLandmarkCorrespondenceExecution.Execute(document, step.Id, anchors, cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }

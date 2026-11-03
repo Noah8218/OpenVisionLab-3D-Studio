@@ -793,11 +793,6 @@ public sealed partial class OpenVisionThreeDViewerControl
                 lazPointCloudLoadTelemetry.RecordDensityEventReload(ReloadCurrentLazPointCloudAsync);
             }
 
-            if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
-            {
-                roiEditingSession.UpdateRoiStepMeasurement();
-            }
-
             RenderNow();
         }
         else if ((effects & ViewerViewModelPropertyChangeEffects.SyncRecipeRoiParameters) != 0)

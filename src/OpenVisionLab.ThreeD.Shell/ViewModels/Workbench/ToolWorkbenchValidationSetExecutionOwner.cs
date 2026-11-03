@@ -90,10 +90,17 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
         return true;
     }
 
-    public async Task<ToolRecipeValidationSetResult> ExecuteAsync(
+    public Task<ToolRecipeValidationSetResult> ExecuteAsync(
         ToolRecipeDocument document,
         IReadOnlyList<ToolRecipeValidationSampleInput> samples,
-        IProgress<ToolRecipeValidationProgress> progress)
+        IProgress<ToolRecipeValidationProgress> progress) =>
+        ExecuteWithCompletionAsync(document, samples, progress, null);
+
+    public async Task<ToolRecipeValidationSetResult> ExecuteWithCompletionAsync(
+        ToolRecipeDocument document,
+        IReadOnlyList<ToolRecipeValidationSampleInput> samples,
+        IProgress<ToolRecipeValidationProgress> progress,
+        Func<ToolRecipeValidationSetResult, CancellationToken, Task>? complete)
     {
         if (IsDisposed)
         {
@@ -137,13 +144,20 @@ internal sealed class ToolWorkbenchValidationSetExecutionOwner : IDisposable
 
             StartElapsed(SynchronizationContext.Current);
             SetRunning(true);
-            return await Task.Run(
+            var result = await Task.Run(
                 () => ToolRecipeValidationSetExecution.Execute(
                     document,
                     samples,
                     currentToken,
                     progress),
                 currentToken);
+            currentToken.ThrowIfCancellationRequested();
+            if (complete is not null)
+            {
+                await complete(result, currentToken);
+            }
+            currentToken.ThrowIfCancellationRequested();
+            return result;
         }
         finally
         {

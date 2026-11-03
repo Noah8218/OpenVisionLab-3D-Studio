@@ -27,7 +27,9 @@ public sealed class LazPointCloud
         double maxZ,
         double averageRed,
         double averageGreen,
-        double averageBlue)
+        double averageBlue,
+        ushort maximumIntensity,
+        ushort maximumRgbComponent)
     {
         SourcePath = sourcePath;
         Metadata = metadata;
@@ -48,6 +50,8 @@ public sealed class LazPointCloud
         AverageRed = averageRed;
         AverageGreen = averageGreen;
         AverageBlue = averageBlue;
+        MaximumIntensity = maximumIntensity;
+        MaximumRgbComponent = maximumRgbComponent;
     }
 
     public string SourcePath { get; }
@@ -96,6 +100,12 @@ public sealed class LazPointCloud
     public double AverageGreen { get; }
 
     public double AverageBlue { get; }
+
+    /// <summary>Maximum encoded intensity over all decoded points, independent of render sampling.</summary>
+    public ushort MaximumIntensity { get; }
+
+    /// <summary>Maximum encoded RGB component over all decoded points and all three channels.</summary>
+    public ushort MaximumRgbComponent { get; }
 
     public static LazPointCloud Load(string path, int maxSampledPoints = 50000) =>
         Load(path, maxSampledPoints, CancellationToken.None);
@@ -148,6 +158,8 @@ public sealed class LazPointCloud
             ulong redSum = 0;
             ulong greenSum = 0;
             ulong blueSum = 0;
+            ushort maximumIntensity = 0;
+            ushort maximumRgbComponent = 0;
             const bool hasIntensity = true;
             var hasRgb = SupportsRgb(metadata.PointDataFormat);
 
@@ -175,6 +187,7 @@ public sealed class LazPointCloud
                 var x = point.X * header.x_scale_factor + header.x_offset;
                 var y = point.Y * header.y_scale_factor + header.y_offset;
                 var z = point.Z * header.z_scale_factor + header.z_offset;
+                maximumIntensity = Math.Max(maximumIntensity, point.intensity);
                 minX = Math.Min(minX, x);
                 maxX = Math.Max(maxX, x);
                 minY = Math.Min(minY, y);
@@ -193,6 +206,7 @@ public sealed class LazPointCloud
                     redSum += red;
                     greenSum += green;
                     blueSum += blue;
+                    maximumRgbComponent = Math.Max(maximumRgbComponent, Math.Max(red, Math.Max(green, blue)));
                 }
 
                 if (index == nextSampleIndex)
@@ -241,7 +255,9 @@ public sealed class LazPointCloud
                 maxZ,
                 redSum / pointCount,
                 greenSum / pointCount,
-                blueSum / pointCount);
+                blueSum / pointCount,
+                maximumIntensity,
+                maximumRgbComponent);
             progress?.Report(100.0);
             return result;
         }

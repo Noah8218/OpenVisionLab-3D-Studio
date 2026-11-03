@@ -8,10 +8,21 @@ internal static class C3DRigidPointPairAlignmentRunnerExecution
 {
     public static int Run(string specificationPath, string reportPath)
     {
-        var fullReportPath = Path.GetFullPath(reportPath);
+        var fullReportPath = string.Empty;
+        var reportPathIsSafe = false;
         try
         {
+            fullReportPath = Path.GetFullPath(reportPath);
             var fullSpecificationPath = Path.GetFullPath(specificationPath);
+            if (string.Equals(
+                    ResolvePathIdentity(fullReportPath),
+                    ResolvePathIdentity(fullSpecificationPath),
+                    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Rigid point-pair alignment report and specification paths must differ.");
+            }
+
+            reportPathIsSafe = true;
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -20,15 +31,17 @@ internal static class C3DRigidPointPairAlignmentRunnerExecution
                 File.ReadAllText(fullSpecificationPath), options)
                 ?? throw new InvalidDataException("Rigid point-pair alignment Runner specification is empty.");
             var pairs = specification.Pairs?
-                .Select(pair => new C3DRigidPointPairAlignmentPair(
-                    pair.SourcePointId,
-                    pair.ReferencePointId,
-                    pair.SourceX,
-                    pair.SourceY,
-                    pair.SourceZ,
-                    pair.ReferenceX,
-                    pair.ReferenceY,
-                    pair.ReferenceZ))
+                .Select((pair, index) => pair is null
+                    ? throw new InvalidDataException($"Rigid point-pair alignment pair at index {index} must not be null.")
+                    : new C3DRigidPointPairAlignmentPair(
+                        pair.SourcePointId,
+                        pair.ReferencePointId,
+                        pair.SourceX,
+                        pair.SourceY,
+                        pair.SourceZ,
+                        pair.ReferenceX,
+                        pair.ReferenceY,
+                        pair.ReferenceZ))
                 .ToArray()
                 ?? throw new InvalidDataException("Rigid point-pair alignment Runner specification has no pairs.");
             var evaluation = C3DRigidPointPairAlignmentAdapter.Evaluate(
@@ -76,10 +89,41 @@ internal static class C3DRigidPointPairAlignmentRunnerExecution
                 or OverflowException
                 or JsonException)
         {
-            TryWriteErrorReport(fullReportPath, exception);
+            if (reportPathIsSafe) TryWriteErrorReport(fullReportPath, exception);
             Console.Error.WriteLine(exception.Message);
             return 5;
         }
+    }
+
+    private static string ResolvePathIdentity(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(fullPath)
+            ?? throw new ArgumentException("Runner path must have a root.", nameof(path));
+        var relativePath = Path.GetRelativePath(root, fullPath);
+        if (relativePath == ".") return Path.TrimEndingDirectorySeparator(fullPath);
+        var current = root;
+        foreach (var segment in relativePath.Split(
+                     [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                     StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, segment);
+            FileSystemInfo entry = Directory.Exists(current)
+                ? new DirectoryInfo(current)
+                : new FileInfo(current);
+            if (entry.LinkTarget is not null)
+            {
+                var target = entry.ResolveLinkTarget(returnFinalTarget: true)
+                    ?? throw new InvalidDataException("Runner path link could not be resolved.");
+                current = Path.GetFullPath(target.FullName);
+            }
+            else if (entry.Exists && entry.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new InvalidDataException("Runner path has an unresolved reparse point.");
+            }
+        }
+
+        return Path.TrimEndingDirectorySeparator(current);
     }
 
     private static void TryWriteErrorReport(string fullReportPath, Exception exception)

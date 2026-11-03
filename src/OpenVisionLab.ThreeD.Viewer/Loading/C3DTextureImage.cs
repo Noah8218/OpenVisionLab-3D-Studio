@@ -1,8 +1,6 @@
 using System.IO;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using OpenVisionLab.ThreeD.Data;
 
 namespace OpenVisionLab.ThreeD.Viewer.Loading;
@@ -36,19 +34,8 @@ internal sealed class C3DTextureImage
         var sha256 = Convert.ToHexString(SHA256.HashData(bytes));
         if (expectedSha256 is not null && !string.Equals(sha256, expectedSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The saved texture image has changed. Select the image again to confirm it.");
-        using var stream = new MemoryStream(bytes, writable: false);
-        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        if (decoder.Frames.Count != 1)
-            throw new InvalidDataException("Select a single-frame texture image.");
-        BitmapSource bitmap = decoder.Frames[0];
-        if (bitmap.PixelWidth <= 0 || bitmap.PixelHeight <= 0 || (long)bitmap.PixelWidth * bitmap.PixelHeight > 32 * 1024 * 1024)
-            throw new InvalidDataException("Texture image must contain at most 32 million pixels.");
-        if (bitmap.Format != PixelFormats.Bgra32)
-            bitmap = new FormatConvertedBitmap(bitmap, PixelFormats.Bgra32, null, 0);
-        var stride = checked(bitmap.PixelWidth * 4);
-        var pixels = new byte[checked(stride * bitmap.PixelHeight)];
-        bitmap.CopyPixels(pixels, stride, 0);
-        return new(fullPath, sha256, bitmap.PixelWidth, bitmap.PixelHeight, pixels);
+        var decoded = TextureImageDecoder.DecodeBgra32(bytes, requireSingleFrame: true, maximumTextureDimension: int.MaxValue);
+        return new(fullPath, sha256, decoded.Width, decoded.Height, decoded.Pixels);
     }
 
     // Source sample centres, independent of render density. WPF rows are uploaded

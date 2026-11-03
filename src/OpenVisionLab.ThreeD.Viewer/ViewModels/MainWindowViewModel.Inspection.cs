@@ -48,14 +48,8 @@ public sealed partial class MainWindowViewModel
 
     public void SetPlaneFlatnessPreview(PlaneFlatnessEvaluation evaluation)
     {
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
         PlaneFlatnessConfigured = true;
         planeFlatnessEnabled = true;
-        c3dPlaneFlatnessPreview = evaluation.Result;
-        c3dPlaneFlatnessPreviewActive = true;
         PlaneFlatnessVisible = true;
         PlaneFlatnessValue = evaluation.Flatness;
         PlaneFlatnessMinimumDeviation = evaluation.MinimumSignedDistance;
@@ -76,10 +70,8 @@ public sealed partial class MainWindowViewModel
                 CultureInfo.InvariantCulture,
                 $"Reference-plane signed min {evaluation.MinimumSignedDistance:0.##}, max {evaluation.MaximumSignedDistance:0.##}, range {evaluation.Flatness:0.##}, absolute peak {absolutePeak:0.##}, RMS {evaluation.RootMeanSquareDistance:0.##} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0} | GD&T minimum-zone: not computed");
 
-        inspectionSession.Activate(ViewerInspectionKind.C3DPlaneFlatness);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DPlaneFlatness, evaluation.Result);
+        ResultOverlayVisible = true;
         RefreshDisplaySettingsContext();
         SelectedColorMode = "Deviation";
         SelectedSelectionMode = "Plane Flatness";
@@ -94,8 +86,6 @@ public sealed partial class MainWindowViewModel
 
     public void ClearPlaneFlatnessPreview()
     {
-        c3dPlaneFlatnessPreview = null;
-        c3dPlaneFlatnessPreviewActive = false;
         PlaneFlatnessVisible = false;
         PlaneFlatnessValue = double.NaN;
         PlaneFlatnessMinimumDeviation = double.NaN;
@@ -105,6 +95,7 @@ public sealed partial class MainWindowViewModel
         PlaneFlatnessMeasurementSampleCount = 0;
         PlaneFlatnessSummary = "Reference-plane flatness: preview not run";
         PlaneFlatnessDetails = "Reference ROI and signed surface deviation range: pending";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DPlaneFlatness);
     }
 
     public void ClearPlaneFlatnessRecipeStep()
@@ -124,16 +115,13 @@ public sealed partial class MainWindowViewModel
 
     public void InvalidatePlaneFlatnessPreview(string reason)
     {
-        if (!c3dPlaneFlatnessPreviewActive)
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DPlaneFlatness))
         {
             return;
         }
 
         ClearPlaneFlatnessPreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }
@@ -213,14 +201,8 @@ public sealed partial class MainWindowViewModel
 
     public void SetPointPairDimensionsPreview(PointPairDimensionsEvaluation evaluation)
     {
-        ClearPlaneFlatnessPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
         PointPairDimensionsConfigured = true;
         pointPairDimensionsEnabled = true;
-        c3dPointPairDimensionsPreview = evaluation.Result;
-        c3dPointPairDimensionsPreviewActive = true;
         PointPairDimensionsVisible = true;
         PointPairDistance = evaluation.Distance;
         PointPairWidth = evaluation.PlanarWidth;
@@ -235,10 +217,8 @@ public sealed partial class MainWindowViewModel
             CultureInfo.InvariantCulture,
             $"{referenceSummary}Expected D {PointPairExpectedDistance:0.##} +/- {PointPairDistanceTolerance:0.##}, W {PointPairExpectedWidth:0.##} +/- {PointPairWidthTolerance:0.##} {PointPairDimensionsUnit} | A {PointPairExpectedAngleDegrees:0.##} +/- {PointPairAngleToleranceDegrees:0.##} deg");
 
-        inspectionSession.Activate(ViewerInspectionKind.C3DPointPairDimensions);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DPointPairDimensions, evaluation.Result);
+        ResultOverlayVisible = true;
         SelectedColorMode = "Height";
         SelectedSelectionMode = "Two Point Measure";
         SelectedEntity = "C3D Point Pair Dimensions";
@@ -252,14 +232,13 @@ public sealed partial class MainWindowViewModel
 
     public void ClearPointPairDimensionsPreview()
     {
-        c3dPointPairDimensionsPreview = null;
-        c3dPointPairDimensionsPreviewActive = false;
         PointPairDimensionsVisible = false;
         PointPairDistance = double.NaN;
         PointPairWidth = double.NaN;
         PointPairAngleDegrees = double.NaN;
         PointPairDimensionsSummary = "Point pair dimensions: preview not run";
         PointPairDimensionsDetails = "Select two C3D points and run Preview Dimensions.";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DPointPairDimensions);
     }
 
     public void ClearPointPairDimensionsRecipeStep()
@@ -287,16 +266,13 @@ public sealed partial class MainWindowViewModel
 
     public void InvalidatePointPairDimensionsPreview(string reason)
     {
-        if (!c3dPointPairDimensionsPreviewActive)
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DPointPairDimensions))
         {
             return;
         }
 
         ClearPointPairDimensionsPreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }
@@ -393,15 +369,7 @@ public sealed partial class MainWindowViewModel
     public void SetThicknessPreview(C3DThicknessEvaluation evaluation)
     {
         ArgumentNullException.ThrowIfNull(evaluation);
-        c3dHeightDeviationPreview = null;
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
         ThicknessConfigured = true;
-        c3dThicknessPreview = evaluation.Result;
-        c3dThicknessPreviewActive = true;
         ThicknessVisible = true;
         ThicknessMean = evaluation.Mean;
         ThicknessMinimumMeasured = evaluation.Minimum;
@@ -417,10 +385,8 @@ public sealed partial class MainWindowViewModel
             CultureInfo.InvariantCulture,
             $"Grid ROI row {evaluation.Roi.Row}, column {evaluation.Roi.Column}, size {evaluation.Roi.RowCount} x {evaluation.Roi.ColumnCount} | valid {evaluation.ValidSampleCount:N0} | below {evaluation.BelowLowerLimitCount:N0}, above {evaluation.AboveUpperLimitCount:N0} | limits [{ThicknessMinimum:0.##}, {ThicknessMaximum:0.##}] {ThicknessUnit} | package {evaluation.PackageResultStatus}/{evaluation.PackageErrorCode} | declared scalar, uncalibrated");
 
-        inspectionSession.Activate(ViewerInspectionKind.C3DThickness);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DThickness, evaluation.Result);
+        ResultOverlayVisible = true;
         SelectedColorMode = "Height";
         SelectedSelectionMode = ThicknessRoiSelectionMode;
         SelectedEntity = "C3D Thickness";
@@ -434,8 +400,6 @@ public sealed partial class MainWindowViewModel
 
     public void ClearThicknessPreview()
     {
-        c3dThicknessPreview = null;
-        c3dThicknessPreviewActive = false;
         ThicknessVisible = false;
         ThicknessMean = double.NaN;
         ThicknessMinimumMeasured = double.NaN;
@@ -450,20 +414,18 @@ public sealed partial class MainWindowViewModel
         ThicknessDetails = ThicknessConfigured
             ? string.Create(CultureInfo.InvariantCulture, $"Grid ROI row {ThicknessRoiRow}, column {ThicknessRoiColumn}, size {ThicknessRoiRowCount} x {ThicknessRoiColumnCount} | declared scalar, uncalibrated")
             : "Declared scalar raw-height only; calibration is not inferred.";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DThickness);
     }
 
     public void InvalidateThicknessPreview(string reason)
     {
-        if (!c3dThicknessPreviewActive)
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DThickness))
         {
             return;
         }
 
         ClearThicknessPreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }
@@ -528,14 +490,8 @@ public sealed partial class MainWindowViewModel
 
     public void SetGapFlushPreview(GapFlushEvaluation evaluation)
     {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
         GapFlushConfigured = true;
         gapFlushEnabled = true;
-        c3dGapFlushPreview = evaluation.Result;
-        c3dGapFlushPreviewActive = true;
         GapFlushVisible = true;
         GapFlushGap = evaluation.SignedGap;
         GapFlushFlush = evaluation.SignedFlush;
@@ -549,10 +505,8 @@ public sealed partial class MainWindowViewModel
             CultureInfo.InvariantCulture,
             $"Signed left-right ROI edges | L {evaluation.LeftPointCount:N0}, R {evaluation.RightPointCount:N0} points | model dY {evaluation.ModelFlush:0.##} | expected gap {GapFlushExpectedGap:0.##} +/- {GapFlushGapTolerance:0.##}, flush {GapFlushExpectedFlush:0.##} +/- {GapFlushFlushTolerance:0.##}");
 
-        inspectionSession.Activate(ViewerInspectionKind.C3DGapFlush);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DGapFlush, evaluation.Result);
+        ResultOverlayVisible = true;
         SelectedColorMode = "Height";
         SelectedSelectionMode = "Gap / Flush";
         SelectedEntity = "C3D Gap / Flush";
@@ -566,8 +520,6 @@ public sealed partial class MainWindowViewModel
 
     public void ClearGapFlushPreview()
     {
-        c3dGapFlushPreview = null;
-        c3dGapFlushPreviewActive = false;
         GapFlushVisible = false;
         GapFlushGap = double.NaN;
         GapFlushFlush = double.NaN;
@@ -576,6 +528,7 @@ public sealed partial class MainWindowViewModel
         GapFlushRightPointCount = 0;
         GapFlushSummary = "Gap / Flush: preview not run";
         GapFlushDetails = "Two recipe-owned C3D regions are required.";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DGapFlush);
     }
 
     public void ClearGapFlushRecipeStep()
@@ -600,16 +553,13 @@ public sealed partial class MainWindowViewModel
 
     public void InvalidateGapFlushPreview(string reason)
     {
-        if (!c3dGapFlushPreviewActive)
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DGapFlush))
         {
             return;
         }
 
         ClearGapFlushPreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }
@@ -654,13 +604,7 @@ public sealed partial class MainWindowViewModel
 
     public void SetVolumePreview(VolumeEvaluation evaluation)
     {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearCrossSectionPreview();
         VolumeConfigured = true;
-        c3dVolumePreview = evaluation.Result;
-        c3dVolumePreviewActive = true;
         VolumeVisible = true;
         VolumeAbove = evaluation.AboveVolume;
         VolumeBelow = evaluation.BelowVolume;
@@ -669,10 +613,8 @@ public sealed partial class MainWindowViewModel
         VolumeMeasurementSampleCount = evaluation.MeasurementSampleCount;
         VolumeSummary = string.Create(CultureInfo.InvariantCulture, $"Volume: {evaluation.Result.Status} | net {evaluation.NetVolume:0.##} {VolumeUnit}");
         VolumeDetails = string.Create(CultureInfo.InvariantCulture, $"Above {evaluation.AboveVolume:0.##}, below {evaluation.BelowVolume:0.##} {VolumeUnit} | expected {VolumeExpectedNet:0.##} +/- {VolumeTolerance:0.##} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
-        inspectionSession.Activate(ViewerInspectionKind.C3DVolume);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DVolume, evaluation.Result);
+        ResultOverlayVisible = true;
         RefreshDisplaySettingsContext();
         SelectedColorMode = "Deviation";
         SelectedSelectionMode = "Volume";
@@ -687,8 +629,6 @@ public sealed partial class MainWindowViewModel
 
     public void ClearVolumePreview()
     {
-        c3dVolumePreview = null;
-        c3dVolumePreviewActive = false;
         VolumeVisible = false;
         VolumeAbove = double.NaN;
         VolumeBelow = double.NaN;
@@ -697,6 +637,7 @@ public sealed partial class MainWindowViewModel
         VolumeMeasurementSampleCount = 0;
         VolumeSummary = "Volume: preview not run";
         VolumeDetails = "Reference ROI plane and measurement ROI are required.";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DVolume);
     }
 
     public void ClearVolumeRecipeStep()
@@ -715,12 +656,9 @@ public sealed partial class MainWindowViewModel
 
     public void InvalidateVolumePreview(string reason)
     {
-        if (!c3dVolumePreviewActive) return;
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DVolume)) return;
         ClearVolumePreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }
@@ -764,13 +702,7 @@ public sealed partial class MainWindowViewModel
 
     public void SetCrossSectionPreview(CrossSectionEvaluation evaluation)
     {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
         CrossSectionConfigured = true;
-        c3dCrossSectionPreview = evaluation.Result;
-        c3dCrossSectionPreviewActive = true;
         CrossSectionVisible = true;
         CrossSectionWidth = evaluation.Width;
         CrossSectionHeightRange = evaluation.HeightRange;
@@ -779,10 +711,8 @@ public sealed partial class MainWindowViewModel
         CrossSectionValidSampleCount = evaluation.ValidSampleCount;
         CrossSectionSummary = string.Create(CultureInfo.InvariantCulture, $"Cross-section: {evaluation.Result.Status} | width {evaluation.Width:0.##} {CrossSectionWidthUnit}, height {evaluation.HeightRange:0.##} {CrossSectionHeightUnit}");
         CrossSectionDetails = string.Create(CultureInfo.InvariantCulture, $"Row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn} | valid {evaluation.ValidSampleCount:N0} | raw {evaluation.RawMinimum:0.##}..{evaluation.RawMaximum:0.##}");
-        inspectionSession.Activate(ViewerInspectionKind.C3DCrossSectionDimensions);
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        SetActivePreviewResult(ViewerInspectionKind.C3DCrossSectionDimensions, evaluation.Result);
+        ResultOverlayVisible = true;
         SelectedColorMode = "Height";
         SelectedSelectionMode = "Cross-section Dimensions";
         SelectedEntity = "C3D Cross-section Dimensions";
@@ -796,8 +726,6 @@ public sealed partial class MainWindowViewModel
 
     public void ClearCrossSectionPreview()
     {
-        c3dCrossSectionPreview = null;
-        c3dCrossSectionPreviewActive = false;
         CrossSectionVisible = false;
         CrossSectionWidth = double.NaN;
         CrossSectionHeightRange = double.NaN;
@@ -806,6 +734,7 @@ public sealed partial class MainWindowViewModel
         CrossSectionValidSampleCount = 0;
         CrossSectionSummary = "Cross-section: preview not run";
         CrossSectionDetails = "An exact C3D row and inclusive column range are required.";
+        ClearActivePreviewResult(ViewerInspectionKind.C3DCrossSectionDimensions);
     }
 
     public void ClearCrossSectionRecipeStep()
@@ -830,12 +759,9 @@ public sealed partial class MainWindowViewModel
 
     public void InvalidateCrossSectionPreview(string reason)
     {
-        if (!c3dCrossSectionPreviewActive) return;
+        if (!HasActivePreviewResult(ViewerInspectionKind.C3DCrossSectionDimensions)) return;
         ClearCrossSectionPreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
         ViewerStatus = reason;
         RefreshSceneContracts();
     }

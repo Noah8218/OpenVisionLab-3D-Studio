@@ -144,7 +144,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         if (current.KernelSize == kernelSize)
         {
             SetState(
-                false,
+                hasPendingChanges,
                 $"Filter preparation preset {kernelSize} x {kernelSize} already matches the draft. No inspection ran.");
         }
         else

@@ -71,7 +71,8 @@ public static class ToolRecipeGridPolygonDomainExecution
                 step.OutputEntityId,
                 step.ToolName,
                 source,
-                selection);
+                selection,
+                cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             stopwatch.Stop();
             return new(

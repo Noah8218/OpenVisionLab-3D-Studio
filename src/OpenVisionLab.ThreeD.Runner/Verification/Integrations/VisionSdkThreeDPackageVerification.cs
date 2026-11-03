@@ -87,8 +87,8 @@ internal static class VisionSdkThreeDPackageVerification
     {
         var passed = VisionSdkHeightMapInspection.PackageAssemblyName == "OpenVisionLab.Vision3D"
             && VisionSdkHeightMapInspection.PackageId == "OpenVisionLab.Vision3D"
-            && VisionSdkHeightMapInspection.PackageVersion == "3.3.0-dev.20261017.physical-edge-gap-flush.1"
-            && VisionSdkHeightMapInspection.PackageSourceCommit == "456eb2af7a62962144757d967538594fde79e481";
+            && VisionSdkHeightMapInspection.PackageVersion == "3.3.0-rc.1.integration.20261102.138"
+            && VisionSdkHeightMapInspection.PackageSourceCommit == "a550fadeec5b35103d1288743aa6746e4e4a60a2";
         return (passed, $"assembly={VisionSdkHeightMapInspection.PackageAssemblyName},version={VisionSdkHeightMapInspection.PackageVersion},commit={VisionSdkHeightMapInspection.PackageSourceCommit}");
     }
 
@@ -1445,7 +1445,7 @@ internal static class VisionSdkThreeDPackageVerification
         var translate = typeof(VisionSdkHeightMapInspection).GetMethod(
             "Translate",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-        if (translate?.Invoke(null, new object?[] { "Synthetic missing metric units", inspection, source, null })
+        if (translate?.Invoke(null, new object?[] { "Synthetic missing metric units", inspection, source, null, CancellationToken.None })
             is not VisionSdkInspectionEvaluation evaluation)
         {
             return (false, "Translate reflection hook was unavailable.");

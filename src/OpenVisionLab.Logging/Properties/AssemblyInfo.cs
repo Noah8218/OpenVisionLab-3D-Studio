@@ -22,7 +22,8 @@ using System.Runtime.InteropServices;
 [assembly: Guid("661782ed-2592-4880-867c-812c67dc7a0e")]
 
 
-[assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
+// OVLog configures and watches its adjacent file once in its static constructor.
+// An assembly-level auto-configurator would activate duplicate exclusive file appenders.
 
 // 어셈블리의 버전 정보는 다음 네 가지 값으로 구성됩니다.
 //

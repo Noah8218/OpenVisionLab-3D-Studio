@@ -39,27 +39,13 @@ public sealed partial class MainWindowViewModel
 
     public void SetC3DHeightDeviationPreview(ToolResult result)
     {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        c3dHeightDeviationPreview = result;
-        if (ResultOverlayVisible && C3DSampleVisible)
-        {
-            ApplyActivePreviewResult();
-        }
+        SetActivePreviewResult(ViewerInspectionKind.C3DHeightDeviation, result);
+        RefreshSceneContracts();
     }
 
     public void ClearC3DHeightDeviationPreview()
     {
-        c3dHeightDeviationPreview = null;
-        if (inspectionSession.ActiveKind != ViewerInspectionKind.C3DHeightDeviation)
-        {
-            return;
-        }
-
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        RefreshSceneContracts();
+        ClearActivePreviewResult(ViewerInspectionKind.C3DHeightDeviation);
     }
 
     public bool PublishPreviewResult()
@@ -98,9 +84,7 @@ public sealed partial class MainWindowViewModel
         NominalActual.OutputEnabled = false;
 
         ResultOverlayVisible = false;
-        inspectionSession.Reset();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
+        ClearActivePreviewResult();
         ResultEntities = [];
         PublishedResultSummary = "No published result: output disabled";
         ViewerStatus = "Recipe output disabled; existing preview and published artifacts cleared";
@@ -427,15 +411,14 @@ public sealed partial class MainWindowViewModel
 
         if (lazTwoPointPreviewFirst is { } first && lazTwoPointPreviewSecond is { } second)
         {
-            PreviewToolResult = CreateLazTwoPointMeasurementPreview(
+            SetActivePreviewResult(ViewerInspectionKind.LazTwoPointMeasurement, CreateLazTwoPointMeasurementPreview(
                 first,
                 second,
                 TwoPointRawHeightDelta,
                 lazTwoPointPreviewHeightUnit,
                 distanceStatus,
                 heightStatus,
-                status);
-            ResultSummary = FormatToolResult(PreviewToolResult);
+                status));
         }
 
         RefreshSceneContracts();
@@ -504,46 +487,48 @@ public sealed partial class MainWindowViewModel
     private string ImportedMeshDisplayName() =>
         ImportedMeshFormat == "GLB" ? "Public GLB Mesh" : $"{ImportedMeshFormat} Mesh";
 
-    private void ApplyActivePreviewResult()
+    private bool HasActivePreviewResult(ViewerInspectionKind kind) =>
+        inspectionSession.ActiveKind == kind && PreviewToolResult.Status != ResultStatus.NotRun;
+
+    private void SetActivePreviewResult(ViewerInspectionKind kind, ToolResult result)
     {
-        if (C3DSampleVisible && c3dWarpagePreviewActive && c3dWarpagePreview is not null)
+        ArgumentNullException.ThrowIfNull(result);
+        // The typed session and result own the active evidence independently of visibility.
+        ClearInactiveC3DPreviewState(kind);
+        inspectionSession.Activate(kind);
+        PreviewToolResult = result;
+        ResultSummary = FormatToolResult(PreviewToolResult);
+    }
+
+    private void ClearActivePreviewResult(ViewerInspectionKind? kind = null)
+    {
+        if (kind is { } expectedKind && inspectionSession.ActiveKind != expectedKind)
         {
-            inspectionSession.Activate(ViewerInspectionKind.C3DWarpage);
-            PreviewToolResult = c3dWarpagePreview;
-        }
-        else if (C3DSampleVisible && c3dThicknessPreviewActive && c3dThicknessPreview is not null)
-        {
-            inspectionSession.Activate(ViewerInspectionKind.C3DThickness);
-            PreviewToolResult = c3dThicknessPreview;
-        }
-        else if (C3DSampleVisible && c3dPointPairDimensionsPreviewActive && c3dPointPairDimensionsPreview is not null)
-        {
-            inspectionSession.Activate(ViewerInspectionKind.C3DPointPairDimensions);
-            PreviewToolResult = c3dPointPairDimensionsPreview;
-        }
-        else if (C3DSampleVisible && c3dPlaneFlatnessPreviewActive && c3dPlaneFlatnessPreview is not null)
-        {
-            inspectionSession.Activate(ViewerInspectionKind.C3DPlaneFlatness);
-            PreviewToolResult = c3dPlaneFlatnessPreview;
-        }
-        else if (C3DSampleVisible && c3dHeightDeviationPreview is not null)
-        {
-            inspectionSession.Activate(ViewerInspectionKind.C3DHeightDeviation);
-            PreviewToolResult = c3dHeightDeviationPreview;
-        }
-        else
-        {
-            inspectionSession.Reset();
-            PreviewToolResult = CreateSyntheticHeightDeviationPreview();
+            return;
         }
 
+        inspectionSession.Reset();
+        PreviewToolResult = CreateNotRunToolResult();
         ResultSummary = FormatToolResult(PreviewToolResult);
         RefreshSceneContracts();
     }
 
+    private void ClearInactiveC3DPreviewState(ViewerInspectionKind? kind = null)
+    {
+        if (kind != ViewerInspectionKind.C3DHeightDeviation) ClearC3DHeightDeviationPreview();
+        if (kind != ViewerInspectionKind.C3DThickness) ClearThicknessPreview();
+        if (kind != ViewerInspectionKind.C3DWarpage) ClearWarpagePreview();
+        if (kind != ViewerInspectionKind.C3DPlaneFlatness) ClearPlaneFlatnessPreview();
+        if (kind != ViewerInspectionKind.C3DPointPairDimensions) ClearPointPairDimensionsPreview();
+        if (kind != ViewerInspectionKind.C3DGapFlush) ClearGapFlushPreview();
+        if (kind != ViewerInspectionKind.C3DVolume) ClearVolumePreview();
+        if (kind != ViewerInspectionKind.C3DCrossSectionDimensions) ClearCrossSectionPreview();
+    }
+
     private void RefreshDeviationLegend(ToolResult result)
     {
-        if ((inspectionSession.SourceEntityId != C3DEntityId && inspectionSession.SourceEntityId != C3DWarpageEntityId)
+        if (!ResultOverlayVisible || !C3DSampleVisible
+            || (inspectionSession.SourceEntityId != C3DEntityId && inspectionSession.SourceEntityId != C3DWarpageEntityId)
             || result.Status == ResultStatus.NotRun)
         {
             HideDeviationLegend();

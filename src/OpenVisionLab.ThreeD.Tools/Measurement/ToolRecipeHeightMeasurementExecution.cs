@@ -9,6 +9,8 @@ using SdkCrossSectionDimensionsInspectionOptions = OpenVisionLab.Vision3D.Inspec
 using SdkCrossSectionDimensionsInspectionTool = OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsInspectionTool;
 using SdkCrossSectionDimensionsSample = OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsSample;
 using SdkHeightGridRegion = OpenVisionLab.Vision3D.FeatureExtraction.HeightGridRegion;
+using SdkHeightFieldPlaneFitSample = OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
 using SdkHeightMapRegionStatisticsTool = OpenVisionLab.Vision3D.FeatureExtraction.HeightMapRegionStatisticsTool;
 using SdkReferenceGridCoordinateMode = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridCoordinateMode;
 using SdkReferenceGridDefinition = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridDefinition;
@@ -69,6 +71,8 @@ public static class ToolRecipeHeightMeasurementExecution
     /// measurement definition changes in a way that must invalidate reuse.
     /// </summary>
     public const string SemanticFingerprintAlgorithmVersion = "height-measurement-execution-v1";
+
+    private const string ThicknessReferenceAxisAdapterVersion = "double-reference-axes-v1";
 
     private static readonly string[] ThicknessParameterNames =
         ["MinimumThickness", "MaximumThickness", "MinimumValidSampleCount"];
@@ -136,6 +140,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 out var message,
                 cancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var error = new ToolResult("Height measurement", ResultStatus.Error, message, TimeSpan.Zero, [], []);
             return new ToolRecipeHeightMeasurementEvaluation(error, null);
         }
@@ -169,9 +174,10 @@ public static class ToolRecipeHeightMeasurementExecution
                     prepared.Selections[1],
                     profile,
                     presencePolicy,
-                    prepared.InspectionRegionArtifact));
+                    prepared.InspectionRegionArtifact), cancellationToken);
             if (evaluation.Output is null)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return new ToolRecipeHeightMeasurementEvaluation(
                     evaluation.Result,
                     null,
@@ -203,22 +209,22 @@ public static class ToolRecipeHeightMeasurementExecution
             var minimum = ParseFinite(Parameter(step, "MinimumThickness"), "MinimumThickness");
             var maximum = ParseFinite(Parameter(step, "MaximumThickness"), "MaximumThickness");
             var minimumSamples = ParsePositiveInt(Parameter(step, "MinimumValidSampleCount"), "MinimumValidSampleCount", 1);
-            var referenceSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.ReferenceRoi!, "Thickness");
-            var measurementSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.MeasurementRoi!, "Thickness");
-            var evaluation = DualSurfaceThicknessRule.Evaluate(new DualSurfaceThicknessInput(
+            var referenceSamples = CreateThicknessReferenceAxisSamples(prepared, prepared.ReferenceRoi!, cancellationToken);
+            var measurementSamples = CreateThicknessReferenceAxisSamples(prepared, prepared.MeasurementRoi!, cancellationToken);
+            var evaluation = DualSurfaceThicknessRule.EvaluateReferenceAxes(
                 prepared.InputEntityId,
                 referenceSamples,
                 measurementSamples,
                 minimum,
                 maximum,
                 minimumSamples,
-                prepared.Unit));
+                prepared.Unit, cancellationToken);
             result = evaluation.Result;
             evidence = $"H-axis thickness mean {evaluation.Mean:G6} | min {evaluation.Minimum:G6} | max {evaluation.Maximum:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0} finite samples";
             failure = CreateThicknessFailure(evaluation, minimumSamples);
             if (evaluation.ReferencePlane is { } plane && result.Status is ResultStatus.Pass or ResultStatus.Fail
                 && step.AcceptanceLimitsConfigured != false)
-                colorSnapshot = CreateThicknessColorSnapshot(prepared, plane, minimum, maximum);
+                colorSnapshot = CreateThicknessColorSnapshot(prepared, plane, minimum, maximum, cancellationToken);
         }
         else if (string.Equals(step.ToolId, "warpage", StringComparison.Ordinal))
         {
@@ -234,15 +240,15 @@ public static class ToolRecipeHeightMeasurementExecution
                 new C3DWarpageAcceptance(maximumP2V, maximumRms),
                 prepared.Unit,
                 prepared.FrameId,
-                minimumSamples));
+                minimumSamples), cancellationToken);
             result = evaluation.Result;
             evidence = $"P2V {evaluation.PeakToValley:G6} | RMS {evaluation.Rms:G6} | {evaluation.ValidSampleCount:N0} valid samples";
         }
         else if (string.Equals(step.ToolId, "point-pair-dimensions", StringComparison.Ordinal))
         {
             var points = prepared.Selections.Single().Points!;
-            var first = ReconstructPoint(prepared, points[0].Locator);
-            var second = ReconstructPoint(prepared, points[1].Locator);
+            var first = ReconstructPoint(prepared, points[0].Locator, cancellationToken);
+            var second = ReconstructPoint(prepared, points[1].Locator, cancellationToken);
             var evaluation = PointPairDimensionsRule.Evaluate(new PointPairDimensionsInput(
                 prepared.InputEntityId,
                 first.Position,
@@ -270,8 +276,8 @@ public static class ToolRecipeHeightMeasurementExecution
             var profile = prepared.ReferenceGridProfile!;
             var firstRoi = prepared.ReferenceRoi!;
             var secondRoi = prepared.MeasurementRoi!;
-            var first = CreateGapFlushRegionStatistics(prepared, firstRoi);
-            var second = CreateGapFlushRegionStatistics(prepared, secondRoi);
+            var first = CreateGapFlushRegionStatistics(prepared, firstRoi, cancellationToken);
+            var second = CreateGapFlushRegionStatistics(prepared, secondRoi, cancellationToken);
             if (first is null || second is null)
             {
                 result = new ToolResult(
@@ -331,9 +337,9 @@ public static class ToolRecipeHeightMeasurementExecution
         {
             string? referenceError = null;
             string? measurementError = null;
-            var referenceValid = TryEnsureFiniteVolumeRoi(prepared, prepared.ReferenceRoi!, "Reference", out referenceError);
+            var referenceValid = TryEnsureFiniteVolumeRoi(prepared, prepared.ReferenceRoi!, "Reference", out referenceError, cancellationToken);
             var measurementValid = referenceValid
-                && TryEnsureFiniteVolumeRoi(prepared, prepared.MeasurementRoi!, "Measurement", out measurementError);
+                && TryEnsureFiniteVolumeRoi(prepared, prepared.MeasurementRoi!, "Measurement", out measurementError, cancellationToken);
             if (!referenceValid || !measurementValid)
             {
                 var errorMessage = referenceError ?? measurementError;
@@ -342,8 +348,8 @@ public static class ToolRecipeHeightMeasurementExecution
             }
             else
             {
-                var referenceSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.ReferenceRoi!, "Volume");
-                var measurementSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.MeasurementRoi!, "Volume");
+                var referenceSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.ReferenceRoi!, "Volume", cancellationToken);
+                var measurementSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.MeasurementRoi!, "Volume", cancellationToken);
                 var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
                     prepared.InputEntityId,
                     referenceSamples,
@@ -351,7 +357,7 @@ public static class ToolRecipeHeightMeasurementExecution
                     prepared.ReferenceGridProfile!.PitchU * prepared.ReferenceGridProfile.PitchV,
                     ParseFinite(Parameter(step, "ExpectedNetVolume"), "ExpectedNetVolume"),
                     ParseNonNegative(Parameter(step, "VolumeTolerance"), "VolumeTolerance"),
-                    $"{prepared.Unit}^3"));
+                    $"{prepared.Unit}^3"), cancellationToken);
                 result = evaluation.Result;
                 evidence = $"net {evaluation.NetVolume:G6} | above {evaluation.AboveVolume:G6} | below {evaluation.BelowVolume:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0}";
             }
@@ -359,7 +365,7 @@ public static class ToolRecipeHeightMeasurementExecution
         else if (string.Equals(step.ToolId, "cross-section-dimensions", StringComparison.Ordinal))
         {
             var roi = prepared.MeasurementRoi!;
-            var samples = CreateCrossSectionSamples(prepared, roi);
+            var samples = CreateCrossSectionSamples(prepared, roi, cancellationToken);
             var expectedWidth = ParseNonNegative(Parameter(step, "ExpectedWidth"), "ExpectedWidth");
             var widthTolerance = ParseNonNegative(Parameter(step, "WidthTolerance"), "WidthTolerance");
             var expectedHeightRange = ParseNonNegative(Parameter(step, "ExpectedHeightRange"), "ExpectedHeightRange");
@@ -372,7 +378,7 @@ public static class ToolRecipeHeightMeasurementExecution
                     WidthTolerance = widthTolerance,
                     ExpectedHeightRange = expectedHeightRange,
                     HeightTolerance = heightTolerance
-                });
+                }, cancellationToken);
             var widthStatus = sdk.WidthPassed ? ResultStatus.Pass : ResultStatus.Fail;
             var heightStatus = sdk.HeightPassed ? ResultStatus.Pass : ResultStatus.Fail;
             var status = sdk.Passed ? ResultStatus.Pass : ResultStatus.Fail;
@@ -402,8 +408,8 @@ public static class ToolRecipeHeightMeasurementExecution
             var tolerance = ParsePositive(Parameter(step, "MaximumFlatness"), "MaximumFlatness");
             var minimumReferenceSamples = ParsePositiveInt(Parameter(step, "MinimumReferenceSampleCount"), "MinimumReferenceSampleCount", 3);
             var minimumMeasurementSamples = ParsePositiveInt(Parameter(step, "MinimumMeasurementSampleCount"), "MinimumMeasurementSampleCount", 3);
-            var referenceSamples = CreatePlaneSamples(prepared, prepared.ReferenceRoi!);
-            var measurementSamples = CreatePlaneSamples(prepared, prepared.MeasurementRoi!);
+            var referenceSamples = CreatePlaneSamples(prepared, prepared.ReferenceRoi!, cancellationToken);
+            var measurementSamples = CreatePlaneSamples(prepared, prepared.MeasurementRoi!, cancellationToken);
             if (referenceSamples.Count < minimumReferenceSamples || measurementSamples.Count < minimumMeasurementSamples)
             {
                 result = new ToolResult(
@@ -418,12 +424,13 @@ public static class ToolRecipeHeightMeasurementExecution
             else
             {
                 var evaluation = PlaneFlatnessRule.Evaluate(new PlaneFlatnessRuleInput(
-                    prepared.InputEntityId, referenceSamples, measurementSamples, tolerance, prepared.Unit));
+                    prepared.InputEntityId, referenceSamples, measurementSamples, tolerance, prepared.Unit), cancellationToken);
                 result = evaluation.Result;
                 evidence = $"flatness {evaluation.Flatness:G6} | RMS {evaluation.RootMeanSquareDistance:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0}";
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         result = step.ApplyAcceptancePolicy(result);
         var hash = completenessGrid?.ContentSha256
             ?? CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
@@ -449,6 +456,7 @@ public static class ToolRecipeHeightMeasurementExecution
             ? new ToolRecipeHeightMeasurementFailure(
                 ToolRecipeHeightMeasurementFailureReason.ExecutionError)
             : null;
+        cancellationToken.ThrowIfCancellationRequested();
         return new ToolRecipeHeightMeasurementEvaluation(result, output, failure);
     }
 
@@ -508,6 +516,8 @@ public static class ToolRecipeHeightMeasurementExecution
             .Append("|input=").Append(inputContentSha256.ToUpperInvariant())
             .Append("|unit=").Append(unit)
             .Append("|frame=").Append(frameId);
+        if (string.Equals(step.ToolId, "thickness", StringComparison.Ordinal))
+            canonical.Append("|referenceAxisAdapter=").Append(ThicknessReferenceAxisAdapterVersion);
         AppendSelectionsAndParameters(canonical, step, selections);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToString())));
     }
@@ -708,7 +718,7 @@ public static class ToolRecipeHeightMeasurementExecution
                     snapshot.Height);
                 prepared = new PreparedHeightMeasurement(
                     step, selections, snapshot.EntityId, snapshot.ContentSha256, snapshot.Unit, snapshot.FrameId,
-                    snapshot.Height, snapshot.Width, snapshot.Values.ToArray(), null,
+                    snapshot.Height, snapshot.Width, CopyValues(snapshot.Values, cancellationToken), null,
                     twoRoi ? rois[0] : null, rois[^1], inspectionRegionArtifact);
                 message = twoRoi
                     ? $"{step.ToolName} v1 is ready from the verified raw C3D and ordered Reference/Measurement GridRectangles."
@@ -744,7 +754,7 @@ public static class ToolRecipeHeightMeasurementExecution
                     publishedHeightField.FrameId,
                     publishedHeightField.Height,
                     publishedHeightField.Width,
-                    publishedHeightField.Values.ToArray(),
+                    CopyValues(publishedHeightField.Values, cancellationToken),
                     null,
                     twoRoi ? rois[0] : null,
                     pointPair ? null : rois[^1],
@@ -783,7 +793,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 publishedTransformedHeightField.ReferenceFrameId,
                 publishedTransformedHeightField.RowCount,
                 publishedTransformedHeightField.ColumnCount,
-                publishedTransformedHeightField.Cells.Select(cell => cell.HasValue ? cell.Height : double.NaN).ToArray(),
+                Materialize(publishedTransformedHeightField.Cells, cell => cell.HasValue ? cell.Height : double.NaN, cancellationToken),
                 publishedTransformedHeightField.ReferenceGridProfile,
                 twoRoi ? rois[0] : null,
                 pointPair ? null : rois[^1],
@@ -989,12 +999,54 @@ public static class ToolRecipeHeightMeasurementExecution
     private static C3DGridRoi ToRoi(ToolRecipeGridRectangle rectangle) =>
         new(rectangle.Row, rectangle.Column, rectangle.RowCount, rectangle.ColumnCount);
 
-    private static bool TryEnsureFiniteVolumeRoi(PreparedHeightMeasurement prepared, C3DGridRoi roi, string name, out string? error)
+    private static double[] CopyValues(ReadOnlyMemory<double> source, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var values = source.Span;
+        var result = new double[values.Length];
+        for (var index = 0; index < values.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            result[index] = values[index];
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    private static TResult[] Materialize<TSource, TResult>(
+        IReadOnlyList<TSource> source, Func<TSource, TResult> project, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = new TResult[source.Count];
+        for (var index = 0; index < result.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            result[index] = project(source[index]);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    private static double[] CreateMissingValues(int length, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var values = new double[length];
+        for (var index = 0; index < length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            values[index] = double.NaN;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return values;
+    }
+
+    private static bool TryEnsureFiniteVolumeRoi(PreparedHeightMeasurement prepared, C3DGridRoi roi, string name, out string? error, CancellationToken cancellationToken)
     {
         for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
         {
             for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var value = prepared.Values[row * prepared.Width + column];
                 if (!double.IsFinite(value))
                 {
@@ -1009,17 +1061,18 @@ public static class ToolRecipeHeightMeasurementExecution
     }
 
     private static HeightMeasurementColorSnapshot? CreateThicknessColorSnapshot(PreparedHeightMeasurement prepared,
-        HeightFieldPlaneFitResult plane, double lowerLimit, double upperLimit)
+        HeightFieldPlaneFitResult plane, double lowerLimit, double upperLimit, CancellationToken cancellationToken)
     {
         var reconstruction = Reconstruct(prepared, prepared.MeasurementRoi!, prepared.ReferenceGridProfile,
-            SdkReferenceGridCoordinateMode.ReferenceAxes);
+            SdkReferenceGridCoordinateMode.ReferenceAxes, cancellationToken);
         if (!reconstruction.Success) return null;
-        var values = Enumerable.Repeat(double.NaN, prepared.Values.Length).ToArray();
+        var values = CreateMissingValues(prepared.Values.Length, cancellationToken);
         foreach (var sample in reconstruction.Samples)
         {
-            // Use the same single-precision U/V inputs as the executed thickness adapter.
+            cancellationToken.ThrowIfCancellationRequested();
+            // Scalar and color evidence consume the same double reference-axis coordinates.
             if (!VisionSdkHeightMapInspection.TryCalculateDatumPlaneRawHeightResidual(-plane.SlopeX, 1, -plane.SlopeZ,
-                -plane.Intercept, (float)sample.U, (float)sample.V, sample.Height, out var value)) return null;
+                -plane.Intercept, sample.U, sample.V, sample.Height, out var value)) return null;
             values[checked(sample.Row * prepared.Width + sample.Column)] = value;
         }
         return new HeightMeasurementColorSnapshot(prepared.InputEntityId, prepared.InputContentSha256,
@@ -1027,7 +1080,7 @@ public static class ToolRecipeHeightMeasurementExecution
             values, lowerLimit, upperLimit, prepared.Unit, prepared.Step.ToolName);
     }
 
-    private static IReadOnlyList<HeightFieldPlaneSample> CreatePlaneSamples(PreparedHeightMeasurement prepared, C3DGridRoi roi)
+    private static IReadOnlyList<HeightFieldPlaneSample> CreatePlaneSamples(PreparedHeightMeasurement prepared, C3DGridRoi roi, CancellationToken cancellationToken)
     {
         var profile = prepared.ReferenceGridProfile
             ?? throw new InvalidDataException("Plane Flatness requires a reference-grid profile.");
@@ -1035,47 +1088,63 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared,
             roi,
             profile,
-            SdkReferenceGridCoordinateMode.DeclaredFrame);
+            SdkReferenceGridCoordinateMode.DeclaredFrame, cancellationToken);
         if (!reconstruction.Success)
         {
             throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
                 ? "Plane Flatness reconstructed point exceeds the supported single-precision geometry range."
                 : reconstruction.Message);
         }
-        return reconstruction.Samples
-            .Select(sample => new HeightFieldPlaneSample(
+        return Materialize(reconstruction.Samples, sample => new HeightFieldPlaneSample(
                 new Vector3((float)sample.X, (float)sample.Y, (float)sample.Z),
-                sample.Height))
-            .ToArray();
+                sample.Height), cancellationToken);
+    }
+
+    private static IReadOnlyList<SdkHeightFieldPlaneFitSample> CreateThicknessReferenceAxisSamples(
+        PreparedHeightMeasurement prepared,
+        C3DGridRoi roi,
+        CancellationToken cancellationToken)
+    {
+        var reconstruction = Reconstruct(
+            prepared, roi, prepared.ReferenceGridProfile,
+            SdkReferenceGridCoordinateMode.ReferenceAxes, cancellationToken);
+        if (!reconstruction.Success)
+        {
+            throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
+                ? "Thickness reference-axis sample exceeds the supported single-precision geometry range."
+                : reconstruction.Message);
+        }
+        return Materialize(reconstruction.Samples, sample => new SdkHeightFieldPlaneFitSample(
+                new SdkPoint(sample.U, sample.Height, sample.V), sample.Height), cancellationToken);
     }
 
     private static IReadOnlyList<HeightFieldPlaneSample> CreateReferenceAxisPlaneSamples(
         PreparedHeightMeasurement prepared,
         C3DGridRoi roi,
-        string toolName)
+        string toolName,
+        CancellationToken cancellationToken)
     {
         var profile = prepared.ReferenceGridProfile;
         var reconstruction = Reconstruct(
             prepared,
             roi,
             profile,
-            SdkReferenceGridCoordinateMode.ReferenceAxes);
+            SdkReferenceGridCoordinateMode.ReferenceAxes, cancellationToken);
         if (!reconstruction.Success)
         {
             throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
                 ? $"{toolName} reference-axis sample exceeds the supported single-precision geometry range."
                 : reconstruction.Message);
         }
-        return reconstruction.Samples
-            .Select(sample => new HeightFieldPlaneSample(
+        return Materialize(reconstruction.Samples, sample => new HeightFieldPlaneSample(
                 new Vector3((float)sample.U, (float)sample.Height, (float)sample.V),
-                sample.Height))
-            .ToArray();
+                sample.Height), cancellationToken);
     }
 
     private static IReadOnlyList<SdkCrossSectionDimensionsSample> CreateCrossSectionSamples(
         PreparedHeightMeasurement prepared,
-        C3DGridRoi roi)
+        C3DGridRoi roi,
+        CancellationToken cancellationToken)
     {
         var profile = prepared.ReferenceGridProfile
             ?? throw new InvalidDataException("Cross-section Dimensions requires a reference-grid profile.");
@@ -1085,6 +1154,7 @@ public static class ToolRecipeHeightMeasurementExecution
             firstRow,
             profile,
             SdkReferenceGridCoordinateMode.ReferenceAxes,
+            cancellationToken,
             double.MinValue,
             double.MaxValue);
         if (!reconstruction.Success)
@@ -1093,23 +1163,24 @@ public static class ToolRecipeHeightMeasurementExecution
                 ? "Cross-section Dimensions reference-axis sample exceeds the supported single-precision geometry range."
                 : reconstruction.Message);
         }
-        return reconstruction.Samples
-            .Select(sample => new SdkCrossSectionDimensionsSample(
+        return Materialize(reconstruction.Samples, sample => new SdkCrossSectionDimensionsSample(
                 sample.Column,
                 sample.U,
-                sample.Height))
-            .ToArray();
+                sample.Height), cancellationToken);
     }
 
     private static SdkGapFlushRegionStatistics? CreateGapFlushRegionStatistics(
         PreparedHeightMeasurement prepared,
-        C3DGridRoi roi)
+        C3DGridRoi roi,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var statistics = new SdkHeightMapRegionStatisticsTool().Execute(
             prepared.Height,
             prepared.Width,
             prepared.Values,
-            ToSdkRegion(roi));
+            ToSdkRegion(roi), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!statistics.Success)
         {
             throw new InvalidDataException(statistics.Message);
@@ -1124,7 +1195,8 @@ public static class ToolRecipeHeightMeasurementExecution
 
     private static (Vector3 Position, double Height) ReconstructPoint(
         PreparedHeightMeasurement prepared,
-        ToolRecipeGridCellLocator locator)
+        ToolRecipeGridCellLocator locator,
+        CancellationToken cancellationToken)
     {
         if (locator.Row < 0 || locator.Row >= prepared.Height || locator.Column < 0 || locator.Column >= prepared.Width)
         {
@@ -1138,7 +1210,7 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared,
             new C3DGridRoi(locator.Row, locator.Column, 1, 1),
             profile,
-            SdkReferenceGridCoordinateMode.DeclaredFrame);
+            SdkReferenceGridCoordinateMode.DeclaredFrame, cancellationToken);
         if (!reconstruction.Success)
         {
             throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
@@ -1154,9 +1226,12 @@ public static class ToolRecipeHeightMeasurementExecution
         C3DGridRoi roi,
         C3DReferenceGridProfile? profile,
         SdkReferenceGridCoordinateMode coordinateMode,
+        CancellationToken cancellationToken,
         double minimumSupportedCoordinate = float.MinValue,
-        double maximumSupportedCoordinate = float.MaxValue) =>
-        new SdkReferenceGridPointReconstructionTool().Execute(
+        double maximumSupportedCoordinate = float.MaxValue)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = new SdkReferenceGridPointReconstructionTool().Execute(
             prepared.Height,
             prepared.Width,
             prepared.Values,
@@ -1167,7 +1242,10 @@ public static class ToolRecipeHeightMeasurementExecution
                 CoordinateMode = coordinateMode,
                 MinimumSupportedCoordinate = minimumSupportedCoordinate,
                 MaximumSupportedCoordinate = maximumSupportedCoordinate
-            });
+            }, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
 
     private static SdkHeightGridRegion ToSdkRegion(C3DGridRoi roi) =>
         new(roi.Row, roi.Column, roi.RowCount, roi.ColumnCount);

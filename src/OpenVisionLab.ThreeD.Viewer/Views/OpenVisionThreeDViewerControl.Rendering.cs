@@ -781,12 +781,12 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private (double R, double G, double B) GetC3DGpuPointColor(
         HeightGridPoint point,
-        Vector3 position)
+        Vector3 _)
     {
         if (UsesDynamicC3DColor()
             && planeFlatnessEvaluation is { ReferencePlane: not null } flatness)
         {
-            return GetPlaneFlatnessColor(position, flatness);
+            return GetPlaneFlatnessColor(point, viewModel.C3DModelTransform, flatness);
         }
 
         return viewModel.Display.EffectiveSettings.ColorMap == ViewerColorMap.Deviation
@@ -925,7 +925,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var point = renderProxy.Points[index];
             var position = positions[index];
-            ApplyC3DColor(gl, point, position);
+            ApplyC3DColor(gl, point);
             gl.Vertex(position.X, position.Y, position.Z);
         }
 
@@ -950,7 +950,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var point = renderProxy.Points[index];
             var position = positions[index];
-            ApplyC3DColor(gl, point, position);
+            ApplyC3DColor(gl, point);
             gl.Vertex(position.X, position.Y, position.Z);
         }
 
@@ -983,7 +983,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             var position = positions[index];
             if (usePointColors)
             {
-                ApplyC3DColor(gl, renderProxy.Points[index], position);
+                ApplyC3DColor(gl, renderProxy.Points[index]);
             }
 
             gl.Vertex(position.X, position.Y, position.Z);
@@ -999,7 +999,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.LineWidth(1.0f);
     }
 
-    private void ApplyC3DColor(OpenGL gl, HeightGridPoint point, Vector3 position)
+    private void ApplyC3DColor(OpenGL gl, HeightGridPoint point)
     {
         if (c3dTextureDrawing && c3dSample is { } source)
         {
@@ -1012,7 +1012,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             && viewModel.PlaneFlatnessVisible
             && planeFlatnessEvaluation is { ReferencePlane: not null } flatness)
         {
-            ApplyPlaneFlatnessColor(gl, position, flatness);
+            ApplyPlaneFlatnessColor(gl, point, viewModel.C3DModelTransform, flatness);
             return;
         }
 
@@ -1474,7 +1474,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ApplyLazPointColor(OpenGL gl, LazPointCloudPoint point)
     {
-        var (r, g, b) = ViewerLazPointCloudColor.Resolve(point, viewModel.SelectedColorMode, lazSample);
+        var (r, g, b) = ViewerLazPointCloudColor.Resolve(point, viewModel.SelectedColorMode, lazSample, lazPointCloud);
 
         gl.Color(r, g, b);
     }
@@ -1537,17 +1537,21 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private static void ApplyPlaneFlatnessColor(
         OpenGL gl,
-        Vector3 position,
+        HeightGridPoint point,
+        ModelTransform transform,
         ViewerPlaneFlatnessDisplayEvaluation evaluation)
     {
-        var color = GetPlaneFlatnessColor(position, evaluation);
+        var color = GetPlaneFlatnessColor(point, transform, evaluation);
         gl.Color(color.R, color.G, color.B);
     }
 
     private static (double R, double G, double B) GetPlaneFlatnessColor(
-        Vector3 position,
+        HeightGridPoint point,
+        ModelTransform transform,
         ViewerPlaneFlatnessDisplayEvaluation evaluation)
     {
+        // Height emphasis deforms vertices only; color uses the scalar evaluation's source pose.
+        var position = transform.Apply(point.Position);
         var plane = evaluation.ReferencePlane!;
         var signedDistance = plane.Normal.X * position.X
             + plane.Normal.Y * position.Y

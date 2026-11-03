@@ -330,6 +330,9 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="EditorWrappingPageTabStyle" TargetType="RadioButton" BasedOn="{StaticResource EditorPageTabStyle}">
+            <Setter Property="Margin" Value="0,0,5,5" />
+        </Style>
         <Style x:Key="RoiLifecycleStateTextStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -491,16 +494,16 @@
                     </StackPanel>
                 </Expander>            </StackPanel>
             <StackPanel Grid.Row="1">
-<UniformGrid Rows="1" Margin="12,0,12,8" AutomationProperties.AutomationId="SelectedToolEditorPages" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.ToolSettingPages, Korean='도구 설정 항목', English='Tool setting pages'}">
-<UniformGrid.Style><Style TargetType="UniformGrid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
+<WrapPanel Margin="12,0,12,3" AutomationProperties.AutomationId="SelectedToolEditorPages" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.ToolSettingPages, Korean='도구 설정 항목', English='Tool setting pages'}">
+<WrapPanel.Style><Style TargetType="WrapPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
 <DataTrigger Binding="{Binding IsSelectedStepRegionSurfaceVisible}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
 <DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
 <DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-</Style.Triggers></Style></UniformGrid.Style>
+</Style.Triggers></Style></WrapPanel.Style>
 <RadioButton x:Name="EditorRegionTab"
                                  Grid.Column="1"
                                  GroupName=""
-                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Style="{StaticResource EditorWrappingPageTabStyle}"
                                  Checked="OnEditorPageChecked"
                                  Tag="Region"
                                  Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageRegion, Korean='영역', English='Region'}"
@@ -510,7 +513,7 @@
                                  Grid.Column="0"
                                  GroupName=""
                                  IsChecked="True"
-                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Style="{StaticResource EditorWrappingPageTabStyle}"
                                  Checked="OnEditorPageChecked"
                                  Tag="All"
                                  Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageConditions, Korean='조건', English='Conditions'}"
@@ -518,7 +521,7 @@
 <RadioButton x:Name="EditorJudgmentTab"
                                  Grid.Column="2"
                                  GroupName=""
-                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Style="{StaticResource EditorWrappingPageTabStyle}"
                                  Checked="OnEditorPageChecked"
                                  Tag="Judgment"
                                  Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageJudgment, Korean='판정', English='Judgment'}"
@@ -526,14 +529,14 @@
                                  AutomationProperties.AutomationId="SelectedToolEditorPageJudgment" />
 <RadioButton x:Name="EditorDetailTab"
                                  Grid.Column="3"
-                                 Margin="0"
+                                 Margin="0,0,0,5"
                                  GroupName=""
-                                 Style="{StaticResource EditorPageTabStyle}"
+                                 Style="{StaticResource EditorWrappingPageTabStyle}"
                                  Checked="OnEditorPageChecked"
                                  Tag="Detail"
                                  Content="{views:ThreeDText Key=ThreeD.Workspace.EditorPageDiagnostics, Korean='상세', English='Details'}"
                                  AutomationProperties.AutomationId="SelectedToolEditorPageDetail" />
-<RadioButton x:Name="EditorHistoryTab" Visibility="Collapsed" GroupName="" Tag="History" Checked="OnEditorPageChecked" /></UniformGrid><Button Margin="0" MinHeight="28" HorizontalAlignment="Stretch" Content="{views:ThreeDText Key=ThreeD.Settings.BackToCore, Korean='설정으로 돌아가기', English='Back to settings'}" Click="OnBackToCoreClick" AutomationProperties.AutomationId="SelectedToolBackToSettings">
+<RadioButton x:Name="EditorHistoryTab" Visibility="Collapsed" GroupName="" Tag="History" Checked="OnEditorPageChecked" /></WrapPanel><Button Margin="0" MinHeight="28" HorizontalAlignment="Stretch" Content="{views:ThreeDText Key=ThreeD.Settings.BackToCore, Korean='설정으로 돌아가기', English='Back to settings'}" Click="OnBackToCoreClick" AutomationProperties.AutomationId="SelectedToolBackToSettings">
 <Button.Style><Style TargetType="Button" BasedOn="{StaticResource SettingsFooterButtonStyle}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsChecked, ElementName=EditorHistoryTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Button.Style></Button><StackPanel Margin="12,0,12,8">
     <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=EditorDetailTab}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding IsLabPresentation, ElementName=SelectedToolRoot}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
     <UniformGrid Rows="1" AutomationProperties.AutomationId="SelectedToolDetailPages">
@@ -1371,7 +1374,7 @@
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Label}" />
+                                                        <TextBlock Margin="0,0,8,0" FontSize="12" FontWeight="SemiBold" Text="{Binding Label}" TextWrapping="Wrap" />
                                                         <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="{Binding State}" />
                                                     </Grid>
                                                     <TextBlock Margin="0,3,0,0"
@@ -1725,7 +1728,7 @@
                                         <TextBox Grid.Row="1" Grid.Column="3" Margin="1"
                                                  Text="{Binding OrientedBoxEditor.CenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
 
-                                        <TextBlock Grid.Row="3"
+                                        <TextBlock Grid.Row="2"
                                                    VerticalAlignment="Center"
                                                    FontSize="12"
                                                    Text="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.AxisX, Korean='축 X', English='Axis X'}" />

@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
 using SdkCompletenessCellDecision = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessCellDecision;
@@ -38,11 +39,17 @@ public static class C3DCompletenessGridRule
 
     public static C3DCompletenessGridEvaluation Evaluate(
         C3DCompletenessGridInput input)
+    { return Evaluate(input, CancellationToken.None); }
+
+        public static C3DCompletenessGridEvaluation Evaluate(
+        C3DCompletenessGridInput input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            C3DCompletenessGridEvaluation Complete(C3DCompletenessGridEvaluation value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         ArgumentNullException.ThrowIfNull(input);
         try
         {
-            ValidateStudioContract(input);
+            ValidateStudioContract(input, cancellationToken);
             var reference = input.ReferenceSelection.GridRectangle!;
             var inspection = input.InspectionGridSelection.GridRectangle!;
             var sdkProfile = new SdkCompletenessGridProfile
@@ -64,7 +71,7 @@ public static class C3DCompletenessGridRule
                 };
             var inspectionMask = input.InspectionRegionArtifact is null
                 ? null
-                : ToSdkMask(input.InspectionRegionArtifact);
+                : ToSdkMask(input.InspectionRegionArtifact, cancellationToken);
             var inspectionTool = new SdkCompletenessGridInspectionTool();
             var inspectionResult = inspectionMask is null
                 ? inspectionTool.Execute(
@@ -74,7 +81,7 @@ public static class C3DCompletenessGridRule
                     ToSdkRegion(reference),
                     ToSdkRegion(inspection),
                     sdkProfile,
-                    sdkPolicy)
+                    sdkPolicy, cancellationToken)
                 : inspectionTool.ExecuteMaskAware(
                     input.GridHeight,
                     input.GridWidth,
@@ -83,7 +90,7 @@ public static class C3DCompletenessGridRule
                     ToSdkRegion(inspection),
                     inspectionMask,
                     sdkProfile,
-                    sdkPolicy);
+                    sdkPolicy, cancellationToken);
             if (!inspectionResult.Success)
             {
                 throw new InvalidDataException(inspectionResult.Message);
@@ -93,7 +100,7 @@ public static class C3DCompletenessGridRule
             var cells = inspectionResult.Cells
                 .Select(cell =>
                 {
-                    var decision = ToStudioDecision(cell.Decision);
+                    cancellationToken.ThrowIfCancellationRequested(); var decision = ToStudioDecision(cell.Decision);
                     return new C3DCompletenessCellMetric(
                         $"r{cell.GridRow + 1:D3}.c{cell.GridColumn + 1:D3}",
                         cell.GridRow,
@@ -119,7 +126,7 @@ public static class C3DCompletenessGridRule
                 })
                 .ToArray();
 
-            var hash = CalculateContentSha256(input, referenceMean, cells);
+            var hash = CalculateContentSha256(input, referenceMean, cells, cancellationToken);
             var passedCellCount = inspectionResult.PassedCellCount;
             var failedCellCount = inspectionResult.FailedCellCount;
             var aggregateStatus = inspectionResult.AggregateDecision switch
@@ -130,11 +137,11 @@ public static class C3DCompletenessGridRule
             };
             var cellOverlays = input.PresencePolicy is null
                 ? []
-                : cells.Select(cell => new C3DCompletenessCellOverlay(
+                : cells.Select(cell => { cancellationToken.ThrowIfCancellationRequested(); return new C3DCompletenessCellOverlay(
                     $"overlay.completeness.{input.OutputEntityId}.{cell.CellId}",
                     cell.CellId,
                     cell.Region,
-                    cell.Decision ?? ResultStatus.Fail)).ToArray();
+                    cell.Decision ?? ResultStatus.Fail); }).ToArray();
             var output = new C3DCompletenessGridMetricOutput(
                 input.OutputEntityId,
                 input.RootSourceEntityId,
@@ -180,6 +187,7 @@ public static class C3DCompletenessGridRule
             }
             foreach (var cell in cells)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 metrics.Add(new Metric(
                     C3DCompletenessMetricNames.FiniteCoverage(cell.CellId),
                     MetricKind.Number,
@@ -206,13 +214,13 @@ public static class C3DCompletenessGridRule
                     : $"Completeness Grid {aggregateStatus}: {passedCellCount} passed, {failedCellCount} failed, {cells.Length} total cells.",
                 TimeSpan.Zero,
                 metrics,
-                cellOverlays.Select(overlay => new Overlay(
+                cellOverlays.Select(overlay => { cancellationToken.ThrowIfCancellationRequested(); return new Overlay(
                     overlay.OverlayId,
                     OverlayKind.ColorMap,
                     $"{overlay.CellId} {overlay.Status}",
                     overlay.Status,
-                    input.InputEntityId)).ToArray());
-            return new C3DCompletenessGridEvaluation(result, output);
+                    input.InputEntityId); }).ToArray());
+            return Complete(new C3DCompletenessGridEvaluation(result, output));
         }
         catch (Exception exception) when (
             exception is ArgumentException
@@ -220,7 +228,7 @@ public static class C3DCompletenessGridRule
             or InvalidOperationException
             or OverflowException)
         {
-            return new C3DCompletenessGridEvaluation(
+            return Complete(new C3DCompletenessGridEvaluation(
                 new ToolResult(
                     ToolName,
                     ResultStatus.Error,
@@ -228,12 +236,13 @@ public static class C3DCompletenessGridRule
                     TimeSpan.Zero,
                     [],
                     []),
-                null);
+                null));
         }
     }
 
-    private static void ValidateStudioContract(C3DCompletenessGridInput input)
+    private static void ValidateStudioContract(C3DCompletenessGridInput input, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(input.OutputEntityId);
         ArgumentException.ThrowIfNullOrWhiteSpace(input.RootSourceEntityId);
         ArgumentException.ThrowIfNullOrWhiteSpace(input.InputEntityId);
@@ -300,7 +309,8 @@ public static class C3DCompletenessGridRule
                     "Completeness Grid EditableRegionArtifact bounds must match the authored Inspection Grid ROI.");
             }
         }
-    }
+                cancellationToken.ThrowIfCancellationRequested();
+}
 
     private static void ValidateRegion(
         ToolRecipeGridRectangle region,
@@ -321,8 +331,10 @@ public static class C3DCompletenessGridRule
     private static string CalculateContentSha256(
         C3DCompletenessGridInput input,
         double referenceMean,
-        IReadOnlyList<C3DCompletenessCellMetric> cells)
+        IReadOnlyList<C3DCompletenessCellMetric> cells, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            string Complete(string value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         using var stream = new MemoryStream();
         using (var writer = new BinaryWriter(
                    stream,
@@ -357,6 +369,7 @@ public static class C3DCompletenessGridRule
             writer.Write(cells.Count);
             foreach (var cell in cells)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 writer.Write(cell.CellId);
                 writer.Write(cell.GridRow);
                 writer.Write(cell.GridColumn);
@@ -386,7 +399,7 @@ public static class C3DCompletenessGridRule
             }
         }
 
-        return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
+        return Complete(Convert.ToHexString(SHA256.HashData(stream.ToArray())));
     }
 
     private static string CreateDecisionReason(
@@ -417,18 +430,21 @@ public static class C3DCompletenessGridRule
         new(region.Row, region.Column, region.RowCount, region.ColumnCount);
 
     private static SdkHeightGridMask ToSdkMask(
-        C3DEditableRegionArtifact artifact)
+        C3DEditableRegionArtifact artifact, CancellationToken cancellationToken)
     {
+            cancellationToken.ThrowIfCancellationRequested();
+            SdkHeightGridMask Complete(SdkHeightGridMask value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
         var foreground = new bool[checked(artifact.GridWidth * artifact.GridHeight)];
         foreach (var cell in artifact.Cells)
         {
+                cancellationToken.ThrowIfCancellationRequested();
             foreground[checked(cell.Row * artifact.GridWidth + cell.Column)] = true;
         }
 
-        return new SdkHeightGridMask(
+        return Complete(new SdkHeightGridMask(
             artifact.GridHeight,
             artifact.GridWidth,
-            foreground);
+            foreground));
     }
 
     private static ResultStatus? ToStudioDecision(SdkCompletenessCellDecision decision) =>

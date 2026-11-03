@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics;
 using OpenVisionLab.Vision3D.Inspection;
 using OpenVisionLab.ThreeD.Core;
@@ -27,43 +28,50 @@ public static class VolumeRule
     public const string ToolName = "C3D Volume";
 
     public static VolumeEvaluation Evaluate(VolumeRuleInput input)
+        => Evaluate(input, CancellationToken.None);
+
+    public static VolumeEvaluation Evaluate(VolumeRuleInput input, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(input);
         var stopwatch = Stopwatch.StartNew();
         if (string.IsNullOrWhiteSpace(input.SourceEntityId) || string.IsNullOrWhiteSpace(input.Unit))
-            return Error(input, "Source entity ID and volume unit are required.", stopwatch.Elapsed);
+            return Complete(Error(input, "Source entity ID and volume unit are required.", stopwatch.Elapsed), cancellationToken);
         if (!double.IsFinite(input.SampleArea) || input.SampleArea <= 0.0
             || !double.IsFinite(input.ExpectedNetVolume)
             || !double.IsFinite(input.Tolerance) || input.Tolerance < 0.0)
-            return Error(input, "Sample area and acceptance values must be finite; area positive and tolerance non-negative.", stopwatch.Elapsed);
+            return Complete(Error(input, "Sample area and acceptance values must be finite; area positive and tolerance non-negative.", stopwatch.Elapsed), cancellationToken);
         if (input.ReferenceSamples is null || input.ReferenceSamples.Count < 3)
-            return Error(input, "Reference ROI requires at least three samples.", stopwatch.Elapsed);
+            return Complete(Error(input, "Reference ROI requires at least three samples.", stopwatch.Elapsed), cancellationToken);
         if (input.MeasurementSamples is null || input.MeasurementSamples.Count == 0)
-            return Error(input, "Measurement ROI requires at least one sample.", stopwatch.Elapsed);
+            return Complete(Error(input, "Measurement ROI requires at least one sample.", stopwatch.Elapsed), cancellationToken);
         if (input.MeasurementSamples.Any(sample =>
-            !float.IsFinite(sample.Position.X)
-            || !float.IsFinite(sample.Position.Y)
-            || !float.IsFinite(sample.Position.Z)))
         {
-            return Error(input, "Measurement ROI contains a non-finite sample.", stopwatch.Elapsed);
+            cancellationToken.ThrowIfCancellationRequested();
+            return !float.IsFinite(sample.Position.X)
+                || !float.IsFinite(sample.Position.Y)
+                || !float.IsFinite(sample.Position.Z);
+        }))
+        {
+            return Complete(Error(input, "Measurement ROI contains a non-finite sample.", stopwatch.Elapsed), cancellationToken);
         }
 
         VolumeInspectionResult evaluation;
         try
         {
             evaluation = new VolumeInspectionTool().Execute(
-                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
-                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
+                ToSdkSamples(input.ReferenceSamples, cancellationToken),
+                ToSdkSamples(input.MeasurementSamples, cancellationToken),
                 new VolumeInspectionOptions
                 {
                     SampleArea = input.SampleArea,
                     ExpectedNetVolume = input.ExpectedNetVolume,
                     Tolerance = input.Tolerance
-                });
+                }, cancellationToken);
         }
         catch (ArgumentException ex)
         {
-            return Error(input, ex.Message, stopwatch.Elapsed);
+            return Complete(Error(input, ex.Message, stopwatch.Elapsed), cancellationToken);
         }
 
         var plane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
@@ -91,7 +99,26 @@ public static class VolumeRule
                 new Overlay("overlay.c3d-volume-region", OverlayKind.Box, "Volume measurement ROI", status, input.SourceEntityId),
                 new Overlay("overlay.c3d-volume-deviation", OverlayKind.ColorMap, "Above/below reference volume", status, input.SourceEntityId)
             ]);
-        return new VolumeEvaluation(result, plane, above, below, net, input.ReferenceSamples.Count, input.MeasurementSamples.Count);
+        return Complete(new VolumeEvaluation(result, plane, above, below, net, input.ReferenceSamples.Count, input.MeasurementSamples.Count), cancellationToken);
+    }
+
+    private static VolumeEvaluation Complete(VolumeEvaluation result, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    private static OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample[]? ToSdkSamples(IReadOnlyList<HeightFieldPlaneSample>? samples, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (samples is null) return null;
+        var result = samples.Select(sample =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return HeightFieldPlaneFit.ToSdkSample(sample);
+        }).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
     }
 
     private static VolumeEvaluation Error(VolumeRuleInput input, string message, TimeSpan elapsed) =>

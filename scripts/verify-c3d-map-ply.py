@@ -109,12 +109,16 @@ def point_pair_metrics(
     first: tuple[float, float, float],
     second: tuple[float, float, float],
 ) -> tuple[float, float, float, float]:
+    if not all(math.isfinite(value) for point in (first, second) for value in point):
+        raise ValueError("Point-pair coordinates must be finite")
     dx = second[0] - first[0]
     dy = second[1] - first[1]
     dz = second[2] - first[2]
     width = math.hypot(dx, dz)
     distance = math.sqrt(dx * dx + dy * dy + dz * dz)
     angle_degrees = math.degrees(math.atan2(dy, width))
+    if not all(math.isfinite(value) for value in (distance, width, dy, angle_degrees)):
+        raise ValueError("Point-pair arithmetic must remain finite")
     return distance, width, dy, angle_degrees
 
 
@@ -147,6 +151,8 @@ def verify(
         raise ValueError("C3D has no finite non-zero samples")
 
     mean = total / valid_count
+    if not all(math.isfinite(value) for value in (minimum, maximum, total, mean)):
+        raise ValueError("C3D reference statistics must be finite")
     sample_count = width * height
     stride = max(1, math.ceil(math.sqrt(sample_count / max_sampled_points)))
     horizontal_scale = float32(VIEWER_HORIZONTAL_SPAN / max(1, width - 1, height - 1))
@@ -192,6 +198,8 @@ def verify(
                 if len(fields) != 6:
                     raise ValueError(f"PLY vertex {read_points} must contain XYZ and RGB")
                 actual_position = tuple(float(field) for field in fields[:3])
+                if not all(math.isfinite(value) for value in actual_position):
+                    raise ValueError(f"PLY vertex {read_points} has non-finite XYZ")
                 actual_color = tuple(int(field) for field in fields[3:])
 
                 expected_position = (
@@ -199,6 +207,8 @@ def verify(
                     float32((value - mean) * height_scale),
                     float32(float32(row - center_z) * horizontal_scale),
                 )
+                if not all(math.isfinite(value) for value in expected_position):
+                    raise ValueError(f"Reference vertex {read_points} has non-finite XYZ")
                 height_scalar = min(1.0, max(0.0, float32(value - minimum) / color_span))
                 expected_color = height_color(height_scalar)
 
@@ -266,6 +276,7 @@ def verify(
 
     passed = (
         read_points == expected_point_count
+        and math.isfinite(max_coordinate_error)
         and max_coordinate_error <= MAX_COORDINATE_ERROR
         and max_color_error == 0
         and point_pair_passed

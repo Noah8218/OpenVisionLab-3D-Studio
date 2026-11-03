@@ -1,6 +1,8 @@
+using System.Threading;
 using System.Diagnostics;
 using SdkDecision = OpenVisionLab.Vision3D.FeatureExtraction.DualSurfaceThicknessDecision;
 using SdkInspectionTool = OpenVisionLab.Vision3D.FeatureExtraction.DualSurfaceThicknessInspectionTool;
+using SdkFitSample = OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -39,19 +41,57 @@ public static class DualSurfaceThicknessRule
     public const string ToolName = "C3D Dual-surface Thickness";
 
     public static DualSurfaceThicknessEvaluation Evaluate(DualSurfaceThicknessInput input)
+        => Evaluate(input, CancellationToken.None);
+
+    public static DualSurfaceThicknessEvaluation Evaluate(DualSurfaceThicknessInput input, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(input);
-        var stopwatch = Stopwatch.StartNew();
-        if (string.IsNullOrWhiteSpace(input.SourceEntityId) || string.IsNullOrWhiteSpace(input.Unit))
-            return Error(input, "Source entity ID and declared height unit are required.", stopwatch.Elapsed);
-        var evaluation = new SdkInspectionTool().Execute(
-            input.ReferenceSamples?.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
-            input.MeasurementSamples?.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
+        return EvaluateReferenceAxes(
+            input.SourceEntityId,
+            ToSdkSamples(input.ReferenceSamples, cancellationToken),
+            ToSdkSamples(input.MeasurementSamples, cancellationToken),
             input.MinimumThickness,
             input.MaximumThickness,
-            input.MinimumValidSamples);
+            input.MinimumValidSamples,
+            input.Unit, cancellationToken);
+    }
+
+    // Recipe height fields already carry double reference-axis coordinates. Keep them
+    // intact while retaining the public Vector3 adapter for existing callers.
+    internal static DualSurfaceThicknessEvaluation EvaluateReferenceAxes(
+        string sourceEntityId,
+        IReadOnlyList<SdkFitSample>? referenceSamples,
+        IReadOnlyList<SdkFitSample>? measurementSamples,
+        double minimumThickness,
+        double maximumThickness,
+        int minimumValidSamples,
+        string unit)
+        => EvaluateReferenceAxes(sourceEntityId, referenceSamples, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, unit, CancellationToken.None);
+
+    internal static DualSurfaceThicknessEvaluation EvaluateReferenceAxes(
+        string sourceEntityId,
+        IReadOnlyList<SdkFitSample>? referenceSamples,
+        IReadOnlyList<SdkFitSample>? measurementSamples,
+        double minimumThickness,
+        double maximumThickness,
+        int minimumValidSamples,
+        string unit, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var stopwatch = Stopwatch.StartNew();
+        if (string.IsNullOrWhiteSpace(sourceEntityId) || string.IsNullOrWhiteSpace(unit))
+            return Complete(Error(unit, referenceSamples?.Count ?? 0, measurementSamples?.Count ?? 0,
+                "Source entity ID and declared height unit are required.", stopwatch.Elapsed), cancellationToken);
+        var evaluation = new SdkInspectionTool().Execute(
+            referenceSamples,
+            measurementSamples,
+            minimumThickness,
+            maximumThickness,
+            minimumValidSamples, cancellationToken);
         if (!evaluation.Success || evaluation.ReferencePlane is null)
-            return Error(input, evaluation.Message, stopwatch.Elapsed);
+            return Complete(Error(unit, referenceSamples?.Count ?? 0, measurementSamples?.Count ?? 0,
+                evaluation.Message, stopwatch.Elapsed), cancellationToken);
 
         var plane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
         var status = evaluation.Decision == SdkDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
@@ -63,27 +103,27 @@ public static class DualSurfaceThicknessRule
             evaluation.Message,
             stopwatch.Elapsed,
             [
-                new Metric("Mean", MetricKind.Deviation, evaluation.Mean, input.Unit, status),
-                new Metric("Minimum", MetricKind.Deviation, evaluation.Minimum, input.Unit, evaluation.BelowLowerLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
-                new Metric("Maximum", MetricKind.Deviation, evaluation.Maximum, input.Unit, evaluation.AboveUpperLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
-                new Metric("Range", MetricKind.Deviation, evaluation.Range, input.Unit),
-                new Metric("RMS spread", MetricKind.Deviation, evaluation.RootMeanSquareSpread, input.Unit),
-                new Metric("Reference fit H RMS", MetricKind.Deviation, evaluation.ReferenceFitHeightRootMeanSquare, input.Unit),
+                new Metric("Mean", MetricKind.Deviation, evaluation.Mean, unit, status),
+                new Metric("Minimum", MetricKind.Deviation, evaluation.Minimum, unit, evaluation.BelowLowerLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
+                new Metric("Maximum", MetricKind.Deviation, evaluation.Maximum, unit, evaluation.AboveUpperLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
+                new Metric("Range", MetricKind.Deviation, evaluation.Range, unit),
+                new Metric("RMS spread", MetricKind.Deviation, evaluation.RootMeanSquareSpread, unit),
+                new Metric("Reference fit H RMS", MetricKind.Deviation, evaluation.ReferenceFitHeightRootMeanSquare, unit),
                 new Metric("Reference sample count", MetricKind.Count, evaluation.ReferenceSampleCount, "count"),
                 new Metric("ValidSampleCount", MetricKind.Count, evaluation.MeasurementSampleCount, "count"),
-                new Metric("LowerLimit", MetricKind.Deviation, input.MinimumThickness, input.Unit),
-                new Metric("UpperLimit", MetricKind.Deviation, input.MaximumThickness, input.Unit),
+                new Metric("LowerLimit", MetricKind.Deviation, minimumThickness, unit),
+                new Metric("UpperLimit", MetricKind.Deviation, maximumThickness, unit),
                 new Metric("BelowLowerLimitCount", MetricKind.Count, evaluation.BelowLowerLimitCount, "count"),
                 new Metric("AboveUpperLimitCount", MetricKind.Count, evaluation.AboveUpperLimitCount, "count")
             ],
             [
-                new Overlay("overlay.c3d-thickness-reference-roi", OverlayKind.Box, "Thickness reference surface ROI", status, input.SourceEntityId),
-                new Overlay("overlay.c3d-thickness-reference-plane", OverlayKind.Plane, "Least-squares thickness reference surface", status, input.SourceEntityId),
-                new Overlay("overlay.c3d-thickness-measurement-roi", OverlayKind.Box, "Thickness measurement surface ROI", status, input.SourceEntityId),
-                new Overlay("overlay.c3d-thickness-height-axis", OverlayKind.Marker, "Signed H-axis separation from reference surface", status, input.SourceEntityId)
+                new Overlay("overlay.c3d-thickness-reference-roi", OverlayKind.Box, "Thickness reference surface ROI", status, sourceEntityId),
+                new Overlay("overlay.c3d-thickness-reference-plane", OverlayKind.Plane, "Least-squares thickness reference surface", status, sourceEntityId),
+                new Overlay("overlay.c3d-thickness-measurement-roi", OverlayKind.Box, "Thickness measurement surface ROI", status, sourceEntityId),
+                new Overlay("overlay.c3d-thickness-height-axis", OverlayKind.Marker, "Signed H-axis separation from reference surface", status, sourceEntityId)
             ]);
 
-        return new DualSurfaceThicknessEvaluation(
+        return Complete(new DualSurfaceThicknessEvaluation(
             result,
             plane,
             evaluation.Mean,
@@ -94,11 +134,32 @@ public static class DualSurfaceThicknessRule
             evaluation.ReferenceSampleCount,
             evaluation.MeasurementSampleCount,
             evaluation.BelowLowerLimitCount,
-            evaluation.AboveUpperLimitCount);
+            evaluation.AboveUpperLimitCount), cancellationToken);
+    }
+
+    private static DualSurfaceThicknessEvaluation Complete(DualSurfaceThicknessEvaluation result, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    private static OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample[]? ToSdkSamples(IReadOnlyList<HeightFieldPlaneSample>? samples, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (samples is null) return null;
+        var result = samples.Select(sample =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return HeightFieldPlaneFit.ToSdkSample(sample);
+        }).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
     }
 
     private static DualSurfaceThicknessEvaluation Error(
-        DualSurfaceThicknessInput input,
+        string? unit,
+        int referenceSampleCount,
+        int measurementSampleCount,
         string message,
         TimeSpan elapsed) =>
         new(
@@ -107,7 +168,7 @@ public static class DualSurfaceThicknessRule
                 ResultStatus.Error,
                 message,
                 elapsed,
-                [new Metric("Mean", MetricKind.Deviation, double.NaN, input.Unit ?? string.Empty, ResultStatus.Error)],
+                [new Metric("Mean", MetricKind.Deviation, double.NaN, unit ?? string.Empty, ResultStatus.Error)],
                 []),
             null,
             double.NaN,
@@ -115,8 +176,8 @@ public static class DualSurfaceThicknessRule
             double.NaN,
             double.NaN,
             double.NaN,
-            input.ReferenceSamples?.Count ?? 0,
-            input.MeasurementSamples?.Count ?? 0,
+            referenceSampleCount,
+            measurementSampleCount,
             0,
             0);
 }

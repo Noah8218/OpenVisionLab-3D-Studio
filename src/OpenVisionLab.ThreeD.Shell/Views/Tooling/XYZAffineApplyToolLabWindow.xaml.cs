@@ -1,7 +1,9 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -13,7 +15,13 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
     private readonly object refreshViewsOperationGate = new();
     private DispatcherOperation? refreshViewsOperation;
-    private string displayedSourcePath = string.Empty;
+    private bool refreshSourceRequested;
+    private LoadedSourceDisplay? displayedSource;
+
+    private sealed record SourceDisplayInput(string Path, string EntityId, string Format,
+        string Unit, string FrameId, ToolRecipeSelectionSourceBinding? Binding,
+        long Length, long LastWriteTicks);
+    private sealed record LoadedSourceDisplay(SourceDisplayInput Input, ToolRecipeSelectionSourceBinding Binding);
 
     public XYZAffineApplyToolLabWindow(
         ToolWorkbenchViewModel workbench,
@@ -28,19 +36,73 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
         OwnViewer(sourceViewer);
         OwnViewer(outputViewer);
         Workbench.PropertyChanged += OnWorkbenchPropertyChanged;
+        Workbench.Source.PropertyChanged += OnSourcePropertyChanged;
+        Workbench.CompareCandidates.CollectionChanged += OnCompareCandidatesChanged;
+        Workbench.ArtifactRegistry.CollectionChanged += OnCompareCandidatesChanged;
     }
 
     public override void RefreshViews()
     {
-        if (!HasSourcePath(Workbench.Source.Path)) return;
-        var sourcePath = Path.GetFullPath(Workbench.Source.Path);
-        if (!string.Equals(displayedSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
-        {
-            sourceViewer.ShowC3DWorkbenchResult(sourcePath, Workbench.Localization.Resolve(
-                "ThreeD.ToolLab.AffineApply.SourceStatus", "원본 높이 데이터 · 열/원시 높이/행", "Raw height data · column/raw height/row"));
-            displayedSourcePath = sourcePath;
-        }
+        if (IsDisposed) return;
+        RefreshSourceViewer(forceReload: true);
         UpdateOutputViewer();
+    }
+
+    private void RefreshSourceViewer(bool forceReload = false)
+    {
+        if (IsDisposed) return;
+        if (!TryCaptureSourceInput(out var input))
+        {
+            ClearSourceViewer();
+            return;
+        }
+        var cacheHit = !forceReload && displayedSource is { } previous && previous.Input == input
+            && sourceViewer.TryGetCurrentC3DSourceBinding(input.Path, out var currentBinding)
+            && currentBinding == previous.Binding;
+        if (!cacheHit)
+        {
+            displayedSource = null;
+            var loaded = sourceViewer.ShowC3DWorkbenchResult(input.Path, Workbench.Localization.Resolve(
+                "ThreeD.ToolLab.AffineApply.SourceStatus", "원본 높이 데이터 · 열/원시 높이/행", "Raw height data · column/raw height/row"));
+            if (!loaded || !sourceViewer.TryGetCurrentC3DSourceBinding(input.Path, out var binding)
+                || binding.ContentSha256.Length != 64
+                || !TryCaptureSourceInput(out var afterLoad) || afterLoad != input
+                || input.Binding is { } admitted
+                    && (!string.Equals(admitted.ContentSha256, binding.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                        || admitted.GridWidth != binding.GridWidth || admitted.GridHeight != binding.GridHeight))
+            {
+                ClearSourceViewer();
+                return;
+            }
+            displayedSource = new(input, binding);
+        }
+        SourceViewerHost.Content = sourceViewer;
+    }
+
+    private bool TryCaptureSourceInput(out SourceDisplayInput input)
+    {
+        input = null!;
+        try
+        {
+            var path = Path.GetFullPath(Workbench.Source.Path);
+            var file = new FileInfo(path);
+            if (!file.Exists) return false;
+            input = new(path, Workbench.Source.Id, Workbench.Source.Format, Workbench.Source.Unit,
+                Workbench.Source.FrameId, Workbench.SourceSession.SourceBinding, file.Length, file.LastWriteTimeUtc.Ticks);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private void ClearSourceViewer()
+    {
+        displayedSource = null;
+        if (sourceViewer.CurrentC3DSourcePath is not null)
+            sourceViewer.ClearC3DTeachingSource(Workbench.Localization.ViewerAuxiliaryNoOutput);
+        SourceViewerHost.Content = null;
     }
 
     private void UpdateOutputViewer()
@@ -72,6 +134,23 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
         {
             QueueRefreshViews();
         }
+        else if (args.PropertyName == nameof(ToolWorkbenchViewModel.SourceContextSummary))
+        {
+            QueueSourceRefreshViews();
+        }
+    }
+
+    private void OnSourcePropertyChanged(object? sender, PropertyChangedEventArgs args) =>
+        QueueSourceRefreshViews();
+
+    private void OnCompareCandidatesChanged(object? sender, NotifyCollectionChangedEventArgs args) =>
+        QueueSourceRefreshViews();
+
+    private void QueueSourceRefreshViews()
+    {
+        if (IsDisposed) return;
+        lock (refreshViewsOperationGate) refreshSourceRequested = true;
+        QueueRefreshViews();
     }
 
     private void QueueRefreshViews()
@@ -103,13 +182,17 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
 
     private void RefreshViewsFromDispatcher()
     {
+        bool refreshSource;
         lock (refreshViewsOperationGate)
         {
             refreshViewsOperation = null;
+            refreshSource = refreshSourceRequested;
+            refreshSourceRequested = false;
         }
 
         if (!IsDisposed)
         {
+            if (refreshSource) RefreshSourceViewer();
             UpdateOutputViewer();
         }
     }
@@ -121,6 +204,7 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
         {
             operation = refreshViewsOperation;
             refreshViewsOperation = null;
+            refreshSourceRequested = false;
         }
 
         if (operation?.Status == DispatcherOperationStatus.Pending)
@@ -133,8 +217,14 @@ public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
 
     public override void Dispose()
     {
+        if (IsDisposed) return;
         CancelPendingRefreshViews();
         Workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+        Workbench.Source.PropertyChanged -= OnSourcePropertyChanged;
+        Workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
+        Workbench.ArtifactRegistry.CollectionChanged -= OnCompareCandidatesChanged;
+        displayedSource = null;
+        SourceViewerHost.Content = null;
         base.Dispose();
     }
 }

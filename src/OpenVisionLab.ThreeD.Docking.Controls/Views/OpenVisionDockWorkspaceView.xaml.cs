@@ -1445,6 +1445,11 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             return;
         }
 
+        var activeSupport = operatorStage == OpenVisionOperatorStage.Validate
+            ? ValidationPaneAnchorables.FirstOrDefault(anchorable => anchorable.IsActive
+                && string.Equals(anchorable.ContentId, ValidationVisibleSupportContentId, StringComparison.Ordinal)
+                && ReferenceEquals(anchorable.Parent, evidencePane))
+            : null;
         isCompactLayout = useCompactLayout;
         ApplyAdaptiveAuthoringTitles();
         RestoreAnchorableOwners();
@@ -1471,6 +1476,10 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
         ApplyBottomPanePresentation();
         ApplyOutputCompareResultsVisibility();
+        if (activeSupport is not null && ReferenceEquals(activeSupport.Parent, evidencePane))
+        {
+            activeSupport.IsActive = true;
+        }
     }
 
     private void ApplyOutputCompareDisplayedOutputsVisibility()
@@ -1726,6 +1735,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             : resultHeight / Math.Max(1, ActualHeight - workspaceDockingManager.GridSplitterHeight - resultHeight), GridUnitType.Star);
     }
 
+    private void SelectValidationSupportPane()
+    {
+        var requested = ValidationPaneAnchorables.FirstOrDefault(anchorable =>
+            string.Equals(anchorable.ContentId, ValidationVisibleSupportContentId, StringComparison.Ordinal)
+            && ReferenceEquals(anchorable.Parent, evidencePane));
+        (requested ?? evidenceAnchorable).IsSelected = true;
+    }
     private void ComposeValidateStage(bool compact)
     {
         if (IsRecipeValidationWorkspace)
@@ -1744,7 +1760,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             evidencePane.DockMinHeight = 200;
             evidencePane.DockHeight = new GridLength(1, GridUnitType.Star);
             dataLayersAnchorable.IsSelected = true;
-            evidenceAnchorable.IsSelected = true;
+            SelectValidationSupportPane();
             viewerAnchorable.IsSelected = true;
             return;
         }
@@ -1766,7 +1782,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         primaryPane.DockHeight = new GridLength(1, GridUnitType.Star);
         resultsPane.DockHeight = new GridLength(inspectionResultHeight
             / Math.Max(1, ActualHeight - inspectionResultHeight - workspaceDockingManager.GridSplitterHeight), GridUnitType.Star);
-        evidenceAnchorable.IsSelected = true;
+        SelectValidationSupportPane();
         resultsAnchorable.IsSelected = true;
         viewerAnchorable.IsSelected = true;
     }

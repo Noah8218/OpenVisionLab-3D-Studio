@@ -149,6 +149,10 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl, IDisposable
         {
             outputCompare.Dispose();
         }
+        if (DockWorkspace.LinkedViewContent is RunLogView runLog)
+        {
+            runLog.Dispose();
+        }
         if (DockWorkspace.ProfileContent is HeightProfileView profileView)
         {
             profileView.Dispose();

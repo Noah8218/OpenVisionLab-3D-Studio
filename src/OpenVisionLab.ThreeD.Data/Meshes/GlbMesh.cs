@@ -11,6 +11,8 @@ public sealed class ImportedMesh
     private const int MaximumAccessorElementCount = 3_000_000;
     private const int MaximumIndexCount = 3_000_000;
     private const int MaximumEmbeddedTextureBytes = 256 * 1024 * 1024;
+    // Bound software traversal work even when reused or meshless nodes add no geometry.
+    private const int MaximumSceneNodeVisitCount = 1_000_000;
 
     private ImportedMesh(
         string sourcePath,
@@ -185,6 +187,7 @@ public sealed class ImportedMesh
                 var scene = scenes[sceneIndex];
                 if (scene.TryGetProperty("nodes", out var sceneNodes))
                 {
+                    var sceneNodeVisitCount = 0;
                     foreach (var nodeElement in sceneNodes.EnumerateArray())
                     {
                         AppendNodeMeshes(
@@ -202,6 +205,7 @@ public sealed class ImportedMesh
                             textureCoordinates,
                             ref keepTextureCoordinates,
                             ref texture,
+                            ref sceneNodeVisitCount,
                             cancellationToken);
                     }
                 }
@@ -350,59 +354,83 @@ public sealed class ImportedMesh
         List<Vector2> textureCoordinates,
         ref bool keepTextureCoordinates,
         ref GlbTextureImage? texture,
+        ref int sceneNodeVisitCount,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var node = root.GetProperty("nodes")[nodeIndex];
-        var nodeTransform = ReadNodeTransform(node) * parentTransform;
-        if (node.TryGetProperty("mesh", out var meshElement))
-        {
-            foreach (var instanceTransform in ReadInstanceTransforms(root, binary.Span, node, nodeTransform, cancellationToken))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                AppendMeshPrimitives(
-                    root,
-                    binary,
-                    path,
-                    meshElement.GetInt32(),
-                    instanceTransform,
-                    positions,
-                    indices,
-                    normals,
-                    normalPresence,
-                    vertexColors,
-                    ref keepVertexColors,
-                    textureCoordinates,
-                    ref keepTextureCoordinates,
-                    ref texture,
-                    cancellationToken);
-            }
-        }
-
-        if (!node.TryGetProperty("children", out var children))
-        {
-            return;
-        }
-
-        foreach (var childElement in children.EnumerateArray())
+        var nodes = root.GetProperty("nodes");
+        var nodeCount = nodes.GetArrayLength();
+        var activePath = new HashSet<int>();
+        var pending = new Stack<(int NodeIndex, Matrix4x4 ParentTransform, bool IsExit)>();
+        pending.Push((nodeIndex, parentTransform, false));
+        var queuedNodeCount = 1;
+        while (pending.TryPop(out var current))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            AppendNodeMeshes(
-                root,
-                binary,
-                path,
-                childElement.GetInt32(),
-                nodeTransform,
-                positions,
-                indices,
-                normals,
-                normalPresence,
-                vertexColors,
-                ref keepVertexColors,
-                textureCoordinates,
-                ref keepTextureCoordinates,
-                ref texture,
-                cancellationToken);
+            if (current.IsExit)
+            {
+                activePath.Remove(current.NodeIndex);
+                continue;
+            }
+
+            queuedNodeCount--;
+            if (current.NodeIndex < 0 || current.NodeIndex >= nodeCount)
+            {
+                throw new InvalidDataException($"GLB scene node index is outside the node range: {path}");
+            }
+            if (sceneNodeVisitCount >= MaximumSceneNodeVisitCount)
+            {
+                throw new InvalidDataException($"GLB scene traversal exceeds the supported limit of {MaximumSceneNodeVisitCount:N0} node visits: {path}");
+            }
+            sceneNodeVisitCount++;
+            if (!activePath.Add(current.NodeIndex))
+            {
+                throw new InvalidDataException($"GLB scene graph contains a node cycle: {path}");
+            }
+
+            var node = nodes[current.NodeIndex];
+            var nodeTransform = ReadNodeTransform(node) * current.ParentTransform;
+            if (node.TryGetProperty("mesh", out var meshElement))
+            {
+                foreach (var instanceTransform in ReadInstanceTransforms(root, binary.Span, node, nodeTransform, cancellationToken))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    AppendMeshPrimitives(
+                        root,
+                        binary,
+                        path,
+                        meshElement.GetInt32(),
+                        instanceTransform,
+                        positions,
+                        indices,
+                        normals,
+                        normalPresence,
+                        vertexColors,
+                        ref keepVertexColors,
+                        textureCoordinates,
+                        ref keepTextureCoordinates,
+                        ref texture,
+                        cancellationToken);
+                }
+            }
+
+            pending.Push((current.NodeIndex, default, true));
+            if (!node.TryGetProperty("children", out var children))
+            {
+                continue;
+            }
+
+            var childCount = children.GetArrayLength();
+            if (childCount > MaximumSceneNodeVisitCount - sceneNodeVisitCount - queuedNodeCount)
+            {
+                throw new InvalidDataException($"GLB scene traversal exceeds the supported limit of {MaximumSceneNodeVisitCount:N0} node visits: {path}");
+            }
+            // Reverse pushing preserves the original depth-first child and mesh order.
+            for (var childIndex = childCount - 1; childIndex >= 0; childIndex--)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                pending.Push((children[childIndex].GetInt32(), nodeTransform, false));
+            }
+            queuedNodeCount += childCount;
         }
     }
 
@@ -453,6 +481,15 @@ public sealed class ImportedMesh
                 throw new InvalidDataException($"GLB mesh has no complete triangles: {path}");
             }
 
+            foreach (var index in primitiveIndices)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (index < 0 || index >= primitivePositions.Length)
+                {
+                    throw new InvalidDataException($"GLB primitive index is outside its POSITION accessor range: {path}");
+                }
+            }
+
             if (primitiveVertexColors.Length > 0 && primitiveVertexColors.Length != primitivePositions.Length)
             {
                 throw new InvalidDataException($"GLB COLOR_0 count must match POSITION count: {path}");
@@ -486,7 +523,7 @@ public sealed class ImportedMesh
             foreach (var index in primitiveIndices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                indices.Add(vertexOffset + index);
+                indices.Add(checked(vertexOffset + index));
             }
 
             AppendTransformedNormals(

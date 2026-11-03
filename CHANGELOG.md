@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1-dev - 2026-11-03
+
+- Improve cancellation and stale-result handling, input/resource cleanup, and bounded log, Run Record and threshold-analysis processing without changing established measurement formulas.
+- Update the pinned SDK integration and its verifier contracts; preserve public Viewer/Host boundaries and existing failure checks.
+- Refresh the synthetic inspection media. Dock-menu return and four distinct large-origin LAS picks remain unconfirmed. This development source delivery does not claim full audit, installation compatibility or physical measurement acceptance.
+
 ## 0.8.0-dev — 2026-10-30
 
 - Added nine-point surface compensation and exact downstream Warpage/Thickness height-map inputs.

@@ -37,7 +37,7 @@ internal sealed class ShellIntegrationExchangeExeSmokeReport
     public string Status { get; init; } = string.Empty;
     public required IReadOnlyDictionary<string, bool> Checks { get; init; }
     public required IReadOnlyList<string> Failures { get; init; }
-    public bool IsValid => Failures.Count == 0 && Checks.Values.All(value => value);
+    public bool IsValid => Failures.Count == 0 && Checks.Count > 0 && Checks.Values.All(value => value);
 
     public void Save(string path)
     {
@@ -416,7 +416,7 @@ internal static class ShellIntegrationExchangeExeSmoke
                 Check("reopenResultFileUnchanged", resultHashBeforeHold == resultHashAfterHold);
                 status = "Existing Result reopened read-only; no Accept, Run, Publish, or Push was executed.";
                 return new(
-                    failures.Count == 0 && checks.Values.All(value => value),
+                    failures.Count == 0 && checks.Count > 0 && checks.Values.All(value => value),
                     failures.Count == 0 ? null : string.Join("; ", failures));
             }
 
@@ -456,7 +456,7 @@ internal static class ShellIntegrationExchangeExeSmoke
                     restartBoundaryReached = true;
                     status = "ACK published; consumer exited before inspection for peer-restart recovery.";
                     return new(
-                        failures.Count == 0 && checks.Values.All(value => value),
+                        failures.Count == 0 && checks.Count > 0 && checks.Values.All(value => value),
                         failures.Count == 0 ? null : string.Join("; ", failures));
                 }
 
@@ -611,6 +611,7 @@ internal static class ShellIntegrationExchangeExeSmoke
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            Check("shellLifetimeNotCanceled", false);
             status = "Integration EXE Smoke canceled by Shell lifetime.";
         }
         catch (Exception exception)
@@ -648,7 +649,7 @@ internal static class ShellIntegrationExchangeExeSmoke
         }
 
         return new(
-            failures.Count == 0 && checks.Values.All(value => value),
+            failures.Count == 0 && checks.Count > 0 && checks.Values.All(value => value),
             failures.Count == 0 ? null : string.Join("; ", failures));
     }
 

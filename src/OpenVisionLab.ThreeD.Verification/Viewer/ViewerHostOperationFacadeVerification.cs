@@ -8,6 +8,10 @@ namespace OpenVisionLab.ThreeD.Verification.Viewer;
 internal static class ViewerHostOperationFacadeVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
 
@@ -60,6 +64,8 @@ internal static class ViewerHostOperationFacadeVerification
                 "camera capture stays a presentation snapshot",
                 capturedState.IsValid,
                 capturedState.ToString());
+
+            stageCompleted?.Invoke("facade-first-camera-check");
 
             var updatedState = capturedState with { YawDegrees = capturedState.YawDegrees + 7.0 };
             var applied = facade.TryApplyCameraState(updatedState);
@@ -192,7 +198,7 @@ internal static class ViewerHostOperationFacadeVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | verifier exception | {exception.GetType().Name}: {exception.Message}");
+            Check("verifier exception", false, exception.ToString());
         }
 
         var succeeded = passed == total && total > 0;

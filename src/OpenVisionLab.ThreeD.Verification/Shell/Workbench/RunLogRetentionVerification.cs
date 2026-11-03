@@ -9,6 +9,10 @@ namespace OpenVisionLab.ThreeD.Verification.Shell.Workbench;
 internal static class RunLogRetentionVerification
 {
     public static bool Verify(string reportPath, out string summary)
+        => VerifyWithStageObserver(reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string reportPath, out string summary, Action<string>? stageCompleted)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         var lines = new List<string>
@@ -46,6 +50,7 @@ internal static class RunLogRetentionVerification
                 && directOwner.Entries[0].Category == "Owner"
                 && directOwner.Entries[0].Message == "direct-owner-boundary",
                 $"entries={directOwner.Entries.Count};category={directOwner.Entries[0].Category};message={directOwner.Entries[0].Message}");
+            stageCompleted?.Invoke("run-log-first-check");
             directOwner.Append("Run", "PASS / NG / Error in an ordinary message");
             Check("Activity does not infer execution from category or text", directOwner.ExecutionEntries.Count == 0 && directOwner.Entries.Count == 2, "Raw Run category is not an execution event.");
             foreach (var status in new[] { ResultStatus.Pass, ResultStatus.Fail, ResultStatus.Warning, ResultStatus.Error })
@@ -133,12 +138,34 @@ internal static class RunLogRetentionVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | unexpected exception | {exception.GetType().Name}: {exception.Message}");
+            Check("unexpected exception", false, exception.ToString());
         }
         finally
         {
-            ownedWorkbench?.Dispose();
-            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            try
+            {
+                if (ownedWorkbench is not null)
+                {
+                    ownedWorkbench.Dispose();
+                    stageCompleted?.Invoke("run-log-owned-workbench-disposed");
+                }
+            }
+            catch (Exception exception)
+            {
+                Check("owner cleanup", false, exception.ToString());
+            }
+            finally
+            {
+                try
+                {
+                    OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+                    stageCompleted?.Invoke("run-log-language-restored");
+                }
+                catch (Exception exception)
+                {
+                    Check("language restore", false, exception.ToString());
+                }
+            }
         }
 
         var directory = Path.GetDirectoryName(reportPath);

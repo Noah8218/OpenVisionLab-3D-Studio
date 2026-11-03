@@ -182,7 +182,7 @@
                     <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.Studio.ResultsMenu, Korean='_기록', English='_Records'}">
                         <MenuItem Header="{Binding Localization.ResultsWorkspaceTitle}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Review}" />
                         <MenuItem Header="{Binding Localization.RunRecordOpen}" Command="{Binding SelectRunRecordCommand}" />
-                        <MenuItem Header="{Binding Localization.RunRecordExportCsv}" Command="{Binding ExportRunRecordCommand}" />
+                        <MenuItem Header="{Binding Localization.RunRecordExport}" Command="{Binding ExportRunRecordCommand}" />
                     </MenuItem>
                     <MenuItem Style="{StaticResource R19TopMenuItemStyle}" Header="{app:ThreeDText Key=ThreeD.R19.ViewMenu, Korean='_보기', English='_View'}">
                         <MenuItem Header="{Binding Localization.ResultsWorkspaceTitle}" Command="{Binding SelectWorkspaceCommand}" CommandParameter="{x:Static app:ShellWorkspaceMode.Review}" />

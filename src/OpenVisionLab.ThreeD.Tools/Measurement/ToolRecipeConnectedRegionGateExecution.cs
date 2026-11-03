@@ -166,24 +166,33 @@ public static class ToolRecipeConnectedRegionGateExecution
         string? recipeDirectory,
         CancellationToken cancellationToken)
     {
-        if (publishedRawSource is not null)
-        {
-            if (!string.Equals(publishedRawSource.EntityId, document.Source.Id, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidDataException("Connected Region Coverage/Height Gate raw source identity does not match the recipe source.");
-            }
-
-            return publishedRawSource;
-        }
-
         var source = document.Source;
-        if (!string.Equals(step.InputEntityIds[0], source.Id, StringComparison.OrdinalIgnoreCase)
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(step.InputEntityIds[0], source.Id, StringComparison.OrdinalIgnoreCase)
             || source.ByteLength is not { } byteLength
             || string.IsNullOrWhiteSpace(source.ContentSha256)
             || source.GridWidth is not { } width
             || source.GridHeight is not { } height)
         {
             throw new InvalidDataException("Connected Region Coverage/Height Gate requires a complete recipe-bound raw C3D source identity.");
+        }
+
+        if (publishedRawSource is not null)
+        {
+            if (publishedRawSource.IsDerived
+                || !string.Equals(publishedRawSource.EntityId, source.Id, StringComparison.OrdinalIgnoreCase)
+                || publishedRawSource.ByteLength != byteLength
+                || !string.Equals(publishedRawSource.ContentSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(publishedRawSource.RootSourceSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                || publishedRawSource.Width != width
+                || publishedRawSource.Height != height
+                || !string.Equals(publishedRawSource.Unit, source.Unit, StringComparison.Ordinal)
+                || !string.Equals(publishedRawSource.FrameId, source.FrameId, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Connected Region Coverage/Height Gate raw source identity does not match the recipe source.");
+            }
+
+            return publishedRawSource;
         }
 
         var path = Path.IsPathFullyQualified(source.Path)

@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="OpenVisionLab.Vision2D" Version="[3.0.1-dev.20260823.grid-diagnostics.1]" />
-    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.3.0-dev.20261029.nine-point-compensation.1]" />
+    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.3.0-rc.1.integration.20261102.138]" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
   </ItemGroup>

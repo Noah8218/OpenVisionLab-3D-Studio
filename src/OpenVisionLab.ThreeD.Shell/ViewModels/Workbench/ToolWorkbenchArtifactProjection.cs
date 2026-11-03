@@ -162,7 +162,8 @@ internal sealed class ToolWorkbenchArtifactProjection
         if (snapshot.ProjectOrderedArtifact?.Invoke(step) is { } ordered) return ordered;
 
         if (string.Equals(step.ToolId, "roi-crop", StringComparison.Ordinal)
-            && snapshot.RoiCrop.Output is { } cropOutput)
+            && snapshot.RoiCrop.Output is { } cropOutput
+            && string.Equals(cropOutput.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 cropOutput,
@@ -209,7 +210,8 @@ internal sealed class ToolWorkbenchArtifactProjection
 
         if (string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal)
             && snapshot.LevelSurface.Output is { } leveledOutput
-            && snapshot.LevelSurface.Transform is { } levelingTransform)
+            && snapshot.LevelSurface.Transform is { } levelingTransform
+            && string.Equals(leveledOutput.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 leveledOutput,
@@ -422,7 +424,8 @@ internal sealed class ToolWorkbenchArtifactProjection
                 "remove-outlier-pixels",
                 StringComparison.Ordinal)
             && snapshot.RemoveOutlier.Output is { } outlierOutput
-            && snapshot.RemoveOutlier.Mask is { } outlierMask)
+            && snapshot.RemoveOutlier.Mask is { } outlierMask
+            && string.Equals(outlierOutput.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 outlierOutput,
@@ -464,7 +467,8 @@ internal sealed class ToolWorkbenchArtifactProjection
                 "height-threshold-background-removal",
                 StringComparison.Ordinal)
             && snapshot.HeightThreshold.Output is { } thresholdOutput
-            && snapshot.HeightThreshold.Evidence is { } thresholdEvidence)
+            && snapshot.HeightThreshold.Evidence is { } thresholdEvidence
+            && string.Equals(thresholdOutput.EntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             var qualityDelta = snapshot.CreateSourceQualityDelta(
                 thresholdOutput,

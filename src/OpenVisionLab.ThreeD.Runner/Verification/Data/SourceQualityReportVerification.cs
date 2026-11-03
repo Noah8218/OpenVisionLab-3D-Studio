@@ -12,7 +12,9 @@ internal static class SourceQualityReportVerification
     private const string ExpectedLegacyReportSha256 =
         "E2176611372E01F26A8208A9C7C09154209A8DB50BA4774A1F4DA6670B9F82A2";
 
-    public static int Run(string reportPath)
+    public static int Run(string reportPath) => RunWithStageObserver(reportPath, null);
+
+    internal static int RunWithStageObserver(string reportPath, Action<string>? stageCompleted)
     {
         var source = C3DHeightFieldSnapshot.CreateForVerification(
             "source.quality-fixture",
@@ -52,10 +54,16 @@ internal static class SourceQualityReportVerification
             }
         };
         var fullReportPath = Path.GetFullPath(reportPath);
-        var artifactDirectory = Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory;
-        Directory.CreateDirectory(artifactDirectory);
-
-        var cases = new[]
+        var reportDirectory = Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory;
+        Directory.CreateDirectory(reportDirectory);
+        var ownedFixtureDirectory = Directory.CreateTempSubdirectory("ovl-source-quality-");
+        var artifactDirectory = ownedFixtureDirectory.FullName;
+        Exception? cleanupFailure = null;
+        VerificationCase[] cases;
+        try
+        {
+        stageCompleted?.Invoke("source-quality-fixture-directory-created");
+        cases = new[]
         {
             Check("atomic-json-output", () =>
             {
@@ -595,9 +603,18 @@ internal static class SourceQualityReportVerification
                     C3DSourceTopologyReason.CellCountOverflow))
         };
 
+        }
+        finally
+        {
+            try { DeleteOwnedFixtureDirectory(ownedFixtureDirectory); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            { cleanupFailure = exception; }
+        }
+        if (cleanupFailure is not null)
+            cases = [..cases, new VerificationCase("fixture-directory cleanup", false, cleanupFailure.ToString())];
         var passedCount = cases.Count(item => item.Passed);
-        var status = passedCount == cases.Length ? "Pass" : "Fail";
-        var jsonPath = Path.Combine(artifactDirectory, "source-quality-report.json");
+        var status = cases.Length > 0 && passedCount == cases.Length ? "Pass" : "Fail";
+        var jsonPath = Path.Combine(reportDirectory, "source-quality-report.json");
         File.WriteAllText(jsonPath, json);
         File.WriteAllLines(
             fullReportPath,
@@ -608,7 +625,7 @@ internal static class SourceQualityReportVerification
                 ..cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}")
             ]);
         Console.WriteLine($"SourceQualityReport verification: {status} ({passedCount}/{cases.Length})");
-        return passedCount == cases.Length ? 0 : 5;
+        return cases.Length > 0 && passedCount == cases.Length ? 0 : 5;
     }
 
     private static bool VerifyDiagnosticPayloadContract(
@@ -725,6 +742,17 @@ internal static class SourceQualityReportVerification
             && extraUniqueLocatorDiagnostics.Checks[2].State
                 == SourceQualityGridDiagnosticState.Pass
             && extraUniqueLocatorReport.TryValidateGridDiagnostics(out _);
+    }
+
+    private static void DeleteOwnedFixtureDirectory(DirectoryInfo directory)
+    {
+        var resolved = Path.GetFullPath(directory.FullName);
+        var temporaryRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+        if (!string.Equals(Path.GetDirectoryName(resolved), temporaryRoot, StringComparison.OrdinalIgnoreCase)
+            || !Path.GetFileName(resolved).StartsWith("ovl-source-quality-", StringComparison.Ordinal)
+            || (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            throw new IOException("Verifier fixture directory no longer matches its owned temporary root.");
+        Directory.Delete(resolved, recursive: true);
     }
 
     private static bool RejectsMalformedC3D(

@@ -34,9 +34,7 @@ public sealed record C3DThicknessRecipe(
     public void Save(string path)
     {
         Validate(this);
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        using var stream = File.Create(path);
-        JsonSerializer.Serialize(stream, this, JsonOptions);
+        LegacyRecipeJsonStore.Save(path, this, JsonOptions);
     }
 
     private static void Validate(C3DThicknessRecipe recipe)

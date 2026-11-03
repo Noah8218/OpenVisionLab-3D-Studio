@@ -275,9 +275,28 @@ The package quick-start source is available at
 
 - [Contributor rules and versioning](AGENTS.md)
 
-Current version: `v0.8.0-dev` · [Changelog](CHANGELOG.md)
+Current version: `v0.8.1-dev` · [Changelog](CHANGELOG.md)
+
+## Synthetic inspection examples
+
+These captures use synthetic height maps. Textures show appearance; measurements
+come from the height data. They do not establish sensor accuracy or LAS picking.
+
+![Tool selection and inspection results on synthetic input](docs/assets/openvisionlab-3d-tools.gif)
+
+![Warpage inspection on a synthetic height map](docs/assets/openvisionlab-3d-warpage.gif)
+
+![Thickness inspection with nine result labels](docs/assets/openvisionlab-3d-thickness.gif)
+
+![Textured synthetic inspection in the Wide layout](docs/assets/openvisionlab-3d-texture-wide.png)
+
+![Textured synthetic inspection in the Compact layout](docs/assets/openvisionlab-3d-texture-compact.png)
 
 ## Status and limitations
+
+- The latest hosted Workbench checks fail in docking/render cleanup, threshold-candidate review and one initial property-editor caption. Cause classification is still in progress; this snapshot is not fully CI-qualified.
+
+- Final native confirmation of Dock-menu return and four distinct picks in large-origin LAS is still pending. Completed computation and media checks do not establish those two behaviors.
 
 - This version is a development source snapshot, not a production qualification. Tags, releases and deployment have separate approval steps.
 - Measurement units follow the input data; the bundled example declares `raw-height` units and is not a calibrated camera capture.

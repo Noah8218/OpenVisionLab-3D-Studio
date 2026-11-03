@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Diagnostics;
 using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
@@ -38,40 +39,45 @@ public static class PlaneFlatnessRule
     public const string ToolName = "C3D Plane Flatness";
 
     public static PlaneFlatnessEvaluation Evaluate(PlaneFlatnessRuleInput input)
+        => Evaluate(input, CancellationToken.None);
+
+    public static PlaneFlatnessEvaluation Evaluate(PlaneFlatnessRuleInput input, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(input);
         var stopwatch = Stopwatch.StartNew();
 
         if (string.IsNullOrWhiteSpace(input.SourceEntityId))
         {
-            return Error(input, "Source entity ID is required.", stopwatch.Elapsed);
+            return Complete(Error(input, "Source entity ID is required.", stopwatch.Elapsed), cancellationToken);
         }
 
         if (string.IsNullOrWhiteSpace(input.Unit))
         {
-            return Error(input, "Flatness unit is required.", stopwatch.Elapsed);
+            return Complete(Error(input, "Flatness unit is required.", stopwatch.Elapsed), cancellationToken);
         }
 
         if (!double.IsFinite(input.Tolerance) || input.Tolerance <= 0.0)
         {
-            return Error(input, "Flatness tolerance must be a positive finite value.", stopwatch.Elapsed);
+            return Complete(Error(input, "Flatness tolerance must be a positive finite value.", stopwatch.Elapsed), cancellationToken);
         }
 
         if (input.ReferenceSamples is null || input.ReferenceSamples.Count < 3)
         {
-            return Error(input, "Reference ROI must contain at least three finite samples.", stopwatch.Elapsed);
+            return Complete(Error(input, "Reference ROI must contain at least three finite samples.", stopwatch.Elapsed), cancellationToken);
         }
 
         if (input.MeasurementSamples is null || input.MeasurementSamples.Count < 3)
         {
-            return Error(input, "Measurement surface must contain at least three finite samples.", stopwatch.Elapsed);
+            return Complete(Error(input, "Measurement surface must contain at least three finite samples.", stopwatch.Elapsed), cancellationToken);
         }
 
         foreach (var sample in input.MeasurementSamples)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsFinite(sample))
             {
-                return Error(input, "Measurement surface contains a non-finite sample.", stopwatch.Elapsed);
+                return Complete(Error(input, "Measurement surface contains a non-finite sample.", stopwatch.Elapsed), cancellationToken);
             }
         }
 
@@ -79,13 +85,13 @@ public static class PlaneFlatnessRule
         try
         {
             evaluation = new SdkFlatnessTool().Execute(
-                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
-                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
-                input.Tolerance);
+                ToSdkSamples(input.ReferenceSamples, cancellationToken),
+                ToSdkSamples(input.MeasurementSamples, cancellationToken),
+                input.Tolerance, cancellationToken);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
-            return Error(input, exception.Message, stopwatch.Elapsed);
+            return Complete(Error(input, exception.Message, stopwatch.Elapsed), cancellationToken);
         }
 
         var referencePlane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
@@ -117,7 +123,7 @@ public static class PlaneFlatnessRule
                 new Overlay("overlay.c3d-flatness-extrema", OverlayKind.Marker, "Minimum and maximum signed deviation", status, input.SourceEntityId)
             ]);
 
-        return new PlaneFlatnessEvaluation(
+        return Complete(new PlaneFlatnessEvaluation(
             result,
             referencePlane,
             input.ReferenceSamples.Count,
@@ -129,7 +135,26 @@ public static class PlaneFlatnessRule
             HeightFieldPlaneFit.ToVector3(evaluation.MinimumPoint),
             HeightFieldPlaneFit.ToVector3(evaluation.MaximumPoint),
             HeightFieldPlaneFit.ToVector3(evaluation.MinimumProjection),
-            HeightFieldPlaneFit.ToVector3(evaluation.MaximumProjection));
+            HeightFieldPlaneFit.ToVector3(evaluation.MaximumProjection)), cancellationToken);
+    }
+
+    private static PlaneFlatnessEvaluation Complete(PlaneFlatnessEvaluation result, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    private static OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample[]? ToSdkSamples(IReadOnlyList<HeightFieldPlaneSample>? samples, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (samples is null) return null;
+        var result = samples.Select(sample =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return HeightFieldPlaneFit.ToSdkSample(sample);
+        }).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
     }
 
     private static PlaneFlatnessEvaluation Error(PlaneFlatnessRuleInput input, string message, TimeSpan elapsed)

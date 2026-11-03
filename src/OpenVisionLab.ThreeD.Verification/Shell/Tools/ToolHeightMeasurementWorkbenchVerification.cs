@@ -1,4 +1,5 @@
 using System.IO;
+using OpenVisionLab.ThreeD.Verification.Viewer;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -20,6 +21,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
         var lines = new List<string> { "Generic height measurement Workbench verification" };
         var passed = 0;
         var total = 0;
+        var retainFixture = false;
         var root = Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", nameof(ToolHeightMeasurementWorkbenchVerification), Guid.NewGuid().ToString("N"));
         void Check(string name, bool condition, string detail)
         {
@@ -1363,13 +1365,16 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && persistedLog.Contains("role=measurement", StringComparison.Ordinal),
                 allLog ?? "no ALL log");
         }
+        catch (HealthRenderingIncompleteException)
+        { retainFixture = true; throw; }
         catch (Exception exception)
         {
             lines.Add($"FAIL | unexpected exception | {exception.GetType().Name}: {exception.Message}");
         }
         finally
         {
-            try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
+            if (!retainFixture)
+            try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch (Exception cleanupException) { Check("fixture cleanup", false, cleanupException.ToString()); }
         }
 
         var success = total > 0 && passed == total && !lines.Any(line => line.StartsWith("FAIL | unexpected", StringComparison.Ordinal));
@@ -1621,22 +1626,213 @@ internal static class ToolHeightMeasurementWorkbenchVerification
     }
 
 
+    internal sealed record HealthRenderingResult(bool Passed, string Detail, bool RectangleInputPassed, string RectangleInputDetail);
+    private sealed class HealthRenderingState
+    {
+        internal HealthRenderingResult Result = new(false, "STA rendering did not complete.", false, "STA binding verification did not complete.");
+    }
+    internal sealed record HealthApplicationObservation(
+        bool Owned, bool Initialized, bool ProcessingPausedDuringBody, bool ShutdownRequestedBeforeResume,
+        bool ProcessingResumed, bool StartupUriPreserved, string? OriginalStartupUri, int StartupEvents, int ExitEvents,
+        int CreatedThreadId, int ReleaseThreadId, bool ReleaseAttempted, bool ApplicationReleased,
+        bool NoOwnedWindows, bool CleanupTimerStopped);
+    internal sealed record HealthRenderingLifetimeResult(
+        HealthRenderingResult Result, VerificationStaObservation Sta, HealthApplicationObservation Application);
+
+    private sealed class HealthApplicationOwner(TimeSpan cleanupTimeout, Action<string, CancellationToken>? lifecycleStage)
+    {
+        private readonly System.Windows.Threading.Dispatcher dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        private readonly int createdThreadId = Environment.CurrentManagedThreadId;
+        private System.Windows.Threading.DispatcherProcessingDisabled processingScope;
+        private App? application;
+        private Uri? originalStartupUri;
+        private bool initialized, processingActive, processingPausedDuringBody, processingResumed, shutdownRequestedBeforeResume,
+            startupUriPreserved, releaseAttempted, applicationReleased, noOwnedWindows = true, cleanupTimerStopped = true;
+        private int startupEvents, exitEvents, releaseThreadId;
+        private System.Windows.Threading.DispatcherFrame? exitFrame;
+
+        internal void Initialize()
+        {
+            dispatcher.VerifyAccess();
+            // The original synchronous fixture did not pump its STA while
+            // rendering. Use the supported queue-pause scope to preserve that
+            // contract without modifying App.xaml's StartupUri or OnStartup.
+            processingScope = dispatcher.DisableProcessing();
+            processingActive = true; processingPausedDuringBody = true;
+            if (Application.Current is not null) return; // Never shut down a borrowed Application.
+            application = new App();
+            application.Startup += (_, _) => startupEvents++;
+            application.Exit += (_, _) =>
+            {
+                exitEvents++;
+                dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+                {
+                    applicationReleased = !ReferenceEquals(Application.Current, application);
+                    if (exitFrame is not null) exitFrame.Continue = false;
+                }));
+            };
+            application.InitializeComponent(); initialized = true;
+            originalStartupUri = application.StartupUri;
+            startupUriPreserved = originalStartupUri is not null;
+            application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            noOwnedWindows = application.Windows.Count == 0;
+            if (!startupUriPreserved || !noOwnedWindows || startupEvents != 0)
+                throw new InvalidOperationException("Health fixture must initialize actual App resources without displaying or changing its startup UI.");
+        }
+        internal HealthApplicationObservation Observe() => new(application is not null, initialized,
+            processingPausedDuringBody, shutdownRequestedBeforeResume, processingResumed, startupUriPreserved,
+            originalStartupUri?.OriginalString, startupEvents, exitEvents, createdThreadId, releaseThreadId, releaseAttempted,
+            application is null || applicationReleased, noOwnedWindows, cleanupTimerStopped);
+
+        internal void Release()
+        {
+            dispatcher.VerifyAccess(); releaseThreadId = Environment.CurrentManagedThreadId; releaseAttempted = true;
+            Exception? failure = null;
+            void Retain(Exception exception) => failure = failure is null ? exception : new AggregateException(failure, exception);
+            try { lifecycleStage?.Invoke("health-application-releasing", CancellationToken.None); }
+            catch (Exception exception) { Retain(exception); }
+            var mayResume = application is null;
+            try
+            {
+                if (application is not null)
+                {
+                    noOwnedWindows &= application.Windows.Count == 0;
+                    if (initialized) startupUriPreserved &= ReferenceEquals(application.StartupUri, originalStartupUri);
+                    // Request the real Application shutdown while its queued
+                    // startup callback is still paused. Then allow its actual
+                    // shutdown callback/OnExit to run on this same STA.
+                    application.Shutdown();
+                    shutdownRequestedBeforeResume = processingActive && !processingResumed;
+                    mayResume = shutdownRequestedBeforeResume;
+                }
+            }
+            catch (Exception exception) { Retain(exception); }
+            if (processingActive && mayResume)
+            {
+                try { processingScope.Dispose(); processingActive = false; processingResumed = true; }
+                catch (Exception exception) { Retain(exception); }
+            }
+            if (processingActive)
+            {
+                // A failed shutdown request must not enable queued startup or
+                // invent release. Keep the owned STA/fixture for observation.
+                Retain(new InvalidOperationException("Health Dispatcher processing pause retained because safe shutdown/resume was not confirmed."));
+            }
+            else if (application is not null)
+            {
+                try
+                {
+                    var frame = new System.Windows.Threading.DispatcherFrame(); exitFrame = frame;
+                    var timer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Send, dispatcher)
+                    { Interval = cleanupTimeout };
+                    EventHandler expired = (_, _) => frame.Continue = false;
+                    timer.Tick += expired;
+                    try
+                    {
+                        cleanupTimerStopped = false;
+                        applicationReleased = !ReferenceEquals(Application.Current, application);
+                        if (!applicationReleased)
+                        {
+                            timer.Start();
+                            System.Windows.Threading.Dispatcher.PushFrame(frame);
+                        }
+                    }
+                    finally { timer.Stop(); timer.Tick -= expired; cleanupTimerStopped = !timer.IsEnabled; exitFrame = null; }
+                    applicationReleased = !ReferenceEquals(Application.Current, application);
+                    if (!applicationReleased || exitEvents != 1 || startupEvents != 0 || !noOwnedWindows || !cleanupTimerStopped
+                        || !shutdownRequestedBeforeResume || !processingResumed || (initialized && !startupUriPreserved))
+                        throw new InvalidOperationException("Actual Health non-displayed App shutdown, unchanged StartupUri, queue resume or timer cleanup was not confirmed.");
+                }
+                catch (Exception exception) { Retain(exception); }
+            }
+            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
+
+    internal sealed class HealthRenderingIncompleteException : TimeoutException
+    {
+        private readonly VerificationStaIncompleteException incomplete;
+        private readonly Func<HealthApplicationObservation?> application;
+        internal HealthRenderingIncompleteException(VerificationStaIncompleteException incomplete, Func<HealthApplicationObservation?> application)
+            : base("Health STA/application cleanup is incomplete; retain the fixture and stop dependent execution.", incomplete)
+        { this.incomplete = incomplete; this.application = application; }
+        internal VerificationStaObservation Sta => incomplete.Observation;
+        internal HealthApplicationObservation? Application => application();
+        internal bool TryObserveCleanup(TimeSpan timeout) => incomplete.TryObserveExit(timeout)
+            && incomplete.Observation is { ThreadExited: true, CleanupCompleted: true, DispatcherReturned: true, CancellationReleased: true, PendingBodyTasks: 0 }
+            && application() is { ApplicationReleased: true, NoOwnedWindows: true, CleanupTimerStopped: true,
+                ProcessingPausedDuringBody: true, ShutdownRequestedBeforeResume: true, ProcessingResumed: true, StartupUriPreserved: true, StartupEvents: 0 };
+    }
+
     private static (bool Passed, string Detail, bool RectangleInputPassed, string RectangleInputDetail) VerifyRecipeHealthBlockerRendering(string root)
+        => VerifyRecipeHealthBlockerRenderingWithStageObserver(root, null);
+
+    internal static (bool Passed, string Detail, bool RectangleInputPassed, string RectangleInputDetail) VerifyRecipeHealthBlockerRenderingWithStageObserver(
+        string root, Action<string, bool>? stageCompleted)
+    {
+        try
+        {
+            var completed = VerifyRecipeHealthBlockerRenderingLifetime(root, stageCompleted, null,
+                CancellationToken.None, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(10));
+            return (completed.Result.Passed, completed.Result.Detail, completed.Result.RectangleInputPassed, completed.Result.RectangleInputDetail);
+        }
+        catch (HealthRenderingIncompleteException) { throw; }
+        catch (Exception exception)
+        {
+            var partial = exception.Data["HealthRenderingResult"] as HealthRenderingResult;
+            return (false, exception.ToString(), partial?.RectangleInputPassed ?? false,
+                partial?.RectangleInputDetail ?? "STA binding verification did not complete.");
+        }
+    }
+
+    internal static HealthRenderingLifetimeResult VerifyRecipeHealthBlockerRenderingLifetime(
+        string root, Action<string, bool>? stageCompleted, Action<string, CancellationToken>? lifecycleStage,
+        CancellationToken cancellationToken, TimeSpan workTimeout, TimeSpan cleanupTimeout)
+    {
+        var rendering = new HealthRenderingState(); HealthApplicationOwner? owner = null;
+        try
+        {
+            var observation = VerificationStaOperation.Run<HealthApplicationOwner>(
+                () => owner = new HealthApplicationOwner(cleanupTimeout, lifecycleStage),
+                (resource, token) =>
+                {
+                    resource.Initialize(); lifecycleStage?.Invoke("health-application-initialized", token); token.ThrowIfCancellationRequested();
+                    var previous = SynchronizationContext.Current;
+                    // Original readiness helpers synchronously wait for model
+                    // callbacks. Preserve their null-context execution contract;
+                    // restore the owner Dispatcher context before releasing App.
+                    SynchronizationContext.SetSynchronizationContext(null);
+                    try { ExecuteHealthRenderingBody(root, stageCompleted, token, rendering); }
+                    finally { SynchronizationContext.SetSynchronizationContext(previous); }
+                    token.ThrowIfCancellationRequested();
+                    return Task.CompletedTask;
+                },
+                resource => resource.Release(), cancellationToken, workTimeout, cleanupTimeout);
+            return new(rendering.Result, observation, owner!.Observe());
+        }
+        catch (VerificationStaIncompleteException exception)
+        { throw new HealthRenderingIncompleteException(exception, () => owner?.Observe()); }
+        catch (Exception exception)
+        {
+            exception.Data["HealthRenderingResult"] = rendering.Result;
+            exception.Data["HealthApplicationObservation"] = owner?.Observe();
+            throw;
+        }
+    }
+
+
+    private static void ExecuteHealthRenderingBody(string root, Action<string, bool>? stageCompleted,
+        CancellationToken token, HealthRenderingState state)
     {
         var passed = false;
         var detail = "STA rendering did not complete.";
         var rectangleInput = (Passed: false, Detail: "STA binding verification did not complete.");
-        var thread = new Thread(() =>
+        try
         {
-            try
-            {
-                if (Application.Current is null)
-                {
-                    var app = new App();
-                    app.InitializeComponent();
-                }
-
+                token.ThrowIfCancellationRequested();
                 rectangleInput = VerifyRectangleTextInputBinding(root);
+                token.ThrowIfCancellationRequested();
 
                 var sourcePath = Path.Combine(root, "recipe-health-render.C3D");
                 C3DHeightFieldSnapshot.CreateForVerification(
@@ -1673,7 +1869,9 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 workbench.SelectedCompatibleSelection = measurement;
                 workbench.ReusePlaneFlatnessMeasurementRoiCommand.Execute(null);
                 thickness.Parameters.Single(parameter => parameter.Name == "MinimumValidSampleCount").Value = "9";
+                token.ThrowIfCancellationRequested();
                 var previewed = workbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
+                token.ThrowIfCancellationRequested();
                 _ = Add(workbench, "Warpage", measurement.Id);
                 var navigationIdentity = string.Join(
                     "|",
@@ -1729,6 +1927,8 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                     renderedWidths.Add(
                         $"{width:0}px={(widthPassed ? "pass" : "fail")}:detail={detailBlock?.ActualWidth:0.0}x{detailBlock?.ActualHeight:0.0}/{detailBlock?.DesiredSize.Height:0.0},wrap={detailBlock?.TextWrapping},visible={detailBlock?.Visibility};counts={countsBlock?.ActualWidth:0.0}x{countsBlock?.ActualHeight:0.0},wrap={countsBlock?.TextWrapping},visible={countsBlock?.Visibility}");
                     passed = renderedWidths.Count == 1 ? widthPassed : passed && widthPassed;
+                    stageCompleted?.Invoke("health-width-checked", passed);
+                    token.ThrowIfCancellationRequested();
                 }
 
                 passed = !previewed
@@ -1736,16 +1936,10 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                     && navigationPassed
                     && passed;
                 detail = $"preview={previewed};category={health.Category};navigation={navigationPassed};{string.Join(";", renderedWidths)}";
-            }
-            catch (Exception exception)
-            {
-                detail = $"{exception.GetType().Name}: {exception.Message}";
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        return (passed, detail, rectangleInput.Passed, rectangleInput.Detail);
+            token.ThrowIfCancellationRequested();
+        }
+        catch (Exception exception) { passed = false; detail = exception.ToString(); throw; }
+        finally { state.Result = new(passed, detail, rectangleInput.Passed, rectangleInput.Detail); }
     }
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)

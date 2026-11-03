@@ -613,6 +613,10 @@ internal static class NinePointCompensationVerification
     }
 
     public static bool VerifySaveBinding(string fixturePath, string reportPath, out string summary)
+        => VerifySaveBindingWithStageObserver(fixturePath, reportPath, out summary, null);
+
+    internal static bool VerifySaveBindingWithStageObserver(
+        string fixturePath, string reportPath, out string summary, Action<string, bool>? stageCompleted)
     {
         var lines = new List<string>();
         var root = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
@@ -629,9 +633,10 @@ internal static class NinePointCompensationVerification
             if (!SpinWait.SpinUntil(() => !workbench.IsSelectedStepPreviewRunning, TimeSpan.FromSeconds(15))) throw new TimeoutException();
             passed = workbench.NinePointCompensationRows.Count == 9 && workbench.CanSaveTeachingRecipe
                 && workbench.SaveTeachingRecipeAsCommand.CanExecute(null) && !workbench.IsRecipeSaveBlocked;
+            stageCompleted?.Invoke("nine-save-state-checked", passed);
             lines.Add($"save={workbench.CanSaveTeachingRecipe};rows={workbench.NinePointCompensationRows.Count};{workbench.ValidationSummary};{workbench.RecipeStateSummary}");
         }
-        catch (Exception exception) { lines.Add(exception.ToString()); }
+        catch (Exception exception) { passed = false; lines.Add(exception.ToString()); }
         finally { Environment.SetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT", previousRoot); }
         summary = $"Nine-point save binding: {(passed ? "1/1" : "0/1")}";
         lines.Add(summary);

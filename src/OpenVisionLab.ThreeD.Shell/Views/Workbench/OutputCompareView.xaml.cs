@@ -4,6 +4,8 @@ using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -15,16 +17,30 @@ public partial class OutputCompareView : UserControl, IDisposable
     private OpenVisionThreeDViewerControl? slotAViewer;
     private OpenVisionThreeDViewerControl? slotBViewer;
     private OpenVisionThreeDViewerControl? slotCViewer;
-    private string slotALoadedPath = string.Empty;
-    private string slotBLoadedPath = string.Empty;
-    private string slotCLoadedPath = string.Empty;
+    private LoadedDisplay? slotALoadedDisplay;
+    private LoadedDisplay? slotBLoadedDisplay;
+    private LoadedDisplay? slotCLoadedDisplay;
+    private readonly object refreshOperationGate = new();
+    private DispatcherOperation? refreshOperation;
     private int disposalState;
+
+    private sealed record DisplayInput(
+        string Path, string CandidateId, string Contract, bool IsSource,
+        ToolRecipeSelectionSourceBinding? SourceBinding, string RootSourceId,
+        string Unit, string FrameId, string? ArtifactHash, int? Width, int? Height,
+        long Length, long LastWriteTicks)
+    {
+        public bool HasAdmittedIdentity => SourceBinding?.ContentSha256.Length == 64 || ArtifactHash?.Length == 64;
+    }
+
+    private sealed record LoadedDisplay(DisplayInput Input, ToolRecipeSelectionSourceBinding Binding);
 
     public OutputCompareView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     private bool IsDisposed => Volatile.Read(ref disposalState) != 0;
@@ -41,21 +57,26 @@ public partial class OutputCompareView : UserControl, IDisposable
             return;
         }
 
+        CancelPendingRefresh();
         DetachWorkbench();
         DataContextChanged -= OnDataContextChanged;
         Loaded -= OnLoaded;
-        DisposeSlot(SlotAViewerHost, ref slotAViewer, ref slotALoadedPath);
-        DisposeSlot(SlotBViewerHost, ref slotBViewer, ref slotBLoadedPath);
-        DisposeSlot(SlotCViewerHost, ref slotCViewer, ref slotCLoadedPath);
+        Unloaded -= OnUnloaded;
+        DisposeSlot(SlotAViewerHost, ref slotAViewer, ref slotALoadedDisplay);
+        DisposeSlot(SlotBViewerHost, ref slotBViewer, ref slotBLoadedDisplay);
+        DisposeSlot(SlotCViewerHost, ref slotCViewer, ref slotCLoadedDisplay);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
         if (!IsDisposed)
         {
-            RefreshCompareViews();
+            CancelPendingRefresh();
+            RefreshCompareViews(revalidateUnknown: true);
         }
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args) => CancelPendingRefresh();
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs args)
     {
@@ -64,6 +85,7 @@ public partial class OutputCompareView : UserControl, IDisposable
             return;
         }
 
+        CancelPendingRefresh();
         DetachWorkbench();
         workbench = args.NewValue as ToolWorkbenchViewModel;
         if (workbench is null)
@@ -74,7 +96,8 @@ public partial class OutputCompareView : UserControl, IDisposable
 
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
         workbench.CompareCandidates.CollectionChanged += OnCompareCandidatesChanged;
-        RefreshCompareViews();
+        workbench.ArtifactRegistry.CollectionChanged += OnCompareCandidatesChanged;
+        RefreshCompareViews(revalidateUnknown: true);
     }
 
     private void DetachWorkbench()
@@ -86,6 +109,7 @@ public partial class OutputCompareView : UserControl, IDisposable
 
         workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
         workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
+        workbench.ArtifactRegistry.CollectionChanged -= OnCompareCandidatesChanged;
         workbench = null;
     }
 
@@ -98,9 +122,10 @@ public partial class OutputCompareView : UserControl, IDisposable
 
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.CompareSlotAArtifactId)
             or nameof(ToolWorkbenchViewModel.CompareSlotBArtifactId)
-            or nameof(ToolWorkbenchViewModel.CompareSlotCArtifactId))
+            or nameof(ToolWorkbenchViewModel.CompareSlotCArtifactId)
+            or nameof(ToolWorkbenchViewModel.SourceContextSummary))
         {
-            RefreshCompareViews();
+            QueueRefresh();
         }
     }
 
@@ -108,20 +133,52 @@ public partial class OutputCompareView : UserControl, IDisposable
     {
         if (!IsDisposed)
         {
-            RefreshCompareViews();
+            QueueRefresh();
         }
     }
 
-    private void RefreshCompareViews()
+    private void QueueRefresh()
+    {
+        if (IsDisposed || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        lock (refreshOperationGate)
+        {
+            if (refreshOperation?.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing) return;
+            try
+            {
+                // Wait until the model has restored the pins after collection Reset.
+                refreshOperation = Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(RefreshFromDispatcher));
+            }
+            catch (InvalidOperationException) { refreshOperation = null; }
+        }
+    }
+
+    private void RefreshFromDispatcher()
+    {
+        lock (refreshOperationGate) refreshOperation = null;
+        if (!IsDisposed && IsLoaded) RefreshCompareViews();
+    }
+
+    private void CancelPendingRefresh()
+    {
+        DispatcherOperation? operation;
+        lock (refreshOperationGate)
+        {
+            operation = refreshOperation;
+            refreshOperation = null;
+        }
+        if (operation?.Status == DispatcherOperationStatus.Pending) operation.Abort();
+    }
+
+    private void RefreshCompareViews(bool revalidateUnknown = false)
     {
         if (IsDisposed)
         {
             return;
         }
 
-        RefreshSlot(SlotAViewerHost, SlotAEmptyText, workbench?.CompareSlotAArtifactId, ref slotAViewer, ref slotALoadedPath);
-        RefreshSlot(SlotBViewerHost, SlotBEmptyText, workbench?.CompareSlotBArtifactId, ref slotBViewer, ref slotBLoadedPath);
-        RefreshSlot(SlotCViewerHost, SlotCEmptyText, workbench?.CompareSlotCArtifactId, ref slotCViewer, ref slotCLoadedPath);
+        RefreshSlot(SlotAViewerHost, SlotAEmptyText, workbench?.CompareSlotAArtifactId, ref slotAViewer, ref slotALoadedDisplay, revalidateUnknown);
+        RefreshSlot(SlotBViewerHost, SlotBEmptyText, workbench?.CompareSlotBArtifactId, ref slotBViewer, ref slotBLoadedDisplay, revalidateUnknown);
+        RefreshSlot(SlotCViewerHost, SlotCEmptyText, workbench?.CompareSlotCArtifactId, ref slotCViewer, ref slotCLoadedDisplay, revalidateUnknown);
     }
 
     private void RefreshSlot(
@@ -129,7 +186,8 @@ public partial class OutputCompareView : UserControl, IDisposable
         TextBlock emptyText,
         string? artifactId,
         ref OpenVisionThreeDViewerControl? viewer,
-        ref string loadedPath)
+        ref LoadedDisplay? loadedDisplay,
+        bool revalidateUnknown)
     {
         if (IsDisposed)
         {
@@ -137,44 +195,92 @@ public partial class OutputCompareView : UserControl, IDisposable
         }
 
         var candidate = workbench?.GetCompareCandidate(artifactId);
-        if (candidate is null || !File.Exists(candidate.C3DPath))
+        if (candidate is null || !TryCaptureInput(candidate, out var input))
         {
-            host.Content = null;
-            loadedPath = string.Empty;
-            emptyText.Text = workbench?.Localization.OutputCompareNoSelection ?? "No output pinned";
-            emptyText.Visibility = Visibility.Visible;
+            ClearSlot(host, emptyText, viewer, ref loadedDisplay,
+                workbench?.Localization.OutputCompareNoSelection ?? "No output pinned");
             return;
         }
 
         viewer ??= new OpenVisionThreeDViewerControl { SidePanelsVisible = false };
-        host.Content = viewer;
-        emptyText.Visibility = Visibility.Collapsed;
-        if (string.Equals(loadedPath, candidate.C3DPath, StringComparison.OrdinalIgnoreCase))
+        var cacheHit = loadedDisplay is { } previous && previous.Input == input
+            && (!revalidateUnknown || input.HasAdmittedIdentity)
+            && viewer.TryGetCurrentC3DSourceBinding(input.Path, out var currentBinding)
+            && currentBinding == previous.Binding;
+        if (!cacheHit)
         {
-            return;
-        }
+            loadedDisplay = null;
+            var loaded = candidate.IsSource
+                ? viewer.LoadC3DSource(input.Path)
+                : viewer.ShowC3DWorkbenchResult(input.Path, $"{candidate.DisplayName} | {candidate.State}");
+            var currentCandidate = workbench?.GetCompareCandidate(artifactId);
+            if (!loaded
+                || !viewer.TryGetCurrentC3DSourceBinding(input.Path, out var binding)
+                || binding.ContentSha256.Length != 64
+                || currentCandidate is null
+                || !TryCaptureInput(currentCandidate, out var afterLoad)
+                || afterLoad != input
+                || input.SourceBinding is { } admitted
+                    && (!string.Equals(admitted.ContentSha256, binding.ContentSha256, StringComparison.OrdinalIgnoreCase)
+                        || admitted.GridWidth != binding.GridWidth || admitted.GridHeight != binding.GridHeight))
+            {
+                ClearSlot(host, emptyText, viewer, ref loadedDisplay,
+                    workbench?.Localization.ViewerAuxiliaryNoOutput ?? "No real 3D output is available");
+                return;
+            }
 
-        if (candidate.IsSource)
-        {
-            viewer.LoadC3DSource(candidate.C3DPath);
-        }
-        else
-        {
-            viewer.ShowC3DWorkbenchResult(candidate.C3DPath, $"{candidate.DisplayName} | {candidate.State}");
+            // The artifact's logical hash is distinct from the loaded C3D byte identity.
+            loadedDisplay = new(input, binding);
         }
 
         viewer.TrySetHudDetailsVisible(false);
-        loadedPath = candidate.C3DPath;
+        host.Content = viewer;
+        emptyText.Visibility = Visibility.Collapsed;
+    }
+
+    private bool TryCaptureInput(ToolWorkbenchCompareCandidateItem candidate, out DisplayInput input)
+    {
+        input = null!;
+        try
+        {
+            var path = Path.GetFullPath(candidate.C3DPath);
+            var file = new FileInfo(path);
+            if (!file.Exists) return false;
+            var artifact = workbench?.ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Id, candidate.Id, StringComparison.OrdinalIgnoreCase));
+            var source = candidate.IsSource ? workbench?.SourceSession.SourceBinding : null;
+            input = new(path, candidate.Id, candidate.Contract, candidate.IsSource, source,
+                candidate.IsSource ? workbench?.Source.Id ?? string.Empty : artifact?.RootSourceId ?? string.Empty,
+                candidate.IsSource ? workbench?.Source.Unit ?? string.Empty : artifact?.Unit ?? string.Empty,
+                candidate.IsSource ? workbench?.Source.FrameId ?? string.Empty : artifact?.FrameId ?? string.Empty,
+                artifact?.ContentSha256, source?.GridWidth ?? artifact?.GridWidth, source?.GridHeight ?? artifact?.GridHeight,
+                file.Length, file.LastWriteTimeUtc.Ticks);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static void ClearSlot(ContentControl host, TextBlock emptyText,
+        OpenVisionThreeDViewerControl? viewer, ref LoadedDisplay? loadedDisplay, string status)
+    {
+        loadedDisplay = null;
+        if (viewer?.CurrentC3DSourcePath is not null) viewer.ClearC3DTeachingSource(status);
+        host.Content = null;
+        emptyText.Text = status;
+        emptyText.Visibility = Visibility.Visible;
     }
 
     private static void DisposeSlot(
         ContentControl host,
         ref OpenVisionThreeDViewerControl? viewer,
-        ref string loadedPath)
+        ref LoadedDisplay? loadedDisplay)
     {
         host.Content = null;
         viewer?.Dispose();
         viewer = null;
-        loadedPath = string.Empty;
+        loadedDisplay = null;
     }
 }

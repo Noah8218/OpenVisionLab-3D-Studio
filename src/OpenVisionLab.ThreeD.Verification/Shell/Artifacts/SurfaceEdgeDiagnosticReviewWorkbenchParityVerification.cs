@@ -14,6 +14,13 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
         string artifactDirectory,
         string reportPath,
         out string summary)
+        => VerifyWithStageObserver(artifactDirectory, reportPath, out summary, null);
+
+    internal static bool VerifyWithStageObserver(
+        string artifactDirectory,
+        string reportPath,
+        out string summary,
+        Action<string>? stageCompleted)
     {
         var lines = new List<string>
         {
@@ -145,7 +152,7 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                 runnerReview.ContentSha256 == workbenchReview.ContentSha256,
                 $"runner={runnerReview.ContentSha256};workbench={workbenchReview.ContentSha256}");
 
-            var workbench = new ToolWorkbenchViewModel();
+            using var workbench = new ToolWorkbenchViewModel();
             var initialDirty = workbench.IsDirty;
             var initialStepCount = workbench.PipelineSteps.Count;
             ToolWorkbenchSurfaceMatchDisplayRequestEventArgs? request = null;
@@ -174,6 +181,7 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                 && ReferenceEquals(workbench.SurfaceEdgeAssessment, workbenchRejectedAssessment)
                 && ReferenceEquals(workbench.SurfaceMatchFalsePositiveReview, workbenchReview),
                 $"score={workbench.SurfaceEdgeScore?.ContentSha256};overlay={workbench.SurfaceEdgeDiagnosticOverlay?.ContentSha256};assessment={workbench.SurfaceEdgeAssessment?.ContentSha256};review={workbench.SurfaceMatchFalsePositiveReview?.ContentSha256}");
+            stageCompleted?.Invoke("workbench-owned-evidence-checked");
             Check(
                 "workbench-routes-complete-review-once",
                 requestCount == 1
@@ -308,7 +316,7 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | unexpected-exception | {exception.GetType().Name}: {exception.Message}");
+            Check("unexpected-exception", false, exception.ToString());
         }
 
         var allPassed = total > 0 && total == passed;

@@ -1,13 +1,17 @@
 # OpenVisionLab Vision SDK package
 
-- Current package: `OpenVisionLab.Vision3D` `3.3.0-dev.20261029.nine-point-compensation.1`
-- Source commit: `cdaa08d04ed569be5aba95324f2d851b7bad637b`
+- Current package: `OpenVisionLab.Vision3D` `3.3.0-rc.1.integration.20261102.138`
+- Source version: `3.3.0-rc.1`
+- Source repository: https://github.com/Noah8218/OpenVisionLab-Vision-SDK
+- Source commit: `a550fadeec5b35103d1288743aa6746e4e4a60a2`
 - Target framework: `netstandard2.0`
-- SHA-256: `AEDA72C419D310A91C87BAF28DC4C4C2FD959444160EE4DD935BBCF356A4C1B0`
+- SHA-256: `31AAA8974AF8B78057AA5E0214D748A49BA76F7C5C2E3D87C6D24D4F0E91D134`
 
-Required managed dependency: `OpenVisionLab.Compute` `3.3.0-dev.20261029.nine-point-compensation.1`, from the same committed source.
-SHA-256: `B3E4776C097F78975C6AD760D0D5C04DE28851B6B1EDB2DAF7BF7BE8FB3089C2`.
-The existing Vision2D/Core package identities below remain unchanged.
+Required managed dependency: `OpenVisionLab.Compute` exactly `3.3.0-rc.1.integration.20261102.138`, from the same clean committed source.
+SHA-256: `D99999D165218B06013B42F421D7317C4E6C3235C03494BD533DD8127DE61CCC`.
+This immutable integration package is built locally from that source commit; it does not assert a NuGet registry release.
+Both packages include the matching portable PDB; Studio enables the standard `CopyDebugSymbolFilesFromPackages` property.
+The existing Vision2D/Core package identities and historical packages below remain unchanged.
 
 Historical package retained for D-13 evidence:
 

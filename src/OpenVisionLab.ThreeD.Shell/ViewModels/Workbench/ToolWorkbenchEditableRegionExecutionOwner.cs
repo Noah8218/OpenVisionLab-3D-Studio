@@ -29,6 +29,7 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
     private CancellationTokenSource? previewCancellation;
     private C3DEditableRegionArtifact? preview;
     private string? previewPath;
+    private string? previewProducerStepId;
     private bool isPreviewRunning;
     private bool isPreviewStale;
     private bool isPreviewPublished;
@@ -77,6 +78,9 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
             return null;
         }
 
+        if (isPreviewPublished && !isPreviewStale && preview is { } current
+            && string.Equals(current.ArtifactId, entityId, StringComparison.OrdinalIgnoreCase))
+            MarkStaleIfUpstreamChanged();
         return isPreviewPublished
             && !isPreviewStale
             && preview is not null
@@ -171,6 +175,7 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
 
             preview = evaluation.Output;
             previewPath = null;
+            previewProducerStepId = step.Id;
             step.State = "Preview ready";
             SetSummary(
                 $"Preview ready | region {preview.RegionIndex} | cells {preview.Cells.Count:N0} | SHA-256 {preview.ContentSha256} | source unchanged");
@@ -228,7 +233,10 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
 
     public void Publish()
     {
-        if (IsDisposed || getSelectedPipelineStep() is not { } step || !HasCurrentPreview)
+        MarkStaleIfUpstreamChanged();
+        if (IsDisposed || isPreviewRunning || getSelectedPipelineStep() is not { } step || !HasCurrentPreview
+            || !string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(step.OutputEntityId, preview!.ArtifactId, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -264,6 +272,7 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
 
     public void PersistPublishedArtifactIfPossible()
     {
+        MarkStaleIfUpstreamChanged();
         if (IsDisposed || !isPreviewPublished || isPreviewStale || preview is null)
         {
             return;
@@ -326,6 +335,18 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
         var path = GetArtifactPath(recipePath, step.OutputEntityId);
         if (!File.Exists(path))
         {
+            var legacyId = SanitizeLegacy(step.OutputEntityId);
+            if (document.Steps.Count(candidate =>
+                    string.Equals(candidate.ToolId, "editable-region", StringComparison.Ordinal)
+                    && string.Equals(SanitizeLegacy(candidate.OutputEntityId), legacyId, StringComparison.OrdinalIgnoreCase)) != 1)
+            {
+                appendLog("Warning", "Editable Region legacy artifact restore skipped: ambiguous output filename.");
+                return;
+            }
+            path = GetArtifactPath(recipePath, step.OutputEntityId, legacy: true);
+        }
+        if (!File.Exists(path))
+        {
             return;
         }
 
@@ -346,6 +367,7 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
 
             preview = artifact;
             previewPath = path;
+            previewProducerStepId = step.Id;
             isPreviewStale = false;
             isPreviewPublished = true;
             if (getSelectedPipelineStep() is { } selected
@@ -372,36 +394,40 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
 
     public void MarkStaleIfNeeded(object? sender)
     {
-        if (IsDisposed || preview is null || isPreviewRunning)
+        if (IsDisposed || preview is null || isPreviewRunning || isPreviewStale)
         {
             return;
         }
 
         var step = getSelectedPipelineStep();
         var isParameter = sender is ToolWorkbenchParameterItem parameter
+            && string.Equals(step?.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
             && (step?.Parameters.Contains(parameter) ?? false);
-        if (step is { } selected
-            && IsSelectedStepEditableRegion
-            && (ReferenceEquals(sender, selected) || isParameter))
+        if (sender is ToolWorkbenchPipelineStepItem changed
+                && string.Equals(changed.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            || isParameter)
         {
-            MarkStale(selected, "Editable Region route or SelectedRegionIndex changed. Preview again before Publish.");
+            MarkStale("Editable Region route or SelectedRegionIndex changed. Preview again before Publish.");
         }
     }
 
     public void MarkStaleIfUpstreamChanged()
     {
-        if (IsDisposed || preview is null || isPreviewRunning
-            || getSelectedPipelineStep() is not { } step
-            || step.InputEntityIds.Count != 1)
+        if (IsDisposed || preview is null || isPreviewRunning || isPreviewStale)
         {
             return;
         }
 
-        var connected = getPublishedConnectedRegion(step.InputEntityIds[0]);
-        if (connected is null
-            || !string.Equals(preview.SourceConnectedRegionContentSha256, connected.ContentSha256, StringComparison.OrdinalIgnoreCase))
+        var document = createDocument();
+        var producers = document.Steps.Where(step =>
+            string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(step.ToolId, "editable-region", StringComparison.Ordinal)
+            && string.Equals(step.OutputEntityId, preview.ArtifactId, StringComparison.OrdinalIgnoreCase)).Take(2).ToArray();
+        if (producers.Length != 1
+            || !ToolRecipeValidator.ValidateForStepExecution(document, producers[0].Id).IsValid
+            || !MatchesCurrentRoute(producers[0], preview, out _))
         {
-            MarkStale(step, "Published Connected Region changed. Preview Editable Region again before Publish.");
+            MarkStale("Published Connected Region changed. Preview Editable Region again before Publish.");
         }
     }
 
@@ -418,6 +444,7 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
         CancelAndDispose(currentCancellation);
         preview = null;
         previewPath = null;
+        previewProducerStepId = null;
         isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
@@ -477,26 +504,47 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
         return true;
     }
 
-    private void MarkStale(ToolWorkbenchPipelineStepItem step, string summary)
+    private void MarkStale(string summary)
     {
-        if (IsDisposed)
+        if (IsDisposed || isPreviewStale)
         {
             return;
         }
 
         isPreviewStale = true;
         isPreviewPublished = false;
-        step.State = "Preview stale";
+        // Commit the transition before callbacks can re-enter freshness checks.
+        if (getSelectedPipelineStep() is { } step
+            && string.Equals(step.Id, previewProducerStepId, StringComparison.OrdinalIgnoreCase))
+            step.State = "Preview stale";
         SetSummary(summary);
     }
 
-    private static string GetArtifactPath(string recipePath, string artifactId)
+    private static string GetArtifactPath(string recipePath, string artifactId, bool legacy = false)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(recipePath)) ?? Environment.CurrentDirectory;
         var stem = Path.GetFileNameWithoutExtension(recipePath);
-        var safeId = string.Concat(artifactId.Select(character => char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
+        var safeId = legacy ? SanitizeLegacy(artifactId) : Sanitize(artifactId);
         return Path.Combine(directory, $"{stem}.editable-region.{safeId}.json");
     }
+
+    // Ordinal-ignore-case logical identity, encoded as exact UTF-16LE code units.
+    // '~' cannot occur in a legacy sanitized ID, so new writes cannot alias old paths.
+    private static string Sanitize(string value)
+    {
+        var canonical = value.ToUpperInvariant();
+        var bytes = new byte[checked(canonical.Length * 2)];
+        for (var index = 0; index < canonical.Length; index++)
+        {
+            bytes[index * 2] = (byte)(canonical[index] & 0xff);
+            bytes[index * 2 + 1] = (byte)(canonical[index] >> 8);
+        }
+        return "v2~" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+    }
+
+    private static string SanitizeLegacy(string value) =>
+        string.Concat(value.Select(character =>
+            char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_'));
 
     private void SetRunning(bool value)
     {
@@ -533,6 +581,7 @@ internal sealed class ToolWorkbenchEditableRegionExecutionOwner : IDisposable
         CancelAndDispose(currentCancellation);
         preview = null;
         previewPath = null;
+        previewProducerStepId = null;
         isPreviewRunning = false;
         isPreviewStale = false;
         isPreviewPublished = false;
