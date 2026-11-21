@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.2-dev - 2026-11-21
+
+- Report validation with no expected decisions separately from matched results, and keep the actual preparation error and pending samples when validation cannot start.
+- Clarify input and calculated-result displays in the Tool Labs, localize the related diagnostics and parameter errors, and keep required first-recipe inputs visible.
+- Use neutral gray surfaces and the UI font for numerals, stop showing the internal `raw` / `raw-height` unit text, and replace notices that listed what the product does not do with plain wording.
+
+This is a development source update; it is not a binary release, deployment or production qualification. Wide and Compact screenshots of the final binary, English wording and native 125% scaling are not qualified by this batch.
+
 ## 0.8.1-dev - 2026-11-03
 
 - Improve cancellation and stale-result handling, input/resource cleanup, and bounded log, Run Record and threshold-analysis processing without changing established measurement formulas.

@@ -516,7 +516,7 @@ internal static class ResultsWorkspaceSectionBindingVerification
             var limitsCell = FindVisual<TextBlock>(teachingTable.Columns[4].GetCellContent(dense), text => text.Text == dense.DisplayLimits);
             var samplesCell = FindVisual<TextBlock>(teachingTable.Columns[7].GetCellContent(dense), text => text.Text == dense.ValidSamples);
             checks.Add(("TeachingTimeStartsLeftAndMetadataUsesSecondaryColor",
-                headerTimeCell?.TextAlignment == TextAlignment.Left && new[] { headerTimeCell, limitsCell, samplesCell }.All(text => text?.Foreground is SolidColorBrush brush && brush.Color == Color.FromRgb(139, 152, 166)),
+                headerTimeCell?.TextAlignment == TextAlignment.Left && new[] { headerTimeCell, limitsCell, samplesCell }.All(text => text?.Foreground is SolidColorBrush brush && brush.Color == Color.FromRgb(152, 152, 152)),
                 $"time={headerTimeCell?.TextAlignment};colors={string.Join(",", new[] { headerTimeCell, limitsCell, samplesCell }.Select(text => text?.Foreground))}"));
             checks.Add(("TeachingDockActionsRemainDisabledWithoutOwner", !dockPin.IsEnabled && !grip.IsEnabled && !((MenuItem)view.FindName("TeachingResultsAutoHideAction")).IsEnabled, "missing native layout owner cannot invoke docking"));
             var hideCommand = new RecordingCommand();

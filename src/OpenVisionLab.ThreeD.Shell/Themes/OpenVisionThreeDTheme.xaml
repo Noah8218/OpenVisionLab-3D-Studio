@@ -6,68 +6,68 @@
         selection, focus, pass/warning/fail, while the Viewer height map keeps
         its independent scientific color scale.
     -->
-    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#15191E" />
-    <SolidColorBrush x:Key="ThreeD.StudioChromeBrush" Color="#12161A" />
-    <SolidColorBrush x:Key="ThreeD.RailBackgroundBrush" Color="#13171B" />
+    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#1A1A1A" />
+    <SolidColorBrush x:Key="ThreeD.StudioChromeBrush" Color="#161616" />
+    <SolidColorBrush x:Key="ThreeD.RailBackgroundBrush" Color="#171717" />
     <SolidColorBrush x:Key="ThreeD.RailSelectedBrush" Color="#1F2D2D" />
     <SolidColorBrush x:Key="ThreeD.RailSelectedTextBrush" Color="#C7ECE5" />
-    <SolidColorBrush x:Key="ThreeD.SoftDividerBrush" Color="#2A323B" />
-    <SolidColorBrush x:Key="ThreeD.DockHeaderBrush" Color="#181D23" />
-    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#1B2128" />
-    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#252D36" />
-    <SolidColorBrush x:Key="ThreeD.DataPopupSurfaceBrush" Color="#20272F" />
-    <SolidColorBrush x:Key="ThreeD.DataPopupBorderBrush" Color="#4E5D6B" />
-    <SolidColorBrush x:Key="ThreeD.DataMutedTextBrush" Color="#8B98A6" />
-    <SolidColorBrush x:Key="ThreeD.DataCardSurfaceBrush" Color="#1A2027" />
-    <SolidColorBrush x:Key="ThreeD.DataThumbnailSurfaceBrush" Color="#0F1317" />
-    <SolidColorBrush x:Key="ThreeD.DataThumbnailBorderBrush" Color="#33404C" />
+    <SolidColorBrush x:Key="ThreeD.SoftDividerBrush" Color="#323232" />
+    <SolidColorBrush x:Key="ThreeD.DockHeaderBrush" Color="#1E1E1E" />
+    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#222222" />
+    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="ThreeD.DataPopupSurfaceBrush" Color="#282828" />
+    <SolidColorBrush x:Key="ThreeD.DataPopupBorderBrush" Color="#5C5C5C" />
+    <SolidColorBrush x:Key="ThreeD.DataMutedTextBrush" Color="#989898" />
+    <SolidColorBrush x:Key="ThreeD.DataCardSurfaceBrush" Color="#202020" />
+    <SolidColorBrush x:Key="ThreeD.DataThumbnailSurfaceBrush" Color="#131313" />
+    <SolidColorBrush x:Key="ThreeD.DataThumbnailBorderBrush" Color="#404040" />
     <SolidColorBrush x:Key="ThreeD.DialogBackdropBrush" Color="#CC03070C" />
-    <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#1B2128" />
-    <SolidColorBrush x:Key="ThreeD.ExecutionBarBrush" Color="#171C21" />
-    <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#252D36" />
-    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#37424E" />
-    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#E4E9EF" />
-    <SolidColorBrush x:Key="ThreeD.PrimaryTextBrush" Color="#E4E9EF" />
-    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#ADB9C6" />
-    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#ADB9C6" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderBrush" Color="#15191E" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#37424E" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#E4E9EF" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#ADB9C6" />
-    <SolidColorBrush x:Key="ThreeD.ContextBadgeBrush" Color="#252D36" />
+    <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#222222" />
+    <SolidColorBrush x:Key="ThreeD.ExecutionBarBrush" Color="#1C1C1C" />
+    <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#424242" />
+    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#EAEAEA" />
+    <SolidColorBrush x:Key="ThreeD.PrimaryTextBrush" Color="#EAEAEA" />
+    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#BABABA" />
+    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#BABABA" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderBrush" Color="#1A1A1A" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#424242" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#EAEAEA" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#BABABA" />
+    <SolidColorBrush x:Key="ThreeD.ContextBadgeBrush" Color="#2E2E2E" />
     <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#65B9AE" />
     <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#7BCCC0" />
     <SolidColorBrush x:Key="ThreeD.AccentPressedBrush" Color="#4A9A91" />
-    <SolidColorBrush x:Key="ThreeD.HoverSurfaceBrush" Color="#303A46" />
-    <SolidColorBrush x:Key="ThreeD.PressedSurfaceBrush" Color="#202730" />
-    <SolidColorBrush x:Key="ThreeD.InputBrush" Color="#222A33" />
-    <SolidColorBrush x:Key="ThreeD.InputBorderBrush" Color="#718293" />
-    <SolidColorBrush x:Key="ThreeD.PrimaryButtonTextBrush" Color="#11171B" />
+    <SolidColorBrush x:Key="ThreeD.HoverSurfaceBrush" Color="#3B3B3B" />
+    <SolidColorBrush x:Key="ThreeD.PressedSurfaceBrush" Color="#282828" />
+    <SolidColorBrush x:Key="ThreeD.InputBrush" Color="#2A2A2A" />
+    <SolidColorBrush x:Key="ThreeD.InputBorderBrush" Color="#828282" />
+    <SolidColorBrush x:Key="ThreeD.PrimaryButtonTextBrush" Color="#161616" />
     <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#243C3C" />
     <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#A2DFD4" />
     <SolidColorBrush x:Key="ThreeD.InspectionErrorTextBrush" Color="#F5A86B" />
-    <SolidColorBrush x:Key="ThreeD.InspectionSummarySurfaceBrush" Color="#1D242B" />
-    <SolidColorBrush x:Key="ThreeD.InspectionStateTrackBrush" Color="#28313A" />
+    <SolidColorBrush x:Key="ThreeD.InspectionSummarySurfaceBrush" Color="#242424" />
+    <SolidColorBrush x:Key="ThreeD.InspectionStateTrackBrush" Color="#313131" />
     <SolidColorBrush x:Key="ThreeD.InspectionPassSegmentBrush" Color="#5E9C76" />
     <SolidColorBrush x:Key="ThreeD.InspectionFailSegmentBrush" Color="#C9686C" />
     <SolidColorBrush x:Key="ThreeD.InspectionErrorSegmentBrush" Color="#C98450" />
-    <SolidColorBrush x:Key="ThreeD.InspectionCancelledSegmentBrush" Color="#59636E" />
-    <SolidColorBrush x:Key="ThreeD.InspectionUntestedSegmentBrush" Color="#3A444F" />
+    <SolidColorBrush x:Key="ThreeD.InspectionCancelledSegmentBrush" Color="#646464" />
+    <SolidColorBrush x:Key="ThreeD.InspectionUntestedSegmentBrush" Color="#444444" />
     <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#91D1A8" />
     <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#F1C27A" />
     <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#F29D9F" />
     <SolidColorBrush x:Key="ThreeD.InfoBrush" Color="#94BDD8" />
-    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#8B98A6" />
-    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#11161C" />
-    <SolidColorBrush x:Key="ThreeD.ViewportGridBrush" Color="#526B83" />
+    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#989898" />
+    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#161616" />
+    <SolidColorBrush x:Key="ThreeD.ViewportGridBrush" Color="#6A6A6A" />
     <SolidColorBrush x:Key="ThreeD.AxisXBrush" Color="#E05252" />
     <SolidColorBrush x:Key="ThreeD.AxisYBrush" Color="#2F9D62" />
     <SolidColorBrush x:Key="ThreeD.AxisZBrush" Color="#3B82F6" />
     <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#382D20" />
-    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#22313D" />
+    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#303030" />
     <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#22362B" />
     <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#3C272C" />
-    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#252D36" />
+    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#2E2E2E" />
 
     <!--
         WPF-UI's Button template consumes these resource names instead of the
@@ -75,50 +75,50 @@
         graphite semantic palette so Appearance=Primary/Secondary does not
         reintroduce the library's light-blue accent.
     -->
-    <SolidColorBrush x:Key="ButtonBackground" Color="#252D36" />
-    <SolidColorBrush x:Key="ButtonForeground" Color="#E4E9EF" />
-    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#303A46" />
-    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#202730" />
-    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#718293" />
-    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#E4E9EF" />
-    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#252D36" />
-    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#37424E" />
-    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="ButtonBackground" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="#EAEAEA" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#3B3B3B" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#282828" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#828282" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#EAEAEA" />
+    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#424242" />
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#989898" />
     <SolidColorBrush x:Key="AccentButtonBackground" Color="#65B9AE" />
     <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#7BCCC0" />
     <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#4A9A91" />
-    <SolidColorBrush x:Key="AccentButtonForeground" Color="#11171B" />
-    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#11171B" />
-    <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="#37424E" />
+    <SolidColorBrush x:Key="AccentButtonForeground" Color="#161616" />
+    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#161616" />
+    <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="#424242" />
 
     <!-- WPF-UI text templates read these resources for focused and disabled states. -->
     <SolidColorBrush x:Key="TextControlFocusedBorderBrush" Color="#A2DFD4" />
-    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#222A33" />
-    <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="#252D36" />
-    <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="#37424E" />
-    <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#2A2A2A" />
+    <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="#424242" />
+    <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="#989898" />
 
     <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#65B9AE" />
     <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#7BCCC0" />
     <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#4A9A91" />
-    <SolidColorBrush x:Key="CheckBoxCheckGlyphForeground" Color="#11171B" />
+    <SolidColorBrush x:Key="CheckBoxCheckGlyphForeground" Color="#161616" />
     <SolidColorBrush x:Key="CheckBoxCheckBorderBrush" Color="#65B9AE" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#303A46" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#202730" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedDisabled" Color="#252D36" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedDisabled" Color="#37424E" />
-    <SolidColorBrush x:Key="CheckBoxForegroundUncheckedDisabled" Color="#8B98A6" />
-    <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#11171B" />
-    <SolidColorBrush x:Key="RadioButtonForegroundDisabled" Color="#8B98A6" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokeDisabled" Color="#8B98A6" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#3B3B3B" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#282828" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedDisabled" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedDisabled" Color="#424242" />
+    <SolidColorBrush x:Key="CheckBoxForegroundUncheckedDisabled" Color="#989898" />
+    <SolidColorBrush x:Key="RadioButtonCheckGlyphFill" Color="#161616" />
+    <SolidColorBrush x:Key="RadioButtonForegroundDisabled" Color="#989898" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokeDisabled" Color="#989898" />
     <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" Color="#7BCCC0" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseFill" Color="#222A33" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillDisabled" Color="#252D36" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPointerOver" Color="#303A46" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPressed" Color="#202730" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="#718293" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeDisabled" Color="#37424E" />
-    <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokePressed" Color="#718293" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFill" Color="#2A2A2A" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillDisabled" Color="#2E2E2E" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPointerOver" Color="#3B3B3B" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseFillPressed" Color="#282828" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseStroke" Color="#828282" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeDisabled" Color="#424242" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokePressed" Color="#828282" />
 
     <!--
         The WPF-UI Button template exposes its state brushes as dependency
@@ -858,5 +858,23 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+    <Style x:Key="ThreeD.ToolLabSourceOnlyCaption" TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}">
+        <Setter Property="Visibility" Value="Collapsed" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Style.Triggers>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding C3DSampleVisible}" Value="True" />
+                    <Condition Binding="{Binding WorkbenchTwoPointLine}" Value="{x:Null}" />
+                    <Condition Binding="{Binding WorkbenchThreePointPlane}" Value="{x:Null}" />
+                    <Condition Binding="{Binding WorkbenchDatumPlaneDeviation}" Value="{x:Null}" />
+                    <Condition Binding="{Binding WorkbenchLineIntersection}" Value="{x:Null}" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Visible" />
+            </MultiDataTrigger>
+        </Style.Triggers>
     </Style>
 </ResourceDictionary>

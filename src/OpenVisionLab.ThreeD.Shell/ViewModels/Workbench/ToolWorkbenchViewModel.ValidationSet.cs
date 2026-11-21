@@ -40,6 +40,8 @@ public sealed partial class ToolWorkbenchViewModel
     }, parameter => !IsDisposed && SelectValidationMismatchSampleCommand.CanExecute(parameter) && MainViewerPane.SetKindCommand.CanExecute(ViewerPaneKind.Section));
     public bool HasValidationMismatches => validationSetWorkspace.HasValidationMismatches;
     public bool HasValidationResults => validationSetWorkspace.HasValidationResults;
+    public bool HasValidationExpectations => validationSetWorkspace.HasValidationExpectations;
+    public bool AllValidationExpectationsMatch => validationSetWorkspace.AllValidationExpectationsMatch;
     public IReadOnlyList<ValidationDistributionOutput> ValidationDistributionOutputs => validationSetWorkspace.ValidationDistributionOutputs;
     public string SelectedValidationDistributionReadout => validationSetWorkspace.SelectedValidationDistributionReadout;
     public IReadOnlyList<ValidationThresholdCandidateRow> ValidationDistributionCandidates => validationSetWorkspace.ValidationDistributionCandidates;

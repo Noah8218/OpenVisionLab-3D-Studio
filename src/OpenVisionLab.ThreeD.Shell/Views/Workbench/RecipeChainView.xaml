@@ -6,16 +6,17 @@
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:unit="clr-namespace:OpenVisionLab.ThreeD.Presentation.Converters;assembly=OpenVisionLab.ThreeD.Presentation"
              FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" FontSize="13"
              AutomationProperties.AutomationId="RecipeChain">
     <UserControl.Resources>
         <workbench:MeasurementNumberTextConverter x:Key="MeasurementNumberTextConverter" />
-        <SolidColorBrush x:Key="FlowCardSurfaceBrush" Color="#1E252C" />
-        <SolidColorBrush x:Key="FlowSourceSurfaceBrush" Color="#1A242A" />
-        <SolidColorBrush x:Key="FlowCardBorderBrush" Color="#384451" />
+        <SolidColorBrush x:Key="FlowCardSurfaceBrush" Color="#252525" />
+        <SolidColorBrush x:Key="FlowSourceSurfaceBrush" Color="#222222" />
+        <SolidColorBrush x:Key="FlowCardBorderBrush" Color="#444444" />
         <SolidColorBrush x:Key="FlowSelectedBorderBrush" Color="#5E9F97" />
-        <SolidColorBrush x:Key="FlowNodeHeaderHoverBrush" Color="#2C3640" />
-        <SolidColorBrush x:Key="FlowNodeHeaderMutedBrush" Color="#8B98A6" />
+        <SolidColorBrush x:Key="FlowNodeHeaderHoverBrush" Color="#363636" />
+        <SolidColorBrush x:Key="FlowNodeHeaderMutedBrush" Color="#989898" />
         <Style x:Key="FlowNodeKeyboardFocusVisual" TargetType="Control">
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control">
                 <Border Margin="-3" BorderThickness="2" BorderBrush="{DynamicResource ThreeD.FocusBrush}" CornerRadius="7" IsHitTestVisible="False" />
@@ -28,19 +29,19 @@
         </DrawingBrush>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <workbench:HeightImageFrameConverter x:Key="HeightImageFrameConverter" />
-        <SolidColorBrush x:Key="FlowThumbnailSurfaceBrush" Color="#0F1317" />
-        <SolidColorBrush x:Key="FlowThumbnailBorderBrush" Color="#33404C" />
+        <SolidColorBrush x:Key="FlowThumbnailSurfaceBrush" Color="#131313" />
+        <SolidColorBrush x:Key="FlowThumbnailBorderBrush" Color="#404040" />
         <DropShadowEffect x:Key="FlowCardShadow" Color="Black" BlurRadius="10" ShadowDepth="2" Direction="270" Opacity=".28" />
         <DropShadowEffect x:Key="FlowSelectedCardShadow" Color="Black" BlurRadius="16" ShadowDepth="6" Direction="270" Opacity=".35" />
         <Style x:Key="FlowReadinessCaptionStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11" /><Setter Property="Margin" Value="2,0" />
+            <Setter Property="FontSize" Value="12" /><Setter Property="Margin" Value="2,0" />
             <Setter Property="TextAlignment" Value="Center" /><Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <DataTemplate x:Key="FlowPortIssueDetails">
             <StackPanel>
-                <TextBlock x:Name="FlowInputIssueDetail" Margin="0,4,0,5" FontSize="11.5" Text="{Binding InputPortDetail}" TextWrapping="Wrap" TextTrimming="None"
+                <TextBlock x:Name="FlowInputIssueDetail" Margin="0,4,0,5" FontSize="12" Text="{Binding InputPortDetail}" TextWrapping="Wrap" TextTrimming="None"
                            Foreground="{DynamicResource ThreeD.WarningBrush}" Visibility="{Binding InputPortHasIssue, Converter={StaticResource BoolToVisibilityConverter}}" />
-                <TextBlock x:Name="FlowOutputIssueDetail" Margin="0,4,0,5" FontSize="11.5" Text="{Binding OutputPortDetail}" TextWrapping="Wrap" TextTrimming="None"
+                <TextBlock x:Name="FlowOutputIssueDetail" Margin="0,4,0,5" FontSize="12" Text="{Binding OutputPortDetail}" TextWrapping="Wrap" TextTrimming="None"
                            Foreground="{DynamicResource ThreeD.WarningBrush}" Visibility="{Binding OutputPortHasIssue, Converter={StaticResource BoolToVisibilityConverter}}" />
             </StackPanel>
         </DataTemplate>
@@ -82,7 +83,7 @@
             </Grid>
         </DataTemplate>
         <DataTemplate x:Key="FlowSecondaryInputGlyph"><Border Margin="0,1,3,1" ToolTip="{Binding AccessibleName}" AutomationProperties.Name="{Binding AccessibleName}">
-            <TextBlock FontSize="11" Foreground="{StaticResource FlowRegionBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="◇" /><Style.Triggers><DataTrigger Binding="{Binding IsRegionInput}" Value="True"><Setter Property="Text" Value="□" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+            <TextBlock FontSize="12" Foreground="{StaticResource FlowRegionBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="◇" /><Style.Triggers><DataTrigger Binding="{Binding IsRegionInput}" Value="True"><Setter Property="Text" Value="□" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
         </Border></DataTemplate>
         <Style x:Key="ReadinessGlyph" TargetType="TextBlock">
             <Setter Property="Text" Value="·" /><Setter Property="FontSize" Value="14" /><Setter Property="FontWeight" Value="SemiBold" />
@@ -337,7 +338,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:SymbolIcon Symbol="Flowchart24" FontSize="14" Margin="0,0,6,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
-                        <TextBlock FontSize="12.5" Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                        <TextBlock FontSize="13" Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
                                    Text="{views:ThreeDText Key=ThreeD.Workspace.ToolConnections, Korean='흐름도', English='Flow'}" />
                         <TextBlock Margin="7,0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding PipelineSteps.Count}" />
                     </StackPanel>
@@ -543,20 +544,20 @@
                     <Grid.RowDefinitions><RowDefinition Height="30" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:SymbolIcon Symbol="Cube24" FontSize="14" Margin="0,0,6,0" />
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Flow.ThreeDInput, Korean='3D 입력', English='3D input'}" />
+                        <TextBlock FontSize="12" FontWeight="Normal" Text="{views:ThreeDText Key=ThreeD.Flow.ThreeDInput, Korean='3D 입력', English='3D input'}" />
                     </StackPanel>
                     <ui:Button Grid.Column="2" Width="24" Height="24" Padding="3" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding LoadC3DSourceCommand}" ToolTip="{Binding Localization.Open3DMap}" AutomationProperties.Name="{Binding Localization.Open3DMap}" />
                     <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,6,0,4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="84" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Grid Width="84" Height="55"  Background="{StaticResource FlowThumbnailSurfaceBrush}"><Image Width="84" Height="55" Stretch="Uniform" Source="{Binding SourceQuality.PreviewFrame, Converter={StaticResource HeightImageFrameConverter}}" AutomationProperties.AutomationId="RecipeSourceThumbnail" ><Image.Clip><RectangleGeometry Rect="0,0,84,55" RadiusX="3" RadiusY="3" /></Image.Clip></Image><Border x:Name="FlowSourceThumbnailChrome" Style="{StaticResource FlowThumbnailFrameStyle}" /></Grid>
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Source.Name}" TextWrapping="Wrap" ToolTip="{Binding Source.Path}" />
-                            <TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecipeInputContract">
-                                <Run Text="{Binding SourceQuality.GridValue, Mode=OneWay}" /><Run Text=" · " /><InlineUIContainer BaselineAlignment="Baseline"><TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Source.Unit, Mode=OneWay}" TextWrapping="NoWrap" /></InlineUIContainer>
+                            <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Source.Name}" TextWrapping="Wrap" ToolTip="{Binding Source.Path}" />
+                            <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" ToolTip="{Binding SourceContractSummary}" AutomationProperties.AutomationId="RecipeInputContract">
+                                <Run Text="{Binding SourceQuality.GridValue, Mode=OneWay}" />
                             </TextBlock>
                             <WrapPanel x:Name="SourceEvidenceBadges">
                                 <Button x:Name="SourceQualityBadge" Margin="0,3,6,0" HorizontalAlignment="Left" Style="{StaticResource FlowSourceQualityBadgeStyle}" Command="{Binding SelectSourceQualityCommand}" ToolTip="{Binding Localization.OpenSourceQuality}" AutomationProperties.Name="{Binding Localization.OpenSourceQuality}">
-                                    <TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.WarningBrush}" TextWrapping="Wrap" ToolTip="{Binding SourceQuality.MissingValue}">
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.WarningBrush}" TextWrapping="Wrap" ToolTip="{Binding SourceQuality.MissingValue}">
                                         <Run Text="{views:ThreeDText Key=ThreeD.Source.Missing, Korean='결측 ', English='Missing '}" /><Run Text="{Binding SourceQuality.Report.Coverage.MissingRatio, Mode=OneWay, StringFormat={}{0:P1}}" />
                                     </TextBlock>
                                 </Button>
@@ -570,7 +571,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
-                                    <TextBlock x:Name="SourceCalibrationText" FontSize="10.5" TextWrapping="Wrap" TextTrimming="None" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                                    <TextBlock x:Name="SourceCalibrationText" FontSize="12" TextWrapping="Wrap" TextTrimming="None" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Source.CalibrationUnknown, Korean='교정 정보 미확인', English='Calibration unknown'}" />
@@ -586,7 +587,7 @@
                             </WrapPanel>
                         </StackPanel>
                     </Grid>
-                    <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Margin="0,3,0,0" FontSize="11" Text="{Binding CurrentSourceHeaderStatusText}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" AutomationProperties.AutomationId="RecipeSourceQualityStatus">
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Margin="0,3,0,0" FontSize="12" Text="{Binding CurrentSourceHeaderStatusText}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" AutomationProperties.AutomationId="RecipeSourceQualityStatus">
                         <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="{Binding IsCurrentSourceHeaderStatusVisible, Converter={StaticResource BoolToVisibilityConverter}}" /><Style.Triggers>
                             <DataTrigger Binding="{Binding CurrentSourceQualityStatusKind}" Value="Warning"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                         </Style.Triggers></Style></TextBlock.Style>
@@ -643,7 +644,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock FontSize="12"
-                                   FontWeight="SemiBold"
+                                   FontWeight="Normal"
                                    Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                    Text="{Binding Localization.RecipeHealth}" />
                         <TextBlock Grid.Column="1"
@@ -664,7 +665,7 @@
                                TextWrapping="Wrap" />
                     <TextBlock Margin="0,6,0,0"
                                FontSize="12"
-                               FontWeight="SemiBold"
+                               FontWeight="Normal"
                                Foreground="{DynamicResource ThreeD.AccentBrush}"
                                Text="{Binding SelectedRecipeHealthTitle}"
                                TextWrapping="Wrap"
@@ -759,7 +760,7 @@
                 <DataTemplate>
                     <StackPanel>
                     <Grid Visibility="{Binding Visibility, ElementName=FlowRepeatGroupCard}">
-<Border x:Name="FlowGroupBackplate" IsHitTestVisible="False"><Border.Style><Style TargetType="Border"><Setter Property="Margin" Value="4,4,-4,-4" /><Setter Property="CornerRadius" Value="7" /><Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{StaticResource FlowCardBorderBrush}" /><Setter Property="Background" Value="#1A2026" /><Style.Triggers>
+<Border x:Name="FlowGroupBackplate" IsHitTestVisible="False"><Border.Style><Style TargetType="Border"><Setter Property="Margin" Value="4,4,-4,-4" /><Setter Property="CornerRadius" Value="7" /><Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{StaticResource FlowCardBorderBrush}" /><Setter Property="Background" Value="#202020" /><Style.Triggers>
 <DataTrigger Binding="{Binding DataContext.SelectedPipelineStep.IsFlowRepeatGroupMember, RelativeSource={RelativeSource AncestorType=workbench:RecipeChainView}}" Value="True"><Setter Property="BorderBrush" Value="#3D5F5D" /></DataTrigger>
 <DataTrigger Binding="{Binding IsThicknessGroupExpanded, RelativeSource={RelativeSource AncestorType=workbench:RecipeChainView}}" Value="True"><Setter Property="CornerRadius" Value="7,7,0,0" /><Setter Property="BorderThickness" Value="1,1,1,0" /></DataTrigger>
 </Style.Triggers></Style></Border.Style></Border>
@@ -771,8 +772,8 @@
                         <StackPanel>
                             <Expander Template="{StaticResource FlowNodeExpanderTemplate}" IsExpanded="{Binding IsThicknessGroupExpanded, RelativeSource={RelativeSource AncestorType=workbench:RecipeChainView}, Mode=TwoWay}" Foreground="{DynamicResource ThreeD.TextBrush}">
                                 <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <TextBlock FontFamily="Consolas" FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding FlowRepeatGroupOrderRange}" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0" VerticalAlignment="Center"><ui:SymbolIcon Symbol="Ruler24" FontSize="13" Margin="0,0,5,0" /><TextBlock FontSize="12.5" FontWeight="SemiBold" Text="{Binding FlowRepeatGroupLabel}" /></StackPanel>
+                                    <TextBlock FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding FlowRepeatGroupOrderRange}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0" VerticalAlignment="Center"><ui:SymbolIcon Symbol="Ruler24" FontSize="13" Margin="0,0,5,0" /><TextBlock FontSize="13" FontWeight="Normal" Text="{Binding FlowRepeatGroupLabel}" /></StackPanel>
                                 </Grid></Expander.Header>
                             </Expander>
                             <Grid Margin="12,0,12,3" MinHeight="32"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -780,8 +781,8 @@
         <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{StaticResource FlowCardSurfaceBrush}" /><Style.Triggers><DataTrigger Binding="{Binding PrimaryFlowInput.IsConnected}" Value="True"><Setter Property="Fill" Value="{DynamicResource ThreeD.AccentBrush}" /></DataTrigger></Style.Triggers></Style></Ellipse.Style>
     </Ellipse>
                                 <ContentControl Width="40" Height="26" Margin="0,0,6,0" Content="{Binding PrimaryFlowInput}" ContentTemplate="{StaticResource FlowInputThumbnail}" Visibility="{Binding PrimaryFlowInput.HasPreview, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                <WrapPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock MaxWidth="80" Margin="0,0,5,0" FontSize="11" Text="{Binding CollapsedPrimaryInputLabel}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><ItemsControl ItemsSource="{Binding SecondaryFlowInputs}" ItemTemplate="{StaticResource FlowSecondaryInputGlyph}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl></WrapPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="›" Margin="6,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.TextBrush}"><Run Text="{Binding FlowRepeatGroupCount, Mode=OneWay}" /><Run Text="{views:ThreeDText Key=ThreeD.Flow.CountSuffix, Korean='개', English=' items'}" /></TextBlock></StackPanel>
+                                <WrapPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock MaxWidth="80" Margin="0,0,5,0" FontSize="12" Text="{Binding CollapsedPrimaryInputLabel}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><ItemsControl ItemsSource="{Binding SecondaryFlowInputs}" ItemTemplate="{StaticResource FlowSecondaryInputGlyph}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl></WrapPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="›" Margin="6,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.TextBrush}"><Run Text="{Binding FlowRepeatGroupCount, Mode=OneWay}" /><Run Text="{views:ThreeDText Key=ThreeD.Flow.CountSuffix, Korean='개', English=' items'}" /></TextBlock></StackPanel>
                                 <Rectangle x:Name="GroupOutputPortVisual" Grid.Column="2" Width="9" Height="9" Margin="0,0,-18,0" HorizontalAlignment="Right" VerticalAlignment="Center" Fill="{DynamicResource ThreeD.SecondaryTextBrush}" RenderTransformOrigin=".5,.5"><Rectangle.RenderTransform><RotateTransform Angle="45" /></Rectangle.RenderTransform></Rectangle>
                             </Grid>
                         </StackPanel>
@@ -792,7 +793,7 @@
 </Style.Triggers></Style></Border.Style></Border>
 </Grid>
                     <Grid Visibility="{Binding Visibility, ElementName=FlowRepeatGroupMemberRow}">
-<Border x:Name="FlowGroupMemberBackplate" Background="#1A2026" IsHitTestVisible="False"><Border.Style><Style TargetType="Border"><Setter Property="Margin" Value="4,0,-4,0" /><Setter Property="BorderThickness" Value="1,0,1,0" /><Setter Property="BorderBrush" Value="{StaticResource FlowCardBorderBrush}" /><Style.Triggers>
+<Border x:Name="FlowGroupMemberBackplate" Background="#202020" IsHitTestVisible="False"><Border.Style><Style TargetType="Border"><Setter Property="Margin" Value="4,0,-4,0" /><Setter Property="BorderThickness" Value="1,0,1,0" /><Setter Property="BorderBrush" Value="{StaticResource FlowCardBorderBrush}" /><Style.Triggers>
 <DataTrigger Binding="{Binding DataContext.SelectedPipelineStep.IsFlowRepeatGroupMember, RelativeSource={RelativeSource AncestorType=workbench:RecipeChainView}}" Value="True"><Setter Property="BorderBrush" Value="#3D5F5D" /></DataTrigger>
 <DataTrigger Binding="{Binding IsFlowRepeatGroupLast}" Value="True"><Setter Property="Margin" Value="4,0,-4,-4" /><Setter Property="CornerRadius" Value="0,0,7,7" /><Setter Property="BorderThickness" Value="1,0,1,1" /><Setter Property="Effect" Value="{StaticResource FlowCardShadow}" /></DataTrigger>
 </Style.Triggers></Style></Border.Style></Border>
@@ -806,9 +807,9 @@
                             <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></DataTrigger>
                         </Style.Triggers></Style></Border.Style>
                         <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <TextBlock FontSize="11.5" Text="{Binding ToolName}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
-                            <TextBlock Grid.Column="1" MaxWidth="75" Margin="5,0" FontSize="11" FontFamily="Consolas" Text="{Binding ResultValueSummary, Converter={StaticResource MeasurementNumberTextConverter}}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
-                            <TextBlock Grid.Column="2" MaxWidth="55" FontSize="10.5" Text="{Binding FlowNodeStatusLabel}" TextWrapping="Wrap" VerticalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Style.Triggers><DataTrigger Binding="{Binding FlowNodeStatusHasIssue}" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger><DataTrigger Binding="{Binding FlowNodeStatusIsFailure}" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                            <TextBlock FontSize="12" Text="{Binding ToolName}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
+                            <TextBlock Grid.Column="1" MaxWidth="75" Margin="5,0" FontSize="12" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" Text="{Binding ResultValueSummary, Converter={StaticResource MeasurementNumberTextConverter}}" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
+                            <TextBlock Grid.Column="2" MaxWidth="55" FontSize="12" Text="{Binding FlowNodeStatusLabel}" TextWrapping="Wrap" VerticalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Style.Triggers><DataTrigger Binding="{Binding FlowNodeStatusHasIssue}" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger><DataTrigger Binding="{Binding FlowNodeStatusIsFailure}" Value="True"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                             <Button Grid.Column="3" Width="22" Height="22" Padding="0" Margin="0" Content="⋯" ToolTip="{views:ThreeDText Key=ThreeD.Flow.ToolMenu, Korean='도구 메뉴', English='Tool menu'}"
                                     AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Flow.ToolMenu, Korean='도구 메뉴', English='Tool menu'}"
                                     Command="{Binding DataContext.SelectPipelineStepCommand, RelativeSource={RelativeSource AncestorType=workbench:RecipeChainView}}" CommandParameter="{Binding Id}"
@@ -862,11 +863,11 @@
                                 <Expander.Header>
                                     <Grid MinHeight="30"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                        <TextBlock x:Name="FlowHeaderOrder" VerticalAlignment="Center" FontSize="10.5" FontFamily="Consolas" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Order}" />
+                                        <TextBlock x:Name="FlowHeaderOrder" VerticalAlignment="Center" FontSize="12" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Order}" />
                                         <ui:SymbolIcon x:Name="FlowHeaderTypeIcon" Grid.Column="1" FontSize="13" Margin="5,0,0,0" VerticalAlignment="Center"><ui:SymbolIcon.Style><Style TargetType="ui:SymbolIcon"><Setter Property="Symbol" Value="Cube24" /><Style.Triggers><DataTrigger Binding="{Binding ToolId}" Value="filter"><Setter Property="Symbol" Value="Filter24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="thickness"><Setter Property="Symbol" Value="Ruler24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="level-surface"><Setter Property="Symbol" Value="AlignBottom24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="plane-flatness"><Setter Property="Symbol" Value="AlignCenterHorizontal24" /></DataTrigger><DataTrigger Binding="{Binding ToolId}" Value="warpage"><Setter Property="Symbol" Value="DataLine24" /></DataTrigger></Style.Triggers></Style></ui:SymbolIcon.Style></ui:SymbolIcon>
-                                        <TextBlock x:Name="FlowHeaderName" Grid.Column="2" Margin="6,0" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" behaviors:WordBoundaryWrapBehavior.Text="{Binding ToolName}" ToolTip="{Binding ToolName}" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="FlowHeaderName" Grid.Column="2" Margin="6,0" VerticalAlignment="Center" FontSize="13" FontWeight="Normal" Foreground="{DynamicResource ThreeD.TextBrush}" behaviors:WordBoundaryWrapBehavior.Text="{Binding ToolName}" ToolTip="{Binding ToolName}" TextWrapping="Wrap" />
                                         <Border x:Name="FlowHeaderState" Grid.Column="3" Margin="3,0" CornerRadius="9" BorderThickness="1" BorderBrush="{StaticResource FlowCardBorderBrush}" VerticalAlignment="Center">
-                                        <TextBlock  Padding="4,1" MaxWidth="65" VerticalAlignment="Center" FontSize="10.5" Text="{Binding FlowNodeStatusLabel}" TextWrapping="Wrap">
+                                        <TextBlock  Padding="4,1" MaxWidth="65" VerticalAlignment="Center" FontSize="12" Text="{Binding FlowNodeStatusLabel}" TextWrapping="Wrap">
                                             <TextBlock.Style><Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
                                                 <Style.Triggers>
@@ -894,7 +895,7 @@
                                 <StackPanel>
                             <StackPanel Margin="0,0,0,0">
                                 <Border BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,1,0,0" Padding="12,5,12,2">
-                                    <Grid><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Input, Korean='입력', English='Input'}" /><TextBlock FontSize="10.5" HorizontalAlignment="Right" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Connect, Korean='연결', English='Connect'}" /></Grid>
+                                    <Grid><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Input, Korean='입력', English='Input'}" /><TextBlock FontSize="12" HorizontalAlignment="Right" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Connect, Korean='연결', English='Connect'}" /></Grid>
                                 </Border>
                                 <ItemsControl ItemsSource="{Binding FlowInputs}">
                                     <ItemsControl.ItemTemplate>
@@ -910,14 +911,14 @@
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                                     <ContentControl Width="64" Height="42" Margin="0,0,6,0" Content="{Binding}" ContentTemplate="{StaticResource FlowInputThumbnail}" Visibility="{Binding HasMapPreview, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="FlowInputThumbnail" />
                                                     <Rectangle Width="9" Height="9" Margin="0,0,6,0" Stroke="{StaticResource FlowRegionBrush}" StrokeThickness="1.5" VerticalAlignment="Center" Visibility="{Binding IsRegionInput, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                                    <TextBlock Grid.Column="1" MaxWidth="64" Margin="0,0,6,0" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Label}" TextWrapping="Wrap" />
-                                                    <TextBlock Grid.Column="2" FontSize="10.5" Text="{Binding EntityDisplayName}" TextWrapping="Wrap" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
+                                                    <TextBlock Grid.Column="1" MaxWidth="64" Margin="0,0,6,0" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Label}" TextWrapping="Wrap" />
+                                                    <TextBlock Grid.Column="2" FontSize="12" Text="{Binding EntityDisplayName}" TextWrapping="Wrap" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
                                                 </Grid>
                                             </Button>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Margin="12,4,12,0" Padding="0,2,0,0" FontSize="11" HorizontalAlignment="Left"
+                                <TextBlock Margin="12,4,12,0" Padding="0,2,0,0" FontSize="12" HorizontalAlignment="Left"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Output, Korean='출력', English='Output'}" />
                             </StackPanel>
                             <Button x:Name="StepOutputPort" Tag="{Binding OutputContract}"
@@ -952,7 +953,7 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                    <TextBlock Grid.Column="2" MaxWidth="100" Margin="6,0,0,0" FontSize="11.5" FontFamily="Consolas" Text="{Binding ResultValueSummary, Converter={StaticResource MeasurementNumberTextConverter}}" TextWrapping="Wrap" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
+                                    <TextBlock Grid.Column="2" MaxWidth="100" Margin="6,0,0,0" FontSize="12" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" Text="{Binding ResultValueSummary, Converter={StaticResource MeasurementNumberTextConverter}}" TextWrapping="Wrap" TextAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TextBrush}" />
                                 </Grid>
                             </Button>
                             <Button x:Name="FlowExpandedMenuButton" Visibility="Collapsed" HorizontalAlignment="Right" Width="22" Height="22" Padding="0" Margin="0,0,8,2" Content="⋯" ToolTip="{views:ThreeDText Key=ThreeD.Flow.ToolMenu, Korean='도구 메뉴', English='Tool menu'}"
@@ -999,14 +1000,14 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <ContentControl Width="40" Height="26" Margin="0,0,6,0" Content="{Binding PrimaryFlowInput}" ContentTemplate="{StaticResource FlowInputThumbnail}"
                                                         Visibility="{Binding PrimaryFlowInput.HasPreview, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock FontSize="11" Text="{Binding CollapsedPrimaryInputLabel}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><ItemsControl ItemsSource="{Binding SecondaryFlowInputs}" ItemTemplate="{StaticResource FlowSecondaryInputGlyph}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl></StackPanel>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock FontSize="12" Text="{Binding CollapsedPrimaryInputLabel}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><ItemsControl ItemsSource="{Binding SecondaryFlowInputs}" ItemTemplate="{StaticResource FlowSecondaryInputGlyph}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl></StackPanel>
                                     </Grid>
                                     <TextBlock Grid.Column="1" Margin="6,0" Text="›" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                                     <Grid Grid.Column="2" MaxWidth="100" VerticalAlignment="Center">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <Grid Width="40" Height="26" Margin="0,0,6,0" Visibility="{Binding HasOutputPreview, Converter={StaticResource BoolToVisibilityConverter}}" Background="{StaticResource FlowThumbnailSurfaceBrush}"><Image Width="40" Height="26"  Stretch="Uniform" Source="{Binding OutputPreviewFrame, Converter={StaticResource HeightImageFrameConverter}}"
                                                 AutomationProperties.AutomationId="FlowCollapsedOutputThumbnail" ><Image.Clip><RectangleGeometry Rect="0,0,40,26" RadiusX="3" RadiusY="3" /></Image.Clip></Image><Border x:Name="FlowCollapsedOutputThumbnailChrome" Style="{StaticResource FlowThumbnailFrameStyle}" /></Grid>
-                                        <TextBlock Grid.Column="1" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Right" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                        <TextBlock Grid.Column="1" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Right" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
                                             <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding CollapsedOutputSummary, Converter={StaticResource MeasurementNumberTextConverter}}" /><Style.Triggers>
                                                 <DataTrigger Binding="{Binding OutputContract}" Value="MeasurementResult"><Setter Property="Text" Value="{Binding CollapsedOutputSummary, Converter={StaticResource MeasurementNumberTextConverter}}" /></DataTrigger>
                                             </Style.Triggers></Style></TextBlock.Style>
@@ -1053,12 +1054,12 @@
             <Border Grid.Row="5" Padding="10,6" Background="{DynamicResource ThreeD.DockHeaderBrush}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}"
                     Visibility="{Binding IsTeachingMode, ElementName=RecipeChainRoot, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="FlowLegend">
                 <WrapPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="11" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Text="●" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Height, Korean='높이 맵', English='Height map'}" /></StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="11" Margin="0,0,5,0" Foreground="{StaticResource FlowRegionBrush}" Text="■" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Region, Korean='영역', English='Region'}" /></StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="11" Margin="0,0,5,0" Foreground="{StaticResource FlowDeviationBrush}" Text="●" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Deviation, Korean='편차 맵', English='Deviation map'}" /></StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="11" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.TextBrush}" Text="◆" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Value, Korean='값', English='Value'}" /></StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="11" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Text="─" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Connection, Korean='연결', English='Connection'}" /></StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="11" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="┄" /><TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Stale, Korean='재실행 필요', English='Rerun required'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="12" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Text="●" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Height, Korean='높이 맵', English='Height map'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="12" Margin="0,0,5,0" Foreground="{StaticResource FlowRegionBrush}" Text="■" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Region, Korean='영역', English='Region'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="12" Margin="0,0,5,0" Foreground="{StaticResource FlowDeviationBrush}" Text="●" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Deviation, Korean='편차 맵', English='Deviation map'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="12" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.TextBrush}" Text="◆" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Value, Korean='값', English='Value'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="12" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Text="─" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Connection, Korean='연결', English='Connection'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,4"><TextBlock FontSize="12" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="┄" /><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.Legend.Caption.Stale, Korean='재실행 필요', English='Rerun required'}" /></StackPanel>
                 </WrapPanel>
             </Border>
             <Border x:Name="RecipeFlowHint"
@@ -1119,7 +1120,7 @@
                             AutomationProperties.AutomationId="ThicknessRepeatGroup">
                         <StackPanel>
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                        Text="{Binding ThicknessRepeatGroupSummary}" />
                             <TextBlock Margin="0,2,0,0"
@@ -1131,7 +1132,7 @@
                         </StackPanel>
                     </Border>
                     <TextBlock FontSize="12"
-                               FontWeight="SemiBold"
+                               FontWeight="Normal"
                                Text="{Binding SelectedPipelineStepTitle}"
                                TextTrimming="CharacterEllipsis" />
                     <WrapPanel Margin="0,6,0,0">
@@ -1170,12 +1171,12 @@
                                    Command="{Binding RunTeachingRecipeCommand}" ToolTip="Ctrl+F5" AutomationProperties.AutomationId="TeachingRunAllTools">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{views:ThreeDText Key=ThreeD.Flow.RunAll, Korean='모든 도구 실행', English='Run all tools'}" />
-                                <Border Margin="6,0,0,0" Padding="3,1" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3"><TextBlock FontSize="10.5" FontFamily="Consolas" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Ctrl+F5" /></Border>
+                                <Border Margin="6,0,0,0" Padding="3,1" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3"><TextBlock FontSize="12" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Ctrl+F5" /></Border>
                             </StackPanel>
                         </ui:Button>
                         <ui:Button Grid.Column="1" Margin="4,0,0,0" Padding="6,4" Content="{Binding Localization.Cancel}" Command="{Binding CancelTeachingRecipeCommand}" Visibility="{Binding IsOrderedRunRunning, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </Grid>
-                    <TextBlock Margin="0,6,0,0" FontSize="11.5" Text="{Binding OrderedRunStatus}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                    <TextBlock Margin="0,6,0,0" FontSize="12" Text="{Binding OrderedRunStatus}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                 </StackPanel>
             </Border>
 

@@ -151,34 +151,6 @@ public sealed partial class ToolWorkbenchViewModel
         return manual.Where(item => item.Output is null || !orderedRunExecutionOwner.OwnsOutput(item.Output.EntityId)).Concat(current).ToArray();
     }
 
-    private ToolWorkbenchArtifactItem? ProjectOrderedArtifact(ToolWorkbenchPipelineStepItem step)
-    {
-        if (!orderedRunExecutionOwner.OwnsOutput(step.OutputEntityId)) return null;
-        var executed = orderedRunExecutionOwner.GetPublishedStep(step.OutputEntityId);
-        var output = executed?.RuntimeOutput;
-        var (unit, frame) = output switch
-        {
-            C3DHeightFieldSnapshot map => (map.Unit, map.FrameId),
-            C3DSignedHeightDeltaArtifact delta => (delta.Unit, delta.FrameId),
-            C3DTransformedHeightField field => (field.ReferenceUnit, field.ReferenceFrameId),
-            C3DTransformedPointCloud cloud => (cloud.ReferenceUnit, cloud.ReferenceFrameId),
-            C3DAffineTransform3D transform => (transform.ReferenceUnit, transform.ReferenceFrameId),
-            ToolRecipeHeightMeasurementOutput measurement => (measurement.Unit, measurement.FrameId),
-            _ => (Source.Unit, Source.FrameId)
-        };
-        var artifact = new ToolWorkbenchArtifactItem(step.OutputEntityId, step.ToolName, step.OutputContract,
-            output is null ? "Declared" : "Published", Source.Id, string.Join("; ", step.InputEntityIds), unit, frame,
-            executed?.OutputContentSha256 ?? string.Empty, executed?.Evidence ?? string.Format(Localization.FlowPortDeclaredDetailFormat, step.OutputEntityId),
-            step, output is null ? "DeclaredOutput" : step.OutputContract.Split('+')[0].Trim());
-        return output is C3DHeightFieldSnapshot height ? artifact with
-        {
-            Minimum = height.ValidCount > 0 ? height.Minimum : null,
-            Maximum = height.ValidCount > 0 ? height.Maximum : null,
-            ValidSampleCount = height.ValidCount, MissingSampleCount = height.MissingCount,
-            GridWidth = height.Width, GridHeight = height.Height
-        } : artifact;
-    }
-
     private ToolWorkbenchArtifactProjectionSnapshot CreateArtifactProjectionSnapshot() => new(
         Source,
         IsSourceReadyForRecipe,
@@ -308,7 +280,9 @@ public sealed partial class ToolWorkbenchViewModel
         SourceQuality.Report,
         ninePointExecutionOwner.GetOutput,
         ninePointExecutionOwner.IsPublished,
-        ProjectOrderedArtifact);
+        outputEntityId => orderedRunExecutionOwner.OwnsOutput(outputEntityId)
+            ? new ToolWorkbenchOrderedArtifactSnapshot(orderedRunExecutionOwner.GetPublishedStep(outputEntityId))
+            : null);
 
     private void RebuildArtifactRegistryAndNavigator() => artifactNavigatorOwner.Rebuild();
 

@@ -56,8 +56,8 @@
                TargetType="{x:Type Button}"
                BasedOn="{StaticResource DialogButtonBaseStyle}">
             <Setter Property="Background" Value="#23354A" />
-            <Setter Property="BorderBrush" Value="#40556E" />
-            <Setter Property="Foreground" Value="#E8EAED" />
+            <Setter Property="BorderBrush" Value="#575757" />
+            <Setter Property="Foreground" Value="#EAEAEA" />
         </Style>
     </UserControl.Resources>
 
@@ -105,13 +105,13 @@
                         Margin="0,0,0,12" />
                 <TextBlock x:Name="TitleText"
                            Text="Message"
-                           Foreground="#F4F6F8"
+                           Foreground="#F6F6F6"
                            FontFamily="Segoe UI"
                            FontSize="18"
                            FontWeight="SemiBold"
                            TextWrapping="Wrap" />
                 <TextBlock x:Name="MessageText"
-                           Foreground="#D3D7DE"
+                           Foreground="#D8D8D8"
                            FontFamily="Segoe UI"
                            FontSize="13"
                            LineHeight="20"
@@ -142,9 +142,9 @@
                                  IsReadOnly="True"
                                  BorderThickness="0"
                                  Background="Transparent"
-                                 Foreground="#C7CBD1"
-                                 FontFamily="Consolas"
-                                 FontSize="11"
+                                 Foreground="#CCCCCC"
+                                 FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular"
+                                 FontSize="12"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
                                  MaxHeight="180"

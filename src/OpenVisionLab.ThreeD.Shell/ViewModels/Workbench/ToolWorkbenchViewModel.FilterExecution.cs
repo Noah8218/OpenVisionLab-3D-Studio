@@ -489,6 +489,7 @@ public sealed partial class ToolWorkbenchViewModel
 
         if (!ToolRecipeOrderedGraphExecution.CanExecute(document, out message))
         {
+            message = Localization.LocalizeRecipeReadiness(message);
             return false;
         }
 

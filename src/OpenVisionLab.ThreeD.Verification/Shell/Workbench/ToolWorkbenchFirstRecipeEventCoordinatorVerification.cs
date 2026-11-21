@@ -71,6 +71,18 @@ internal static class ToolWorkbenchFirstRecipeEventCoordinatorVerification
                 && string.IsNullOrWhiteSpace(emptySetup.SourcePath)
                 && emptySetup.StarterId == ToolWorkbenchFirstRecipeSetupOwner.EmptyStarterId,
                 owner.FirstRecipeSetupStatus);
+            var emptyStarter = owner.SelectedFirstRecipeStarter;
+            var requiredNotifications = 0;
+            owner.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(owner.IsFirstRecipeSourceRequired)) requiredNotifications++;
+            };
+            owner.SelectedFirstRecipeStarter = owner.FirstRecipeStarterOptions.Single(option => option.Id == ToolWorkbenchFirstRecipeSetupOwner.ThicknessStarterId);
+            Check("a thickness starter requires a source before Create", owner.IsFirstRecipeSourceRequired
+                && !owner.CreateFirstRecipeCommand.CanExecute(null), owner.FirstRecipeSetupStatus);
+            owner.SelectedFirstRecipeStarter = emptyStarter;
+            Check("changing back to the empty starter restores an optional source", !owner.IsFirstRecipeSourceRequired
+                && owner.CreateFirstRecipeCommand.CanExecute(null) && requiredNotifications == 2, owner.FirstRecipeSetupStatus);
             owner.FirstRecipeSourcePath = sourcePath;
             Check(
                 "PropertyChanged reaches the Workbench callback",

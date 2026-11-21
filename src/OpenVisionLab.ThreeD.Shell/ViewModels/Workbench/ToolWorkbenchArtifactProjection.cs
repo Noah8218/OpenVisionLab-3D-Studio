@@ -137,6 +137,36 @@ internal sealed class ToolWorkbenchArtifactProjection
             "Source");
     }
 
+    private static ToolWorkbenchArtifactItem CreateOrderedArtifact(
+        ToolWorkbenchArtifactProjectionSnapshot snapshot,
+        ToolWorkbenchPipelineStepItem step,
+        ToolWorkbenchOrderedArtifactSnapshot ordered)
+    {
+        var executed = ordered.Executed;
+        var output = executed?.RuntimeOutput;
+        var (unit, frame) = output switch
+        {
+            C3DHeightFieldSnapshot map => (map.Unit, map.FrameId),
+            C3DSignedHeightDeltaArtifact delta => (delta.Unit, delta.FrameId),
+            C3DTransformedHeightField field => (field.ReferenceUnit, field.ReferenceFrameId),
+            C3DTransformedPointCloud cloud => (cloud.ReferenceUnit, cloud.ReferenceFrameId),
+            C3DAffineTransform3D transform => (transform.ReferenceUnit, transform.ReferenceFrameId),
+            ToolRecipeHeightMeasurementOutput measurement => (measurement.Unit, measurement.FrameId),
+            _ => (snapshot.Source.Unit, snapshot.Source.FrameId)
+        };
+        var artifact = new ToolWorkbenchArtifactItem(step.OutputEntityId, step.ToolName, step.OutputContract,
+            output is null ? "Declared" : "Published", snapshot.Source.Id, string.Join("; ", step.InputEntityIds), unit, frame,
+            executed?.OutputContentSha256 ?? string.Empty, executed?.Evidence ?? string.Format(snapshot.DeclaredOutputDetailFormat, step.OutputEntityId),
+            step, output is null ? "DeclaredOutput" : step.OutputContract.Split('+')[0].Trim());
+        return output is C3DHeightFieldSnapshot height ? artifact with
+        {
+            Minimum = height.ValidCount > 0 ? height.Minimum : null,
+            Maximum = height.ValidCount > 0 ? height.Maximum : null,
+            ValidSampleCount = height.ValidCount, MissingSampleCount = height.MissingCount,
+            GridWidth = height.Width, GridHeight = height.Height
+        } : artifact;
+    }
+
     private static ToolWorkbenchArtifactItem CreateStepArtifact(
         ToolWorkbenchArtifactProjectionSnapshot snapshot,
         ToolWorkbenchPipelineStepItem step)
@@ -159,7 +189,8 @@ internal sealed class ToolWorkbenchArtifactProjection
                 "DisabledOutput");
         }
 
-        if (snapshot.ProjectOrderedArtifact?.Invoke(step) is { } ordered) return ordered;
+        if (snapshot.GetOrderedArtifact?.Invoke(step.OutputEntityId) is { } ordered)
+            return CreateOrderedArtifact(snapshot, step, ordered);
 
         if (string.Equals(step.ToolId, "roi-crop", StringComparison.Ordinal)
             && snapshot.RoiCrop.Output is { } cropOutput
@@ -900,6 +931,9 @@ internal sealed record ToolWorkbenchHeightThresholdArtifactPreview(
     bool IsStale,
     bool IsPublished);
 
+internal sealed record ToolWorkbenchOrderedArtifactSnapshot(
+    ToolRecipeOrderedGraphStepResult? Executed);
+
 internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     ToolWorkbenchSourceItem Source,
     bool IsSourceReadyForRecipe,
@@ -975,4 +1009,4 @@ internal sealed record ToolWorkbenchArtifactProjectionSnapshot(
     SourceQualityReport? SourceQuality = null,
     Func<string, C3DHeightFieldSnapshot?>? GetNinePointOutput = null,
     Func<string, bool>? IsNinePointPublished = null,
-    Func<ToolWorkbenchPipelineStepItem, ToolWorkbenchArtifactItem?>? ProjectOrderedArtifact = null);
+    Func<string, ToolWorkbenchOrderedArtifactSnapshot?>? GetOrderedArtifact = null);

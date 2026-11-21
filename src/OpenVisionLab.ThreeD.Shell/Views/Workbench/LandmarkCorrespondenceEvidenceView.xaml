@@ -2,8 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
              AutomationProperties.AutomationId="LandmarkCorrespondenceEvidenceView">
+    <UserControl.Resources>
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+    </UserControl.Resources>
     <Grid Margin="12,8" Background="{DynamicResource ThreeD.PanelBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -28,7 +32,7 @@
                 <StackPanel Orientation="Horizontal">
                     <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Symbol="Document24" />
                     <TextBlock FontSize="12"
-                               FontWeight="SemiBold"
+                               FontWeight="Normal"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.ReadOnly, Korean='읽기 전용', English='Read-only'}" />
                 </StackPanel>
@@ -46,13 +50,34 @@
                     <TextBlock FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.PublishedInputs, Korean='적용된 입력', English='Applied inputs'}" />
-                    <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceUpstreamSummary}" />
+                    <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource ViewerRuntimeTextConverter}" ConverterParameter="LandmarkEvidenceSummary">
+                                <Binding Path="LandmarkCorrespondenceUpstreamSummary" />
+                                <Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
                     <TextBlock Margin="0,8,0,0"
                                FontSize="12"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{i18n:ThreeDText Key=ThreeD.Workbench.CorrespondenceEvidence.CurrentState, Korean='현재 대응 상태', English='Current correspondence state'}" />
-                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceEvidenceSummary}" />
-                    <TextBlock Margin="0,8,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceOutputHashSummary}" />
+                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="Normal" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" TextWrapping="Wrap">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource ViewerRuntimeTextConverter}" ConverterParameter="LandmarkEvidenceSummary">
+                                <Binding Path="LandmarkCorrespondenceEvidenceSummary" />
+                                <Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <TextBlock Margin="0,8,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource ViewerRuntimeTextConverter}" ConverterParameter="LandmarkEvidenceSummary">
+                                <Binding Path="LandmarkCorrespondenceOutputHashSummary" />
+                                <Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
                 </StackPanel>
             </ScrollViewer>
         </Border>

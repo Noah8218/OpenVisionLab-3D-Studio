@@ -247,7 +247,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.
 
 - [기여 규칙과 버전 관리](AGENTS.md)
 
-현재 버전: `v0.8.1-dev` · [변경 이력](CHANGELOG.md)
+현재 버전: `v0.8.2-dev` · [변경 이력](CHANGELOG.md)
 
 ## 합성 입력 검사 화면
 

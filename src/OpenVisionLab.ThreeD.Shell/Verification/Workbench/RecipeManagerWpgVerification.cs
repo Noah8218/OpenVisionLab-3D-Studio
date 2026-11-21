@@ -144,7 +144,7 @@ internal static class RecipeManagerWpgVerification
                         $"{label}; sample={sample.ActualWidth:F2}x{sample.ActualHeight:F2}; minimum={minimum.ActualWidth:F2}x{minimum.ActualHeight:F2}; maximum={maximum.ActualWidth:F2}x{maximum.ActualHeight:F2}");
                     var surface = (Border)sample.Template.FindName("ParameterInputSurface", sample);
                     Check("rendered normal surface uses field roles", surface.CornerRadius.TopLeft == 4 && surface.BorderThickness == new Thickness(1)
-                        && surface.Background.ToString() == "#FF222A33" && surface.BorderBrush.ToString() == "#FF718293",
+                        && surface.Background.ToString() == "#FF2A2A2A" && surface.BorderBrush.ToString() == "#FF828282",
                         $"{label}; bg={surface.Background}; border={surface.BorderBrush}; radius={surface.CornerRadius}");
                     Check("one outer scroll owner", !FindVisualChildren<ScrollViewer>(conditions).Concat(FindVisualChildren<ScrollViewer>(acceptance)).Any(s => s.IsVisible && s.Name != "PART_ContentHost"), label);
                     var expression = minimum.GetBindingExpression(TextBox.TextProperty)!;
@@ -177,8 +177,8 @@ internal static class RecipeManagerWpgVerification
                     conditions.IsEnabled = false;
                     Layout();
                     surface = (Border)sample.Template.FindName("ParameterInputSurface", sample);
-                    Check("disabled editor is rendered with semantic roles", !sample.IsEnabled && surface.Background.ToString() == "#FF1C2229"
-                        && sample.Foreground.ToString() == "#FF8B98A6", $"{label}; bg={surface.Background}; text={sample.Foreground}");
+                    Check("disabled editor is rendered with semantic roles", !sample.IsEnabled && surface.Background.ToString() == "#FF222222"
+                        && sample.Foreground.ToString() == "#FF989898", $"{label}; bg={surface.Background}; text={sample.Foreground}");
                     Capture(panel, label + "-disabled");
                     conditions.IsEnabled = true;
                     acceptance.IsCompactPresentation = false;
@@ -264,7 +264,7 @@ internal static class RecipeManagerWpgVerification
             booleanBinding!.UpdateSource();
             Layout();
             Check("bool factory retains two-way typed binding", !booleanSource.Enabled && ReferenceEquals(booleanBinding, booleanEditor.GetBindingExpression(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty))
-                && booleanSurface.Background.ToString() == "#FF222A33", $"source={booleanSource.Enabled}; bg={booleanSurface.Background}");
+                && booleanSurface.Background.ToString() == "#FF2A2A2A", $"source={booleanSource.Enabled}; bg={booleanSurface.Background}");
             Capture(representative, "representative-bool-unchecked");
             booleanSource.Enabled = true;
             booleanBinding.UpdateTarget();
@@ -272,7 +272,7 @@ internal static class RecipeManagerWpgVerification
             Check("restored bool source renders checked mark", booleanEditor.IsChecked == true && ((System.Windows.Shapes.Path)booleanEditor.Template.FindName("ParameterCheckMark", booleanEditor)).Visibility == Visibility.Visible, "same factory editor");
             booleanEditor.IsEnabled = false;
             Layout();
-            Check("disabled bool avoids platform-white surface", booleanSurface.Background.ToString() == "#FF1C2229" && booleanEditor.Foreground.ToString() == "#FF8B98A6", $"bg={booleanSurface.Background}; fg={booleanEditor.Foreground}");
+            Check("disabled bool avoids platform-white surface", booleanSurface.Background.ToString() == "#FF222222" && booleanEditor.Foreground.ToString() == "#FF989898", $"bg={booleanSurface.Background}; fg={booleanEditor.Foreground}");
             Capture(representative, "representative-bool-disabled");
 
             representative.SelectedObject = new FilterStepProperties { KernelSize = 3 };
@@ -328,7 +328,7 @@ internal static class RecipeManagerWpgVerification
                         .Select(section => section.Template.FindName("RequiredSettingsHeader", section)).OfType<TextBlock>().ToArray();
                     Check("Teaching condition page captions retain the approved type and color roles", requiredHeaders.Length > 0
                         && requiredHeaders.All(header => header.FontFamily.Source == "Segoe UI Variable Text, Segoe UI, Malgun Gothic" && header.FontSize == 12
-                            && header.FontWeight.ToOpenTypeWeight() == 650 && Math.Abs(header.ActualHeight - 17.4) <= 0.05 && header.Foreground.ToString() == "#FFADB9C6"),
+                            && header.FontWeight.ToOpenTypeWeight() == 650 && Math.Abs(header.ActualHeight - 17.4) <= 0.05 && header.Foreground.ToString() == "#FFBABABA"),
                         $"{label}; headers={requiredHeaders.Length}; heights={string.Join(",", requiredHeaders.Select(header => header.ActualHeight.ToString("F2")))}");
                     var sampleField = FindVisualChildren<TextBox>(conditions).Single(editor => AutomationProperties.GetAutomationId(editor) == nameof(ThicknessStepProperties.MinimumValidSampleCount));
                     var conditionPageVisible = sampleField.IsVisible && ReferenceEquals(conditions.SelectedObject, workbench.SelectedStepPropertyDraft);
@@ -371,13 +371,13 @@ internal static class RecipeManagerWpgVerification
                         && draftBar.IsAncestorOf(apply), label);
                     Check("draft bar and primary button use HTML roles", draftBar.Padding == new Thickness(10, 8, 10, 8) && draftBar.CornerRadius.TopLeft == 4
                         && draftBar.Background.ToString() == "#FF382D20" && apply.Background.ToString() == "#FF65B9AE"
-                        && apply.Foreground.ToString() == "#FF11171B" && discard.Foreground.ToString() == "#FFF3D9AE",
+                        && apply.Foreground.ToString() == "#FF161616" && discard.Foreground.ToString() == "#FFF3D9AE",
                         $"{label}; draft={draftBar.Background}; apply={apply.Background}/{apply.Foreground}; discard={discard.Foreground}");
                     Capture(view, label + "-pending");
                     discard.IsEnabled = false;
                     Layout();
-                    Check("disabled Discard retains shared state roles", discard.Foreground.ToString() == "#FF8B98A6"
-                        && discard.Background.ToString() == "#FF1E252C", $"{label}; fg={discard.Foreground}; bg={discard.Background}");
+                    Check("disabled Discard retains shared state roles", discard.Foreground.ToString() == "#FF989898"
+                        && discard.Background.ToString() == "#FF252525", $"{label}; fg={discard.Foreground}; bg={discard.Background}");
                     Capture(view, label + "-discard-disabled");
                     discard.ClearValue(UIElement.IsEnabledProperty);
                     Layout();
@@ -400,7 +400,7 @@ internal static class RecipeManagerWpgVerification
                     Check("Lab section presentation retains its existing margin and caption roles", labSections.Select(section => section.Name).OrderBy(name => name)
                         .SequenceEqual(new[] { "AcceptanceLimitsExpander", "RegionsExpander", "SelectedToolOutputSummary" })
                         && labSections.All(section => section.Margin == new Thickness(0, 0, 0, 7))
-                        && labHeaders.All(header => header.FontWeight == FontWeights.SemiBold && header.Foreground.ToString() == "#FFE4E9EF" && header.Margin == new Thickness(0, 0, 0, 6)),
+                        && labHeaders.All(header => header.FontWeight == FontWeights.Normal && header.Foreground.ToString() == "#FFEAEAEA" && header.Margin == new Thickness(0, 0, 0, 6)),
                         $"{label};sections={labSections.Length};margins={string.Join(';', labSections.Select(section => section.Margin))};headers={string.Join(';', labHeaders.Select(header => $"{header.FontWeight}/{header.Foreground}/{header.Margin}"))};condition={sampleField.IsVisible};decision={minimumField.IsVisible}");
                     Check("Lab preserves body actions and hides Teaching footer", footer.Visibility == Visibility.Collapsed
                         && FindVisualChildren<Button>(view).Any(button => button.IsVisible && AutomationProperties.GetAutomationId(button) == "ApplySelectedToolParameters"
@@ -2122,7 +2122,7 @@ internal static class RecipeManagerWpgVerification
             {
                 (nameof(FilterStepProperties.Method), "중앙값"),
                 (nameof(FilterStepProperties.MissingValuePolicy), "누락 위치 유지"),
-                (nameof(FilterStepProperties.BoundaryPolicy), "사용 가능한 주변 셀")
+                (nameof(FilterStepProperties.BoundaryPolicy), "경계 안 이웃 셀")
             };
             var initialCaptionFailures = closedEnumCaptions.Where(expected =>
             {

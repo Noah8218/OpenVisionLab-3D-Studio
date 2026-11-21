@@ -436,7 +436,7 @@ public sealed partial class MainWindowViewModel
                 { C3DHeightLegendError = OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.Resolve("ThreeD.Legend.InputChanged", "입력이 바뀌었습니다. 값을 다시 여세요.", "Input changed. Reopen the value editor."); return; }
                 if (!(double.TryParse(request.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var number)
                     || double.TryParse(request.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out number)) || !double.IsFinite(number))
-                { C3DHeightLegendError = OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.Resolve("ThreeD.Legend.FiniteNumber", "유한한 숫자를 입력하세요.", "Enter a finite number."); return; }
+                { C3DHeightLegendError = OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.Resolve("ThreeD.Legend.FiniteNumber", "올바른 숫자를 입력하세요.", "Enter a finite number."); return; }
                 if (request.Kind == HeightLegendEditKind.InputLower) minimum = number; else maximum = number;
                 if (heightDisplayIsSignedDelta)
                 {

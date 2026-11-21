@@ -275,7 +275,7 @@ The package quick-start source is available at
 
 - [Contributor rules and versioning](AGENTS.md)
 
-Current version: `v0.8.1-dev` · [Changelog](CHANGELOG.md)
+Current version: `v0.8.2-dev` · [Changelog](CHANGELOG.md)
 
 ## Synthetic inspection examples
 

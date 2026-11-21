@@ -131,6 +131,8 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     public ICommand SelectValidationMismatchDistributionCommand => validationSetReviewOwner.SelectValidationMismatchDistributionCommand;
     public bool HasValidationMismatches => validationSetReviewOwner.HasValidationMismatches;
     public bool HasValidationResults => validationSetReviewOwner.HasValidationResults;
+    public bool HasValidationExpectations => validationSetReviewOwner.HasValidationExpectations;
+    public bool AllValidationExpectationsMatch => validationSetReviewOwner.AllValidationExpectationsMatch;
     public IReadOnlyList<ValidationDistributionOutput> ValidationDistributionOutputs => validationSetReviewOwner.ValidationDistributionOutputs;
     public string SelectedValidationDistributionReadout => validationSetReviewOwner.SelectedValidationDistributionReadout;
     public IReadOnlyList<ValidationThresholdCandidateRow> ValidationDistributionCandidates => ValidationThresholdCandidates.Where(candidate =>
@@ -622,7 +624,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             NotifyValidationSetCountsChanged();
             SamplesChanged?.Invoke(this, EventArgs.Empty);
             ValidationSetSummary = result.Samples.Count == 0
-                ? Localize(result.Message, result.Message)
+                ? ThreeDLocalization.Shared.LocalizeRecipeReadiness(result.Message)
                 : LocalizeResultSummary(result);
             SelectedValidationSetSample =
                 validationSetDefinitionOwner.Samples.FirstOrDefault(row => row.Status is "Fail" or "Error")

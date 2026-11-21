@@ -45,11 +45,11 @@
             <Border Padding="8" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="3">
                 <Viewbox Stretch="Fill">
                     <Canvas Width="288" Height="76">
-                        <Line X1="8" Y1="64" X2="276" Y2="64" Stroke="#475569" StrokeThickness="0.8" />
+                        <Line X1="8" Y1="64" X2="276" Y2="64" Stroke="#585858" StrokeThickness="0.8" />
                         <Line X1="8" Y1="10" X2="276" Y2="10" Stroke="{DynamicResource ThreeD.WarningBrush}" StrokeThickness="1.2" StrokeDashArray="3,2" />
                         <TextBlock Canvas.Left="9"
                                    Canvas.Top="0"
-                                   FontSize="7"
+                                   FontSize="12"
                                    Foreground="{DynamicResource ThreeD.WarningBrush}"
                                    Text="{i18n:ThreeDText Key=ThreeD.Workbench.LineFitDiagnostics.MaximumResidual, Korean='최대 잔차', English='Maximum residual'}" />
                         <ItemsControl ItemsSource="{Binding LineFitResidualPlotPoints}">
@@ -106,8 +106,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="48" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock FontFamily="Consolas" FontSize="12" Text="{Binding ScanlineIndex}" />
-                                <TextBlock Grid.Column="1" FontFamily="Consolas" FontSize="12" Text="{Binding OrthogonalResidual, StringFormat=0.##}" />
+                                <TextBlock FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" FontSize="12" Text="{Binding ScanlineIndex}" />
+                                <TextBlock Grid.Column="1" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" FontSize="12" Text="{Binding OrthogonalResidual, StringFormat=0.##}" />
                                 <TextBlock Grid.Column="2"
                                            FontSize="12"
                                            Text="{Binding IsInlier, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=LineFitPointState}" />
@@ -118,6 +118,13 @@
                 </ListBox>
             </Grid>
         </Grid>
-        <TextBlock Grid.Row="2" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding LineFitSelectedDiagnosticSummary}" />
+        <TextBlock Grid.Row="2" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap">
+            <TextBlock.Text>
+                <MultiBinding Converter="{StaticResource ViewerRuntimeTextConverter}" ConverterParameter="GeometryEvidenceSummary">
+                    <Binding Path="LineFitSelectedDiagnosticSummary" />
+                    <Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" />
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
     </Grid>
 </UserControl>

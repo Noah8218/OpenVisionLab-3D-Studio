@@ -499,7 +499,7 @@ internal static class ViewerWorkspacePresentationVerification
                 && ((Grid)embeddedHeightImageView.FindName("HeightImageHeightLegend")).Visibility == Visibility.Collapsed
                 && OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<ScrollViewer>(heightImageCursorStatus)
                     .Any(scroll => scroll.Focusable && scroll.VerticalScrollBarVisibility == ScrollBarVisibility.Auto)
-                && coordinateStatus.FontSize == 11.5 && coordinateStatus.FontWeight == FontWeights.Normal,
+                && coordinateStatus.FontSize == 12 && coordinateStatus.FontWeight == FontWeights.Normal,
                 $"ticks={heightImageViewModel.LegendTickLabels.Count};unit={heightImageViewModel.LegendUnit};nativeFooter={coordinateStatus.FontSize}/{coordinateStatus.FontWeight}");
             var heightLegendBackdrop = ((Grid)embeddedHeightImageView.FindName("HeightImageHeightLegend")).Background;
             Check("D40 Height Image legend has an opaque semantic backdrop over bright or missing input cells",
@@ -883,7 +883,7 @@ internal static class ViewerWorkspacePresentationVerification
                 $"capture={mainPresentationBar.RoiCaptureCommand is not null};fit={mainPresentationBar.FitRoiCommand is not null};dirty={authoredWorkbench.IsDirty}");
             Check("D41 removes the long lower-left ROI banner and keeps a fixed compact footer",
                 !OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<FrameworkElement>(mainViewer).Any(element => AutomationProperties.GetAutomationId(element) == "ViewerSelectedRoiStatus")
-                && viewerBottomStatus.ActualHeight == 24 && coordinateStatus.FontSize == 11.5
+                && viewerBottomStatus.ActualHeight == 24 && coordinateStatus.FontSize == 12
                 && cubeViewModel.DisplayedCoordinateCaption.StartsWith("X ", StringComparison.Ordinal),
                 $"footer={viewerBottomStatus.ActualHeight};coordinate={cubeViewModel.DisplayedCoordinateCaption}");
             var cubeHome = (Button)mainViewer.FindName("CubeHomeButton");
@@ -1112,7 +1112,7 @@ internal static class ViewerWorkspacePresentationVerification
                 !contextualLegend.IsCompactLayout && !contextualLegend.IsEffectivelyCollapsed && contextualLegend.IsCollapsed == savedLegendCollapse
                 && collapseButton.IsEnabled && compactInformation.IsVisible && !roomyCubeBounds.IntersectsWith(roomyLegendBounds)
                 && roomyLegendBounds.Bottom <= nativeSurface.ActualHeight
-                && OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<TextBlock>(nativeLegend).Count(text => text.FontFamily.Source == "Consolas" && text.IsVisible) == 5
+                && OpenVisionLab.ThreeD.Shell.Verification.Smoke.ShellSmokeArtifacts.FindVisualDescendants<TextBlock>(nativeLegend).Count(text => text.FontFamily.Source.StartsWith("Segoe UI Variable Text", StringComparison.Ordinal) && text.Typography.NumeralAlignment == FontNumeralAlignment.Tabular && text.IsVisible) == 5
                 && mainViewer.CaptureCameraState() == cameraBeforeChrome
                 && mainViewer.HostState.Inspection.PublishedResultCount == mainInspectionBeforePresentation.PublishedResultCount,
                 $"surface={nativeSurface.RenderSize};legend={roomyLegendBounds};saved={contextualLegend.IsCollapsed};effective={contextualLegend.IsEffectivelyCollapsed}");
@@ -1335,7 +1335,7 @@ internal static class ViewerWorkspacePresentationVerification
             var heightPopupPaletteItems = heightPopupPalette.Items.Cast<object>().Select(item => (ListBoxItem)heightPopupPalette.ItemContainerGenerator.ContainerFromItem(item)).ToArray();
             Check("V5 Height popup matches the five supported palettes and disables unsupported deviation",
                 heightPopupPalette.Items.Cast<string>().SequenceEqual(new[] { "Height", "Grayscale", "Solid", "Thermal", "ColorVisionAssist", "Deviation" })
-                && heightPopupPaletteItems.All(item => item.ActualHeight == 40 && item.ActualWidth > 50)
+                && heightPopupPaletteItems.All(item => item.ActualHeight == 41 && item.ActualWidth > 50)
                 && heightPopupPaletteItems.Take(5).All(item => item.IsEnabled) && !heightPopupPaletteItems[5].IsEnabled,
                 $"items={string.Join(",", heightPopupPalette.Items.Cast<string>())};sizes={string.Join(",", heightPopupPaletteItems.Select(item => $"{item.ActualWidth:F0}x{item.ActualHeight:F0}/{item.IsEnabled}"))}");
             var heightRangeLinkToggle = (CheckBox)mainPresentationBar.FindName("ViewerHeightRangeLinkedToggle");

@@ -4,7 +4,7 @@
         xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:recipe="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Recipe"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.WindowTitle, Korean='레시피 관리자 | OpenVisionLab 3D Studio', English='Recipe Manager | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.Recipe.Manager.WindowTitle, Korean='레시피 관리자 - OpenVisionLab 3D Studio', English='Recipe Manager - OpenVisionLab 3D Studio'}"
         Width="1520"
         Height="890"
         MinWidth="860"

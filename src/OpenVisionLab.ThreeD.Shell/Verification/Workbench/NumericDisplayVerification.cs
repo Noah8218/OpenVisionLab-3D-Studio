@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Presentation.Commands;
 using OpenVisionLab.ThreeD.Presentation.Controls;
+using OpenVisionLab.ThreeD.Presentation.Converters;
 using OpenVisionLab.ThreeD.Presentation.Models;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.PropertyGrid;
@@ -93,6 +94,19 @@ internal static class NumericDisplayVerification
             Check("two-sided inspection limits are display values", InspectionQueueMeasurementPoint.FormatRange(.1234567, .2345678, "mm") == "0.12–0.23 mm");
             Check("one-sided inspection limit stays one-sided", InspectionQueueMeasurementPoint.FormatRange(null, .2, "raw-height") == "≤ 0.2 raw-height");
             Check("unavailable inspection limits stay unavailable", InspectionQueueMeasurementPoint.FormatRange(null, null, "mm") == "—");
+            // 화면 문구에서는 raw 단위를 빼되 기록 문자열과 식별자는 바꾸지 않는다. 실제 단위(mm 등)는 그대로 보인다.
+            Check("raw height units are hidden from display units while real units stay",
+                HeightUnitDisplay.ForDisplay("raw-height").Length == 0 && HeightUnitDisplay.ForDisplay("raw").Length == 0
+                && HeightUnitDisplay.ForDisplay("mm") == "mm" && HeightUnitDisplay.ForDisplay(null).Length == 0);
+            Check("display limits drop the raw unit and keep real units",
+                HeightUnitDisplay.Strip("7.75–8.25 raw-height") == "7.75–8.25" && HeightUnitDisplay.Strip("≤ 0.2 raw-height") == "≤ 0.2"
+                && HeightUnitDisplay.Strip("≤ 0.2 mm") == "≤ 0.2 mm" && HeightUnitDisplay.Strip("—") == "—");
+            Check("unit converter adds its separator only when a displayable unit remains",
+                Equals(HeightUnitDisplayConverter.Instance.Convert("raw-height", typeof(string), " · ", CultureInfo.InvariantCulture), "")
+                && Equals(HeightUnitDisplayConverter.Instance.Convert("mm", typeof(string), " · ", CultureInfo.InvariantCulture), " · mm")
+                && Equals(HeightUnitVisibilityConverter.Instance.Convert("raw-height", typeof(Visibility), null!, CultureInfo.InvariantCulture), Visibility.Collapsed)
+                && Equals(HeightUnitVisibilityConverter.Instance.Convert("mm", typeof(Visibility), null!, CultureInfo.InvariantCulture), Visibility.Visible));
+            Check("recorded limits keep the raw unit text", InspectionQueueMeasurementPoint.FormatRange(7.75, 8.25, "raw-height") == "7.75–8.25 raw-height");
             var change = typeof(ToolWorkbenchViewModel).GetMethod("FormatParameterChangeValue", flags)!;
             Check("settings history shortens numeric text", Equals(change.Invoke(null, ["7.123456789"]), "7.12"));
             Check("settings history preserves identifiers", Equals(change.Invoke(null, ["frame.c3d-grid-index"]), "frame.c3d-grid-index"));

@@ -87,7 +87,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             && c3dInteractionDisplayListId == 0
             && importedMeshTextureState.TextureId == 0;
         var renderContextProvider = Viewport.OpenGL.RenderContextProvider;
-        var renderContextHandleActive = renderContextProvider?.RenderContextHandle != IntPtr.Zero;
+        var renderContextHandleActive = renderContextProvider is { RenderContextHandle: var activeRenderHandle }
+            && activeRenderHandle != IntPtr.Zero;
         lines.Add($"OpenGLResourceLifetime|disposed={IsDisposed}|c3dGpuActive={c3dGpuBuffers is not null}|c3dGpuAvailable={c3dGpuBuffersAvailable}|c3dGpuReleases={c3dGpuTelemetry.ReleaseCount}|c3dGpuReleaseFailures={c3dGpuTelemetry.ReleaseFailureCount}|displayListReleases={c3dDisplayListReleaseCount}|displayListReleaseFailures={c3dDisplayListReleaseFailureCount}|meshTextureReleases={importedMeshTextureState.ReleaseCount}|meshTextureReleaseFailures={importedMeshTextureState.ReleaseFailureCount}|retirementAttempts={openGLResourceRetirementTelemetry.AttemptCount}|retirementCallbacks={openGLResourceRetirementTelemetry.CallbackCount}|retirementContextUnavailable={openGLResourceRetirementTelemetry.ContextUnavailableCount}|retirementFailures={openGLResourceRetirementTelemetry.FailureCount}|managedHandlesCleared={managedOpenGLHandlesCleared}|renderContextDisposeAttempted={renderContextLifetime.DisposeAttempted}|renderContextDisposeUnavailable={renderContextLifetime.DisposeUnavailable}|renderContextDisposed={renderContextLifetime.DisposeSucceeded}|renderContextDisposeAttempts={renderContextLifetime.DisposeAttempts}|renderContextDisposeFailures={renderContextLifetime.DisposeFailures}|renderContextDisposeFailureType={CleanContractText(renderContextLifetime.FailureType)}|renderContextHandleActive={renderContextHandleActive}");
         lines.Add($"PointCloudPerformance|loadMs={FormatContractNumber(viewModel.LazLoadMilliseconds)}|samplePercent={FormatContractNumber(viewModel.LazSamplePercent)}|sampleStride={viewModel.LazSampleStride}|summary={CleanContractText(viewModel.LazSamplingSummary)}");
         lines.Add($"PointCloudLoadLifecycle|running={viewModel.IsLazPointCloudLoading}|progress={FormatContractNumber(viewModel.LazPointCloudLoadProgress)}|requests={lazPointCloudLoadTelemetry.LoadRequestCount}|densityEventReloads={lazPointCloudLoadTelemetry.DensityEventReloadCount}|smokeReloads={lazPointCloudLoadTelemetry.SmokeReloadCount}|decodes={lazPointCloudLoadTelemetry.DecodeCount}|cacheHits={lazPointCloudLoadTelemetry.CacheHitCount}|cancellations={lazPointCloudLoadTelemetry.CancellationCount}|progressUpdates={lazPointCloudLoadTelemetry.ProgressUpdateCount}|lastProgress={FormatContractNumber(lazPointCloudLoadTelemetry.LastProgress)}|progressCapture={smokeLazProgressScreenshotCaptured}");
@@ -634,7 +635,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         UpdateOrientationTriad();
-        if (Viewport.IsLoaded)
+        if (Viewport.IsLoaded && Viewport.OpenGL.RenderContextProvider is { RenderContextHandle: var renderHandle }
+            && renderHandle != IntPtr.Zero)
         {
             var renderStart = Stopwatch.GetTimestamp();
             Viewport.DoRender();

@@ -37,7 +37,7 @@
                                        Symbol="WrenchScrewdriver24" />
                         <StackPanel Grid.Column="1">
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Text="{Binding Localization.ToolLabReview}" />
                             <TextBlock Margin="0,1,0,0" FontSize="12"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
@@ -52,7 +52,7 @@
                             AutomationProperties.HelpText="{Binding State}">
                         <TextBlock MaxWidth="122"
                                    FontSize="12"
-                                   FontWeight="SemiBold"
+                                   FontWeight="Normal"
                                    Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
                                    Text="{Binding CanonicalStateLabel}"
                                    TextTrimming="CharacterEllipsis" />

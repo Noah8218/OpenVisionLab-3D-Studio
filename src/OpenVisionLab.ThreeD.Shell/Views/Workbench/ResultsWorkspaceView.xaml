@@ -6,6 +6,7 @@
              xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:unit="clr-namespace:OpenVisionLab.ThreeD.Presentation.Converters;assembly=OpenVisionLab.ThreeD.Presentation"
              xmlns:host="clr-namespace:OpenVisionLab.ThreeD.Viewer.Hosting;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:dock="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
              AutomationProperties.AutomationId="ResultsWorkspace">
@@ -33,13 +34,13 @@
             </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
         </Style>
 
-        <SolidColorBrush x:Key="ThreeD.TeachingResultsHeaderBrush" Color="#1D242B" />
-        <SolidColorBrush x:Key="ThreeD.TeachingResultsLineBrush" Color="#262E37" />
-        <SolidColorBrush x:Key="ThreeD.TeachingResultsSelectedBrush" Color="#203034" />
-        <SolidColorBrush x:Key="ThreeD.TeachingResultsHoverBrush" Color="#222A32" />
+        <SolidColorBrush x:Key="ThreeD.TeachingResultsHeaderBrush" Color="#242424" />
+        <SolidColorBrush x:Key="ThreeD.TeachingResultsLineBrush" Color="#2E2E2E" />
+        <SolidColorBrush x:Key="ThreeD.TeachingResultsSelectedBrush" Color="#2A2A2A" />
+        <SolidColorBrush x:Key="ThreeD.TeachingResultsHoverBrush" Color="#2A2A2A" />
         <SolidColorBrush x:Key="ThreeD.TeachingResultsBandBrush" Color="#2F5B44" />
-        <SolidColorBrush x:Key="ThreeD.TeachingResultsMetaTextBrush" Color="#8B98A6" />
-        <SolidColorBrush x:Key="ThreeD.TeachingResultsGripBrush" Color="#55626F" />
+        <SolidColorBrush x:Key="ThreeD.TeachingResultsMetaTextBrush" Color="#989898" />
+        <SolidColorBrush x:Key="ThreeD.TeachingResultsGripBrush" Color="#626262" />
         <Style x:Key="TeachingDockButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="24" /><Setter Property="Height" Value="24" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" />
             <Setter Property="Padding" Value="0" /><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.TeachingResultsMetaTextBrush}" />
@@ -63,14 +64,14 @@
             <Setter Property="Cursor" Value="Hand" /><Setter Property="Template" Value="{StaticResource TeachingIconTemplate}" />
         </Style>
         <Style x:Key="TeachingStatusPill" TargetType="Border">
-            <Setter Property="Padding" Value="6,1" /><Setter Property="CornerRadius" Value="9" /><Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            <Setter Property="Padding" Value="0" /><Setter Property="CornerRadius" Value="0" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Background" Value="Transparent" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" /><Setter Property="HorizontalAlignment" Value="Left" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding State}" Value="Pass"><Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.TeachingResultsBandBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Fail"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Error"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.InspectionErrorTextBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Previous"><Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Pass"><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Fail"><Setter Property="Padding" Value="6,1" /><Setter Property="CornerRadius" Value="4" /><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Error"><Setter Property="Padding" Value="6,1" /><Setter Property="CornerRadius" Value="4" /><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.InspectionErrorTextBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Previous"><Setter Property="Padding" Value="6,1" /><Setter Property="CornerRadius" Value="4" /><Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
             </Style.Triggers>
         </Style>
         <workbench:TeachingResultVisibilityConverter x:Key="TeachingResultVisibilityConverter" />
@@ -78,7 +79,7 @@
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control"><Border Margin="2" BorderBrush="{DynamicResource ThreeD.FocusBrush}" BorderThickness="2" CornerRadius="3" /></ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="ResultsTabStyle" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="FontSize" Value="12.5" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Height" Value="33" /><Setter Property="MinWidth" Value="0" /><Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" /><Setter Property="FontSize" Value="13" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Height" Value="33" /><Setter Property="MinWidth" Value="0" /><Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource ResultsTabFocusVisual}" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
                 <Grid x:Name="TabSurface" Background="Transparent">
@@ -100,7 +101,7 @@
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style x:Key="TeachingResultNumberStyle" TargetType="TextBlock" BasedOn="{StaticResource TeachingResultCellStyle}">
-            <Setter Property="FontFamily" Value="Cascadia Mono, Cascadia Code, Consolas" /><Setter Property="TextAlignment" Value="Right" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" /><Setter Property="Typography.NumeralAlignment" Value="Tabular" /><Setter Property="TextAlignment" Value="Right" />
             <Setter Property="Foreground" Value="{DynamicResource ThreeD.TeachingResultsMetaTextBrush}" />
         </Style>
         <Style x:Key="TeachingResultHeaderStyle" TargetType="DataGridColumnHeader">
@@ -145,34 +146,35 @@
             <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
         </Style>
         <Style x:Key="InspectionSummaryCell" TargetType="TextBlock" BasedOn="{StaticResource InspectionResultCell}">
-            <Setter Property="Margin" Value="10,5" /><Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Margin" Value="10,5" /><Setter Property="FontSize" Value="13" />
         </Style>
         <Style x:Key="InspectionOutputNumber" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryCell}">
-            <Setter Property="TextAlignment" Value="Right" /><Setter Property="FontFamily" Value="Cascadia Mono, Cascadia Code, Consolas" />
+            <Setter Property="TextAlignment" Value="Right" /><Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" /><Setter Property="Typography.NumeralAlignment" Value="Tabular" />
         </Style>
+        <Style x:Key="InspectionLimitNumber" TargetType="TextBlock" BasedOn="{StaticResource InspectionOutputNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /></Style>
         <Style x:Key="InspectionOutputRow" TargetType="DataGridRow" BasedOn="{StaticResource ThreeD.CalibrationDataGridRowStyle}">
             <Setter Property="AutomationProperties.Name"><Setter.Value><MultiBinding StringFormat="{}{0}: {1}"><Binding Path="ToolName" /><Binding Path="OutputName" /></MultiBinding></Setter.Value></Setter>
         </Style>
         <Style x:Key="InspectionSummaryNumber" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryCell}">
-            <Setter Property="TextAlignment" Value="Right" /><Setter Property="FontFamily" Value="Cascadia Mono, Cascadia Code, Consolas" />
+            <Setter Property="TextAlignment" Value="Right" /><Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" /><Setter Property="Typography.NumeralAlignment" Value="Tabular" />
         </Style>
-        <Style x:Key="InspectionSummaryPass" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></Style>
-        <Style x:Key="InspectionSummaryFail" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></Style>
-        <Style x:Key="InspectionSummaryError" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.InspectionErrorTextBrush}" /></Style>
+        <Style x:Key="InspectionSummaryPass" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /><Style.Triggers><DataTrigger Binding="{Binding PassCount}" Value="0"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /></DataTrigger></Style.Triggers></Style>
+        <Style x:Key="InspectionSummaryFail" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /><Style.Triggers><DataTrigger Binding="{Binding FailCount}" Value="0"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /></DataTrigger></Style.Triggers></Style>
+        <Style x:Key="InspectionSummaryError" TargetType="TextBlock" BasedOn="{StaticResource InspectionSummaryNumber}"><Setter Property="Foreground" Value="{DynamicResource ThreeD.InspectionErrorTextBrush}" /><Style.Triggers><DataTrigger Binding="{Binding ErrorCount}" Value="0"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /></DataTrigger></Style.Triggers></Style>
         <Style x:Key="InspectionSummaryHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
             <Setter Property="Padding" Value="10,5" /><Setter Property="FontSize" Value="12" /><Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Background" Value="{DynamicResource ThreeD.InspectionSummarySurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Setter Property="ContentTemplate"><Setter.Value><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" /></DataTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="InspectionResultStatusPill" TargetType="Border">
-            <Setter Property="Padding" Value="5,1" /><Setter Property="Margin" Value="5,3" /><Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="5,3" /><Setter Property="CornerRadius" Value="0" />
             <Setter Property="VerticalAlignment" Value="Center" /><Setter Property="MinHeight" Value="20" />
-            <Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="0" /><Setter Property="Background" Value="Transparent" />
             <Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Status}" Value="Pass"><Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="Fail"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding Status}" Value="Error"><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Pass"><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Fail"><Setter Property="Padding" Value="6,1" /><Setter Property="CornerRadius" Value="4" /><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Error"><Setter Property="Padding" Value="6,1" /><Setter Property="CornerRadius" Value="4" /><Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="InspectionResultsNativeMenuStyle" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
@@ -194,8 +196,8 @@
                                 <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="0" />
                                 <Grid Grid.Column="1" Margin="8,0">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBlock VerticalAlignment="Center" FontSize="11.5" Text="{Binding SelectedSample.FileName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedSample.SourcePath}" AutomationProperties.AutomationId="InspectionSelectedFile" />
-                                    <TextBlock Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Text="{Binding SelectedSample.StateText}" AutomationProperties.AutomationId="InspectionSelectedFileStatus" />
+                                    <TextBlock VerticalAlignment="Center" FontSize="12" Text="{Binding SelectedSample.FileName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedSample.SourcePath}" AutomationProperties.AutomationId="InspectionSelectedFile" />
+                                    <TextBlock Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12" FontWeight="Normal" Text="{Binding SelectedSample.StateText}" AutomationProperties.AutomationId="InspectionSelectedFileStatus" />
                                 </Grid>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <CheckBox Margin="4,0,6,0" Content="{views:ThreeDText Key=ThreeD.Inspection.FailedStepsOnly, Korean='NG 항목만', English='NG items only'}" IsChecked="{Binding ShowOnlyFailedSteps, Mode=TwoWay}" AutomationProperties.AutomationId="InspectionFailedStepsOnly">
@@ -226,7 +228,7 @@
             </TabControl.Template>
             <TabItem Header="{views:ThreeDText Key=ThreeD.Inspection.FileResults, Korean='파일 결과', English='File results'}" AutomationProperties.AutomationId="InspectionFileResultsTab">
                 <Grid AutomationProperties.AutomationId="InspectionSelectedDetails">
-                    <DataGrid Style="{StaticResource InspectionResultGrid}" MinRowHeight="35" FontSize="12.5" ColumnHeaderHeight="NaN" ColumnHeaderStyle="{StaticResource InspectionSummaryHeader}" RowStyle="{StaticResource InspectionOutputRow}" RowDetailsVisibilityMode="VisibleWhenSelected" SelectionMode="Single" SelectionUnit="FullRow" ItemsSource="{Binding VisibleOutputResults}" SelectedItem="{Binding SelectedOutputResult, Mode=TwoWay}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.StepResults, Korean='선택 파일의 단계 결과', English='Selected input step results'}" AutomationProperties.AutomationId="InspectionStepResults">
+                    <DataGrid Style="{StaticResource InspectionResultGrid}" MinRowHeight="35" FontSize="13" ColumnHeaderHeight="NaN" ColumnHeaderStyle="{StaticResource InspectionSummaryHeader}" RowStyle="{StaticResource InspectionOutputRow}" RowDetailsVisibilityMode="VisibleWhenSelected" SelectionMode="Single" SelectionUnit="FullRow" ItemsSource="{Binding VisibleOutputResults}" SelectedItem="{Binding SelectedOutputResult, Mode=TwoWay}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.StepResults, Korean='선택 파일의 단계 결과', English='Selected input step results'}" AutomationProperties.AutomationId="InspectionStepResults">
                         <DataGrid.RowDetailsTemplate>
                             <DataTemplate>
                                 <Border Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" Padding="8,3" Loaded="OnSummaryDetailsLayoutChanged" SizeChanged="OnSummaryDetailsLayoutChanged">
@@ -254,9 +256,9 @@
                             <DataGridTextColumn Width="1.4*" MinWidth="128" Header="{views:ThreeDText Key=ThreeD.Inspection.Tool, Korean='도구', English='Tool'}" Binding="{Binding ToolLabel}" ElementStyle="{StaticResource InspectionSummaryCell}" />
                             <DataGridTextColumn Width="1.1*" MinWidth="110" Header="{views:ThreeDText Key=ThreeD.Inspection.Output, Korean='출력', English='Output'}" Binding="{Binding OutputName}" ElementStyle="{StaticResource InspectionSummaryCell}" />
                             <DataGridTextColumn Width="1.4*" MinWidth="224" Header="{views:ThreeDText Key=ThreeD.Inspection.Value, Korean='값', English='Value'}" Binding="{Binding ValueWithUnit, Converter={StaticResource MeasurementNumberTextConverter}}" ElementStyle="{StaticResource InspectionOutputNumber}" />
-                            <DataGridTextColumn Width="1.4*" MinWidth="144" Header="{views:ThreeDText Key=ThreeD.Inspection.AllowableRange, Korean='허용 범위', English='Allowable range'}" Binding="{Binding DisplayLimits, Converter={StaticResource MeasurementNumberTextConverter}}" ElementStyle="{StaticResource InspectionOutputNumber}" />
+                            <DataGridTextColumn Width="1.4*" MinWidth="144" Header="{views:ThreeDText Key=ThreeD.Inspection.AllowableRange, Korean='허용 범위', English='Allowable range'}" Binding="{Binding DisplayLimits, Converter={StaticResource MeasurementNumberTextConverter}}" ElementStyle="{StaticResource InspectionLimitNumber}" />
                             <DataGridTemplateColumn Width="70" MinWidth="70" Header="{views:ThreeDText Key=ThreeD.Inspection.Margin, Korean='여유', English='Margin'}"><DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Style="{StaticResource InspectionResultCell}" Text="—" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTemplateColumn Width="72" MinWidth="72" Header="{views:ThreeDText Key=ThreeD.Inspection.Verdict, Korean='판정', English='Verdict'}"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Style="{StaticResource InspectionResultStatusPill}"><TextBlock FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding StatusLabel}" /></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Width="72" MinWidth="72" Header="{views:ThreeDText Key=ThreeD.Inspection.Verdict, Korean='판정', English='Verdict'}"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Style="{StaticResource InspectionResultStatusPill}"><TextBlock FontSize="12" FontWeight="Normal" TextWrapping="Wrap" Text="{Binding StatusLabel}" /></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                             <DataGridTextColumn Width="1.6*" MinWidth="150" Header="{views:ThreeDText Key=ThreeD.Inspection.Cause, Korean='원인', English='Cause'}" Binding="{Binding CauseLabel}" ElementStyle="{StaticResource InspectionSummaryCell}" />
                         </DataGrid.Columns>
                     </DataGrid>
@@ -269,21 +271,21 @@
             <TabItem Header="{views:ThreeDText Key=ThreeD.Inspection.AllSummary, Korean='전체 요약', English='Overall summary'}" AutomationProperties.AutomationId="InspectionSummaryTab">
                 <Grid>
                     <DataGrid Style="{StaticResource InspectionResultGrid}" ItemsSource="{Binding MeasurementSummaries}" AutomationProperties.AutomationId="InspectionMeasurementSummaries"
-                              ColumnHeaderStyle="{StaticResource InspectionSummaryHeader}" ColumnHeaderHeight="NaN" MinRowHeight="35" FontSize="12.5" RowDetailsVisibilityMode="VisibleWhenSelected" SelectionMode="Single">
+                              ColumnHeaderStyle="{StaticResource InspectionSummaryHeader}" ColumnHeaderHeight="NaN" MinRowHeight="35" FontSize="13" RowDetailsVisibilityMode="VisibleWhenSelected" SelectionMode="Single">
                         <DataGrid.RowDetailsTemplate>
                             <DataTemplate>
                                 <Border Width="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" Padding="10,3" Loaded="OnSummaryDetailsLayoutChanged" SizeChanged="OnSummaryDetailsLayoutChanged">
                                     <Expander Header="{views:ThreeDText Key=ThreeD.Inspection.DistributionDetails, Korean='파일별 값·저장 조건', English='Values by file and saved settings'}" AutomationProperties.AutomationId="InspectionSummaryDetails">
                                         <StackPanel>
-                                            <TextBlock Text="{Binding SettingsIdentity}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" AutomationProperties.AutomationId="InspectionSummarySettings" />
-                                            <TextBlock Text="{Binding StepId}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
-                                            <TextBlock Text="{Binding Kind}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                            <TextBlock Text="{Binding SettingsIdentity}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" AutomationProperties.AutomationId="InspectionSummarySettings" />
+                                            <TextBlock Text="{Binding StepId}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                                            <TextBlock Text="{Binding Kind}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                                             <ItemsControl ItemsSource="{Binding Points}" AutomationProperties.AutomationId="InspectionSummaryFileValues">
                                                 <ItemsControl.ItemTemplate><DataTemplate>
                                                     <Grid Margin="0,3">
                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
-                                                        <StackPanel><TextBlock Text="{Binding FileName}" TextWrapping="Wrap" /><TextBlock Text="{Binding SourcePath}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock Text="{Binding RunId}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></StackPanel>
-                                                        <StackPanel Grid.Column="1" Margin="8,0"><TextBlock Text="{Binding ValueText}" TextWrapping="Wrap" FontFamily="Cascadia Mono, Cascadia Code, Consolas" /><TextBlock Text="{Binding Unit}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></StackPanel>
+                                                        <StackPanel><TextBlock Text="{Binding FileName}" TextWrapping="Wrap" /><TextBlock Text="{Binding SourcePath}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock Text="{Binding RunId}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="8,0"><TextBlock Text="{Binding ValueText}" TextWrapping="Wrap" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" /><TextBlock Text="{Binding Unit}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></StackPanel>
                                                         <TextBlock Grid.Column="2" Text="{Binding RangeText}" TextWrapping="Wrap" Margin="8,0" />
                                                         <TextBlock Grid.Column="3" Text="{Binding StatusLabel}" TextWrapping="Wrap" />
                                                     </Grid>
@@ -296,7 +298,7 @@
                         </DataGrid.RowDetailsTemplate>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Width="1.2*" MinWidth="112" Header="{views:ThreeDText Key=ThreeD.Inspection.Tool, Korean='도구', English='Tool'}">
-                                <DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="10,5"><TextBlock Text="{Binding ToolName}" TextWrapping="Wrap" /><TextBlock Text="{Binding SettingsLabel}" FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Visibility="{Binding HasMultipleSettings, Converter={StaticResource BooleanToVisibilityConverter}}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="10,5"><TextBlock Text="{Binding ToolName}" TextWrapping="Wrap" /><TextBlock Text="{Binding SettingsLabel}" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Visibility="{Binding HasMultipleSettings, Converter={StaticResource BooleanToVisibilityConverter}}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Width="1.1*" MinWidth="110" Header="{views:ThreeDText Key=ThreeD.Inspection.Output, Korean='출력', English='Output'}" Binding="{Binding OutputLabel}" ElementStyle="{StaticResource InspectionSummaryCell}" />
                             <DataGridTextColumn Width="44" MinWidth="44" Header="OK" Binding="{Binding PassCount}" ElementStyle="{StaticResource InspectionSummaryPass}" />
@@ -326,8 +328,8 @@
                             <TextBlock Margin="0,0,8,0" Text="{Binding SelectedSample.RecordedAtText}" />
                             <TextBlock Text="{Binding SelectedSample.RecipeRevision}" />
                         </WrapPanel>
-                        <TextBlock Margin="0,3,0,0" FontSize="11.5" TextWrapping="Wrap" Text="{Binding SelectedSample.InputSha256}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.InputIdentity, Korean='검사 입력 콘텐츠 식별값', English='Inspection input content identity'}" AutomationProperties.AutomationId="InspectionRecordInputIdentity" />
-                        <TextBlock Margin="0,3,0,0" FontSize="11.5" TextWrapping="Wrap" Text="{Binding SelectedSample.RecipeSha256}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.RecipeIdentity, Korean='검사 레시피 콘텐츠 식별값', English='Inspection recipe content identity'}" />
+                        <TextBlock Margin="0,3,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding SelectedSample.InputSha256}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.InputIdentity, Korean='검사 입력 콘텐츠 식별값', English='Inspection input content identity'}" AutomationProperties.AutomationId="InspectionRecordInputIdentity" />
+                        <TextBlock Margin="0,3,0,0" FontSize="12" TextWrapping="Wrap" Text="{Binding SelectedSample.RecipeSha256}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.RecipeIdentity, Korean='검사 레시피 콘텐츠 식별값', English='Inspection recipe content identity'}" />
                         <WrapPanel Margin="0,6,0,0">
                             <Button Padding="8,4" Margin="0,0,6,3" Content="{views:ThreeDText Key=ThreeD.Inspection.OpenRunRecord, Korean='현재 기록 열기', English='Open current record'}" Command="{Binding OpenRunRecordCommand}" AutomationProperties.AutomationId="InspectionOpenRunRecord" />
                             <Button Padding="8,4" Margin="0,0,6,3" Content="{views:ThreeDText Key=ThreeD.Inspection.OpenPreviousRunRecord, Korean='이전 기록', English='Previous record'}" Command="{Binding OpenPreviousRunRecordCommand}" AutomationProperties.AutomationId="InspectionOpenPreviousRunRecord" />
@@ -517,7 +519,7 @@
                                    AutomationProperties.HelpText="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" />
                         <TextBlock VerticalAlignment="Center"
                                    FontSize="12"
-                                   FontWeight="SemiBold"
+                                   FontWeight="Normal"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Text="{Binding Localization.ResultsOperatorSummaryTitle}"
                                    TextWrapping="Wrap" />
@@ -525,7 +527,7 @@
                     <TextBlock x:Name="OperatorDecisionValue"
                                Margin="0,5,0,0"
                                FontSize="12"
-                               FontWeight="SemiBold"
+                               FontWeight="Normal"
                                Foreground="{DynamicResource ThreeD.TextBrush}"
                                Text="{Binding ResultsOperatorDecisionDisplaySummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
                                TextWrapping="Wrap" />
@@ -602,13 +604,13 @@
                         <Popup x:Name="TeachingDetailsPopup" PlacementTarget="{Binding ElementName=TeachingDetailsButton}" Placement="Top" StaysOpen="False" AllowsTransparency="True" IsOpen="{Binding IsChecked, ElementName=TeachingDetailsButton, Mode=TwoWay}">
                             <Border x:Name="TeachingDetailsContent" Width="360" MaxHeight="300" Padding="12" CornerRadius="6" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" TextElement.Foreground="{DynamicResource ThreeD.TextBrush}" DataContext="{Binding DataContext.Workbench.SelectedTeachingResult, ElementName=ResultsRoot}" PreviewKeyDown="OnTeachingDetailKeyDown">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
-                                    <TextBlock Text="{Binding Step.ToolName}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Step.ToolName}" FontSize="13" FontWeight="Normal" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding Status}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding Reason}" Margin="0,6,0,0" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding Value, Converter={StaticResource MeasurementNumberTextConverter}}" Margin="0,6,0,0" TextWrapping="Wrap" FontFamily="Cascadia Mono, Cascadia Code, Consolas" />
+                                    <TextBlock Text="{Binding Value, Converter={StaticResource MeasurementNumberTextConverter}}" Margin="0,6,0,0" TextWrapping="Wrap" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" />
                                     <TextBlock Text="{Binding Unit}" Margin="0,6,0,0" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding Limits, Converter={StaticResource MeasurementNumberTextConverter}}" Margin="0,6,0,0" TextWrapping="Wrap" FontFamily="Cascadia Mono, Cascadia Code, Consolas" />
-                                    <ItemsControl ItemsSource="{Binding Metrics}" Margin="0,8,0,0"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding Name}" TextWrapping="Wrap" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding Value, StringFormat={}{0:0.##}}" FontFamily="Cascadia Mono, Cascadia Code, Consolas" TextWrapping="Wrap" /><TextBlock Text="{Binding Unit}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" /></StackPanel></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                    <TextBlock Text="{Binding Limits, Converter={StaticResource MeasurementNumberTextConverter}}" Margin="0,6,0,0" TextWrapping="Wrap" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" />
+                                    <ItemsControl ItemsSource="{Binding Metrics}" Margin="0,8,0,0"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding Name}" TextWrapping="Wrap" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding Value, StringFormat={}{0:0.##}}" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" TextWrapping="Wrap" /><TextBlock Text="{Binding Unit}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" /></StackPanel></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                                 </StackPanel></ScrollViewer>
                             </Border>
                         </Popup>
@@ -681,7 +683,7 @@
                     <ItemsControl ItemsSource="{Binding Workbench.TeachingResultSummary}" VerticalAlignment="Center" Margin="10,0,0,0">
                         <ItemsControl.Style><Style TargetType="ItemsControl"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsAuthoringWorkspaceSelected}" Value="True" /><Condition Binding="{Binding ResultsWorkspace.IsRunRecordSelected}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers></Style></ItemsControl.Style>
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate><DataTemplate><Border Style="{StaticResource TeachingStatusPill}" Margin="0,0,6,0"><TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"><Run Text="{Binding StatusIcon, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding StatusText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Count, Mode=OneWay}" /></TextBlock></Border></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Border Style="{StaticResource TeachingStatusPill}" Margin="0,0,6,0"><TextBlock FontSize="12" FontWeight="Normal" TextWrapping="Wrap"><Run Text="{Binding StatusIcon, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding StatusText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Count, Mode=OneWay}" /></TextBlock></Border></DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
                     </WrapPanel>
                     <Border x:Name="ResultsImmutableNotice"
@@ -754,7 +756,7 @@
                                   SelectedItem="{Binding Workbench.SelectedTeachingResult, Mode=TwoWay}"
                                   AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                                   IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                                  RowDetailsVisibilityMode="Collapsed" FontSize="12.5" ColumnHeaderHeight="29" MinRowHeight="32" CanUserSortColumns="False" CanUserReorderColumns="False" CellStyle="{StaticResource TeachingResultGridCellStyle}" HorizontalGridLinesBrush="{DynamicResource ThreeD.TeachingResultsLineBrush}"
+                                  RowDetailsVisibilityMode="Collapsed" FontSize="13" ColumnHeaderHeight="29" MinRowHeight="32" CanUserSortColumns="False" CanUserReorderColumns="False" CellStyle="{StaticResource TeachingResultGridCellStyle}" HorizontalGridLinesBrush="{DynamicResource ThreeD.TeachingResultsLineBrush}"
                                   RowStyle="{StaticResource TeachingResultRowStyle}" ColumnHeaderStyle="{StaticResource TeachingResultHeaderStyle}"
                                   AlternationCount="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                   Background="Transparent" BorderThickness="0"
@@ -775,12 +777,12 @@
                                         <ui:SymbolIcon FontSize="14"><ui:SymbolIcon.Style><Style TargetType="ui:SymbolIcon"><Setter Property="Symbol" Value="Eye24" /><Style.Triggers><DataTrigger Binding="{Binding ResultLabel.IsVisible}" Value="False"><Setter Property="Symbol" Value="EyeOff24" /></DataTrigger></Style.Triggers></Style></ui:SymbolIcon.Style></ui:SymbolIcon>
                                     </ToggleButton>
                                 </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="{views:ThreeDText Key=ThreeD.Results.Tool, Korean='도구', English='Tool'}" Width="1.5*" MinWidth="155"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Margin="10,5"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding SequenceText}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontFamily="Cascadia Mono, Cascadia Code, Consolas" Margin="0,0,6,0" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="{Binding Step.ToolName}" TextWrapping="Wrap" VerticalAlignment="Center" /></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="{views:ThreeDText Key=ThreeD.Results.Tool, Korean='도구', English='Tool'}" Width="1.5*" MinWidth="155"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Margin="10,5"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding SequenceText}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" Margin="0,0,6,0" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="{Binding Step.ToolName}" TextWrapping="Wrap" VerticalAlignment="Center" /></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                 <DataGridTextColumn Header="{views:ThreeDText Key=ThreeD.Results.Output, Korean='출력', English='Output'}" Binding="{Binding OutputName}" ElementStyle="{StaticResource TeachingResultCellStyle}" Width="*" MinWidth="66" />
-                                <DataGridTemplateColumn x:Name="TeachingResultValueColumn" HeaderStyle="{StaticResource TeachingResultNumericHeaderStyle}" Header="{views:ThreeDText Key=ThreeD.Results.ScalarValue, Korean='값', English='Value'}" Width="1.4*" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Margin="10,5"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayValue}" FontFamily="Cascadia Mono, Cascadia Code, Consolas" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap" /><TextBlock Grid.Column="1" Text="{Binding Unit}" FontSize="10.5" Margin="5,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TeachingResultsMetaTextBrush}" /></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="TeachingResultValueColumn" HeaderStyle="{StaticResource TeachingResultNumericHeaderStyle}" Header="{views:ThreeDText Key=ThreeD.Results.ScalarValue, Korean='값', English='Value'}" Width="1.4*" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Margin="10,5"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayValue}" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap" /><TextBlock Grid.Column="1" Text="{Binding Unit, Converter={x:Static unit:HeightUnitDisplayConverter.Instance}}" Visibility="{Binding Unit, Converter={x:Static unit:HeightUnitVisibilityConverter.Instance}}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.TeachingResultsMetaTextBrush}" /></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                 <DataGridTextColumn x:Name="TeachingResultLimitsColumn" HeaderStyle="{StaticResource TeachingResultNumericHeaderStyle}" Header="{views:ThreeDText Key=ThreeD.Results.AllowedRange, Korean='허용 범위', English='Allowed range'}" Binding="{Binding DisplayLimits, Converter={StaticResource MeasurementNumberTextConverter}}" ElementStyle="{StaticResource TeachingResultNumberStyle}" Width="*" MinWidth="122" />
                                 <DataGridTemplateColumn Header="{views:ThreeDText Key=ThreeD.Results.Margin, Korean='여유', English='Margin'}" Width="130" MinWidth="130"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Width="110" Height="14" Margin="10,5" HorizontalAlignment="Left"><Border Height="8" CornerRadius="4" Background="{DynamicResource ThreeD.TeachingResultsLineBrush}" VerticalAlignment="Center" /><Grid Visibility="{Binding HasMarginScale, Converter={StaticResource BooleanToVisibilityConverter}}"><Border Height="8" CornerRadius="4" Background="{DynamicResource ThreeD.FailSurfaceBrush}" VerticalAlignment="Center" /><Border Width="50" Height="8" CornerRadius="2" Background="{DynamicResource ThreeD.TeachingResultsBandBrush}" VerticalAlignment="Center" /><Canvas><Border Width="2" Height="14" Canvas.Left="{Binding MarginMarkerOffset}"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="{DynamicResource ThreeD.TextBrush}" /><Style.Triggers><DataTrigger Binding="{Binding State}" Value="Fail"><Setter Property="Background" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger></Style.Triggers></Style></Border.Style></Border></Canvas></Grid></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                                <DataGridTemplateColumn x:Name="TeachingResultDecisionColumn" Header="{views:ThreeDText Key=ThreeD.Results.Status, Korean='상태', English='Status'}" Width="*" MinWidth="110"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Style="{StaticResource TeachingStatusPill}" Margin="10,5"><TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"><Run Text="{Binding StatusIcon, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding StatusText, Mode=OneWay}" /></TextBlock></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="TeachingResultDecisionColumn" Header="{views:ThreeDText Key=ThreeD.Results.Status, Korean='상태', English='Status'}" Width="*" MinWidth="110"><DataGridTemplateColumn.CellTemplate><DataTemplate><Border Style="{StaticResource TeachingStatusPill}" Margin="10,5"><TextBlock FontSize="12" FontWeight="Normal" TextWrapping="Wrap"><Run Text="{Binding StatusIcon, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding StatusText, Mode=OneWay}" /></TextBlock></Border></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                 <DataGridTextColumn Header="{views:ThreeDText Key=ThreeD.Results.ValidSamples, Korean='유효 샘플', English='Valid samples'}" HeaderStyle="{StaticResource TeachingResultNumericHeaderStyle}" Binding="{Binding ValidSamples}" ElementStyle="{StaticResource TeachingResultNumberStyle}" Width="*" MinWidth="86" />
                                 <DataGridTextColumn Header="{views:ThreeDText Key=ThreeD.Results.RunTime, Korean='실행', English='Run'}" Binding="{Binding RunTime}" ElementStyle="{StaticResource TeachingResultTimeStyle}" Width="*" MinWidth="80" />
                             </DataGrid.Columns>
@@ -815,13 +817,13 @@
                 </ScrollViewer>
                 <Grid Visibility="{Binding ResultsWorkspace.IsLogSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DataGrid ItemsSource="{Binding Workbench.ExecutionLog}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True" HeadersVisibility="None" GridLinesVisibility="Horizontal" BorderThickness="0" Background="Transparent" FontSize="12" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Margin="12,6" MinColumnWidth="0"
-                              RowBackground="Transparent" AlternatingRowBackground="Transparent" HorizontalGridLinesBrush="#262E37" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingPanel.ScrollUnit="Pixel" AutomationProperties.AutomationId="TeachingActivityLog">
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent" HorizontalGridLinesBrush="#2E2E2E" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingPanel.ScrollUnit="Pixel" AutomationProperties.AutomationId="TeachingActivityLog">
                         <DataGrid.Resources>
                             <Style x:Key="ActivityTextStyle" TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" /><Setter Property="LineHeight" Value="17.4" /><Setter Property="LineStackingStrategy" Value="BlockLineHeight" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="Margin" Value="0,4,0,4" /><Setter Property="VerticalAlignment" Value="Top" />
                             </Style>
                             <Style x:Key="ActivityTimeStyle" TargetType="TextBlock" BasedOn="{StaticResource ActivityTextStyle}">
-                                <Setter Property="FontFamily" Value="Cascadia Mono, Cascadia Code, Consolas" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="TextWrapping" Value="NoWrap" /><Setter Property="Margin" Value="0,4,10,4" />
+                                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" /><Setter Property="Typography.NumeralAlignment" Value="Tabular" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="TextWrapping" Value="NoWrap" /><Setter Property="Margin" Value="0,4,10,4" />
                             </Style>
                             <Style x:Key="ActivitySeverityStyle" TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /><Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Malgun Gothic" /><Setter Property="Margin" Value="0,4,10,4" /><Setter Property="VerticalAlignment" Value="Top" /><Setter Property="LineHeight" Value="17.4" /><Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
@@ -900,7 +902,7 @@
                                 CornerRadius="4">
                             <StackPanel>
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                            Text="{Binding RunSnapshotSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,6,0,0"
@@ -909,7 +911,7 @@
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,8,0,0"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding InspectionStepSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             </StackPanel>
                         </Border>

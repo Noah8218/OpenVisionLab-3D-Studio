@@ -703,6 +703,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.Resources>
                             <Style x:Key="FirstRecipeMetadataRowStyle" TargetType="Grid">
@@ -717,8 +718,19 @@
 
                         <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,8" FontWeight="SemiBold"
                                    Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.RequiredInformation, Korean='필수 정보', English='Required information'}" />
-                        <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Margin="0,16,0,0" FontWeight="SemiBold"
-                                   Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.AdditionalSettings, Korean='추가 설정', English='Additional settings'}" />
+                        <TextBlock Grid.ColumnSpan="3" Margin="0,16,0,0" FontWeight="SemiBold"
+                                   Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.AdditionalSettings, Korean='추가 설정', English='Additional settings'}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Grid.Row" Value="3" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFirstRecipeSourceRequired}" Value="True">
+                                            <Setter Property="Grid.Row" Value="5" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBlock Grid.Row="1" VerticalAlignment="Center"
                                    Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                    Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.NameRequiredLabel, Korean='레시피 이름 (필수)', English='Recipe name (required)'}" TextWrapping="Wrap" />
@@ -750,7 +762,7 @@
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.FieldLabelTextStyle}">
                                     <Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.RecipeCenter.SourceRequiredLabel, Korean='C3D 입력 (필수)', English='C3D input (required)'}" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SelectedFirstRecipeStarter.Id}" Value="none">
+                                        <DataTrigger Binding="{Binding IsFirstRecipeSourceRequired}" Value="False">
                                             <Setter Property="Text" Value="{i18n:ThreeDText Key=ThreeD.RecipeCenter.SourceOptionalLabel, Korean='C3D 입력 (선택)', English='C3D input (optional)'}" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -767,12 +779,12 @@
                                               BrowseAutomationId="BrowseFirstRecipeSource"
                                               AutomationProperties.Name="{Binding Localization.FirstRecipeSource}" />
 
-                        <TextBlock Grid.Row="5"
+                        <TextBlock Grid.Row="6"
                                    Margin="0,9,0,0"
                                    VerticalAlignment="Center"
                                    Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                    Text="{Binding Localization.FirstRecipeStarter}" />
-                        <Grid Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,9,0,0">
+                        <Grid Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,9,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="220" />
                                 <ColumnDefinition Width="*" />
@@ -792,7 +804,7 @@
                                        Text="{Binding FirstRecipeStarterDetail}"
                                         TextWrapping="Wrap" />
                         </Grid>
-                        <Grid Grid.Row="6" Grid.ColumnSpan="3" Margin="0,14,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
+                        <Grid Grid.Row="7" Grid.ColumnSpan="3" Margin="0,14,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="120" />
                                 <ColumnDefinition Width="*" />
@@ -801,7 +813,7 @@
                             <TextBlock VerticalAlignment="Center" Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.CategoryOptionalLabel, Korean='분류 (선택)', English='Category (optional)'}" TextWrapping="Wrap" />
                             <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="34" VerticalContentAlignment="Center" MaxLength="500" Text="{Binding FirstRecipeCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FirstRecipeCategory" AutomationProperties.Name="{Binding Localization.RecipeInfoCategory}" />
                         </Grid>
-                        <Grid Grid.Row="7" Grid.ColumnSpan="3" Margin="0,9,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
+                        <Grid Grid.Row="8" Grid.ColumnSpan="3" Margin="0,9,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="120" />
                                 <ColumnDefinition Width="*" />
@@ -810,7 +822,7 @@
                             <TextBlock VerticalAlignment="Center" Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{i18n:ThreeDText Key=ThreeD.RecipeCenter.TargetOptionalLabel, Korean='검사 대상 (선택)', English='Inspection target (optional)'}" TextWrapping="Wrap" />
                             <TextBox Grid.Column="1" Grid.ColumnSpan="2" Height="34" VerticalContentAlignment="Center" MaxLength="500" Text="{Binding FirstRecipeInspectionTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="FirstRecipeInspectionTarget" AutomationProperties.Name="{Binding Localization.RecipeInfoTarget}" />
                         </Grid>
-                        <Grid Grid.Row="8" Grid.ColumnSpan="3" Margin="0,9,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
+                        <Grid Grid.Row="9" Grid.ColumnSpan="3" Margin="0,9,0,0" Style="{StaticResource FirstRecipeMetadataRowStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="120" />
                                 <ColumnDefinition Width="*" />

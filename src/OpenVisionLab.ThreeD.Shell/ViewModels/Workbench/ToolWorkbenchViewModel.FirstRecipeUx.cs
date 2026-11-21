@@ -89,6 +89,7 @@ public sealed partial class ToolWorkbenchViewModel
     public string FirstRecipeSetupTitle => firstRecipeSetupOwner.FirstRecipeSetupTitle;
     public string FirstRecipeSetupDetailText => firstRecipeSetupOwner.FirstRecipeSetupDetailText;
     public string FirstRecipeCreateLabel => firstRecipeSetupOwner.FirstRecipeCreateLabel;
+    public bool IsFirstRecipeSourceRequired => firstRecipeSetupOwner.IsFirstRecipeSourceRequired;
     public bool IsFirstRecipeStarterEditable => firstRecipeSetupOwner.IsFirstRecipeStarterEditable;
     public bool IsFirstRecipeSetupMemoryAvailable => firstRecipeSetupOwner.IsFirstRecipeSetupMemoryAvailable;
     public string FirstRecipeTargetPath => firstRecipeSetupOwner.FirstRecipeTargetPath;

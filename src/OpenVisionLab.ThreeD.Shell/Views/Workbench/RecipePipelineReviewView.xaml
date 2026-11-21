@@ -28,15 +28,15 @@
         <Style x:Key="ValidationResultNavigationStyle" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
             <Setter Property="Margin" Value="0,0,14,0" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Content, RelativeSource={RelativeSource Self}}" />
-            <Style.Triggers><DataTrigger Binding="{Binding IsValidationSamplesExternal, ElementName=ValidationReviewRoot}" Value="True"><Setter Property="Template" Value="{StaticResource ValidationResultTabTemplate}" /><Setter Property="Margin" Value="0" /><Setter Property="Height" Value="34" /><Setter Property="MinHeight" Value="0" /><Setter Property="MinWidth" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="12.5" /><Setter Property="FontWeight" Value="600" /></DataTrigger></Style.Triggers>
+            <Style.Triggers><DataTrigger Binding="{Binding IsValidationSamplesExternal, ElementName=ValidationReviewRoot}" Value="True"><Setter Property="Template" Value="{StaticResource ValidationResultTabTemplate}" /><Setter Property="Margin" Value="0" /><Setter Property="Height" Value="34" /><Setter Property="MinHeight" Value="0" /><Setter Property="MinWidth" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="FontSize" Value="13" /><Setter Property="FontWeight" Value="600" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="ValidationMatrixCellStyle" TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="Margin" Value="6,5" /><Setter Property="VerticalAlignment" Value="Center" /></Style>
         <workbench:ValidationMatrixValueConverter x:Key="ValidationMatrixValue" />
         <workbench:ValidationMatrixValueConverter x:Key="ValidationMatrixDisplayValue" IncludeStatus="False" />
-        <SolidColorBrush x:Key="ValidationMatrixHeaderBrush" Color="#1D242B" />
-        <SolidColorBrush x:Key="ValidationMatrixLineBrush" Color="#262E37" />
-        <SolidColorBrush x:Key="ValidationMatrixHoverBrush" Color="#222A32" />
-        <SolidColorBrush x:Key="ValidationMatrixSelectedBrush" Color="#203034" />
+        <SolidColorBrush x:Key="ValidationMatrixHeaderBrush" Color="#242424" />
+        <SolidColorBrush x:Key="ValidationMatrixLineBrush" Color="#2E2E2E" />
+        <SolidColorBrush x:Key="ValidationMatrixHoverBrush" Color="#2A2A2A" />
+        <SolidColorBrush x:Key="ValidationMatrixSelectedBrush" Color="#2A2A2A" />
         <SolidColorBrush x:Key="ValidationMatrixPassBorderBrush" Color="#3D6049" />
         <SolidColorBrush x:Key="ValidationMatrixFailBorderBrush" Color="#6E434B" />
         <SolidColorBrush x:Key="ValidationMatrixErrorBrush" Color="#3A2A1F" />
@@ -44,7 +44,7 @@
         <SolidColorBrush x:Key="ValidationGroupPassBrush" Color="#2F5B44" />
         <SolidColorBrush x:Key="ValidationGroupFailBrush" Color="#C9686C" />
         <SolidColorBrush x:Key="ValidationGroupErrorBrush" Color="#C98450" />
-        <SolidColorBrush x:Key="ValidationGroupNoneBrush" Color="#3A444F" />
+        <SolidColorBrush x:Key="ValidationGroupNoneBrush" Color="#444444" />
         <Style x:Key="ValidationGroupCellStyle" TargetType="ItemsControl">
             <Setter Property="Margin" Value="10,5" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="AlternationCount" Value="2147483647" />
             <Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></Setter.Value></Setter>
@@ -132,8 +132,8 @@
             <Style.Triggers><DataTrigger Binding="{Binding Agreement}" Value="Match"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.MatrixMatch, Korean='✓ 일치', English='✓ Match'}" /></DataTrigger><DataTrigger Binding="{Binding Agreement}" Value="FalseReject"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.MatrixFalseReject, Korean='× 과검출', English='× False reject'}" /></DataTrigger><DataTrigger Binding="{Binding Agreement}" Value="FalseAccept"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.MatrixFalseAccept, Korean='× 미검출', English='× False accept'}" /></DataTrigger></Style.Triggers>
         </Style>
         <DataTemplate x:Key="ValidationMatrixAgreementTemplate"><Border Margin="10,0" Style="{StaticResource ValidationMatrixAgreementPillStyle}"><TextBlock VerticalAlignment="Center" Style="{StaticResource ValidationMatrixAgreementLabelStyle}" /></Border></DataTemplate>
-        <SolidColorBrush x:Key="ValidationMismatchHoverBrush" Color="#1E252C" />
-        <SolidColorBrush x:Key="ValidationMismatchSelectedBrush" Color="#1D2A2C" />
+        <SolidColorBrush x:Key="ValidationMismatchHoverBrush" Color="#252525" />
+        <SolidColorBrush x:Key="ValidationMismatchSelectedBrush" Color="#242424" />
         <Style x:Key="ValidationMismatchActionStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></Trigger></Style.Triggers>
         </Style>
@@ -330,7 +330,7 @@
                                     VerticalAlignment="Top"
                                     Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding OrderedRunStatus}" />
                             </Border>
                             <StackPanel Grid.Column="1">
@@ -436,8 +436,8 @@
                                                 <ColumnDefinition Width="190" />
                                                 <ColumnDefinition Width="160" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Order}" />
-                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding ToolName}" />
+                                            <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Order}" />
+                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="Normal" Text="{Binding ToolName}" />
                                             <TextBlock Grid.Column="2" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontSize="12" Text="{Binding InputSummary}" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Grid.Column="3" Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="12" Text="{Binding OutputEntityId}" TextTrimming="CharacterEllipsis" />
                                             <Border Grid.Column="4"
@@ -445,7 +445,7 @@
                                                     Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
-                                                    <TextBlock MaxWidth="122" FontSize="12" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock MaxWidth="122" FontSize="12" FontWeight="Normal" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
@@ -487,7 +487,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.FlowMapTitle}" />
+                                <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Localization.FlowMapTitle}" />
                             </StackPanel>
                             <Border Grid.Column="1"
                                     Margin="8,0,0,0"
@@ -542,7 +542,7 @@
                                                     CornerRadius="2">
                                                 <StackPanel>
                                                     <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding DataContext.Localization.FlowMapInput, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="SemiBold" Text="{Binding InputContractDisplay}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="Normal" Text="{Binding InputContractDisplay}" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" FontSize="12" Text="{Binding InputSummary}" TextTrimming="CharacterEllipsis" />
                                                     <StackPanel Margin="0,3,0,0"
                                                                 Orientation="Horizontal"
@@ -562,7 +562,7 @@
                                                             </ui:SymbolIcon.Style>
                                                         </ui:SymbolIcon>
                                                         <TextBlock MaxWidth="142"
-                                                                   FontSize="8.8"
+                                                                   FontSize="12"
                                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                                    Text="{Binding InputPortState}"
                                                                    TextTrimming="CharacterEllipsis" />
@@ -583,7 +583,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="12" FontWeight="Bold" Text="{Binding Order}" />
                                                     <StackPanel Grid.Column="1">
-                                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" />
                                                         <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="12" Text="{Binding Id}" TextTrimming="CharacterEllipsis" />
                                                     </StackPanel>
                                                 </Grid>
@@ -597,7 +597,7 @@
                                                     CornerRadius="2">
                                                 <StackPanel>
                                                     <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding DataContext.Localization.FlowMapOutput, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="SemiBold" Text="{Binding OutputContractDisplay}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="12" FontWeight="Normal" Text="{Binding OutputContractDisplay}" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Foreground="{DynamicResource ThreeD.AccentBrush}" FontSize="12" Text="{Binding OutputEntityId}" TextTrimming="CharacterEllipsis" />
                                                     <StackPanel Margin="0,3,0,0"
                                                                 Orientation="Horizontal"
@@ -617,7 +617,7 @@
                                                             </ui:SymbolIcon.Style>
                                                         </ui:SymbolIcon>
                                                         <TextBlock MaxWidth="142"
-                                                                   FontSize="8.8"
+                                                                   FontSize="12"
                                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                                    Text="{Binding OutputPortState}"
                                                                    TextTrimming="CharacterEllipsis" />
@@ -633,7 +633,7 @@
                                                     AutomationProperties.HelpText="{Binding State}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
-                                                    <TextBlock MaxWidth="108" FontSize="12" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock MaxWidth="108" FontSize="12" FontWeight="Normal" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
@@ -664,7 +664,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.ProblemsTitle}" />
+                                <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Localization.ProblemsTitle}" />
                             </StackPanel>
                             <Border Grid.Column="1"
                                     Margin="8,0,0,0"
@@ -708,7 +708,7 @@
                                                         <StackPanel Grid.Column="1">
                                                             <StackPanel Orientation="Horizontal">
                                                                 <TextBlock FontSize="12"
-                                                                           FontWeight="SemiBold"
+                                                                           FontWeight="Normal"
                                                                            Text="{Binding StepTitle}" />
                                                                 <TextBlock Margin="6,0,0,0"
                                                                            FontSize="12"
@@ -743,7 +743,7 @@
                                     </ItemsControl>
                                     <TextBlock Margin="4,6,4,4"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                Text="{Binding Localization.ProblemsValidationMessages}" />
                                     <ItemsControl ItemsSource="{Binding ValidationMessages}">
@@ -808,12 +808,12 @@
                         <StackPanel x:Name="RunRecordHeader"
                                     Margin="4,0,4,6">
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Text="{Binding Localization.RunRecordTitle}" />
                             <TextBlock x:Name="RunRecordStatusSummary" Margin="0,3,0,0"
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                        FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        TextWrapping="Wrap"
                                        Text="{Binding RunRecordSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </StackPanel>
@@ -955,7 +955,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock VerticalAlignment="Center"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding Localization.RunRecordSourceQuality}"
                                            ToolTip="{Binding Localization.RunRecordSourceQualityDetail}" />
                                 <Border Grid.Column="1"
@@ -989,7 +989,7 @@
                                         </Style>
                                     </Border.Style>
                                     <TextBlock FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding RunRecordContext.SourceQualityStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 </Border>
                                 <TextBlock Grid.Column="2"
@@ -997,7 +997,7 @@
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding RunRecordContext.SourceQualitySummary, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding RunRecordContext.SourceQualityDetail, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -1006,7 +1006,7 @@
                                 <TextBlock Grid.Row="1"
                                            VerticalAlignment="Center"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding Localization.RunRecordThresholdCorrection}"
                                            ToolTip="{Binding Localization.RunRecordThresholdCorrectionDetail}" />
                                 <Border Grid.Row="1"
@@ -1020,7 +1020,7 @@
                                             CornerRadius="8">
                                     <TextBlock Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding RunRecordContext.ThresholdCorrectionStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 </Border>
                                 <TextBlock Grid.Row="1"
@@ -1029,7 +1029,7 @@
                                                VerticalAlignment="Center"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding RunRecordContext.ThresholdCorrectionSummary, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                TextTrimming="CharacterEllipsis" />
                                 <ScrollViewer x:Name="RunRecordThresholdDetails"
@@ -1048,7 +1048,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                                FontSize="12"
-                                                               FontWeight="SemiBold"
+                                                               FontWeight="Normal"
                                                                Text="{Binding Label}" />
                                                     <TextBlock Grid.Column="1"
                                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
@@ -1089,7 +1089,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock VerticalAlignment="Center"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding Localization.RunRecordComparisonTitle}" />
                                     <Border Grid.Column="1"
                                             Margin="8,0,0,0"
@@ -1121,7 +1121,7 @@
                                             </Style>
                                         </Border.Style>
                                         <TextBlock FontSize="12"
-                                                   FontWeight="SemiBold"
+                                                   FontWeight="Normal"
                                                    Text="{Binding RunRecordContext.RunRecordComparisonStateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                     </Border>
                                 </Grid>
@@ -1129,7 +1129,7 @@
                                            Margin="0,5,0,0"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding RunRecordContext.RunRecordComparisonSummary, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            TextWrapping="Wrap"
                                            AutomationProperties.AutomationId="RunRecordComparisonSummary" />
@@ -1140,7 +1140,7 @@
                                               HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
                                     <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               FontFamily="Consolas"
+                                               FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular"
                                                FontSize="12"
                                                Text="{Binding RunRecordContext.RunRecordComparisonDetails, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                TextWrapping="Wrap"
@@ -1209,8 +1209,8 @@
                                                 <ColumnDefinition Width="1.15*" />
                                                 <ColumnDefinition Width="1.25*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Order}" />
-                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Stage}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Order}" />
+                                            <TextBlock Grid.Column="1" FontSize="12" FontWeight="Normal" Text="{Binding Stage}" TextTrimming="CharacterEllipsis" />
                                             <Border Grid.Column="2"
                                                     Margin="0,0,8,0"
                                                     Padding="6,2"
@@ -1237,7 +1237,7 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Status}" />
+                                                <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Status}" />
                                             </Border>
                                             <TextBlock Grid.Column="3"
                                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
@@ -1280,12 +1280,12 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel x:Name="ValidationSetTitleSummary">
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding Localization.ValidationSetTitle}" />
                                 <TextBlock Margin="0,2,0,0"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding ValidationSetSummary}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding ValidationSetCapability}" />
@@ -1394,7 +1394,7 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding Localization.ValidationFailureSummaryTitle}" />
                                 <WrapPanel Grid.Row="1"
@@ -1407,7 +1407,7 @@
                                         <TextBlock x:Name="ValidationFailureSampleValue"
                                                    Margin="0,2,0,0"
                                                    FontSize="12"
-                                                   FontWeight="SemiBold"
+                                                   FontWeight="Normal"
                                                    Text="{Binding SelectedValidationSetSample.FileName}"
                                                    TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding SelectedValidationSetSample.FileName}" />
@@ -1420,7 +1420,7 @@
                                         <TextBlock x:Name="ValidationFailureRuleValue"
                                                    Margin="0,2,0,0"
                                                    FontSize="12"
-                                                   FontWeight="SemiBold"
+                                                   FontWeight="Normal"
                                                    Text="{Binding SelectedValidationSetStep.ToolName}"
                                                    TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding SelectedValidationSetStep.ToolName}" />
@@ -1477,7 +1477,7 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding Localization.ValidationSetSelectedExpectedRole}" />
                                 <WrapPanel Grid.Row="1"
                                            Margin="0,4,0,0">
@@ -1637,7 +1637,7 @@
                                     </Grid.RowDefinitions>
                                     <TextBlock x:Name="ValidationSamplesTitle" Margin="2,0,2,5"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding Localization.ValidationSetSamples}" />
                                     <DataGrid x:Name="ValidationSamplesGrid" Grid.Row="1"
                                               AutoGenerateColumns="False"
@@ -1734,7 +1734,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Margin="2,0,2,5"
                                                FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding Localization.ValidationSetSelectedRecord}" />
         <ListBox x:Name="ValidationSetStepsList"
                                              Grid.Row="1"
@@ -1760,9 +1760,9 @@
                                                             <ColumnDefinition Width="64" />
                                                             <ColumnDefinition Width="*" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Order}" />
-                                                        <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolName}" />
-                                                        <TextBlock Grid.Column="2" FontSize="12" FontWeight="SemiBold" Text="{Binding StatusText}" />
+                                                        <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Order}" />
+                                                        <TextBlock Grid.Column="1" FontSize="12" FontWeight="Normal" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolName}" />
+                                                        <TextBlock Grid.Column="2" FontSize="12" FontWeight="Normal" Text="{Binding StatusText}" />
                                                         <TextBlock Grid.Column="3"
                                                                    FontSize="12"
                                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
@@ -1794,7 +1794,7 @@
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock FontSize="12"
-                                                           FontWeight="SemiBold"
+                                                           FontWeight="Normal"
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Text="{Binding Localization.ValidationSetMetrics}" />
                                                 <ListBox Grid.Row="1"
@@ -1811,7 +1811,7 @@
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
                                                                 <TextBlock FontSize="12" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
-                                                                <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="12" FontWeight="SemiBold">
+                                                                <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="12" FontWeight="Normal">
                                                                     <Run Text="{Binding Value}" />
                                                                     <Run Text="{Binding Unit}" />
                                                                     <Run Text="{Binding StatusText}" />
@@ -1827,7 +1827,7 @@
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock FontSize="12"
-                                                           FontWeight="SemiBold"
+                                                           FontWeight="Normal"
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Text="{Binding Localization.ValidationSetOverlays}" />
                                                 <ListBox Grid.Row="1"
@@ -1844,7 +1844,7 @@
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Kind}" />
+                                                                <TextBlock FontSize="12" FontWeight="Normal" Text="{Binding Kind}" />
                                                                 <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="12" Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}" />
                                                                 <TextBlock Grid.Column="2" Margin="6,0,0,0" FontSize="12" Text="{Binding StatusText}" />
                                                             </Grid>
@@ -1886,7 +1886,7 @@
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0"><Border ToolTip="{shell:ThreeDText Key=ThreeD.Validation.InputPreview, Korean='현재 파일의 입력 미리보기 · 실행 당시 원인 맵이 아닙니다', English='Current input file preview · not an executed cause map'}" Width="150" Height="98" VerticalAlignment="Top" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" CornerRadius="5">
                                                 <Grid>
-                                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.NoPreview, Korean='이미지 없음', English='No image'}" />
+                                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.NoPreview, Korean='이미지 없음', English='No image'}" />
                                                     <Image Stretch="Uniform">
                                                         <Image.Source><MultiBinding Converter="{StaticResource ValidationSamplePreview}">
                                                             <Binding Path="DataContext.ValidationMismatchPreviews" RelativeSource="{RelativeSource AncestorType=ListBox}" />
@@ -1894,16 +1894,16 @@
                                                         </MultiBinding></Image.Source>
                                                     </Image>
                                                 </Grid>
-                                            </Border><TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.CurrentInputPreview, Korean='현재 파일 · 입력 미리보기', English='Current file · input preview'}" /></StackPanel>
+                                            </Border><TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.CurrentInputPreview, Korean='현재 파일 · 입력 미리보기', English='Current file · input preview'}" /></StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <WrapPanel>
                                                     <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding FileName}" TextWrapping="Wrap" />
                                                     <Border Margin="8,0,0,0" Style="{StaticResource ValidationMatrixAgreementPillStyle}">
-                                                        <TextBlock Style="{StaticResource ValidationMatrixAgreementLabelStyle}" FontSize="12" FontWeight="SemiBold" />
+                                                        <TextBlock Style="{StaticResource ValidationMatrixAgreementLabelStyle}" FontSize="12" FontWeight="Normal" />
                                                     </Border>
-                                                    <TextBlock Margin="8,0,0,0" FontSize="12.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.ExpectedCaption, Korean='기대 ', English='Expected '}" /><Run Text="{Binding ExpectedVerdictText, Mode=OneWay}" /><Run Text=" → " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.ResultCaption, Korean='결과 ', English='Result '}" /><Run Text="{Binding ActualVerdictText, Mode=OneWay}" /></TextBlock>
+                                                    <TextBlock Margin="8,0,0,0" FontSize="13" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.ExpectedCaption, Korean='기대 ', English='Expected '}" /><Run Text="{Binding ExpectedVerdictText, Mode=OneWay}" /><Run Text=" → " /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.ResultCaption, Korean='결과 ', English='Result '}" /><Run Text="{Binding ActualVerdictText, Mode=OneWay}" /></TextBlock>
                                                 </WrapPanel>
-                                                <TextBlock Margin="0,4,0,0" FontSize="12.5" Text="{Binding MismatchEvidenceText}" TextWrapping="Wrap" />
+                                                <TextBlock Margin="0,4,0,0" FontSize="13" Text="{Binding MismatchEvidenceText}" TextWrapping="Wrap" />
                                                 <TextBlock Margin="0,4,0,0" FontSize="12" LineHeight="19.2" Text="{Binding MismatchGuidance}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                                                 <WrapPanel Margin="0,2,0,0">
                                                     <Button Style="{StaticResource ValidationMismatchActionStyle}" Padding="8,2" Margin="0,0,6,4" Command="{Binding DataContext.OpenValidationSetComparisonCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" ><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ArrowRight24" /><TextBlock Text="{shell:ThreeDText Key=ThreeD.Validation.CompareInTeach, Korean='티칭에서 비교', English='Compare in Teach'}" /></StackPanel></Button>
@@ -1915,8 +1915,10 @@
                                         </Grid>
                                     </DataTemplate></ListBox.ItemTemplate>
                                 </ListBox>
-                                <TextBlock Margin="20" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
-                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.AllMatch, Korean='모든 샘플이 기대 판정과 일치합니다.', English='All samples match the expected decisions.'}" /><Style.Triggers>
+                                <TextBlock Margin="20" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" AutomationProperties.AutomationId="ValidationMismatchEmptyState">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.ComparisonPending, Korean='기대 판정과 비교를 마치지 못한 샘플이 있습니다.', English='Some samples with an expected decision still need a comparison.'}" /><Style.Triggers>
+                                        <DataTrigger Binding="{Binding AllValidationExpectationsMatch}" Value="True"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.ExpectedSamplesMatch, Korean='기대 판정이 있는 샘플이 모두 일치합니다.', English='All samples with an expected decision match.'}" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding HasValidationExpectations}" Value="False"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.NoExpectedDecisions, Korean='기대 판정이 지정된 샘플이 없습니다.', English='No samples have an expected decision.'}" /></DataTrigger>
                                         <DataTrigger Binding="{Binding HasValidationMismatches}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                                         <DataTrigger Binding="{Binding HasValidationResults}" Value="False"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.NoResults, Korean='검증 결과가 없습니다.', English='No validation results.'}" /></DataTrigger>
                                     </Style.Triggers></Style></TextBlock.Style>
@@ -1932,9 +1934,9 @@
                                 <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                     <StackPanel Margin="12,8">
                                         <TextBlock FontWeight="SemiBold" Text="{Binding SelectedValidationDistributionOutput.Label}" TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.DistributionLegend, Korean='기대 OK ○ · 기대 NG ◆ · 보류 Ⅱ · 노란 고리 = 불일치', English='Expected OK ○ · expected NG ◆ · held-out Ⅱ · yellow ring = mismatch'}" />
+                                        <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.DistributionLegend, Korean='기대 OK ○ · 기대 NG ◆ · 보류 Ⅱ · 노란 고리 = 불일치', English='Expected OK ○ · expected NG ◆ · held-out Ⅱ · yellow ring = mismatch'}" />
                                         <Border Padding="10,8" Margin="0,6,0,0" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6">
-                                            <TextBlock x:Name="ValidationDistributionReadout" FontSize="12.5" TextWrapping="Wrap" Text="{Binding SelectedValidationDistributionReadout}"
+                                            <TextBlock x:Name="ValidationDistributionReadout" FontSize="13" TextWrapping="Wrap" Text="{Binding SelectedValidationDistributionReadout}"
                                                        AutomationProperties.AutomationId="ValidationDistributionReadout" AutomationProperties.Name="{Binding SelectedValidationDistributionReadout}" />
                                         </Border>
                                         <workbench:ValidationDistributionPlot x:Name="ValidationDistributionChart" Margin="0,4,0,0"
@@ -1942,7 +1944,7 @@
                                                                             SelectedSample="{Binding SelectedValidationSetSample, Mode=TwoWay}" AutomationProperties.AutomationId="ValidationDistributionChart" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.Distribution, Korean='값 분포', English='Value distribution'}" />
                                         <Border Padding="10,8" Margin="0,6,0,0" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6">
                                             <StackPanel>
-                                                <WrapPanel><TextBlock Margin="0,0,10,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.CommonRecordedLimits, Korean='공통 허용 범위', English='Common recorded limits'}" /><TextBlock FontFamily="Consolas" Text="{Binding SelectedValidationDistributionOutput.RangeText}" /></WrapPanel>
+                                                <WrapPanel><TextBlock Margin="0,0,10,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.CommonRecordedLimits, Korean='공통 허용 범위', English='Common recorded limits'}" /><TextBlock FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" Text="{Binding SelectedValidationDistributionOutput.RangeText}" /></WrapPanel>
                                                 <WrapPanel Margin="0,6,0,0"><TextBlock Margin="0,4,10,0" Text="{shell:ThreeDText Key=ThreeD.Validation.Candidate, Korean='후보', English='Candidate'}" />
                                                     <ComboBox x:Name="ValidationDistributionCandidates" Width="250" ItemsSource="{Binding ValidationDistributionCandidates}" DisplayMemberPath="Limits" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.Candidate, Korean='후보', English='Candidate'}" />
                                                 </WrapPanel>
@@ -1951,7 +1953,7 @@
                                                     <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ReviewValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ReviewDraft, Korean='초안 검토', English='Review draft'}" />
                                                     <Button Margin="0,0,6,4" Padding="8,4" Command="{Binding ApplyValidationThresholdCandidateCommand}" Content="{shell:ThreeDText Key=ThreeD.Validation.ApplyDraft, Korean='설정창에 입력', English='Enter in settings'}" />
                                                 </WrapPanel>
-                                                <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ValidationThresholdAssistantSummary}" TextWrapping="Wrap" />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ValidationThresholdAssistantSummary}" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Border>
                                         <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.ManualLimits, Korean='후보 입력 후 티칭에서 적용하세요.', English='Apply the entered candidate in Teach.'}" />
@@ -1967,7 +1969,7 @@
                                   Header="{Binding Localization.ValidationSetLabeledEvidence}">
                             <StackPanel Margin="0,5,0,0">
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Text="{Binding ValidationEvidenceSummary}"
                                            TextWrapping="Wrap" />
                                 <TextBlock Margin="0,2,0,4"
@@ -2037,13 +2039,13 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock FontSize="12"
-                                                           FontWeight="SemiBold"
+                                                           FontWeight="Normal"
                                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                            Text="{Binding Localization.ValidationSetThresholdAssistant}" />
                                                 <TextBlock Grid.Column="1"
                                                            Margin="8,0,0,0"
                                                            FontSize="12"
-                                                           FontWeight="SemiBold"
+                                                           FontWeight="Normal"
                                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                            Text="{Binding ValidationThresholdAssistantStageText}" />
                                             </Grid>
@@ -2094,7 +2096,7 @@
                                 <StackPanel Grid.Row="2"
                                             Grid.ColumnSpan="3">
                                     <TextBlock FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Text="{Binding ValidationThresholdSummary}"
                                                TextWrapping="Wrap" />
                                     <TextBlock Margin="0,2,0,3"

@@ -146,6 +146,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
             OnPropertyChanged(nameof(FirstRecipeSetupTitle));
             OnPropertyChanged(nameof(FirstRecipeSetupDetailText));
             OnPropertyChanged(nameof(FirstRecipeCreateLabel));
+            OnPropertyChanged(nameof(IsFirstRecipeSourceRequired));
             OnPropertyChanged(nameof(IsFirstRecipeStarterEditable));
             OnPropertyChanged(nameof(IsFirstRecipeSetupMemoryAvailable));
         }
@@ -235,6 +236,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
             }
 
             OnPropertyChanged(nameof(FirstRecipeStarterDetail));
+            OnPropertyChanged(nameof(IsFirstRecipeSourceRequired));
             NotifyFirstRecipeSetupDraftChanged();
         }
     }
@@ -271,6 +273,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         ? ThreeDLocalization.Shared.CompatibleVariantCreate
         : ThreeDLocalization.Shared.FirstRecipeCreate;
 
+    public bool IsFirstRecipeSourceRequired => IsCompatibleVariantSetup || (SelectedFirstRecipeStarter is { } starter && starter.Id != EmptyStarterId);
     public bool IsFirstRecipeStarterEditable => !IsCompatibleVariantSetup;
     public bool IsFirstRecipeSetupMemoryAvailable => !IsCompatibleVariantSetup;
 
@@ -517,8 +520,7 @@ internal sealed class ToolWorkbenchFirstRecipeSetupOwner : INotifyPropertyChange
         var sourcePath = FirstRecipeSourcePath.Trim();
         if (string.IsNullOrWhiteSpace(sourcePath))
         {
-            if (IsCompatibleVariantSetup
-                || !string.Equals(SelectedFirstRecipeStarter.Id, EmptyStarterId, StringComparison.Ordinal))
+            if (IsFirstRecipeSourceRequired)
             {
                 return ThreeDLocalization.Shared.FirstRecipeSourceRequired;
             }

@@ -115,7 +115,7 @@
                                 Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
                         <Setter Property="Background" Value="Transparent" />
                         <Setter Property="BorderBrush" Value="Transparent" />
-                        <Setter Property="FontSize" Value="10.5" />
+                        <Setter Property="FontSize" Value="12" />
                         <Setter Property="Cursor" Value="Hand" />
                         <Setter Property="Width">
                             <Setter.Value>
@@ -288,7 +288,7 @@
             </Style.Triggers>
         </Style>
 
-        <Style TargetType="{x:Type avalonDockControls:LayoutAnchorableControl}">
+        <Style x:Key="OpenVisionAnchorableContentStyle" TargetType="{x:Type avalonDockControls:LayoutAnchorableControl}">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -373,6 +373,12 @@
                                    BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
                                    BorderThickness="0"
                                    AnchorablePaneControlStyle="{StaticResource OpenVisionTopAnchorablePaneStyle}">
+            <avalonDock:DockingManager.Resources>
+                <!-- GenericTheme supplies menu resources; keep the existing
+                     content template local so its default style cannot hide it. -->
+                <Style TargetType="{x:Type avalonDockControls:LayoutAnchorableControl}"
+                       BasedOn="{StaticResource OpenVisionAnchorableContentStyle}" />
+            </avalonDock:DockingManager.Resources>
             <avalonDock:DockingManager.Theme>
                 <avalonDock:GenericTheme />
             </avalonDock:DockingManager.Theme>

@@ -76,6 +76,29 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
     public string SelectedToolProposedRouteDetail =>
         GetProposedInputRoute(getSnapshot()).Detail;
 
+    public string SelectedToolProposedRouteDisplayDetail
+    {
+        get
+        {
+            var snapshot = getSnapshot();
+            var route = GetProposedInputRoute(snapshot);
+            if (!route.IsCompatible || snapshot.SelectedTool is not { RouteKind: ToolWorkbenchToolRouteKind.OrderedRun } tool)
+            {
+                return route.Detail;
+            }
+
+            var inputIds = route.InputEntityIds.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var inputs = inputIds.Select(id => snapshot.ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Id, id, StringComparison.OrdinalIgnoreCase))).ToArray();
+            var inputNames = string.Join(" + ", inputs.Select((item, index) => item?.DisplayName ?? inputIds[index]));
+            var inputContracts = inputs.All(item => item is not null) && inputs.Length > 0
+                ? string.Join(" + ", inputs.Select(item => localization.ToolRouteContractLabel(item!.Contract)))
+                : localization.ToolRouteContractLabel(tool.InputContract);
+            return string.Format(localization.ProposedToolRouteFormat,
+                inputNames, inputContracts, tool.DisplayName, localization.ToolRouteContractLabel(tool.OutputContract));
+        }
+    }
+
     public void Rebuild()
     {
         var snapshot = getSnapshot();
@@ -271,6 +294,7 @@ internal sealed class ToolWorkbenchCompatibleToolCatalogOwner : INotifyPropertyC
         OnPropertyChanged(nameof(IsSelectedToolProposedRouteCompatible));
         OnPropertyChanged(nameof(SelectedToolProposedRouteTitle));
         OnPropertyChanged(nameof(SelectedToolProposedRouteDetail));
+        OnPropertyChanged(nameof(SelectedToolProposedRouteDisplayDetail));
     }
 
     private bool CanAddCompatibleTool(ToolWorkbenchCompatibleToolItem suggestion)

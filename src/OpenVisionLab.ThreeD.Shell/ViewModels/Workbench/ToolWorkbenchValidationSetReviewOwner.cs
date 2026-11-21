@@ -121,6 +121,8 @@ internal sealed class ToolWorkbenchValidationSetReviewOwner : INotifyPropertyCha
     public IReadOnlyList<ValidationSetSampleRow> ValidationMismatchSamples => samples.Where(sample => sample.IsMismatch).ToArray();
     public bool HasValidationMismatches => samples.Any(sample => sample.IsMismatch);
     public bool HasValidationResults => samples.Any(sample => sample.Status != "Pending");
+    public bool HasValidationExpectations => samples.Any(sample => sample.HasExpectation);
+    public bool AllValidationExpectationsMatch => HasValidationExpectations && samples.All(sample => !sample.HasExpectation || sample.Agreement == "Match");
     public IReadOnlyList<ValidationDistributionOutput> ValidationDistributionOutputs => distributionOutputs;
     public string SelectedValidationDistributionReadout
     {
@@ -299,6 +301,8 @@ internal sealed class ToolWorkbenchValidationSetReviewOwner : INotifyPropertyCha
         OnPropertyChanged(nameof(ValidationMismatchSamples));
         OnPropertyChanged(nameof(HasValidationMismatches));
         OnPropertyChanged(nameof(HasValidationResults));
+        OnPropertyChanged(nameof(HasValidationExpectations));
+        OnPropertyChanged(nameof(AllValidationExpectationsMatch));
         OnPropertyChanged(nameof(ValidationSetAdjustmentCount));
         OnPropertyChanged(nameof(ValidationSetMatchCount));
         OnPropertyChanged(nameof(ValidationSetMismatchCount));

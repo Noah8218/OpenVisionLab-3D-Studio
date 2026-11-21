@@ -7,6 +7,6 @@
         Height="800"
         MinWidth="960"
         MinHeight="620"
-        Background="#f3f4f6">
+        Background="#F4F4F4">
     <viewer:OpenVisionThreeDViewerControl x:Name="Viewer" />
 </Window>

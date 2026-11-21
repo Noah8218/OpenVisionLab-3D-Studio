@@ -57,7 +57,7 @@
                     AutomationProperties.Name="{i18n:ThreeDText Key=ThreeD.Workbench.DisplayedOutputs.CurrentViewerArtifactAccessible, Korean='현재 뷰어 결과', English='Current viewer artifact'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock FontSize="12"
-                               FontWeight="SemiBold"
+                               FontWeight="Normal"
                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                Text="{Binding Localization.CurrentViewerDisplay}" />
                     <TextBlock Margin="8,0,0,0"
@@ -90,7 +90,7 @@
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock FontSize="12"
-                                                       FontWeight="SemiBold"
+                                                       FontWeight="Normal"
                                                        Foreground="{DynamicResource ThreeD.TextBrush}"
                                                        Text="{Binding DisplayName}"
                                                        TextTrimming="CharacterEllipsis" />
@@ -118,7 +118,7 @@
                                                 Margin="12,0,8,0"
                                                 VerticalAlignment="Center">
                                         <TextBlock FontSize="12"
-                                                   FontWeight="SemiBold"
+                                                   FontWeight="Normal"
                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                    Text="{Binding Availability}"
                                                    TextTrimming="CharacterEllipsis" />

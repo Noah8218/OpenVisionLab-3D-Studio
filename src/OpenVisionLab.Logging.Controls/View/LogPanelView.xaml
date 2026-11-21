@@ -9,18 +9,18 @@
         <converter:LogToneBrushConverter x:Key="LogToneBrushConverter" />
 
         <SolidColorBrush x:Key="ShellBrush" Color="#111821" />
-        <SolidColorBrush x:Key="PanelBrush" Color="#1D2532" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#282828" />
         <SolidColorBrush x:Key="ListBrush" Color="#0D1219" />
         <SolidColorBrush x:Key="RowBrush" Color="#121A25" />
-        <SolidColorBrush x:Key="LineBrush" Color="#2B3645" />
+        <SolidColorBrush x:Key="LineBrush" Color="#383838" />
         <SolidColorBrush x:Key="PrimaryTextBrush" Color="#EEF3F8" />
-        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#AEB9C7" />
-        <SolidColorBrush x:Key="MutedTextBrush" Color="#78879A" />
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#BABABA" />
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#898989" />
         <SolidColorBrush x:Key="ActionBrush" Color="#285A70" />
         <SolidColorBrush x:Key="ActionBorderBrush" Color="#4B8DA4" />
         <SolidColorBrush x:Key="InputBrush" Color="#101722" />
         <SolidColorBrush x:Key="BadgeBrush" Color="#263348" />
-        <SolidColorBrush x:Key="ComboArrowBrush" Color="#AEB9C7" />
+        <SolidColorBrush x:Key="ComboArrowBrush" Color="#BABABA" />
         <SolidColorBrush x:Key="ComboHoverBrush" Color="#172332" />
 
         <Style TargetType="TextBlock">
@@ -38,7 +38,7 @@
             <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
             <Setter Property="Background" Value="{StaticResource InputBrush}" />
-            <Setter Property="BorderBrush" Value="#3B4654" />
+            <Setter Property="BorderBrush" Value="#484848" />
             <Setter Property="Padding" Value="8,2,28,2" />
             <Setter Property="ToolTip" Value="{Binding FilterComboToolTip}" />
             <Setter Property="ItemContainerStyle">
@@ -137,7 +137,7 @@
                     <Setter Property="Opacity" Value="0.38" />
                     <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
                     <Setter Property="Background" Value="#182130" />
-                    <Setter Property="BorderBrush" Value="#596779" />
+                    <Setter Property="BorderBrush" Value="#696969" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -166,7 +166,7 @@
             <Setter Property="MinWidth" Value="120" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
             <Setter Property="Background" Value="{StaticResource InputBrush}" />
-            <Setter Property="BorderBrush" Value="#3B4654" />
+            <Setter Property="BorderBrush" Value="#484848" />
             <Setter Property="CaretBrush" Value="{StaticResource PrimaryTextBrush}" />
             <Setter Property="Padding" Value="7,2" />
         </Style>
@@ -175,7 +175,7 @@
             <Setter Property="Background" Value="{StaticResource ListBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
             <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
             <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
@@ -277,7 +277,7 @@
                             ToolTip="{Binding ModeToolTip}" />
                     <Border DockPanel.Dock="Right"
                             Background="{StaticResource BadgeBrush}"
-                            BorderBrush="#34445C"
+                            BorderBrush="#484848"
                             BorderThickness="1"
                             MinWidth="54"
                             Height="22"
@@ -285,13 +285,13 @@
                             Padding="8,0">
                         <TextBlock Text="{Binding SummaryText}"
                                    Foreground="{StaticResource SecondaryTextBrush}"
-                                   FontSize="11"
+                                   FontSize="12"
                                    HorizontalAlignment="Center" />
                     </Border>
                     <TextBlock DockPanel.Dock="Right"
                                Text="{Binding ActiveFilterText}"
                                Foreground="{StaticResource MutedTextBrush}"
-                               FontSize="11"
+                               FontSize="12"
                                Margin="10,0,2,0" />
                     <TextBlock Text="{Binding HeaderText}"
                                FontSize="13"
@@ -301,7 +301,7 @@
                 <TextBlock Grid.Row="1"
                            Text="{Binding LatestSummaryText}"
                            Foreground="{StaticResource SecondaryTextBrush}"
-                           FontSize="11"
+                           FontSize="12"
                            Margin="0,5,0,0"
                            TextTrimming="CharacterEllipsis" />
 
@@ -353,7 +353,7 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Background="{StaticResource RowBrush}"
-                                BorderBrush="#1F2A36"
+                                BorderBrush="#2A2A2A"
                                 BorderThickness="0,0,0,1"
                                 ToolTip="{Binding RawText}">
                             <Grid MinHeight="26">
@@ -371,18 +371,18 @@
                                            Text="{Binding DisplayTime}"
                                            Foreground="{StaticResource SecondaryTextBrush}"
                                            Margin="8,0,6,0"
-                                           FontSize="10.5" />
+                                           FontSize="12" />
 
                                 <StackPanel Grid.Column="2"
                                             Orientation="Vertical"
                                             Margin="0,3,7,3">
                                     <TextBlock Text="{Binding Level}"
                                                Foreground="{Binding Level, Converter={StaticResource LogToneBrushConverter}}"
-                                               FontWeight="SemiBold"
-                                               FontSize="10.5" />
+                                               FontWeight="Normal"
+                                               FontSize="12" />
                                     <TextBlock Text="{Binding Category}"
                                                Foreground="{StaticResource MutedTextBrush}"
-                                               FontSize="9.5" />
+                                               FontSize="12" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="3"
@@ -390,7 +390,7 @@
                                             Margin="0,3,10,3">
                                     <TextBlock Text="{Binding Source}"
                                                Foreground="#7FD6E7"
-                                               FontSize="9.5"
+                                               FontSize="12"
                                                Style="{StaticResource DetailedOnlyTextVisibilityStyle}" />
                                     <TextBlock Text="{Binding Message}"
                                                Foreground="{Binding Level, Converter={StaticResource LogToneBrushConverter}}"
@@ -435,11 +435,11 @@
                         <TextBlock AutomationProperties.AutomationId="LogPanelEmptyTitle"
                                    Text="{Binding EmptyTitleText}"
                                    Foreground="{StaticResource PrimaryTextBrush}"
-                                   FontWeight="SemiBold"
-                                   FontSize="12.5" />
+                                   FontWeight="Normal"
+                                   FontSize="13" />
                         <TextBlock Text="{Binding EmptyDetailText}"
                                    Foreground="{StaticResource SecondaryTextBrush}"
-                                   FontSize="11"
+                                   FontSize="12"
                                    TextWrapping="Wrap"
                                    TextTrimming="None"
                                    Margin="0,3,0,0">
@@ -448,7 +448,7 @@
                         <TextBlock AutomationProperties.AutomationId="LogPanelEmptyActionHint"
                                    Text="{Binding EmptyActionHintText}"
                                    Foreground="{StaticResource MutedTextBrush}"
-                                   FontSize="10.5"
+                                   FontSize="12"
                                    TextWrapping="Wrap"
                                    TextTrimming="None"
                                    Margin="0,3,0,0">

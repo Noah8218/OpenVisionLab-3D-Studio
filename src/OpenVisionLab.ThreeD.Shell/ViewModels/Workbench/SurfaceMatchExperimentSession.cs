@@ -122,7 +122,7 @@ internal sealed class SurfaceMatchExperimentSession : IDisposable
         SetRunning(true);
         step.State = "Preview running";
         SetStatus(
-            $"작성된 후보 {search.MaximumCandidateCount}개 제한 안에서 후보 미리보기를 실행 중입니다. 적용 정보는 변경되지 않습니다.",
+            $"작성된 후보 {search.MaximumCandidateCount}개 제한 안에서 후보 미리보기를 실행 중입니다.",
             $"Candidate Preview is running inside {search.MaximumCandidateCount} authored-candidate guard. Published evidence is unchanged.");
         appendLog(
             "Preview",

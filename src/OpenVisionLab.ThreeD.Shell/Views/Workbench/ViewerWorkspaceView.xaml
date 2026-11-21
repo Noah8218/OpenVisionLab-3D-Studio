@@ -160,7 +160,7 @@
         </Style>
         <Style x:Key="ViewerPaneKindTabStyle" TargetType="ToggleButton" BasedOn="{StaticResource ViewerLayoutIconToggleStyle}">
             <Setter Property="Width" Value="Auto" /><Setter Property="MinWidth" Value="0" /><Setter Property="Height" Value="22" /><Setter Property="Margin" Value="0" />
-            <Setter Property="Padding" Value="7,0" /><Setter Property="FontSize" Value="11.5" /><Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="7,0" /><Setter Property="FontSize" Value="12" /><Setter Property="BorderThickness" Value="0" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton">
@@ -168,9 +168,9 @@
                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2A333D" /></Trigger>
-                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2C4243" /><Setter TargetName="Surface" Property="BorderBrush" Value="#6FB3A8" /><Setter Property="Foreground" Value="#C7ECE5" /></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#354E50" /></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#343434" /></Trigger>
+                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#383838" /><Setter TargetName="Surface" Property="BorderBrush" Value="#6FB3A8" /><Setter Property="Foreground" Value="#C7ECE5" /></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#424242" /></Trigger>
                     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
                     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                 </ControlTemplate.Triggers>
@@ -198,20 +198,20 @@
                         <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent" /></ControlTemplate></ToggleButton.Template>
                     </ToggleButton>
                     <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False" IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="None">
-                        <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxWidth="420" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="#37424E" BorderThickness="1" CornerRadius="6" Padding="4">
+                        <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxWidth="420" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="#424242" BorderThickness="1" CornerRadius="6" Padding="4">
                             <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" CanContentScroll="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" /></ScrollViewer>
                         </Border>
                     </Popup>
                 </Grid>
                 <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#252D36" /><Setter TargetName="Surface" Property="BorderBrush" Value="#3A4552" /></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2E2E2E" /><Setter TargetName="Surface" Property="BorderBrush" Value="#464646" /></Trigger>
                     <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
                     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                 </ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <DataTemplate x:Key="ViewerPaneKindTabs">
-            <Border BorderBrush="#37424E" BorderThickness="1" CornerRadius="4" Padding="2" Background="#141920" VerticalAlignment="Center"><StackPanel Orientation="Horizontal">
+            <Border BorderBrush="#424242" BorderThickness="1" CornerRadius="4" Padding="2" Background="#1A1A1A" VerticalAlignment="Center"><StackPanel Orientation="Horizontal">
                 <ToggleButton Style="{StaticResource ViewerPaneKindTabStyle}" Content="3D" Command="{Binding SetKindCommand}" CommandParameter="{x:Static workbenchViewModels:ViewerPaneKind.ThreeD}" IsChecked="{Binding IsThreeD, Mode=OneWay}" AutomationProperties.AutomationId="PaneKindThreeD" />
                 <ToggleButton Style="{StaticResource ViewerPaneKindTabStyle}" Content="{views:ThreeDText Key=ThreeD.Viewer.Height, Korean='높이', English='Height'}" Command="{Binding SetKindCommand}" CommandParameter="{x:Static workbenchViewModels:ViewerPaneKind.Height}" IsChecked="{Binding IsHeight, Mode=OneWay}" AutomationProperties.AutomationId="PaneKindHeight" />
                 <ToggleButton Style="{StaticResource ViewerPaneKindTabStyle}" Content="{views:ThreeDText Key=ThreeD.Viewer.Section, Korean='단면', English='Section'}" Command="{Binding SetKindCommand}" CommandParameter="{x:Static workbenchViewModels:ViewerPaneKind.Section}" IsChecked="{Binding IsSection, Mode=OneWay}" AutomationProperties.AutomationId="PaneKindSection" />
@@ -410,7 +410,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
                     <TextBlock FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" Text="{views:ThreeDText Key=ThreeD.Viewer.Help, Korean='뷰어 사용법', English='Viewer help'}" />
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Text="{views:ThreeDText Key=ThreeD.Viewer.MouseHelp, Korean='왼쪽 드래그: 선택한 회전·이동 도구. 휠: 확대·축소. 오른쪽 클릭: 뷰어 메뉴. 큐브 면: 표준 시점. 초기화: 전체 형상을 초기 시점으로 맞춤.', English='Left drag: rotate or move with the selected tool. Wheel: zoom. Right click: viewer menu. Cube face: standard view. Home: fit the complete shape to its initial view.'}" />
-                    <TextBlock FontFamily="Consolas" TextWrapping="Wrap" LineHeight="24" Text="{views:ThreeDText Key=ThreeD.Viewer.KeyboardHelp, Korean='F  전체 맞춤&#xA;R  회전&#xA;M  이동&#xA;1  3D 단일 창&#xA;2  높이 영상&#xA;3  3D + 높이&#xA;Ctrl+1  1개 창&#xA;Ctrl+2  좌우 2개 창&#xA;Ctrl+4  4개 창&#xA;Esc  현재 두 점 측정 취소', English='F  Fit all&#xA;R  Rotate&#xA;M  Move&#xA;1  Single 3D pane&#xA;2  Height image&#xA;3  3D + height&#xA;Ctrl+1  One pane&#xA;Ctrl+2  Two side-by-side panes&#xA;Ctrl+4  Four panes&#xA;Esc  Cancel the current two-point measurement'}" />
+                    <TextBlock FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" TextWrapping="Wrap" LineHeight="24" Text="{views:ThreeDText Key=ThreeD.Viewer.KeyboardHelp, Korean='F  전체 맞춤&#xA;R  회전&#xA;M  이동&#xA;1  3D 단일 창&#xA;2  높이 영상&#xA;3  3D + 높이&#xA;Ctrl+1  1개 창&#xA;Ctrl+2  좌우 2개 창&#xA;Ctrl+4  4개 창&#xA;Esc  현재 두 점 측정 취소', English='F  Fit all&#xA;R  Rotate&#xA;M  Move&#xA;1  Single 3D pane&#xA;2  Height image&#xA;3  3D + height&#xA;Ctrl+1  One pane&#xA;Ctrl+2  Two side-by-side panes&#xA;Ctrl+4  Four panes&#xA;Esc  Cancel the current two-point measurement'}" />
                     <Button x:Name="ViewerHelpCloseButton" Command="{Binding ToggleViewerHelpCommand}" Content="{views:ThreeDText Key=ThreeD.Common.Close, Korean='닫기', English='Close'}" />
                 </StackPanel></ScrollViewer>
             </Border>
@@ -472,7 +472,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Border x:Name="MainViewerSlotHeader" Height="32" Padding="10,0,6,0" Background="#1A2025" BorderBrush="#2A323B" BorderThickness="0,0,0,1">
+                    <Border x:Name="MainViewerSlotHeader" Height="32" Padding="10,0,6,0" Background="#202020" BorderBrush="#323232" BorderThickness="0,0,0,1">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <Border Grid.ColumnSpan="4" Width="3" Margin="-10,7,0,7" HorizontalAlignment="Left" Background="{DynamicResource ThreeD.AccentBrush}" CornerRadius="0,2,2,0" Visibility="{Binding ViewerWorkspace.IsMainFocused, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <ContentControl x:Name="MainPaneSourceRole" Content="{Binding MainViewerPane}" ContentTemplate="{StaticResource ViewerPaneSourceRole}" />
@@ -484,7 +484,7 @@
                                     <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding CanEditMainViewerPin}" Value="True" /><Condition Binding="{Binding IsFourViewerLayout}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
                                 </Style.Triggers></Style></ComboBox.Style>
                             </ComboBox>
-                            <TextBlock Grid.Column="1" Margin="6,0,6,0" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="{Binding MainViewerPane.SourceName}" ToolTip="{Binding MainViewerPane.SourcePath}" TextTrimming="CharacterEllipsis">
+                            <TextBlock Grid.Column="1" Margin="6,0,6,0" VerticalAlignment="Center" FontSize="12" FontWeight="Normal" Text="{Binding MainViewerPane.SourceName}" ToolTip="{Binding MainViewerPane.SourcePath}" TextTrimming="CharacterEllipsis">
                                 <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding Visibility, ElementName=MainViewerContentPin}" Value="Visible"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                             </TextBlock>
                             <ContentControl Grid.Column="2" Content="{Binding MainViewerPane}" ContentTemplate="{StaticResource ViewerPaneKindTabs}" AutomationProperties.AutomationId="MainPaneKindTabs" />
@@ -744,7 +744,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Border x:Name="AuxiliaryViewerSlotHeader" Height="32" Padding="10,0,6,0" Background="#161B20" BorderBrush="#2A323B" BorderThickness="0,0,0,1">
+                    <Border x:Name="AuxiliaryViewerSlotHeader" Height="32" Padding="10,0,6,0" Background="#1B1B1B" BorderBrush="#323232" BorderThickness="0,0,0,1">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <ContentControl x:Name="AuxiliaryPaneSourceRole" Content="{Binding AuxiliaryViewerPane}" ContentTemplate="{StaticResource ViewerPaneSourceRole}" />
                             <ComboBox x:Name="AuxiliaryViewerContentPin" Grid.Column="1" MinWidth="80" MaxWidth="360" MinHeight="0" Height="24" Padding="6,0" FontSize="12"
@@ -841,7 +841,7 @@
             </Border>
             <Border x:Name="FourSectionSlot" Grid.Row="2" Grid.Column="0" Visibility="Collapsed" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" AutomationProperties.AutomationId="FourSectionSlot">
                 <Grid><Grid.RowDefinitions><RowDefinition Height="32" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Grid Background="#1a2025" Margin="0,0,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid Background="#202020" Margin="0,0,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <ContentControl x:Name="SectionPaneSourceRole" Margin="10,0,0,0" Content="{Binding SectionViewerPane}" ContentTemplate="{StaticResource ViewerPaneSourceRole}" />
                         <TextBlock Grid.Column="1" Margin="2,0,6,0" VerticalAlignment="Center" FontSize="12" Text="{Binding SectionViewerPane.SourceName}" ToolTip="{Binding SectionViewerPane.SourcePath}" TextTrimming="CharacterEllipsis" />
                         <ContentControl Grid.Column="2" Content="{Binding SectionViewerPane}" ContentTemplate="{StaticResource ViewerPaneKindTabs}" AutomationProperties.AutomationId="FourSectionSlotKindTabs" />
@@ -860,7 +860,7 @@
             </Border>
             <Border x:Name="FourHeightSlot" Grid.Row="2" Grid.Column="2" Visibility="Collapsed" Background="{DynamicResource ThreeD.ViewportBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1" AutomationProperties.AutomationId="FourHeightSlot">
                 <Grid><Grid.RowDefinitions><RowDefinition Height="32" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                    <Grid Background="#1a2025" Margin="0,0,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid Background="#202020" Margin="0,0,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <ContentControl x:Name="HeightPaneSourceRole" Margin="10,0,0,0" Content="{Binding HeightViewerPane}" ContentTemplate="{StaticResource ViewerPaneSourceRole}" />
                         <TextBlock Grid.Column="1" Margin="2,0,6,0" VerticalAlignment="Center" FontSize="12" Text="{Binding HeightViewerPane.SourceName}" ToolTip="{Binding HeightViewerPane.SourcePath}" TextTrimming="CharacterEllipsis" />
                         <ContentControl Grid.Column="2" Content="{Binding HeightViewerPane}" ContentTemplate="{StaticResource ViewerPaneKindTabs}" AutomationProperties.AutomationId="FourHeightSlotKindTabs" />

@@ -440,7 +440,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Connect the processed height map and search region, set the direction and minimum height difference, then run the selected tool. Connect the detected points to 3D Line Fit."),
                 localization.Resolve(
                     "ThreeD.Workbench.HeightDifferenceEdgeExpectedOverlay",
-                    "예상: 각 스캔라인에서 선택된 인접 높이 차이의 중간점이 에지 점 집합으로 표시됩니다. 결측 쌍은 건너뛰고 입력 맵은 변경되지 않습니다.",
+                    "예상: 각 스캔라인에서 선택된 인접 높이 차이의 중간점이 에지 점 집합으로 표시됩니다. 결측 쌍은 건너뜁니다.",
                     "Expected: the selected adjacent-height pair midpoint from each scanline is recorded in an EdgePointSet. Missing pairs are skipped and the input map is unchanged."));
         }
 
@@ -479,7 +479,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Connect the processed height input, confirm connectivity, then run the selected tool."),
                 localization.Resolve(
                     "ThreeD.Workbench.ConnectedRegionExpectedOverlay",
-                    "예상: 원본 격자 위에 연결 영역별 셀과 경계 상자가 표시됩니다. 원본 높이와 앞 단계의 결과는 바뀌지 않습니다.",
+                    "예상: 원본 격자 위에 연결 영역별 셀과 경계 상자가 표시됩니다.",
                     "Expected: connected-region cells and bounding boxes appear on the source grid; the input and upstream output stay unchanged."));
         }
 
@@ -492,7 +492,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Connect the height input and region. For a detected region, confirm that the source, detection input, and region belong to the same input, then run."),
                 localization.Resolve(
                     "ThreeD.Workbench.DomainMaskExpectedOverlay",
-                    "선택한 영역의 높이값과 결측값은 유지하고 영역 밖은 결측으로 표시합니다. 원본과 영역 검출용 높이 데이터는 바뀌지 않습니다.",
+                    "선택한 영역의 높이값과 결측값은 유지하고 영역 밖은 결측으로 표시합니다.",
                     "Expected: v1 keeps values in the typed domain. v2 keeps raw values only at the selected detected-region cells, marks all other cells missing in a separate same-grid HeightField, and leaves both raw and detection inputs unchanged."));
         }
 
@@ -505,7 +505,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Connect the original input, the height map used to detect regions, and the detected regions. Select the region and set coverage and height limits, then run the selected tool."),
                 localization.Resolve(
                     "ThreeD.Workbench.ConnectedRegionGateExpectedOverlay",
-                    "선택한 검출 영역의 유효 셀 비율과 평균 높이 판정을 표시합니다. 입력과 영역의 연결 관계도 확인할 수 있습니다. 영역이 없거나 원본이 다르면 검사 오류 또는 판정 불가로 표시하며, 검사 대상이 없는 것으로 판정하지 않습니다.",
+                    "선택한 검출 영역의 유효 셀 비율과 평균 높이 판정을 표시합니다. 입력과 영역의 연결 관계도 확인할 수 있습니다. 영역이 없거나 원본이 다르면 검사 오류 또는 판정 불가로 표시합니다.",
                     "Expected: finite coverage, mean-height Pass/Fail, raw/detection/region provenance, and state are shown for one selected detected region. Missing or mismatched provenance remains error/not-evaluated and is not converted to expected-object absence."));
         }
 
@@ -518,7 +518,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                     "Connect the height input and current polygon region, then run the selected tool."),
                 localization.Resolve(
                     "ThreeD.Workbench.GridPolygonDomainExpectedOverlay",
-                    "영역에 포함된 셀이 표시됩니다. 입력의 높이값과 단위는 바뀌지 않습니다.",
+                    "영역에 포함된 셀이 표시됩니다.",
                     "Included cells are shown. Input heights and units remain unchanged."));
         }
 
@@ -561,7 +561,7 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged, IDi
                 "Confirm inputs and regions, apply parameters, then run the selected tool."),
             localization.Resolve(
                 "ThreeD.Workbench.GenericToolExpectedOverlay",
-                "예상: 현재 도구의 입력·영역·결과와 검토 정보가 표시되며 원본은 변경되지 않습니다.",
+                "예상: 현재 도구의 입력·영역·결과와 검토 정보가 표시됩니다.",
                 "Expected: this tool's inputs, regions, result, and review information are shown; the source remains unchanged."));
     }
 

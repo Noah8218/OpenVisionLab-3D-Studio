@@ -14,7 +14,7 @@
             <Setter Property="Margin" Value="0,2,0,0" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="MaxWidth" Value="48" />
             <Setter Property="TextWrapping" Value="NoWrap" />
@@ -257,7 +257,7 @@
                                           IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                                 <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                                     <Border x:Name="UtilitySurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
-                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><ui:SymbolIcon Width="19" Height="19" Symbol="Settings24" /><TextBlock Margin="0,2,0,0" FontSize="11" Text="{views:ThreeDText Key=ThreeD.Navigation.ActionsShort, Korean='설정', English='Setup'}" /></StackPanel>
+                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><ui:SymbolIcon Width="19" Height="19" Symbol="Settings24" /><TextBlock Margin="0,2,0,0" FontSize="12" Text="{views:ThreeDText Key=ThreeD.Navigation.ActionsShort, Korean='설정', English='Setup'}" /></StackPanel>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="UtilitySurface" Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /></Trigger>

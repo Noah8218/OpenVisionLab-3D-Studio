@@ -11,6 +11,26 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <workbench:HeightImageFrameConverter x:Key="ResultsHeightFrameConverter" />
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="StoredMetricText" />
+        <Style x:Key="ResultsHistoryFilterStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton">
+                <Border x:Name="FilterSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" CornerRadius="4">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.HoverSurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" /></Trigger>
+                    <Trigger Property="IsChecked" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /><Setter Property="BorderThickness" Value="2" /></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentPressedBrush}" /></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /><Setter Property="BorderThickness" Value="2" /></Trigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /><Setter Property="Cursor" Value="Arrow" /></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
         <Style x:Key="HistoryCell" TargetType="TextBlock">
             <Setter Property="Margin" Value="8,5" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -30,16 +50,16 @@
                 <Grid.RowDefinitions><RowDefinition Height="34" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Border Background="{DynamicResource ThreeD.DockHeaderBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,0,1" Padding="10,0">
                     <DockPanel>
-                        <ui:Button DockPanel.Dock="Right" Width="26" MinHeight="24" Height="26" Padding="0" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding SelectRunRecordCommand}" ToolTip="{Binding Localization.RunRecordOpen}" AutomationProperties.Name="{Binding Localization.RunRecordOpen}" />
-                        <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Results.History, Korean='실행 기록', English='Run history'}" />
+                        <ui:Button DockPanel.Dock="Right" Width="26" MinHeight="24" Height="26" Padding="0" Icon="{ui:SymbolIcon FolderOpen24}" Command="{Binding SelectRunRecordCommand}" ToolTip="{views:ThreeDText Key=ThreeD.Results.OpenRecordJsonFile, Korean='실행 기록 JSON 파일 열기', English='Open run record JSON file'}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Results.OpenRecordJsonFile, Korean='실행 기록 JSON 파일 열기', English='Open run record JSON file'}" />
+                        <TextBlock VerticalAlignment="Center" FontSize="12" FontWeight="Normal" Text="{views:ThreeDText Key=ThreeD.Results.History, Korean='실행 기록', English='Run history'}" />
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Text="{Binding RunRecordHistory.Count}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
                     </DockPanel>
                 </Border>
                 <StackPanel Grid.Row="1" Margin="8,8,8,6">
                     <WrapPanel>
-                        <ToggleButton MinHeight="26" IsChecked="{Binding IsAllRunRecordsSelected, Mode=OneWay}" Command="{Binding SelectRunRecordKindCommand}" CommandParameter="All" Padding="8,2" Content="{views:ThreeDText Key=ThreeD.Results.All, Korean='전체', English='All'}" />
-                        <ToggleButton MinHeight="26" Margin="4,0,0,0" Padding="8,2" IsChecked="{Binding IsInspectionRunRecordsSelected, Mode=OneWay}" Command="{Binding SelectRunRecordKindCommand}" CommandParameter="Inspection" Content="{views:ThreeDText Key=ThreeD.Results.InspectionKind, Korean='검사', English='Inspect'}" />
-                        <ToggleButton MinHeight="26" Margin="4,0,0,0" Padding="8,2" IsChecked="{Binding IsValidationRunRecordsSelected, Mode=OneWay}" Command="{Binding SelectRunRecordKindCommand}" CommandParameter="Validation" Content="{views:ThreeDText Key=ThreeD.Results.ValidationKind, Korean='검증', English='Validate'}" />
+                        <ToggleButton Style="{StaticResource ResultsHistoryFilterStyle}" MinHeight="26" IsChecked="{Binding IsAllRunRecordsSelected, Mode=OneWay}" Command="{Binding SelectRunRecordKindCommand}" CommandParameter="All" Padding="8,2" Content="{views:ThreeDText Key=ThreeD.Results.All, Korean='전체', English='All'}" />
+                        <ToggleButton Style="{StaticResource ResultsHistoryFilterStyle}" MinHeight="26" Margin="4,0,0,0" Padding="8,2" IsChecked="{Binding IsInspectionRunRecordsSelected, Mode=OneWay}" Command="{Binding SelectRunRecordKindCommand}" CommandParameter="Inspection" Content="{views:ThreeDText Key=ThreeD.Results.InspectionKind, Korean='검사', English='Inspect'}" />
+                        <ToggleButton Style="{StaticResource ResultsHistoryFilterStyle}" MinHeight="26" Margin="4,0,0,0" Padding="8,2" IsChecked="{Binding IsValidationRunRecordsSelected, Mode=OneWay}" Command="{Binding SelectRunRecordKindCommand}" CommandParameter="Validation" Content="{views:ThreeDText Key=ThreeD.Results.ValidationKind, Korean='검증', English='Validate'}" />
                     </WrapPanel>
                 </StackPanel>
                 <ListBox x:Name="StoredHistoryList" Grid.Row="2" Margin="8,2,8,0" BorderThickness="0" Background="Transparent" ItemsSource="{Binding RunRecordHistory}" SelectedItem="{Binding SelectedRecentRunRecord, Mode=TwoWay}" IsSynchronizedWithCurrentItem="False" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="ResultsStoredHistoryList">
@@ -50,14 +70,51 @@
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate><DataTemplate>
                         <StackPanel>
-                            <TextBlock FontWeight="SemiBold" FontSize="12" Text="{Binding RecordedAt}" TextWrapping="Wrap" />
+                            <TextBlock FontWeight="Normal" FontSize="12" Text="{Binding RecordedAt}" TextWrapping="Wrap" />
                             <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding SourceName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SourceName}" />
                             <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding Snapshot.DecisionSummary}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
-                            <TextBlock Margin="0,3,0,0" FontSize="11" Text="{Binding Snapshot.RecipeIdentity}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.RecipeIdentity}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
-                            <TextBlock FontSize="11" Text="{Binding Status}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                            <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding Snapshot.RecipeIdentity}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.RecipeIdentity}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                            <TextBlock FontSize="12" Text="{Binding Status}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                         </StackPanel>
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
+                <StackPanel Grid.Row="2" Margin="16,18" VerticalAlignment="Top" AutomationProperties.AutomationId="ResultsHistoryEmptyList">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding RecentRunRecords.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{views:ThreeDText Key=ThreeD.Results.NoRecentRecords, Korean='현재 목록에 실행 기록이 없습니다. 저장된 실행 기록 JSON 파일을 열 수 있습니다.', English='The current list has no run records. You can open a saved run record JSON file.'}" />
+                    <ui:Button Margin="0,8,0,0" MinHeight="28" Padding="6,3" HorizontalAlignment="Left" Icon="{ui:SymbolIcon FolderOpen24}"
+                               Content="{views:ThreeDText Key=ThreeD.Results.OpenRecordJsonFile, Korean='실행 기록 JSON 파일 열기', English='Open run record JSON file'}"
+                               Command="{Binding SelectRunRecordCommand}" AutomationProperties.AutomationId="ResultsHistoryOpenJson" />
+                </StackPanel>
+                <StackPanel Grid.Row="2" Margin="16,18" VerticalAlignment="Top" AutomationProperties.AutomationId="ResultsHistoryEmptyFilter">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding RunRecordHistory.IsEmpty}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding RecentRunRecords.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{views:ThreeDText Key=ThreeD.Results.NoFilteredRecords, Korean='현재 필터에 표시할 실행 기록이 없습니다.', English='No run records match the current filter.'}" />
+                    <ui:Button Margin="0,8,0,0" MinHeight="28" Padding="6,3" HorizontalAlignment="Left"
+                               Content="{views:ThreeDText Key=ThreeD.Results.ShowAllRecords, Korean='전체 기록 보기', English='Show all records'}"
+                               Command="{Binding SelectRunRecordKindCommand}" CommandParameter="All" AutomationProperties.AutomationId="ResultsHistoryShowAll" />
+                </StackPanel>
                 <StackPanel Grid.Row="3" Margin="8">
                     <ui:Button HorizontalAlignment="Stretch" MinHeight="28" Padding="6,3" Icon="{ui:SymbolIcon ArrowRight24}" Content="{Binding Localization.RunRecordOpenRecent}" Command="{Binding OpenRecentRunRecordCommand}" CommandParameter="{Binding SelectedRecentRunRecord}" AutomationProperties.AutomationId="ResultsOpenStoredHistory" />
                     <ui:Button HorizontalAlignment="Stretch" Margin="0,4,0,0" MinHeight="28" Padding="6,3" Icon="{ui:SymbolIcon ArrowSwap24}" Content="{Binding Localization.RunRecordCompareRecent}" Command="{Binding CompareRecentRunRecordCommand}" />
@@ -70,7 +127,18 @@
             <Border Background="{DynamicResource ThreeD.CommandBarBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="0,0,0,1" Padding="12,0">
                 <DockPanel>
                     <ui:Button x:Name="ResultsFixInTeachButton" DockPanel.Dock="Right" Margin="8,0,0,0" MinHeight="30" Padding="7,3" VerticalAlignment="Center" Icon="{ui:SymbolIcon Edit24}" Content="{Binding Localization.ValidationWorkspaceOpenInTeach}" Command="{Binding OpenSelectedValidationIssueInTeachCommand}" ToolTip="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" AutomationProperties.AutomationId="ResultsFixInTeach" AutomationProperties.Name="{Binding Localization.ValidationWorkspaceOpenInTeach}" />
-                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13.5" Text="{Binding ResultsWorkspace.OpenedRecord.RecordedAtText, TargetNullValue={views:ThreeDText Key=ThreeD.Results.ChooseSavedRecord, Korean='기록을 선택한 뒤 열기를 누르세요.', English='Select a record, then choose Open.'}}" />
+                    <TextBlock x:Name="ResultsOpenedRecordTitle" DockPanel.Dock="Left" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13.5">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="{Binding ResultsWorkspace.OpenedRecord.RecordedAtText}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ResultsWorkspace.HasOpenedRecord}" Value="False">
+                                        <Setter Property="Text" Value="{views:ThreeDText Key=ThreeD.Results.ChooseSavedRecord, Korean='기록을 선택한 뒤 열기를 누르세요.', English='Select a record, then choose Open.'}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock x:Name="ResultsSavedDecision" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ResultsWorkspace.OpenedRecord.DecisionSummary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ResultsWorkspace.OpenedRecord.DecisionSummary}" />
                 </DockPanel>
             </Border>
@@ -91,7 +159,7 @@
                             </ComboBox>
                             <TextBlock VerticalAlignment="Center" Margin="10,4,0,4" FontSize="12" Text="{Binding ResultsWorkspace.HistorySummary}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
                         </WrapPanel>
-                        <TextBlock Margin="0,8,0,0" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Results.StoredTrendGuide, Korean='같은 실행 조건의 값만 연결합니다.', English='Only values with matching run settings are connected.'}" />
+                        <TextBlock Margin="0,8,0,0" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Results.StoredTrendGuide, Korean='같은 실행 조건의 값만 연결합니다.', English='Only values with matching run settings are connected.'}" />
                         <DataGrid Margin="0,8,0,0" ItemsSource="{Binding ResultsWorkspace.MeasurementStatistics}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="0" FontSize="12" AutomationProperties.AutomationId="ResultsSnapshotStatistics">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{views:ThreeDText Key=ThreeD.Results.Settings, Korean='실행 조건', English='Run settings'}" Binding="{Binding RecipeIdentity}" Width="*" MinWidth="160" ElementStyle="{StaticResource HistoryCell}" />
@@ -105,7 +173,7 @@
                             </DataGrid.Columns>
                         </DataGrid>
                         <workbench:ResultsTrendPlot Margin="0,8,0,0" Height="260" Points="{Binding ResultsWorkspace.TrendPoints}" OpenRecordCommand="{Binding OpenRecentRunRecordCommand}" AutomationProperties.AutomationId="ResultsStoredTrendPlot" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Results.StoredMeasurements, Korean='저장 측정값 추이', English='Saved measurement trend'}" />
-                        <TextBlock Margin="0,0,0,8" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Visibility="{Binding ResultsWorkspace.HasTrendPoints, Converter={StaticResource BooleanToVisibilityConverter}}" Text="{views:ThreeDText Key=ThreeD.Results.NoSavedLimits, Korean='허용 범위 표시 없음', English='No tolerance band'}" />
+                        <TextBlock Margin="0,0,0,8" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Visibility="{Binding ResultsWorkspace.HasTrendPoints, Converter={StaticResource BooleanToVisibilityConverter}}" Text="{views:ThreeDText Key=ThreeD.Results.NoSavedLimits, Korean='허용 범위 표시 없음', English='No tolerance band'}" />
                         <DataGrid x:Name="StoredTrendTable" ItemsSource="{Binding ResultsWorkspace.TrendPoints}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="0" FontSize="12" AutomationProperties.AutomationId="ResultsStoredTrendTable">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="{views:ThreeDText Key=ThreeD.Results.Record, Korean='기록', English='Record'}" Binding="{Binding RecordedAt}" Width="150" ElementStyle="{StaticResource HistoryCell}" />
@@ -155,10 +223,10 @@
                         </DockPanel>
                         <TextBlock Margin="0,5,0,0" Text="{Binding ResultsWorkspace.OpenedRecord.RecipeIdentity}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                         <UniformGrid Columns="4" Margin="0,12,0,0">
-                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="11" Text="{views:ThreeDText Key=ThreeD.Results.Decision, Korean='판정', English='Decision'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.Status}" TextWrapping="Wrap" /></StackPanel></Border>
-                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="11" Text="{views:ThreeDText Key=ThreeD.Results.Source, Korean='입력', English='Input'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.SourceName}" TextWrapping="Wrap" /></StackPanel></Border>
-                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="11" Text="{views:ThreeDText Key=ThreeD.Results.Unit, Korean='단위', English='Unit'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.Unit}" TextWrapping="Wrap" /></StackPanel></Border>
-                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="11" Text="{views:ThreeDText Key=ThreeD.Results.StepCount, Korean='단계', English='Steps'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.StepCount}" /></StackPanel></Border>
+                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Results.Decision, Korean='판정', English='Decision'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.Status}" TextWrapping="Wrap" /></StackPanel></Border>
+                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Results.Source, Korean='입력', English='Input'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.SourceName}" TextWrapping="Wrap" /></StackPanel></Border>
+                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Results.Unit, Korean='단위', English='Unit'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.Unit}" TextWrapping="Wrap" /></StackPanel></Border>
+                            <Border Style="{StaticResource SummaryCard}"><StackPanel><TextBlock FontSize="12" Text="{views:ThreeDText Key=ThreeD.Results.StepCount, Korean='단계', English='Steps'}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" /><TextBlock FontWeight="SemiBold" Text="{Binding ResultsWorkspace.OpenedRecord.StepCount}" /></StackPanel></Border>
                         </UniformGrid>
                         <TextBlock Margin="0,14,0,6" Text="{views:ThreeDText Key=ThreeD.Results.ToolSummary, Korean='도구별 요약', English='Tool summary'}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                         <DataGrid x:Name="StoredReportTable" ItemsSource="{Binding ResultsWorkspace.OpenedRecord.Metrics}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="0" FontSize="12" AutomationProperties.AutomationId="ResultsStoredReportTable">

@@ -175,7 +175,7 @@
             <Setter Property="Padding" Value="4" />
             <Setter Property="Margin" Value="0,0,2,0" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#C9D3DC" />
+            <Setter Property="Foreground" Value="#D2D2D2" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource ViewportToolFocusVisualStyle}" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -184,8 +184,8 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2A333D" /><Setter Property="Foreground" Value="White" /></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2A333D" /><Setter Property="Foreground" Value="White" /></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#343434" /><Setter Property="Foreground" Value="White" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#343434" /><Setter Property="Foreground" Value="White" /></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -199,7 +199,7 @@
             <Setter Property="Padding" Value="4" />
             <Setter Property="Margin" Value="0,0,2,0" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#C9D3DC" />
+            <Setter Property="Foreground" Value="#D2D2D2" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource ViewportToolFocusVisualStyle}" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -208,9 +208,9 @@
                             <Grid><ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" /><Border x:Name="SelectedLine" Height="2" VerticalAlignment="Bottom" Background="#6FB3A8" Visibility="Collapsed" /></Grid>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2A333D" /><Setter Property="Foreground" Value="White" /></Trigger>
-                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2C4243" /><Setter Property="Foreground" Value="#C7ECE5" /><Setter TargetName="SelectedLine" Property="Visibility" Value="Visible" /></Trigger>
-                            <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsPressed" Value="True" /><Condition Property="IsChecked" Value="False" /></MultiTrigger.Conditions><Setter TargetName="Surface" Property="Background" Value="#2A333D" /><Setter Property="Foreground" Value="White" /></MultiTrigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#343434" /><Setter Property="Foreground" Value="White" /></Trigger>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#383838" /><Setter Property="Foreground" Value="#C7ECE5" /><Setter TargetName="SelectedLine" Property="Visibility" Value="Visible" /></Trigger>
+                            <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsPressed" Value="True" /><Condition Property="IsChecked" Value="False" /></MultiTrigger.Conditions><Setter TargetName="Surface" Property="Background" Value="#343434" /><Setter Property="Foreground" Value="White" /></MultiTrigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -227,7 +227,7 @@
         </Style>
         <Style x:Key="ViewerDisplaySegmentGroupStyle" TargetType="Border">
             <Setter Property="Padding" Value="2" /><Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#3A4552" /><Setter Property="Background" Value="#14191E" />
+            <Setter Property="BorderBrush" Value="#464646" /><Setter Property="Background" Value="#191919" />
             <Setter Property="CornerRadius" Value="6" /><Setter Property="HorizontalAlignment" Value="Left" />
         </Style>
         <Style x:Key="ViewerRoiToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource ViewportToolToggleStyle}">
@@ -261,9 +261,9 @@
         <Style x:Key="ViewerPaletteItemStyle" TargetType="ListBoxItem">
             <Setter Property="MinHeight" Value="40" /><Setter Property="Padding" Value="4" /><Setter Property="Margin" Value="0,0,5,0" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="FontSize" Value="11" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="FontSize" Value="12" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
-                <Border x:Name="Surface" Padding="{TemplateBinding Padding}" Background="#181D23" BorderBrush="#3A4552" BorderThickness="1" CornerRadius="6"><ContentPresenter HorizontalAlignment="Stretch" /></Border>
+                <Border x:Name="Surface" Padding="{TemplateBinding Padding}" Background="#1E1E1E" BorderBrush="#464646" BorderThickness="1" CornerRadius="6"><ContentPresenter HorizontalAlignment="Stretch" /></Border>
                 <ControlTemplate.Triggers>
                     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" /></Trigger>
                     <Trigger Property="IsSelected" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /><Setter TargetName="Surface" Property="Background" Value="#1F2D2D" /></Trigger>
@@ -284,7 +284,7 @@
 
     <Border x:Name="ViewportToolsSurface" Padding="3" CornerRadius="8"
             Background="#DC161B20"
-            BorderBrush="#33404C"
+            BorderBrush="#404040"
             BorderThickness="1">
 
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -292,16 +292,16 @@
                        Visibility="Collapsed"
                        VerticalAlignment="Center"
                        FontSize="12"
-                       FontWeight="SemiBold"
+                       FontWeight="Normal"
                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                        Text="{Binding SlotLabel, ElementName=Root}" />
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <ToggleButton Style="{StaticResource ViewportToolToggleStyle}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Rotate, Korean='회전', English='Rotate'}" IsChecked="{Binding Presentation.IsRotateMode, ElementName=Root, Mode=OneWay}" Command="{Binding Presentation.RotateCommand, ElementName=Root}" AutomationProperties.AutomationId="ViewerRotate" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Viewer.Rotate, Korean='회전', English='Rotate'}"><ui:SymbolIcon Symbol="ArrowSync24" FontSize="16" /></ToggleButton>
                 <ToggleButton Style="{StaticResource ViewportToolToggleStyle}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Move, Korean='이동', English='Move'}" IsChecked="{Binding Presentation.IsMoveMode, ElementName=Root, Mode=OneWay}" Command="{Binding Presentation.MoveCommand, ElementName=Root}" AutomationProperties.AutomationId="ViewerMove" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Viewer.Move, Korean='이동', English='Move'}"><ui:SymbolIcon Symbol="ArrowMove24" FontSize="16" /></ToggleButton>
-                <Border Width="1" Margin="3,4,5,4" Background="#3A4552" />
+                <Border Width="1" Margin="3,4,5,4" Background="#464646" />
                 <ToggleButton Style="{StaticResource ViewerRoiToggleStyle}" IsChecked="{Binding Presentation.IsRoiMode, ElementName=Root, Mode=OneWay}" Command="{Binding RoiCaptureCommand, ElementName=Root}" ToolTipService.ShowOnDisabled="True" ToolTip="{views:ThreeDText Key=ThreeD.Workbench.Roi.CaptureSelectedToolAccessible, Korean='선택 도구 ROI 그리기 또는 교체', English='Draw or replace selected tool ROI'}" AutomationProperties.AutomationId="ViewerRoiCapture" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"><ui:SymbolIcon Symbol="SelectAllOff24" FontSize="16" /></ToggleButton>
                 <ToggleButton Style="{StaticResource ViewportToolToggleStyle}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.ProfileTool, Korean='단면 A-B 지정', English='Section A-B'}" IsChecked="{Binding Presentation.IsProfileMode, ElementName=Root, Mode=OneWay}" Command="{Binding Presentation.MeasureCommand, ElementName=Root}" AutomationProperties.AutomationId="ViewerMeasure" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Viewer.ProfileTool, Korean='단면 A-B 지정', English='Section A-B'}"><ui:SymbolIcon Symbol="Line24" FontSize="16" /></ToggleButton>
-                <Border Width="1" Margin="3,4,5,4" Background="#3A4552" />
+                <Border Width="1" Margin="3,4,5,4" Background="#464646" />
                 <Button Style="{StaticResource ViewportToolButtonStyle}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}" Command="{Binding Presentation.FitAllCommand, ElementName=Root}" AutomationProperties.AutomationId="ViewerFit" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}"><ui:SymbolIcon Symbol="FullScreenMaximize24" FontSize="16" /></Button>
                 <Button Style="{StaticResource ViewportToolButtonStyle}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.FitRoi, Korean='ROI 맞춤', English='Fit ROI'}" Command="{Binding FitRoiCommand, ElementName=Root}" ToolTipService.ShowOnDisabled="True" AutomationProperties.AutomationId="ViewerFitRoiDirect" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"><ui:SymbolIcon Symbol="Target24" FontSize="16" /></Button>
             </StackPanel>
@@ -341,8 +341,8 @@
                             Padding="12"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Background="#20272F"
-                            BorderBrush="#4E5D6B"
+                            Background="#282828"
+                            BorderBrush="#5C5C5C"
                             BorderThickness="1"
                             CornerRadius="10"
                             AutomationProperties.AutomationId="ViewerDisplaySettingsDialog">
@@ -368,14 +368,14 @@
                                            Text="{views:ThreeDText Key=ThreeD.R19.ViewerColorOptions, Korean='색상·높이 표시', English='Color and height display'}" />
                                 <StackPanel Margin="0,0,0,12" Visibility="{Binding ShowTextureOptions, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <TextBlock FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Texture.Title, Korean='2D 텍스처 영상', English='2D texture image'}" />
-                                    <TextBlock Margin="0,4,0,6" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Texture.Guidance, Korean='높이맵 전체에 맞춘 영상을 선택하세요. 왼쪽 위를 기준으로 표시합니다.', English='Use an image aligned to the full height map, with a top-left origin.'}" />
+                                    <TextBlock Margin="0,4,0,6" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Texture.Guidance, Korean='높이맵 전체에 맞춘 영상을 선택하세요. 왼쪽 위를 기준으로 표시합니다.', English='Use an image aligned to the full height map, with a top-left origin.'}" />
                                     <WrapPanel>
                                         <Button Style="{StaticResource ViewerPresentationButtonStyle}" Margin="0,0,6,0" Command="{Binding LoadTextureCommand}" Content="{views:ThreeDText Key=ThreeD.Texture.SelectButton, Korean='영상 선택…', English='Choose image…'}" FocusVisualStyle="{StaticResource ViewportToolFocusVisualStyle}" AutomationProperties.AutomationId="ViewerLoadTexture" />
                                         <Button Style="{StaticResource ViewerPresentationButtonStyle}" Margin="0" Command="{Binding ClearTextureCommand}" Content="{views:ThreeDText Key=ThreeD.Texture.Remove, Korean='제거', English='Remove'}" FocusVisualStyle="{StaticResource ViewportToolFocusVisualStyle}" AutomationProperties.AutomationId="ViewerClearTexture" />
                                     </WrapPanel>
                                     <CheckBox Margin="0,8,0,4" IsChecked="{Binding TextureVisible, Mode=TwoWay}" IsEnabled="{Binding HasTexture}" Content="{views:ThreeDText Key=ThreeD.Texture.Visible, Korean='텍스처 표시', English='Show texture'}" AutomationProperties.AutomationId="ViewerTextureVisible" />
-                                    <TextBlock Text="{Binding TextureName}" TextWrapping="Wrap" FontSize="11" AutomationProperties.AutomationId="ViewerTextureName" />
-                                    <TextBlock Text="{Binding TextureError}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" FontSize="11" AutomationProperties.AutomationId="ViewerTextureError" />
+                                    <TextBlock Text="{Binding TextureName}" TextWrapping="Wrap" FontSize="12" AutomationProperties.AutomationId="ViewerTextureName" />
+                                    <TextBlock Text="{Binding TextureError}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.WarningBrush}" FontSize="12" AutomationProperties.AutomationId="ViewerTextureError" />
                                 </StackPanel>
                                 <TextBlock Margin="0,0,0,5" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Viewer.Color, Korean='색상', English='Color'}" />
                                 <ListBox x:Name="PaletteSelector" Background="Transparent" BorderThickness="0" Padding="0"
@@ -391,10 +391,10 @@
                                         <Border Height="12" Margin="0,0,0,3" CornerRadius="3">
                                             <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#739BC2" /><Style.Triggers>
                                                 <DataTrigger Binding="{Binding}" Value="Height"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#294CEB" /><GradientStop Offset="0.35" Color="#21BDAC" /><GradientStop Offset="0.7" Color="#FCCA47" /><GradientStop Offset="1" Color="#F47A48" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
-                                                <DataTrigger Binding="{Binding}" Value="Grayscale"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#171B20" /><GradientStop Offset="1" Color="#ECF1F6" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
+                                                <DataTrigger Binding="{Binding}" Value="Grayscale"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#1C1C1C" /><GradientStop Offset="1" Color="#ECF1F6" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
                                                 <DataTrigger Binding="{Binding}" Value="Thermal"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#191C3B" /><GradientStop Offset="0.5" Color="#EA425B" /><GradientStop Offset="1" Color="#FDEA99" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
-                                                <DataTrigger Binding="{Binding}" Value="ColorVisionAssist"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#00204d" /><GradientStop Offset="0.25" Color="#414d6b" /><GradientStop Offset="0.5" Color="#7c7b78" /><GradientStop Offset="0.75" Color="#bcaf6f" /><GradientStop Offset="1" Color="#ffea46" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
-                                                <DataTrigger Binding="{Binding}" Value="Deviation"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#427BD4" /><GradientStop Offset="0.5" Color="#E9EDF2" /><GradientStop Offset="1" Color="#E55B5B" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
+                                                <DataTrigger Binding="{Binding}" Value="ColorVisionAssist"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#00204d" /><GradientStop Offset="0.25" Color="#565656" /><GradientStop Offset="0.5" Color="#7c7b78" /><GradientStop Offset="0.75" Color="#bcaf6f" /><GradientStop Offset="1" Color="#ffea46" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
+                                                <DataTrigger Binding="{Binding}" Value="Deviation"><Setter Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5"><GradientStop Offset="0" Color="#427BD4" /><GradientStop Offset="0.5" Color="#EEEEEE" /><GradientStop Offset="1" Color="#E55B5B" /></LinearGradientBrush></Setter.Value></Setter></DataTrigger>
                                             </Style.Triggers></Style></Border.Style>
                                         </Border>
                                         <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap"><TextBlock.Style><Style TargetType="TextBlock">
@@ -418,7 +418,7 @@
                             <RadioButton Style="{StaticResource ViewerDisplaySegmentStyle}" Content="{views:ThreeDText Key=ThreeD.Legend.Region, Korean='영역 기준', English='Region'}" IsChecked="{Binding IsRegionRange, Mode=TwoWay}" IsEnabled="{Binding CanUseRegionRange}" AutomationProperties.AutomationId="ViewerHeightRangeRegion" />
                             <RadioButton x:Name="ViewerHeightRangeManual" Style="{StaticResource ViewerDisplaySegmentStyle}" Content="{views:ThreeDText Key=ThreeD.R19.HeightRangeManual, Korean='수동', English='Manual'}" IsChecked="{Binding IsManualRange, Mode=TwoWay}" AutomationProperties.AutomationId="ViewerHeightRangeManual" />
                         </StackPanel></Border>
-                        <TextBlock Text="{Binding RegionRangeUnavailableReason}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="11" />
+                        <TextBlock Text="{Binding RegionRangeUnavailableReason}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="12" />
                         <CheckBox x:Name="ViewerHeightRangeLinkedToggle" Margin="0,8,0,4" FontSize="12" IsChecked="{Binding IsHeightRangeLinked, Mode=TwoWay}" Content="{views:ThreeDText Key=ThreeD.Legend.Link, Korean='같은 맵 창의 범위 공유', English='Share range between views of the same map'}" AutomationProperties.AutomationId="ViewerHeightRangeLinked" />
                         <CheckBox Margin="0,0,0,4" FontSize="12" IsChecked="{Binding KeepHeightRange, Mode=TwoWay}" Content="{views:ThreeDText Key=ThreeD.Legend.Pin, Korean='파일을 넘겨도 범위 유지', English='Keep range when changing files'}" AutomationProperties.AutomationId="ViewerHeightRangePinned" />
                         <CheckBox Margin="0,0,0,4" FontSize="12" IsChecked="{Binding HighlightOutsideRange, Mode=TwoWay}" Content="{views:ThreeDText Key=ThreeD.Legend.Outside, Korean='범위 밖 별도 색으로 강조', English='Highlight values outside the range'}" AutomationProperties.AutomationId="ViewerHeightRangeOutside" />
@@ -428,7 +428,7 @@
                             <RadioButton Style="{StaticResource ViewerDisplaySegmentStyle}" Content="{views:ThreeDText Key=ThreeD.Legend.Bands, Korean='등높이 띠', English='Height bands'}" IsChecked="{Binding IsBandedHeightColor, Mode=TwoWay}" AutomationProperties.AutomationId="ViewerHeightColorBands" />
                             <RadioButton Style="{StaticResource ViewerDisplaySegmentStyle}" Content="{views:ThreeDText Key=ThreeD.Legend.Tolerance, Korean='허용 범위 색', English='Tolerance colours'}" IsChecked="{Binding IsToleranceHeightColor, Mode=TwoWay}" IsEnabled="{Binding CanUseMeasurementColor}" AutomationProperties.AutomationId="ViewerHeightColorTolerance" />
                         </StackPanel></Border>
-                        <TextBlock Text="{Binding MeasurementColorGuidance}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="11" />
+                        <TextBlock Text="{Binding MeasurementColorGuidance}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" FontSize="12" />
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0" Visibility="{Binding IsBandedHeightColor, Converter={StaticResource BoolToVisibilityConverter}}">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0" Text="{views:ThreeDText Key=ThreeD.Legend.BandCount, Korean='띠 수', English='Bands'}" />
                             <ComboBox x:Name="ViewerHeightBandCountSelector" Width="76" ItemsSource="{Binding HeightBandCounts}" SelectedItem="{Binding HeightBandCount, Mode=TwoWay}" ItemContainerStyle="{StaticResource ViewerPresentationComboBoxItemStyle}" AutomationProperties.AutomationId="ViewerHeightBandCount" />

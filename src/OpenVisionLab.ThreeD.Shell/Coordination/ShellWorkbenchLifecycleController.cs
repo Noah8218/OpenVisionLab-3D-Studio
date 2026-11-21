@@ -548,14 +548,14 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
         if (!commit.Success)
         {
             _viewModel.Workbench.ReportParameterDraftCommitError(message);
-            _callbacks.ShowParameterApplyFailure(message);
+            _callbacks.ShowParameterApplyFailure(_viewModel.Workbench.Localization.LocalizeStepParameterStatus(message));
             return false;
         }
         if (!_viewModel.Workbench.TryApplySelectedStepParameterDraft(out var draftMessage))
         {
             message = string.IsNullOrWhiteSpace(draftMessage) ? commit.Message : draftMessage;
             _viewModel.Workbench.ReportParameterDraftCommitError(message);
-            _callbacks.ShowParameterApplyFailure(message);
+            _callbacks.ShowParameterApplyFailure(_viewModel.Workbench.Localization.LocalizeStepParameterStatus(message));
             return false;
         }
         return true;

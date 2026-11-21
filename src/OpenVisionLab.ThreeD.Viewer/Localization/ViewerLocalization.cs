@@ -501,21 +501,24 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
     public string LocalizeRuntimeText(object? value, string? mode = null)
     {
         var text = value?.ToString() ?? string.Empty;
-        var scopedToolLab = mode is "HeightDifferenceEdgeSummary" or "LandmarkCorrespondenceSummary";
-        if (scopedToolLab) mode = "ToolLabSummary";
+        var evidencePanel = mode is "GeometryEvidenceSummary" or "LandmarkEvidenceSummary";
+        var scopedToolLab = mode is "HeightDifferenceEdgeSummary" or "LandmarkCorrespondenceSummary" or "LandmarkEvidenceSummary";
+        if (scopedToolLab || evidencePanel) mode = "ToolLabSummary";
         if (string.Equals(mode, "MeasurementMetric", StringComparison.Ordinal) && text == "ValidSampleCount")
             return OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English ? "Valid sample count" : "유효 데이터 수";
         if (string.Equals(mode, "ToolLabSummary", StringComparison.Ordinal))
         {
             var korean = OpenVisionLanguageService.CurrentLanguage != OpenVisionLanguage.English;
-            if (text is "No matrix evidence until Preview completes."
+            if (evidencePanel && text is "0/4 authored rows | ")
+                return korean ? "대응 쌍 0/4 · 적용된 교점과 기준점을 연결하세요." : "0/4 pairs · connect applied anchors to reference points.";
+            if (!evidencePanel && text is ("No matrix evidence until Preview completes."
                 or "No source-to-reference matrix until Preview completes."
                 or "No transformed point evidence until Preview completes."
                 or "No residual evidence until Preview completes."
                 or "No correspondence evidence until Preview completes."
                 or "No corner evidence until Preview completes."
                 or "No reference-grid evidence until Preview completes."
-                or "Publish the current A2 TransformedPointCloud first. A1/A2 are not executed implicitly.") return string.Empty;
+                or "Publish the current A2 TransformedPointCloud first. A1/A2 are not executed implicitly.")) return string.Empty;
             var missingInputs = Regex.Match(text, @"^Step \d+ '.+' requires (\d+) input entity ID\(s\)\.$", RegexOptions.CultureInvariant);
             if (missingInputs.Success)
                 return korean ? $"도구 입력 {missingInputs.Groups[1].Value}개를 연결하세요." : $"Connect {missingInputs.Groups[1].Value} tool inputs.";
@@ -561,6 +564,13 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
                     if (int.TryParse(correspondenceInputs.Groups[1].Value, out var rowCount) && rowCount == rows.Length
                         && rows.All(row => row.EndsWith(": Published", StringComparison.Ordinal) || row.EndsWith(": missing/stale", StringComparison.Ordinal)))
                     {
+                        if (evidencePanel)
+                        {
+                            var labels = rows.Select(row => row.EndsWith(": Published", StringComparison.Ordinal)
+                                ? row[..^": Published".Length] + (korean ? ": 적용됨" : ": applied")
+                                : row[..^": missing/stale".Length] + (korean ? ": 결과 없음·갱신 필요" : ": missing or stale"));
+                            return (korean ? $"대응 쌍 {rowCount}/4 · " : $"{rowCount}/4 pairs · ") + string.Join(" | ", labels);
+                        }
                         var missingRows = rows.Select((row, index) => (row, index))
                             .Where(item => item.row.EndsWith(": missing/stale", StringComparison.Ordinal)).Select(item => item.index + 1).ToArray();
                         var summary = korean ? $"{rowCount}/4쌍 · 적용 {rowCount - missingRows.Length}쌍" : $"{rowCount}/4 pairs · {rowCount - missingRows.Length} applied";
@@ -677,6 +687,20 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
                 return text.Replace("Ordered picks: row ", "선택 순서: 행 ", StringComparison.Ordinal)
                     .Replace(" → row ", " → 행 ", StringComparison.Ordinal).Replace(", column ", ", 열 ", StringComparison.Ordinal);
             }
+            if (evidencePanel)
+            {
+                var diagnostic = Regex.Match(text, @"^scanline (\d+) \| residual ([^|]+) source-coordinate \| (inlier|outlier) \| XYZ (\(.+\))$", RegexOptions.CultureInvariant);
+                if (diagnostic.Success)
+                    return $"스캔라인 {diagnostic.Groups[1].Value} · 입력 좌표계 잔차 {diagnostic.Groups[2].Value} · {(diagnostic.Groups[3].Value == "inlier" ? "인라이어" : "아웃라이어")} · XYZ {diagnostic.Groups[4].Value}";
+                var intersection = Regex.Match(text, @"^(Preview ready \| )?(.+) \| gap (.+) source-coordinate \| acute angle (.+) degrees \| support extension (.+) / (.+?)( \| no OK/NG)?$", RegexOptions.CultureInvariant);
+                if (intersection.Success)
+                    return (intersection.Groups[1].Success ? "미리보기 · " : string.Empty)
+                        + $"{intersection.Groups[2].Value} · 최근접 거리 {intersection.Groups[3].Value} (입력 좌표계) · 예각 {intersection.Groups[4].Value}° · 직선 연장 {intersection.Groups[5].Value} / {intersection.Groups[6].Value}"
+                        + (intersection.Groups[7].Success ? " · 판정 없음" : string.Empty);
+                var applied = Regex.Match(text, @"^Published exact Preview as (.+) \| SHA-256 ([0-9a-fA-F]{64}) \| feature extraction only, no OK/NG$", RegexOptions.CultureInvariant);
+                if (applied.Success)
+                    return $"{applied.Groups[1].Value} 적용됨 · SHA-256 {applied.Groups[2].Value} · 판정 없음";
+            }
             var lines = Regex.Match(text, @"^Line A (.+): (Published|missing/stale) \| Line B (.+): (Published|missing/stale)$", RegexOptions.CultureInvariant);
             if (lines.Success)
                 return $"직선 A {lines.Groups[1].Value}: {(lines.Groups[2].Value == "Published" ? "적용됨" : "결과 없음·갱신 필요")} | 직선 B {lines.Groups[3].Value}: {(lines.Groups[4].Value == "Published" ? "적용됨" : "결과 없음·갱신 필요")}";
@@ -696,6 +720,16 @@ public sealed class ViewerLocalization : INotifyPropertyChanged, IViewerLocaliza
                 "Capture exactly three ordered non-collinear grid-cell picks before Preview." => "미리보기 전에 높이 데이터에서 같은 직선 위에 있지 않은 세 점을 순서대로 선택하세요.",
                 "Teach the explicit gap, acute-angle, and support-extension limits, then publish both named line-geometry inputs before Preview." => "최근접 거리·최소 예각·직선 연장 조건을 정하고 두 직선 결과를 적용한 뒤 미리보기를 실행하세요.",
                 "Two routed published line inputs are required." => "적용된 두 직선 결과를 입력으로 연결하세요.",
+                "Select an inlier/outlier diagnostic to review its source-coordinate residual." => "점을 선택하면 입력 좌표계에서의 잔차를 확인할 수 있습니다.",
+                "A current raw C3D, Published 3-Point Plane, and current measurement rectangle are required. No upstream tool will run implicitly."
+                    or "The current raw C3D, a Published 3-Point Plane, and a current GridRectangle are required." => "현재 C3D 원본과 측정 영역을 선택하고 3점 기준 평면을 적용하세요.",
+                "Datum Plane Raw-Height Deviation Preview is evaluating the exact Published plane and recipe-owned measurement rectangle." => "적용된 기준 평면과 측정 영역으로 높이 편차를 계산하고 있습니다.",
+                "Preview canceled. The source, Published PlaneFeature, ROI, and authored recipe were not changed." => "미리보기를 취소했습니다. 원본, 적용된 기준 평면, 측정 영역과 레시피는 유지됩니다.",
+                "Published plane, measurement ROI, source, parameter, route, or output changed. Preview again before Publish." => "기준 평면, 측정 영역 또는 도구 설정이 바뀌었습니다. 적용 전에 다시 미리보기를 실행하세요.",
+                "Both routed line inputs must be current and Published." => "두 입력 직선의 최신 결과를 적용하세요.",
+                "Line Intersection Preview is evaluating only the exact two Published line inputs." => "적용된 두 직선의 교점을 계산하고 있습니다.",
+                "Preview canceled. Published LineFeature inputs and authored recipe were not changed." => "미리보기를 취소했습니다. 적용된 직선과 레시피는 유지됩니다.",
+                "Input, Line Intersection parameter, route, or output changed. Preview again before Publish." => "입력이나 교점 설정이 바뀌었습니다. 적용 전에 다시 미리보기를 실행하세요.",
                 "Raw source, Published PlaneFeature, and GridRectangle are required." => "원본 높이 데이터·적용된 기준 평면·사각형 영역을 입력으로 연결하세요.",
                 "Maximum P2V raw height must be finite and greater than zero." => "최대 원시 높이 P2V는 0보다 큰 유한한 수여야 합니다.",
                 "One routed landmark-correspondence selection is required." => "기준점 대응 정보를 입력으로 연결하세요.",

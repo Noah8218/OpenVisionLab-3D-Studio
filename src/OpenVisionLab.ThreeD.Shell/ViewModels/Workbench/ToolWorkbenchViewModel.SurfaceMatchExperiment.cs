@@ -215,7 +215,7 @@ public sealed partial class ToolWorkbenchViewModel
         if (published is null || candidate is null)
         {
             return LocalizeSurfaceMatchExperiment(
-                "미리보기는 임시 후보 하나를 만들며, 적용은 후보를 다시 실행하지 않습니다.",
+                "미리보기는 임시 후보 하나를 만듭니다.",
                 "Preview creates one temporary candidate; Publish never reruns it.");
         }
 

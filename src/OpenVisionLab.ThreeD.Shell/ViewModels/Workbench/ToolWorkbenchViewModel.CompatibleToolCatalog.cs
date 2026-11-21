@@ -40,6 +40,9 @@ public sealed partial class ToolWorkbenchViewModel
     public string SelectedToolProposedRouteDetail =>
         compatibleToolCatalogOwner.SelectedToolProposedRouteDetail;
 
+    public string SelectedToolProposedRouteDisplayDetail =>
+        compatibleToolCatalogOwner.SelectedToolProposedRouteDisplayDetail;
+
     private void InitializeCompatibleToolCatalog()
     {
         compatibleToolCatalogOwner = new ToolWorkbenchCompatibleToolCatalogOwner(

@@ -159,9 +159,9 @@ internal static class RecipeDataPresentationVerification
             "The producer row and two pane actions remain inside the teaching card"));
         var shownMarker = Descendants<Border>(cards[0]).Single(border => border.Name == "GalleryShownMarker");
         var thumbnailSurface = Descendants<Border>(thumbnails[0]).Single(border => border.Name == "ThumbnailSurface");
-        checks.Add(("TeachingPaletteAndShownMarkerMatchMockup", ((SolidColorBrush)cards[0].Background).Color.ToString() == "#FF1C2629"
-            && ((SolidColorBrush)thumbnailSurface.Background).Color.ToString() == "#FF0F1317" && ((SolidColorBrush)thumbnailSurface.BorderBrush).Color.ToString() == "#FF33404C"
-            && ((SolidColorBrush)Descendants<TextBlock>(cards[0]).First(text => text.Text == source.GalleryMetadata).Foreground).Color.ToString() == "#FF8B98A6"
+        checks.Add(("TeachingPaletteAndShownMarkerMatchMockup", ((SolidColorBrush)cards[0].Background).Color.ToString() == "#FF222222"
+            && ((SolidColorBrush)thumbnailSurface.Background).Color.ToString() == "#FF131313" && ((SolidColorBrush)thumbnailSurface.BorderBrush).Color.ToString() == "#FF404040"
+            && ((SolidColorBrush)Descendants<TextBlock>(cards[0]).First(text => text.Text == source.GalleryMetadata).Foreground).Color.ToString() == "#FF989898"
             && shownMarker.Visibility == Visibility.Visible && shownMarker.ActualWidth == 3 && Math.Abs(shownMarker.TranslatePoint(new Point(), cards[0]).X - 1) < 0.001
             && !shownMarker.IsHitTestVisible, "Actual shown flag produces inset3px marker while preserving card surface and pointer hit region"));
         var legacyGallery = new RecipeDataView { DataContext = view.DataContext };
@@ -173,8 +173,8 @@ internal static class RecipeDataPresentationVerification
         var legacyThumbnail = Descendants<Button>(legacyCard).Single(button => button.Name == "GalleryThumbnail");
         var legacySurface = Descendants<Border>(legacyThumbnail).Single(border => border.Name == "ThumbnailSurface");
         checks.Add(("LegacyGalleryPaletteAndSelectionContractPreserved", ((SolidColorBrush)legacyCard.Background).Color.ToString() == "#FF243C3C"
-            && ((SolidColorBrush)legacySurface.Background).Color.ToString() == "#FF11161C" && ((SolidColorBrush)legacySurface.BorderBrush).Color.ToString() == "#FF37424E"
-            && ((SolidColorBrush)Descendants<TextBlock>(legacyCard).First(text => text.Text == source.StateDisplay).Foreground).Color.ToString() == "#FFADB9C6"
+            && ((SolidColorBrush)legacySurface.Background).Color.ToString() == "#FF161616" && ((SolidColorBrush)legacySurface.BorderBrush).Color.ToString() == "#FF424242"
+            && ((SolidColorBrush)Descendants<TextBlock>(legacyCard).First(text => text.Text == source.StateDisplay).Foreground).Color.ToString() == "#FFBABABA"
             && Descendants<Border>(legacyCard).Single(border => border.Name == "GalleryShownMarker").Visibility == Visibility.Collapsed,
             "Existing parent IsTeachWorkspaceSelected=false path keeps prior Lab palette and selected surface; isolated render, not native Lab flow"));
         var legacyContract = Descendants<TextBlock>(legacyCard).Single(text => text.Name == "GalleryLegacyContract");
@@ -228,8 +228,8 @@ internal static class RecipeDataPresentationVerification
         checks.Add(("PopupKeepsImageFirstAndMockupGeometry", popup.ActualWidth == 306 && popup.Padding == new Thickness(8)
             && popupImage.ActualWidth == 288 && popupImage.ActualHeight == 189 && popupImage.RadiusX == 5 && popupImage.RadiusY == 5
             && popupSurface.CornerRadius == new CornerRadius(8) && popupTitle.Text == source.GalleryName && popupTitle.TextTrimming == TextTrimming.CharacterEllipsis
-            && popupTitle.FontSize == 12.5 && Math.Abs(popupTitle.LineHeight - 18.125) < 0.001 && popup.FontFamily.Source == title.FontFamily.Source
-            && ((SolidColorBrush)popupSurface.Background).Color.ToString() == "#FF20272F" && ((SolidColorBrush)popupSurface.BorderBrush).Color.ToString() == "#FF4E5D6B",
+            && popupTitle.FontSize == 13 && Math.Abs(popupTitle.LineHeight - 18.125) < 0.001 && popup.FontFamily.Source == title.FontFamily.Source
+            && ((SolidColorBrush)popupSurface.Background).Color.ToString() == "#FF282828" && ((SolidColorBrush)popupSurface.BorderBrush).Color.ToString() == "#FF5C5C5C",
             $"popup={popup.ActualWidth}x{popup.ActualHeight};image={popupImage.ActualWidth}x{popupImage.ActualHeight};title={popupTitle.Text};font={popup.FontFamily.Source}"));
         checks.Add(("PopupHasScreenEdgeFallbackWithoutStateAccess", popup.Placement == System.Windows.Controls.Primitives.PlacementMode.Custom
             && popupPosition.Length == 2 && popupPosition[0].Point.X == -316 && popupPosition[1].Point.X == 106

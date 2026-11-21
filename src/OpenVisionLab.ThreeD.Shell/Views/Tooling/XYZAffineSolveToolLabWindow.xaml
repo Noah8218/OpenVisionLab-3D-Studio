@@ -9,7 +9,7 @@
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.WindowTitle, Korean='XYZ 어파인 계산 도구 실험실 | OpenVisionLab 3D Studio', English='XYZ Affine Solve Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.WindowTitle, Korean='XYZ 어파인 계산 도구 실험실 - OpenVisionLab 3D Studio', English='XYZ Affine Solve Tool Lab - OpenVisionLab 3D Studio'}"
         Width="1680" Height="940" MinWidth="1200" MinHeight="720"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -82,7 +82,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <TextBlock x:Name="AffineMatrixText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineSolveMatrixSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
+                            <TextBlock x:Name="AffineMatrixText" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" FontSize="12" TextWrapping="Wrap" ><TextBlock.Text><MultiBinding Converter="{StaticResource ToolLabRuntimeText}" ConverterParameter="ToolLabSummary"><Binding Path="AffineSolveMatrixSummary" /><Binding Path="Revision" Source="{x:Static viewerLocalization:ViewerLocalization.Shared}" /></MultiBinding></TextBlock.Text></TextBlock>
                         </Border>
 
                     </Grid>

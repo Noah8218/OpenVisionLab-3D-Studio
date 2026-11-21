@@ -8,6 +8,7 @@ using System.Windows.Input;
 using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Presentation.Converters;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -684,7 +685,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
 
                 if (!IsRecipeContextCurrent())
                 {
-                    SetLocalizedSummary("저장된 레시피가 바뀌어 검사를 중단했습니다. 이전 결과를 보존했습니다. 새 검사 목록을 준비하세요.", "Inspection stopped because the saved recipe changed. Previous results were retained. Prepare a new inspection queue.");
+                    SetLocalizedSummary("저장된 레시피가 변경되어 검사를 중단했습니다. 이전 결과는 그대로 남아 있습니다. 검사 목록을 새로 만드세요.", "Inspection stopped because the saved recipe changed. Previous results were retained. Prepare a new inspection queue.");
                     return;
                 }
 
@@ -1000,6 +1001,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     private void RefreshProjection()
     {
         var selectedPath = SelectedSample?.SourcePath;
+        UpdateFileNameSplit();
         visibleSamples.Clear();
         foreach (var item in samples.Where(MatchesFilter)) visibleSamples.Add(item);
         if (selectedPath is not null
@@ -1014,6 +1016,33 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         setVisibleCheckedCommand.RaiseCanExecuteChanged();
         checkVisibleCommand.RaiseCanExecuteChanged();
         uncheckVisibleCommand.RaiseCanExecuteChanged();
+    }
+
+    // 목록의 모든 파일이 공유하는 이름 앞부분(마지막 '_'·'-'까지)을 찾아 각 행에 알려 준다.
+    // 행은 이 앞부분을 흐리게 줄이고 구분되는 뒷부분을 항상 보이게 한다. 필터와 무관하게 전체 목록 기준으로 계산해
+    // 필터를 바꿔도 같은 파일의 표시가 달라지지 않는다.
+    private void UpdateFileNameSplit()
+    {
+        var prefixLength = 0;
+        if (samples.Count > 1)
+        {
+            var first = samples[0].FileName;
+            var common = first.Length;
+            foreach (var item in samples)
+            {
+                var name = item.FileName;
+                var limit = Math.Min(common, name.Length);
+                var index = 0;
+                while (index < limit && first[index] == name[index]) index++;
+                common = index;
+            }
+            if (common > 0)
+            {
+                var cut = Math.Max(first.LastIndexOf('_', common - 1), first.LastIndexOf('-', common - 1)) + 1;
+                prefixLength = cut >= 4 ? cut : 0;
+            }
+        }
+        foreach (var item in samples) item.SetFileNamePrefixLength(prefixLength);
     }
 
     private bool MatchesFilter(InspectionQueueSampleItem item)
@@ -1094,6 +1123,18 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
     }
     public string SourcePath { get; }
     public string FileName => Path.GetFileName(SourcePath);
+    private int fileNamePrefixLength;
+    // 이름이 모두 다른 파일이거나 접두가 이름 전체이면 0이어서 뒷부분(FileNameDistinct)이 이름 전체가 된다.
+    public string FileNamePrefix => FileName.Substring(0, EffectivePrefixLength);
+    public string FileNameDistinct => FileName.Substring(EffectivePrefixLength);
+    private int EffectivePrefixLength => fileNamePrefixLength > 0 && fileNamePrefixLength < FileName.Length ? fileNamePrefixLength : 0;
+    internal void SetFileNamePrefixLength(int length)
+    {
+        if (fileNamePrefixLength == length) return;
+        fileNamePrefixLength = length;
+        OnPropertyChanged(nameof(FileNamePrefix));
+        OnPropertyChanged(nameof(FileNameDistinct));
+    }
     public bool IsChecked
     {
         get => isChecked;
@@ -1446,9 +1487,10 @@ public sealed record InspectionQueueOutputResultItem(InspectionQueueStepResultIt
     public string Unit => Measurement?.Unit ?? string.Empty;
     public string Value => Step.Status != nameof(ResultStatus.Error) && Measurement is { } metric && double.IsFinite(metric.Value)
         ? metric.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture) : "—";
-    public string ValueWithUnit => string.IsNullOrEmpty(Unit) ? Value : $"{Value} {Unit}";
+    // 화면 표시용 문자열. raw·raw-height 단위는 뺀다(Unit, Limits 속성은 기록값 그대로).
+    public string ValueWithUnit => HeightUnitDisplay.ForDisplay(Unit) is { Length: > 0 } displayUnit ? $"{Value} {displayUnit}" : Value;
     public string Limits => IsPrimary || Step.IsUnjudged ? Step.Limits : RecordedLimits;
-    public string DisplayLimits => RecordedLimits == "—" ? Limits : RecordedLimits;
+    public string DisplayLimits => HeightUnitDisplay.Strip(RecordedLimits == "—" ? Limits : RecordedLimits);
     public string Status => Step.Status == nameof(ResultStatus.Error) || Step.IsUnjudged
         ? Step.Status : Measurement?.Status?.ToString() ?? Step.Status;
     public string StatusLabel => Status == Step.Status ? Step.StatusLabel

@@ -30,7 +30,7 @@
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Symbol="Document24" />
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{i18n:ThreeDText Key=ThreeD.Workbench.RunLog.ReadOnly, Korean='읽기 전용', English='Read-only'}" />
                         </StackPanel>
@@ -71,7 +71,7 @@
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="History24" />
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Text="{i18n:ThreeDText Key=ThreeD.Workbench.RunLog.Activity, Korean='활동', English='Activity'}" />
                         </StackPanel>

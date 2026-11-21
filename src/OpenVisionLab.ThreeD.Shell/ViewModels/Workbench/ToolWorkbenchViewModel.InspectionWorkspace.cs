@@ -394,10 +394,7 @@ public sealed partial class ToolWorkbenchViewModel
             SelectedStepPropertyDraft,
             IsSelectedStepPropertyGridSupported,
             HasPendingStepParameterChanges,
-            StepParameterEditStatus == "Thickness limits must be finite and ordered."
-                ? Localize("두께는 유한한 수로 입력하고 최소 두께를 최대 두께 이하로 설정하세요.", "Enter finite thickness values and set the minimum at or below the maximum.")
-                : StepParameterEditStatus == "Maximum P2V raw height must be finite and greater than zero."
-                    ? OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.LocalizeRuntimeText(StepParameterEditStatus, "ToolLabSummary") : StepParameterEditStatus,
+            Localization.LocalizeStepParameterStatus(StepParameterEditStatus),
             ArtifactRegistry.ToArray(),
             DisplayedOutputs.ToArray(),
             CreateSelectedToolOutputEvidence(),

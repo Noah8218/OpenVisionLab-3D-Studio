@@ -56,7 +56,7 @@
                                        Symbol="CheckmarkCircle24" />
                         <StackPanel Grid.Column="1">
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Text="{Binding Localization.RecipeSource}" />
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="12"
@@ -107,7 +107,7 @@
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                            Symbol="ArrowFlowUpRight24" />
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Text="{Binding Localization.SelectedRoute}" />
                         </StackPanel>
@@ -228,7 +228,7 @@
                                                            Symbol="FlowchartCircle24" />
                                             <StackPanel Grid.Column="1">
                                                 <TextBlock FontSize="12"
-                                                           FontWeight="SemiBold"
+                                                           FontWeight="Normal"
                                                            Text="{Binding Title, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=ArtifactNavigatorTitle}"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock FontSize="12"

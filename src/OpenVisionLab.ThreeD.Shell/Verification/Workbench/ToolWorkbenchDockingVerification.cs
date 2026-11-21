@@ -664,7 +664,7 @@ internal static class ToolWorkbenchDockingVerification
                     && Math.Abs(geometryGroupCard.ActualWidth - layout.Card) < .25 && Math.Abs(geometryInputOrigin.X - 22) < .25 && Math.Abs(geometryGroupOrigin.X - 22) < .25
                     && Math.Abs(geometryHeaderToggle.ActualWidth - 22) < .25 && Math.Abs(geometryHeaderToggle.ActualHeight - 22) < .25
                     && view.FontSize == 13 && view.FontFamily.Source == "Segoe UI Variable Text, Segoe UI, Malgun Gothic"
-                    && geometryExpandGlyph.Foreground is SolidColorBrush geometryGlyphBrush && geometryGlyphBrush.Color == Color.FromRgb(139, 152, 166),
+                    && geometryExpandGlyph.Foreground is SolidColorBrush geometryGlyphBrush && geometryGlyphBrush.Color == Color.FromRgb(152, 152, 152),
                     $"input={geometryInputCard.ActualWidth};group={geometryGroupCard.ActualWidth};left={geometryInputOrigin.X}/{geometryGroupOrigin.X};toggle={geometryHeaderToggle.ActualWidth}x{geometryHeaderToggle.ActualHeight};font={view.FontFamily.Source}/{view.FontSize};glyph={geometryExpandGlyph.Foreground}");
             }
             Settle(330);
@@ -1382,16 +1382,16 @@ internal static class ToolWorkbenchDockingVerification
                 var rate = FileListControl<TextBlock>("InspectionQueuePassRate");
                 var value = rate.Inlines.OfType<System.Windows.Documents.Run>().Last();
                 var distribution = FileListControl<Grid>("InspectionQueueSummaryProgress");
-                var expectedColors = new[] { "#5E9C76", "#C9686C", "#C98450", "#F1C27A", "#59636E", "#3A444F", "#65B9AE" };
+                var expectedColors = new[] { "#5E9C76", "#C9686C", "#C98450", "#F1C27A", "#646464", "#444444", "#65B9AE" };
                 return card.CornerRadius == new CornerRadius(6) && Math.Abs(card.ActualHeight - 53.2) <= 1
-                    && ((SolidColorBrush)card.Background).Color == (Color)ColorConverter.ConvertFromString("#1D242B")
-                    && ((SolidColorBrush)card.BorderBrush).Color == (Color)ColorConverter.ConvertFromString("#2A323B")
+                    && ((SolidColorBrush)card.Background).Color == (Color)ColorConverter.ConvertFromString("#242424")
+                    && ((SolidColorBrush)card.BorderBrush).Color == (Color)ColorConverter.ConvertFromString("#323232")
                     && rate.FontSize == 12 && value.FontSize == 16 && value.FontWeight.ToOpenTypeWeight() == 650
-                    && ((SolidColorBrush)rate.Foreground).Color == (Color)ColorConverter.ConvertFromString("#ADB9C6")
-                    && ((SolidColorBrush)value.Foreground).Color == (Color)ColorConverter.ConvertFromString("#E4E9EF")
+                    && ((SolidColorBrush)rate.Foreground).Color == (Color)ColorConverter.ConvertFromString("#BABABA")
+                    && ((SolidColorBrush)value.Foreground).Color == (Color)ColorConverter.ConvertFromString("#EAEAEA")
                     && distribution.Clip is RectangleGeometry { RadiusX: 3, RadiusY: 3 } clip
                     && Math.Abs(clip.Rect.Width - distribution.ActualWidth) < 0.1 && clip.Rect.Height == 6
-                    && ((SolidColorBrush)distribution.Background).Color == (Color)ColorConverter.ConvertFromString("#28313A")
+                    && ((SolidColorBrush)distribution.Background).Color == (Color)ColorConverter.ConvertFromString("#313131")
                     && distribution.Children.Cast<Border>().Select((segment, index) =>
                         ((SolidColorBrush)segment.Background).Color == (Color)ColorConverter.ConvertFromString(expectedColors[index])).All(matches => matches);
             }
@@ -1457,10 +1457,10 @@ internal static class ToolWorkbenchDockingVerification
                 var inspectionPane = FindVisualDescendants<AvalonDock.Controls.LayoutAnchorablePaneControl>(fileListDock).Single(pane => ((AvalonDock.Layout.LayoutAnchorablePane)pane.Model).SelectedContent?.ContentId == "evidence-workbench");
                 var listOuterHeader = (Border)inspectionPane.Template.FindName("PaneTabHeader", inspectionPane);
                 var filterChoices = FindVisualDescendants<RadioButton>(ownerPathWorkbench).Where(control => control.IsVisible && AutomationProperties.GetAutomationId(control).StartsWith("InspectionFilter", StringComparison.Ordinal)).ToArray();
-                Check($"v3 inspection list has a single34px header, seven24px filters and wide search at {inspectionWidth:0}px",
+                Check($"v3 inspection list has a single34px header, zero-count filters collapsed to the 28px All tab and wide search at {inspectionWidth:0}px",
                     listHeader.ActualHeight == 34 && listOuterHeader.ActualHeight == 0 && listSearch.ActualWidth >= 175
                     && listHeader.TransformToAncestor(inspectionPane).TransformBounds(new Rect(listHeader.RenderSize)).Top <= 2
-                    && filterChoices.Length == 7 && filterChoices.All(control => control.ActualHeight == 24)
+                    && filterChoices.Length == 1 && filterChoices.All(control => control.ActualHeight == 28)
                     && FileListControl<Grid>("InspectionQueueSummaryProgress").Children.Cast<Border>().All(segment => segment.Visibility == Visibility.Collapsed)
                     && DistributionMatches(executionQueue) && executionQueue.PassRateText == "—%"
                     && RateLabelText().EndsWith("—%", StringComparison.Ordinal)
@@ -1614,9 +1614,10 @@ internal static class ToolWorkbenchDockingVerification
             ActivateSampleChoice(checkAllVisible);
             SettleFileList();
             Check("v3 rendered footer restores all displayed checks and model changes update its state", executionQueue.CheckedCount == 2 && checkAllVisible.IsChecked == true, executionQueue.ProcessingSummaryText);
-            var filterError = FileListControl<RadioButton>("InspectionFilterError");
-            ActivateSampleChoice(filterError);
+            // 0건 필터는 숨겨 클릭할 수 없으므로, 선택된 필터가 0건이 된 상태(숨기지 않고 유지)를 명령으로 만든다.
+            executionQueue.SetStatusFilterCommand.Execute("Error");
             SettleFileList();
+            var filterError = FileListControl<RadioButton>("InspectionFilterError");
             Check("v3 rendered status filter shows a distinct no-match state and preserves queue inclusion", executionQueue.StatusFilter == InspectionQueueStatusFilter.Error
                 && executionQueue.VisibleSamples.Count == 0 && executionQueue.AllCount == 2 && executionQueue.CheckedCount == 2
                 && FileListControl<TextBlock>("InspectionQueueEmpty").Text == executionQueue.EmptyQueueText && filterError.IsChecked == true && !executionQueue.IsRunning,
@@ -1832,7 +1833,7 @@ internal static class ToolWorkbenchDockingVerification
                     var valueLabels = FindVisualDescendants<TextBlock>(outputGrid).Where(label => label.DataContext is InspectionQueueOutputResultItem && label.IsVisible).ToArray();
                     var resultScroller = FindVisualDescendants<ScrollViewer>(outputGrid).First();
                     Check($"v3 output values, units and causes wrap or scroll without disabling access at{resultWidth:0}px", outputGrid.HorizontalScrollBarVisibility == ScrollBarVisibility.Auto
-                        && valueLabels.Any(label => label.Text == "8.25 raw-height" && label.TextWrapping == TextWrapping.Wrap)
+                        && valueLabels.Any(label => label.Text == "8.25" && label.TextWrapping == TextWrapping.Wrap)
                         && valueLabels.Any(label => label.Text == "0.12 ratio")
                         && executionQueue.VisibleOutputResults[0].Measurement?.Value == 8.250000000000002
                         && executionQueue.VisibleOutputResults[1].Measurement?.Value == 0.12345678901234567
@@ -1870,7 +1871,7 @@ internal static class ToolWorkbenchDockingVerification
                         && d25Labels.Any(label => label.Text == "0.35 mm") && executionQueue.VisibleOutputResults[1].Measurement?.Value == .34567890123456789
                         && ReferenceEquals(outputGrid.SelectedItem, executionQueue.SelectedOutputResult) && ReferenceEquals(executionQueue.SelectedOutputResult?.Step, executionQueue.SelectedStepResult)
                         && ReferenceEquals(d25FixtureRecord, executionQueue.Samples[0].Record) && !executionQueue.IsRunning, $"range={executionQueue.VisibleOutputResults[1].Limits};value={executionQueue.VisibleOutputResults[1].ValueWithUnit}");
-                    Check($"D25{d25Width:0} density, wrapped headers and complete numeric cells remain readable", outputGrid.MinRowHeight == 35 && outputGrid.FontSize == 12.5
+                    Check($"D25{d25Width:0} density, wrapped headers and complete numeric cells remain readable", outputGrid.MinRowHeight == 35 && outputGrid.FontSize == 13
                         && FindVisualDescendants<DataGridColumnHeader>(outputGrid).Count(header => header.IsVisible && header.Column is not null) == 8
                         && outputGrid.Columns.All(column => column.ActualWidth + .5 >= column.MinWidth)
                         && FindVisualDescendants<DataGridRow>(outputGrid).Where(row => row.DataContext is InspectionQueueOutputResultItem).All(row => AutomationProperties.GetName(row).Contains(((InspectionQueueOutputResultItem)row.DataContext).ToolName, StringComparison.Ordinal))
@@ -1957,8 +1958,8 @@ internal static class ToolWorkbenchDockingVerification
                             && double.IsFinite(drawing.Bounds.Top) && drawing.Bounds.Bottom <= 24.3 && !executionQueue.IsRunning,
                             $"size={plot.ActualWidth}x{plot.ActualHeight};shapes={shapes.Length};bounds={drawing.Bounds};range={plot.Summary?.RangeText}");
                         var numericLabels = FindVisualDescendants<TextBlock>(resultSummaryGrid).Where(label => label.IsVisible && label.DataContext is InspectionQueueMeasurementSummary && label.Text is "8.13" or "8.31" or "8.5").ToArray();
-                        Check($"D24 summary uses9columns and visible12.5px monospace values without clipping at{width:0}px", resultSummaryGrid.Columns.Count == 9 && resultSummaryGrid.MinRowHeight == 35
-                            && numericLabels.Length == 3 && numericLabels.All(label => label.FontSize == 12.5 && label.FontFamily.Source.Contains("Cascadia Mono", StringComparison.Ordinal)
+                        Check($"D24 summary uses9columns and visible13px tabular UI-font values without clipping at{width:0}px", resultSummaryGrid.Columns.Count == 9 && resultSummaryGrid.MinRowHeight == 35
+                            && numericLabels.Length == 3 && numericLabels.All(label => label.FontSize == 13 && label.FontFamily.Source.StartsWith("Segoe UI Variable Text", StringComparison.Ordinal)
                                 && label.TextWrapping == TextWrapping.Wrap && label.ActualHeight + label.Margin.Top + label.Margin.Bottom + 1 >= label.DesiredSize.Height)
                             && plot.Summary!.OutputLabel == "Mean (mm)" && !executionQueue.IsRunning, $"labels={numericLabels.Length};columns={resultSummaryGrid.Columns.Count};font={resultSummaryGrid.FontSize}");
                         ShellWindowNativeInterop.AppendWindowMonitorEvidence(ownerPathHost, monitorReportPath);
@@ -2798,6 +2799,17 @@ internal static class ToolWorkbenchDockingVerification
             "OpenVisionLab 3D docking workspace verification",
             $"Generated: {DateTimeOffset.Now:O}",
         };
+        ShellMainWindowViewModel CreateShellFixture(string name)
+        {
+            var root = Path.Combine(GetReportDirectory(reportPath), "shell-profiles", name);
+            Directory.CreateDirectory(root);
+            return new ShellMainWindowViewModel(
+                recentRunRecordsPath: Path.Combine(root, "recent-run-records.json"),
+                recentRecipesPath: Path.Combine(root, "recent-recipes.json"),
+                orderedRunRecordRoot: Path.Combine(root, "runs"),
+                integrationSettingsPath: Path.Combine(root, "integration.json"));
+        }
+
         var passed = 0;
         var total = 0;
 
@@ -2941,7 +2953,7 @@ internal static class ToolWorkbenchDockingVerification
                 && workbench.HasRecipeFlowInspectorViewerOrder,
                 $"collapsed={autoHideRoundTrip.Collapsed}; restored={autoHideRoundTrip.Restored}; composition={workbench.HasRecipeFlowInspectorViewerOrder}");
 
-            var navigationViewModel = new ShellMainWindowViewModel();
+            var navigationViewModel = CreateShellFixture("navigation");
             var navigationRail = new StudioNavigationRailView
             {
                 DataContext = navigationViewModel,
@@ -3049,8 +3061,10 @@ internal static class ToolWorkbenchDockingVerification
                 $"notifications={localizationNotificationCount}; property='{localizationPropertyName}'");
             Check(
                 "Language switch remains bounded and reports completion time",
-                navigationViewModel.LastLanguageChangeMilliseconds < 500
-                && navigationViewModel.StatusText.Contains("ms", StringComparison.Ordinal),
+                double.IsFinite(navigationViewModel.LastLanguageChangeMilliseconds)
+                && navigationViewModel.LastLanguageChangeMilliseconds >= 0
+                && navigationViewModel.LastLanguageChangeMilliseconds < 500
+                && navigationViewModel.StatusText == "Language changed.",
                 $"elapsed={navigationViewModel.LastLanguageChangeMilliseconds:F2} ms; status='{navigationViewModel.StatusText}'");
             Check(
                 "Language switch preserves ComboBox selections and visible labels",
@@ -3118,16 +3132,10 @@ internal static class ToolWorkbenchDockingVerification
             var compactTeachingLabelBounds = compactTeachingLabel.TransformToAncestor(navigationRail).TransformBounds(new Rect(compactTeachingLabel.RenderSize));
             Check(
                 "R19 navigation labels remain visible in the Wide and Compact rail",
-                wideTeachingLabel.Visibility == Visibility.Visible
-                && wideTeachingLabel.ActualWidth > 0
-                && wideTeachingLabel.ActualHeight > 0
-                && wideTeachingLabel.TextWrapping == TextWrapping.Wrap
+                IsFullyVisibleRailLabel(wideTeachingLabel)
                 && wideTeachingLabelBounds.Left >= 0
                 && wideTeachingLabelBounds.Right <= navigationRail.Width + 1
-                && compactTeachingLabel.Visibility == Visibility.Visible
-                && compactTeachingLabel.ActualWidth > 0
-                && compactTeachingLabel.ActualHeight > 0
-                && compactTeachingLabel.TextWrapping == TextWrapping.Wrap
+                && IsFullyVisibleRailLabel(compactTeachingLabel)
                 && compactTeachingLabelBounds.Left >= 0
                 && compactTeachingLabelBounds.Right <= navigationRail.Width + 1,
                 $"wideLabel={wideTeachingLabel.Visibility}/{wideTeachingLabel.ActualWidth:0.#}x{wideTeachingLabel.ActualHeight:0.#}/{wideTeachingLabelBounds}; compactLabel={compactTeachingLabel.Visibility}/{compactTeachingLabel.ActualWidth:0.#}x{compactTeachingLabel.ActualHeight:0.#}/{compactTeachingLabelBounds}");
@@ -3443,7 +3451,7 @@ internal static class ToolWorkbenchDockingVerification
             workbench.ActivateCorrespondenceEvidencePane();
             Check("Workbench Correspondence Evidence command selects docked evidence pane", workbench.IsBottomPaneAttached && workbench.IsCorrespondenceEvidencePaneSelected, $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsCorrespondenceEvidencePaneSelected}");
 
-            var startPageShell = new ShellMainWindowViewModel();
+            var startPageShell = CreateShellFixture("start-page");
             startPageShell.ShowStartPage();
             Check(
                 "R19 start page hides the workbench and navigation without starting inspection",
@@ -3470,7 +3478,7 @@ internal static class ToolWorkbenchDockingVerification
                 $"start={startPageShell.IsStartPageSelected}; rail={startPageShell.IsNavigationRailVisible}; workspace={startPageShell.SelectedWorkspaceMode}; running={startPageShell.Workbench.IsOrderedRunRunning || startPageShell.Workbench.IsSelectedStepPreviewRunning}");
             startPageShell.Dispose();
 
-            var shell = new ShellMainWindowViewModel();
+            var shell = CreateShellFixture("stages");
             var recipePath = Path.Combine(FindRepositoryRoot(), ThicknessRecipeRelativePath);
             Check(
                 "stage verification opens the current bundled Thickness recipe",
@@ -3553,6 +3561,18 @@ internal static class ToolWorkbenchDockingVerification
             var firstFlowText = firstFlowItem is null
                 ? Array.Empty<string>()
                 : FindVisualDescendants<TextBlock>(firstFlowItem).Where(HasVisiblePresentationPath).Select(text => text.Text).ToArray();
+            var firstFlowNameElement = firstFlowItem is null ? null
+                : FindVisualDescendants<TextBlock>(firstFlowItem)
+                    .SingleOrDefault(text => text.Name == "FlowHeaderName" && HasVisiblePresentationPath(text));
+            // WordBoundaryWrapBehavior renders words in InlineUIContainers.
+            // TextBlock.Text alone contains whitespace, not the visible name.
+            var firstFlowName = firstFlowNameElement is null ? null
+                : string.Concat(firstFlowNameElement.Inlines.Select(inline => inline switch
+                {
+                    Run run => run.Text,
+                    InlineUIContainer { Child: TextBlock word } => word.Text,
+                    _ => string.Empty
+                }));
             var flowOutputIds = shell.Workbench.PipelineSteps
                 .Select(step => step.OutputEntityId)
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -3659,7 +3679,10 @@ internal static class ToolWorkbenchDockingVerification
                 && !double.IsNaN(recipeStepList.Height)
                 && recipeStepList.ActualHeight > 1
                 && recipeStepList.Items.Count == shell.Workbench.PipelineSteps.Count
-                && firstFlowText.Contains(firstFlowStep.ToolName)
+                && firstFlowName == firstFlowStep.ToolName
+                && firstFlowNameElement is not null
+                && AutomationProperties.GetName(firstFlowNameElement) == firstFlowStep.ToolName
+                && Behaviors.WordBoundaryWrapBehavior.GetText(firstFlowNameElement) == firstFlowStep.ToolName
                 && firstFlowText.Contains(ThreeDLocalization.Shared.Resolve(
                     "ThreeD.Flow.Input", "입력", "Input"))
                 && !firstFlowText.Contains(firstFlowStep.InputSummary)
@@ -3681,7 +3704,7 @@ internal static class ToolWorkbenchDockingVerification
                 && flowPresentationHiddenDuringInspection
                 && !shell.Workbench.IsOrderedRunRunning
                 && !shell.Workbench.IsSelectedStepPreviewRunning,
-                $"addVisible={flowAddToolButton.Visibility}; command={ReferenceEquals(flowAddToolButton.Command, shell.Workbench.OpenToolLibraryCommand)}; items={recipeStepList.Items.Count}; connections={recipeFlowView.FlowConnectionCount}/{expectedFlowConnectionCount}; sideRouting={flowUsesSidePortRouting}; savedFanOut={flowIsSavedSourceFanOut}; rows={flowRowsMatchProposal}; nodes={string.Join(';', flowOrigins)}; firstPorts={string.Join('|', firstFlowText)}; selectionRoundTrip={flowSelectionRoundTrip}; inspectHidden={flowAddToolHiddenDuringInspection}/{flowPresentationHiddenDuringInspection}; run={shell.Workbench.IsOrderedRunRunning}; preview={shell.Workbench.IsSelectedStepPreviewRunning}");
+                $"addVisible={flowAddToolButton.Visibility}; command={ReferenceEquals(flowAddToolButton.Command, shell.Workbench.OpenToolLibraryCommand)}; items={recipeStepList.Items.Count}; connections={recipeFlowView.FlowConnectionCount}/{expectedFlowConnectionCount}; sideRouting={flowUsesSidePortRouting}; savedFanOut={flowIsSavedSourceFanOut}; rows={flowRowsMatchProposal}; nodes={string.Join(';', flowOrigins)}; firstPorts={string.Join('|', firstFlowText)}; visibleName={firstFlowName}; expectedName={firstFlowStep.ToolName}; selectionRoundTrip={flowSelectionRoundTrip}; inspectHidden={flowAddToolHiddenDuringInspection}/{flowPresentationHiddenDuringInspection}; run={shell.Workbench.IsOrderedRunRunning}; preview={shell.Workbench.IsSelectedStepPreviewRunning}");
             var notRunLabel = ThreeDLocalization.Shared.ResultStatusLabel(ResultStatus.NotRun);
             Check(
                 "R19 Recipe Flow omits repeated port states and labels saved, unrun tools as Not run",
@@ -4399,6 +4422,7 @@ internal static class ToolWorkbenchDockingVerification
                 $"editing={numericEditorVisibleDuringCapture}; afterCancel={numericRoiEditor.IsVisible}; dirty={shell.Workbench.IsDirty}");
 
             var parameterDraftBeforeDetails = ((OpenVisionLab.ThreeD.Shell.PropertyGrid.RecipeStepPropertyGridHost)selectedToolView.FindName("StepPropertyGrid")).SelectedObject;
+            var parameterStatusText = (TextBlock)selectedToolView.FindName("SelectedToolSetupStatusText");
             ActivateSampleChoice(editorDetailTab);
             ActivateSampleChoice((RadioButton)selectedToolView.FindName("DetailIoTab"));
             selectedToolView.UpdateLayout();
@@ -4410,10 +4434,16 @@ internal static class ToolWorkbenchDockingVerification
                 && editorDetailTab.IsChecked == true && settingsDetails.IsExpanded
                 && !parametersExpander.IsVisible && !regionsExpander.IsVisible
                 && ReferenceEquals(parameterDraftBeforeDetails, ((OpenVisionLab.ThreeD.Shell.PropertyGrid.RecipeStepPropertyGridHost)selectedToolView.FindName("StepPropertyGrid")).SelectedObject)
-                && stageWorkbench.HasContextualSelectedStepSetup && stageWorkbench.HasVisibleInspectionContext
+                && selectedToolView.IsContextualStepSetupVisible && selectedToolView.HasDirectToolCatalogReturn
+                && selectedToolView.VisibleContextualStepSetupActionCount == 0 && selectedToolView.HasExplicitAuthoringActions
+                && parameterStatusText.Visibility == Visibility.Visible
+                && parameterStatusText.Text == shell.Workbench.SelectedToolWorkspace.ParameterStatus
+                && parameterStatusText.Text == shell.Workbench.StepParameterEditStatus
+                && string.IsNullOrEmpty(parameterStatusText.Text)
+                && stageWorkbench.HasVisibleInspectionContext
                 && shell.Workbench.IsDirty == recipeDirty
                 && !shell.Workbench.IsSelectedStepPreviewRunning && !shell.Workbench.IsOrderedRunRunning,
-                $"context={detailContextGroup.IsVisible};output={detailOutputGroup.IsVisible};detail={editorDetailTab.IsChecked}/{settingsDetails.IsExpanded};conditions={parametersExpander.IsVisible};region={regionsExpander.IsVisible};contextContract={stageWorkbench.HasVisibleInspectionContext};setup={stageWorkbench.ContextualSelectedStepSetupState}");
+                $"context={detailContextGroup.IsVisible};output={detailOutputGroup.IsVisible};detail={editorDetailTab.IsChecked}/{settingsDetails.IsExpanded};conditions={parametersExpander.IsVisible};region={regionsExpander.IsVisible};contextContract={stageWorkbench.HasVisibleInspectionContext};parameterStatus='{parameterStatusText.Text}';expectedStatus='{shell.Workbench.StepParameterEditStatus}';setup={stageWorkbench.ContextualSelectedStepSetupState}");
             var identityDetails = (Expander)selectedToolView.FindName("InspectionContextDetails");
             var stepIdentity = (TextBlock)selectedToolView.FindName("InspectionContextStepId");
             var selectedToolScrollViewer = (ScrollViewer)selectedToolView.FindName("SelectedToolScrollViewer");
@@ -5110,6 +5140,12 @@ internal static class ToolWorkbenchDockingVerification
                 SizeLayoutFixture(stageHost, resultsWidth, stageHost.Height);
                 stageHost.UpdateLayout();
                 stageHost.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+                var historyVisibleBeforeSettle = resultsHistory.IsVisible;
+                var historyLoadedBeforeSettle = resultsHistory.IsLoaded;
+                // Dock reparenting queues visibility/binding work after Loaded.
+                // Settle that host work just as the other resized-pane fixtures do.
+                stageHost.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+                stageHost.UpdateLayout();
                 resultsHistory.SelectedItem = recentFixture;
                 var recentFromView = ReferenceEquals(shell.SelectedRecentRunRecord, recentFixture);
                 shell.SelectedRecentRunRecord = null;
@@ -5117,13 +5153,15 @@ internal static class ToolWorkbenchDockingVerification
                 var openHistory = FindVisualDescendants<ButtonBase>(resultsWorkspaceView).Single(button => AutomationProperties.GetAutomationId(button) == "ResultsOpenStoredHistory");
                 Check(
                     $"v3 Results binds actual history in both directions with an explicit open action at {resultsWidth:0}px",
-                    ReferenceEquals(resultsHistory.ItemsSource, shell.RecentRunRecords)
+                    ReferenceEquals(resultsHistory.ItemsSource, shell.RunRecordHistory)
+                    && ReferenceEquals(shell.RunRecordHistory.SourceCollection, shell.RecentRunRecords)
+                    && resultsHistory.Items.Contains(recentFixture)
                     && recentFromView && resultsHistory.SelectedItem is null
                     && resultsHistory.IsVisible && resultsHistory.ActualWidth is >= 240 and <= 320
                     && ReferenceEquals(openHistory.Command, shell.OpenRecentRunRecordCommand)
                     && !shell.Workbench.IsSelectedStepPreviewRunning && !shell.Workbench.IsOrderedRunRunning
                     && shell.Workbench.IsDirty == resultsDirtyBeforeHistory,
-                    $"historyWidth={resultsHistory.ActualWidth:F1}; viewToModel={recentFromView}; modelToView={resultsHistory.SelectedItem is null}; running={shell.Workbench.IsOrderedRunRunning}");
+                    $"historyWidth={resultsHistory.ActualWidth:F1}; visible={historyVisibleBeforeSettle}->{resultsHistory.IsVisible}; loaded={historyLoadedBeforeSettle}->{resultsHistory.IsLoaded}; connected={PresentationSource.FromVisual(resultsHistory) is not null}; sameTree={FindVisualDescendants<ResultsWorkspaceView>(stageWorkbench).Any(view => ReferenceEquals(view, resultsWorkspaceView))}; commandContext={ReferenceEquals(openHistory.DataContext, shell)}; openCommand={ReferenceEquals(openHistory.Command, shell.OpenRecentRunRecordCommand)}; preview={shell.Workbench.IsSelectedStepPreviewRunning}; dirty={resultsDirtyBeforeHistory}->{shell.Workbench.IsDirty}; filteredView={ReferenceEquals(resultsHistory.ItemsSource, shell.RunRecordHistory)}; source={ReferenceEquals(shell.RunRecordHistory.SourceCollection, shell.RecentRunRecords)}; item={resultsHistory.Items.Contains(recentFixture)}; viewToModel={recentFromView}; modelToView={resultsHistory.SelectedItem is null}; running={shell.Workbench.IsOrderedRunRunning}");
             }
             shell.RecentRunRecords.Remove(recentFixture);
             shell.SelectedRecentRunRecord = recentSelectionBefore;
@@ -5196,7 +5234,7 @@ internal static class ToolWorkbenchDockingVerification
                 validationDock.DataLayersPaneLayoutItem is null && validationSamplesView.DockPaneCommands is null && !sampleAutoHide.IsEnabled && !sampleFloat.IsEnabled,
                 $"item={validationDock.DataLayersPaneLayoutItem is not null};viewItem={validationSamplesView.DockPaneCommands is not null};hide={sampleAutoHide.IsEnabled};float={sampleFloat.IsEnabled}");
 
-            var ownerPathShell = new ShellMainWindowViewModel();
+            var ownerPathShell = CreateShellFixture("owner-path");
             var ownerPathRecipe = validationFixture.RecipePath;
             var ownerPathRunRecord = WriteOwnerPathRunRecord(
                 validationFixture);
@@ -5307,16 +5345,17 @@ internal static class ToolWorkbenchDockingVerification
                     Path.ChangeExtension(reportPath, $".d18-long-name-{boundaryWidth:0}.png"));
                 ownerPathShell.Workbench.SelectedValidationSetSample = actualTruncatedSample;
                 ownerPathHost.UpdateLayout();
-                var errorSampleContainer = (ListBoxItem)boundarySamplesList.ItemContainerGenerator.ContainerFromItem(actualTruncatedSample);
-                var selectedErrorPanel = FindVisualDescendants<Border>(boundarySamplesView).Single(border => AutomationProperties.GetAutomationId(border) == "ValidationSelectedSampleError");
-                var errorMessageText = FindVisualDescendants<TextBlock>(selectedErrorPanel).Single(text => text.Text == actualTruncatedSample.Message);
+                var errorSampleContainer = boundarySamplesList.ItemContainerGenerator.ContainerFromItem(actualTruncatedSample) as ListBoxItem;
+                var selectedErrorPanel = FindVisualDescendants<Border>(boundarySamplesView).SingleOrDefault(border => AutomationProperties.GetAutomationId(border) == "ValidationSelectedSampleError");
+                var errorMessageText = selectedErrorPanel is null ? null
+                    : FindVisualDescendants<TextBlock>(selectedErrorPanel).SingleOrDefault(text => text.Text == actualTruncatedSample.Message);
                 Check($"v3 actual truncated-input error remains readable and distinct from NG at {boundaryWidth:0}px",
-                    errorMessageText.IsVisible && errorMessageText.TextWrapping == TextWrapping.Wrap && errorMessageText.TextTrimming == TextTrimming.None
+                    errorMessageText is not null && errorMessageText.IsVisible && errorMessageText.TextWrapping == TextWrapping.Wrap && errorMessageText.TextTrimming == TextTrimming.None
                     && errorMessageText.ActualHeight >= errorMessageText.DesiredSize.Height - 0.1
-                    && selectedErrorPanel.IsVisible
+                    && selectedErrorPanel is not null && selectedErrorPanel.IsVisible
                     && errorMessageText.TransformToAncestor(selectedErrorPanel).TransformBounds(new Rect(errorMessageText.RenderSize)).Bottom <= selectedErrorPanel.ActualHeight + 0.1
-                    && FindVisualDescendants<FrameworkElement>(errorSampleContainer).Any(control => control.IsVisible && AutomationProperties.GetName(control) == actualTruncatedSample.StatusText),
-                    $"status={actualTruncatedSample.StatusText};message={errorMessageText.Text};size={errorMessageText.ActualWidth},{errorMessageText.ActualHeight}");
+                    && errorSampleContainer is not null && FindVisualDescendants<FrameworkElement>(errorSampleContainer).Any(control => control.IsVisible && AutomationProperties.GetName(control) == actualTruncatedSample.StatusText),
+                    $"status={actualTruncatedSample.StatusText};message={errorMessageText?.Text ?? "<missing>"};size={errorMessageText?.ActualWidth},{errorMessageText?.ActualHeight};panel={selectedErrorPanel is not null};row={errorSampleContainer is not null}");
                 WpfScreenshotCapture.Save(WpfScreenshotCapture.Capture(ownerPathWorkbench).Bitmap,
                     Path.ChangeExtension(reportPath, $".d18-error-{boundaryWidth:0}.png"));
             }
@@ -5438,7 +5477,9 @@ internal static class ToolWorkbenchDockingVerification
             Check("v3 empty sample set disables the central Run while preserving the visible next action and explanation",
                 ownerPathShell.Workbench.ValidationSetAllCount == 0 && boundaryRun.IsVisible && !boundaryRun.IsEnabled
                 && !boundaryCancel.IsVisible && boundarySummary.Text == ownerPathShell.Workbench.ValidationSetRunBasisText
-                && (boundarySummary.Text.Contains("검증을 실행하세요", StringComparison.Ordinal) || boundarySummary.Text.Contains("run validation", StringComparison.OrdinalIgnoreCase))
+                && boundarySummary.Text == (OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.Korean
+                    ? "C3D 샘플을 추가하고 기대 역할을 지정하세요."
+                    : "Add C3D samples and assign expected roles.")
                 && !ownerPathShell.Workbench.IsValidationSetRunning,
                 $"count={ownerPathShell.Workbench.ValidationSetAllCount};enabled={boundaryRun.IsEnabled};summary={boundarySummary.Text}");
             WpfScreenshotCapture.Save(WpfScreenshotCapture.Capture(ownerPathWorkbench).Bitmap,
@@ -6048,13 +6089,13 @@ internal static class ToolWorkbenchDockingVerification
             var legacyAdvancedColors = new[]
             {
                 "#ffffff",
-                "#d1d5db",
+                "#D6D6D6",
                 "#111827",
-                "#6b7280",
-                "#374151",
+                "#767676",
+                "#444444",
                 "#b45309",
                 "#b91c1c",
-                "#f9fafb",
+                "#FAFAFA",
             };
             var advancedThemeResources = new[]
             {
@@ -6265,6 +6306,21 @@ internal static class ToolWorkbenchDockingVerification
         element.Measure(new Size(width, 760));
         element.Arrange(new Rect(0, 0, width, 760));
         element.UpdateLayout();
+    }
+
+    private static bool IsFullyVisibleRailLabel(TextBlock label)
+    {
+        var fullText = new FormattedText(label.Text, CultureInfo.CurrentUICulture,
+            label.FlowDirection, new Typeface(label.FontFamily, label.FontStyle,
+                label.FontWeight, label.FontStretch), label.FontSize,
+            label.Foreground, VisualTreeHelper.GetDpi(label).PixelsPerDip);
+        return label.Visibility == Visibility.Visible
+            && !string.IsNullOrWhiteSpace(label.Text)
+            && label.TextWrapping == TextWrapping.NoWrap
+            && label.TextTrimming == TextTrimming.None
+            && label.ActualWidth > 0 && label.ActualHeight > 0
+            && label.ActualWidth + 1 >= fullText.WidthIncludingTrailingWhitespace
+            && label.ActualHeight + 1 >= fullText.Height;
     }
 
     private static bool HasVisiblePresentationPath(DependencyObject element)

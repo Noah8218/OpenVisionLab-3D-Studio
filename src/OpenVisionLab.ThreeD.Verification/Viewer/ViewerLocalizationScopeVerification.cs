@@ -204,6 +204,31 @@ internal static class ViewerLocalizationScopeVerification
                     && !output.Contains("abcdef123456", StringComparison.Ordinal), output);
                 Check("Filter details retain the full hash", ViewerLocalization.Shared.LocalizeRuntimeText("Output SHA-256 abcdef1234567890", "ToolLabSummary").Contains("abcdef1234567890", StringComparison.Ordinal), language.ToString());
                 var korean = language == OpenVisionLab.OpenVisionLanguage.Korean;
+                var evidenceText = ViewerLocalization.Shared;
+                var parameterText = OpenVisionLab.ThreeD.Shell.ThreeDLocalization.Shared;
+                const string minimumSamples = "Minimum valid samples must be at least one.";
+                Check("minimum-sample input failure follows the selected UI language",
+                    parameterText.LocalizeStepParameterStatus(minimumSamples) == (korean ? "최소 유효 샘플 수는 1 이상으로 입력하세요." : minimumSamples), language.ToString());
+                const string discarded = "Unapplied changes discarded. Recipe parameters were not changed.";
+                Check("discard recovery follows the selected UI language without changing unknown diagnostics",
+                    parameterText.LocalizeStepParameterStatus(discarded) == (korean ? "미적용 변경을 취소했습니다." : discarded)
+                    && parameterText.LocalizeStepParameterStatus("Unsupported sample: diagnostic-17") == "Unsupported sample: diagnostic-17", language.ToString());
+                const string readiness = "Step 10 '높이차 에지' requires 1 input entity ID(s). Step 10 selection role 'search-domain' requires 1 grid-rectangle selection(s); found 0. Diagnostic-17.";
+                Check("recipe readiness keeps the affected step, role and counts in the selected language",
+                    parameterText.LocalizeRecipeReadiness(readiness) == (korean
+                        ? "높이차 에지(10단계): 입력 1개를 연결하세요. 10단계 search-domain: 사각형 ROI 1개가 필요합니다(현재 0개). Diagnostic-17." : readiness), language.ToString());
+                const string missingCorner = "No corner evidence until Preview completes.";
+                Check("an empty evidence panel keeps its instruction while the lab stays quiet",
+                    evidenceText.LocalizeRuntimeText(missingCorner, "GeometryEvidenceSummary") == (korean ? "미리보기를 완료하면 교점을 확인할 수 있습니다." : missingCorner)
+                    && evidenceText.LocalizeRuntimeText(missingCorner, "ToolLabSummary") == string.Empty, language.ToString());
+                const string selectedPoint = "scanline 5 | residual 0.35 source-coordinate | outlier | XYZ (12, 7, -1.25)";
+                Check("diagnostic text keeps the scanline, residual and signed XYZ coordinates",
+                    evidenceText.LocalizeRuntimeText(selectedPoint, "GeometryEvidenceSummary") == (korean ? "스캔라인 5 · 입력 좌표계 잔차 0.35 · 아웃라이어 · XYZ (12, 7, -1.25)" : selectedPoint), language.ToString());
+                const string anchorRows = "2/4 authored rows | corner.alpha: Published | corner.beta: missing/stale";
+                Check("evidence retains the identities and statuses of individual anchor inputs",
+                    evidenceText.LocalizeRuntimeText(anchorRows, "LandmarkEvidenceSummary") == (korean
+                        ? "대응 쌍 2/4 · corner.alpha: 적용됨 | corner.beta: 결과 없음·갱신 필요"
+                        : "2/4 pairs · corner.alpha: applied | corner.beta: missing or stale"), language.ToString());
                 const string edgeCounts = "Preview ready | points 4/4 | eligible pairs 12 | missing skips 0 | no OK/NG";
                 Check("edge preview retains all independent fixture counts and not-applied state",
                     ViewerLocalization.Shared.LocalizeRuntimeText(edgeCounts, "HeightDifferenceEdgeSummary") == (korean

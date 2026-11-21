@@ -36,9 +36,9 @@
         <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderThumbBrush" ResourceKey="ThreeD.PrimaryTextBrush" />
 
         <FontFamily x:Key="CompactParameterFont">Segoe UI Variable Text, Segoe UI, Malgun Gothic</FontFamily>
-        <SolidColorBrush x:Key="CompactParameterHoverBorderBrush" Color="#8C9DAE" />
+        <SolidColorBrush x:Key="CompactParameterHoverBorderBrush" Color="#9D9D9D" />
         <SolidColorBrush x:Key="CompactParameterErrorSurfaceBrush" Color="#2A2226" />
-        <SolidColorBrush x:Key="CompactParameterReadOnlySurfaceBrush" Color="#1C2229" />
+        <SolidColorBrush x:Key="CompactParameterReadOnlySurfaceBrush" Color="#222222" />
         <ItemsPanelTemplate x:Key="CompactParameterColumnPanel"><StackPanel /></ItemsPanelTemplate>
         <ItemsPanelTemplate x:Key="CompactAcceptanceColumnPanel"><UniformGrid Columns="2" /></ItemsPanelTemplate>
         <ControlTemplate x:Key="CompactParameterGridTemplate" TargetType="{x:Type wpg:PropertyGrid}">
@@ -78,7 +78,7 @@
                         <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="KernelSize"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumValidSampleCount"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumReferenceSampleCount"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Entry.Name, RelativeSource={RelativeSource TemplatedParent}}" Value="MinimumMeasurementSampleCount"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                     </TextBlock>
                 </Grid>
-                <TextBlock Text="{Binding Entry.Description, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
+                <TextBlock Text="{Binding Entry.Description, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" Margin="0,5,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
             </StackPanel>
         </ControlTemplate>
         <Style x:Key="CompactParameterContainerStyle" TargetType="{x:Type wpg:PropertyContainer}">

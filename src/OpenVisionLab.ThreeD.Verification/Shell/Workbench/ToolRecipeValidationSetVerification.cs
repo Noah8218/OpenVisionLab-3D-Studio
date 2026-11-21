@@ -161,6 +161,101 @@ internal static class ToolRecipeValidationSetVerification
                 && string.Equals(document.Source.ContentSha256, originalHash, StringComparison.OrdinalIgnoreCase),
                 $"{document.Source.Path} | {document.Source.ContentSha256}");
 
+            var malformedPath = Path.Combine(artifactRoot, "sample-truncated.C3D");
+            var missingPath = Path.Combine(artifactRoot, $"sample-missing-{Guid.NewGuid():N}.C3D");
+            File.WriteAllBytes(malformedPath, [0x43, 0x33, 0x44]);
+            var loadFailureResult = ToolRecipeValidationSetExecution.Execute(
+                document, [malformedPath, missingPath, passPath]);
+            Check(
+                "failed-load samples retain controlled Error evidence without a captured source hash",
+                loadFailureResult.Samples.Select(sample => sample.Status)
+                    .SequenceEqual([ResultStatus.Error, ResultStatus.Error, ResultStatus.Pass])
+                && loadFailureResult.Samples.Take(2).All(sample =>
+                    sample.SourceContentSha256.Length == 0 && sample.Steps.Count == 0
+                    && !string.IsNullOrWhiteSpace(sample.Message))
+                && loadFailureResult.Samples[2].SourceContentSha256.Length == 64,
+                string.Join(";", loadFailureResult.Samples.Select(sample =>
+                    $"{sample.Order}:{sample.Status}:hash={sample.SourceContentSha256.Length}:steps={sample.Steps.Count}:{sample.Message}")));
+            using (var loadFailureWorkbench = new ToolWorkbenchViewModel(
+                       Path.Combine(artifactRoot, "recent-load-failure-validation.json")))
+            {
+                if (!loadFailureWorkbench.TryOpenTeachingRecipe(recipePath, out var loadFailureOpenMessage))
+                    throw new InvalidDataException(loadFailureOpenMessage);
+                loadFailureWorkbench.SetValidationSetSources([malformedPath, missingPath, passPath]);
+                loadFailureWorkbench.RunValidationSetAsync().GetAwaiter().GetResult();
+                Check(
+                    "Workbench projects malformed and missing sample errors without suppressing later valid evidence",
+                    loadFailureWorkbench.ValidationSetSamples.Select(sample => sample.Status)
+                        .SequenceEqual(["Error", "Error", "Pass"])
+                    && loadFailureWorkbench.ValidationSetErrorCount == 2
+                    && loadFailureWorkbench.ValidationSetPassCount == 1
+                    && loadFailureWorkbench.ValidationSetSamples.Take(2).All(sample =>
+                        sample.Steps.Count == 0 && !string.IsNullOrWhiteSpace(sample.Message))
+                    && string.IsNullOrEmpty(loadFailureWorkbench.ValidationSetRunNoticeText)
+                    && !loadFailureWorkbench.IsValidationSetRunning,
+                    $"{loadFailureWorkbench.ValidationSetSummary};rows={string.Join(",", loadFailureWorkbench.ValidationSetSamples.Select(sample => sample.Status))}");
+                loadFailureWorkbench.SetValidationSetSources([passPath, failPath]);
+                SetRole(loadFailureWorkbench, passPath, ToolRecipeValidationSampleRole.Good);
+                SetRole(loadFailureWorkbench, failPath, ToolRecipeValidationSampleRole.Bad);
+                Check(
+                    "replacing failed-load sources stages pending samples without implicit execution or teaching mutation",
+                    loadFailureWorkbench.ValidationSetSamples.Count == 2
+                    && loadFailureWorkbench.ValidationSetSamples.All(sample => sample.Status == "Pending")
+                    && !loadFailureWorkbench.HasValidationEvidence
+                    && !loadFailureWorkbench.HasValidationThresholdCandidates
+                    && !loadFailureWorkbench.IsValidationSetRunning
+                    && !loadFailureWorkbench.IsSelectedStepPreviewRunning
+                    && !loadFailureWorkbench.IsDirty
+                    && loadFailureWorkbench.Source.Path == originalPath,
+                    $"rows={string.Join(",", loadFailureWorkbench.ValidationSetSamples.Select(sample => sample.Status))};dirty={loadFailureWorkbench.IsDirty};source={loadFailureWorkbench.Source.Path}");
+                loadFailureWorkbench.RunValidationSetAsync().GetAwaiter().GetResult();
+                Check(
+                    "explicit valid-set rerun recovers after malformed and missing samples",
+                    loadFailureWorkbench.ValidationSetPassCount == 1
+                    && loadFailureWorkbench.ValidationSetFailCount == 1
+                    && loadFailureWorkbench.ValidationSetErrorCount == 0
+                    && loadFailureWorkbench.HasValidationThresholdCandidates
+                    && !loadFailureWorkbench.IsDirty
+                    && !loadFailureWorkbench.IsSelectedStepPreviewRunning
+                    && loadFailureWorkbench.Source.Path == originalPath,
+                    $"{loadFailureWorkbench.ValidationSetSummary};candidates={loadFailureWorkbench.ValidationThresholdCandidates.Count}");
+            }
+
+            var changedPath = Path.Combine(artifactRoot, "sample-changed-after-execution.C3D");
+            File.Copy(passPath, changedPath, overwrite: true);
+            var capturedResult = ToolRecipeValidationSetExecution.Execute(document, [changedPath]);
+            File.AppendAllText(changedPath, "changed after execution");
+            Check(
+                "completion analysis still rejects a changed source with a captured hash",
+                capturedResult.Samples.Single().SourceContentSha256.Length == 64
+                && CompletionAnalysisRejectsSourceIdentity(document, capturedResult),
+                capturedResult.Samples.Single().SourceContentSha256);
+            Check(
+                "completion analysis still checks captured hashes on Error samples without steps",
+                CompletionAnalysisRejectsSourceIdentity(document, capturedResult with
+                {
+                    Samples = [capturedResult.Samples.Single() with
+                    {
+                        Status = ResultStatus.Error, Steps = [], Execution = null
+                    }]
+                }),
+                "Changed source remains rejected even when the captured row is Error with no steps.");
+            foreach (var status in new[] { ResultStatus.Pass, ResultStatus.Error })
+            {
+                Check(
+                    $"completion analysis rejects an unhashed {status} sample with {(status == ResultStatus.Pass ? "no" : "executed")} step evidence",
+                    CompletionAnalysisRejectsSourceIdentity(document, result with
+                    {
+                        Samples = [result.Samples[0] with
+                        {
+                            SourceContentSha256 = string.Empty, Status = status,
+                            Steps = status == ResultStatus.Pass ? [] : result.Samples[0].Steps,
+                            Execution = null
+                        }]
+                    }),
+                    $"status={status};steps={(status == ResultStatus.Pass ? 0 : result.Samples[0].Steps.Count)};hash=empty");
+            }
+
             var labeledResult = ToolRecipeValidationSetExecution.Execute(
                 document,
                 [
@@ -1751,31 +1846,51 @@ internal static class ToolRecipeValidationSetVerification
                 && workbench.ValidationEvidenceDistributions.Count > 0,
                 $"{workbench.ValidationSetGoodCount}/{workbench.ValidationSetBadCount}/{workbench.ValidationSetHeldOutCount};distributions={workbench.ValidationEvidenceDistributions.Count}");
             Check(
+                "full graph keeps validation evidence while rejecting an unsupported threshold workload",
+                workbench.HasValidationThresholdAssistantAnalysis
+                && !workbench.HasValidationThresholdCandidates
+                && workbench.ValidationThresholdSummary.Contains("64 development metric groups", StringComparison.Ordinal)
+                && workbench.ValidationEvidenceDistributions.Count > 0,
+                $"candidates={workbench.ValidationThresholdCandidates.Count}; summary={workbench.ValidationThresholdSummary}; distributions={workbench.ValidationEvidenceDistributions.Count}");
+
+            // Full ordered-graph validation stays above and below this block.
+            // Candidate review uses the existing one-step fixture, whose16
+            // groups are inside the retained64-group threshold-analysis limit.
+            using var reviewWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(artifactRoot, "recent-threshold-review.json"));
+            if (!reviewWorkbench.TryOpenTeachingRecipe(recipePath, out var thresholdOpenMessage))
+                throw new InvalidDataException(thresholdOpenMessage);
+            reviewWorkbench.SetValidationSetSources([passPath, failPath]);
+            SetRole(reviewWorkbench, passPath, ToolRecipeValidationSampleRole.Good);
+            SetRole(reviewWorkbench, failPath, ToolRecipeValidationSampleRole.Bad);
+            reviewWorkbench.RunValidationSetAsync().GetAwaiter().GetResult();
+
+            Check(
                 "workbench exposes review-only candidates and exact sample decisions",
-                workbench.ValidationThresholdCandidates.Count > 0
-                && workbench.SelectedValidationThresholdCandidate is not null
-                && workbench.SelectedValidationThresholdDecisions.Count == 2
-                && !workbench.IsValidationThresholdExpanded,
-                $"candidates={workbench.ValidationThresholdCandidates.Count};decisions={workbench.SelectedValidationThresholdDecisions.Count};expanded={workbench.IsValidationThresholdExpanded}");
-            var beforeThresholdSelectionSource = workbench.Source.Path;
+                reviewWorkbench.ValidationThresholdCandidates.Count >= 2
+                && reviewWorkbench.SelectedValidationThresholdCandidate is not null
+                && reviewWorkbench.SelectedValidationThresholdDecisions.Count == 2
+                && !reviewWorkbench.IsValidationThresholdExpanded,
+                $"candidates={reviewWorkbench.ValidationThresholdCandidates.Count};decisions={reviewWorkbench.SelectedValidationThresholdDecisions.Count};expanded={reviewWorkbench.IsValidationThresholdExpanded}");
+            var beforeThresholdSelectionSource = reviewWorkbench.Source.Path;
             var beforeThresholdSelectionSummary =
-                workbench.ValidationSetSummary;
-            var beforeThresholdSelectionDirty = workbench.IsDirty;
-            workbench.SelectedValidationThresholdCandidate =
-                workbench.ValidationThresholdCandidates.Skip(1).First();
+                reviewWorkbench.ValidationSetSummary;
+            var beforeThresholdSelectionDirty = reviewWorkbench.IsDirty;
+            reviewWorkbench.SelectedValidationThresholdCandidate =
+                reviewWorkbench.ValidationThresholdCandidates.Skip(1).First();
             Check(
                 "candidate selection is view-only and does not execute or edit",
                 string.Equals(
-                    workbench.Source.Path,
+                    reviewWorkbench.Source.Path,
                     beforeThresholdSelectionSource,
                     StringComparison.OrdinalIgnoreCase)
-                && workbench.IsDirty == beforeThresholdSelectionDirty
+                && reviewWorkbench.IsDirty == beforeThresholdSelectionDirty
                 && string.Equals(
-                    workbench.ValidationSetSummary,
+                    reviewWorkbench.ValidationSetSummary,
                     beforeThresholdSelectionSummary,
                     StringComparison.Ordinal)
-                && workbench.SelectedValidationThresholdDecisions.Count == 2,
-                $"sourceSame={string.Equals(workbench.Source.Path, beforeThresholdSelectionSource, StringComparison.OrdinalIgnoreCase)};dirty={beforeThresholdSelectionDirty}->{workbench.IsDirty};summarySame={string.Equals(workbench.ValidationSetSummary, beforeThresholdSelectionSummary, StringComparison.Ordinal)}");
+                && reviewWorkbench.SelectedValidationThresholdDecisions.Count == 2,
+                $"sourceSame={string.Equals(reviewWorkbench.Source.Path, beforeThresholdSelectionSource, StringComparison.OrdinalIgnoreCase)};dirty={beforeThresholdSelectionDirty}->{reviewWorkbench.IsDirty};summarySame={string.Equals(reviewWorkbench.ValidationSetSummary, beforeThresholdSelectionSummary, StringComparison.Ordinal)}");
 
             workbench.SetValidationSetFilterCommand.Execute("Fail");
             Check(
@@ -1842,17 +1957,20 @@ internal static class ToolRecipeValidationSetVerification
 
             var hadValidationEvidenceBeforeDispose =
                 workbench.HasValidationEvidence
-                && workbench.ValidationThresholdCandidates.Count > 0;
+                && !workbench.HasValidationThresholdCandidates;
             var hadThresholdWorkflowStateBeforeDispose =
-                workbench.HasValidationThresholdAssistantAnalysis
-                && workbench.HasValidationThresholdCandidates;
+                reviewWorkbench.HasValidationThresholdAssistantAnalysis
+                && reviewWorkbench.HasValidationThresholdCandidates;
             workbench.Dispose();
             workbench.Dispose();
+            reviewWorkbench.Dispose();
+            reviewWorkbench.Dispose();
             navigationShell.Dispose();
             reopenedWorkbench.Dispose();
             Check(
                 "workbench disposal releases Validation Set execution state idempotently",
                 hadValidationEvidenceBeforeDispose
+                && !workbench.HasValidationEvidence
                 && !workbench.IsValidationSetRunning
                 && !workbench.CancelValidationSetCommand.CanExecute(null)
                 && !workbench.RunValidationSetCommand.CanExecute(null),
@@ -1860,20 +1978,20 @@ internal static class ToolRecipeValidationSetVerification
             Check(
                 "workbench disposal releases Validation Threshold workflow state idempotently",
                 hadThresholdWorkflowStateBeforeDispose
-                && !workbench.HasValidationEvidence
-                && !workbench.HasValidationThresholdCandidates
-                && !workbench.HasValidationThresholdAssistantAnalysis
-                && !workbench.HasValidationThresholdAssistantProposal
-                && !workbench.HasValidationThresholdParameterChanges
-                && !workbench.HasValidationThresholdHeldOutEvidence
-                && !workbench.HasValidationThresholdDevelopmentEvidence
-                && !workbench.ProposeValidationThresholdCandidateCommand.CanExecute(null)
-                && !workbench.ReviewValidationThresholdCandidateCommand.CanExecute(null)
-                && !workbench.CancelValidationThresholdReviewCommand.CanExecute(null)
-                && !workbench.ApplyValidationThresholdCandidateCommand.CanExecute(null)
-                && !workbench.RevalidateValidationThresholdCorrectionCommand.CanExecute(null)
-                && !workbench.ReplayValidationThresholdHeldOutCommand.CanExecute(null),
-                $"before={hadThresholdWorkflowStateBeforeDispose};evidence={workbench.HasValidationEvidence};candidates={workbench.HasValidationThresholdCandidates};analysis={workbench.HasValidationThresholdAssistantAnalysis};proposal={workbench.HasValidationThresholdAssistantProposal};parameterChanges={workbench.HasValidationThresholdParameterChanges};heldOut={workbench.HasValidationThresholdHeldOutEvidence};development={workbench.HasValidationThresholdDevelopmentEvidence}");
+                && !reviewWorkbench.HasValidationEvidence
+                && !reviewWorkbench.HasValidationThresholdCandidates
+                && !reviewWorkbench.HasValidationThresholdAssistantAnalysis
+                && !reviewWorkbench.HasValidationThresholdAssistantProposal
+                && !reviewWorkbench.HasValidationThresholdParameterChanges
+                && !reviewWorkbench.HasValidationThresholdHeldOutEvidence
+                && !reviewWorkbench.HasValidationThresholdDevelopmentEvidence
+                && !reviewWorkbench.ProposeValidationThresholdCandidateCommand.CanExecute(null)
+                && !reviewWorkbench.ReviewValidationThresholdCandidateCommand.CanExecute(null)
+                && !reviewWorkbench.CancelValidationThresholdReviewCommand.CanExecute(null)
+                && !reviewWorkbench.ApplyValidationThresholdCandidateCommand.CanExecute(null)
+                && !reviewWorkbench.RevalidateValidationThresholdCorrectionCommand.CanExecute(null)
+                && !reviewWorkbench.ReplayValidationThresholdHeldOutCommand.CanExecute(null),
+                $"before={hadThresholdWorkflowStateBeforeDispose};evidence={reviewWorkbench.HasValidationEvidence};candidates={reviewWorkbench.HasValidationThresholdCandidates};analysis={reviewWorkbench.HasValidationThresholdAssistantAnalysis};proposal={reviewWorkbench.HasValidationThresholdAssistantProposal};parameterChanges={reviewWorkbench.HasValidationThresholdParameterChanges};heldOut={reviewWorkbench.HasValidationThresholdHeldOutEvidence};development={reviewWorkbench.HasValidationThresholdDevelopmentEvidence}");
         }
         catch (ValidationGateIncompleteException)
         {
@@ -2056,6 +2174,26 @@ internal static class ToolRecipeValidationSetVerification
             2,
             0,
             []);
+
+    private static bool CompletionAnalysisRejectsSourceIdentity(
+        ToolRecipeDocument document, ToolRecipeValidationSetResult result)
+    {
+        var analyze = typeof(ToolWorkbenchValidationThresholdWorkflowOwner).GetMethod(
+            "AnalyzeEvidenceAsync",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            ?? throw new MissingMethodException("Validation completion analysis seam is missing.");
+        try
+        {
+            ((Task)analyze.Invoke(null, [document, result, CancellationToken.None])!)
+                .GetAwaiter().GetResult();
+            return false;
+        }
+        catch (InvalidOperationException exception) when (
+            exception.Message == "Validation input changed during analysis.")
+        {
+            return true;
+        }
+    }
 
     private static bool RunThresholdWorkbench(
         ToolWorkbenchViewModel workbench,

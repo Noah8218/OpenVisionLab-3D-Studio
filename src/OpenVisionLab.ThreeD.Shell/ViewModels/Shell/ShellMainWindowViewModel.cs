@@ -1111,7 +1111,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 "검사 기록이 생성되지 않았습니다. 정상으로 판정하지 마세요.",
                 "No Run Record was created. Do not interpret the result as Pass.");
             InspectionStepSummary = L(
-                "실행은 완료되었지만 검사 기록 저장 실패로 판정 정보를 확정할 수 없습니다.",
+                "실행은 완료되었지만 검사 기록을 저장하지 못해 판정을 기록하지 못했습니다.",
                 "Execution completed, but Run Record save failure prevents confirming the decision evidence.");
             ResultsOperatorDecisionSummary = FormatResultsOperatorDecisionSummary(
                 null,
@@ -2290,7 +2290,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         {
             RunRecordComparisonStatus = RunRecordComparisonState.Error;
             RunRecordComparisonSummary = L(
-                "현재 기록 또는 선택 기록을 읽을 수 없습니다. 파일과 JSON 스키마를 확인하세요.",
+                "현재 기록 또는 선택 기록을 읽을 수 없습니다. 파일 형식을 확인하세요.",
                 "The current or selected record could not be read. Check the file and JSON schema.");
             RunRecordComparisonDetails = L(
                 $"현재: {Path.GetFileName(currentRunRecordPath)}\n선택: {Path.GetFileName(selected.Path)}\n현재 결과와 레시피 상태는 변경되지 않았습니다.",
@@ -2478,7 +2478,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 $"관찰 시각: {current.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} → {comparison.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}",
                 $"Observed time: {current.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss} → {comparison.RecordedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}"),
             L(
-                $"관찰 수행 시간: {current.ElapsedMilliseconds:0.##} ms → {comparison.ElapsedMilliseconds:0.##} ms · 판정/동일성 근거에 사용하지 않음",
+                $"처리 시간: {current.ElapsedMilliseconds:0.##} ms → {comparison.ElapsedMilliseconds:0.##} ms · 판정·동일성 비교에는 사용하지 않음",
                 $"Observed duration: {current.ElapsedMilliseconds:0.##} ms → {comparison.ElapsedMilliseconds:0.##} ms · excluded from condition identity and decisions")
         };
         var details = string.Join(

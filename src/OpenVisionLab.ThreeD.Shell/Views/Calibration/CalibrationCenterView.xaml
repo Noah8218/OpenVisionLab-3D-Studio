@@ -317,7 +317,7 @@
                                                Text="{shell:ThreeDText Key=ThreeD.Calibration.HeightTargetMap, Korean='높이 대상 맵', English='Height target map'}" />
                                         <TextBlock HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
-                                                   Foreground="#CBD5E1"
+                                                   Foreground="#D6D6D6"
                                                    Text="{Binding HeightTargetEmptyState}" />
                                     </Grid>
                                 </Border>
@@ -362,7 +362,7 @@
                                                Text="{shell:ThreeDText Key=ThreeD.Calibration.AlignmentResidualMap, Korean='정렬 잔차 맵', English='Alignment residual map'}" />
                                         <TextBlock HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
-                                                   Foreground="#CBD5E1"
+                                                   Foreground="#D6D6D6"
                                                    Text="{Binding AlignmentTargetEmptyState}" />
                                     </Grid>
                                 </Border>
@@ -426,7 +426,7 @@
                                                 <DrawingBrush.Drawing>
                                                     <GeometryDrawing>
                                                         <GeometryDrawing.Pen>
-                                                            <Pen Brush="#374151" Thickness="0.6" />
+                                                            <Pen Brush="#444444" Thickness="0.6" />
                                                         </GeometryDrawing.Pen>
                                                         <GeometryDrawing.Geometry>
                                                             <GeometryGroup>
@@ -446,13 +446,13 @@
                                                    Text="{shell:ThreeDText Key=ThreeD.Calibration.RepeatabilityMap, Korean='3D 반복성 맵', English='3D repeatability map'}" />
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <TextBlock HorizontalAlignment="Center"
-                                                       Foreground="#E5E7EB"
+                                                       Foreground="#E8E8E8"
                                                        FontSize="15"
                                                        FontWeight="SemiBold"
                                                        Text="{Binding RepeatabilityMapState}" />
                                             <TextBlock Margin="0,4,0,0"
                                                        HorizontalAlignment="Center"
-                                                       Foreground="#9CA3AF"
+                                                       Foreground="#A6A6A6"
                                                        Text="{Binding RepeatabilityMapHint}" />
                                         </StackPanel>
                                         <StackPanel Margin="12"
@@ -468,10 +468,10 @@
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Bottom"
                                                 Background="#CC111827"
-                                                BorderBrush="#4B5563"
+                                                BorderBrush="#575757"
                                                 BorderThickness="1"
                                                 CornerRadius="3">
-                                            <TextBlock Foreground="#D1D5DB" Text="{shell:ThreeDText Key=ThreeD.Calibration.ColorStandardDeviation, Korean='색상: 표준편차', English='Color: standard deviation'}" />
+                                            <TextBlock Foreground="#D6D6D6" Text="{shell:ThreeDText Key=ThreeD.Calibration.ColorStandardDeviation, Korean='색상: 표준편차', English='Color: standard deviation'}" />
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -549,7 +549,7 @@
                                                                     Background="{DynamicResource ThreeD.PanelBrush}"
                                                                     ChartPointPointerDownCommand="{Binding SelectRepeatabilityChartPointCommand}"
                                                                     LegendPosition="Hidden"
-                                                                    TooltipBackgroundPaint="{lvc:SolidColorPaint Color='#202B38'}"
+                                                                    TooltipBackgroundPaint="{lvc:SolidColorPaint Color='#2C2C2C'}"
                                                                     TooltipTextPaint="{lvc:SolidColorPaint Color='#E7EEF6'}">
                                                     <lvc:CartesianChart.SeriesSource>
                                                         <Binding Path="RepeatabilityChartSeries" />
@@ -570,16 +570,16 @@
                                                             <lvc:XamlAxis Labels="{Binding RepeatabilityChartRunLabels}"
                                                                           ForceStepToMin="True"
                                                                           MinStep="1"
-                                                                          LabelsPaint="{lvc:SolidColorPaint Color='#BECADA'}"
-                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#334155', StrokeWidth=1}"
-                                                                          TicksPaint="{lvc:SolidColorPaint Color='#657487', StrokeWidth=1}" />
+                                                                          LabelsPaint="{lvc:SolidColorPaint Color='#CCCCCC'}"
+                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#444444', StrokeWidth=1}"
+                                                                          TicksPaint="{lvc:SolidColorPaint Color='#767676', StrokeWidth=1}" />
                                                         </lvc:AxesCollection>
                                                     </lvc:CartesianChart.XAxes>
                                                     <lvc:CartesianChart.YAxes>
                                                         <lvc:AxesCollection>
-                                                            <lvc:XamlAxis LabelsPaint="{lvc:SolidColorPaint Color='#BECADA'}"
-                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#334155', StrokeWidth=1}"
-                                                                          TicksPaint="{lvc:SolidColorPaint Color='#657487', StrokeWidth=1}" />
+                                                            <lvc:XamlAxis LabelsPaint="{lvc:SolidColorPaint Color='#CCCCCC'}"
+                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#444444', StrokeWidth=1}"
+                                                                          TicksPaint="{lvc:SolidColorPaint Color='#767676', StrokeWidth=1}" />
                                                         </lvc:AxesCollection>
                                                     </lvc:CartesianChart.YAxes>
                                                 </lvc:CartesianChart>

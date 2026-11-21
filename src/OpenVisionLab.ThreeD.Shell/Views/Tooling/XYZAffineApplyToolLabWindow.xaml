@@ -7,7 +7,7 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.WindowTitle, Korean='XYZ 어파인 적용 도구 실험실 | OpenVisionLab 3D Studio', English='Apply XYZ Affine Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineApply.WindowTitle, Korean='XYZ 어파인 적용 도구 실험실 - OpenVisionLab 3D Studio', English='Apply XYZ Affine Tool Lab - OpenVisionLab 3D Studio'}"
         Width="1760" Height="980" MinWidth="1280" MinHeight="760"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"

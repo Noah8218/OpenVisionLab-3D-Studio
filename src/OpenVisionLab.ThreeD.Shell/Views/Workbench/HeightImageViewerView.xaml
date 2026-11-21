@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:legend="clr-namespace:OpenVisionLab.ThreeD.Presentation.Controls;assembly=OpenVisionLab.ThreeD.Presentation"
              xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
+             xmlns:unit="clr-namespace:OpenVisionLab.ThreeD.Presentation.Converters;assembly=OpenVisionLab.ThreeD.Presentation"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:host="clr-namespace:OpenVisionLab.ThreeD.Viewer.Hosting;assembly=OpenVisionLab.ThreeD.Viewer"
@@ -24,35 +25,35 @@
              AutomationProperties.AutomationId="HeightImageViewer">
     <UserControl.Resources>
         <SolidColorBrush x:Key="HeightProfile.LineBrush" Color="#FFD166" />
-        <SolidColorBrush x:Key="HeightProfile.OutlineBrush" Color="#15191E" />
+        <SolidColorBrush x:Key="HeightProfile.OutlineBrush" Color="#1A1A1A" />
         <SolidColorBrush x:Key="HeightProfile.TextBrush" Color="#1A1408" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <DrawingBrush x:Key="MissingCellHatchBrush" TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute" Viewbox="0,0,8,8" ViewboxUnits="Absolute">
             <DrawingBrush.Drawing><DrawingGroup>
-                <GeometryDrawing Brush="#0D1115" Geometry="M 0,0 L 8,0 8,8 0,8 Z" />
-                <GeometryDrawing Geometry="M 0,8 L 8,0"><GeometryDrawing.Pen><Pen Brush="#29333E" Thickness="1" /></GeometryDrawing.Pen></GeometryDrawing>
+                <GeometryDrawing Brush="#111111" Geometry="M 0,0 L 8,0 8,8 0,8 Z" />
+                <GeometryDrawing Geometry="M 0,8 L 8,0"><GeometryDrawing.Pen><Pen Brush="#343434" Thickness="1" /></GeometryDrawing.Pen></GeometryDrawing>
             </DrawingGroup></DrawingBrush.Drawing>
         </DrawingBrush>
         <Style x:Key="HeightOverlayButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Width" Value="28" /><Setter Property="Height" Value="28" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="Padding" Value="4" /><Setter Property="Margin" Value="0,0,2,0" /><Setter Property="Foreground" Value="#C9D3DC" />
+            <Setter Property="Width" Value="28" /><Setter Property="Height" Value="28" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="Padding" Value="4" /><Setter Property="Margin" Value="0,0,2,0" /><Setter Property="Foreground" Value="#D2D2D2" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
                 <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                 <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2A333D" /><Setter Property="Foreground" Value="White" /></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2C4243" /></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#343434" /><Setter Property="Foreground" Value="White" /></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#383838" /></Trigger>
                     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
                     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                 </ControlTemplate.Triggers>
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="HeightOverlayToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
-            <Setter Property="Width" Value="28" /><Setter Property="Height" Value="28" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="Padding" Value="4" /><Setter Property="Margin" Value="0,0,2,0" /><Setter Property="Foreground" Value="#C9D3DC" />
+            <Setter Property="Width" Value="28" /><Setter Property="Height" Value="28" /><Setter Property="MinWidth" Value="0" /><Setter Property="MinHeight" Value="0" /><Setter Property="Padding" Value="4" /><Setter Property="Margin" Value="0,0,2,0" /><Setter Property="Foreground" Value="#D2D2D2" />
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton">
                 <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4"><Grid><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /><Border x:Name="SelectedLine" Height="2" Margin="1,0,1,0" VerticalAlignment="Bottom" Background="#6FB3A8" Visibility="Collapsed" /></Grid></Border>
                 <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2A333D" /><Setter Property="Foreground" Value="White" /></Trigger>
-                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2C4243" /><Setter Property="Foreground" Value="#C7ECE5" /><Setter TargetName="SelectedLine" Property="Visibility" Value="Visible" /></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#2C4243" /></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#343434" /><Setter Property="Foreground" Value="White" /></Trigger>
+                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="#383838" /><Setter Property="Foreground" Value="#C7ECE5" /><Setter TargetName="SelectedLine" Property="Visibility" Value="Visible" /></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#383838" /></Trigger>
                     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
                     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                 </ControlTemplate.Triggers>
@@ -107,7 +108,7 @@
                     <Setter Property="Grid.Row" Value="0" /><Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="VerticalAlignment" Value="Stretch" /><Setter Property="Panel.ZIndex" Value="30" />
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding UseEmbeddedChrome, ElementName=Root}" Value="True">
-                            <Setter Property="Padding" Value="3" /><Setter Property="Grid.Row" Value="1" /><Setter Property="Margin" Value="52,30,0,0" /><Setter Property="HorizontalAlignment" Value="Left" /><Setter Property="VerticalAlignment" Value="Top" /><Setter Property="CornerRadius" Value="8" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Background" Value="#DC161B20" /><Setter Property="BorderBrush" Value="#33404C" />
+                            <Setter Property="Padding" Value="3" /><Setter Property="Grid.Row" Value="1" /><Setter Property="Margin" Value="52,30,0,0" /><Setter Property="HorizontalAlignment" Value="Left" /><Setter Property="VerticalAlignment" Value="Top" /><Setter Property="CornerRadius" Value="8" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Background" Value="#DC161B20" /><Setter Property="BorderBrush" Value="#404040" />
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
@@ -115,10 +116,10 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <ToggleButton x:Name="HeightMoveTool" Style="{StaticResource HeightModeToggleStyle}" Command="{Binding Presentation.MoveCommand, ElementName=Root}" IsChecked="{Binding Presentation.IsMoveMode, ElementName=Root, Mode=OneWay}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Move, Korean='이동', English='Move'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"><ui:SymbolIcon Symbol="ArrowMove24" FontSize="16" /></ToggleButton>
-                    <Border Width="1" Height="20" Margin="3,4,3,4" Background="#3A4552" />
+                    <Border Width="1" Height="20" Margin="3,4,3,4" Background="#464646" />
                     <ToggleButton x:Name="HeightRoiTool" Style="{StaticResource HeightRoiToggleStyle}" Command="{Binding RoiCaptureCommand, ElementName=Root}" IsChecked="{Binding RoiWorkspace.IsCaptureActive, Mode=OneWay}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Roi, Korean='ROI', English='ROI'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"><ui:SymbolIcon Symbol="RectangleLandscape24" FontSize="16" /></ToggleButton>
                     <ToggleButton x:Name="HeightProfileTool" Style="{StaticResource HeightModeToggleStyle}" Command="{Binding Presentation.MeasureCommand, ElementName=Root}" IsChecked="{Binding ProfileState.IsActive, ElementName=Root, Mode=OneWay}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.Profile, Korean='단면', English='Section'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"><ui:SymbolIcon Symbol="Line24" FontSize="16" /></ToggleButton>
-                    <Border Width="1" Height="20" Margin="3,4,3,4" Background="#3A4552" />
+                    <Border Width="1" Height="20" Margin="3,4,3,4" Background="#464646" />
                     <Button x:Name="HeightFitTool" Style="{StaticResource HeightOverlayButtonStyle}" Command="{Binding FitCommand}" ToolTip="{Binding Localization.HeightImageFit}" AutomationProperties.Name="{Binding Localization.HeightImageFit}"><ui:SymbolIcon Symbol="FullScreenMaximize24" FontSize="16" /></Button>
                     <Button x:Name="HeightFitRoiTool" Style="{StaticResource HeightOverlayButtonStyle}" Command="{Binding FitRoiCommand}" ToolTip="{views:ThreeDText Key=ThreeD.Viewer.FitRoi, Korean='ROI 맞춤', English='Fit ROI'}" AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"><ui:SymbolIcon Symbol="Target24" FontSize="16" /></Button>
                     <ToggleButton x:Name="HeightImageDisplaySettingsToggle" Style="{StaticResource HeightDisplayToggleStyle}" ToolTip="{views:ThreeDText Key=ThreeD.R19.HeightDisplayOptions, Korean='높이 표시', English='Height display'}" AutomationProperties.AutomationId="HeightImageDisplaySettingsToggle" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.R19.HeightDisplayOptions, Korean='높이 표시', English='Height display'}"><ui:SymbolIcon Symbol="Color24" FontSize="16" /></ToggleButton>
@@ -449,22 +450,22 @@
         <Border x:Name="HeightImageCursorStatus" Grid.Row="2"
                 Height="24"
                 Padding="10,0"
-                Background="#141920"
-                BorderBrush="#2A323B"
+                Background="#1A1A1A"
+                BorderBrush="#323232"
                 BorderThickness="0,1,0,0">
                 <ScrollViewer x:Name="HeightImageCursorScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" Focusable="True">
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <TextBlock x:Name="HeightImageCoordinateText" Margin="0,0,8,0" VerticalAlignment="Center"
                                    MaxWidth="{Binding ViewportWidth, ElementName=HeightImageCursorScroller}"
-                                   FontFamily="Cascadia Mono, Cascadia Code, Consolas"
+                                   FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular"
                                    FontSize="11.5" TextWrapping="Wrap" LineHeight="14" LineStackingStrategy="BlockLineHeight"
                                    Foreground="#CFE6F5" Text="{Binding CursorCoordinateValueSummary, Mode=OneWay}"
                                    ToolTip="{Binding HoverSummary}" AutomationProperties.AutomationId="HeightImageCoordinateStatus" />
                         <DockPanel Grid.Column="1">
                             <TextBlock x:Name="HeightImageScaleStatus" DockPanel.Dock="Right" VerticalAlignment="Center"
-                                       FontFamily="{Binding FontFamily, ElementName=Root}" FontSize="11.5" Foreground="#8B98A6"
-                                       TextTrimming="CharacterEllipsis"><Run Text="{Binding PixelsPerCellSummary, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding LegendUnit, Mode=OneWay}" /></TextBlock>
+                                       FontFamily="{Binding FontFamily, ElementName=Root}" FontSize="11.5" Foreground="#989898"
+                                       TextTrimming="CharacterEllipsis"><Run Text="{Binding PixelsPerCellSummary, Mode=OneWay}" /><Run Text="{Binding LegendUnit, Mode=OneWay, Converter={x:Static unit:HeightUnitDisplayConverter.Instance}, ConverterParameter='  '}" /></TextBlock>
                             <TextBlock x:Name="HeightImageSelectionContext" Margin="0,0,8,0" VerticalAlignment="Center"
                                        FontFamily="{Binding FontFamily, ElementName=Root}" FontSize="11.5"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextTrimming="CharacterEllipsis"

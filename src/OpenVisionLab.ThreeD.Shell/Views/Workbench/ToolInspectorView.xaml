@@ -83,7 +83,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <TextBlock FontSize="12"
-                                   FontWeight="SemiBold"
+                                   FontWeight="Normal"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Text="{Binding SelectedPipelineStepTitle}"
                                    TextTrimming="CharacterEllipsis"
@@ -104,7 +104,7 @@
                                                Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
                                 <TextBlock MaxWidth="122"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
                                            Text="{Binding CanonicalStateLabel}"
                                            TextTrimming="CharacterEllipsis" />
@@ -148,7 +148,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <TextBlock FontSize="12"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Normal"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Text="{Binding Localization.InputParameterOutputSummary}" />
 
@@ -159,7 +159,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon Width="14" Height="14" Margin="0,1,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="ArrowRight24" />
-                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.Inputs}" />
+                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="Normal" Text="{Binding Localization.Inputs}" />
                                 <StackPanel Grid.Column="2">
                                     <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.InputContract}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.InputContract}" />
                                     <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding SelectedPipelineStep.InputSummary}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.InputSummary}" />
@@ -173,7 +173,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon Width="14" Height="14" Margin="0,1,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="WrenchScrewdriver24" />
-                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.TypedParameters}" />
+                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="Normal" Text="{Binding Localization.TypedParameters}" />
                                 <TextBlock Grid.Column="2" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedStepAdapterStatus}" TextWrapping="Wrap" ToolTip="{Binding SelectedStepAdapterStatus}" />
                             </Grid>
 
@@ -184,7 +184,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon Width="14" Height="14" Margin="0,1,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="Cube24" />
-                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="SemiBold" Text="{Binding Localization.Output}" />
+                                <TextBlock Grid.Column="1" FontSize="12" FontWeight="Normal" Text="{Binding Localization.Output}" />
                                 <StackPanel Grid.Column="2">
                                     <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding SelectedPipelineStep.OutputContract}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.OutputContract}" />
                                     <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding SelectedPipelineStep.OutputEntityId}" TextWrapping="Wrap" ToolTip="{Binding SelectedPipelineStep.OutputEntityId}" />

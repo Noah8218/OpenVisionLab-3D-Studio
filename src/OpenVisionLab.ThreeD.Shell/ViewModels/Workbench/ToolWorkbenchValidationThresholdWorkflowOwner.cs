@@ -509,6 +509,9 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                 async (completed, token) =>
                 {
                     analysisToken = token;
+                    EnsureAnalysisCurrent(context, generation, inputs, token);
+                    if (completed.Samples.Count == 0) return;
+
                     var reports = await AnalyzeEvidenceAsync(snapshot, completed, token);
                     EnsureAnalysisCurrent(context, generation, inputs, token);
                     projectSamples(completed);
@@ -554,6 +557,14 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
             foreach (var sample in completed.Samples)
             {
                 token.ThrowIfCancellationRequested();
+                // A controlled source-load error has no captured identity or step evidence.
+                // Reopening it would suppress its diagnostic and every completed sample row.
+                if (sample.Status == ResultStatus.Error
+                    && string.IsNullOrEmpty(sample.SourceContentSha256)
+                    && sample.Steps.Count == 0)
+                {
+                    continue;
+                }
                 using var stream = File.OpenRead(sample.SourcePath);
                 if (!string.Equals(Convert.ToHexString(SHA256.HashData(stream)), sample.SourceContentSha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Validation input changed during analysis.");

@@ -196,7 +196,7 @@ internal static class ValidationSamplesPresentationVerification
                         && addChrome.BorderBrush is SolidColorBrush addBorder && addBorder.Color.A == 0 && pinChrome.Background is SolidColorBrush pinFill && pinFill.Color.A == 0
                         && pinChrome.BorderBrush is SolidColorBrush pinBorder && pinBorder.Color.A == 0 && labels.Length == 4 && labels.All(label => BrushColor(label.Foreground) == muted)
                         && summaryValues.Length == 2 && summaryValues.All(value => value.FontWeight.ToOpenTypeWeight() == 650 && BrushColor(value.Foreground) == primary)
-                        && errorCounts.Length == 3 && errorCounts.All(text => text.FontWeight.ToOpenTypeWeight() == 600)
+                        && errorCounts.Length == 3 && errorCounts.All(text => text.FontWeight.ToOpenTypeWeight() == 400)
                         && filterCounts.Length == 6 && filterCounts.All(count => count.FontWeight.ToOpenTypeWeight() == 650 && BrushColor(count.Foreground) == primary)
                         && uncheckedFilterLabels.Length == 5 && uncheckedFilterLabels.All(label => BrushColor(label.Foreground) == muted)
                         && uncheckedRoles.Length == 2 && uncheckedRoles.All(role => role.FontWeight.ToOpenTypeWeight() == 650 && BrushColor(role.Foreground) == dim)

@@ -22,8 +22,8 @@
 <DataTemplate x:Key="TeachingDataHeader">
 <Border Height="35" Padding="8,0,4,0" Background="{DynamicResource ThreeD.PanelHeaderBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1">
 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-<StackPanel Orientation="Horizontal" VerticalAlignment="Center"><ui:SymbolIcon Symbol="Image24" FontSize="14" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock Text="{views:ThreeDText Key=ThreeD.Data.Title, Korean='데이터', English='Data'}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" />
-<Border Margin="6,0,0,0" Padding="5,1" CornerRadius="8" Background="{DynamicResource ThreeD.PanelAlternateBrush}"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding Tag.IsCompactLayout, RelativeSource={RelativeSource AncestorType=ContentControl}}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding Workbench.GalleryDataCount}" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></Border>
+<StackPanel Orientation="Horizontal" VerticalAlignment="Center"><ui:SymbolIcon Symbol="Image24" FontSize="14" Margin="0,0,5,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /><TextBlock Text="{views:ThreeDText Key=ThreeD.Data.Title, Korean='데이터', English='Data'}" FontSize="12" FontWeight="Normal" Foreground="{DynamicResource ThreeD.TextBrush}" />
+<Border Margin="6,0,0,0" Padding="5,1" CornerRadius="8" Background="{DynamicResource ThreeD.PanelAlternateBrush}"><Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding Tag.IsCompactLayout, RelativeSource={RelativeSource AncestorType=ContentControl}}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Border.Style><TextBlock Text="{Binding Workbench.GalleryDataCount}" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" /></Border>
 </StackPanel>
 <ToggleButton Grid.Column="2" Style="{StaticResource TeachingDataHeaderButton}" IsChecked="{Binding Tag.IsTeachingDataPinned, RelativeSource={RelativeSource AncestorType=ContentControl}, Mode=OneWay}" Click="OnTeachingDataPinClicked" ToolTip="데이터 패널 고정 또는 접기" AutomationProperties.Name="데이터 패널 고정 또는 접기"><ui:SymbolIcon Symbol="Pin24" FontSize="14" /></ToggleButton>
 <ToggleButton Grid.Column="3" Tag="{Binding Tag, RelativeSource={RelativeSource AncestorType=ContentControl}}" Style="{StaticResource TeachingDataHeaderButton}" Click="OnTeachingDataHeaderAction" ToolTip="데이터 패널 메뉴 또는 닫기" AutomationProperties.Name="데이터 패널 메뉴 또는 닫기">
@@ -127,11 +127,11 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,6,0" Symbol="ClipboardTaskListLtr24" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
-                                    <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Text="{views:ThreeDText Key=ThreeD.Validation.CurrentTeaching, Korean='현재 티칭 조건', English='Current teaching'}" />
+                                    <TextBlock FontSize="12" FontWeight="Normal" VerticalAlignment="Center" Text="{views:ThreeDText Key=ThreeD.Validation.CurrentTeaching, Korean='현재 티칭 조건', English='Current teaching'}" />
                                 </StackPanel>
                                 <TextBlock AutomationProperties.AutomationId="ValidationRecipeName" Grid.Column="1" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center"
                                            Text="{Binding Workbench.HeaderRecipeText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.HeaderRecipeText}" />
-                                <TextBlock AutomationProperties.AutomationId="ValidationTeachingSaveState" Grid.Column="2" Margin="6,0,0,0" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                <TextBlock AutomationProperties.AutomationId="ValidationTeachingSaveState" Grid.Column="2" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Text" Value="{Binding Workbench.Localization.Saved}" />
@@ -154,7 +154,7 @@
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock AutomationProperties.AutomationId="ValidationIdleSummary" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                Text="{Binding Workbench.ValidationSetRunBasisText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.ValidationSetRunBasisText}" />
-                                    <TextBlock AutomationProperties.AutomationId="ValidationRunNotice" FontSize="11" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{Binding Workbench.ValidationSetRunNoticeText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.ValidationSetRunNoticeText}">
+                                    <TextBlock AutomationProperties.AutomationId="ValidationRunNotice" FontSize="12" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{Binding Workbench.ValidationSetRunNoticeText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.ValidationSetRunNoticeText}">
                                         <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Workbench.ValidationSetRunNoticeText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                     </TextBlock>
                                 </StackPanel>
@@ -176,7 +176,7 @@
                                         </Style>
                                     </ProgressBar.Style>
                                 </ProgressBar>
-                                <TextBlock Grid.Column="2" Margin="8,0,0,0" FontFamily="Consolas" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Workbench.ValidationSetElapsedText}" AutomationProperties.AutomationId="ValidationElapsed" />
+                                <TextBlock Grid.Column="2" Margin="8,0,0,0" FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic" Typography.NumeralAlignment="Tabular" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Workbench.ValidationSetElapsedText}" AutomationProperties.AutomationId="ValidationElapsed" />
                             </Grid>
                         </Grid>
                         <ui:Button Grid.Column="2" Height="30" Padding="10,4" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Appearance="Primary" Icon="{ui:SymbolIcon Play20}"
@@ -208,7 +208,7 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,6,0" Symbol="ClipboardTaskListLtr24" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
-                                    <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Text="{views:ThreeDText Key=ThreeD.Inspection.Basis, Korean='검사 기준', English='Inspection basis'}" />
+                                    <TextBlock FontSize="12" FontWeight="Normal" VerticalAlignment="Center" Text="{views:ThreeDText Key=ThreeD.Inspection.Basis, Korean='검사 기준', English='Inspection basis'}" />
                                 </StackPanel>
                                 <TextBlock AutomationProperties.AutomationId="InspectionBasisName" Grid.Column="1" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center"
                                            Text="{Binding Workbench.InspectionQueue.InspectionBasisText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Workbench.InspectionQueue.InspectionBasisText}" />
@@ -217,7 +217,7 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
                                     Visibility="{Binding Workbench.IsDirty, Converter={StaticResource BoolToVisibilityConverter}}" AutomationProperties.AutomationId="InspectionUnsavedTeaching">
                             <Border Padding="6,3" CornerRadius="10" Background="{DynamicResource ThreeD.WarningSurfaceBrush}">
-                                <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{views:ThreeDText Key=ThreeD.Inspection.UnsavedTeaching, Korean='티칭 변경 미저장', English='Unsaved teaching changes'}" />
+                                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{views:ThreeDText Key=ThreeD.Inspection.UnsavedTeaching, Korean='티칭 변경 미저장', English='Unsaved teaching changes'}" />
                             </Border>
                             <ui:Button Width="30" Height="28" Margin="6,0,0,0" Padding="7,0" Icon="{ui:SymbolIcon Save20}"
                                        Command="{Binding Workbench.SaveTeachingRecipeCommand}" ToolTip="{views:ThreeDText Key=ThreeD.Inspection.SaveTeachingTip, Korean='레시피 저장 (Ctrl+S)', English='Save recipe (Ctrl+S)'}" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.R19.SaveRecipe, Korean='레시피 저장', English='Save recipe'}" AutomationProperties.AutomationId="SaveInspectionTeaching" />
@@ -310,7 +310,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock VerticalAlignment="Center"
                                            FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                            Text="{Binding Workbench.C3DSourceLoadStatus}" />
                                 <ProgressBar Grid.Column="1"
@@ -357,7 +357,7 @@
                             </Border.Style>
                             <StackPanel>
                                 <TextBlock FontSize="12"
-                                           FontWeight="SemiBold"
+                                           FontWeight="Normal"
                                            Foreground="{DynamicResource ThreeD.TextBrush}"
                                            Text="{Binding Localization.NoRecipeStepSelected}" />
                                 <TextBlock Margin="0,3,0,0"
@@ -386,7 +386,7 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock FontSize="12"
-                                               FontWeight="SemiBold"
+                                               FontWeight="Normal"
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                Text="{Binding Workbench.TeachingSelectionCaptureTitle}" />
                                     <TextBlock Margin="0,2,0,0"
@@ -438,7 +438,7 @@
                                     <WrapPanel VerticalAlignment="Center">
                                         <TextBlock Margin="0,0,12,0"
                                                    FontSize="12"
-                                                   FontWeight="SemiBold"
+                                                   FontWeight="Normal"
                                                    Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.ExactGridCandidate, Korean='영역 좌표 (셀) · X=열, Z=행', English='Region coordinates (cells) · X=column, Z=row'}" />
                                         <StackPanel Margin="0,0,12,0" Orientation="Horizontal">
@@ -447,7 +447,7 @@
                                                        Text="{views:ThreeDText Key=ThreeD.Workspace.StartColumnCompact, Korean='시작 X', English='Start X'}" />
                                             <TextBlock Margin="4,0,0,0"
                                                        FontSize="12"
-                                                       FontWeight="SemiBold"
+                                                       FontWeight="Normal"
                                                        Text="{Binding Workbench.TeachingGridRectangleColumn}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,12,0" Orientation="Horizontal">
@@ -456,7 +456,7 @@
                                                        Text="{views:ThreeDText Key=ThreeD.Workspace.StartRowCompact, Korean='시작 Z', English='Start Z'}" />
                                             <TextBlock Margin="4,0,0,0"
                                                        FontSize="12"
-                                                       FontWeight="SemiBold"
+                                                       FontWeight="Normal"
                                                        Text="{Binding Workbench.TeachingGridRectangleRow}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,12,0" Orientation="Horizontal">
@@ -465,7 +465,7 @@
                                                        Text="{views:ThreeDText Key=ThreeD.Workspace.ColumnCountCompact, Korean='X 길이', English='X length'}" />
                                             <TextBlock Margin="4,0,0,0"
                                                        FontSize="12"
-                                                       FontWeight="SemiBold"
+                                                       FontWeight="Normal"
                                                        Text="{Binding Workbench.TeachingGridRectangleColumnCount}" />
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal">
@@ -474,7 +474,7 @@
                                                        Text="{views:ThreeDText Key=ThreeD.Workspace.RowCountCompact, Korean='Z 길이', English='Z length'}" />
                                             <TextBlock Margin="4,0,0,0"
                                                        FontSize="12"
-                                                       FontWeight="SemiBold"
+                                                       FontWeight="Normal"
                                                        Text="{Binding Workbench.TeachingGridRectangleRowCount}" />
                                         </StackPanel>
                                     </WrapPanel>

@@ -460,9 +460,63 @@ internal static class ValidationSetWorkspaceViewModelVerification
                 && workspace.AllSamples.All(row => row.Status == "Pending") && !workspace.IsValidationSetStale, workspace.ValidationSetRunBasisText);
             await workspace.RunValidationSetAsync();
             Check("replacement fixture explicit run establishes its own basis", workspace.ValidationSetLastRunAt is not null, workspace.ValidationSetRunBasisText);
+            using (var decisions = CreateWorkspace())
+            {
+                decisions.SetValidationSetSources([passPath, failPath]);
+                Check("unrun samples cannot report agreement", !decisions.HasValidationResults && !decisions.AllValidationExpectationsMatch, "two pending samples");
+                await decisions.RunValidationSetAsync();
+                Check("an OK and an NG with no expectations cannot report agreement", decisions.HasValidationResults && !decisions.HasValidationExpectations
+                    && !decisions.AllValidationExpectationsMatch && !decisions.HasValidationMismatches, "two completed samples, zero comparisons");
+                decisions.SetValidationSampleRoleCommand.Execute(decisions.AllSamples[0].GoodRoleChange);
+                Check("a matched expected decision can coexist with an unset sample", decisions.AllValidationExpectationsMatch
+                    && decisions.AllSamples[1].IsUnset, "only the sample with an expectation is compared");
+                decisions.SetValidationSampleRoleCommand.Execute(decisions.AllSamples[1].GoodRoleChange);
+                Check("the collected mismatch replaces the empty state", decisions.HasValidationMismatches && !decisions.AllValidationExpectationsMatch
+                    && decisions.ValidationMismatchSamples.Single().SourcePath == failPath, "expected OK; actual NG");
+                decisions.SetValidationSampleRoleCommand.Execute(decisions.AllSamples[1].BadRoleChange);
+                Check("corrected expected decisions match both existing results", decisions.AllValidationExpectationsMatch && !decisions.HasValidationMismatches, "existing OK and NG results retained");
+            }
             workspace.LoadValidationSetDefinition(recipePath, document);
             Check("recipe manifest load clears prior basis through existing definition callback", workspace.ValidationSetLastRunAt is null
                 && workspace.AllSamples.All(row => row.Status == "Pending") && !workspace.IsValidationSetStale, workspace.ValidationSetRunBasisText);
+
+            var executableDocument = document;
+            try
+            {
+                document = executableDocument with { Steps = executableDocument.Steps.Select(step => step with { ToolId = "unsupported-ui-verification" }).ToArray() };
+                Check("unsupported recipe has a controlled preparation failure",
+                    !OpenVisionLab.ThreeD.Tools.ToolRecipeValidationSetExecution.CanExecute(document, out var preparationError),
+                    "unsupported tool contract");
+                using var preparation = CreateWorkspace();
+                preparation.SetValidationSetSources([passPath]);
+                var staged = preparation.AllSamples.ToArray();
+                await preparation.RunValidationSetAsync();
+                Check("preparation failure preserves staged samples and reports its error without cancellation",
+                    preparation.AllSamples.SequenceEqual(staged) && preparation.ValidationSetSummary == preparationError
+                    && preparation.ValidationSetLastRunAt is null && string.IsNullOrEmpty(preparation.ValidationSetRunNoticeText)
+                    && !preparation.IsValidationSetRunning && preparation.RunValidationSetCommand.CanExecute(null),
+                    preparation.ValidationSetSummary + "|" + preparation.ValidationSetRunNoticeText);
+                document = executableDocument;
+                await preparation.RunValidationSetAsync();
+                Check("valid execution recovers after an unsupported preparation",
+                    preparation.HasValidationResults && preparation.AllSamples.Count == 1 && preparation.ValidationSetLastRunAt is not null,
+                    preparation.ValidationSetSummary);
+                var previousResult = preparation.AllSamples.ToArray();
+                var previousTime = preparation.ValidationSetLastRunAt;
+                var previousEvidence = preparation.ValidationEvidenceDistributions.ToArray();
+                var previousEvidenceSummary = preparation.ValidationEvidenceSummary;
+                document = executableDocument with { Steps = executableDocument.Steps.Select(step => step with { ToolId = "unsupported-ui-verification" }).ToArray() };
+                await preparation.RunValidationSetAsync();
+                Check("a failed preparation preserves the last complete rows, timestamp and evidence",
+                    preparation.AllSamples.SequenceEqual(previousResult) && preparation.ValidationSetLastRunAt == previousTime
+                    && preparation.ValidationEvidenceDistributions.SequenceEqual(previousEvidence) && preparation.ValidationEvidenceSummary == previousEvidenceSummary
+                    && preparation.ValidationSetSummary == preparationError && string.IsNullOrEmpty(preparation.ValidationSetRunNoticeText),
+                    preparation.ValidationSetSummary);
+            }
+            finally
+            {
+                document = executableDocument;
+            }
 
             Check("feature notifications retain owning sender and count/selection names", notificationSendersMatch
                 && notificationNames.Contains(nameof(ValidationSetWorkspaceViewModel.ValidationSetAllCount))
@@ -1205,12 +1259,21 @@ internal static class ValidationSetWorkspaceViewModelVerification
                         if (editOnRunning) { editOnRunning = false; workbench.PipelineSteps[0].OutputEnabled = !originalEnabled; }
                         if (cancelOnRunning) workbench.CancelValidationSetCommand.Execute(null);
                     };
+                    var changedDuringRun = workbench.RunValidationSetAsync();
+                    PumpUntil(() => changedDuringRun.IsCompleted);
+                    changedDuringRun.GetAwaiter().GetResult();
+                    check($"{language} changing the calculation during execution discards its results", !editOnRunning
+                        && workbench.ValidationSetLastRunAt is null && !workbench.HasValidationResults, workbench.ValidationSetRunNoticeText);
+                    workbench.PipelineSteps[0].OutputEnabled = originalEnabled;
                     var run = workbench.RunValidationSetAsync();
                     check($"{language} explicit run enters owned progress with actual command state", workbench.IsValidationSetRunning && !workbench.RunValidationSetCommand.CanExecute(null)
                         && workbench.CancelValidationSetCommand.CanExecute(null), $"elapsed={workbench.ValidationSetElapsedText};no simulated progress");
                     PumpUntil(() => run.IsCompleted);
                     run.GetAwaiter().GetResult();
-                    check($"{language} live applied edit leaves completed captured basis stale", workbench.ValidationSetLastRunAt is not null
+                    check($"{language} unchanged execution publishes its completed comparison basis", workbench.ValidationSetLastRunAt is not null
+                        && !workbench.IsValidationSetStale && workbench.HasValidationResults, workbench.ValidationSetRunBasisText);
+                    workbench.PipelineSteps[0].OutputEnabled = !originalEnabled;
+                    check($"{language} an applied edit after completion marks the captured basis stale", workbench.ValidationSetLastRunAt is not null
                         && workbench.IsValidationSetStale && workbench.ValidationSetRunBasisText.Contains(nameAtRun)
                         && workbench.ValidationSetRunBasisText.Contains(language == global::OpenVisionLab.OpenVisionLanguage.Korean ? "저장 전 변경" : "unsaved changes"), workbench.ValidationSetRunBasisText);
                     check($"{language} actual long progress renders both container widths", capturedProgress.SetEquals(new[] { 956, 1600 }), $"captured={string.Join(',', capturedProgress)};no simulated progress");
