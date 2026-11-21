@@ -266,6 +266,42 @@ internal static class HeightMeasurementSnapshotVerification
             step.OutputEnabled = true;
             step.UpdateResultPresentation(string.Empty, string.Empty, false, false);
             Check("cleared result has no stale failure decoration", !step.FlowNodeStatusIsFailure && step.ResultValueSummary.Length == 0, step.FlowNodeStatusLabel);
+            // 휨 결과 표: 출력(P–V, RMS)마다 행을 두고 허용 범위는 "≤ 상한", 상태는 출력별 상한 초과로 표시한다.
+            var warpageStep = new ToolWorkbenchPipelineStepItem("step.warpage", ToolWorkbenchToolCatalog.Create().Single(item => item.Id == "warpage"),
+                string.Join("; ", initialInputIds), "warpage.output", []);
+            Metric[] WarpageMetrics(double peakToValley, double rms) =>
+                [new("PeakToValley", MetricKind.Deviation, peakToValley, "raw-height"), new("Rms", MetricKind.Deviation, rms, "raw-height"),
+                    new("ValidSampleCount", MetricKind.Count, 23040, "count"),
+                    new("MaximumPeakToValley", MetricKind.Deviation, 5, "raw-height"), new("MaximumRms", MetricKind.Deviation, 2, "raw-height")];
+            TeachingMeasurementResultItem WarpageRow(Metric[] rowMetrics, ResultStatus? execution = ResultStatus.Fail) =>
+                new(warpageStep, execution == ResultStatus.Fail ? "Fail" : "Pass", "PeakToValley: 1", "raw-height",
+                    "MaximumPeakToValley: 5 raw-height; MaximumRms: 2 raw-height", "reason", true, rowMetrics) { ExecutionStatus = execution, Sequence = 9 };
+            var bothExceed = WarpageRow(WarpageMetrics(7.93, 2.11));
+            var bothExceedRms = bothExceed with { OutputMetricName = "Rms", IsSecondaryOutput = true };
+            Check("warpage table shows P–V and RMS as separate output rows with plain limits",
+                bothExceed.OutputName == "P–V" && bothExceedRms.OutputName == "RMS"
+                && bothExceed.DisplayLimits == "≤ 5.00" && bothExceedRms.DisplayLimits == "≤ 2.00"
+                && !bothExceed.DisplayLimits.Contains("Maximum", StringComparison.Ordinal) && bothExceedRms.DisplayValue == "2.11",
+                $"{bothExceed.OutputName}:{bothExceed.DisplayLimits}|{bothExceedRms.OutputName}:{bothExceedRms.DisplayLimits}:{bothExceedRms.DisplayValue}");
+            Check("warpage secondary output row repeats neither the tool name, sequence, samples nor run time",
+                bothExceed.SequenceText == "09" && bothExceed.ToolNameText == warpageStep.ToolName && warpageStep.ToolName.Length > 0
+                && bothExceedRms.SequenceText.Length == 0 && bothExceedRms.ToolNameText.Length == 0
+                && bothExceedRms.ValidSamples.Length == 0 && bothExceedRms.RunTime.Length == 0 && !bothExceedRms.IsPrimaryOutput,
+                $"seq='{bothExceedRms.SequenceText}';tool='{bothExceedRms.ToolNameText}'");
+            Check("warpage output status marks each output that exceeds its own limit",
+                bothExceed.OutputStatusText == "NG" && bothExceedRms.OutputStatusText == "NG"
+                && bothExceedRms.OutputStatusReason.Contains("P–V 7.93 > 5", StringComparison.Ordinal) && bothExceedRms.OutputStatusReason.Contains("RMS 2.11 > 2", StringComparison.Ordinal),
+                bothExceedRms.OutputStatusReason);
+            var rmsOnly = WarpageRow(WarpageMetrics(4, 2.5));
+            var rmsOnlyRms = rmsOnly with { OutputMetricName = "Rms", IsSecondaryOutput = true };
+            Check("warpage P–V within its limit reads OK beside an RMS NG while the tool result stays NG",
+                rmsOnly.OutputStatusText == "OK" && rmsOnlyRms.OutputStatusText == "NG" && rmsOnly.State == "Fail" && rmsOnly.StatusText == "NG",
+                $"{rmsOnly.OutputStatusText}/{rmsOnlyRms.OutputStatusText}/{rmsOnly.State}");
+            var noLimitExceeded = WarpageRow(WarpageMetrics(4, 1));
+            Check("warpage NG without an exceeded limit keeps the tool-level status on every output",
+                noLimitExceeded.OutputStatusText == noLimitExceeded.StatusText && noLimitExceeded.OutputStatusReason == noLimitExceeded.Reason, noLimitExceeded.OutputStatusText);
+            var unjudged = WarpageRow(WarpageMetrics(7.93, 2.11), null);
+            Check("unjudged warpage keeps the stored limits text", unjudged.DisplayLimits == unjudged.Limits && unjudged.OutputStatusText == unjudged.StatusText, unjudged.DisplayLimits);
             var recipePathReads = 0;
             var mutationObserved = false;
             var logs = new List<string>();

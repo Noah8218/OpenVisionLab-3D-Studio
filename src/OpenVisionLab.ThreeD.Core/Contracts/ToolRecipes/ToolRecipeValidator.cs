@@ -561,7 +561,7 @@ public static class ToolRecipeValidator
             }
 
             if (validateStepContract
-                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
+                && ToolRecipeParameterContract.IsHeightMeasurementTool(step.ToolId))
             {
                 ValidateHeightMeasurementPrimaryInput(
                     step,
@@ -1860,20 +1860,10 @@ public static class ToolRecipeValidator
             errors.Add(
                 $"{label} Completeness Grid editable-region input '{inputs[2]}' must be an earlier EditableRegionArtifact.");
         }
-        var expected = step.ToolId switch
-        {
-            "thickness" => new[] { "MinimumThickness", "MaximumThickness", "MinimumValidSampleCount" },
-            "warpage" => new[] { "MaximumPeakToValley", "MaximumRms", "MinimumValidSampleCount" },
-            "point-pair-dimensions" => new[] { "ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees" },
-            "gap-flush" => new[] { "ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance" },
-            "volume" => new[] { "ExpectedNetVolume", "VolumeTolerance" },
-            "cross-section-dimensions" => new[] { "ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance" },
-            "completeness-grid" => [],
-            _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
-        };
+        var expected = ToolRecipeParameterContract.GetHeightMeasurementParameterNames(step.ToolId);
         var parameters = step.Parameters ?? [];
         if (!isCompleteness
-            && (parameters.Count != expected.Length
+            && (parameters.Count != expected.Count
                 || expected.Any(name =>
                     parameters.Count(parameter => parameter.Name == name) != 1)))
         {

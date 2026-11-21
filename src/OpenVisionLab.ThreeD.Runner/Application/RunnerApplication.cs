@@ -605,8 +605,11 @@ internal static class RunnerApplication
         string? requestedSourcePath,
         string reportPath,
         string? expectedStatus,
-        RunArtifactOptions runArtifacts)
+        RunArtifactOptions runArtifacts,
+        bool statusExitCodes = false)
     {
+        // 실제 리포트를 쓴 뒤(예: Run Record 저장 실패)에 발생한 오류가 그 리포트를 InputError로 덮어쓰지 않도록 기록한다.
+        var reportWritten = false;
         try
         {
             var fullRecipePath = Path.GetFullPath(recipePath);
@@ -634,8 +637,10 @@ internal static class RunnerApplication
                         $"Step|order={step.Order}|id={step.StepId}|toolId={step.ToolId}|tool={CleanReportValue(step.ToolName)}"
                         + $"|inputs={string.Join(";", document.Steps[step.Order - 1].InputEntityIds)}|output={step.OutputEntityId}"
                         + $"|outputSha256={step.OutputContentSha256}|status={step.Result.Status}|elapsedMs={step.Result.Elapsed.TotalMilliseconds:R}"
-                        + $"|levelFrameSha256={step.LevelFrameContentSha256}|levelFrameQualitySha256={step.LevelFrameQualityContentSha256}|frameChainSha256={step.FrameChainContentSha256}|metrics={step.Result.Metrics.Count}|overlays={step.Result.Overlays.Count}|message={CleanReportValue(step.Result.Message)}")
+                        + $"|levelFrameSha256={step.LevelFrameContentSha256}|levelFrameQualitySha256={step.LevelFrameQualityContentSha256}|frameChainSha256={step.FrameChainContentSha256}|metrics={step.Result.Metrics.Count}|overlays={step.Result.Overlays.Count}|message={CleanReportValue(step.Result.Message)}"
+                        + (OpenVisionLab.ThreeD.Reporting.RunRecords.ToolResultFailureCause.Describe(step.Result) is { Length: > 0 } cause ? $"|cause={CleanReportValue(cause)}" : string.Empty))
                 ]);
+            reportWritten = true;
 
             if (File.Exists(sourcePath))
             {
@@ -658,7 +663,17 @@ internal static class RunnerApplication
             }
 
             Console.WriteLine($"Ordered Tool Recipe Replay: {execution.Status} ({execution.Steps.Count}/{document.Steps.Count} steps)");
-            return execution.Status == ResultStatus.Error ? 4 : 0;
+            if (execution.Status == ResultStatus.Error)
+            {
+                return 4;
+            }
+
+            // 기본 종료 코드는 기존 호출자(검증 하네스, 스크립트)와의 호환을 위해 Fail도 0으로 유지한다.
+            // 생산 라인 스크립트가 불량을 종료 코드로 받을 수 있도록 --status-exit-codes를 준 경우에만 Fail을 6으로 낸다.
+            // --expect-status가 함께 있으면 기대와 일치한 시점에서 정상(0)으로 끝나, 불량을 기대하는 시험이 실패로 보이지 않는다.
+            return statusExitCodes && expectedStatus is null && execution.Status == ResultStatus.Fail
+                ? ToolRecipeFailExitCode
+                : 0;
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException
@@ -669,7 +684,55 @@ internal static class RunnerApplication
             or OverflowException)
         {
             Console.Error.WriteLine(exception.Message);
+            if (!reportWritten)
+            {
+                WriteToolRecipeInputErrorReport(reportPath, recipePath, requestedSourcePath, exception.Message);
+            }
+
             return 1;
+        }
+    }
+
+    /// <summary>
+    /// --status-exit-codes를 쓴 레시피 재생에서 Fail 판정이 반환하는 종료 코드.
+    /// 3(기대 상태 불일치), 4(Error)와 겹치지 않는 값이다.
+    /// </summary>
+    internal const int ToolRecipeFailExitCode = 6;
+
+    /// <summary>
+    /// 레시피·입력을 읽지 못해 실행이 시작되지 못한 경우에도 지정한 리포트 경로에 사유를 남긴다.
+    /// 이전 실행의 Pass 리포트가 그대로 남아 현재 실패를 가리지 않게 하려는 처리이며,
+    /// 리포트 쓰기 자체가 실패해도 원래 오류와 종료 코드 1은 유지한다.
+    /// </summary>
+    static void WriteToolRecipeInputErrorReport(string requestedReportPath, string recipePath, string? sourcePath, string message)
+    {
+        try
+        {
+            var reportFullPath = Path.GetFullPath(requestedReportPath);
+            // --report에 레시피나 입력 파일 경로를 잘못 준 경우 그 파일을 덮어쓰지 않는다.
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            if (string.Equals(reportFullPath, Path.GetFullPath(recipePath), comparison)
+                || (!string.IsNullOrWhiteSpace(sourcePath)
+                    && string.Equals(reportFullPath, Path.GetFullPath(sourcePath), comparison)))
+            {
+                Console.Error.WriteLine("Input error report was not written because --report names the recipe or source file.");
+                return;
+            }
+
+            File.WriteAllLines(
+                PrepareReportPath(requestedReportPath),
+                [
+                    "OrderedToolRecipeReplay|InputError|steps=0/0",
+                    $"Recipe|path={CleanReportValue(recipePath)}",
+                    $"Message|{CleanReportValue(message)}"
+                ]);
+        }
+        catch (Exception reportException) when (reportException is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or NotSupportedException)
+        {
+            Console.Error.WriteLine($"Input error report could not be written: {reportException.Message}");
         }
     }
 

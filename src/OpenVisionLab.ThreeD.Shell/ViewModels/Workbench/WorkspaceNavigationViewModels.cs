@@ -247,7 +247,8 @@ public sealed class ResultsWorkspaceViewModel : INotifyPropertyChanged, IDisposa
         if (disposed) return;
         if (teachingResultContext != recipeContext) hiddenTeachingResultLabels.Clear();
         teachingResultContext = recipeContext;
-        teachingResultRows = rows.ToArray();
+        // 같은 도구의 보조 출력 행(예: 휨의 RMS)은 표에만 보이고 3D 형상 위 결과 라벨은 도구마다 하나다.
+        teachingResultRows = rows.Where(row => !row.IsSecondaryOutput).ToArray();
         var keys = new HashSet<string>(StringComparer.Ordinal);
         var repeatedRoiTools = teachingResultRows.Where(row => row.Step.ToolId is "thickness" or "warpage")
             .GroupBy(row => row.Step.ToolId).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.Ordinal);

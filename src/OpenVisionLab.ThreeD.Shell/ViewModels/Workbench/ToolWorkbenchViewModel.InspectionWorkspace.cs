@@ -38,7 +38,7 @@ public sealed partial class ToolWorkbenchViewModel
         && teachingResultComparisons.TryGetValue(step.Id, out var comparison)
         ? $"{comparison.Previous} → {comparison.Value} {comparison.Unit} · {comparison.Status}"
             + (SelectedTeachingResult?.IsCurrent == false ? " · " + Localize("다시 실행 필요", "Run again") : string.Empty) : Localize("변경 전 결과 없음", "No earlier result");
-    public IReadOnlyList<TeachingResultSummaryItem> TeachingResultSummary => TeachingResults.GroupBy(row => row.State)
+    public IReadOnlyList<TeachingResultSummaryItem> TeachingResultSummary => TeachingResults.Where(row => !row.IsSecondaryOutput).GroupBy(row => row.State)
         .Select(group => new TeachingResultSummaryItem(group.Key, group.First().StatusText, group.First().StatusIcon,
             group.Select(row => row.Step.Id).Distinct(StringComparer.Ordinal).Count())).ToArray();
     public TeachingMeasurementResultItem? SelectedTeachingResult
@@ -488,10 +488,21 @@ public sealed partial class ToolWorkbenchViewModel
             Sequence = PipelineSteps.IndexOf(row.Step) + 1,
             IsSelectedTool = ReferenceEquals(row.Step, SelectedPipelineStep),
             DisplayedOutput = DisplayedOutputs.FirstOrDefault(output => string.Equals(output.Id, row.Step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
-        }));
+        }).SelectMany(row => WithSecondaryOutputRows(row)));
         OnPropertyChanged(nameof(HasTeachingResults));
         OnPropertyChanged(nameof(TeachingResultSummary));
         OnPropertyChanged(nameof(SelectedTeachingResult));
+    }
+
+    // 판정 출력이 둘 이상인 도구는 출력마다 표 행을 하나씩 둔다(시안 v5의 결과 표 규칙). 휨은 P–V와 RMS 두 출력이다.
+    // 보조 출력 행은 같은 도구·같은 판정 결과를 보여 주는 표시 행이며 실행·판정·저장 상태를 따로 갖지 않는다.
+    private static IEnumerable<TeachingMeasurementResultItem> WithSecondaryOutputRows(TeachingMeasurementResultItem row)
+    {
+        yield return row;
+        if (row.Step.ToolId == "warpage" && row.Metrics.Any(metric => metric.Name == "Rms" && double.IsFinite(metric.Value)))
+        {
+            yield return row with { OutputMetricName = "Rms", IsSecondaryOutput = true, ResultLabel = new() };
+        }
     }
 
     internal static Metric? SelectPrimaryMeasurementMetric(string toolId, IReadOnlyList<Metric> metrics)
@@ -527,6 +538,11 @@ public sealed partial class ToolWorkbenchViewModel
         "One or more measured H-axis separations from the fitted reference surface exceed the limits." => ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.ThicknessOutsideLimits", "기준면과의 높이 차이 중 규격을 벗어난 값이 있습니다.", result.Message),
         "Datum-plane raw-height residuals are within the local limit. Source C3D is unchanged." => ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.DatumWithinLimits", "기준면 높이 편차가 규격 안에 있습니다.", "Datum-plane height deviation is within limits."),
         "Datum-plane raw-height residuals exceed the local limit. Source C3D is unchanged." => ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.DatumOutsideLimits", "기준면 높이 편차가 규격을 벗어났습니다.", "Datum-plane height deviation exceeds the limit."),
+        // 휨 SDK 메시지는 선언 단위가 문장 중간에 들어가므로 앞부분으로 구분한다. 한국어 화면에서만 바꾸고 원문은 결과에 그대로 남는다.
+        var warpage when warpage.StartsWith("Warpage residuals are within tolerance.", StringComparison.Ordinal) =>
+            ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.WarpageWithinLimits", "평면 대비 편차가 모두 규격 안에 있습니다.", result.Message),
+        var warpage when warpage.StartsWith("Warpage residuals are outside tolerance.", StringComparison.Ordinal) =>
+            ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.WarpageOutsideLimits", "평면 대비 편차가 규격을 벗어났습니다.", result.Message),
         _ => result.Message
     };
 

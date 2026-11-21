@@ -100,6 +100,16 @@ public partial class SelectedToolWorkspaceView : UserControl
 
     private void OnShowParameterSettingsClicked(object sender, RoutedEventArgs args) => RevealParameterSettings();
 
+    // Tab으로 들어온 숫자칸은 기존 값을 전부 선택해 새로 입력한 숫자가 뒤에 붙지 않게 한다.
+    // 마우스로 클릭해 들어온 경우에는 클릭 위치에 캐럿을 두는 기존 동작을 유지한다.
+    private void OnRectangleEditorGotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs args)
+    {
+        if (sender is TextBox editor && System.Windows.Input.Mouse.LeftButton != System.Windows.Input.MouseButtonState.Pressed)
+        {
+            editor.SelectAll();
+        }
+    }
+
     public void RevealParameterSettings()
     {
         EditorDetailTab.IsChecked = true;
@@ -116,6 +126,12 @@ public partial class SelectedToolWorkspaceView : UserControl
 
     public void BringOutputIntoView()
     {
+        // 판정 탭에서 한계를 고친 뒤 실행하는 흐름이므로, 결과는 하단 결과 표에 나오고 사용자가 보던 판정 탭은 유지한다.
+        if (EditorJudgmentTab.IsChecked == true)
+        {
+            return;
+        }
+
         EditorDetailTab.IsChecked = true;
         DetailIoTab.IsChecked = true;
         SettingsDetails.IsExpanded = true;

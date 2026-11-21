@@ -55,17 +55,9 @@ internal static class ToolRecipeOrderedGraphStepExecutor
         "signed-delta-background-subtraction"
     };
 
-    private static readonly HashSet<string> MeasurementToolIds = new(StringComparer.Ordinal)
-    {
-        "thickness",
-        "warpage",
-        "plane-flatness",
-        "point-pair-dimensions",
-        "gap-flush",
-        "volume",
-        "cross-section-dimensions",
-        "completeness-grid"
-    };
+    // 도구 ID 집합은 Core의 ToolRecipeParameterContract가 소유한다. 구조 가드가 HashSet 선언 형태를 요구해 복사본으로 채운다.
+    private static readonly HashSet<string> MeasurementToolIds =
+        new(ToolRecipeParameterContract.HeightMeasurementToolIds, StringComparer.Ordinal);
 
     public static bool IsSupported(string toolId) => SupportedToolIds.Contains(toolId);
 

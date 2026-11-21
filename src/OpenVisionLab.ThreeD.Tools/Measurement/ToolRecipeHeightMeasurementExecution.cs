@@ -74,20 +74,7 @@ public static class ToolRecipeHeightMeasurementExecution
 
     private const string ThicknessReferenceAxisAdapterVersion = "double-reference-axes-v1";
 
-    private static readonly string[] ThicknessParameterNames =
-        ["MinimumThickness", "MaximumThickness", "MinimumValidSampleCount"];
-    private static readonly string[] WarpageParameterNames =
-        ["MaximumPeakToValley", "MaximumRms", "MinimumValidSampleCount"];
-    private static readonly string[] PlaneFlatnessParameterNames =
-        ["MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount"];
-    private static readonly string[] PointPairParameterNames =
-        ["ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees"];
-    private static readonly string[] GapFlushParameterNames =
-        ["ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance"];
-    private static readonly string[] VolumeParameterNames =
-        ["ExpectedNetVolume", "VolumeTolerance"];
-    private static readonly string[] CrossSectionParameterNames =
-        ["ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance"];
+    // 파라미터 이름 목록은 Core의 ToolRecipeParameterContract가 소유한다(레시피 검증기와 같은 목록).
 
     public static ToolRecipeHeightMeasurementEvaluation Execute(
         ToolRecipeDocument document,
@@ -618,7 +605,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Inspection recipe must contain exactly one step with ID '{stepId}'.");
-            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"))
+            if (!ToolRecipeParameterContract.IsHeightMeasurementTool(step.ToolId))
             {
                 throw new InvalidDataException($"Step '{step.Id}' is not a supported height measurement adapter.");
             }
@@ -877,20 +864,10 @@ public static class ToolRecipeHeightMeasurementExecution
 
     private static void ValidateParameters(ToolRecipeStep step)
     {
-        var expected = step.ToolId switch
-        {
-            "thickness" => ThicknessParameterNames,
-            "warpage" => WarpageParameterNames,
-            "point-pair-dimensions" => PointPairParameterNames,
-            "gap-flush" => GapFlushParameterNames,
-            "volume" => VolumeParameterNames,
-            "cross-section-dimensions" => CrossSectionParameterNames,
-            "completeness-grid" => [],
-            _ => PlaneFlatnessParameterNames
-        };
+        var expected = ToolRecipeParameterContract.GetHeightMeasurementParameterNames(step.ToolId);
         var parameters = step.Parameters ?? [];
         if (step.ToolId != "completeness-grid"
-            && (parameters.Count != expected.Length
+            && (parameters.Count != expected.Count
                 || expected.Any(name =>
                     parameters.Count(parameter => parameter.Name == name) != 1)))
         {

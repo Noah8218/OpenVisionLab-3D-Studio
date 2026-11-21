@@ -351,7 +351,7 @@ internal static class RunnerCommandRouter
         {
             if (reportPath is null)
             {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--expect-status Pass|Fail|Warning|Error] [--run-record <json> --html-report <html> --csv-report <csv>]");
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--expect-status Pass|Fail|Warning|Error] [--status-exit-codes] [--run-record <json> --html-report <html> --csv-report <csv>]");
                 return 2;
             }
             return RunToolRecipe(
@@ -359,7 +359,8 @@ internal static class RunnerCommandRouter
                 toolRecipeSourcePath,
                 reportPath,
                 expectedStatus,
-                runArtifacts);
+                runArtifacts,
+                args.Contains("--status-exit-codes", StringComparer.OrdinalIgnoreCase));
         }
 
         if (toolTeachingFilterPath is not null)
@@ -918,7 +919,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-vision-sdk-3d --report <path>");
-        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--status-exit-codes] [--run-record <json> --html-report <html> --csv-report <csv>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-teaching-height-threshold-background-removal <recipe> --tool-teaching-step <id> --output-c3d <path> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] [--surface-match-runtime <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");

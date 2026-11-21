@@ -11,6 +11,10 @@ Studio.
   independently editable Thickness steps and 16 artifact-owned
   `GridRectangle` selections.
 - `oriented-box-demo.ov3d-recipe.json`: numeric `OrientedBox3D` UI example.
+- `warpage-demo.ov3d-recipe.json`: two Warpage steps on pad 1. The plateau ROI
+  passes. The ROI that spans the datum strip and the raised plateau fails by
+  design, because the 8 `raw-height` step is not planar. Limits are
+  `MaximumPeakToValley` 5 and `MaximumRms` 2.
 - `ground-truth.json`: source identity, ROI coordinates,
   and expected signed height separation for every pad.
 - `source-height-preview.png`: height-map preview with cyan

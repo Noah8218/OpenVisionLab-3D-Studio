@@ -429,7 +429,7 @@ public sealed partial class ToolWorkbenchViewModel
         undoSelectedStepParametersCommand = new RelayCommand(_ => UndoSelectedStepParameters(),
             _ => !IsReadOnlySampleView && CanEditFlowConnection && !HasPendingFlowConnection && HasSelectedStepParameterHistory);
         applySelectedStepParameterDraftCommand = new RelayCommand(
-            _ => TryApplySelectedStepParameterDraft(out var _),
+            _ => ApplySelectedStepParameterDraftAndStartJudgement(),
             _ => CanEditSelectedStepParameters && IsSelectedStepPropertyGridSupported && HasPendingStepParameterChanges);
         discardSelectedStepParameterDraftCommand = new RelayCommand(
             _ => DiscardSelectedStepParameterDraft(),
@@ -562,6 +562,30 @@ public sealed partial class ToolWorkbenchViewModel
         return true;
     }
 
+    // 판정 한계(최대·최소·허용 범위)를 고쳐 적용하면 그 도구는 바로 판정을 시작한다.
+    // 한계를 건드리지 않은 적용(예: 최소 유효 샘플 수만 변경)은 규격 설정 여부를 바꾸지 않는다.
+    // 값만 측정하던 단계가 한계 입력과 같은 적용 한 번으로 판정 단계가 되며, 이 변경은 되돌리기 한 항목으로 묶는다.
+    private void ApplySelectedStepParameterDraftAndStartJudgement()
+    {
+        if (SelectedPipelineStep is not { } step || step.AcceptanceLimitsConfigured != false)
+        {
+            TryApplySelectedStepParameterDraft(out _);
+            return;
+        }
+
+        static string LimitSignature(ToolWorkbenchPipelineStepItem item) => string.Join("|", item.Parameters
+            .Where(parameter => !parameter.Name.Contains("SampleCount", StringComparison.Ordinal))
+            .Select(parameter => $"{parameter.Name}={parameter.Value}"));
+        var before = CreateDocument();
+        var limitsBefore = LimitSignature(step);
+        var historyCount = appliedStepParameters.GetValueOrDefault(step.Id)?.Count ?? 0;
+        if (!TryApplySelectedStepParameterDraft(out _) || LimitSignature(step) == limitsBefore) return;
+        if ((appliedStepParameters.GetValueOrDefault(step.Id)?.Count ?? 0) > historyCount) appliedStepParameters[step.Id].Pop();
+        step.AcceptanceLimitsConfigured = true;
+        RememberAppliedStepChange(step, before, Localize("값만 측정 → 판정 규격 적용", "Measure values only → apply acceptance limits"));
+        NotifyStepParameterHistory();
+        RefreshSelectedToolWorkspaceProjection();
+    }
     public bool TryApplySelectedStepParameterDraft(out string message)
     {
         if (IsReadOnlySampleView)

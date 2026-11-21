@@ -1,0 +1,111 @@
+{
+    "schemaVersion":  "1.5",
+    "name":  "Thickness Coupon v1 Warpage Demo",
+    "source":  {
+                   "id":  "source.thickness-coupon-v1",
+                   "name":  "Thickness Coupon v1",
+                   "format":  "C3D",
+                   "unit":  "raw-height",
+                   "frameId":  "frame.c3d-grid-index",
+                   "path":  "thickness-coupon-v1.C3D",
+                   "byteLength":  4300808,
+                   "contentSha256":  "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
+                   "gridWidth":  1280,
+                   "gridHeight":  840
+               },
+    "references":  [
+
+                   ],
+    "steps":  [
+                  {
+                      "id":  "step.pad-01.warpage-plateau",
+                      "toolId":  "warpage",
+                      "toolName":  "Pad 1 Plateau Warpage",
+                      "minimumInputCount":  2,
+                      "inputEntityIds":  [
+                                             "source.thickness-coupon-v1",
+                                             "selection.pad-01.warpage-plateau"
+                                         ],
+                      "outputEntityId":  "derived.pad-01.warpage-plateau",
+                      "parameters":  [
+                                         {
+                                             "name":  "MaximumPeakToValley",
+                                             "value":  "5"
+                                         },
+                                         {
+                                             "name":  "MaximumRms",
+                                             "value":  "2"
+                                         },
+                                         {
+                                             "name":  "MinimumValidSampleCount",
+                                             "value":  "100"
+                                         }
+                                     ]
+                  },
+                  {
+                      "id":  "step.pad-01.warpage-across-step",
+                      "toolId":  "warpage",
+                      "toolName":  "Pad 1 Across Datum Step Warpage",
+                      "minimumInputCount":  2,
+                      "inputEntityIds":  [
+                                             "source.thickness-coupon-v1",
+                                             "selection.pad-01.warpage-across-step"
+                                         ],
+                      "outputEntityId":  "derived.pad-01.warpage-across-step",
+                      "parameters":  [
+                                         {
+                                             "name":  "MaximumPeakToValley",
+                                             "value":  "5"
+                                         },
+                                         {
+                                             "name":  "MaximumRms",
+                                             "value":  "2"
+                                         },
+                                         {
+                                             "name":  "MinimumValidSampleCount",
+                                             "value":  "100"
+                                         }
+                                     ]
+                  }
+              ],
+    "selections":  [
+                       {
+                           "id":  "selection.pad-01.warpage-plateau",
+                           "name":  "Pad 1 Plateau Warpage ROI",
+                           "kind":  "grid-rectangle",
+                           "rootSourceId":  "source.thickness-coupon-v1",
+                           "frameId":  "frame.c3d-grid-index",
+                           "sourceBinding":  {
+                                                 "format":  "C3D",
+                                                 "contentSha256":  "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
+                                                 "gridWidth":  1280,
+                                                 "gridHeight":  840
+                                             },
+                           "gridRectangle":  {
+                                                 "row":  156,
+                                                 "column":  196,
+                                                 "rowCount":  144,
+                                                 "columnCount":  90
+                                             }
+                       },
+                       {
+                           "id":  "selection.pad-01.warpage-across-step",
+                           "name":  "Pad 1 Across Datum Step ROI",
+                           "kind":  "grid-rectangle",
+                           "rootSourceId":  "source.thickness-coupon-v1",
+                           "frameId":  "frame.c3d-grid-index",
+                           "sourceBinding":  {
+                                                 "format":  "C3D",
+                                                 "contentSha256":  "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
+                                                 "gridWidth":  1280,
+                                                 "gridHeight":  840
+                                             },
+                           "gridRectangle":  {
+                                                 "row":  156,
+                                                 "column":  128,
+                                                 "rowCount":  144,
+                                                 "columnCount":  160
+                                             }
+                       }
+                   ]
+}

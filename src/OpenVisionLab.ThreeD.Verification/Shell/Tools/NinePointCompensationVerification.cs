@@ -685,14 +685,14 @@ internal static class NinePointCompensationVerification
                 { SourceBinding = label.Anchor.SourceBinding with { Format = "TransformedHeightField" } }, source)
                 && !TeachingSelectionSourcePolicy.IsCurrentC3DGrid(label.Anchor with
                 { SourceBinding = label.Anchor.SourceBinding with { Format = "MeasurementResult" } }, source));
-            Check("caption exposes declared unit and OK without changing raw data", label.Caption == "8 raw-height OK"
+            Check("caption exposes declared unit and OK without changing raw data", label.Caption == "8 OK"
                 && label.Value == workbench.TeachingResults.Single(row => row.Step.Id == "step.height").Metrics.Single(metric => metric.Name == "Mean").Value);
-            Check("NG, stale and unjudged captions are distinct", (label with { Status = ResultStatus.Fail }).Caption == "× 8 raw-height NG"
-                && (label with { IsCurrent = false }).Caption == "↻ 8 raw-height"
-                && (label with { Status = null }).Caption == "8 raw-height");
+            Check("NG, stale and unjudged captions are distinct", (label with { Status = ResultStatus.Fail }).Caption == "× 8 NG"
+                && (label with { IsCurrent = false }).Caption == "↻ 8"
+                && (label with { Status = null }).Caption == "8");
             Check("error and signed zero/negative values are not fabricated or hidden", (label with { Value = null, ValueText = "오류", Status = ResultStatus.Error }).Caption == "! 오류"
-                && (label with { Value = -8, ValueText = "-8", Status = ResultStatus.Fail }).Caption == "× -8 raw-height NG"
-                && (label with { Value = 0, ValueText = "0" }).Caption == "0 raw-height OK");
+                && (label with { Value = -8, ValueText = "-8", Status = ResultStatus.Fail }).Caption == "× -8 NG"
+                && (label with { Value = 0, ValueText = "0" }).Caption == "0 OK");
             var rowsBeforeHide = workbench.TeachingResults.ToArray();
             workspace.ToggleTeachingResultLabelCommand.Execute(rowsBeforeHide.Single(row => row.Step.Id == "step.height").ResultLabel);
             Check("existing hide control changes display only", !workspace.TeachingResultLabels.Single().IsVisible
@@ -860,7 +860,7 @@ internal static class NinePointCompensationVerification
                 if (labels.Count == 0) continue;
                 var sample = labels[0];
                 var single = sample with { RegionName = null, StateText = null };
-                Check(tool + " single-result caption unchanged: " + status, single.Caption == single.ValueText + " raw-height"
+                Check(tool + " single-result caption unchanged: " + status, single.Caption == single.ValueText
                     && (single with { Status = ResultStatus.Pass }).Caption.EndsWith(" OK", StringComparison.Ordinal)
                     && (single with { Status = ResultStatus.Fail }).Caption.StartsWith("× ", StringComparison.Ordinal));
                 workspace.RefreshTeachingResultLabels(rows.Select(row => row with { IsCurrent = false }).ToArray(), document.Selections!, path);

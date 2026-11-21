@@ -128,6 +128,10 @@
                             <Trigger Property="Validation.HasError" Value="True">
                                 <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
                             </Trigger>
+                            <Trigger Property="IsReadOnly" Value="True">
+                                <Setter TargetName="ContentBorder" Property="Background" Value="Transparent" />
+                                <Setter TargetName="ContentBorder" Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
                                 <Setter TargetName="FocusOutline" Property="Visibility" Value="Collapsed" />
@@ -1455,25 +1459,25 @@
                                     <StackPanel Margin="0,0,3,4">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartColumn, Korean='시작 열', English='Start column'}" />
-                                        <TextBox x:Name="GridRectangleColumnEditor" Text="{Binding TeachingGridRectangleColumnText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox x:Name="GridRectangleColumnEditor" GotKeyboardFocus="OnRectangleEditorGotKeyboardFocus" Text="{Binding TeachingGridRectangleColumnText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartColumn, Korean='시작 열', English='Start column'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="3,0,0,4">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartRow, Korean='시작 행', English='Start row'}" />
-                                        <TextBox x:Name="GridRectangleRowEditor" Text="{Binding TeachingGridRectangleRowText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox x:Name="GridRectangleRowEditor" GotKeyboardFocus="OnRectangleEditorGotKeyboardFocus" Text="{Binding TeachingGridRectangleRowText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleStartRow, Korean='시작 행', English='Start row'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Margin="0,0,3,0">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleColumns, Korean='열 수', English='Columns'}" />
-                                        <TextBox x:Name="GridRectangleColumnCountEditor" Text="{Binding TeachingGridRectangleColumnCountText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox x:Name="GridRectangleColumnCountEditor" GotKeyboardFocus="OnRectangleEditorGotKeyboardFocus" Text="{Binding TeachingGridRectangleColumnCountText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleColumns, Korean='열 수', English='Columns'}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="3,0,0,0">
                                         <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.RectangleRows, Korean='행 수', English='Rows'}" />
-                                        <TextBox x:Name="GridRectangleRowCountEditor" Text="{Binding TeachingGridRectangleRowCountText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        <TextBox x:Name="GridRectangleRowCountEditor" GotKeyboardFocus="OnRectangleEditorGotKeyboardFocus" Text="{Binding TeachingGridRectangleRowCountText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                  AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RectangleRows, Korean='행 수', English='Rows'}" />
                                     </StackPanel>
                                 </Grid>

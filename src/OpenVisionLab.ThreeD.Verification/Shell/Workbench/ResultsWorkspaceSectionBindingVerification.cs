@@ -412,7 +412,7 @@ internal static class ResultsWorkspaceSectionBindingVerification
         checks.Add(("FilterRestoresAllRowsAndBindingAtCompactWidth",
             filter.IsChecked == false && sameStepRow.Visibility == Visibility.Visible && otherRow.Visibility == Visibility.Visible
                 && teachingTable.Columns.All(column => column.ActualWidth >= column.MinWidth)
-                && teachingTable.Columns.Sum(column => column.ActualWidth) > teachingTable.ActualWidth,
+                && teachingTable.Columns.Sum(column => column.ActualWidth) <= teachingTable.ActualWidth,
             $"table={teachingTable.ActualWidth:F1};columns={teachingTable.Columns.Sum(column => column.ActualWidth):F1}"));
         teachingOutput.AppendResult(teachingOutput.TeachingResults[0] with { Value = "Mean: 7.99999998656911", Unit = "raw-height", Reason = "기준면과의 높이 차이가 모두 규격 안에 있습니다." });
         view.Measure(new Size(434, 240));
@@ -463,9 +463,9 @@ internal static class ResultsWorkspaceSectionBindingVerification
         teachingOutput.SelectedTeachingResult = dense;
         view.Measure(new Size(970, 230)); view.Arrange(new Rect(0, 0, 970, 230)); view.UpdateLayout();
         var denseRow = (DataGridRow)teachingTable.ItemContainerGenerator.ContainerFromIndex(teachingTable.Items.Count - 1);
-        checks.Add(("NineColumnSelectedRowKeepsMockupDensityAndFullUnit",
-            teachingTable.Columns.Count == 9 && denseRow.ActualHeight <= 33 && teachingTable.RowDetailsVisibilityMode == DataGridRowDetailsVisibilityMode.Collapsed,
-            $"columns={teachingTable.Columns.Count};selectedRow={denseRow.ActualHeight:F2}"));
+        checks.Add(("EightColumnSelectedRowKeepsMockupDensityAndFullUnit",
+            teachingTable.Columns.Count == 8 && denseRow.ActualHeight <= 33 && teachingTable.RowDetailsVisibilityMode == DataGridRowDetailsVisibilityMode.Collapsed,
+            $"columns={teachingTable.Columns.Count};selectedRow={denseRow.ActualHeight:F2};table={teachingTable.ActualWidth:F1};widths={string.Join(",", teachingTable.Columns.Select(column => column.ActualWidth.ToString("F0")))}"));
         var detailsButton = (ToggleButton)view.FindName("TeachingDetailsButton");
         var detailPopup = (Popup)view.FindName("TeachingDetailsPopup");
         var detailContent = (Border)view.FindName("TeachingDetailsContent");
@@ -501,23 +501,22 @@ internal static class ResultsWorkspaceSectionBindingVerification
                 $"header={drawerHeader.ActualHeight};grip={grip.ActualWidth}x{grip.ActualHeight};layers={layers.ActualWidth}x{layers.ActualHeight};menu={dockMenu.ActualWidth}x{dockMenu.ActualHeight};pin={dockPin.ActualWidth}x{dockPin.ActualHeight}"));
             var headerEdges = new List<string>();
             var headersAligned = true;
-            for (var columnIndex = 1; columnIndex < 9; columnIndex++)
+            for (var columnIndex = 1; columnIndex < 8; columnIndex++)
             {
                 var columnHeader = FindVisual<DataGridColumnHeader>(teachingTable, header => ReferenceEquals(header.Column, teachingTable.Columns[columnIndex]));
                 var headerText = FindVisual<ContentPresenter>(columnHeader);
-                var rightAligned = columnIndex is 3 or 4 or 7;
+                var rightAligned = columnIndex is 3 or 4;
                 var edge = headerText is null ? double.NaN : headerText.TransformToAncestor(columnHeader!).Transform(new Point()).X + (rightAligned ? headerText.ActualWidth : 0);
                 var expectedEdge = rightAligned ? columnHeader?.ActualWidth - 10 : 10;
                 headersAligned &= expectedEdge.HasValue && Math.Abs(edge - expectedEdge.Value) < 1;
                 headerEdges.Add($"{columnIndex}:{(rightAligned ? "right" : "left")}:{edge:F2}/{expectedEdge:F2}");
             }
             checks.Add(("TeachingNumericHeaderAlignmentUsesRenderedContentEdges", headersAligned, string.Join(",", headerEdges)));
-            var headerTimeCell = FindVisual<TextBlock>(teachingTable.Columns[8].GetCellContent(dense), text => text.Text == dense.RunTime);
+            var headerTimeCell = FindVisual<TextBlock>(teachingTable.Columns[7].GetCellContent(dense), text => text.Text == dense.RunTime);
             var limitsCell = FindVisual<TextBlock>(teachingTable.Columns[4].GetCellContent(dense), text => text.Text == dense.DisplayLimits);
-            var samplesCell = FindVisual<TextBlock>(teachingTable.Columns[7].GetCellContent(dense), text => text.Text == dense.ValidSamples);
             checks.Add(("TeachingTimeStartsLeftAndMetadataUsesSecondaryColor",
-                headerTimeCell?.TextAlignment == TextAlignment.Left && new[] { headerTimeCell, limitsCell, samplesCell }.All(text => text?.Foreground is SolidColorBrush brush && brush.Color == Color.FromRgb(152, 152, 152)),
-                $"time={headerTimeCell?.TextAlignment};colors={string.Join(",", new[] { headerTimeCell, limitsCell, samplesCell }.Select(text => text?.Foreground))}"));
+                headerTimeCell?.TextAlignment == TextAlignment.Left && new[] { headerTimeCell, limitsCell }.All(text => text?.Foreground is SolidColorBrush brush && brush.Color == Color.FromRgb(152, 152, 152)),
+                $"time={headerTimeCell?.TextAlignment};colors={string.Join(",", new[] { headerTimeCell, limitsCell }.Select(text => text?.Foreground))}"));
             checks.Add(("TeachingDockActionsRemainDisabledWithoutOwner", !dockPin.IsEnabled && !grip.IsEnabled && !((MenuItem)view.FindName("TeachingResultsAutoHideAction")).IsEnabled, "missing native layout owner cannot invoke docking"));
             var hideCommand = new RecordingCommand();
             var dockModel = new AvalonDock.Layout.LayoutAnchorable { CanFloat = false, CanClose = false, CanHide = true };
@@ -622,7 +621,7 @@ internal static class ResultsWorkspaceSectionBindingVerification
             tableScroll.ScrollToRightEnd();
             view.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
             view.UpdateLayout();
-            var timeCell = teachingTable.Columns[8].GetCellContent(dense);
+            var timeCell = teachingTable.Columns[7].GetCellContent(dense);
             var timePosition = timeCell?.TransformToAncestor(teachingTable).Transform(new Point());
             checks.Add(("CompactHorizontalScrollReachesActualTimeAndPreservesSelection",
                 tableScroll.HorizontalOffset > 0 && timePosition is { X: >= 0 } && timePosition.Value.X < teachingTable.ActualWidth

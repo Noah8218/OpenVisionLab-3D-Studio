@@ -576,13 +576,19 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
         OnPropertyChanged(nameof(FlowNodeStatusIsFailure));
     }
 
+    // 결과 표(StatusText)가 쓰는 판정 표기와 같은 문자열이다.
+    private const string InspectionNgLabel = "NG";
+    private const string InspectionOkLabel = "OK";
+
     public string FlowNodeStatusLabel
     {
         get
         {
             if (!OutputEnabled || CanonicalState is InspectionStepState.Running or InspectionStepState.Error or InspectionStepState.Fail)
             {
-                return CanonicalStateLabel;
+                // 검사 NG는 계산·읽기 실패(오류)와 구분되도록 결과 표와 같은 "NG"로 표시한다.
+                // CanonicalState 값과 저장된 판정은 그대로다.
+                return OutputEnabled && CanonicalState == InspectionStepState.Fail ? InspectionNgLabel : CanonicalStateLabel;
             }
 
             if (InputPortHasIssue)
@@ -595,7 +601,12 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
                 return OutputPortState;
             }
 
-            if (!string.IsNullOrEmpty(resultStatusSummary)) return resultStatusSummary;
+            if (!string.IsNullOrEmpty(resultStatusSummary))
+            {
+                // 결과 표와 같은 판정 표기(OK/NG)로 맞춘다. 그 밖의 상태 문구(미판정, 이전 결과 등)는 그대로 둔다.
+                if (resultStatusSummary == ThreeDLocalization.Shared.ResultStatusLabel(ResultStatus.Fail)) return InspectionNgLabel;
+                return resultStatusSummary == ThreeDLocalization.Shared.ResultStatusLabel(ResultStatus.Pass) ? InspectionOkLabel : resultStatusSummary;
+            }
 
             if (OutputPortState == ThreeDLocalization.Shared.FlowPortDeclared
                 && CanonicalState is InspectionStepState.Empty or InspectionStepState.Ready)
@@ -744,21 +755,66 @@ public sealed record TeachingMeasurementResultItem(
     public DateTimeOffset? RecordedAt { get; init; }
     public ResultStatus? ExecutionStatus { get; init; }
     public ToolWorkbenchDisplayedOutputItem? DisplayedOutput { get; init; }
-    public string SequenceText => Sequence > 0 ? Sequence.ToString("00", CultureInfo.InvariantCulture) : string.Empty;
-    private Metric? PrimaryMetric => ToolWorkbenchViewModel.SelectPrimaryMeasurementMetric(Step.ToolId, Metrics);
+    // 판정 출력이 둘 이상인 도구는 출력마다 표 행을 둔다. 값 없이 이름만 있으면 그 지표를 이 행의 출력으로 쓴다.
+    public string? OutputMetricName { get; init; }
+    public bool IsSecondaryOutput { get; init; }
+    public bool IsPrimaryOutput => !IsSecondaryOutput;
+    public string SequenceText => Sequence > 0 && !IsSecondaryOutput ? Sequence.ToString("00", CultureInfo.InvariantCulture) : string.Empty;
+    public string ToolNameText => IsSecondaryOutput ? string.Empty : Step.ToolName;
+    private Metric? PrimaryMetric => OutputMetricName is { } name
+        ? Metrics.FirstOrDefault(metric => metric.Name == name)
+        : ToolWorkbenchViewModel.SelectPrimaryMeasurementMetric(Step.ToolId, Metrics);
+    private static string OutputDisplayName(string metricName) => metricName switch
+    {
+        "PeakToValley" => "P–V",
+        "Rms" => "RMS",
+        _ => metricName
+    };
+    // 이 출력의 상한 지표(MaximumX). 규격을 설정해 판정한 현재 결과에서만 쓴다.
+    private Metric? OutputUpperLimit => IsCurrent && ExecutionStatus is not null && PrimaryMetric is { } metric
+        ? Metrics.FirstOrDefault(item => item.Name == "Maximum" + metric.Name && double.IsFinite(item.Value))
+        : null;
+    // 도구가 NG일 때 이 출력이 자기 상한을 넘었는지. 어느 출력도 상한을 넘지 않은 NG(예: 유효 비율 부족)는 도구 판정을 그대로 보인다.
+    private bool? OutputExceedsLimit
+    {
+        get
+        {
+            if (State is not "Fail" || OutputUpperLimit is not { } limit || PrimaryMetric is not { } metric || !double.IsFinite(metric.Value)) return null;
+            var anyExceeds = Metrics.Any(item => double.IsFinite(item.Value)
+                && Metrics.FirstOrDefault(max => max.Name == "Maximum" + item.Name && double.IsFinite(max.Value)) is { } upper && item.Value > upper.Value);
+            return anyExceeds ? metric.Value > limit.Value : null;
+        }
+    }
+    // 상태 칸 표시용 판정. State는 도구 전체 판정(요약·그룹 기준)이라 그대로 두고, 출력별로 갈리는 경우만 이 값을 쓴다.
+    public string OutputState => OutputExceedsLimit switch { true => "Fail", false => "Pass", _ => State };
+    public string OutputStatusText => OutputExceedsLimit is null ? StatusText : OutputState == "Fail" ? "NG" : "OK";
+    public string OutputStatusIcon => OutputExceedsLimit is null ? StatusIcon : OutputState == "Fail" ? "×" : "✓";
+    public string OutputStatusReason => OutputExceedsLimit is null ? Reason
+        : string.Join(" · ", Metrics.Where(item => double.IsFinite(item.Value)
+            && Metrics.FirstOrDefault(max => max.Name == "Maximum" + item.Name && double.IsFinite(max.Value)) is { } upper && item.Value > upper.Value)
+            .Select(item => $"{OutputDisplayName(item.Name)} {item.Value.ToString("0.##", CultureInfo.InvariantCulture)} > {Metrics.First(max => max.Name == "Maximum" + item.Name).Value.ToString("0.##", CultureInfo.InvariantCulture)}"));
     private Metric? Lower => Metrics.FirstOrDefault(metric => metric.Name == "LowerLimit" && double.IsFinite(metric.Value));
     private Metric? Upper => Metrics.FirstOrDefault(metric => metric.Name == "UpperLimit" && double.IsFinite(metric.Value));
     public string OutputName => PrimaryMetric is { } metric ? Step.ToolId == "thickness" && metric.Name == "Mean"
-        ? ThreeDLocalization.Shared.Resolve("ThreeD.Results.ThicknessOutput", "두께", "Thickness") : metric.Name : !string.IsNullOrWhiteSpace(OutputLabel) ? OutputLabel : "—";
+        ? ThreeDLocalization.Shared.Resolve("ThreeD.Results.ThicknessOutput", "두께", "Thickness") : OutputDisplayName(metric.Name) : !string.IsNullOrWhiteSpace(OutputLabel) ? OutputLabel : "—";
     public string DisplayValue => State is "Error" or "오류" ? "—" : PrimaryMetric is { } metric
-        ? double.IsFinite(metric.Value) ? metric.Value.ToString(metric.Kind == MetricKind.Count ? "N0" : "0.##", CultureInfo.InvariantCulture) : "—"
+        ? double.IsFinite(metric.Value) ? metric.Kind == MetricKind.Count ? metric.Value.ToString("N0", CultureInfo.InvariantCulture) : MeasurementValueText(metric.Value) : "—"
         : double.TryParse(Value.Contains(':') ? Value[(Value.IndexOf(':') + 1)..] : Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)
-            ? value.ToString("0.##", CultureInfo.InvariantCulture) : Value;
+            ? MeasurementValueText(value) : Value;
+    // 표시는 소수 둘째 자리까지다(계산·저장 정밀도는 그대로). 0이 아닌데 둘째 자리에서 0으로 사라지는 값은 0과 구별되도록 "<0.01"로 보인다.
+    private static string MeasurementValueText(double value)
+    {
+        var text = value.ToString("0.##", CultureInfo.InvariantCulture);
+        if (value == 0 || (text != "0" && text != "-0")) return text;
+        return value > 0 ? "<0.01" : ">-0.01";
+    }
+    // 하한·상한이 있으면 "하한 – 상한", 상한만 있는 출력은 "≤ 상한"으로 보인다. 지표 이름(MaximumX)과 단위 문구는 화면에 내지 않는다.
     public string DisplayLimits => Lower is { } lower && Upper is { } upper && lower.Unit == upper.Unit && lower.Unit == Unit
-        ? $"{lower.Value.ToString("F2", CultureInfo.InvariantCulture)} – {upper.Value.ToString("F2", CultureInfo.InvariantCulture)}" : Limits;
-    public string ValidSamples => Metrics.FirstOrDefault(metric => metric.Name == "ValidSampleCount" && double.IsFinite(metric.Value)) is { } metric
+        ? $"{lower.Value.ToString("F2", CultureInfo.InvariantCulture)} – {upper.Value.ToString("F2", CultureInfo.InvariantCulture)}"
+        : OutputUpperLimit is { } maximum ? $"≤ {maximum.Value.ToString("F2", CultureInfo.InvariantCulture)}" : Limits;
+    public string ValidSamples => IsSecondaryOutput ? string.Empty : Metrics.FirstOrDefault(metric => metric.Name == "ValidSampleCount" && double.IsFinite(metric.Value)) is { } metric
         ? metric.Value.ToString("N0", CultureInfo.InvariantCulture) : "—";
-    public string RunTime => RecordedAt?.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? "—";
+    public string RunTime => IsSecondaryOutput ? string.Empty : RecordedAt?.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? "—";
     public string State => !IsCurrent ? "Previous" : ExecutionStatus?.ToString() ?? Status;
     public string StatusText => State switch
     {

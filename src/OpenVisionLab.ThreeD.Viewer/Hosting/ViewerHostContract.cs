@@ -1,6 +1,7 @@
 using System.Reflection;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Presentation.Converters;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.Hosting;
@@ -22,7 +23,9 @@ public sealed record ViewerTeachingResultLabel(
     {
         get
         {
-            var text = Value is null || string.IsNullOrWhiteSpace(Unit) ? ValueText : $"{ValueText} {Unit}";
+            // 내부 높이 단위(raw, raw-height)는 화면 문구에서 지운다. Unit 속성과 저장·기록의 단위는 그대로다.
+            var displayUnit = HeightUnitDisplay.ForDisplay(Unit);
+            var text = Value is null || string.IsNullOrWhiteSpace(displayUnit) ? ValueText : $"{ValueText} {displayUnit}";
             var stateText = !IsCurrent ? $"↻ {text}" : Status switch
             {
                 ResultStatus.Error => $"! {ValueText}",
@@ -34,7 +37,7 @@ public sealed record ViewerTeachingResultLabel(
             return string.IsNullOrWhiteSpace(StateText) ? caption : $"{caption}\n{StateText}";
         }
     }
-    public string Description => $"{ToolName} · {MetricName} · {(Value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? ValueText)} {Unit}";
+    public string Description => $"{ToolName} · {MetricName} · {(Value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? ValueText)} {HeightUnitDisplay.ForDisplay(Unit)}".TrimEnd();
 }
 
 public static class ViewerHostContract

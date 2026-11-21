@@ -5,6 +5,10 @@
 - Report validation with no expected decisions separately from matched results, and keep the actual preparation error and pending samples when validation cannot start.
 - Clarify input and calculated-result displays in the Tool Labs, localize the related diagnostics and parameter errors, and keep required first-recipe inputs visible.
 - Use neutral gray surfaces and the UI font for numerals, stop showing the internal `raw` / `raw-height` unit text, and replace notices that listed what the product does not do with plain wording.
+- Teach-and-inspect Results table: Warpage shows P–V and RMS as separate rows with each output's own OK/NG, the allowed range reads as `≤ limit`, the status tooltip names the exceeded limits, and the "Valid samples" column is removed. All remaining columns fit the Compact layout without a horizontal scrollbar, and values that round to zero read `<0.01`.
+- Applying an edited limit starts judgement in the same step, the Judgment tab stays open after a run, and the 3D result label no longer shows the internal `raw-height` unit.
+- `OpenVisionLab.ThreeD.Runner --tool-recipe` accepts `--status-exit-codes` (a Fail result exits with 6; the default is unchanged), writes an `InputError` report when the recipe or input cannot be read, and adds a `cause=` field to failed Thickness and Warpage steps.
+- Height-measurement parameter names and tool IDs now live in one Core contract used by the recipe validator and the measurement executor. Added a Warpage demo recipe to the Thickness Coupon sample.
 
 This is a development source update; it is not a binary release, deployment or production qualification. Wide and Compact screenshots of the final binary, English wording and native 125% scaling are not qualified by this batch.
 
