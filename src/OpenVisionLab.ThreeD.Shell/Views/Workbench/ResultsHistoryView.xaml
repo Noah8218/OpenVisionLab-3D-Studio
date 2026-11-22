@@ -74,7 +74,7 @@
                             <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding SourceName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SourceName}" />
                             <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding Snapshot.DecisionSummary}" TextWrapping="Wrap" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                             <TextBlock Margin="0,3,0,0" FontSize="12" Text="{Binding Snapshot.RecipeIdentity}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.RecipeIdentity}" Foreground="{DynamicResource ThreeD.MutedTextBrush}" />
-                            <TextBlock FontSize="12" Text="{Binding Status}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                            <TextBlock FontSize="12" Text="{Binding StatusDisplay}" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" />
                         </StackPanel>
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>

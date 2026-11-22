@@ -482,8 +482,8 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged, IDispos
     private static string LocalizeResultStatus(object? status) =>
         status?.ToString() switch
         {
-            "Pass" => L("통과", "Pass"),
-            "Fail" => L("실패", "Fail"),
+            "Pass" => L("OK", "Pass"),
+            "Fail" => L("NG", "Fail"),
             "Error" => L("오류", "Error"),
             var value => value ?? L("미정", "Unknown")
         };

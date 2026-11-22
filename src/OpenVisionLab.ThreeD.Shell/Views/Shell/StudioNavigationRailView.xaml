@@ -172,7 +172,7 @@
                              Command="{Binding SelectWorkspaceCommand}"
                              CommandParameter="{x:Static app:ShellWorkspaceMode.Validate}"
                              Style="{StaticResource RailRadioButtonStyle}"
-                             ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ValidateTip, Korean='샘플 세트를 실행하고 실패 근거를 검토합니다.', English='Run the sample set and review failure evidence.'}"
+                             ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ValidateTip, Korean='샘플 세트를 실행하고 NG 근거를 검토합니다.', English='Run the sample set and review failure evidence.'}"
                              AutomationProperties.AutomationId="ValidateModeButton"
                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ValidateAccessible, Korean='검사 검증 워크스페이스', English='Validate inspection workspace'}">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" MaxWidth="68">

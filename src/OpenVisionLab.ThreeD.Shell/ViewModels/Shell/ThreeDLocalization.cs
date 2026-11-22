@@ -510,7 +510,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ProposedToolRouteFormat => T("ThreeD.Workbench.ProposedToolRouteFormat", "{0} [{1}] \u2192 {2} \u2192 {3}", "{0} [{1}] \u2192 {2} \u2192 {3}");
     public string ProposedToolRouteUnavailableFormat => T("ThreeD.Workbench.ProposedToolRouteUnavailableFormat", "\uD638\uD658 \uC785\uB825 \uC5C6\uC74C: {0} \uD544\uC694 | \uC608\uC815 \uCD9C\uB825: {1}", "No compatible input: requires {0} | Proposed output: {1}");
     public string SpecialExperimentToolRouteDetail => T("ThreeD.Workbench.SpecialExperimentToolRouteDetail", "Surface Match는 전용 실험 화면에서 미리보기와 결과 적용을 실행합니다. 순차 검사 단계로는 실행되지 않습니다.", "Surface Match uses its dedicated experiment panel for Preview/Publish. It is not an Ordered Run step.");
-    public string ReviewOnlyToolRouteDetail => T("ThreeD.Workbench.ReviewOnlyToolRouteDetail", "Overlay / Control Review는 결과 검토 전용입니다. 새 레시피 단계로 추가하거나 순차 검사로 실행할 수 없습니다.", "Overlay / Control Review is for result review only. It cannot be added to a new recipe or run as an Ordered Run step.");
+    public string ReviewOnlyToolRouteDetail => T("ThreeD.Workbench.ReviewOnlyToolRouteDetail", "오버레이 / 제어 검토는 결과 검토 전용입니다. 새 레시피 단계로 추가하거나 순차 검사로 실행할 수 없습니다.", "Overlay / Control Review is for result review only. It cannot be added to a new recipe or run as an Ordered Run step.");
     public string Viewer => T("ThreeD.Workbench.Viewer", "3D \uBDF0", "3D View");
     public string ViewerLayout => T("ThreeD.Workbench.ViewerLayout", "\uBDF0\uC5B4 \uBC30\uCE58", "Viewer layout");
     public string ViewerSingle => T("ThreeD.Command.ViewerSingle", "\uB2E8\uC77C", "Single");
@@ -726,7 +726,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Run state");
     public string ValidationSetWorkflowGuide => T(
         "ThreeD.Workbench.ValidationSetWorkflowGuide",
-        "1. \uC0D8\uD50C \uCD94\uAC00  \u2192  2. \uAE30\uB300 \uC5ED\uD560 \uC9C0\uC815  \u2192  3. \uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589",
+        "1. \uC0D8\uD50C \uCD94\uAC00  \u2192  2. \uC815\uB2F5 \uC9C0\uC815  \u2192  3. \uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589",
         "1. Add samples  \u2192  2. Set expected roles  \u2192  3. Run sample set");
     public string ValidationSetMeaningGuide => T(
         "ThreeD.Workbench.ValidationSetMeaningGuide",
@@ -741,21 +741,21 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetRoleHeldOut => T("ThreeD.Workbench.ValidationSetRoleHeldOut", "\uBCF4\uB958", "Held-out");
     public string ValidationSetRoleGoodAccessible => T(
         "ThreeD.Workbench.ValidationSetRoleGoodAccessible",
-        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uAE30\uB300 \uC5ED\uD560: \uC591\uD488",
+        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uC815\uB2F5: \uC591\uD488",
         "Expected role for selected sample: Good");
     public string ValidationSetRoleBadAccessible => T(
         "ThreeD.Workbench.ValidationSetRoleBadAccessible",
-        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uAE30\uB300 \uC5ED\uD560: \uBD88\uB7C9",
+        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uC815\uB2F5: \uBD88\uB7C9",
         "Expected role for selected sample: Bad");
     public string ValidationSetRoleHeldOutAccessible => T(
         "ThreeD.Workbench.ValidationSetRoleHeldOutAccessible",
-        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uAE30\uB300 \uC5ED\uD560: \uD640\uB4DC\uC544\uC6C3",
+        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uC815\uB2F5: \uD640\uB4DC\uC544\uC6C3",
         "Expected role for selected sample: Held-out");
     public string ValidationWorkspaceNavigationHint => T(
         "ThreeD.Workbench.ValidationWorkspaceNavigationHint",
         "\uAC80\uD1A0 \uD654\uBA74 \uC804\uD658 \u00B7 '\uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589'\uB9CC \uAC80\uC0AC\uB97C \uC2DC\uC791\uD569\uB2C8\uB2E4.",
         "Review sections \u00B7 only 'Run sample set' starts inspection.");
-    public string ValidationSetLabeledEvidence => T("ThreeD.Workbench.ValidationSetLabeledEvidence", "\uAE30\uB300 \uD310\uC815\uBCC4 \uCE21\uC815\uAC12 \uBD84\uD3EC", "Measurement distributions by expected decision");
+    public string ValidationSetLabeledEvidence => T("ThreeD.Workbench.ValidationSetLabeledEvidence", "\uC815\uB2F5\uBCC4 \uCE21\uC815\uAC12 \uBD84\uD3EC", "Measurement distributions by expected decision");
     public string ValidationSetScope => T("ThreeD.Workbench.ValidationSetScope", "\uBC94\uC704", "Scope");
     public string ValidationSetOwner => T("ThreeD.Workbench.ValidationSetOwner", "\uB2E8\uACC4 / ROI", "Step / ROI");
     public string ValidationSetMetric => T("ThreeD.Workbench.ValidationSetMetric", "\uCE21\uC815\uAC12", "Metric");
@@ -813,7 +813,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetErrors => T("ThreeD.Workbench.ValidationSetErrors", "\uC624\uB958", "Errors");
     public string ValidationSetFalseAccept => T("ThreeD.Workbench.ValidationSetFalseAccept", "\uBD88\uB7C9\uC744 OK\uB85C \uD310\uC815", "Bad classified OK");
     public string ValidationSetFalseReject => T("ThreeD.Workbench.ValidationSetFalseReject", "\uC591\uD488\uC744 NG\uB85C \uD310\uC815", "Good classified NG");
-    public string ValidationSetExpected => T("ThreeD.Workbench.ValidationSetExpected", "\uAE30\uB300", "Expected");
+    public string ValidationSetExpected => T("ThreeD.Workbench.ValidationSetExpected", "\uC815\uB2F5", "Expected");
     public string ValidationSetPredicted => T("ThreeD.Workbench.ValidationSetPredicted", "\uD310\uC815", "Predicted");
     public string ValidationSetDecision => T("ThreeD.Workbench.ValidationSetDecision", "\uACB0\uACFC", "Decision");
     public string AdvancedIdentityAndOrder => T("ThreeD.Workbench.AdvancedIdentityAndOrder", "\uACE0\uAE09 \uC2DD\uBCC4\uC790 \uBC0F \uC21C\uC11C", "Advanced identity & order");
@@ -1079,7 +1079,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string OpenSelectedToolLab => T("ThreeD.Command.OpenSelectedToolLab", "\uC0C1\uC138 \uC124\uC815 \uC5F4\uAE30", "Open detailed settings");
     public string RemoveStep => T("ThreeD.Command.RemoveStep", "\uB2E8\uACC4 \uC0AD\uC81C", "Remove step");
     public string ToolLabReview => T("ThreeD.ToolLab.Review", "도구 설정", "Tool settings");
-    public string ToolLabReviewDetail => T("ThreeD.ToolLab.ReviewDetail", "영역과 조건을 설정한 뒤 미리보기를 실행하세요.", "Set regions and conditions, then run Preview.");
+    public string ToolLabReviewDetail => T("ThreeD.ToolLab.ReviewDetail", "영역과 조건을 설정한 뒤 실행하세요.", "Set regions and conditions, then run Preview.");
     public string ShowInput => T("ThreeD.Command.ShowInput", "\uC785\uB825 \uBCF4\uAE30", "Show input");
     public string TeachingSelections => T("ThreeD.Workbench.TeachingSelections", "\uD2F0\uCE6D \uC120\uD0DD \uC601\uC5ED", "Teaching selections");
     public string ThicknessRoiTeaching => T("ThreeD.Workbench.ThicknessRoiTeaching", "\uB450\uAED8 \uAC80\uC0AC ROI \uD2F0\uCE6D", "Thickness ROI teaching");
@@ -1403,16 +1403,16 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RecipeHealthStalePreview => T("ThreeD.Workbench.RecipeHealthStalePreview", "오래된 미리보기", "Stale Preview");
     public string RecipeHealthPublished => T("ThreeD.Workbench.RecipeHealthPublished", "적용됨", "Published");
     public string RecipeHealthReadyDetail => string.Empty;
-    public string RecipeHealthStalePreviewDetail => T("ThreeD.Workbench.RecipeHealthStalePreviewDetail", "입력과 설정값을 확인한 뒤 미리보기를 다시 실행하세요.", "Review the inputs and parameters, then run Preview again.");
+    public string RecipeHealthStalePreviewDetail => T("ThreeD.Workbench.RecipeHealthStalePreviewDetail", "입력과 설정값을 확인한 뒤 다시 실행하세요.", "Review the inputs and parameters, then run Preview again.");
     public string RecipeHealthPublishedDetail => string.Empty;
     public string RecipeHealthNoStep => T("ThreeD.Workbench.RecipeHealthNoStep", "선택한 단계 없음", "No step selected");
     public string RecipeHealthNoStepDetail => T("ThreeD.Workbench.RecipeHealthNoStepDetail", "다음 요구사항을 선택하여 필요한 단계를 여세요.", "Select the next requirement to reveal its owning step.");
     public string RecipeHealthStepTitleFormat => T("ThreeD.Workbench.RecipeHealthStepTitleFormat", "단계 {0}: {1} · {2}", "Step {0}: {1} · {2}");
     public string RecipeHealthSelectionRequiredFormat => T("ThreeD.Workbench.RecipeHealthSelectionRequiredFormat", "이 단계에 현재 {0}을(를) 연결하세요.", "Route a current {0} to this step.");
-    public string RecipeHealthDualRoiRequiredFormat => T("ThreeD.Workbench.RecipeHealthDualRoiRequiredFormat", "현재 이중 ROI가 {0}/{1}개입니다. 기준 ROI와 측정 ROI를 모두 연결하세요.", "Current dual ROI is {0}/{1}. Route both Reference ROI and Measurement ROI.");
-    public string RecipeHealthExecutionBlockedDetailFormat => T("ThreeD.Workbench.RecipeHealthExecutionBlockedDetailFormat", "실행 결과: {0} 선택한 도구 설정을 확인한 뒤 직접 다시 미리보기 하세요.", "Execution result: {0} Review the selected tool setup, then Preview explicitly again.");
-    public string RecipeHealthReferenceSamplesBlockedFormat => T("ThreeD.Workbench.RecipeHealthReferenceSamplesBlockedFormat", "기준 ROI가 1차 원인입니다: 유효 샘플 {0}개(최소 {1}개). 측정 ROI는 {2}개(최소 {3}개)입니다. 기준 ROI와 입력 상태를 확인한 뒤 직접 다시 미리보기 하세요. 실행 결과: {4}", "Reference ROI is the primary cause: {0} finite samples ({1} required). Measurement ROI has {2} ({3} required). Review the Reference ROI and Source Quality, then Preview explicitly again. Execution result: {4}");
-    public string RecipeHealthMeasurementSamplesBlockedFormat => T("ThreeD.Workbench.RecipeHealthMeasurementSamplesBlockedFormat", "측정 ROI가 1차 원인입니다: 유효 샘플 {0}개(최소 {1}개). 기준 ROI는 {2}개(최소 {3}개)입니다. 측정 ROI와 입력 상태를 확인한 뒤 직접 다시 미리보기 하세요. 실행 결과: {4}", "Measurement ROI is the primary cause: {0} finite samples ({1} required). Reference ROI has {2} ({3} required). Review the Measurement ROI and Source Quality, then Preview explicitly again. Execution result: {4}");
+    public string RecipeHealthDualRoiRequiredFormat => T("ThreeD.Workbench.RecipeHealthDualRoiRequiredFormat", "ROI가 {0}/{1}개 연결됐습니다. 기준 ROI와 측정 ROI를 모두 연결하세요.", "Current dual ROI is {0}/{1}. Route both Reference ROI and Measurement ROI.");
+    public string RecipeHealthExecutionBlockedDetailFormat => T("ThreeD.Workbench.RecipeHealthExecutionBlockedDetailFormat", "실행 결과: {0} 선택한 도구 설정을 확인한 뒤 다시 실행하세요.", "Execution result: {0} Review the selected tool setup, then Preview explicitly again.");
+    public string RecipeHealthReferenceSamplesBlockedFormat => T("ThreeD.Workbench.RecipeHealthReferenceSamplesBlockedFormat", "기준 ROI가 1차 원인입니다: 유효 샘플 {0}개(최소 {1}개). 측정 ROI는 {2}개(최소 {3}개)입니다. 기준 ROI와 입력 상태를 확인한 뒤 다시 실행하세요. 실행 결과: {4}", "Reference ROI is the primary cause: {0} finite samples ({1} required). Measurement ROI has {2} ({3} required). Review the Reference ROI and Source Quality, then Preview explicitly again. Execution result: {4}");
+    public string RecipeHealthMeasurementSamplesBlockedFormat => T("ThreeD.Workbench.RecipeHealthMeasurementSamplesBlockedFormat", "측정 ROI가 1차 원인입니다: 유효 샘플 {0}개(최소 {1}개). 기준 ROI는 {2}개(최소 {3}개)입니다. 측정 ROI와 입력 상태를 확인한 뒤 다시 실행하세요. 실행 결과: {4}", "Measurement ROI is the primary cause: {0} finite samples ({1} required). Reference ROI has {2} ({3} required). Review the Measurement ROI and Source Quality, then Preview explicitly again. Execution result: {4}");
     public string RecipeHealthGridRectangle => T("ThreeD.Workbench.RecipeHealthGridRectangle", "격자 사각형 선택", "Grid rectangle selection");
     public string RecipeHealthPointSetFormat => T("ThreeD.Workbench.RecipeHealthPointSetFormat", "점 {0}개 선택", "Point set ({0})");
     public string RecipeHealthLandmarkSet => T("ThreeD.Workbench.RecipeHealthLandmarkSet", "랜드마크 대응 선택", "Landmark correspondence selection");
@@ -1461,8 +1461,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         InspectionStepState.Stale => T("ThreeD.Inspection.State.Stale", "재실행 필요", "Stale"),
         InspectionStepState.Ready => T("ThreeD.Inspection.State.Ready", "준비됨", "Ready"),
         InspectionStepState.Running => T("ThreeD.Inspection.State.Running", "실행 중", "Running"),
-        InspectionStepState.Pass => T("ThreeD.Inspection.State.Pass", "통과", "Pass"),
-        InspectionStepState.Fail => T("ThreeD.Inspection.State.Fail", "실패", "Fail"),
+        InspectionStepState.Pass => T("ThreeD.Inspection.State.Pass", "OK", "Pass"),
+        InspectionStepState.Fail => T("ThreeD.Inspection.State.Fail", "NG", "Fail"),
         InspectionStepState.Error => T("ThreeD.Inspection.State.Error", "오류", "Error"),
         _ => state.ToString()
     };
@@ -1470,8 +1470,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     internal string ResultStatusLabel(ResultStatus status) => status switch
     {
         ResultStatus.NotRun => T("ThreeD.Inspection.ResultStatus.NotRun", "미실행", "Not run"),
-        ResultStatus.Pass => T("ThreeD.Inspection.ResultStatus.Pass", "통과", "Pass"),
-        ResultStatus.Fail => T("ThreeD.Inspection.ResultStatus.Fail", "실패", "Fail"),
+        ResultStatus.Pass => T("ThreeD.Inspection.ResultStatus.Pass", "OK", "Pass"),
+        ResultStatus.Fail => T("ThreeD.Inspection.ResultStatus.Fail", "NG", "Fail"),
         ResultStatus.Warning => T("ThreeD.Inspection.ResultStatus.Warning", "경고", "Warning"),
         ResultStatus.Error => T("ThreeD.Inspection.ResultStatus.Error", "오류", "Error"),
         _ => T("ThreeD.Inspection.ResultStatus.Unknown", "알 수 없음", "Unknown")

@@ -598,7 +598,7 @@ internal static class InspectionQueueWorkspaceVerification
             languageQueue.RefreshResultPresentation();
             Check("language round trip refreshes queue labels and summary without execution or input mutation",
                 restoredEnglish && languageQueue.RunCheckedLabel == "체크한 1개 검사"
-                && languageQueue.SelectedSample!.StatusSummary == "미검사 · 실행을 기다립니다."
+                && languageQueue.SelectedSample!.StatusSummary == "검사 전 · 실행을 기다립니다."
                 && languageQueue.SummaryText.StartsWith("파일 1개 추가", StringComparison.Ordinal)
                 && ReferenceEquals(languageInput, languageQueue.SelectedSample) && !languageQueue.IsRunning
                 && executionNotifications == 0,
@@ -611,7 +611,7 @@ internal static class InspectionQueueWorkspaceVerification
             englishPresentation = true;
             languageQueue.RefreshResultPresentation();
             Check("normal completion summary localizes without rewriting the SDK record or executing",
-                koreanStatus == "통과 · 1단계 검사 완료" && languageInput.StatusSummary == "Pass · 1 step inspected"
+                koreanStatus == "OK · 1단계 검사 완료" && languageInput.StatusSummary == "Pass · 1 step inspected"
                 && completedRecord.Message == "Executed 1 authored typed step(s) in recipe order." && !languageQueue.IsRunning && executionNotifications == 0,
                 $"Korean={koreanStatus};English={languageInput.StatusSummary};raw={completedRecord.Message}");
 

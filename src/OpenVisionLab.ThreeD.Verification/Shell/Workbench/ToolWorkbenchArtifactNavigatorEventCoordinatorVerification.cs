@@ -1258,7 +1258,7 @@ internal static class ToolWorkbenchArtifactNavigatorEventCoordinatorVerification
                     Check(
                         "measurement detail localizes result status while preserving evidence values, output identity, source, state, and node kind",
                         englishMeasurementArtifact.Detail.StartsWith("Pass | H-axis thickness mean 12.5", StringComparison.Ordinal)
-                        && koreanMeasurementArtifact.Detail.StartsWith("통과 | H-axis thickness mean 12.5", StringComparison.Ordinal)
+                        && koreanMeasurementArtifact.Detail.StartsWith("OK | H-axis thickness mean 12.5", StringComparison.Ordinal)
                         && englishMeasurementArtifact.Detail.Contains("reference 4 | measurement 4 finite samples", StringComparison.Ordinal)
                         && koreanMeasurementArtifact.Detail.Contains("reference 4 | measurement 4 finite samples", StringComparison.Ordinal)
                         && englishMeasurementArtifact.Detail != koreanMeasurementArtifact.Detail

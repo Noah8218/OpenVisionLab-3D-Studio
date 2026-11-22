@@ -1373,7 +1373,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             ? L("유한 측정값 없음", "No finite metric")
             : $"{metric.Name} {metric.Value:0.##} {metric.Unit}".TrimEnd();
         RecipeComparisonSummary = L(
-            $"레시피 순차 검사 · {record.Status} · {steps.Count}개 단계",
+            $"레시피 순차 검사 · {ThreeDLocalization.Shared.ResultStatusLabel(record.Status)} · {steps.Count}개 단계",
             $"Ordered recipe inspection · {record.Status} · {steps.Count} step(s)");
         RecipeComparisonHistory = L(
             $"레시피: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Recipe.Path)}\n입력 데이터: {ShellEvidenceTextParser.FormatEvidencePath(root, record.Source.Path)}\n검사 기록: {ShellEvidenceTextParser.FormatEvidencePath(root, currentRunRecordPath ?? string.Empty)}",
@@ -1383,7 +1383,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             steps.Select(step =>
                 $"{step.RecipeIndex + 1:D2} | {step.Id} | {step.ToolName} | {step.Status} | {step.OutputEntityId} | SHA-256 {step.OutputContentSha256 ?? "(none)"}"));
         RunSnapshotSummary = L(
-            $"현재 레시피 실행 · 상태 {record.Status} · 핵심 측정값 {metricSummary} · {record.ElapsedMilliseconds:0.##} ms",
+            $"현재 레시피 실행 · 상태 {ThreeDLocalization.Shared.ResultStatusLabel(record.Status)} · 핵심 측정값 {metricSummary} · {record.ElapsedMilliseconds:0.##} ms",
             $"Current recipe Run · {record.Status} · key metric {metricSummary} · {record.ElapsedMilliseconds:0.##} ms");
         RunSnapshotEvidence =
             $"Recipe: {ShellEvidenceTextParser.FormatShortEvidencePath(root, record.Recipe.Path)} | Source: {ShellEvidenceTextParser.FormatShortEvidencePath(root, record.Source.Path)} | JSON: {ShellEvidenceTextParser.FormatOptionalArtifact(root, currentRunRecordPath)} | Report: {ShellEvidenceTextParser.FormatOptionalArtifact(root, currentReportPath)}";
@@ -1400,7 +1400,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
             RecordRecentRunRecord(currentRunRecordPath, record);
         }
         StatusText = L(
-            $"3D 뷰어 | 현재 레시피 실행 {record.Status}",
+            $"3D 뷰어 | 현재 레시피 실행 {ThreeDLocalization.Shared.ResultStatusLabel(record.Status)}",
             $"Viewer hosted | current recipe Run {record.Status}");
     }
 
@@ -2761,9 +2761,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
         var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
         return summary
             .Replace("NotRun", english ? "Not run" : "미실행", StringComparison.Ordinal)
-            .Replace("Fail (NG)", english ? "Fail (NG)" : "실패", StringComparison.Ordinal)
-            .Replace("Pass", english ? "Pass" : "통과", StringComparison.Ordinal)
-            .Replace("Fail", english ? "Fail" : "실패", StringComparison.Ordinal)
+            .Replace("Fail (NG)", english ? "Fail (NG)" : "NG", StringComparison.Ordinal)
+            .Replace("Pass", english ? "Pass" : "OK", StringComparison.Ordinal)
+            .Replace("Fail", english ? "Fail" : "NG", StringComparison.Ordinal)
             .Replace("Warning", english ? "Warning" : "경고", StringComparison.Ordinal)
             .Replace("Error", english ? "Error" : "오류", StringComparison.Ordinal)
             .Replace("Unknown", english ? "Unknown" : "알 수 없음", StringComparison.Ordinal)
@@ -2772,7 +2772,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
 
     private static string LocalizeStateForDisplay(string state) => state switch
     {
-        "Pass" => L("통과", "Pass"),
+        "Pass" => L("OK", "Pass"),
         "Warning" => L("경고", "Warning"),
         "Error" => L("오류", "Error"),
         "Mismatch" => L("불일치", "Mismatch"),
@@ -2876,6 +2876,12 @@ public sealed record RunRecordRecentItem(
     public ResultsRunSnapshot? Snapshot { get; init; }
     public RunRecordWorkflowKind WorkflowKind { get; init; }
     public string SourceName => Snapshot?.SourceName ?? Name;
+
+    // Status는 저장된 ResultStatus 이름(Pass 등)이라 목록에는 화면 언어의 판정 라벨로 바꿔 보인다.
+    // 알 수 없는 값(예: Unavailable)은 원문을 그대로 둔다. 저장·필터에 쓰는 Status 값은 바꾸지 않는다.
+    public string StatusDisplay => Enum.TryParse<ResultStatus>(Status, out var status)
+        ? ThreeDLocalization.Shared.ResultStatusLabel(status)
+        : Status;
 }
 
 public sealed class EvidenceArtifactOpenRequestEventArgs : EventArgs

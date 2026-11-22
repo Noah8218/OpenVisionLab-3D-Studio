@@ -34,7 +34,7 @@ internal static class ToolWorkbenchToolCatalog
             ["re-grid-height-map"] = ("ThreeD.Tool.RegridHeightMap", "높이 맵 재격자화", ["높이", "재격자"]),
             ["surface-match"] = ("ThreeD.Tool.SurfaceMatch", "표면 매칭", ["표면", "매칭"]),
             ["thickness"] = ("ThreeD.Tool.Thickness", "두께", ["두께"]),
-            ["warpage"] = ("ThreeD.Tool.Warpage", "휨", ["휨", "뒤틀림"]),
+            ["warpage"] = ("ThreeD.Tool.Warpage", "휨", ["휨", "워페이지", "뒤틀림"]),
             ["plane-flatness"] = ("ThreeD.Tool.PlaneFlatness", "평면 평탄도", ["평면", "평탄도"]),
             ["point-pair-dimensions"] = ("ThreeD.Tool.PointPairDimensions", "점 쌍 치수", ["점", "치수"]),
             ["gap-flush"] = ("ThreeD.Tool.GapFlush", "간격 / 단차", ["간격", "단차"]),

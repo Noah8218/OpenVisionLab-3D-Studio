@@ -1067,10 +1067,10 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     {
         ValidationSetSummary = validationSetDefinitionOwner.Samples.Count == 0
             ? Localize(
-                "C3D 샘플을 추가하고 기대 역할을 지정하세요.",
+                "C3D 샘플을 추가하고 정답(OK/NG)을 지정하세요.",
                 "Add C3D samples and assign expected roles.")
             : Localize(
-                $"샘플 {validationSetDefinitionOwner.Samples.Count}개 · 미검증",
+                $"샘플 {validationSetDefinitionOwner.Samples.Count}개 · 검증 전",
                 $"{validationSetDefinitionOwner.Samples.Count} samples · not validated");
     }
 
@@ -1093,7 +1093,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
             var fail = validationSetDefinitionOwner.Samples.Count(sample => sample.Status == "Fail");
             var error = validationSetDefinitionOwner.Samples.Count(sample => sample.Status == "Error");
             ValidationSetSummary = Localize(
-                $"완료 {validationSetDefinitionOwner.Samples.Count}개 · 통과 {pass} · 실패 {fail} · 오류 {error}",
+                $"완료 {validationSetDefinitionOwner.Samples.Count}개 · OK {pass} · NG {fail} · 오류 {error}",
                 $"Completed {validationSetDefinitionOwner.Samples.Count} · Pass {pass} · Fail {fail} · Error {error}");
         }
     }
@@ -1105,7 +1105,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private string LocalizeResultMessage(ToolRecipeValidationSampleResult sample) =>
         sample.Status switch
         {
-            ResultStatus.Pass => Localize("모든 지원 검사 단계가 통과했습니다.", "All supported inspection steps passed."),
+            ResultStatus.Pass => Localize("모든 지원 검사 단계가 OK입니다.", "All supported inspection steps passed."),
             ResultStatus.Fail => Localize("하나 이상의 검사 단계가 허용 범위를 벗어났습니다.", "One or more inspection steps are out of tolerance."),
             ResultStatus.Warning => Localize("검사가 경고와 함께 완료되었습니다.", "Inspection completed with warnings."),
             _ => Localize($"실행 오류: {LocalizeValidationError(sample.Message)}", $"Execution error: {sample.Message}")
@@ -1144,7 +1144,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         var fail = result.Samples.Count(sample => sample.Status == ResultStatus.Fail);
         var error = result.Samples.Count(sample => sample.Status == ResultStatus.Error);
         return Localize(
-            $"완료 {result.Samples.Count}개 · 통과 {pass} · 실패 {fail} · 오류 {error} · {result.Duration.TotalMilliseconds:N0} ms",
+            $"완료 {result.Samples.Count}개 · OK {pass} · NG {fail} · 오류 {error} · {result.Duration.TotalMilliseconds:N0} ms",
             $"Completed {result.Samples.Count} · Pass {pass} · Fail {fail} · Error {error} · {result.Duration.TotalMilliseconds:N0} ms");
     }
     public void Dispose()

@@ -189,7 +189,7 @@
             </RadioButton>
             <RadioButton Style="{StaticResource QueueFilterStyle}" IsChecked="{Binding IsStatusFilterUntested, Mode=OneWay}" Command="{Binding SetStatusFilterCommand}" CommandParameter="Untested" AutomationProperties.AutomationId="InspectionFilterUntested">
                 <RadioButton.Visibility><MultiBinding Converter="{StaticResource ZeroUnlessCheckedVisibilityConverter}"><Binding Path="UntestedCount" /><Binding Path="IsStatusFilterUntested" /></MultiBinding></RadioButton.Visibility>
-                <TextBlock><Run Text="{shell:ThreeDText Key=ThreeD.Inspection.FilterUntested, Korean='미검사', English='Untested'}" /><Run Text=" " /><Run Text="{Binding UntestedCount, Mode=OneWay}" /></TextBlock>
+                <TextBlock><Run Text="{shell:ThreeDText Key=ThreeD.Inspection.FilterUntested, Korean='검사 전', English='Untested'}" /><Run Text=" " /><Run Text="{Binding UntestedCount, Mode=OneWay}" /></TextBlock>
             </RadioButton>
             <RadioButton Style="{StaticResource QueueFilterStyle}" IsChecked="{Binding IsStatusFilterCancelled, Mode=OneWay}" Command="{Binding SetStatusFilterCommand}" CommandParameter="Cancelled" AutomationProperties.AutomationId="InspectionFilterCancelled">
                 <RadioButton.Visibility><MultiBinding Converter="{StaticResource ZeroUnlessCheckedVisibilityConverter}"><Binding Path="CancelledCount" /><Binding Path="IsStatusFilterCancelled" /></MultiBinding></RadioButton.Visibility>
@@ -197,7 +197,7 @@
             </RadioButton>
             <RadioButton Style="{StaticResource QueueFilterStyle}" IsChecked="{Binding IsStatusFilterPass, Mode=OneWay}" Command="{Binding SetStatusFilterCommand}" CommandParameter="Pass" AutomationProperties.AutomationId="InspectionFilterPass">
                 <RadioButton.Visibility><MultiBinding Converter="{StaticResource ZeroUnlessCheckedVisibilityConverter}"><Binding Path="PassCount" /><Binding Path="IsStatusFilterPass" /></MultiBinding></RadioButton.Visibility>
-                <TextBlock><Run Text="{shell:ThreeDText Key=ThreeD.Inspection.FilterPass, Korean='통과', English='Pass'}" /><Run Text=" " /><Run Text="{Binding PassCount, Mode=OneWay}" /></TextBlock>
+                <TextBlock><Run Text="{shell:ThreeDText Key=ThreeD.Inspection.FilterPass, Korean='OK', English='Pass'}" /><Run Text=" " /><Run Text="{Binding PassCount, Mode=OneWay}" /></TextBlock>
             </RadioButton>
             <RadioButton Style="{StaticResource QueueFilterStyle}" IsChecked="{Binding IsStatusFilterWarning, Mode=OneWay}" Command="{Binding SetStatusFilterCommand}" CommandParameter="Warning" AutomationProperties.AutomationId="InspectionFilterWarning">
                 <RadioButton.Visibility><MultiBinding Converter="{StaticResource ZeroUnlessCheckedVisibilityConverter}"><Binding Path="WarningCount" /><Binding Path="IsStatusFilterWarning" /></MultiBinding></RadioButton.Visibility>

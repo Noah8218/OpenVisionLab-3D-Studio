@@ -133,7 +133,7 @@ public partial class RecipePipelineReviewView : UserControl
         });
         foreach (var (key, korean, english, template) in new[]
         {
-            ("Expected", "기대", "Expected", "ValidationMatrixExpectedTemplate"),
+            ("Expected", "정답", "Expected", "ValidationMatrixExpectedTemplate"),
             ("Result", "결과", "Result", "ValidationMatrixStatusTemplate"),
             ("Agreement", "비교", "Comparison", "ValidationMatrixAgreementTemplate")
         })

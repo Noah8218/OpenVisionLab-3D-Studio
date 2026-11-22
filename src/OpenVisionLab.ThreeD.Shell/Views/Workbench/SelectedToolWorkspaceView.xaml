@@ -348,7 +348,7 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Lifecycle}"
                              Value="{x:Static workbenchVm:InspectionWorkspaceRegionLifecycleState.Review}">
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Lifecycle}"
                              Value="{x:Static workbenchVm:InspectionWorkspaceRegionLifecycleState.Applied}">
@@ -602,7 +602,7 @@
                             <TextBlock FontSize="12"
                                        FontWeight="Normal"
                                        Foreground="{DynamicResource ThreeD.WarningBrush}"
-                                       Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureInTeach, Korean='실패 샘플 수정', English='Fix failed sample in Teach'}" />
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureInTeach, Korean='NG 샘플 수정', English='Fix failed sample in Teach'}" />
                             <Border Grid.Column="1"
                                     Margin="7,0,0,0"
                                     Padding="6,2"
@@ -639,7 +639,7 @@
                         <TextBlock Margin="0,5,0,0"
                                    FontSize="12"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureNextAction, Korean='ROI 또는 설정값을 검토하고 미리보기를 직접 실행한 뒤 샘플 세트를 다시 실행하세요.', English='Review the ROI or parameters, run Preview explicitly, then rerun the sample set.'}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureNextAction, Korean='ROI 또는 설정값을 검토하고 다시 실행한 뒤 샘플 세트를 다시 실행하세요.', English='Review the ROI or parameters, run Preview explicitly, then rerun the sample set.'}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -911,7 +911,7 @@
                                    Content="{views:ThreeDText Key=ThreeD.Command.AddLevelReferenceRoi, Korean='기준 ROI 추가', English='Add reference ROI'}"
                                    Icon="{ui:SymbolIcon AddCircle24}"
                                    Command="{Binding BeginAdditionalLevelSurfaceReferenceCommand}"
-                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.LevelSurface.AddReferenceRoiAccessible, Korean='Level Surface 기준 ROI 추가', English='Add another Level Surface reference ROI'}" />
+                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.LevelSurface.AddReferenceRoiAccessible, Korean='수평면 기준 ROI 추가', English='Add another Level Surface reference ROI'}" />
                     </StackPanel>
                 </Border>
 </Grid>
@@ -1136,7 +1136,7 @@
                                                Content="{Binding Localization.RepeatAsGrid}"
                                                Command="{Binding BeginThicknessRepeatGridCommand}"
                                                Visibility="{Binding ThicknessRepeatGrid.IsInactive, Converter={StaticResource BoolToVisibilityConverter}}"
-                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.BeginAccessible, Korean='Thickness를 검토 그리드로 반복', English='Repeat Thickness as a reviewed grid'}" />
+                                               AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.BeginAccessible, Korean='두께를 검토 격자로 반복', English='Repeat Thickness as a reviewed grid'}" />
                                 </Grid>
 
                                 <StackPanel Margin="0,8,0,0"
@@ -1257,12 +1257,12 @@
                                                    Content="{Binding Localization.ApplyThicknessRepeat}"
                                                    Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                                    Command="{Binding ApplyThicknessRepeatGridCommand}"
-                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.ApplyAccessible, Korean='검토한 Thickness 반복 전체 적용', English='Apply all reviewed Thickness repeats'}" />
+                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.ApplyAccessible, Korean='검토한 두께 반복 전체 적용', English='Apply all reviewed Thickness repeats'}" />
                                         <ui:Button Padding="8,4"
                                                    Content="{Binding Localization.CancelThicknessRepeat}"
                                                    Icon="{ui:SymbolIcon DismissCircle24}"
                                                    Command="{Binding CancelThicknessRepeatGridCommand}"
-                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.CancelAccessible, Korean='Thickness 반복 검토 취소', English='Cancel Thickness repeat review'}" />
+                                                   AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.ThicknessRepeat.CancelAccessible, Korean='두께 반복 검토 취소', English='Cancel Thickness repeat review'}" />
                                     </WrapPanel>
                                 </StackPanel>
                             </StackPanel>
@@ -1283,8 +1283,8 @@
                                              </DataTrigger>
                                              <DataTrigger Binding="{Binding SelectedToolWorkspace.Regions[0].Lifecycle}"
                                                           Value="{x:Static workbenchVm:InspectionWorkspaceRegionLifecycleState.Review}">
-                                                 <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
-                                                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                                 <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                                                  <Setter Property="BorderThickness" Value="1" />
                                              </DataTrigger>
                                          </Style.Triggers>
@@ -1323,8 +1323,8 @@
                                              </DataTrigger>
                                              <DataTrigger Binding="{Binding SelectedToolWorkspace.Regions[1].Lifecycle}"
                                                           Value="{x:Static workbenchVm:InspectionWorkspaceRegionLifecycleState.Review}">
-                                                 <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
-                                                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                                 <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                                                  <Setter Property="BorderThickness" Value="1" />
                                              </DataTrigger>
                                          </Style.Triggers>
@@ -1709,7 +1709,7 @@
                                                Text="{views:ThreeDText Key=ThreeD.Workspace.RegionName, Korean='영역 이름', English='Region name'}" />
                                     <TextBox Margin="0,2,0,5"
                                              Text="{Binding OrientedBoxEditor.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.NameAccessible, Korean='OrientedBox3D 영역 이름', English='OrientedBox3D region name'}" />
+                                             AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workbench.OrientedBox.NameAccessible, Korean='3D 박스 영역 이름', English='OrientedBox3D region name'}" />
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>

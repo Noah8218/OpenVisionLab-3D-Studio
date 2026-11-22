@@ -157,7 +157,7 @@ internal static class ToolDatumPlaneDeviationWorkbenchVerification
                     var selectedResult = workbench.SelectedToolWorkspace.CurrentOutput;
                     Check($"datum P2V, limit and judgement render in {language}", selectedResult is { Unit: "raw-height", ValueLabel: "P2V", LimitSummary: "≤ 0.5 raw-height" }
                         && selectedResult.Value == preview!.PeakToValleyRawHeight.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
-                        && selectedResult.ResultStatus == (language == OpenVisionLanguage.Korean ? "통과" : "Pass")
+                        && selectedResult.ResultStatus == (language == OpenVisionLanguage.Korean ? "OK" : "Pass")
                         && selectedResult.Reason == (language == OpenVisionLanguage.Korean ? "기준면 높이 편차가 규격 안에 있습니다." : "Datum-plane height deviation is within limits."),
                         $"value={selectedResult?.Value};status={selectedResult?.ResultStatus};reason={selectedResult?.Reason}");
                 }

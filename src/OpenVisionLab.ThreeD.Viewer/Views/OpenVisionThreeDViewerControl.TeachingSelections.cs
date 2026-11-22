@@ -1104,9 +1104,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                 DrawTeachingSelection(
                     gl,
                     selection,
-                    authoredWhileEditing ? 0.32 : referenceRole ? 92 / 255.0 : measurementRole || selected ? 242 / 255.0 : 181 / 255.0,
-                    authoredWhileEditing ? 0.72 : referenceRole ? 200 / 255.0 : measurementRole || selected ? 179 / 255.0 : 156 / 255.0,
-                    authoredWhileEditing ? 1.00 : referenceRole ? 224 / 255.0 : measurementRole || selected ? 94 / 255.0 : 242 / 255.0,
+                    authoredWhileEditing ? 101 / 255.0 : referenceRole ? 92 / 255.0 : measurementRole || selected ? 242 / 255.0 : 181 / 255.0,
+                    authoredWhileEditing ? 185 / 255.0 : referenceRole ? 200 / 255.0 : measurementRole || selected ? 179 / 255.0 : 156 / 255.0,
+                    authoredWhileEditing ? 174 / 255.0 : referenceRole ? 224 / 255.0 : measurementRole || selected ? 94 / 255.0 : 242 / 255.0,
                     selected && !viewModel.IsTeachingCaptureActive
                         && (teachingGridRectangleHoverMode == TeachingGridRectangleEditMode.Height || teachingGridRectangleEditMode == TeachingGridRectangleEditMode.Height),
                     selected ? 2.0f : 1.2f);
@@ -1136,7 +1136,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             var capture = viewModel.TeachingCaptureSnapshot;
             if (capture.IsActive)
             {
-                DrawTeachingCaptureCandidate(gl, capture, 1.00, 0.82, 0.12);
+                var (candidateRed, candidateGreen, candidateBlue) = GetTeachingCaptureCandidateColor(capture.SelectionId);
+                DrawTeachingCaptureCandidate(gl, capture, candidateRed, candidateGreen, candidateBlue);
             }
         }
 
@@ -1687,6 +1688,14 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
+    // 검토 중인 ROI는 적용 뒤와 같은 역할 색(기준·측정)을 쓴다. 역할이 없는 후보(점·평면 등)와
+    // 수정 중인 기존 ROI는 테마 포인트 색(#65B9AE)을 쓴다. 값은 시안 :root의 --roi-ref, --roi-meas, --accent와 같다.
+    private static (double Red, double Green, double Blue) GetTeachingCaptureCandidateColor(string selectionId) =>
+        selectionId.Contains(".reference-roi", StringComparison.OrdinalIgnoreCase)
+            ? (92 / 255.0, 200 / 255.0, 224 / 255.0)
+            : selectionId.Contains(".measurement-roi", StringComparison.OrdinalIgnoreCase)
+                ? (242 / 255.0, 179 / 255.0, 94 / 255.0)
+                : (101 / 255.0, 185 / 255.0, 174 / 255.0);
     private void DrawTeachingCaptureCandidate(
         OpenGL gl,
         TeachingCaptureState capture,

@@ -355,8 +355,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private static string LocalizeStatus(ResultStatus status) => status switch
     {
-        ResultStatus.Pass => Localize("통과", "Pass"),
-        ResultStatus.Fail => Localize("실패", "Fail"),
+        ResultStatus.Pass => Localize("OK", "Pass"),
+        ResultStatus.Fail => Localize("NG", "Fail"),
         ResultStatus.Warning => Localize("경고", "Warning"),
         _ => Localize("오류", "Error")
     };

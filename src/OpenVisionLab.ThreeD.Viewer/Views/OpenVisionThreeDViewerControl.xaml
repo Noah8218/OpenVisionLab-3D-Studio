@@ -460,7 +460,7 @@
                 <StackPanel DataContext="{Binding NominalActual}">
                     <TextBlock FontSize="14"
                                FontWeight="SemiBold"
-                               Text="{localization:ViewerText Key=ThreeD.Viewer.NominalActual, Korean='명목 / 실제', English='Nominal / Actual'}" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.NominalActual, Korean='기준 / 실제', English='Nominal / Actual'}" />
                     <TextBlock Margin="0,6,0,0"
                                TextWrapping="Wrap"
                                Text="{Binding ActualSourceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue={localization:ViewerText Key=ThreeD.Viewer.ActualNotLoaded, Korean='실제 데이터가 로드되지 않음', English='Actual: not loaded'}}" />
@@ -480,7 +480,7 @@
                                   Content="{localization:ViewerText Key=ThreeD.Viewer.Actual, Korean='실제', English='Actual'}"
                                   IsChecked="{Binding ActualVisible, Mode=TwoWay, FallbackValue=False}"
                                   IsEnabled="{Binding InputsReady, FallbackValue=False}" />
-                        <CheckBox Content="{localization:ViewerText Key=ThreeD.Viewer.Nominal, Korean='명목', English='Nominal'}"
+                        <CheckBox Content="{localization:ViewerText Key=ThreeD.Viewer.Nominal, Korean='기준', English='Nominal'}"
                                   IsChecked="{Binding NominalVisible, Mode=TwoWay, FallbackValue=False}"
                                   IsEnabled="{Binding InputsReady, FallbackValue=False}" />
                     </WrapPanel>
@@ -642,12 +642,12 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LowerTolerance, Korean='하한 허용오차', English='Lower tolerance'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LowerTolerance, Korean='하한 공차', English='Lower tolerance'}" />
                             <TextBox Text="{Binding LowerTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, FallbackValue='-'}"
                                      IsEnabled="{Binding CanEdit, FallbackValue=False}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.UpperTolerance, Korean='상한 허용오차', English='Upper tolerance'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.UpperTolerance, Korean='상한 공차', English='Upper tolerance'}" />
                             <TextBox Text="{Binding UpperTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, FallbackValue='-'}"
                                      IsEnabled="{Binding CanEdit, FallbackValue=False}" />
                         </StackPanel>
@@ -749,27 +749,27 @@
                                Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairDimensions, Korean='점 쌍 치수', English='Point Pair Dimensions'}" />
                     <WrapPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairExpectedDistance, Korean='예상 거리', English='Exp D'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairExpectedDistance, Korean='기준 거리', English='Exp D'}" />
                             <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairDistanceTolerance, Korean='거리 허용오차', English='Tol D'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PointPairDistanceTolerance, Korean='거리 공차', English='Tol D'}" />
                             <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedWidth, Korean='예상 폭', English='Exp W'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedWidth, Korean='기준 폭', English='Exp W'}" />
                             <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceWidth, Korean='폭 허용오차', English='Tol W'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceWidth, Korean='폭 공차', English='Tol W'}" />
                             <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedAngle, Korean='예상 각도', English='Exp A'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedAngle, Korean='기준 각도', English='Exp A'}" />
                             <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,0,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceAngle, Korean='각도 허용오차', English='Tol A'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceAngle, Korean='각도 공차', English='Tol A'}" />
                             <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                     </WrapPanel>
@@ -786,28 +786,28 @@
                                Text="{Binding PointPairDimensionsSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                     <TextBlock Margin="0,12,0,4"
                                FontWeight="SemiBold"
-                               Text="{localization:ViewerText Key=ThreeD.Viewer.GapFlush, Korean='갭 / 플러시', English='Gap / Flush'}" />
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.GapFlush, Korean='갭 / 단차', English='Gap / Flush'}" />
                     <WrapPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedGap, Korean='예상 갭', English='Exp Gap'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedGap, Korean='기준 갭', English='Exp Gap'}" />
                             <TextBox Text="{Binding GapFlushExpectedGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceGap, Korean='갭 허용오차', English='Tol Gap'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceGap, Korean='갭 공차', English='Tol Gap'}" />
                             <TextBox Text="{Binding GapFlushGapTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedFlush, Korean='예상 플러시', English='Exp Flush'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedFlush, Korean='기준 단차', English='Exp Flush'}" />
                             <TextBox Text="{Binding GapFlushExpectedFlush, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,0,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceFlush, Korean='플러시 허용오차', English='Tol Flush'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ToleranceFlush, Korean='단차 공차', English='Tol Flush'}" />
                             <TextBox Text="{Binding GapFlushFlushTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                     </WrapPanel>
                     <WrapPanel>
                         <Button Margin="0,0,6,0"
-                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewGapFlush, Korean='갭 / 플러시 미리보기', English='Preview Gap / Flush'}"
+                                Content="{localization:ViewerText Key=ThreeD.Viewer.PreviewGapFlush, Korean='갭 / 단차 미리보기', English='Preview Gap / Flush'}"
                                 Command="{Binding PreviewGapFlushCommand}" />
                         <Button Content="{localization:ViewerText Key=ThreeD.Viewer.PublishResult, Korean='결과 발행', English='Publish Result'}"
                                 Command="{Binding PublishResultCommand}" />
@@ -819,11 +819,11 @@
                     <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="{localization:ViewerText Key=ThreeD.Viewer.Volume, Korean='체적', English='Volume'}" />
                     <WrapPanel>
                         <StackPanel Width="94" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedNet, Korean='예상 순 체적', English='Expected Net'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.ExpectedNet, Korean='기준 순체적', English='Expected Net'}" />
                             <TextBox Text="{Binding VolumeExpectedNet, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="94" Margin="0,0,0,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.VolumeTolerance, Korean='허용오차', English='Tolerance'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.VolumeTolerance, Korean='공차', English='Tolerance'}" />
                             <TextBox Text="{Binding VolumeTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                     </WrapPanel>
@@ -852,19 +852,19 @@
                     </WrapPanel>
                     <WrapPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionExpectedWidth, Korean='예상 폭', English='Exp Width'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionExpectedWidth, Korean='기준 폭', English='Exp Width'}" />
                             <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionWidthTolerance, Korean='폭 허용오차', English='Tol Width'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionWidthTolerance, Korean='폭 공차', English='Tol Width'}" />
                             <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionExpectedHeight, Korean='예상 높이', English='Exp Height'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionExpectedHeight, Korean='기준 높이', English='Exp Height'}" />
                             <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="70" Margin="0,0,0,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionHeightTolerance, Korean='높이 허용오차', English='Tol Height'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.CrossSectionHeightTolerance, Korean='높이 공차', English='Tol Height'}" />
                             <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                     </WrapPanel>
@@ -896,7 +896,7 @@
                             <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="58" Margin="0,0,0,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PlaneFlatnessTolerance, Korean='허용오차', English='Tolerance'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PlaneFlatnessTolerance, Korean='공차', English='Tolerance'}" />
                             <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                     </WrapPanel>
@@ -919,19 +919,19 @@
                     <TextBlock Margin="0,8,0,4" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazLasAcceptance, Korean='LAZ/LAS 허용 기준', English='LAZ/LAS Acceptance'}" />
                     <WrapPanel>
                         <StackPanel Width="78" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceExpectedDistance, Korean='예상 거리', English='Exp D'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceExpectedDistance, Korean='기준 거리', English='Exp D'}" />
                             <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="64" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceDistanceTolerance, Korean='거리 허용오차', English='Tol D'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceDistanceTolerance, Korean='거리 공차', English='Tol D'}" />
                             <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="78" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceExpectedHeight, Korean='예상 높이 변화', English='Exp H'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceExpectedHeight, Korean='기준 높이 변화', English='Exp H'}" />
                             <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                         <StackPanel Width="64" Margin="0,0,6,6">
-                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceHeightTolerance, Korean='높이 변화 허용오차', English='Tol H'}" />
+                            <TextBlock FontSize="12" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.LazAcceptanceHeightTolerance, Korean='높이 변화 공차', English='Tol H'}" />
                             <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
                         </StackPanel>
                     </WrapPanel>
@@ -944,7 +944,7 @@
                            TextWrapping="Wrap"
                            Text="{Binding RecipeValidationSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <StackPanel Visibility="{Binding C3DRecipeEditorVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Margin="0,8,0,4" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PeakTolerance, Korean='피크 허용오차', English='Peak Tolerance'}" />
+                    <TextBlock Margin="0,8,0,4" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.PeakTolerance, Korean='피크 공차', English='Peak Tolerance'}" />
                     <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
                     <TextBlock Margin="0,10,0,4" Foreground="#767676" Text="{localization:ViewerText Key=ThreeD.Viewer.Alignment, Korean='정렬', English='Alignment'}" />
                     <Button Margin="0,0,0,8"
@@ -2222,11 +2222,11 @@
                         </StackPanel.Style>
                         <StackPanel Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#14b8a6" />
-                            <TextBlock Margin="6,0,0,0" FontSize="12" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationWithinTolerance, Korean='허용오차 이내', English='Within tolerance'}" />
+                            <TextBlock Margin="6,0,0,0" FontSize="12" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationWithinTolerance, Korean='공차 이내', English='Within tolerance'}" />
                         </StackPanel>
                         <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#ef4444" />
-                            <TextBlock Margin="6,0,0,0" FontSize="12" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationFailMarker, Korean='실패 마커', English='Fail marker'}" />
+                            <TextBlock Margin="6,0,0,0" FontSize="12" Foreground="#111827" Text="{localization:ViewerText Key=ThreeD.Viewer.DeviationFailMarker, Korean='NG 마커', English='Fail marker'}" />
                         </StackPanel>
                     </StackPanel>
                     <TextBlock Margin="0,8,0,0"

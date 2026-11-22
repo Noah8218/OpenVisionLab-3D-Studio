@@ -1115,7 +1115,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "viewer localization evidence summary",
                 ViewerLocalization.Shared.LocalizeRuntimeText(
                     "Runner/UI contract matched | Status: Fail | Key metric: Peak 1.0 | Evidence: Matched")
-                == "검사·화면 결과 일치 | 상태: 실패 | 핵심 측정값: 피크 1.0 | 정보: 일치",
+                == "검사·화면 결과 일치 | 상태: NG | 핵심 측정값: 피크 1.0 | 정보: 일치",
                 ViewerLocalization.Shared.LocalizeRuntimeText(
                     "Runner/UI contract matched | Status: Fail | Key metric: Peak 1.0 | Evidence: Matched"));
             Check(

@@ -241,7 +241,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                 sample.Order,
                 sample.SourcePath,
                 sample.Role,
-                "미검증",
+                "검증 전",
                 "Not validated") with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }));
         SetDefinitionDirtyCore(false);
         onDefinitionChanged(true);
@@ -270,7 +270,7 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
             "Pending",
             localize("대기", "Pending"),
             localize(
-                koreanMessage ?? "미검증",
+                koreanMessage ?? "검증 전",
                 englishMessage ?? "Not validated"),
             string.Empty,
             []);

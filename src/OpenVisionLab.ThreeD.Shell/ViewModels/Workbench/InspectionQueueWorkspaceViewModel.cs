@@ -257,7 +257,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
         ? string.Empty
         : sample.Steps.Count == 0
             ? sample.State == InspectionQueueItemState.Untested
-                ? Localize("미검사", "Untested")
+                ? Localize("검사 전", "Untested")
                 : $"{sample.StateText} · {sample.Message}"
             : ShowOnlyFailedSteps && VisibleStepResults.Count == 0
                 ? Localize("선택 파일에 NG 단계가 없습니다.", "The selected file has no failed steps.") : string.Empty;
@@ -330,7 +330,7 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
     public string PassRateText => ProcessedCount == 0 ? "—%" : (100d * PassCount / ProcessedCount).ToString("0.0", CultureInfo.InvariantCulture) + "%";
     public string ProcessingSummaryText => Localize($"처리 {ProcessedCount}/{AllCount} · 체크 {CheckedCount}", $"Processed {ProcessedCount}/{AllCount} · checked {CheckedCount}");
     public string CountsText => Localize(
-        $"전체 {AllCount} · 체크 {CheckedCount} · 통과 {PassCount} · NG {FailCount} · 주의 {WarningCount} · 오류 {ErrorCount} · 취소 {CancelledCount} · 미검사 {UntestedCount} · 검사 중 {RunningCount}",
+        $"전체 {AllCount} · 체크 {CheckedCount} · OK {PassCount} · NG {FailCount} · 주의 {WarningCount} · 오류 {ErrorCount} · 취소 {CancelledCount} · 검사 전 {UntestedCount} · 검사 중 {RunningCount}",
         $"All {AllCount} · checked {CheckedCount} · pass {PassCount} · fail {FailCount} · warning {WarningCount} · error {ErrorCount} · cancelled {CancelledCount} · untested {UntestedCount} · running {RunningCount}");
     public string SavedRecipeText => getRecipePath() is { Length: > 0 } path && File.Exists(path)
         ? Path.GetFileName(path)
@@ -761,13 +761,13 @@ public sealed class InspectionQueueWorkspaceViewModel : INotifyPropertyChanged, 
             if (stopped)
             {
                 SetLocalizedSummary(
-                    "중지됨 · 완료 결과는 유지하고 현재 파일은 취소, 나머지는 미검사로 남겼습니다.",
+                    "중지됨 · 완료 결과는 유지하고 현재 파일은 취소, 나머지는 검사 전로 남겼습니다.",
                     "Stopped · completed results were kept, the current file was cancelled, and remaining files stay untested.");
             }
             else
             {
                 SetLocalizedSummary(
-                    $"검사 완료 · 통과 {PassCount} · NG {FailCount} · 오류 {ErrorCount}",
+                    $"검사 완료 · OK {PassCount} · NG {FailCount} · 오류 {ErrorCount}",
                     $"Inspection complete · Pass {PassCount} · NG {FailCount} · Error {ErrorCount}");
             }
         }
@@ -1235,9 +1235,9 @@ public sealed class InspectionQueueSampleItem : INotifyPropertyChanged
     public string RunId => Record?.RunId ?? string.Empty;
     public string StateText => state switch
     {
-        InspectionQueueItemState.Untested => localize("미검사", "Untested"),
+        InspectionQueueItemState.Untested => localize("검사 전", "Untested"),
         InspectionQueueItemState.Running => localize("검사 중", "Running"),
-        InspectionQueueItemState.Pass => localize("통과", "Pass"),
+        InspectionQueueItemState.Pass => localize("OK", "Pass"),
         InspectionQueueItemState.Fail => localize("NG", "Fail"),
         InspectionQueueItemState.Warning => localize("주의", "Warning"),
         InspectionQueueItemState.Error => localize("오류", "Error"),

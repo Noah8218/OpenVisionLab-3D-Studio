@@ -285,7 +285,8 @@ internal static class ShellOrderedRunHistoryVerification
                 && reopenedShell.InspectionSteps[0].Timing.Contains(
                     InspectionRunTiming.ToolExecutionStage,
                     StringComparison.Ordinal)
-                && reopenedShell.RunSnapshotSummary.Contains("Pass", StringComparison.OrdinalIgnoreCase),
+                && (reopenedShell.RunSnapshotSummary.Contains("Pass", StringComparison.OrdinalIgnoreCase)
+                    || reopenedShell.RunSnapshotSummary.Contains("OK", StringComparison.Ordinal)),
                 $"completed={runCompleted}; fullRuns={reopenRunCount}; record={recordPath}; schema={record?.SchemaVersion}; status={record?.Status}; sourceQuality={record?.SourceQualityEvidence?.State}; timing={reopenedShell.InspectionSteps.FirstOrDefault()?.Timing}");
             Check("ordered Run projects actual step metrics into teaching results",
                 reopenedShell.Workbench.TeachingResults.Count == reopenedExecution!.Steps.Count

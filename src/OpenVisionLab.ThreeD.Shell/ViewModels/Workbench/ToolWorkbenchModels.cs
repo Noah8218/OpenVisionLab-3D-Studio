@@ -818,13 +818,13 @@ public sealed record TeachingMeasurementResultItem(
     public string State => !IsCurrent ? "Previous" : ExecutionStatus?.ToString() ?? Status;
     public string StatusText => State switch
     {
-        "Pass" or "통과" => "OK",
-        "Fail" or "실패" => "NG",
+        "Pass" or "OK" or "통과" => "OK",
+        "Fail" or "NG" or "실패" => "NG",
         "Error" => ThreeDLocalization.Shared.Resolve("ThreeD.Results.Error", "오류", "Error"),
         "Previous" => ThreeDLocalization.Shared.Resolve("ThreeD.Results.Previous", "이전 결과", "Previous"),
         _ => Status
     };
-    public string StatusIcon => State switch { "Pass" or "통과" => "✓", "Fail" or "실패" => "×", "Error" => "!", "Previous" => "↻", _ => "–" };
+    public string StatusIcon => State switch { "Pass" or "OK" or "통과" => "✓", "Fail" or "NG" or "실패" => "×", "Error" => "!", "Previous" => "↻", _ => "–" };
     public bool HasMarginScale => IsCurrent && PrimaryMetric is { } metric && double.IsFinite(metric.Value)
         && Lower is { } lower && Upper is { } upper && lower.Unit == metric.Unit && upper.Unit == metric.Unit
         && upper.Value > lower.Value && double.IsFinite(upper.Value - lower.Value) && State is not ("Error" or "오류");

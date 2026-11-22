@@ -1490,7 +1490,7 @@ internal static class ToolRecipeTeachingVerification
                 Check(
                     "selected-tool measurement output status formatter localizes every ResultStatus value",
                     englishResultStatuses.SequenceEqual(["Not run", "Pass", "Fail", "Warning", "Error"])
-                    && koreanResultStatuses.SequenceEqual(["미실행", "통과", "실패", "경고", "오류"])
+                    && koreanResultStatuses.SequenceEqual(["미실행", "OK", "NG", "경고", "오류"])
                     && !englishResultStatuses.SequenceEqual(koreanResultStatuses),
                     $"en={string.Join(",", englishResultStatuses)}; ko={string.Join(",", koreanResultStatuses)}");
             }

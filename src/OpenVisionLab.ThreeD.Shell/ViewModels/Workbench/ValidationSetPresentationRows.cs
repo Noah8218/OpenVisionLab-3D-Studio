@@ -39,7 +39,7 @@ public sealed record ValidationSetSampleRow(
     public string ExpectedVerdictText => EffectiveExpectation switch
     {
         ToolRecipeValidationExpectation.Ok => "OK", ToolRecipeValidationExpectation.Ng => "NG",
-        _ => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.Unset", "미지정", "Unset")
+        _ => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.Unset", "정답 없음", "Unset")
     };
     public string Agreement => Status == "Error" ? "Error" : !HasExpectation ? "Unset" : Status switch
     {
@@ -67,8 +67,8 @@ public sealed record ValidationSetSampleRow(
             var l = ThreeDLocalization.Shared;
             if (Agreement == "FalseAccept" && (!Steps.SelectMany(step => step.Metrics).Any(metric => !string.IsNullOrWhiteSpace(metric.Status))
                 || Steps.SelectMany(step => step.Metrics).Any(metric => !string.IsNullOrWhiteSpace(metric.Status) && metric.Status != "Pass")))
-                return l.Resolve("ThreeD.Validation.MissingPassEvidence", "실행 결과는 OK이지만 통과한 판정 출력의 기록이 충분하지 않습니다. 확정된 원인 도구는 없습니다.", "The run result is OK, but recorded passing judged outputs are insufficient. No cause tool is established.");
-            if (Agreement == "FalseAccept") return l.Resolve("ThreeD.Validation.MissedEvidence", "기록된 판정 출력은 통과했지만 기대 판정은 NG입니다. 확정된 원인 도구는 없습니다.", "Recorded judged outputs passed, but the expected decision is NG. No cause tool is established.");
+                return l.Resolve("ThreeD.Validation.MissingPassEvidence", "실행 결과는 OK이지만 OK로 판정된 출력의 기록이 충분하지 않습니다. 원인 도구를 특정할 수 없습니다.", "The run result is OK, but recorded passing judged outputs are insufficient. No cause tool is established.");
+            if (Agreement == "FalseAccept") return l.Resolve("ThreeD.Validation.MissedEvidence", "판정 출력은 OK였지만 정답은 NG입니다. 원인 도구를 특정할 수 없습니다.", "Recorded judged outputs passed, but the expected decision is NG. No cause tool is established.");
             if (MismatchStep is not { } step) return l.Resolve("ThreeD.Validation.MissingEvidence", "기록된 문제 단계 없음", "No recorded issue step") + " · " + Message;
             var metric = ReviewOutputMetric;
             var lower = step.Metrics.FirstOrDefault(item => item.Name == "LowerLimit" && item.Unit == metric?.Unit);
@@ -81,7 +81,7 @@ public sealed record ValidationSetSampleRow(
     }
     public string MismatchGuidance => Agreement switch
     {
-        "FalseReject" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.RejectGuidance", "• 기대 판정별 측정값 분포를 비교하세요.\n• 영역이 경계나 경사면을 포함하는지 확인하세요.", "• Compare measurements by expected decision.\n• Check whether the region includes an edge or slope."),
+        "FalseReject" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.RejectGuidance", "• 정답별 측정값 분포를 비교하세요.\n• 영역이 경계나 경사면을 포함하는지 확인하세요.", "• Compare measurements by expected decision.\n• Check whether the region includes an edge or slope."),
         "FalseAccept" => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.AcceptGuidance", "• 해당 영역의 최소·최대 측정값을 확인하세요.\n• 결함 위치가 영역 안에 있는지 확인하세요.", "• Check the minimum and maximum measurements in this region.\n• Check whether the defect is inside the region."),
         _ => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.ErrorGuidance", "• 입력과 영역 위치를 확인하세요.\n• 실행 오류는 OK로 처리하지 않습니다.", "• Check the input and region location.\n• Execution errors are not treated as OK.")
     };

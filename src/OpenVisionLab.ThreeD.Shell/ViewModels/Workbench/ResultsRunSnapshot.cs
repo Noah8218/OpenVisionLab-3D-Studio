@@ -30,7 +30,9 @@ public sealed record ResultsRunSnapshot(
     public string SourceName => Path.GetFileName(SourcePath);
     public string RecordedAtText => RecordedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
     public string RecipeIdentity => $"{RecipeName} · {RecipeVersion} · {ShortHash(RecipeSha256)}";
-    public string DecisionSummary => $"OK {PassCount} · NG {FailCount} · Error {ErrorCount} · {Status}";
+    // 오류 건수 라벨과 종합 판정은 화면 언어의 판정 라벨을 쓴다(영어 UI는 기존과 같은 Error · Pass).
+    public string DecisionSummary =>
+        $"OK {PassCount} · NG {FailCount} · {ThreeDLocalization.Shared.ResultStatusLabel(ResultStatus.Error)} {ErrorCount} · {ThreeDLocalization.Shared.ResultStatusLabel(Status)}";
 
     public static ResultsRunSnapshot? FromRecord(InspectionRunRecord record)
     {

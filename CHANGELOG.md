@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.2-dev - 2026-11-21
+## 0.8.2-dev - 2026-11-22
 
 - Report validation with no expected decisions separately from matched results, and keep the actual preparation error and pending samples when validation cannot start.
 - Clarify input and calculated-result displays in the Tool Labs, localize the related diagnostics and parameter errors, and keep required first-recipe inputs visible.
@@ -9,6 +9,9 @@
 - Applying an edited limit starts judgement in the same step, the Judgment tab stays open after a run, and the 3D result label no longer shows the internal `raw-height` unit.
 - `OpenVisionLab.ThreeD.Runner --tool-recipe` accepts `--status-exit-codes` (a Fail result exits with 6; the default is unchanged), writes an `InputError` report when the recipe or input cannot be read, and adds a `cause=` field to failed Thickness and Warpage steps.
 - Height-measurement parameter names and tool IDs now live in one Core contract used by the recipe validator and the measurement executor. Added a Warpage demo recipe to the Thickness Coupon sample.
+- Korean wording follows machine-vision field usage: over-detection and miss read 과검 and 미검, the expected judgement reads 정답, unverified states read 검증 전 and 검사 전, and limits read 기준값 and 공차.
+- The Korean UI shows the judgement as OK/NG instead of 통과/실패, and the status bar and the Records screen no longer show the internal `Pass` and `Error` names. Stored statuses, Run Records and the English UI are unchanged.
+- ROI review candidates use the same role colors as applied ROIs (reference cyan, measurement amber); other candidates and ROIs being edited use the theme accent.
 
 This is a development source update; it is not a binary release, deployment or production qualification. Wide and Compact screenshots of the final binary, English wording and native 125% scaling are not qualified by this batch.
 

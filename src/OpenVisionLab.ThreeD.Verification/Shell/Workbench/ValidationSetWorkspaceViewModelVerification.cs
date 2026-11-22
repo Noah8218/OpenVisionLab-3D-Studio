@@ -70,8 +70,8 @@ internal static class ValidationSetWorkspaceViewModelVerification
                 (korean, translated) => english ? translated : korean,
                 status => english ? status.ToString() : status switch
                 {
-                    ResultStatus.Pass => "통과",
-                    ResultStatus.Fail => "실패",
+                    ResultStatus.Pass => "OK",
+                    ResultStatus.Fail => "NG",
                     ResultStatus.Warning => "경고",
                     _ => "오류"
                 }, previewLoader: loader);
@@ -437,7 +437,7 @@ internal static class ValidationSetWorkspaceViewModelVerification
             var logsBeforeLocalization = log.Count;
             english = false;
             workspace.RefreshValidationSetLocalization();
-            Check("localization updates review state without execution", workspace.ValidationSetSamples[0].StatusText == "실패"
+            Check("localization updates review state without execution", workspace.ValidationSetSamples[0].StatusText == "NG"
                 && workspace.ValidationSetSummary.Contains("완료", StringComparison.Ordinal)
                 && log.Count == logsBeforeLocalization
                 && !workspace.IsValidationSetRunning

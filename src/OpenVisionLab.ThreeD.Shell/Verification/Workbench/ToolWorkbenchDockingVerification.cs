@@ -5478,7 +5478,7 @@ internal static class ToolWorkbenchDockingVerification
                 ownerPathShell.Workbench.ValidationSetAllCount == 0 && boundaryRun.IsVisible && !boundaryRun.IsEnabled
                 && !boundaryCancel.IsVisible && boundarySummary.Text == ownerPathShell.Workbench.ValidationSetRunBasisText
                 && boundarySummary.Text == (OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.Korean
-                    ? "C3D 샘플을 추가하고 기대 역할을 지정하세요."
+                    ? "C3D 샘플을 추가하고 정답(OK/NG)을 지정하세요."
                     : "Add C3D samples and assign expected roles.")
                 && !ownerPathShell.Workbench.IsValidationSetRunning,
                 $"count={ownerPathShell.Workbench.ValidationSetAllCount};enabled={boundaryRun.IsEnabled};summary={boundarySummary.Text}");
