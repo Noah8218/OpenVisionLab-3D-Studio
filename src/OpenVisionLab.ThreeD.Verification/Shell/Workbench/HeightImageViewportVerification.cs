@@ -226,10 +226,10 @@ internal static class HeightImageViewportVerification
                 window.Width = width + 32;
                 model.UpdateHover(639, 479);
                 await Settle();
-                checks.Add(($"FooterNormalSingleLine{width:0}", coordinateText.Text == "X 639 · Y 639 · Z 479"
+                checks.Add(($"FooterNormalSingleLine{width:0}", coordinateText.Text == "X 639 · Y 479 · Z 639"
                     && coordinateText.ActualHeight <= 14.5 && cursorScroll.ScrollableHeight <= 1 && cursorFooter.ActualHeight == 24,
                     $"view={view.ActualWidth};text={coordinateText.Text};height={coordinateText.ActualHeight};scroll={cursorScroll.ScrollableHeight}"));
-                checks.Add(($"FooterKeepsFullUnitContract{width:0}", model.CursorCoordinateSummary == "X 639 · Y 639 raw-height · Z 479"
+                checks.Add(($"FooterKeepsFullUnitContract{width:0}", model.CursorCoordinateSummary == "X 639 · Y 479 · Z 639 raw-height"
                     && model.LegendUnit == "raw-height" && selectionContext.TextTrimming == TextTrimming.CharacterEllipsis
                     && cursorScroll.Focusable && cursorScroll.VerticalScrollBarVisibility == ScrollBarVisibility.Auto,
                     $"full={model.CursorCoordinateSummary};unit={model.LegendUnit};context={selectionContext.TextTrimming}"));
@@ -243,7 +243,7 @@ internal static class HeightImageViewportVerification
                 model.UpdateHover(4, 1);
                 await Settle();
                 var bounds = coordinateText.TransformToAncestor(cursorFooter).TransformBounds(new Rect(coordinateText.RenderSize));
-                checks.Add(($"FooterLongValueSingleLine{width:0}", coordinateText.Text == "X 4 · Y -1234567.75 · Z 1"
+                checks.Add(($"FooterLongValueSingleLine{width:0}", coordinateText.Text == "X 4 · Y 1 · Z -1234567.75"
                     && coordinateText.ActualHeight <= 14.5 && cursorScroll.ScrollableHeight <= 1 && bounds.Right <= cursorFooter.ActualWidth,
                     $"text={coordinateText.Text};height={coordinateText.ActualHeight};right={bounds.Right};footer={cursorFooter.ActualWidth};scroll={cursorScroll.ScrollableHeight}"));
             }
@@ -306,7 +306,7 @@ internal static class HeightImageViewportVerification
                 && Canvas.GetLeft(peer) + peer.Width / 2.0 == 2.5 && Canvas.GetTop(peer) + peer.Height / 2.0 == 1.5,
                 $"origin={model.LinkedCursorOrigin};cell={model.LinkedCursorColumn},{model.LinkedCursorRow}"));
             shared.Update(SharedHeightCursorOrigin.HeightImage, model.Frame.SourceContentSha256, 1, 2, double.NaN, false);
-            checks.Add(("MissingCursorPreservesUnavailableHeight", !model.LinkedCursorIsValid && model.CursorCoordinateSummary.Contains("Y —")
+            checks.Add(("MissingCursorPreservesUnavailableHeight", !model.LinkedCursorIsValid && model.CursorCoordinateSummary.Contains("Z —")
                 && overlay.Visibility == Visibility.Visible && peer.Visibility == Visibility.Visible,
                 model.CursorCoordinateSummary));
             shared.Update(SharedHeightCursorOrigin.ThreeDViewer, "other-source", 1, 2, 7, true);

@@ -434,6 +434,8 @@ public sealed partial class OpenVisionThreeDViewerControl
     /// </summary>
     public void ClearC3DTeachingSource(string status)
     {
+        // 선택·오버레이 상태를 지우는 속성 변경마다 RenderNow가 장면을 그리지 않도록 마지막에 한 번만 그린다.
+        using var renderBatch = BeginRenderBatch();
         CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin();
         sourceLoadOperations.TryApply(
@@ -458,6 +460,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     /// </summary>
     public bool ShowC3DWorkbenchResult(string path, string label)
     {
+        using var renderBatch = BeginRenderBatch();
         CancelPendingSourceAutoFit();
         using var operation = sourceLoadOperations.Begin();
         try
@@ -982,7 +985,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SetC3DHeightDistribution(
             c3dSample.HeightDistribution,
             c3dSample.ContentSha256,
-            viewModel.C3DHeightDistributionSourceSha256 == c3dSample.ContentSha256 ? default : c3dSample.ReadHeightMapValues(),
+            viewModel.C3DHeightDistributionSourceSha256 == c3dSample.ContentSha256 ? default : c3dSample.GetSharedHeightMapValues(),
             c3dSample.Width, c3dSample.Height, c3dSample.IsSignedDelta, c3dSample.DisplayUnit);
         viewModel.C3DTexture.SetSource(c3dSample);
         UpdateHeightMapFromC3D();

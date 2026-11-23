@@ -130,15 +130,20 @@ internal static class RecipeManagerWpgVerification
                     var sample = FindTextEditors(conditions).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumValidSampleCount));
                     var minimum = FindTextEditors(acceptance).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumThickness));
                     var maximum = FindTextEditors(acceptance).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MaximumThickness));
+                    // 조건 영역에는 최소 유효 샘플 수와 두께 기준면 최대 RMS(선택 입력)가 있어 Tab 순서가 샘플 수 → 기준면 RMS → 최소 두께다.
+                    var referenceFit = FindTextEditors(conditions).Single(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MaximumReferenceFitRms));
                     var focusedSample = sample.Focus();
-                    var movedToNext = sample.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                    var movedToReferenceFit = sample.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                    var reachedReferenceFit = referenceFit.IsKeyboardFocused;
+                    var movedToNext = referenceFit.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
                     Layout();
-                    Check("compact Tab reaches the next editor without container focus", focusedSample && movedToNext && minimum.IsKeyboardFocused, $"{label}; next={Keyboard.FocusedElement?.GetType().FullName}");
+                    Check("compact Tab reaches the next editor without container focus", focusedSample && movedToReferenceFit && reachedReferenceFit && movedToNext && minimum.IsKeyboardFocused,
+                        $"{label}; reference-fit={reachedReferenceFit}; next={Keyboard.FocusedElement?.GetType().FullName}");
                     Check("focused compact editor keeps description tooltip away from input", !ToolTipService.GetIsEnabled(minimum), label);
                     Check("same typed draft and split metadata", ReferenceEquals(conditions.SelectedObject, draft) && ReferenceEquals(acceptance.SelectedObject, draft)
-                        && conditions.VisiblePropertyCount == 1 && acceptance.VisiblePropertyCount == 2,
+                        && conditions.VisiblePropertyCount == 2 && acceptance.VisiblePropertyCount == 2,
                         $"{label}; condition={conditions.VisiblePropertyCount}; acceptance={acceptance.VisiblePropertyCount}");
-                    Check("field geometry and font", new[] { sample, minimum, maximum }.All(e => Math.Abs(e.ActualHeight - 30) <= 0.5 && e.FontSize == 13 && e.FontFamily.Source.StartsWith("Segoe UI Variable Text", StringComparison.Ordinal))
+                    Check("field geometry and font", new[] { sample, referenceFit, minimum, maximum }.All(e => Math.Abs(e.ActualHeight - 30) <= 0.5 && e.FontSize == 13 && e.FontFamily.Source.StartsWith("Segoe UI Variable Text", StringComparison.Ordinal))
                         && Math.Abs(minimum.ActualWidth - (width - 10) / 2) <= 0.5 && Math.Abs(maximum.ActualWidth - minimum.ActualWidth) <= 0.5
                         && Math.Abs(minimum.TranslatePoint(new Point(), acceptance).Y - maximum.TranslatePoint(new Point(), acceptance).Y) <= 0.5,
                         $"{label}; sample={sample.ActualWidth:F2}x{sample.ActualHeight:F2}; minimum={minimum.ActualWidth:F2}x{minimum.ActualHeight:F2}; maximum={maximum.ActualWidth:F2}x{maximum.ActualHeight:F2}");
@@ -184,7 +189,7 @@ internal static class RecipeManagerWpgVerification
                     acceptance.IsCompactPresentation = false;
                     acceptance.AcceptanceParametersOnly = null;
                     Layout();
-                    Check("noncompact presentation restores table and same source", ReferenceEquals(acceptance.SelectedObject, draft) && acceptance.VisiblePropertyCount == 3
+                    Check("noncompact presentation restores table and same source", ReferenceEquals(acceptance.SelectedObject, draft) && acceptance.VisiblePropertyCount == 4
                         && FindTextEditors(acceptance).Any(e => AutomationProperties.GetAutomationId(e) == nameof(ThicknessStepProperties.MinimumValidSampleCount))
                         && !FindVisualChildren<Border>(acceptance).Any(b => b.Name == "ParameterInputSurface"), label);
                     Capture(panel, label + "-noncompact");
@@ -2237,8 +2242,9 @@ internal static class RecipeManagerWpgVerification
             host.ShowAdvancedParameters = false;
             host.CommitPendingEdit(out _);
             host.Dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => host.UpdateLayout()));
-            Check("WPG basic and advanced display preserve the same sampling draft", basicThicknessCount == 2
-                && advancedThicknessCount == 3 && host.VisiblePropertyCount == 2
+            // 두께 기준면 최대 RMS(선택 입력)는 시안처럼 기본 표시에 있고, 고급 표시에는 최소 유효 샘플 수가 더해진다: 기본 3개 → 고급 4개.
+            Check("WPG basic and advanced display preserve the same sampling draft", basicThicknessCount == 3
+                && advancedThicknessCount == 4 && host.VisiblePropertyCount == 3
                 && ReferenceEquals(host.SelectedObject, thicknessDraft) && thicknessDraft.MinimumValidSampleCount == 3000,
                 $"basic={basicThicknessCount};advanced={advancedThicknessCount};restored={host.VisiblePropertyCount};samples={thicknessDraft.MinimumValidSampleCount};descriptors={basicDescriptorNames};advancedFlag={host.ShowAdvancedParameters}");
 

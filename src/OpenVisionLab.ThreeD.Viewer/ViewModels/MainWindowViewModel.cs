@@ -1753,13 +1753,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         get
         {
             if (LinkedHeightCursor is not { } cursor) return PickCoordinate;
+            // 화면 좌표는 현업 순서(X 열, Y 행, Z 높이)로 보인다. 뷰어 내부의 3D 축(Y가 높이)은 바꾸지 않는다.
             var height = cursor.IsValid ? cursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture) : "—";
-            return string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column:N0} · Y {height} raw-height · Z {cursor.Row:N0}");
+            return string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column:N0} · Y {cursor.Row:N0} · Z {height}");
         }
     }
 
     public string DisplayedCoordinateCaption => LinkedHeightCursor is { } cursor
-        ? string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column}   Y {(cursor.IsValid ? cursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture) : "—")}   Z {cursor.Row}")
+        ? string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column}   Y {cursor.Row}   Z {(cursor.IsValid ? cursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture) : "—")}")
         : PickCoordinate is "(none)" or "" ? "X —   Y —   Z —" : PickCoordinate;
 
     public string LastScreenshotPath

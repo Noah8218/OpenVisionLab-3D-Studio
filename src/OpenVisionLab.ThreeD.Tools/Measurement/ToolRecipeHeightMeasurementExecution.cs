@@ -196,6 +196,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var minimum = ParseFinite(Parameter(step, "MinimumThickness"), "MinimumThickness");
             var maximum = ParseFinite(Parameter(step, "MaximumThickness"), "MaximumThickness");
             var minimumSamples = ParsePositiveInt(Parameter(step, "MinimumValidSampleCount"), "MinimumValidSampleCount", 1);
+            var maximumReferenceFitRms = ParseOptionalThicknessReferenceFitRms(step);
             var referenceSamples = CreateThicknessReferenceAxisSamples(prepared, prepared.ReferenceRoi!, cancellationToken);
             var measurementSamples = CreateThicknessReferenceAxisSamples(prepared, prepared.MeasurementRoi!, cancellationToken);
             var evaluation = DualSurfaceThicknessRule.EvaluateReferenceAxes(
@@ -205,7 +206,7 @@ public static class ToolRecipeHeightMeasurementExecution
                 minimum,
                 maximum,
                 minimumSamples,
-                prepared.Unit, cancellationToken);
+                prepared.Unit, cancellationToken, maximumReferenceFitRms);
             result = evaluation.Result;
             evidence = $"H-axis thickness mean {evaluation.Mean:G6} | min {evaluation.Minimum:G6} | max {evaluation.Maximum:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0} finite samples";
             failure = CreateThicknessFailure(evaluation, minimumSamples);
@@ -864,12 +865,9 @@ public static class ToolRecipeHeightMeasurementExecution
 
     private static void ValidateParameters(ToolRecipeStep step)
     {
-        var expected = ToolRecipeParameterContract.GetHeightMeasurementParameterNames(step.ToolId);
         var parameters = step.Parameters ?? [];
         if (step.ToolId != "completeness-grid"
-            && (parameters.Count != expected.Count
-                || expected.Any(name =>
-                    parameters.Count(parameter => parameter.Name == name) != 1)))
+            && !ToolRecipeParameterContract.HasExpectedHeightMeasurementParameters(step.ToolId, parameters))
         {
             throw new InvalidDataException($"{step.ToolName} v1 requires exactly one value for every recognized parameter and no unknown parameters.");
         }
@@ -879,6 +877,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var maximum = ParseFinite(Parameter(step, "MaximumThickness"), "MaximumThickness");
             if (minimum > maximum) throw new InvalidDataException("MinimumThickness must not exceed MaximumThickness.");
             _ = ParsePositiveInt(Parameter(step, "MinimumValidSampleCount"), "MinimumValidSampleCount", 1);
+            _ = ParseOptionalThicknessReferenceFitRms(step);
         }
         else if (step.ToolId == "warpage")
         {
@@ -948,6 +947,18 @@ public static class ToolRecipeHeightMeasurementExecution
         var parsed = ParseFinite(value, name);
         if (parsed <= 0d) throw new InvalidDataException($"{name} must be greater than zero.");
         return parsed;
+    }
+
+    // 레시피에 없으면 null(검사 안 함). 있으면 계약의 형식 규칙으로 읽고, 어긋나면 실행 전에 거부한다.
+    private static double? ParseOptionalThicknessReferenceFitRms(ToolRecipeStep step)
+    {
+        var parameter = step.Parameters?.FirstOrDefault(item => item.Name == ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms);
+        if (parameter is null) return null;
+        if (!ToolRecipeParameterContract.TryParseThicknessMaximumReferenceFitRms(parameter.Value, out var limit))
+        {
+            throw new InvalidDataException($"{ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms} must be an invariant finite number greater than zero.");
+        }
+        return limit;
     }
 
     private static double ParseNonNegative(string value, string name)

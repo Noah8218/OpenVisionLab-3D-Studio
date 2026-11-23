@@ -112,7 +112,7 @@ public sealed partial class MainWindowViewModel
             if (GetVisibleTeachingGridRectangle() is not { } rectangle) return string.Empty;
             var name = teachingCaptureRequest?.SelectionName ?? appliedTeachingSelections.FirstOrDefault(selection =>
                 string.Equals(selection.Id, selectedTeachingSelectionId, StringComparison.OrdinalIgnoreCase))?.Name;
-            return $"{name} {rectangle.Column},{rectangle.Row} {rectangle.ColumnCount}x{rectangle.RowCount}";
+            return $"{name} X {rectangle.Column} Y {rectangle.Row} · {rectangle.ColumnCount} × {rectangle.RowCount}";
         }
     }
 

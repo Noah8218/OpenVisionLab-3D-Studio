@@ -18,6 +18,14 @@ public static class ToolRecipeParameterContract
     private static readonly IReadOnlyList<string> CrossSection = ReadOnly(["ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance"]);
     private static readonly IReadOnlyList<string> None = ReadOnly([]);
 
+    /// <summary>
+    /// 두께 기준면 맞춤 RMS 상한. 레시피에 없으면 기준 영역이 평면에서 얼마나 벗어났는지 검사하지 않는다(기존 동작).
+    /// </summary>
+    public const string ThicknessMaximumReferenceFitRms = "MaximumReferenceFitRms";
+
+    // 필수 파라미터와 달리 없어도 되는 이름. 있으면 한 번만 허용한다.
+    private static readonly IReadOnlyList<string> ThicknessOptional = ReadOnly([ThicknessMaximumReferenceFitRms]);
+
     private static IReadOnlyList<string> ReadOnly(string[] names) => Array.AsReadOnly(names);
 
     /// <summary>
@@ -53,4 +61,50 @@ public static class ToolRecipeParameterContract
         "completeness-grid" => None,
         _ => PlaneFlatness
     };
+
+    /// <summary>
+    /// 레시피 단계가 없어도 되는 파라미터 이름. 필수 목록과 겹치지 않는다. 지금은 두께의 기준면 RMS 상한뿐이다.
+    /// </summary>
+    public static IReadOnlyList<string> GetOptionalHeightMeasurementParameterNames(string? toolId) => toolId switch
+    {
+        "thickness" => ThicknessOptional,
+        _ => None
+    };
+
+    /// <summary>
+    /// 필수 이름은 정확히 한 번씩, 선택 이름은 최대 한 번씩 있고 그 밖의 이름이 없으면 true.
+    /// completeness-grid는 자체 프로필 검사를 쓰므로 호출하는 쪽에서 제외한다.
+    /// 선택 파라미터가 없는 기존 레시피는 이전과 같은 결과를 얻는다.
+    /// </summary>
+    public static bool HasExpectedHeightMeasurementParameters(string? toolId, IReadOnlyList<ToolRecipeParameter>? parameters)
+    {
+        parameters ??= [];
+        var required = GetHeightMeasurementParameterNames(toolId);
+        var optional = GetOptionalHeightMeasurementParameterNames(toolId);
+        if (required.Any(name => parameters.Count(parameter => parameter.Name == name) != 1)) return false;
+        if (optional.Any(name => parameters.Count(parameter => parameter.Name == name) > 1)) return false;
+        // 합계가 맞지 않으면 알 수 없는 이름이 섞여 있다.
+        return parameters.Count == required.Count + optional.Count(name => parameters.Any(parameter => parameter.Name == name));
+    }
+
+    /// <summary>
+    /// 두께 기준면 RMS 상한 값의 형식 규칙. 실행기의 숫자 규칙(공백·쉼표 없는 invariant 유한 수)과 같고 0 초과여야 한다.
+    /// 검증기, 실행기, 편집 화면이 같은 규칙을 쓰도록 한 곳에 둔다.
+    /// </summary>
+    public static bool TryParseThicknessMaximumReferenceFitRms(string? value, out double limit)
+    {
+        limit = double.NaN;
+        return value is not null
+            && value == value.Trim()
+            && !value.Contains(',', StringComparison.Ordinal)
+            && double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out limit)
+            && double.IsFinite(limit)
+            && limit > 0d;
+    }
+
+    /// <summary>선택 파라미터가 있으면 오류 문구에 덧붙일 안내. 없으면 빈 문자열.</summary>
+    public static string DescribeOptionalHeightMeasurementParameters(string? toolId) =>
+        GetOptionalHeightMeasurementParameterNames(toolId) is { Count: > 0 } optional
+            ? $" and may add {string.Join(", ", optional)}"
+            : string.Empty;
 }

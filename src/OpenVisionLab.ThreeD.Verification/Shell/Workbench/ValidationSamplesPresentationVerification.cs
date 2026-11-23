@@ -112,7 +112,7 @@ internal static class ValidationSamplesPresentationVerification
                 foreach (var (width, height) in new[] { (272d, 668d), (304d, 934d) })
                 {
                     Settle(width, height);
-                    var guide = (TextBlock)view.FindName("SamplesMeaningGuide");
+                    FrameworkElement guide = list; // 하단 안내 줄을 없앴으므로 목록 하단이 뷰 안에 있는지 본다.
                     var footer = guide.TransformToAncestor(view).TransformBounds(new Rect(guide.RenderSize));
                     var filters = Descendants<RadioButton>(view).Where(button => AutomationProperties.GetAutomationId(button).StartsWith("ValidationSamplesFilter", StringComparison.Ordinal)).ToArray();
                     checks.Add(($"{language} {width}px layout keeps six filters and rows reachable", filters.Length == 6 && filters.All(button => button.ActualHeight == 24)

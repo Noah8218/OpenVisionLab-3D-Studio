@@ -369,6 +369,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ClearTeachingSelectionsForSourceChange()
     {
+        using var renderBatch = BeginRenderBatch();
         teachingCapturePointerDownPosition = null;
         teachingCaptureDragExceeded = false;
         ClearTeachingGridRectangleEdit();

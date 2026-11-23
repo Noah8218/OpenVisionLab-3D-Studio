@@ -737,7 +737,7 @@ internal sealed class ToolWorkbenchValidationThresholdWorkflowOwner :
                 return;
             }
 
-            ValidationThresholdCorrectionSummary = localize("조정 샘플 재검증을 취소했습니다. 보류 샘플 검증은 시작할 수 없습니다.", "Adjustment sample revalidation canceled. Held-out validation remains locked.");
+            ValidationThresholdCorrectionSummary = localize("Tuning 재검증을 취소했습니다. Test 검증은 시작할 수 없습니다.", "Adjustment sample revalidation canceled. Held-out validation remains locked.");
             ValidationSetProgressText = localize("사용자 취소", "Canceled");
         }
         catch (ObjectDisposedException) when (IsDisposed)

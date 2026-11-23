@@ -7,7 +7,7 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.WindowTitle, Korean='2점 직선 도구 실험실 | OpenVisionLab 3D Studio', English='2-Point Line Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.WindowTitle, Korean='2점 직선 Tool Lab | OpenVisionLab 3D Studio', English='2-Point Line Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1600" Height="920" MinWidth="1120" MinHeight="700"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -22,7 +22,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="280" />
         </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Subtitle, Korean='2점 직선 도구 실험실', English='2-Point Line Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.TwoPointLine.Subtitle, Korean='2점 직선 Tool Lab', English='2-Point Line Tool Lab'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12" Background="{DynamicResource ThreeD.PanelHeaderBrush}" BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /></Grid.RowDefinitions>

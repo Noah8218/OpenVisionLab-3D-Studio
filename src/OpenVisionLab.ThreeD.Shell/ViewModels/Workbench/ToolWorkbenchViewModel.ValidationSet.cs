@@ -85,6 +85,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand SetValidationSampleRoleCommand => validationSetWorkspace.SetValidationSampleRoleCommand;
 
+    public ICommand SetVisibleValidationSampleExpectationCommand => validationSetWorkspace.SetVisibleValidationSampleExpectationCommand;
+
     public ICommand ProposeValidationThresholdCandidateCommand => validationSetWorkspace.ProposeValidationThresholdCandidateCommand;
 
     public ICommand ReviewValidationThresholdCandidateCommand => validationSetWorkspace.ReviewValidationThresholdCandidateCommand;

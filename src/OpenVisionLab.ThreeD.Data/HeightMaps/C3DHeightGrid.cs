@@ -170,6 +170,14 @@ public sealed class C3DHeightGrid
     /// C3D zero and non-finite samples are represented as <see cref="double.NaN"/>,
     /// which is the declared missing-value contract at the inspection boundary.
     /// </summary>
+    private double[]? sharedHeightMapValues;
+
+    /// <summary>
+    /// 이 불변 snapshot의 높이 값을 한 번만 만들어 돌려준다. 2.8M 셀이면 22MB라 탭마다 새로 만들면 느리다.
+    /// 호출자는 배열을 수정하면 안 된다. 수정이 필요하면 <see cref="ReadHeightMapValues"/>를 쓴다.
+    /// </summary>
+    public ReadOnlyMemory<double> GetSharedHeightMapValues() => sharedHeightMapValues ??= ReadHeightMapValues();
+
     public double[] ReadHeightMapValues()
     {
         if (signedDeltaFrame is not null) return signedDeltaFrame.DisplayValues.ToArray();

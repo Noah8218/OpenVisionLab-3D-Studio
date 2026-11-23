@@ -296,7 +296,7 @@
                         Click="OpenToolLabsMenuButton_Click"
                         ToolTip="{Binding Localization.OpenToolLabsToolTip}"
                         AutomationProperties.AutomationId="ToolLabsMenu"
-                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ToolLabsAccessible, Korean='도구 실험실 메뉴 열기', English='Open Tool Labs menu'}">
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ToolLabsAccessible, Korean='Tool Lab 메뉴 열기', English='Open Tool Labs menu'}">
                     <Button.ContextMenu>
                         <ContextMenu Placement="Right"
                                      Background="{DynamicResource ThreeD.PanelBrush}"
@@ -305,54 +305,54 @@
                                       Tag="filter"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenFilterToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.FilterToolLabAccessible, Korean='필터 도구 실험실 열기', English='Open Filter Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.FilterToolLabAccessible, Korean='필터 Tool Lab 열기', English='Open Filter Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.HeightDifferenceEdge, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="height-difference-edge"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenEdgeToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.HeightDifferenceEdgeToolLabAccessible, Korean='높이차 에지 도구 실험실 열기', English='Open Height Difference Edge Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.HeightDifferenceEdgeToolLabAccessible, Korean='높이차 에지 Tool Lab 열기', English='Open Height Difference Edge Tool Lab'}" />
                             <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.TwoPointLine, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="two-point-line"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenTwoPointLineToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.TwoPointLineToolLabAccessible, Korean='2점 직선 도구 실험실 열기', English='Open 2-Point Line Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.TwoPointLineToolLabAccessible, Korean='2점 직선 Tool Lab 열기', English='Open 2-Point Line Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.ThreePointPlane, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="three-point-plane"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenThreePointPlaneToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ThreePointPlaneToolLabAccessible, Korean='3점 평면 도구 실험실 열기', English='Open 3-Point Plane Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.ThreePointPlaneToolLabAccessible, Korean='3점 평면 Tool Lab 열기', English='Open 3-Point Plane Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.DatumPlaneDeviation, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="datum-plane-raw-height-deviation"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenDatumPlaneDeviationToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.DatumPlaneDeviationToolLabAccessible, Korean='기준면 편차 도구 실험실 열기', English='Open Datum Plane Deviation Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.DatumPlaneDeviationToolLabAccessible, Korean='기준면 편차 Tool Lab 열기', English='Open Datum Plane Deviation Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LineIntersection, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="line-intersection"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LineIntersectionToolLabAccessible, Korean='직선 교점 도구 실험실 열기', English='Open Line Intersection Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LineIntersectionToolLabAccessible, Korean='직선 교점 Tool Lab 열기', English='Open Line Intersection Tool Lab'}" />
                             <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LandmarkCorrespondence, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="landmark-correspondence"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenLandmarkCorrespondenceToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LandmarkCorrespondenceToolLabAccessible, Korean='랜드마크 대응 도구 실험실 열기', English='Open Landmark Correspondence Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.LandmarkCorrespondenceToolLabAccessible, Korean='랜드마크 대응 Tool Lab 열기', English='Open Landmark Correspondence Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineSolve, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="xyz-affine-solve"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenXYZAffineSolveToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineSolveToolLabAccessible, Korean='XYZ 어파인 계산 도구 실험실 열기', English='Open XYZ Affine Solve Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineSolveToolLabAccessible, Korean='XYZ 어파인 계산 Tool Lab 열기', English='Open XYZ Affine Solve Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineApply, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="xyz-affine-apply"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenXYZAffineApplyToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineApplyToolLabAccessible, Korean='XYZ 어파인 적용 도구 실험실 열기', English='Open Apply XYZ Affine Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.XYZAffineApplyToolLabAccessible, Korean='XYZ 어파인 적용 Tool Lab 열기', English='Open Apply XYZ Affine Tool Lab'}" />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.RegridHeightMap, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Tag="re-grid-height-map"
                                       Click="OpenToolLabMenuItem_Click"
                                       AutomationProperties.AutomationId="OpenRegridHeightMapToolLabButton"
-                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.RegridHeightMapToolLabAccessible, Korean='높이 맵 재격자화 도구 실험실 열기', English='Open Re-grid Height Map Tool Lab'}" />
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Navigation.RegridHeightMapToolLabAccessible, Korean='높이 맵 재격자화 Tool Lab 열기', English='Open Re-grid Height Map Tool Lab'}" />
                         </ContextMenu>
                     </Button.ContextMenu>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">

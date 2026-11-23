@@ -58,9 +58,11 @@ internal static class ToolParameterUndoVerification
                 {
                     var helpDraft = Activator.CreateInstance(type)!;
                     var properties = TypeDescriptor.GetProperties(LocalizedPropertyGridObject.Create(helpDraft)).Cast<PropertyDescriptor>().Where(property => !property.IsReadOnly).ToArray();
+                    // 선택 파라미터(두께 기준면 최대 RMS)는 카탈로그 기본값이 없다(비우면 검사 안 함). 대신 설명에 "기본 없음"을 밝힌다.
                     Check(type.Name + " every editable parameter has localized name, explanation and catalogue default", properties.Length > 0
                         && properties.All(property => property.DisplayName.Any(character => character is >= '가' and <= '힣')
-                            && property.Description.Any(character => character is >= '가' and <= '힣') && property.Description.Contains("기본값:")));
+                            && property.Description.Any(character => character is >= '가' and <= '힣')
+                            && property.Description.Contains(property.Name == OpenVisionLab.ThreeD.Core.ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms ? "기본 없음" : "기본값:")));
                 }
                 foreach (var language in new[] { OpenVisionLanguage.Korean, OpenVisionLanguage.English })
                 {

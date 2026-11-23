@@ -2,6 +2,7 @@ using System.IO;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification;
 
@@ -302,6 +303,155 @@ internal static class HeightMeasurementSnapshotVerification
                 noLimitExceeded.OutputStatusText == noLimitExceeded.StatusText && noLimitExceeded.OutputStatusReason == noLimitExceeded.Reason, noLimitExceeded.OutputStatusText);
             var unjudged = WarpageRow(WarpageMetrics(7.93, 2.11), null);
             Check("unjudged warpage keeps the stored limits text", unjudged.DisplayLimits == unjudged.Limits && unjudged.OutputStatusText == unjudged.StatusText, unjudged.DisplayLimits);
+            // 새로 추가하는 두께·휨 도구의 기본 최소 유효 샘플 수는 시안 값(3,000 / 1,000)이다. 이미 저장된 레시피의 값은 이 기본값과 무관하다.
+            var catalogTools = ToolWorkbenchToolCatalog.Create();
+            string CatalogDefault(string toolId) => catalogTools.Single(item => item.Id == toolId).Parameters.Single(parameter => parameter.Name == "MinimumValidSampleCount").DefaultValue;
+            Check("new Thickness and Warpage start with the mockup's minimum valid sample counts",
+                CatalogDefault("thickness") == "3000" && CatalogDefault("warpage") == "1000", $"{CatalogDefault("thickness")}/{CatalogDefault("warpage")}");
+            // 검증 화면: NG 샘플의 원인 문구와 휨 지표의 표시용 상태. 결과 표와 같은 비교 규칙(상한 지표 초과)이다.
+            ToolRecipeValidationStepResult ValidationStep(string toolName, ResultStatus status, Metric[] stepMetrics) => new(1, "step.1", toolName, status, "evidence", stepMetrics, []);
+            var warpageCause = ValidationFailureCauseText.Describe([ValidationStep("Warpage", ResultStatus.Fail, WarpageMetrics(7.93, 2.11))]);
+            Check("validation cause names each exceeded warpage output with its limit",
+                warpageCause == "Warpage: P–V 7.93 > 5 · RMS 2.11 > 2", warpageCause);
+            var rmsOnlyCause = ValidationFailureCauseText.Describe([ValidationStep("Warpage", ResultStatus.Fail, WarpageMetrics(4, 2.5))]);
+            Check("validation cause lists only the output that exceeds its limit", rmsOnlyCause == "Warpage: RMS 2.5 > 2", rmsOnlyCause);
+            var thicknessCause = ValidationFailureCauseText.Describe([ValidationStep("Thickness", ResultStatus.Fail,
+                [new("Mean", MetricKind.Length, 694.134, "raw-height", ResultStatus.Fail), new("LowerLimit", MetricKind.Length, 600, "raw-height"), new("UpperLimit", MetricKind.Length, 690, "raw-height")])]);
+            Check("validation cause names a thickness mean above its upper limit", thicknessCause.StartsWith("Thickness: ", StringComparison.Ordinal) && thicknessCause.EndsWith("694.13 > 690", StringComparison.Ordinal), thicknessCause);
+            var belowCause = ValidationFailureCauseText.Describe([ValidationStep("Thickness", ResultStatus.Fail,
+                [new("Mean", MetricKind.Length, 590.5, "raw-height", ResultStatus.Fail), new("LowerLimit", MetricKind.Length, 600, "raw-height"), new("UpperLimit", MetricKind.Length, 690, "raw-height")])]);
+            Check("validation cause names a thickness mean below its lower limit", belowCause.EndsWith("590.5 < 600", StringComparison.Ordinal), belowCause);
+            var thicknessAllFailCause = ValidationFailureCauseText.Describe([ValidationStep("Thickness", ResultStatus.Fail,
+                [new("Mean", MetricKind.Length, 768.141, "raw-height", ResultStatus.Fail), new("Minimum", MetricKind.Length, 734.458, "raw-height", ResultStatus.Fail),
+                    new("Maximum", MetricKind.Length, 794.183, "raw-height", ResultStatus.Fail), new("LowerLimit", MetricKind.Length, 600, "raw-height"), new("UpperLimit", MetricKind.Length, 722, "raw-height")])]);
+            Check("validation cause names only the first exceeded thickness value when mean, minimum and maximum all fail",
+                thicknessAllFailCause.EndsWith("768.14 > 722", StringComparison.Ordinal) && thicknessAllFailCause.Count(character => character == '>') == 1, thicknessAllFailCause);
+            var noLimitCause = ValidationFailureCauseText.Describe([ValidationStep("Warpage", ResultStatus.Fail, WarpageMetrics(4, 1)), ValidationStep("Thickness", ResultStatus.Pass, WarpageMetrics(9, 9))]);
+            Check("validation cause is empty when no limit is exceeded or the step did not fail", noLimitCause.Length == 0, noLimitCause);
+            var twoStepCause = ValidationFailureCauseText.Describe([ValidationStep("Warpage", ResultStatus.Fail, WarpageMetrics(7.93, 1)), ValidationStep("Warpage 2", ResultStatus.Fail, WarpageMetrics(4, 3))]);
+            Check("validation cause joins failing steps in order", twoStepCause == "Warpage: P–V 7.93 > 5; Warpage 2: RMS 3 > 2", twoStepCause);
+            var failedWarpage = ValidationStep("Warpage", ResultStatus.Fail, WarpageMetrics(7.93, 1));
+            Check("warpage P–V and RMS get a display status from their limit metrics",
+                ValidationSetWorkspaceViewModel.LimitedMetricStatus(failedWarpage, failedWarpage.Metrics[0]) == ResultStatus.Fail
+                && ValidationSetWorkspaceViewModel.LimitedMetricStatus(failedWarpage, failedWarpage.Metrics[1]) == ResultStatus.Pass
+                && ValidationSetWorkspaceViewModel.LimitedMetricStatus(failedWarpage, failedWarpage.Metrics[2]) is null
+                && ValidationSetWorkspaceViewModel.LimitedMetricStatus(failedWarpage, failedWarpage.Metrics[3]) is null,
+                string.Join("/", failedWarpage.Metrics.Select(metric => ValidationSetWorkspaceViewModel.LimitedMetricStatus(failedWarpage, metric)?.ToString() ?? "-")));
+            var erroredWarpage = ValidationStep("Warpage", ResultStatus.Error, WarpageMetrics(7.93, 1));
+            Check("an errored step gets no display status", ValidationSetWorkspaceViewModel.LimitedMetricStatus(erroredWarpage, erroredWarpage.Metrics[0]) is null, "error step");
+
+            // 두께 기준면 최대 RMS(시안 B2, 선택 파라미터): 레시피 계약 규칙, 계산 거부, 한글 문구, 편집 값 검사.
+            // 값이 없으면 기존 레시피와 같은 동작이어야 하고, 값이 있어도 한계 이하면 결과 판정은 그대로여야 한다.
+            ToolRecipeParameter Param(string name, string value) => new(name, value);
+            var referenceFitName = ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms;
+            ToolRecipeParameter[] thicknessRequired = [Param("MinimumThickness", "0"), Param("MaximumThickness", "10"), Param("MinimumValidSampleCount", "1")];
+            bool HasParameters(string toolId, params ToolRecipeParameter[] parameters) => ToolRecipeParameterContract.HasExpectedHeightMeasurementParameters(toolId, parameters);
+            Check("thickness parameter contract accepts the required set with or without the optional reference-fit RMS limit",
+                HasParameters("thickness", thicknessRequired) && HasParameters("thickness", [.. thicknessRequired, Param(referenceFitName, "0.05")]), "required=3; optional=0|1");
+            Check("thickness parameter contract rejects a repeated optional limit, an unknown name and a missing required name",
+                !HasParameters("thickness", [.. thicknessRequired, Param(referenceFitName, "0.05"), Param(referenceFitName, "0.06")])
+                && !HasParameters("thickness", [.. thicknessRequired, Param("Extra", "1")])
+                && !HasParameters("thickness", [.. thicknessRequired.Skip(1)])
+                && !HasParameters("thickness", [.. thicknessRequired.Skip(1), Param(referenceFitName, "0.05")]), "repeat/unknown/missing");
+            Check("only thickness takes the optional limit; warpage keeps its exact parameter set",
+                HasParameters("warpage", Param("MaximumPeakToValley", "5"), Param("MaximumRms", "2"), Param("MinimumValidSampleCount", "3"))
+                && !HasParameters("warpage", Param("MaximumPeakToValley", "5"), Param("MaximumRms", "2"), Param("MinimumValidSampleCount", "3"), Param(referenceFitName, "0.05")),
+                "optional names: " + string.Join(",", ToolRecipeParameterContract.GetOptionalHeightMeasurementParameterNames("warpage")));
+            bool ParsesLimit(string? text) => ToolRecipeParameterContract.TryParseThicknessMaximumReferenceFitRms(text, out _);
+            Check("reference-fit RMS limit text is an invariant finite number greater than zero",
+                ParsesLimit("0.05") && ParsesLimit("1e-3") && !ParsesLimit("0") && !ParsesLimit("-1") && !ParsesLimit("abc") && !ParsesLimit("1,5")
+                && !ParsesLimit(" 0.05") && !ParsesLimit("") && !ParsesLimit(null) && !ParsesLimit("NaN") && !ParsesLimit("Infinity"), "0.05|1e-3 accepted; zero, negative, text, comma, spaces, NaN, Infinity rejected");
+
+            // 기준 영역: 평면 위에서 ±0.5씩 번갈아 벗어난 격자(맞춤 RMS 0.5). 측정 영역은 약 5만큼 높다.
+            // 위치의 Y와 원시 높이는 같은 높이 값이어야 한다(표본이 높이 맵 위의 한 점이다).
+            HeightFieldPlaneSample PlaneSample(int x, int z, double height) => new(new System.Numerics.Vector3(x, (float)height, z), height);
+            var referencePlaneSamples = Enumerable.Range(0, 6).SelectMany(x => Enumerable.Range(0, 6)
+                .Select(z => PlaneSample(x, z, 10d + ((x + z) % 2 == 0 ? 0.5 : -0.5)))).ToArray();
+            var measurementPlaneSamples = Enumerable.Range(0, 4).SelectMany(x => Enumerable.Range(0, 4)
+                .Select(z => PlaneSample(x + 10, z + 10, 15d))).ToArray();
+            DualSurfaceThicknessEvaluation EvaluateThickness(double? rmsLimit) => DualSurfaceThicknessRule.Evaluate(
+                new DualSurfaceThicknessInput("source.fixture", referencePlaneSamples, measurementPlaneSamples, 0, 100, 1, "raw-height", rmsLimit));
+            double MetricValue(DualSurfaceThicknessEvaluation evaluation, string name) => evaluation.Result.Metrics.Single(metric => metric.Name == name).Value;
+            var unlimitedThickness = EvaluateThickness(null);
+            var measuredReferenceRms = MetricValue(unlimitedThickness, DualSurfaceThicknessRule.ReferenceFitRmsMetricName);
+            Check("without the limit a thickness result is unchanged and carries no limit metric",
+                unlimitedThickness.Result.Status == ResultStatus.Pass && Math.Abs(measuredReferenceRms - 0.5) < 1e-9
+                && Math.Abs(unlimitedThickness.Mean - 5) < 1e-9
+                && unlimitedThickness.Result.Metrics.All(metric => metric.Name != DualSurfaceThicknessRule.MaximumReferenceFitRmsMetricName),
+                $"status={unlimitedThickness.Result.Status};referenceRms={measuredReferenceRms:G9};mean={unlimitedThickness.Mean:G9}");
+            var looseLimit = EvaluateThickness(1.0);
+            Check("a reference surface within the limit keeps the thickness verdict and records the limit",
+                looseLimit.Result.Status == ResultStatus.Pass && Math.Abs(looseLimit.Mean - unlimitedThickness.Mean) < 1e-12
+                && MetricValue(looseLimit, DualSurfaceThicknessRule.MaximumReferenceFitRmsMetricName) == 1.0,
+                $"status={looseLimit.Result.Status};limit={MetricValue(looseLimit, DualSurfaceThicknessRule.MaximumReferenceFitRmsMetricName)}");
+            Check("a reference surface exactly at the limit is accepted", EvaluateThickness(measuredReferenceRms).Result.Status == ResultStatus.Pass, $"limit={measuredReferenceRms:G17}");
+            var tightLimit = EvaluateThickness(0.1);
+            Check("a reference surface above the limit gives an error with the measured RMS and the limit, not a thickness",
+                tightLimit.Result.Status == ResultStatus.Error && double.IsNaN(tightLimit.Mean) && tightLimit.ReferencePlane is null
+                && tightLimit.Result.Message.StartsWith(DualSurfaceThicknessRule.ReferenceFitExceededMessagePrefix, StringComparison.Ordinal)
+                && Math.Abs(MetricValue(tightLimit, DualSurfaceThicknessRule.ReferenceFitRmsMetricName) - 0.5) < 1e-9
+                && MetricValue(tightLimit, DualSurfaceThicknessRule.MaximumReferenceFitRmsMetricName) == 0.1,
+                tightLimit.Result.Message);
+            var languageBeforeReasons = OpenVisionLanguageService.CurrentLanguage;
+            string koreanReason, englishReason, koreanValidationReason;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                koreanReason = ToolWorkbenchViewModel.MeasurementResultMessage(tightLimit.Result);
+                koreanValidationReason = ThicknessReferenceFitMessage.Localize("Thickness: " + tightLimit.Result.Message);
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                englishReason = ToolWorkbenchViewModel.MeasurementResultMessage(tightLimit.Result);
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(languageBeforeReasons, save: false);
+            }
+
+            Check("Korean result and validation reasons keep the measured RMS and the limit, and English keeps the original sentence",
+                koreanReason.Contains("기준면 맞춤 RMS 0.5 > 상한 0.1 raw-height", StringComparison.Ordinal) && !koreanReason.Contains("Reference surface", StringComparison.Ordinal)
+                && koreanValidationReason == koreanReason && englishReason == tightLimit.Result.Message,
+                $"ko={koreanReason}|validation={koreanValidationReason}|en={englishReason}");
+            ThicknessStepProperties ThicknessDraft(string limit) => new() { MinimumThickness = 0, MaximumThickness = 10, MinimumValidSampleCount = 1, MaximumReferenceFitRms = limit };
+            var smallLimitDraft = ThicknessDraft("0.0005");
+            var smallLimitAccepted = smallLimitDraft.TryValidate(out var smallLimitMessage);
+            Check("the editor accepts an empty limit and rejects values below 0.001 or malformed text",
+                ThicknessDraft("").TryValidate(out _) && ThicknessDraft("   ").TryValidate(out _) && ThicknessDraft("0.05").TryValidate(out _) && ThicknessDraft("0.001").TryValidate(out _)
+                && !smallLimitAccepted && smallLimitMessage.Contains("0.001", StringComparison.Ordinal)
+                && !ThicknessDraft("0").TryValidate(out _) && !ThicknessDraft("-1").TryValidate(out _) && !ThicknessDraft("abc").TryValidate(out _) && !ThicknessDraft("1,5").TryValidate(out _),
+                smallLimitMessage);
+            string LimitMessage(string text) { ThicknessDraft(text).TryValidate(out var limitMessage); return limitMessage; }
+            Check("zero and negative limits get the minimum message and malformed text gets the format message",
+                LimitMessage("0") == ThicknessStepProperties.ReferenceFitMinimumMessage && LimitMessage("-1") == ThicknessStepProperties.ReferenceFitMinimumMessage
+                && LimitMessage("0.0005") == ThicknessStepProperties.ReferenceFitMinimumMessage
+                && LimitMessage("abc") == ThicknessStepProperties.ReferenceFitFormatMessage && LimitMessage("1,5") == ThicknessStepProperties.ReferenceFitFormatMessage
+                && LimitMessage("NaN") == ThicknessStepProperties.ReferenceFitFormatMessage,
+                $"0={LimitMessage("0")}|abc={LimitMessage("abc")}");
+            var languageBeforeStatus = OpenVisionLanguageService.CurrentLanguage;
+            string koreanMinimumStatus, koreanFormatStatus, englishMinimumStatus;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                koreanMinimumStatus = ThreeDLocalization.Shared.LocalizeStepParameterStatus(ThicknessStepProperties.ReferenceFitMinimumMessage);
+                koreanFormatStatus = ThreeDLocalization.Shared.LocalizeStepParameterStatus(ThicknessStepProperties.ReferenceFitFormatMessage);
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                englishMinimumStatus = ThreeDLocalization.Shared.LocalizeStepParameterStatus(ThicknessStepProperties.ReferenceFitMinimumMessage);
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(languageBeforeStatus, save: false);
+            }
+
+            Check("the two limit messages are shown in Korean on the Korean screen and unchanged in English",
+                koreanMinimumStatus == "기준면 최대 RMS는 0.001 이상으로 입력하거나 비워 두세요."
+                && koreanFormatStatus == "기준면 최대 RMS는 쉼표 없이 유한한 수로 입력하거나 비워 두세요."
+                && englishMinimumStatus == ThicknessStepProperties.ReferenceFitMinimumMessage,
+                $"ko={koreanMinimumStatus}|{koreanFormatStatus}|en={englishMinimumStatus}");
+            var emptyWritten = ToolWorkbenchStepPropertyAdapterCatalog.TryCreateParameterValues(ThicknessDraft(""), out var emptyValues, out _);
+            var setWritten = ToolWorkbenchStepPropertyAdapterCatalog.TryCreateParameterValues(ThicknessDraft(" 0.05 "), out var setValues, out _);
+            Check("applying an empty limit writes no optional key and a value is written as typed",
+                emptyWritten && emptyValues.Count == 3 && !emptyValues.ContainsKey(referenceFitName)
+                && setWritten && setValues.Count == 4 && setValues[referenceFitName] == "0.05",
+                $"empty={string.Join(",", emptyValues.Keys)}|set={(setValues.TryGetValue(referenceFitName, out var written) ? written : "(none)")}");
             var recipePathReads = 0;
             var mutationObserved = false;
             var logs = new List<string>();

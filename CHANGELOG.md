@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.2-dev - 2026-11-22
+## 0.8.2-dev - 2026-11-23
 
 - Report validation with no expected decisions separately from matched results, and keep the actual preparation error and pending samples when validation cannot start.
 - Clarify input and calculated-result displays in the Tool Labs, localize the related diagnostics and parameter errors, and keep required first-recipe inputs visible.
@@ -12,6 +12,13 @@
 - Korean wording follows machine-vision field usage: over-detection and miss read 과검 and 미검, the expected judgement reads 정답, unverified states read 검증 전 and 검사 전, and limits read 기준값 and 공차.
 - The Korean UI shows the judgement as OK/NG instead of 통과/실패, and the status bar and the Records screen no longer show the internal `Pass` and `Error` names. Stored statuses, Run Records and the English UI are unchanged.
 - ROI review candidates use the same role colors as applied ROIs (reference cyan, measurement amber); other candidates and ROIs being edited use the theme accent.
+- Thickness takes an optional reference-surface limit, `MaximumReferenceFitRms` (Korean label `기준면 최대 RMS`). Without it nothing changes and saved recipes keep their results. With it, a reference ROI whose plane-fit RMS is above the limit gives an Error result with the measured RMS and the limit instead of a thickness value; an RMS equal to the limit is accepted. The recipe validator rejects a repeated, unknown or non-positive value, and clearing the editor field removes the parameter.
+- Validation samples: `보이는 샘플 OK` and `보이는 샘플 NG` set the expected result of the samples the current filter shows. They leave held-out marks and hidden samples unchanged, are disabled while a validation runs, and never start one.
+- The cause shown for a failed Validation sample names the tool and the exceeded output (for example `Warpage: P–V 7.93 > 5 · RMS 2.11 > 2`), and Warpage P–V and RMS appear in the Validation result table, value distribution and mismatch evidence. Tool results and stored verdicts are unchanged.
+- A newly added Thickness starts with `MinimumValidSampleCount` 3000 and a newly added Warpage with 1000 (they were 1 and 3); opened and saved recipes keep their stored values. The first time an unnamed recipe is saved, the chosen file name becomes the recipe name.
+- The `--tool-recipe` report has a `RecipeSource|pinnedSha256=…|executedSha256=…|match=true|false` line that shows whether the executed C3D is the file the recipe was taught on (`match=unknown` when the recipe stores no SHA-256). The verdict and exit codes are unchanged.
+- Korean UI: `정답 없음` reads `—`, `검증 전` reads `대기`, `조정 샘플` and `보류 샘플` read `Tuning` and `Test`, and the explanatory sentence in the samples panel is removed. The viewer footer lists X column, Y row and Z height, with the Z scale (`Z ×N`) on the right.
+- Switching workspace tabs is faster: an already decoded C3D file is reused, the legend sorts only when needed, viewer renders within one action are batched, and height colouring runs in parallel chunks. With a loaded wafer recipe at 1920 × 1040 (median of 8 runs) switching took 502 to 201 ms for Teach, 2042 to 238 for Inspect, 780 to 202 for Validate and 973 to 195 for Review. Opening a recipe still takes about 4 s.
 
 This is a development source update; it is not a binary release, deployment or production qualification. Wide and Compact screenshots of the final binary, English wording and native 125% scaling are not qualified by this batch.
 

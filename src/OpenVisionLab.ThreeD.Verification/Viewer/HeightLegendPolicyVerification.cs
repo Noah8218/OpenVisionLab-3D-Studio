@@ -46,7 +46,38 @@ internal static class HeightLegendPolicyVerification
                 && !C3DHeightImageFrame.TryGetRegionDisplayRange([double.NaN, double.NaN], 2, 1, new(0, 0, 1, 2), out _, out _));
             Check("outside percentages exclude equality at both limits and ignore missing cells",
                 C3DHeightImageFrame.GetOutsideDisplayPercentages(sorted, 101, 900) == (10d, 10d));
-            var defaults = new HeightDisplayOptions();
+            Check("outside percentages from unsorted values equal the sorted result, including NaN limits",
+                C3DHeightImageFrame.GetOutsideDisplayPercentagesFromValues(values.Concat([double.NaN, double.PositiveInfinity]).ToArray(), 101, 900) == (10d, 10d)
+                && C3DHeightImageFrame.GetOutsideDisplayPercentagesFromValues(values, double.NaN, double.NaN) == C3DHeightImageFrame.GetOutsideDisplayPercentages(sorted, double.NaN, double.NaN)
+                && C3DHeightImageFrame.GetOutsideDisplayPercentagesFromValues([], 0, 1) == (0d, 0d));
+            // 청크 병렬 색 입히기(26만 셀 이상)가 셀별 독립 계산과 같은 바이트를 내는지, 큰 지도에서 직접 비교한다.
+            {
+                const int bigWidth = 800, bigHeight = 400;
+                var bigValues = new double[bigWidth * bigHeight];
+                for (var index = 0; index < bigValues.Length; index++) bigValues[index] = index % 97 == 0 ? 0.0 : 100.0 + index % 1013 * 0.37;
+                var bigFrame = C3DHeightImageFrame.Create(C3DHeightFieldSnapshot.CreateForVerification("legend.parallel.render", bigWidth, bigHeight, bigValues));
+                var bigPixels = bigFrame.DefaultDisplayFrame.Bgra32Pixels.Span;
+                var bigLow = bigFrame.DefaultDisplayMinimum;
+                var bigSpan = bigFrame.DefaultDisplayMaximum - bigLow;
+                var mismatches = 0;
+                byte[]? missingPixel = null;
+                for (var index = 0; index < bigValues.Length; index++)
+                {
+                    var cell = bigPixels.Slice(index * 4, 4);
+                    if (bigValues[index] == 0.0)
+                    {
+                        missingPixel ??= cell.ToArray();
+                        if (!cell.SequenceEqual(missingPixel)) mismatches++;
+                        continue;
+                    }
+
+                    var (red, green, blue) = C3DPointMapPalette.HeightBytes((bigValues[index] - bigLow) / bigSpan);
+                    if (cell[0] != blue || cell[1] != green || cell[2] != red || cell[3] != byte.MaxValue) mismatches++;
+                }
+
+                Check("parallel height-image colouring equals per-cell colouring on a large map",
+                    bigValues.Length >= (1 << 18) && mismatches == 0 && missingPixel is not null);
+            }            var defaults = new HeightDisplayOptions();
             Check("pin defaults are teaching off, validation and inspection on",
                 !defaults.KeepsRange("teach") && defaults.KeepsRange("validate") && defaults.KeepsRange("inspect"));
             var bands = defaults with { ColorStyle = "bands", BandCount = 10 };

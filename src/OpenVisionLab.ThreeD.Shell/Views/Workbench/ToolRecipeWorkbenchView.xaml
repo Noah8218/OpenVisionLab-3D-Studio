@@ -246,7 +246,7 @@
                         </Grid>
                         <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
                                     Visibility="{Binding Workbench.InspectionQueue.IsIdle, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <ComboBox Height="32" MinWidth="116" Margin="0,0,8,0" SelectedValuePath="Tag" SelectedValue="{Binding Workbench.InspectionQueue.SelectedRunScope, Mode=TwoWay}" IsEnabled="{Binding Workbench.InspectionQueue.IsIdle}" AutomationProperties.AutomationId="InspectionRunScope" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.Scope, Korean='검사 범위', English='Inspection scope'}">
+                            <ComboBox MinHeight="32" Padding="11,3,0,3" MinWidth="116" Margin="0,0,8,0" SelectedValuePath="Tag" SelectedValue="{Binding Workbench.InspectionQueue.SelectedRunScope, Mode=TwoWay}" IsEnabled="{Binding Workbench.InspectionQueue.IsIdle}" AutomationProperties.AutomationId="InspectionRunScope" AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Inspection.Scope, Korean='검사 범위', English='Inspection scope'}">
                                 <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.Selected}" Content="{views:ThreeDText Key=ThreeD.Inspection.SelectedScope, Korean='선택', English='Selected'}" />
                                 <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.All}" Content="{views:ThreeDText Key=ThreeD.Inspection.AllScope, Korean='전체', English='All'}" />
                                 <ComboBoxItem Tag="{x:Static models:InspectionQueueRunScope.Checked}" Content="{views:ThreeDText Key=ThreeD.Inspection.CheckedScope, Korean='체크', English='Checked'}" />

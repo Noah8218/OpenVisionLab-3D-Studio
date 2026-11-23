@@ -568,6 +568,13 @@ internal static class ToolRecipeTeachingVerification
                 && circleReopened.Steps.Single().InputEntityIds.SequenceEqual(
                     ["source.circle", circleSelection.Id]),
                 circleSaveMessage);
+            // 이름을 정한 적 없는 레시피(기본 이름)를 처음 저장하면 고른 파일 이름이 레시피 이름이 된다. 이름을 정한 레시피는 다른 경로로 저장해도 그대로다.
+            // 위 워크벤치는 이미 이름을 가지므로(GridCircle teaching fixture) 파일 이름으로 바뀌지 않는다. 이름을 정한 레시피는 저장 경로와 상관없이 그대로다.
+            Check(
+                "a recipe that already has a name keeps it when saved to a file with another name",
+                circleSaved && circleReopened?.Name == circleWorkbench.RecipeName && circleWorkbench.RecipeName != "grid-circle-saved"
+                && circleWorkbench.RecipeName != ToolWorkbenchRecipeSession.DefaultName,
+                $"saved={circleReopened?.Name}|current={circleWorkbench.RecipeName}");
 
             var polygonSelection = new ToolRecipeSelection(
                 "selection.grid-polygon.01",
@@ -2061,6 +2068,52 @@ internal static class ToolRecipeTeachingVerification
                 workbench.DiscardSelectedStepParameterDraft();
                 OpenVisionLanguageService.SetLanguage(limitsLanguage, save: false);
             }
+            // 두께 기준면 최대 RMS(시안 B2): 선택 파라미터라서 비어 있으면 키가 없고, 값을 적용하면 들어가며, 비워 적용하면 키가 지워진다.
+            // 판정 한계가 아니므로 이 값만 바꿔 적용해도 "값만 측정" 단계가 판정 단계로 바뀌지 않는다. 되돌리기는 키까지 복원한다.
+            // 아래 뒤 검사에 영향이 없도록 마지막에 원래 값으로 되돌린다.
+            var referenceFitName = OpenVisionLab.ThreeD.Core.ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms;
+            string? StoredReferenceFit() => thickness.Parameters.FirstOrDefault(parameter => parameter.Name == referenceFitName)?.Value;
+            ThicknessStepProperties CurrentThicknessDraft() => (ThicknessStepProperties)workbench.SelectedStepPropertyDraft!;
+            var measureOnlyBefore = thickness.AcceptanceLimitsConfigured;
+            Check("a new Thickness has no reference-fit RMS limit and the editor shows it empty",
+                StoredReferenceFit() is null && CurrentThicknessDraft().MaximumReferenceFitRms.Length == 0, $"stored={StoredReferenceFit() ?? "(none)"}");
+            CurrentThicknessDraft().MaximumReferenceFitRms = "0.0005";
+            workbench.MarkSelectedStepParameterDraftDirty();
+            var smallLimitApplied = workbench.TryApplySelectedStepParameterDraft(out var smallLimitError);
+            Check("a reference-fit RMS limit below 0.001 is rejected without changing the recipe",
+                !smallLimitApplied && smallLimitError.Contains("0.001", StringComparison.Ordinal) && StoredReferenceFit() is null, smallLimitError);
+            workbench.DiscardSelectedStepParameterDraft();
+            CurrentThicknessDraft().MaximumReferenceFitRms = "0.05";
+            workbench.MarkSelectedStepParameterDraftDirty();
+            workbench.ApplySelectedStepParameterDraftCommand.Execute(null);
+            Check("applying a reference-fit RMS limit stores it and records the change for undo",
+                StoredReferenceFit() == "0.05" && CurrentThicknessDraft().MaximumReferenceFitRms == "0.05"
+                && workbench.HasSelectedStepParameterHistory && workbench.SelectedStepLastAppliedChange.Contains("0.05", StringComparison.Ordinal),
+                $"stored={StoredReferenceFit() ?? "(none)"};history={workbench.HasSelectedStepParameterHistory};last={workbench.SelectedStepLastAppliedChange}");
+            Check("a reference-fit RMS limit alone does not turn a measure-only Thickness into a judged one",
+                measureOnlyBefore == false && thickness.AcceptanceLimitsConfigured == measureOnlyBefore, $"before={measureOnlyBefore};after={thickness.AcceptanceLimitsConfigured}");
+            CurrentThicknessDraft().MaximumReferenceFitRms = string.Empty;
+            workbench.MarkSelectedStepParameterDraftDirty();
+            workbench.ApplySelectedStepParameterDraftCommand.Execute(null);
+            Check("clearing the limit removes the parameter instead of storing an empty value",
+                StoredReferenceFit() is null && thickness.Parameters.All(parameter => parameter.Value.Length > 0) && CurrentThicknessDraft().MaximumReferenceFitRms.Length == 0,
+                $"stored={StoredReferenceFit() ?? "(none)"};parameters={string.Join(",", thickness.Parameters.Select(parameter => parameter.Name))}");
+            workbench.UndoSelectedStepParametersCommand.Execute(null);
+            var restoredByUndo = StoredReferenceFit();
+            workbench.UndoSelectedStepParametersCommand.Execute(null);
+            Check("undo restores the cleared limit first and then removes the applied one",
+                restoredByUndo == "0.05" && StoredReferenceFit() is null && thickness.Parameters.Select(parameter => (parameter.Name, parameter.Value)).SequenceEqual(committedLimits),
+                $"afterFirstUndo={restoredByUndo ?? "(none)"};afterSecondUndo={StoredReferenceFit() ?? "(none)"}");
+            var judgementBefore = thickness.AcceptanceLimitsConfigured;
+            CurrentThicknessDraft().MaximumThickness = 130;
+            workbench.MarkSelectedStepParameterDraftDirty();
+            workbench.ApplySelectedStepParameterDraftCommand.Execute(null);
+            Check("changing a thickness limit still starts judgement", judgementBefore == false && thickness.AcceptanceLimitsConfigured == true,
+                $"before={judgementBefore};after={thickness.AcceptanceLimitsConfigured}");
+            workbench.UndoSelectedStepParametersCommand.Execute(null);
+            Check("the fixture is back to its committed Thickness parameters and judgement state",
+                thickness.Parameters.Select(parameter => (parameter.Name, parameter.Value)).SequenceEqual(committedLimits) && thickness.AcceptanceLimitsConfigured == judgementBefore,
+                string.Join(";", thickness.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}")));
             var warpage = AddTool(workbench, "Warpage");
             warpage.InputEntityIdsText = $"{workbench.Source.Id}; {measurementSelection.Id}";
             warpage.Parameters.Single(parameter => parameter.Name == "MaximumPeakToValley").Value = "80";

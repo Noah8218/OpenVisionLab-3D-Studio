@@ -126,6 +126,51 @@ internal static class ValidationSetWorkspaceViewModelVerification
             Check("row role command parameters do not recurse when WPF automation formats their owning record",
                 workspace.AllSamples[0].ToString().Contains(workspace.AllSamples[0].FileName, StringComparison.Ordinal),
                 "record formatting includes the source identity and finite command parameter type names");
+            // 정답 일괄 지정(시안 B3): 필터로 보이는 샘플만 바꾸고, 보류 표시와 숨겨진 샘플은 그대로이며, 검증을 실행하지 않는다.
+            // 뒤 검사가 쓰는 상태(첫째 OK, 둘째 NG, 보류 없음)로 마지막에 되돌린다.
+            var bulkReadsBefore = documentReads;
+            var bulkCommand = workspace.SetVisibleValidationSampleExpectationCommand;
+            Check("bulk expectation command takes only Good or Bad",
+                bulkCommand.CanExecute("Good") && bulkCommand.CanExecute("bad") && !bulkCommand.CanExecute("Unset") && !bulkCommand.CanExecute("HeldOut") && !bulkCommand.CanExecute(null),
+                "Good|bad accepted; Unset|HeldOut|null rejected");
+            workspace.SetValidationSampleRoleCommand.Execute(workspace.AllSamples[1].HeldOutRoleChange);
+            workspace.SetValidationSampleRoleCommand.Execute(workspace.AllSamples[0].BadRoleChange);
+            var bulkSelectedPath = workspace.SelectedValidationSetSample?.SourcePath;
+            // 필터를 바꾸면 보이지 않게 된 행의 선택이 풀리는 것은 기존 동작이다. 선택 보존은 필터 없이 고른 행으로 따로 본다.
+            workspace.SetValidationSetFilterCommand.Execute("HeldOut");
+            var bulkVisibleCount = workspace.ValidationSetSamples.Count;
+            bulkCommand.Execute("Good");
+            Check("bulk expectation changes only the samples the filter shows and keeps held-out marks",
+                bulkVisibleCount == 1 && workspace.AllSamples[1].IsGood && workspace.AllSamples[1].IsHeldOut
+                && workspace.AllSamples[0].IsBad && !workspace.AllSamples[0].IsHeldOut,
+                $"visible={bulkVisibleCount};held-out sample good={workspace.AllSamples[1].IsGood}/held={workspace.AllSamples[1].IsHeldOut};hidden sample bad={workspace.AllSamples[0].IsBad}");
+            workspace.SetValidationSetFilterCommand.Execute("Error");
+            var errorFilterVisible = workspace.ValidationSetSamples.Count;
+            bulkCommand.Execute("Bad");
+            Check("bulk expectation with no visible sample changes nothing",
+                errorFilterVisible == 0 && workspace.AllSamples[0].IsBad && workspace.AllSamples[1].IsGood, $"visible={errorFilterVisible}");
+            workspace.SetValidationSetFilterCommand.Execute("All");
+            workspace.SelectedValidationSetSample = workspace.AllSamples[1];
+            bulkSelectedPath = workspace.SelectedValidationSetSample?.SourcePath;
+            bulkCommand.Execute("Good");
+            Check("bulk expectation on all samples sets every expectation, keeps the held-out mark and the selected sample, and does not execute",
+                workspace.AllSamples.All(sample => sample.IsGood) && workspace.AllSamples[1].IsHeldOut && !workspace.AllSamples[0].IsHeldOut
+                && workspace.SelectedValidationSetSample?.SourcePath == bulkSelectedPath
+                && workspace.AllSamples.All(sample => sample.Status == "Pending") && !workspace.IsValidationSetRunning && documentReads == bulkReadsBefore
+                && workspace.IsValidationSetDefinitionDirty,
+                $"good={workspace.ValidationSetGoodCount};held={workspace.ValidationSetHeldOutCount};selected={workspace.SelectedValidationSetSample?.FileName};reads={documentReads - bulkReadsBefore}");
+            var bulkLog = log.LastOrDefault();
+            Check("bulk expectation is logged as a definition change without execution",
+                bulkLog.Message?.Contains("without execution", StringComparison.Ordinal) == true && bulkLog.Message.Contains("visible sample", StringComparison.Ordinal),
+                bulkLog.Message ?? "(no log)");
+            bulkCommand.Execute("Bad");
+            workspace.SetValidationSampleRoleCommand.Execute(workspace.AllSamples[1].HeldOutRoleChange);
+            workspace.SetValidationSampleRoleCommand.Execute(workspace.AllSamples[0].GoodRoleChange);
+            workspace.SelectedValidationSetSample = workspace.AllSamples[1];
+            Check("the bulk expectation checks leave the fixture as the next checks expect",
+                workspace.AllSamples[0].IsGood && workspace.AllSamples[1].IsBad && workspace.ValidationSetHeldOutCount == 0
+                && workspace.SelectedValidationSetSample?.SourcePath == bulkSelectedPath,
+                $"good={workspace.ValidationSetGoodCount};bad={workspace.ValidationSetBadCount};held={workspace.ValidationSetHeldOutCount}");
             Check("staging and role changes stay inside the feature without execution", workspace.ValidationSetAllCount == 2
                 && workspace.ValidationSetGoodCount == 1
                 && workspace.ValidationSetBadCount == 1

@@ -471,6 +471,8 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 $"run={roiRunEnabled};preview={roiPreviewEnabled};completed={runCompleted}");
 
             var warpage = Add(workbench, "Warpage", selection.Id);
+            // 새 Warpage의 기본 최소 유효 점 수는 1,000이다. 이 검증의 원본은 4x4 격자(ROI 8셀)라 이전 기본값 3으로 맞춘다.
+            warpage.Parameters.Single(parameter => parameter.Name == "MinimumValidSampleCount").Value = "3";
             warpage.AcceptanceLimitsConfigured = true;
             var thicknessOutputBeforeStepChange = workbench.CurrentMeasurementOutput;
             Check(
@@ -1163,10 +1165,24 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             sourceChangeWorkbench.Selections.Add(thicknessReferenceSelection);
             sourceChangeWorkbench.Selections.Add(selection);
             var sourceChangeStep = Add(sourceChangeWorkbench, "Thickness", selection.Id);
+            // 새 Thickness의 기본 최소 유효 셀 수는 3,000이다. 이 검증의 원본은 4x4 격자라 이전 기본값 1로 맞춘다.
+            sourceChangeStep.Parameters.Single(parameter => parameter.Name == "MinimumValidSampleCount").Value = "1";
             sourceChangeWorkbench.SelectedCompatibleSelection = thicknessReferenceSelection;
             sourceChangeWorkbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(null);
             sourceChangeWorkbench.SelectedCompatibleSelection = selection;
             sourceChangeWorkbench.ReusePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            // 이름을 정한 적 없는 레시피(기본 이름)를 처음 저장하면 고른 파일 이름이 레시피 이름이 되고, 이후 다른 경로로 저장해도 그 이름을 유지한다.
+            var unnamedDefaultBefore = sourceChangeWorkbench.RecipeName == ToolWorkbenchRecipeSession.DefaultName;
+            var unnamedFirstPath = Path.Combine(root, "unnamed-first-save.ov3d-recipe.json");
+            var unnamedFirstSaved = sourceChangeWorkbench.TrySaveTeachingRecipe(unnamedFirstPath, out var unnamedFirstMessage);
+            var unnamedFirstName = unnamedFirstSaved ? ToolRecipeDocumentStore.Load(unnamedFirstPath).Name : string.Empty;
+            var unnamedSecondPath = Path.Combine(root, "unnamed-second-save.ov3d-recipe.json");
+            var unnamedSecondSaved = unnamedFirstSaved && sourceChangeWorkbench.TrySaveTeachingRecipe(unnamedSecondPath, out _);
+            Check(
+                "first save of an unnamed recipe names it after the file and a later save keeps that name",
+                unnamedDefaultBefore && unnamedFirstSaved && unnamedFirstName == "unnamed-first-save"
+                && unnamedSecondSaved && ToolRecipeDocumentStore.Load(unnamedSecondPath).Name == "unnamed-first-save",
+                $"default={unnamedDefaultBefore}|saved={unnamedFirstSaved}|name={unnamedFirstName}|current={sourceChangeWorkbench.RecipeName}|{unnamedFirstMessage}");
             var sourceChangePreview = sourceChangeWorkbench.PreviewSelectedMeasurementAsync().GetAwaiter().GetResult();
             sourceChangeWorkbench.PublishSelectedStepCommand.Execute(null);
             sourceChangeWorkbench.SetC3DSource(changedSourcePath);

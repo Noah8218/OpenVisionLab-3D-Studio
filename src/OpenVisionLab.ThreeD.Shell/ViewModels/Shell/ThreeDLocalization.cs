@@ -472,7 +472,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.SourceQuality.Header.CheckingInput",
         "\uC785\uB825 \uD655\uC778 \uC911",
         "Checking input");
-    public string ToolLabs => T("ThreeD.Header.ToolLabs", "도구 실험실", "Tool Labs");
+    public string ToolLabs => T("ThreeD.Header.ToolLabs", "Tool Lab", "Tool Labs");
     public string AdvancedLayout => T("ThreeD.Header.AdvancedLayout", "\uACE0\uAE09 \uB808\uC774\uC544\uC6C3", "Advanced layout");
     public string Language => T("ThreeD.Header.Language", "\uC5B8\uC5B4", "Language");
     public string OpenRecipeManagerToolTip => T("ThreeD.Header.OpenRecipeManagerToolTip", "\uB808\uC2DC\uD53C \uB9CC\uB4E4\uAE30\u00B7\uC5F4\uAE30", "Create or open a recipe");
@@ -730,7 +730,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "1. Add samples  \u2192  2. Set expected roles  \u2192  3. Run sample set");
     public string ValidationSetMeaningGuide => T(
         "ThreeD.Workbench.ValidationSetMeaningGuide",
-        "\uBCF4\uB958 \uC0D8\uD50C\uC740 \uD5C8\uC6A9 \uBC94\uC704 \uC870\uC815\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.",
+        "Test = Tuning \uC81C\uC678",
         "Held-out samples are excluded from limit adjustment.");
     public string ValidationSetSelectedExpectedRole => T(
         "ThreeD.Workbench.ValidationSetSelectedExpectedRole",
@@ -738,7 +738,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Sample category");
     public string ValidationSetRoleGood => T("ThreeD.Workbench.ValidationSetRoleGood", "\uC591\uD488", "Good");
     public string ValidationSetRoleBad => T("ThreeD.Workbench.ValidationSetRoleBad", "\uBD88\uB7C9", "Bad");
-    public string ValidationSetRoleHeldOut => T("ThreeD.Workbench.ValidationSetRoleHeldOut", "\uBCF4\uB958", "Held-out");
+    public string ValidationSetRoleHeldOut => T("ThreeD.Workbench.ValidationSetRoleHeldOut", "Test", "Held-out");
     public string ValidationSetRoleGoodAccessible => T(
         "ThreeD.Workbench.ValidationSetRoleGoodAccessible",
         "\uC120\uD0DD\uD55C \uC0D8\uD50C \uC815\uB2F5: \uC591\uD488",
@@ -749,7 +749,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Expected role for selected sample: Bad");
     public string ValidationSetRoleHeldOutAccessible => T(
         "ThreeD.Workbench.ValidationSetRoleHeldOutAccessible",
-        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uC815\uB2F5: \uD640\uB4DC\uC544\uC6C3",
+        "\uC120\uD0DD\uD55C \uC0D8\uD50C \uC815\uB2F5: Test",
         "Expected role for selected sample: Held-out");
     public string ValidationWorkspaceNavigationHint => T(
         "ThreeD.Workbench.ValidationWorkspaceNavigationHint",
@@ -807,7 +807,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetThresholdCancelReview => T("ThreeD.Command.ValidationSetThresholdCancelReview", "\uAC80\uD1A0 \uCDE8\uC18C", "Cancel review");
     public string ValidationSetThresholdApplyDraft => T("ThreeD.Command.ValidationSetThresholdApplyDraft", "\uC124\uC815\uCC3D\uC5D0 \uC785\uB825", "Apply to draft");
     public string ValidationSetThresholdRevalidateDevelopment => T("ThreeD.Command.ValidationSetThresholdRevalidateDevelopment", "\uC870\uC815 \uC0D8\uD50C \uC7AC\uAC80\uC99D", "Revalidate adjustment samples");
-    public string ValidationSetThresholdReplayHeldOut => T("ThreeD.Command.ValidationSetThresholdReplayHeldOut", "\uBCF4\uB958 \uC0D8\uD50C \uC7AC\uAC80\uC99D", "Revalidate held-out samples");
+    public string ValidationSetThresholdReplayHeldOut => T("ThreeD.Command.ValidationSetThresholdReplayHeldOut", "Test \uC7AC\uAC80\uC99D", "Revalidate held-out samples");
     public string ValidationSetLimits => T("ThreeD.Workbench.ValidationSetLimits", "\uD55C\uACC4", "Limits");
     public string ValidationSetCorrect => T("ThreeD.Workbench.ValidationSetCorrect", "\uD310\uC815 \uC77C\uCE58", "Matching decisions");
     public string ValidationSetErrors => T("ThreeD.Workbench.ValidationSetErrors", "\uC624\uB958", "Errors");
@@ -1594,6 +1594,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Thickness limits must be finite and ordered." => Resolve("ThreeD.Parameter.ThicknessLimitsInvalid", "두께는 유한한 수로 입력하고 최소 두께를 최대 두께 이하로 설정하세요.", "Enter finite thickness values and set the minimum at or below the maximum."),
         "Maximum P2V raw height must be finite and greater than zero." => Resolve("ThreeD.Parameter.MaximumP2VInvalid", "최대 원시 높이 P2V는 0보다 큰 유한한 수여야 합니다.", message),
         "Minimum valid samples must be at least one." => Resolve("ThreeD.Parameter.MinimumValidSamplesInvalid", "최소 유효 샘플 수는 1 이상으로 입력하세요.", message),
+        ViewModels.Workbench.ThicknessStepProperties.ReferenceFitFormatMessage => Resolve("ThreeD.Parameter.ReferenceFitRmsFormatInvalid", "기준면 최대 RMS는 쉼표 없이 유한한 수로 입력하거나 비워 두세요.", message),
+        ViewModels.Workbench.ThicknessStepProperties.ReferenceFitMinimumMessage => Resolve("ThreeD.Parameter.ReferenceFitRmsMinimumInvalid", "기준면 최대 RMS는 0.001 이상으로 입력하거나 비워 두세요.", message),
         "Unapplied changes discarded. Recipe parameters were not changed." => Resolve("ThreeD.Parameter.UnappliedChangesDiscarded", "미적용 변경을 취소했습니다.", message),
         _ => message
     };

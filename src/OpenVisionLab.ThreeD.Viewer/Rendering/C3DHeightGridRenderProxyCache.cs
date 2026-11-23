@@ -22,8 +22,9 @@ internal sealed class C3DHeightGridRenderProxyCache
         ArgumentNullException.ThrowIfNull(sample);
         if (!ReferenceEquals(source, sample) || proxy is null)
         {
+            // 같은 snapshot의 위상은 뷰어끼리 공유해 탭을 오갈 때 다시 만들지 않는다.
             source = sample;
-            proxy = C3DHeightGridRenderProxy.Create(sample);
+            proxy = OpenVisionLab.ThreeD.Viewer.Loading.C3DSourceLoadCache.GetOrCreateRenderProxy(sample);
         }
 
         return proxy;

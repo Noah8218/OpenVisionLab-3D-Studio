@@ -43,7 +43,10 @@ public sealed partial class MainWindowViewModel
     private ReadOnlyMemory<double> heightDisplayValues;
     private bool heightDisplayIsSignedDelta;
     private string heightDisplayUnit = "raw-height";
-    private double[] sortedHeightDisplaySamples = [];
+    private double[]? sortedHeightDisplaySamplesCache;
+
+    // 전체 정렬은 2.8M 셀에서 수백 ms라 소스를 바꿀 때마다 하지 않는다. 분포 기준 범위와 부호 있는 차이 맵에서 처음 쓸 때 만든다.
+    private double[] SortedHeightDisplaySamples => sortedHeightDisplaySamplesCache ??= C3DHeightImageFrame.SortDisplaySamples(heightDisplayValues.Span);
     private int heightDisplayWidth;
     private int heightDisplayHeight;
     private string heightDisplayWorkspace = "teach";
@@ -106,7 +109,7 @@ public sealed partial class MainWindowViewModel
                     $"{MeasurementColorSummary}\n측정 영역 · 실행 당시 허용 범위\n미만 {measuredOutside.Below:0.0}% · 초과 {measuredOutside.Above:0.0}%",
                     $"{MeasurementColorSummary}\nMeasured region · limits at execution\nBelow {measuredOutside.Below:0.0}% · above {measuredOutside.Above:0.0}%");
             }
-            var outside = C3DHeightImageFrame.GetOutsideDisplayPercentages(sortedHeightDisplaySamples, C3DHeightColorMinimumRaw, C3DHeightColorMaximumRaw);
+            var outside = C3DHeightImageFrame.GetOutsideDisplayPercentagesFromValues(heightDisplayValues.Span, C3DHeightColorMinimumRaw, C3DHeightColorMaximumRaw);
             var missing = distribution.MissingSampleCount * 100.0 / Math.Max(1, distribution.ValidSampleCount + distribution.MissingSampleCount);
             return OpenVisionLab.ThreeD.Viewer.Localization.ViewerLocalization.Shared.Resolve("ThreeD.Legend.Information",
                 $"결측 {missing:0.0}%\n표시 범위 미만 ↓{outside.Below:0.0}% · 초과 ↑{outside.Above:0.0}%",
@@ -198,11 +201,11 @@ public sealed partial class MainWindowViewModel
 
     public int C3DHeightDistributionMissingSampleCount => c3DHeightDistribution?.MissingSampleCount ?? 0;
 
-    public double C3DHeightDistributionMinimumRaw => heightDisplayIsSignedDelta && sortedHeightDisplaySamples.Length > 0
-        ? sortedHeightDisplaySamples[0] : c3DHeightDistribution?.Minimum ?? double.NaN;
+    public double C3DHeightDistributionMinimumRaw => heightDisplayIsSignedDelta && SortedHeightDisplaySamples.Length > 0
+        ? SortedHeightDisplaySamples[0] : c3DHeightDistribution?.Minimum ?? double.NaN;
 
-    public double C3DHeightDistributionMaximumRaw => heightDisplayIsSignedDelta && sortedHeightDisplaySamples.Length > 0
-        ? sortedHeightDisplaySamples[^1] : c3DHeightDistribution?.Maximum ?? double.NaN;
+    public double C3DHeightDistributionMaximumRaw => heightDisplayIsSignedDelta && SortedHeightDisplaySamples.Length > 0
+        ? SortedHeightDisplaySamples[^1] : c3DHeightDistribution?.Maximum ?? double.NaN;
 
     public double C3DHeightDistributionMeanRaw => c3DHeightDistribution?.Mean ?? double.NaN;
 
@@ -365,10 +368,10 @@ public sealed partial class MainWindowViewModel
     private void ApplyAutomaticHeightDisplayRange()
     {
         if (c3DHeightDistribution is not { } distribution) return;
-        var minimum = heightDisplayIsSignedDelta && sortedHeightDisplaySamples.Length > 0 ? sortedHeightDisplaySamples[0] : distribution.Minimum;
-        var maximum = heightDisplayIsSignedDelta && sortedHeightDisplaySamples.Length > 0 ? sortedHeightDisplaySamples[^1] : distribution.Maximum;
-        if (heightDisplayOptions.RangeMode == "robust" && sortedHeightDisplaySamples.Length > 0)
-            (minimum, maximum) = C3DHeightImageFrame.GetDistributionDisplayRange(sortedHeightDisplaySamples);
+        var minimum = heightDisplayIsSignedDelta && SortedHeightDisplaySamples.Length > 0 ? SortedHeightDisplaySamples[0] : distribution.Minimum;
+        var maximum = heightDisplayIsSignedDelta && SortedHeightDisplaySamples.Length > 0 ? SortedHeightDisplaySamples[^1] : distribution.Maximum;
+        if (heightDisplayOptions.RangeMode == "robust" && SortedHeightDisplaySamples.Length > 0)
+            (minimum, maximum) = C3DHeightImageFrame.GetDistributionDisplayRange(SortedHeightDisplaySamples);
         else if (heightDisplayOptions.RangeMode == "roi"
             && !C3DHeightImageFrame.TryGetRegionDisplayRange(heightDisplayValues.Span, heightDisplayWidth, heightDisplayHeight,
                 GetVisibleTeachingGridRectangle(), out minimum, out maximum))
@@ -495,7 +498,7 @@ public sealed partial class MainWindowViewModel
         if (sourceChanged || heightDisplayValues.IsEmpty)
         {
             heightDisplayValues = values;
-            sortedHeightDisplaySamples = C3DHeightImageFrame.SortDisplaySamples(values.Span);
+            sortedHeightDisplaySamplesCache = null;
             heightDisplayWidth = width;
             heightDisplayHeight = height;
         }
@@ -526,7 +529,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(C3DHeightLegendUnit));
         heightColorRenderingBeforeDrag = null;
         heightDisplayOptions = heightDisplayOptions with { IsRangeDragActive = false };
-        sortedHeightDisplaySamples = [];
+        sortedHeightDisplaySamplesCache = null;
         c3DHeightLegendEditStart = null;
         C3DHeightLegendError = string.Empty;
         c3DHeightDistribution = null;

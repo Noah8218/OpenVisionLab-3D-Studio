@@ -58,6 +58,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     private RelayCommand clearValidationSetCommand = null!;
     private RelayCommand cancelValidationSetCommand = null!;
     private RelayCommand setValidationSampleRoleCommand = null!;
+    private RelayCommand setVisibleValidationSampleExpectationCommand = null!;
     private string validationSetSummary = string.Empty;
     private string validationSetCapability = string.Empty;
     private DateTimeOffset? validationSetLastRunAt;
@@ -413,6 +414,10 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
     public ICommand SetValidationSampleRoleCommand =>
         setValidationSampleRoleCommand;
 
+    /// <summary>현재 필터로 보이는 샘플의 정답을 한 번에 OK 또는 NG로 지정한다. 매개변수는 "Good"/"Bad".</summary>
+    public ICommand SetVisibleValidationSampleExpectationCommand =>
+        setVisibleValidationSampleExpectationCommand;
+
     public ICommand ProposeValidationThresholdCandidateCommand =>
         validationThresholdWorkflowOwner.ProposeValidationThresholdCandidateCommand;
 
@@ -527,6 +532,11 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                  && (parameter is ValidationSampleRoleChange request
                      ? validationSetDefinitionOwner.Samples.Contains(request.Sample) && Enum.IsDefined(request.Role)
                      : SelectedValidationSetSample is not null));
+        // 검증 실행 중에는 행의 정답 버튼과 같이 막는다. 보이는 샘플이 없으면 실행해도 아무것도 바뀌지 않는다.
+        setVisibleValidationSampleExpectationCommand = new RelayCommand(
+            SetVisibleValidationSampleExpectation,
+            parameter => validationSetExecutionOwner.CanStart
+                         && TryParseBulkExpectation(parameter, out _));
         RefreshValidationSetCapability();
         RefreshValidationSetSummary();
     }
@@ -718,17 +728,21 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                 step.Status.ToString(),
                 LocalizeStatus(step.Status),
                 step.Evidence,
-                step.Metrics.Select(metric => new ValidationSetMetricRow(
-                    metric.Name,
-                    metric.Value.ToString(
-                        "G6",
-                        System.Globalization.CultureInfo.InvariantCulture),
-                    metric.Unit,
-                    metric.Status?.ToString() ?? string.Empty,
-                    metric.Status is { } metricStatus
-                        ? LocalizeStatus(metricStatus)
-                        : string.Empty,
-                    metric.Value)).ToArray(),
+                step.Metrics.Select(metric =>
+                {
+                    var metricStatus = metric.Status ?? LimitedMetricStatus(step, metric);
+                    return new ValidationSetMetricRow(
+                        metric.Name,
+                        metric.Value.ToString(
+                            "G6",
+                            System.Globalization.CultureInfo.InvariantCulture),
+                        metric.Unit,
+                        metricStatus?.ToString() ?? string.Empty,
+                        metricStatus is { } status
+                            ? LocalizeStatus(status)
+                            : string.Empty,
+                        metric.Value);
+                }).ToArray(),
                 step.Overlays.Select(overlay => new ValidationSetOverlayRow(
                     overlay.Kind.ToString(),
                     overlay.Label,
@@ -749,6 +763,17 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                 steps, recipeSteps) { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage };
         }));
     }
+
+    /// <summary>
+    /// 휨의 P–V·RMS처럼 지표 자체에는 상태가 없고 "Maximum&lt;이름&gt;" 상한 지표가 따로 오는 출력에, 검증 표와 분포에 올릴 수 있는 상태를 붙인다.
+    /// 표시 행에만 쓰며 도구 결과나 저장되는 판정은 바꾸지 않는다. 오류 단계나 상한이 없는 지표는 상태 없음으로 둔다.
+    /// </summary>
+    internal static ResultStatus? LimitedMetricStatus(ToolRecipeValidationStepResult step, Metric metric) =>
+        step.Status is ResultStatus.Pass or ResultStatus.Fail
+        && double.IsFinite(metric.Value)
+        && step.Metrics.FirstOrDefault(maximum => maximum.Name == "Maximum" + metric.Name && double.IsFinite(maximum.Value)) is { } limit
+            ? metric.Value <= limit.Value ? ResultStatus.Pass : ResultStatus.Fail
+            : null;
 
     public void ClearValidationSet()
     {
@@ -786,6 +811,42 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         appendLog(
             "Validation Set",
             $"Sample role changed without execution: {updated.FileName} -> {updated.Role}.");
+    }
+
+    private static bool TryParseBulkExpectation(object? parameter, out ToolRecipeValidationExpectation expectation)
+    {
+        expectation = default;
+        switch (parameter?.ToString()?.ToLowerInvariant())
+        {
+            case "good": expectation = ToolRecipeValidationExpectation.Ok; return true;
+            case "bad": expectation = ToolRecipeValidationExpectation.Ng; return true;
+            default: return false;
+        }
+    }
+
+    // 현재 필터로 보이는 샘플에만 정답을 한 번에 지정한다. 보류 표시와 숨겨진 샘플은 바뀌지 않고 검증도 실행하지 않는다.
+    // 정의가 바뀌면 기존 단일 지정과 같이 "검증 샘플 미저장" 상태가 된다.
+    private void SetVisibleValidationSampleExpectation(object? parameter)
+    {
+        if (!TryParseBulkExpectation(parameter, out var expectation)) return;
+        var selectedPath = SelectedValidationSetSample?.SourcePath;
+        var changed = validationSetDefinitionOwner.SetSampleExpectations(ValidationSetSamples.ToArray(), expectation);
+        if (changed == 0) return;
+
+        // 행이 교체되므로 선택 중이던 샘플은 같은 원본 경로의 새 행으로 다시 잡는다.
+        if (selectedPath is not null
+            && validationSetDefinitionOwner.Samples.FirstOrDefault(sample =>
+                string.Equals(sample.SourcePath, selectedPath, StringComparison.OrdinalIgnoreCase)) is { } reselected
+            && !ReferenceEquals(reselected, SelectedValidationSetSample))
+        {
+            SelectedValidationSetSample = reselected;
+        }
+
+        NotifyValidationSetCountsChanged();
+        RefreshValidationSetSummary();
+        appendLog(
+            "Validation Set",
+            $"Expectation set to {expectation} for {changed} visible sample(s) without execution.");
     }
 
     private void RefreshValidationSetReviewSamples()
@@ -922,6 +983,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         OnPropertyChanged(nameof(IsSelectedValidationRoleHeldOut));
         validationSetReviewOwner.RefreshCommandStates();
         setValidationSampleRoleCommand.RaiseCanExecuteChanged();
+        setVisibleValidationSampleExpectationCommand.RaiseCanExecuteChanged();
         RefreshValidationThresholdCorrectionCommands();
     }
 
@@ -946,6 +1008,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         cancelValidationSetCommand.RaiseCanExecuteChanged();
         validationSetReviewOwner.RefreshCommandStates();
         setValidationSampleRoleCommand.RaiseCanExecuteChanged();
+        setVisibleValidationSampleExpectationCommand.RaiseCanExecuteChanged();
         RefreshValidationThresholdCorrectionCommands();
     }
 
@@ -1070,7 +1133,7 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
                 "C3D 샘플을 추가하고 정답(OK/NG)을 지정하세요.",
                 "Add C3D samples and assign expected roles.")
             : Localize(
-                $"샘플 {validationSetDefinitionOwner.Samples.Count}개 · 검증 전",
+                $"샘플 {validationSetDefinitionOwner.Samples.Count}개 · 대기",
                 $"{validationSetDefinitionOwner.Samples.Count} samples · not validated");
     }
 
@@ -1106,7 +1169,10 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         sample.Status switch
         {
             ResultStatus.Pass => Localize("모든 지원 검사 단계가 OK입니다.", "All supported inspection steps passed."),
-            ResultStatus.Fail => Localize("하나 이상의 검사 단계가 허용 범위를 벗어났습니다.", "One or more inspection steps are out of tolerance."),
+            // 어느 도구의 어떤 출력이 상한·하한을 넘었는지 말할 수 있으면 그 문구를, 아니면(유효 샘플 부족 등) 기존 문장을 쓴다.
+            ResultStatus.Fail => ValidationFailureCauseText.Describe(sample.Steps) is { Length: > 0 } cause
+                ? cause
+                : Localize("하나 이상의 검사 단계가 허용 범위를 벗어났습니다.", "One or more inspection steps are out of tolerance."),
             ResultStatus.Warning => Localize("검사가 경고와 함께 완료되었습니다.", "Inspection completed with warnings."),
             _ => Localize($"실행 오류: {LocalizeValidationError(sample.Message)}", $"Execution error: {sample.Message}")
         };
@@ -1133,6 +1199,10 @@ internal sealed class ValidationSetWorkspaceViewModel : INotifyPropertyChanged, 
         if (message.Equals("Recipe source grid identity is incomplete.", StringComparison.Ordinal))
         {
             return "레시피 입력 데이터의 그리드 식별 정보가 완전하지 않습니다.";
+        }
+        if (ThicknessReferenceFitMessage.IsReferenceFitExceeded(message))
+        {
+            return ThicknessReferenceFitMessage.Localize(message);
         }
 
         return message;

@@ -248,7 +248,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
                     $"{MeasurementColorSummary}\n측정 영역 · 실행 당시 허용 범위\n미만 {measuredOutside.Below:0.0}% · 초과 {measuredOutside.Above:0.0}%",
                     $"{MeasurementColorSummary}\nMeasured region · limits at execution\nBelow {measuredOutside.Below:0.0}% · above {measuredOutside.Above:0.0}%");
             }
-            var outside = C3DHeightImageFrame.GetOutsideDisplayPercentages(current.SortedDisplaySamples.Span, activeRangeMinimum, activeRangeMaximum);
+            // 범위 밖 비율은 정렬 없이 한 번 훑어 센다. 정렬은 새 프레임마다 수백 ms가 든다.
+            var outside = C3DHeightImageFrame.GetOutsideDisplayPercentagesFromValues(current.DisplayValues.Span, activeRangeMinimum, activeRangeMaximum);
             return localization.Resolve("ThreeD.Legend.Information",
                 $"결측 {GetMissingPercentage():0.0}%\n표시 범위 미만 ↓{outside.Below:0.0}% · 초과 ↑{outside.Above:0.0}%",
                 $"Missing {GetMissingPercentage():0.0}%\nBelow display range ↓{outside.Below:0.0}% · above ↑{outside.Above:0.0}%");
@@ -1284,7 +1285,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged, IDispos
         if (GetMatchingCursor() is not { } cursor) return "X — · Y — · Z —";
         var height = cursor.IsValid ? cursor.RawHeight.ToString("0.##", CultureInfo.InvariantCulture) : "—";
         var unit = includeUnit ? $" {Frame?.Unit}" : string.Empty;
-        return string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column:N0} · Y {height}{unit} · Z {cursor.Row:N0}");
+        // X 열, Y 행, Z 높이 순서다. 단위는 높이(Z) 값 뒤에만 붙는다.
+        return string.Create(CultureInfo.InvariantCulture, $"X {cursor.Column:N0} · Y {cursor.Row:N0} · Z {height}{unit}");
     }
 
     private string FormatSharedCursor(SharedHeightCursorSnapshot cursor)

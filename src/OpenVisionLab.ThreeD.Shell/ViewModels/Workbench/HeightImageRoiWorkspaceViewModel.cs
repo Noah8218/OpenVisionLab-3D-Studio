@@ -168,7 +168,8 @@ public sealed class HeightImageRoiWorkspaceViewModel : INotifyPropertyChanged, I
             var rectangle = IsCaptureActive ? Candidate : ActiveOverlay?.Rectangle;
             if (rectangle is null) return string.Empty;
             var role = ActiveRole switch { InspectionWorkspaceRegionRole.Reference => localization.ViewerReferenceChip, InspectionWorkspaceRegionRole.Measurement => localization.ViewerMeasurementChip, _ => ActiveRoleSummary };
-            return $"{role} {rectangle.Column},{rectangle.Row} {rectangle.ColumnCount}x{rectangle.RowCount}";
+            // 시작 셀은 X 열·Y 행으로, 크기는 가로 × 세로로 쓴다(뷰어 하단 표시줄과 같은 표기).
+            return $"{role} X {rectangle.Column} Y {rectangle.Row} · {rectangle.ColumnCount} × {rectangle.RowCount}";
         }
     }
 

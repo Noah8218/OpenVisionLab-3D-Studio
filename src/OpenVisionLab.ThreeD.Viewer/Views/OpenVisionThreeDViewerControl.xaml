@@ -1080,9 +1080,8 @@
                 ToolTip="{Binding BottomStatus, Converter={StaticResource ViewerRuntimeTextConverter}}">
             <DockPanel>
                 <StackPanel x:Name="ViewerDisplayUnits" DockPanel.Dock="Right" Margin="10,0,0,0" Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock FontSize="12" Foreground="#989898"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{localization:ViewerText Key=ThreeD.Viewer.PerspectiveView, Korean='원근', English='Perspective'}" /><Style.Triggers><DataTrigger Binding="{Binding IsOrthographicView}" Value="True"><Setter Property="Text" Value="{localization:ViewerText Key=ThreeD.Viewer.OrthographicView, Korean='정투영', English='Orthographic'}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                    <TextBlock Margin="10,0,0,0" FontSize="12" Foreground="#989898"><Run Text="{localization:ViewerText Key=ThreeD.Viewer.HeightScaleLabel, Korean='높이 ', English='Height '}" /><Run Text="{Binding C3DHeightEmphasis, Mode=OneWay, StringFormat=x{0}}" /></TextBlock>
-                    <TextBlock Margin="10,0,0,0" FontSize="12" Foreground="#989898" Text="{localization:ViewerText Key=ThreeD.Viewer.GridUnits, Korean='셀 · raw', English='cell · raw'}" />
+                    <!-- 투영(원근/정투영)은 큐브의 전환 버튼이 보여 주고, 단위(셀·raw)는 값마다 붙이지 않는다. 높이 배율만 Z 값과 같은 축 이름으로 둔다. -->
+                    <TextBlock FontSize="12" Foreground="#989898"><Run Text="Z ×" /><Run Text="{Binding C3DHeightEmphasis, Mode=OneWay}" /></TextBlock>
                 </StackPanel>
                 <ScrollViewer x:Name="ViewerCoordinateScroll" DockPanel.Dock="Left" VerticalAlignment="Center"
                               MaxWidth="250" Margin="0,0,12,0"

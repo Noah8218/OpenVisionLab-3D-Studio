@@ -629,6 +629,8 @@ internal static class RunnerApplication
                     $"OrderedToolRecipeReplay|{execution.Status}|steps={execution.Steps.Count}/{document.Steps.Count}|elapsedMs={execution.Duration.TotalMilliseconds:R}",
                     $"Recipe|path={fullRecipePath}|schema={document.SchemaVersion}|name={CleanReportValue(document.Name)}",
                     $"Source|path={sourcePath}|sha256={execution.SourceContentSha256}|unit={document.Source.Unit}|frame={document.Source.FrameId}",
+                    // --source로 다른 부품을 넣어도 레시피는 그대로 실행된다(부품별 재사용). 다만 레시피를 가르친 입력과 같은 파일인지 보고서에서 구별할 수 있어야 한다.
+                    DescribeRecipeSourceIdentity(document.Source.ContentSha256, execution.SourceContentSha256),
                     execution.SourceQuality is { } sourceQuality
                         ? $"SourceQuality|sha256={SourceQualityReportContentIdentity.CalculateSha256(sourceQuality)}|grid={sourceQuality.Grid.Width}x{sourceQuality.Grid.Height}|valid={sourceQuality.Coverage.ValidSampleCount}|missing={sourceQuality.Coverage.MissingSampleCount}|validRatio={sourceQuality.Coverage.ValidRatio:R}|missingRatio={sourceQuality.Coverage.MissingRatio:R}|maskSha256={sourceQuality.Coverage.InvalidCellMask.Sha256}|frame={sourceQuality.Coordinates.FrameId}|unit={sourceQuality.Coordinates.Unit}|provenance={CleanReportValue(sourceQuality.Provenance)}|channels={string.Join(";", sourceQuality.Channels.Select(channel => $"{channel.Channel}:{channel.State}:{CleanReportValue(channel.Evidence)}"))}|gridDiagnostics={FormatSourceQualityGridDiagnostics(sourceQuality)}"
                         : "SourceQuality|Unavailable|The ordered source could not be analyzed.",
@@ -734,6 +736,21 @@ internal static class RunnerApplication
         {
             Console.Error.WriteLine($"Input error report could not be written: {reportException.Message}");
         }
+    }
+
+    /// <summary>
+    /// 레시피에 기록된 입력 SHA-256과 실제로 실행한 입력의 SHA-256을 비교한 보고서 줄을 만든다.
+    /// 일치하지 않아도 실행은 막지 않는다. 같은 레시피를 다른 부품 파일에 적용하는 것이 --source의 용도이기 때문이다.
+    /// </summary>
+    internal static string DescribeRecipeSourceIdentity(string? recipePinnedSha256, string executedSha256)
+    {
+        if (string.IsNullOrWhiteSpace(recipePinnedSha256))
+        {
+            return $"RecipeSource|pinnedSha256=none|executedSha256={executedSha256}|match=unknown";
+        }
+
+        var match = string.Equals(recipePinnedSha256, executedSha256, StringComparison.OrdinalIgnoreCase);
+        return $"RecipeSource|pinnedSha256={recipePinnedSha256}|executedSha256={executedSha256}|match={(match ? "true" : "false")}";
     }
 
     static string CleanReportValue(string value) =>

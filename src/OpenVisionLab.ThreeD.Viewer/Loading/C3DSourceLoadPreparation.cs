@@ -31,7 +31,7 @@ internal static class C3DSourceLoadPreparation
     /// path semantics; callers decide whether path validation is required.
     /// </summary>
     public static C3DHeightGrid LoadSynchronously(string path, int maxRenderedPoints)
-        => C3DHeightGrid.Load(path, maxRenderedPoints);
+        => C3DSourceLoadCache.GetOrLoad(path, maxRenderedPoints);
 
     public static async Task<C3DSourceLoadPreparationResult> LoadAsync(
         string path,
@@ -47,7 +47,7 @@ internal static class C3DSourceLoadPreparation
             () =>
             {
                 var workerStart = Stopwatch.GetTimestamp();
-                var grid = C3DHeightGrid.Load(
+                var grid = C3DSourceLoadCache.GetOrLoad(
                     fullPath,
                     maxRenderedPoints,
                     cancellationToken,
@@ -55,14 +55,12 @@ internal static class C3DSourceLoadPreparation
                 cancellationToken.ThrowIfCancellationRequested();
                 progress?.Report(84.0);
                 var topologyStart = Stopwatch.GetTimestamp();
-                var renderProxy = C3DHeightGridRenderProxy.Create(grid, cancellationToken);
+                var renderProxy = C3DSourceLoadCache.GetOrCreateRenderProxy(grid, cancellationToken);
                 var topologyMilliseconds = Stopwatch.GetElapsedTime(topologyStart).TotalMilliseconds;
                 cancellationToken.ThrowIfCancellationRequested();
                 progress?.Report(96.0);
                 var positionsStart = Stopwatch.GetTimestamp();
-                var positions = renderProxy.Points
-                    .Select(point => point.Position)
-                    .ToArray();
+                var positions = C3DSourceLoadCache.GetOrCreateIdentityPositions(renderProxy);
                 var positionsMilliseconds = Stopwatch.GetElapsedTime(positionsStart).TotalMilliseconds;
                 return new C3DSourceLoadPreparationResult(
                     fullPath,

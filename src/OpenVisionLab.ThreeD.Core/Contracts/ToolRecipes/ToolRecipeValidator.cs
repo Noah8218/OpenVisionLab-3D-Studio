@@ -1863,11 +1863,15 @@ public static class ToolRecipeValidator
         var expected = ToolRecipeParameterContract.GetHeightMeasurementParameterNames(step.ToolId);
         var parameters = step.Parameters ?? [];
         if (!isCompleteness
-            && (parameters.Count != expected.Count
-                || expected.Any(name =>
-                    parameters.Count(parameter => parameter.Name == name) != 1)))
+            && !ToolRecipeParameterContract.HasExpectedHeightMeasurementParameters(step.ToolId, parameters))
         {
-            errors.Add($"{label} {Clean(step.ToolName)} v1 requires exactly {string.Join(", ", expected)}.");
+            errors.Add($"{label} {Clean(step.ToolName)} v1 requires exactly {string.Join(", ", expected)}{ToolRecipeParameterContract.DescribeOptionalHeightMeasurementParameters(step.ToolId)}.");
+        }
+        else if (isThickness
+            && parameters.FirstOrDefault(parameter => parameter.Name == ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms) is { } referenceFitLimit
+            && !ToolRecipeParameterContract.TryParseThicknessMaximumReferenceFitRms(referenceFitLimit.Value, out _))
+        {
+            errors.Add($"{label} {Clean(step.ToolName)} {ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms} must be an invariant finite number greater than zero.");
         }
         else if (isCompleteness)
         {

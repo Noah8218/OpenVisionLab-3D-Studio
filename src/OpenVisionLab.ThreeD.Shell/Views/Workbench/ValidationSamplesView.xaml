@@ -94,6 +94,29 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- 필터로 보이는 샘플의 정답을 한 번에 지정하는 동작 버튼. 켜짐 상태가 없어 ToggleButton 스타일을 쓰지 않는다. -->
+        <Style x:Key="SampleBulkExpectationButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="20" /><Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="6,0" /><Setter Property="FontSize" Value="12" /><Setter Property="FontWeight" Value="650" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.DataMutedTextBrush}" /><Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="SampleGoodChoiceStyle" TargetType="ToggleButton" BasedOn="{StaticResource SampleChoiceStyle}">
             <Style.Triggers><Trigger Property="IsChecked" Value="True"><Setter Property="BorderThickness" Value="0" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /><Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" /></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource ThreeD.PressedSurfaceBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" /></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" /><Setter Property="BorderThickness" Value="1" /></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /><Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" /></Trigger></Style.Triggers>
         </Style>
@@ -138,8 +161,8 @@
                 <DataTrigger Binding="{Binding Agreement}" Value="FalseReject"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.FalseReject, Korean='과검', English='False reject'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
                 <DataTrigger Binding="{Binding Agreement}" Value="FalseAccept"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.FalseAccept, Korean='미검', English='False accept'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
                 <DataTrigger Binding="{Binding Agreement}" Value="Error"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding Agreement}" Value="Unset"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='정답 없음', English='Unset'}" /></DataTrigger>
-                <DataTrigger Binding="{Binding Agreement}" Value="HeldOut"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류', English='Held-out'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="Unset"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='—', English='Unset'}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="HeldOut"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Test', English='Held-out'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="SampleItemStyle" TargetType="ListBoxItem">
@@ -181,7 +204,7 @@
         </Style>
     </UserControl.Resources>
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="34" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="34" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Border x:Name="SamplesHeader" Padding="6,0,4,0" Background="{DynamicResource ThreeD.DockHeaderBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -228,9 +251,9 @@
         <Border Grid.Row="1" Margin="10,4,10,6" MinHeight="119" Padding="10,8" CornerRadius="6" Background="{DynamicResource ThreeD.InspectionSummarySurfaceBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" AutomationProperties.AutomationId="ValidationSamplesSummary">
             <StackPanel>
                 <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding ValidationSetDefinitionSaveState}" AutomationProperties.AutomationId="ValidationSampleDefinitionSaveState" />
-                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.UnsetCount, Korean='정답 없음', English='Expectation unset'}" /><Run Text=" " /><Run Text="{Binding ValidationSetUnsetCount, Mode=OneWay}" /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.UnsetDenominator, Korean=' · 일치율 제외', English=' · excluded from agreement'}" /></TextBlock>
+                <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.UnsetCount, Korean='정답 —', English='Expectation unset'}" /><Run Text=" " /><Run Text="{Binding ValidationSetUnsetCount, Mode=OneWay}" /><Run Text="{shell:ThreeDText Key=ThreeD.Validation.UnsetDenominator, Korean=' · 일치율 제외', English=' · excluded from agreement'}" /></TextBlock>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="23.2" LineStackingStrategy="BlockLineHeight"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.AdjustmentSamples, Korean='조정 샘플', English='Adjustment samples'}" /><Run Text=" " /><Run Text="{Binding ValidationSetAdjustmentCount, Mode=OneWay}" /></TextBlock>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="23.2" LineStackingStrategy="BlockLineHeight"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.AdjustmentSamples, Korean='Tuning', English='Adjustment samples'}" /><Run Text=" " /><Run Text="{Binding ValidationSetAdjustmentCount, Mode=OneWay}" /></TextBlock>
                     <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="23.2" LineStackingStrategy="BlockLineHeight"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.Match, Korean='일치', English='Match'}" /><Run Text=" " /><Run FontSize="16" FontWeight="650" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{Binding ValidationSetMatchCount, Mode=OneWay}" /><Run Text=" / " /><Run Text="{Binding ValidationSetAdjustmentCount, Mode=OneWay}" /></TextBlock>
                 </Grid>
                 <Grid Height="6" Margin="0,6,0,0" Background="{DynamicResource ThreeD.InspectionStateTrackBrush}">
@@ -245,7 +268,7 @@
                     <TextBlock Margin="10,0,0,0" FontSize="12" FontWeight="Normal" LineHeight="17.4" LineStackingStrategy="BlockLineHeight" Foreground="{DynamicResource ThreeD.WarningBrush}"><Run Text="{Binding Localization.ValidationSetFilterError, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding ValidationSetAdjustmentErrorCount, Mode=OneWay}" /></TextBlock>
                 </WrapPanel>
                 <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="23.2" LineStackingStrategy="BlockLineHeight"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.HeldOutSamples, Korean='보류 샘플', English='Held-out samples'}" /><Run Text=" " /><Run Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" /></TextBlock><ui:SymbolIcon x:Name="SamplesHeldOutInfo" Width="14" Height="14" Margin="7,0,0,0" VerticalAlignment="Center" Symbol="Info16" Focusable="False" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" ToolTip="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류 · 조정에 쓰지 않음', English='Held-out · excluded from adjustment'}" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류 · 조정에 쓰지 않음', English='Held-out · excluded from adjustment'}" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="23.2" LineStackingStrategy="BlockLineHeight"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.HeldOutSamples, Korean='Test', English='Held-out samples'}" /><Run Text=" " /><Run Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" /></TextBlock><ui:SymbolIcon x:Name="SamplesHeldOutInfo" Width="14" Height="14" Margin="7,0,0,0" VerticalAlignment="Center" Symbol="Info16" Focusable="False" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" ToolTip="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Tuning 제외 · 최종 확인용', English='Held-out · excluded from adjustment'}" AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Tuning 제외 · 최종 확인용', English='Held-out · excluded from adjustment'}" /></StackPanel>
                     <TextBlock Grid.Column="1" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" LineHeight="23.2" LineStackingStrategy="BlockLineHeight"><Run Text="{shell:ThreeDText Key=ThreeD.Validation.Completed, Korean='완료', English='Done'}" /><Run Text=" " /><Run FontSize="16" FontWeight="650" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{Binding ValidationSetHeldOutCompletedCount, Mode=OneWay}" /><Run Text=" / " /><Run Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" /></TextBlock>
                 </Grid>
                 <Grid Height="6" Margin="0,6,0,0" Background="{DynamicResource ThreeD.InspectionStateTrackBrush}">
@@ -271,8 +294,21 @@
                 <TextBlock><Run Text="{Binding Localization.ValidationSetFilterError, Mode=OneWay}" /><Run Text=" " /><Run FontWeight="650" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{Binding ValidationSetErrorCount, Mode=OneWay}" /></TextBlock>
             </RadioButton>
             <RadioButton Style="{StaticResource SampleFilterStyle}" IsChecked="{Binding IsValidationSetFilterHeldOut, Mode=OneWay}" Command="{Binding SetValidationSetFilterCommand}" CommandParameter="HeldOut" AutomationProperties.AutomationId="ValidationSamplesFilterHeldOut">
-                <TextBlock><Run Text="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류', English='Held-out'}" /><Run Text=" " /><Run FontWeight="650" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" /></TextBlock>
+                <TextBlock><Run Text="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Test', English='Held-out'}" /><Run Text=" " /><Run FontWeight="650" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" /></TextBlock>
             </RadioButton>
+            <!-- 현재 필터로 보이는 샘플의 정답을 한 번에 지정한다. 보류 표시는 바꾸지 않고 검증도 실행하지 않는다. -->
+            <Border Margin="2,1,0,4" BorderThickness="1" BorderBrush="{DynamicResource ThreeD.ValidationControlBorderBrush}" CornerRadius="5"
+                    ToolTip="{shell:ThreeDText Key=ThreeD.Validation.BulkExpectationHelp, Korean='현재 필터로 보이는 샘플의 정답을 한 번에 지정 · Test 표시는 바뀌지 않음', English='Set the expected result of every sample shown by the current filter · held-out marks are unchanged'}"
+                    AutomationProperties.AutomationId="ValidationSamplesBulkExpectation">
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource SampleBulkExpectationButtonStyle}" Content="{shell:ThreeDText Key=ThreeD.Validation.BulkExpectationGood, Korean='보이는 샘플 OK', English='Visible → OK'}"
+                            Command="{Binding SetVisibleValidationSampleExpectationCommand}" CommandParameter="Good" AutomationProperties.AutomationId="ValidationSamplesBulkExpectedGood" />
+                    <Border BorderThickness="1,0,0,0" BorderBrush="{DynamicResource ThreeD.ValidationControlBorderBrush}">
+                        <Button Style="{StaticResource SampleBulkExpectationButtonStyle}" Content="{shell:ThreeDText Key=ThreeD.Validation.BulkExpectationBad, Korean='보이는 샘플 NG', English='Visible → NG'}"
+                                Command="{Binding SetVisibleValidationSampleExpectationCommand}" CommandParameter="Bad" AutomationProperties.AutomationId="ValidationSamplesBulkExpectedBad" />
+                    </Border>
+                </StackPanel>
+            </Border>
         </WrapPanel>
         <Grid Grid.Row="3" Margin="6,2,6,8">
             <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -308,11 +344,11 @@
                                 </Border>
                                 <RadioButton Style="{StaticResource SampleChoiceStyle}" IsChecked="{Binding IsUnset, Mode=OneWay}" Margin="4,0,0,0" Content="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='없음', English='Unset'}"
                                              Command="{Binding DataContext.SetValidationSampleRoleCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding UnsetRoleChange}"
-                                             ToolTip="{shell:ThreeDText Key=ThreeD.Validation.UnsetHelp, Korean='정답 없음 · 일치율과 허용 범위 조정에서 제외', English='No expectation · excluded from agreement and limit adjustment'}" AutomationProperties.AutomationId="ValidationSampleExpectedUnset" />
+                                             ToolTip="{shell:ThreeDText Key=ThreeD.Validation.UnsetHelp, Korean='정답 — · 일치율과 허용 범위 조정에서 제외', English='No expectation · excluded from agreement and limit adjustment'}" AutomationProperties.AutomationId="ValidationSampleExpectedUnset" />
                                 <ToggleButton Style="{StaticResource SampleHeldOutChoiceStyle}" IsChecked="{Binding IsHeldOut, Mode=OneWay}" Margin="4,0,0,0"
                                              Command="{Binding DataContext.SetValidationSampleRoleCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding HeldOutRoleChange}"
-                                             ToolTip="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류 · 조정에 쓰지 않음', English='Held-out · excluded from adjustment'}" AutomationProperties.AutomationId="ValidationSampleExpectedHeldOut"
-                                             AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류', English='Held-out'}"><ui:SymbolIcon Width="14" Height="14" Symbol="Pause16" /></ToggleButton>
+                                             ToolTip="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Test · Tuning 제외', English='Held-out · excluded from adjustment'}" AutomationProperties.AutomationId="ValidationSampleExpectedHeldOut"
+                                             AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Test', English='Held-out'}"><ui:SymbolIcon Width="14" Height="14" Symbol="Pause16" /></ToggleButton>
                             </StackPanel>
                         </Grid>
                     </DataTemplate>
@@ -330,8 +366,5 @@
                 <ui:Button HorizontalAlignment="Center" Margin="0,8,0,0" Command="{Binding SetValidationSetFilterCommand}" CommandParameter="All" Content="{Binding Localization.ValidationSetFilterAll}" AutomationProperties.AutomationId="ValidationSamplesResetFilter" />
             </StackPanel>
         </Grid>
-        <Border Grid.Row="4" Padding="12,8" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource ThreeD.ValidationFooterSurfaceBrush}">
-            <TextBlock x:Name="SamplesMeaningGuide" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{shell:ThreeDText Key=ThreeD.Validation.SamplesMeaningGuide, Korean='보류 샘플은 조정에서 제외됩니다. 정답·용도를 바꾸면 다시 검증하세요.', English='Held-out samples are excluded from adjustment. Revalidate after changing the expected decision or use.'}" TextWrapping="Wrap" />
-        </Border>
     </Grid>
 </UserControl>

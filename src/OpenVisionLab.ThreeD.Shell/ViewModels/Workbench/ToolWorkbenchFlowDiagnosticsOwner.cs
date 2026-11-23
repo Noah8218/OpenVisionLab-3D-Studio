@@ -447,9 +447,10 @@ internal sealed class ToolWorkbenchFlowDiagnosticsOwner : INotifyPropertyChanged
                 blocker.ReferenceSampleCount,
                 blocker.RequiredReferenceSampleCount,
                 blocker.RawMessage),
+            // 두께 기준면 RMS 상한 초과 오류는 측정 RMS와 한계를 넣은 한글 문장으로 보인다. 그 밖의 원문은 그대로 둔다.
             _ => string.Format(
                 localization.RecipeHealthExecutionBlockedDetailFormat,
-                blocker.RawMessage)
+                ThicknessReferenceFitMessage.Localize(blocker.RawMessage))
         };
 
     private bool TryDescribeMissingSelection(

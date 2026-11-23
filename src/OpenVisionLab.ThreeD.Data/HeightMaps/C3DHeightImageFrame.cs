@@ -108,7 +108,10 @@ public sealed class C3DHeightImageFrame
         {
             if (displayHistogramBins is null)
             {
-                var summary = new OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsTool().Execute(values.ToArray(),
+                // 22MB 복사를 피하려고 전체를 덮는 배열이면 그대로 넘긴다(도구는 읽기만 한다).
+                var summaryInput = System.Runtime.InteropServices.MemoryMarshal.TryGetArray(values, out var segment) && segment.Offset == 0 && segment.Count == segment.Array!.Length
+                    ? segment.Array : values.ToArray();
+                var summary = new OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsTool().Execute(summaryInput,
                     new OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsOptions { ZeroIsMissing = false, BinCount = C3DHeightDistribution.DefaultBinCount });
                 displayHistogramBins = summary.Success ? Array.AsReadOnly(summary.Bins.Select(count => checked((int)count)).ToArray()) : [];
             }
@@ -129,7 +132,7 @@ public sealed class C3DHeightImageFrame
         var values = source.Values;
         var invalidCellMap = C3DInvalidCellMap.Create(source);
         var pixels = RenderPixels(
-            values.Span,
+            values,
             invalidCellMap,
             C3DHeightImagePalette.Height,
             source.Minimum,
@@ -294,16 +297,31 @@ public sealed class C3DHeightImageFrame
             throw new ArgumentOutOfRangeException(nameof(maximum));
         }
 
+        // 탭을 오갈 때 같은 표시 설정으로 같은 지도를 다시 그리는 일이 잦다. 같은 설정의 결과(불변)를 최근 몇 개 다시 쓴다.
+        var sanitizedOptions = options.Sanitize();
+        var key = new DisplayFrameKey(palette, minimum, maximum, invalidOverlayMode, sanitizedOptions);
+        lock (displayFrameCache)
+        {
+            var index = displayFrameCache.FindIndex(entry => entry.Key == key);
+            if (index >= 0)
+            {
+                var hit = displayFrameCache[index];
+                displayFrameCache.RemoveAt(index);
+                displayFrameCache.Insert(0, hit);
+                return hit.Frame;
+            }
+        }
+
         var pixels = RenderPixels(
-            values.Span,
+            values,
             InvalidCellMap,
             palette,
             minimum,
             maximum,
             invalidOverlayMode,
             cancellationToken,
-            options.Sanitize());
-        return new C3DHeightImageDisplayFrame(
+            sanitizedOptions);
+        var frame = new C3DHeightImageDisplayFrame(
             Width,
             Height,
             palette,
@@ -316,7 +334,25 @@ public sealed class C3DHeightImageFrame
                 ? InvalidCellMap.MissingCellCount
                 : 0,
             InvalidCellMap.Sha256);
+        lock (displayFrameCache)
+        {
+            displayFrameCache.RemoveAll(entry => entry.Key == key);
+            displayFrameCache.Insert(0, (key, frame));
+            while (displayFrameCache.Count > DisplayFrameCacheCapacity) displayFrameCache.RemoveAt(displayFrameCache.Count - 1);
+        }
+
+        return frame;
     }
+
+    private const int DisplayFrameCacheCapacity = 3;
+    private readonly List<(DisplayFrameKey Key, C3DHeightImageDisplayFrame Frame)> displayFrameCache = [];
+
+    private readonly record struct DisplayFrameKey(
+        C3DHeightImagePalette Palette,
+        double Minimum,
+        double Maximum,
+        C3DHeightImageInvalidOverlayMode InvalidOverlayMode,
+        HeightDisplayOptions Options);
 
     public bool TryGetCell(int pixelX, int pixelY, out C3DHeightImageCell cell)
     {
@@ -382,6 +418,26 @@ public sealed class C3DHeightImageFrame
             (sorted.Length - FindBound(sorted, maximum, true)) * 100.0 / sorted.Length);
     }
 
+    /// <summary>
+    /// 정렬하지 않은 값을 한 번 훑어 <see cref="GetOutsideDisplayPercentages"/>와 같은 값을 낸다.
+    /// 전체 정렬(수백만 셀에서 수백 ms)을 피하려는 용도이며, 유한한 셀만 세고 경계값은 범위 안으로 본다.
+    /// </summary>
+    public static (double Below, double Above) GetOutsideDisplayPercentagesFromValues(ReadOnlySpan<double> values, double minimum, double maximum)
+    {
+        var finite = 0;
+        var below = 0;
+        var notAbove = 0;
+        foreach (var value in values)
+        {
+            if (!double.IsFinite(value)) continue;
+            finite++;
+            if (value < minimum) below++;
+            if (value < maximum || value == maximum) notAbove++;
+        }
+
+        return finite == 0 ? (0, 0) : (below * 100.0 / finite, (finite - notAbove) * 100.0 / finite);
+    }
+
     private static int FindBound(ReadOnlySpan<double> sorted, double value, bool upper)
     {
         var left = 0;
@@ -396,7 +452,7 @@ public sealed class C3DHeightImageFrame
     }
 
     private static byte[] RenderPixels(
-        ReadOnlySpan<double> values,
+        ReadOnlyMemory<double> values,
         C3DInvalidCellMap invalidCellMap,
         C3DHeightImagePalette palette,
         double minimum,
@@ -412,48 +468,78 @@ public sealed class C3DHeightImageFrame
         var hasDisplayStyle = options is { ColorStyle: not "continuous" } || options?.HighlightOutside == true;
         var paletteName = palette == C3DHeightImagePalette.Monochrome ? "Solid" : palette.ToString();
 
-        for (var index = 0; index < values.Length; index++)
+        // 셀마다 독립적으로 색을 정해 서로 다른 픽셀 위치에만 쓰므로 청크 단위로 병렬 처리해도 결과 바이트는 같다.
+        // 2.8M 셀이면 한 스레드로 약 80ms라 탭을 오갈 때 UI 스레드가 그만큼 멈춘다.
+        void FillRange(int start, int end)
         {
-            if ((index & 0x3fff) == 0)
+            var span = values.Span;
+            for (var index = start; index < end; index++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-            }
+                if ((index & 0x3fff) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
 
-            var pixelOffset = index * 4;
-            if (invalidCellMap.IsMissingIndex(index))
-            {
-                var missingColor =
-                    invalidOverlayMode == C3DHeightImageInvalidOverlayMode.Visible
-                        ? MissingOverlayPixel
-                        : MissingPixel;
-                pixels[pixelOffset] = missingColor.B;
-                pixels[pixelOffset + 1] = missingColor.G;
-                pixels[pixelOffset + 2] = missingColor.R;
-                pixels[pixelOffset + 3] = missingColor.A;
-                continue;
-            }
+                var pixelOffset = index * 4;
+                if (invalidCellMap.IsMissingIndex(index))
+                {
+                    var missingColor =
+                        invalidOverlayMode == C3DHeightImageInvalidOverlayMode.Visible
+                            ? MissingOverlayPixel
+                            : MissingPixel;
+                    pixels[pixelOffset] = missingColor.B;
+                    pixels[pixelOffset + 1] = missingColor.G;
+                    pixels[pixelOffset + 2] = missingColor.R;
+                    pixels[pixelOffset + 3] = missingColor.A;
+                    continue;
+                }
 
-            var normalized = hasRange
-                ? (values[index] - minimum) / (maximum - minimum)
-                : 0.5;
-            (byte R, byte G, byte B) color;
-            if (hasDisplayStyle)
-            {
-                var displayColor = C3DPointMapPalette.DisplayColor(values[index], minimum, maximum, paletteName, options!, index);
-                color = ((byte)(displayColor.R * 255), (byte)(displayColor.G * 255), (byte)(displayColor.B * 255));
+                var normalized = hasRange
+                    ? (span[index] - minimum) / (maximum - minimum)
+                    : 0.5;
+                (byte R, byte G, byte B) color;
+                if (hasDisplayStyle)
+                {
+                    var displayColor = C3DPointMapPalette.DisplayColor(span[index], minimum, maximum, paletteName, options!, index);
+                    color = ((byte)(displayColor.R * 255), (byte)(displayColor.G * 255), (byte)(displayColor.B * 255));
+                }
+                else color = palette switch
+                {
+                    C3DHeightImagePalette.Grayscale => C3DPointMapPalette.GrayscaleBytes(normalized),
+                    C3DHeightImagePalette.Thermal => C3DPointMapPalette.ThermalBytes(normalized),
+                    C3DHeightImagePalette.ColorVisionAssist => C3DPointMapPalette.ColorVisionAssistBytes(normalized),
+                    C3DHeightImagePalette.Monochrome => (R: (byte)115, G: (byte)155, B: (byte)194),
+                    _ => C3DPointMapPalette.HeightBytes(normalized)
+                };
+                pixels[pixelOffset] = color.B;
+                pixels[pixelOffset + 1] = color.G;
+                pixels[pixelOffset + 2] = color.R;
+                pixels[pixelOffset + 3] = byte.MaxValue;
             }
-            else color = palette switch
+        }
+
+        const int ParallelCellThreshold = 1 << 18;
+        const int ChunkCells = 1 << 16;
+        if (values.Length < ParallelCellThreshold)
+        {
+            FillRange(0, values.Length);
+        }
+        else
+        {
+            var chunkCount = (values.Length + ChunkCells - 1) / ChunkCells;
+            try
             {
-                C3DHeightImagePalette.Grayscale => C3DPointMapPalette.GrayscaleBytes(normalized),
-                C3DHeightImagePalette.Thermal => C3DPointMapPalette.ThermalBytes(normalized),
-                C3DHeightImagePalette.ColorVisionAssist => C3DPointMapPalette.ColorVisionAssistBytes(normalized),
-                C3DHeightImagePalette.Monochrome => (R: (byte)115, G: (byte)155, B: (byte)194),
-                _ => C3DPointMapPalette.HeightBytes(normalized)
-            };
-            pixels[pixelOffset] = color.B;
-            pixels[pixelOffset + 1] = color.G;
-            pixels[pixelOffset + 2] = color.R;
-            pixels[pixelOffset + 3] = byte.MaxValue;
+                Parallel.For(
+                    0,
+                    chunkCount,
+                    new ParallelOptions { CancellationToken = cancellationToken },
+                    chunk => FillRange(chunk * ChunkCells, Math.Min(values.Length, (chunk + 1) * ChunkCells)));
+            }
+            catch (AggregateException exception) when (exception.InnerExceptions.Count > 0)
+            {
+                // 직렬 처리 때와 같은 예외 형식을 유지한다.
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception.InnerExceptions[0]).Throw();
+            }
         }
 
         cancellationToken.ThrowIfCancellationRequested();

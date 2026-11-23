@@ -110,6 +110,42 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
         return updated;
     }
 
+    /// <summary>
+    /// 주어진 샘플들의 정답을 한 번에 바꾼다. 보류(사용 구분)는 건드리지 않고 검증도 실행하지 않는다.
+    /// 이미 같은 정답인 샘플은 건너뛰며, 바뀐 행 수를 돌려준다. 정의 변경 알림과 미저장 표시는 한 번만 낸다.
+    /// </summary>
+    public int SetSampleExpectations(
+        IEnumerable<ValidationSetSampleRow> targets,
+        ToolRecipeValidationExpectation expectation)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
+        var changed = 0;
+        // 행을 교체하는 동안 원본 목록이 바뀌므로 대상은 먼저 복사해 둔다.
+        foreach (var target in targets.ToArray())
+        {
+            if (target.EffectiveExpectation == expectation) continue;
+            var index = Samples.IndexOf(target);
+            if (index < 0) continue;
+
+            var usage = target.EffectiveUsage;
+            Samples[index] = target with
+            {
+                Role = ToolRecipeValidationSampleDefinition.ResolveDevelopmentRole(expectation, usage),
+                Expectation = expectation,
+                Usage = usage
+            };
+            changed++;
+        }
+
+        if (changed > 0)
+        {
+            RefreshDefinitionDirty();
+            onDefinitionChanged(false);
+        }
+
+        return changed;
+    }
+
     public void ClearDefinition()
     {
         ReplaceSamples([]);
@@ -241,8 +277,8 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
                 sample.Order,
                 sample.SourcePath,
                 sample.Role,
-                "검증 전",
-                "Not validated") with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }));
+                string.Empty,
+                string.Empty) with { Expectation = sample.EffectiveExpectation, Usage = sample.EffectiveUsage }));
         SetDefinitionDirtyCore(false);
         onDefinitionChanged(true);
         return true;
@@ -270,8 +306,8 @@ internal sealed class ToolWorkbenchValidationSetDefinitionOwner :
             "Pending",
             localize("대기", "Pending"),
             localize(
-                koreanMessage ?? "검증 전",
-                englishMessage ?? "Not validated"),
+                koreanMessage ?? string.Empty,
+                englishMessage ?? string.Empty),
             string.Empty,
             []);
 

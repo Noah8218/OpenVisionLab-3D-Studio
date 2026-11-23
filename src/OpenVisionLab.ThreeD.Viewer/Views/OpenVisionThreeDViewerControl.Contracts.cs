@@ -614,12 +614,51 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(b.X, b.Y, b.Z);
     }
 
+    // 원본 교체·선택 해제처럼 한 번의 작업 안에서 속성 변경이 여러 번 일어나는 구간은
+    // 변경마다 RenderNow가 Viewport.DoRender를 동기 호출해 같은 장면을 수십 번 그렸다.
+    // 이 구간에서는 요청만 기록해 두고 구간이 끝날 때 한 번만 그린다.
+    private int renderBatchDepth;
+    private bool renderBatchPending;
+
+    private RenderBatchScope BeginRenderBatch()
+    {
+        renderBatchDepth++;
+        return new RenderBatchScope(this);
+    }
+
+    private void EndRenderBatch()
+    {
+        if (renderBatchDepth == 0 || --renderBatchDepth != 0 || !renderBatchPending)
+        {
+            return;
+        }
+
+        renderBatchPending = false;
+        RenderNow();
+    }
+
+    internal void RenderDeferredByBatch() => RenderNow();
+
+    private readonly struct RenderBatchScope(OpenVisionThreeDViewerControl owner) : IDisposable
+    {
+        public void Dispose() => owner.EndRenderBatch();
+    }
+
     private void RenderNow()
     {
         if (IsDisposed || viewModel.HeightDisplayOptions.IsRangeDragActive)
         {
             return;
         }
+
+        if (renderBatchDepth > 0)
+        {
+            renderBatchPending = true;
+            return;
+        }
+
+        // 여러 뷰어를 함께 바꾸는 동작(탭 전환)이 끝날 때 뷰어마다 한 번만 그린다.
+        if (ViewerRenderBatch.TryDefer(this)) return;
 
         if (c3dSourceApplyRenderState.TrySuppressRenderRequest())
         {

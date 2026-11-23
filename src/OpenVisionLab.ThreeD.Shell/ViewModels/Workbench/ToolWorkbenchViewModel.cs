@@ -2085,6 +2085,18 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
         return normalized.Length == 0 ? null : normalized;
     }
 
+    // "inspection-recipe.ov3d-recipe.json" → "inspection-recipe". 확장자 규칙(.json, .ov3d-recipe)만 떼고 나머지는 그대로 둔다.
+    private static string RecipeNameFromFilePath(string path)
+    {
+        var name = Path.GetFileName(path.Trim());
+        foreach (var suffix in new[] { ".json", ".ov3d-recipe" })
+        {
+            if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) name = name[..^suffix.Length];
+        }
+
+        return name.Trim();
+    }
+
     public bool TrySaveTeachingRecipe(string path, out string message)
     {
         if (IsRecipeSaving)
@@ -2106,6 +2118,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged, IDi
             message = Localize("변경한 설정값을 적용하거나 취소한 뒤 저장하세요.", "Apply or cancel the selected tool settings before saving.");
             AppendLog("Warning", $"Recipe save rejected | reason={message}");
             return false;
+        }
+
+        // 이름을 한 번도 정하지 않은 레시피(기본 이름)를 처음 저장할 때는 고른 파일 이름을 레시피 이름으로 쓴다.
+        // 문서 안의 이름은 레시피 목록에 그대로 보이므로, 파일명과 다른 기본 이름이 남지 않게 한다.
+        if (string.Equals(RecipeName, ToolWorkbenchRecipeSession.DefaultName, StringComparison.Ordinal)
+            && string.IsNullOrWhiteSpace(RecipePath)
+            && RecipeNameFromFilePath(path) is { Length: > 0 } nameFromFile)
+        {
+            RecipeName = nameFromFile;
         }
 
         RefreshRecipeState();

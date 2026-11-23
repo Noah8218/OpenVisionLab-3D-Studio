@@ -4813,7 +4813,7 @@ internal static class ToolWorkbenchDockingVerification
                 var sampleTitle = (Border)sampleControl.Template.FindName("Header", sampleControl);
                 var sampleRows = FindVisualDescendants<ListBoxItem>(validationSamplesList).Where(item => item.IsVisible).ToArray();
                 var sampleRoleButtons = sampleRows.SelectMany(item => FindVisualDescendants<RadioButton>(item)).ToArray();
-                var sampleGuide = (TextBlock)validationSamplesView.FindName("SamplesMeaningGuide");
+                FrameworkElement sampleGuide = validationSamplesList; // 하단 안내 줄을 없앴으므로 목록 하단을 기준으로 본다.
                 var sampleFooterBounds = sampleGuide.TransformToAncestor(validationSamplesView).TransformBounds(new Rect(sampleGuide.RenderSize));
                 Check($"v3 samples have one v5 34px header, 24px filters and accessible segmented row roles at {validationWidth:0}px",
                     sampleOuterHeader is { ActualHeight: 0 } && sampleTitle is { Visibility: Visibility.Collapsed } && ((Border)validationSamplesView.FindName("SamplesHeader")).ActualHeight == 34

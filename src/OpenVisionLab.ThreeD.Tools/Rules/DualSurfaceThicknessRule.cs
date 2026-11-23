@@ -14,7 +14,9 @@ public sealed record DualSurfaceThicknessInput(
     double MinimumThickness,
     double MaximumThickness,
     int MinimumValidSamples,
-    string Unit);
+    string Unit,
+    // 기준 영역의 평면 맞춤 RMS 상한. null이면 검사하지 않는다(기존 동작). 한계 비교는 Studio의 판정 정책이고 RMS 계산은 SDK가 한다.
+    double? MaximumReferenceFitRms = null);
 
 public sealed record DualSurfaceThicknessEvaluation(
     ToolResult Result,
@@ -40,6 +42,13 @@ public static class DualSurfaceThicknessRule
 {
     public const string ToolName = "C3D Dual-surface Thickness";
 
+    /// <summary>기준면 RMS가 상한을 넘어 계산을 거부했을 때 결과 메시지가 시작하는 문구. 화면 한글화가 이 문구로 구분한다.</summary>
+    public const string ReferenceFitExceededMessagePrefix = "Reference surface fit RMS exceeds the allowed maximum:";
+    public const string ReferenceFitExceededMessageSuffix = ". The reference ROI is not flat enough.";
+
+    public const string ReferenceFitRmsMetricName = "Reference fit H RMS";
+    public const string MaximumReferenceFitRmsMetricName = "MaximumReferenceFitRms";
+
     public static DualSurfaceThicknessEvaluation Evaluate(DualSurfaceThicknessInput input)
         => Evaluate(input, CancellationToken.None);
 
@@ -54,7 +63,7 @@ public static class DualSurfaceThicknessRule
             input.MinimumThickness,
             input.MaximumThickness,
             input.MinimumValidSamples,
-            input.Unit, cancellationToken);
+            input.Unit, cancellationToken, input.MaximumReferenceFitRms);
     }
 
     // Recipe height fields already carry double reference-axis coordinates. Keep them
@@ -76,7 +85,7 @@ public static class DualSurfaceThicknessRule
         double minimumThickness,
         double maximumThickness,
         int minimumValidSamples,
-        string unit, CancellationToken cancellationToken)
+        string unit, CancellationToken cancellationToken, double? maximumReferenceFitRms = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var stopwatch = Stopwatch.StartNew();
@@ -93,6 +102,21 @@ public static class DualSurfaceThicknessRule
             return Complete(Error(unit, referenceSamples?.Count ?? 0, measurementSamples?.Count ?? 0,
                 evaluation.Message, stopwatch.Elapsed), cancellationToken);
 
+        // 기준 영역이 평면이 아니면 두께는 계산되지만 틀린 값이다(예: 기준 띠가 다른 면에 걸친 경우).
+        // 한계를 정한 레시피에서는 그 값을 OK/NG로 내지 않고 오류와 원인을 낸다. NaN도 한계를 만족하지 못한 것으로 본다.
+        if (maximumReferenceFitRms is { } referenceFitLimit
+            && !(evaluation.ReferenceFitHeightRootMeanSquare <= referenceFitLimit))
+        {
+            stopwatch.Stop();
+            return Complete(ReferenceFitExceeded(
+                unit,
+                evaluation.ReferenceFitHeightRootMeanSquare,
+                referenceFitLimit,
+                evaluation.ReferenceSampleCount,
+                evaluation.MeasurementSampleCount,
+                stopwatch.Elapsed), cancellationToken);
+        }
+
         var plane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
         var status = evaluation.Decision == SdkDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
@@ -108,7 +132,10 @@ public static class DualSurfaceThicknessRule
                 new Metric("Maximum", MetricKind.Deviation, evaluation.Maximum, unit, evaluation.AboveUpperLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
                 new Metric("Range", MetricKind.Deviation, evaluation.Range, unit),
                 new Metric("RMS spread", MetricKind.Deviation, evaluation.RootMeanSquareSpread, unit),
-                new Metric("Reference fit H RMS", MetricKind.Deviation, evaluation.ReferenceFitHeightRootMeanSquare, unit),
+                new Metric(ReferenceFitRmsMetricName, MetricKind.Deviation, evaluation.ReferenceFitHeightRootMeanSquare, unit),
+                .. maximumReferenceFitRms is { } configuredLimit
+                    ? new[] { new Metric(MaximumReferenceFitRmsMetricName, MetricKind.Deviation, configuredLimit, unit) }
+                    : Array.Empty<Metric>(),
                 new Metric("Reference sample count", MetricKind.Count, evaluation.ReferenceSampleCount, "count"),
                 new Metric("ValidSampleCount", MetricKind.Count, evaluation.MeasurementSampleCount, "count"),
                 new Metric("LowerLimit", MetricKind.Deviation, minimumThickness, unit),
@@ -155,6 +182,40 @@ public static class DualSurfaceThicknessRule
         cancellationToken.ThrowIfCancellationRequested();
         return result;
     }
+
+    // 기준면 RMS가 상한을 넘은 경우의 오류 결과. 두께 값 대신 원인을 보이도록 평균은 비워 두고(NaN),
+    // 측정한 RMS와 상한을 지표로 남겨 화면과 보고서가 같은 근거를 쓴다. 판정(OK/NG)이 아니라 계산 실패다.
+    private static DualSurfaceThicknessEvaluation ReferenceFitExceeded(
+        string unit,
+        double referenceFitRms,
+        double limit,
+        int referenceSampleCount,
+        int measurementSampleCount,
+        TimeSpan elapsed) =>
+        new(
+            new ToolResult(
+                ToolName,
+                ResultStatus.Error,
+                FormattableString.Invariant($"{ReferenceFitExceededMessagePrefix} {referenceFitRms:G6} > {limit:G6} {unit}{ReferenceFitExceededMessageSuffix}"),
+                elapsed,
+                [
+                    new Metric("Mean", MetricKind.Deviation, double.NaN, unit, ResultStatus.Error),
+                    new Metric(ReferenceFitRmsMetricName, MetricKind.Deviation, referenceFitRms, unit, ResultStatus.Error),
+                    new Metric(MaximumReferenceFitRmsMetricName, MetricKind.Deviation, limit, unit),
+                    new Metric("Reference sample count", MetricKind.Count, referenceSampleCount, "count"),
+                    new Metric("ValidSampleCount", MetricKind.Count, measurementSampleCount, "count")
+                ],
+                []),
+            null,
+            double.NaN,
+            double.NaN,
+            double.NaN,
+            double.NaN,
+            double.NaN,
+            referenceSampleCount,
+            measurementSampleCount,
+            0,
+            0);
 
     private static DualSurfaceThicknessEvaluation Error(
         string? unit,

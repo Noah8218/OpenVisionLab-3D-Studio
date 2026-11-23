@@ -766,12 +766,20 @@ internal static class ToolWorkbenchStepPropertyAdapterCatalog
             return false;
         }
 
-        values = new Dictionary<string, string>(StringComparer.Ordinal)
+        var written = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["MinimumThickness"] = thickness.MinimumThickness.ToString("G17", CultureInfo.InvariantCulture),
             ["MaximumThickness"] = thickness.MaximumThickness.ToString("G17", CultureInfo.InvariantCulture),
             ["MinimumValidSampleCount"] = thickness.MinimumValidSampleCount.ToString(CultureInfo.InvariantCulture)
         };
+        // 기준면 RMS 상한은 값이 있을 때만 레시피에 넣는다. 비어 있으면 키 자체가 없고, 적용 쪽이 기존 키를 지운다.
+        // 사용자가 적은 값이 그대로 남도록 왕복 변환 형식("R")을 쓴다(0.05가 0.05000000000000000277로 저장되지 않게).
+        if (thickness.TryReadMaximumReferenceFitRms(out var referenceFitLimit, out _) && referenceFitLimit is { } limit)
+        {
+            written[ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms] = limit.ToString("R", CultureInfo.InvariantCulture);
+        }
+
+        values = written;
         return true;
     }
 

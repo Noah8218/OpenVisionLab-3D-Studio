@@ -37,7 +37,9 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(RunCurrentRecipeCommand));
         OnPropertyChanged(nameof(RunCurrentValidationSetCommand));
         OnPropertyChanged(nameof(CancelCurrentWorkspaceCommand));
-        selectedStepExecutionOwner.RefreshSelectedStepState();
+        // 탭 전환은 선택 단계의 준비 상태 입력(레시피·원본·게시 입력)을 바꾸지 않는다.
+        // 읽기 전용 여부가 바뀌므로 명령의 실행 가능 여부만 다시 묻는다.
+        selectedStepExecutionOwner.RefreshCommandStates();
         RefreshHeightImageRoiProjection();
         viewerWorkspaceViewModel.RefreshInspectionFileContext();
         return restoredTeachingRun;
@@ -52,7 +54,9 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsCurrentSourceHeaderStatusVisible));
         OnPropertyChanged(nameof(RunCurrentWorkspaceCommand));
         OnPropertyChanged(nameof(CancelCurrentWorkspaceCommand));
-        selectedStepExecutionOwner.RefreshSelectedStepState();
+        // 탭 전환은 선택 단계의 준비 상태 입력(레시피·원본·게시 입력)을 바꾸지 않는다.
+        // 읽기 전용 여부가 바뀌므로 명령의 실행 가능 여부만 다시 묻는다.
+        selectedStepExecutionOwner.RefreshCommandStates();
         RefreshHeightImageRoiProjection();
         viewerWorkspaceViewModel.RefreshInspectionFileContext();
     }

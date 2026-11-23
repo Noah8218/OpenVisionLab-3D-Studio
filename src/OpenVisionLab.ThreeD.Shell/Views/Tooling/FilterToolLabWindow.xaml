@@ -7,7 +7,7 @@
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.WindowTitle, Korean='필터 도구 실험실 - OpenVisionLab 3D Studio', English='Filter Tool Lab - OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.WindowTitle, Korean='필터 Tool Lab - OpenVisionLab 3D Studio', English='Filter Tool Lab - OpenVisionLab 3D Studio'}"
         Width="1600"
         Height="920"
         MinWidth="1120"
@@ -30,7 +30,7 @@
             <RowDefinition Height="280" />
         </Grid.RowDefinitions>
 
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.Subtitle, Korean='필터 도구 실험실', English='Filter Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Filter.Subtitle, Korean='필터 Tool Lab', English='Filter Tool Lab'}" />
 
         <Border Grid.Row="1"
                 Margin="16,16,16,0"

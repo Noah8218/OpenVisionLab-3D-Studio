@@ -1003,7 +1003,7 @@ PipelineReview.Progress.NoSteps	Step 없음	No steps
 PipelineReview.Progress.Running	실행 중...	Running...
 PipelineReview.Progress.CountsFormat	OK {0} / NG {1} / 대기 {2}	OK {0} / NG {1} / WAIT {2}
 PipelineReview.Progress.OffFormat	OFF {0}	OFF {0}
-PipelineReview.ValidationNotRun	검증 전	Validation not run
+PipelineReview.ValidationNotRun	대기	Validation not run
 PipelineReview.RunRequired	리뷰 실행 필요	Run review required
 PipelineReview.RunRequiredDetail	리뷰 실행을 눌러 Step 결과를 갱신하십시오.	Click Run Review to refresh step results.
 PipelineReview.RunReview	리뷰 실행	Run Review

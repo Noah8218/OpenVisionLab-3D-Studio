@@ -9,7 +9,7 @@
         xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.WindowTitle, Korean='XYZ 어파인 계산 도구 실험실 - OpenVisionLab 3D Studio', English='XYZ Affine Solve Tool Lab - OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.WindowTitle, Korean='XYZ 어파인 계산 Tool Lab - OpenVisionLab 3D Studio', English='XYZ Affine Solve Tool Lab - OpenVisionLab 3D Studio'}"
         Width="1680" Height="940" MinWidth="1200" MinHeight="720"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -24,7 +24,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="300" />
         </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.Subtitle, Korean='XYZ 어파인 계산 도구 실험실', English='XYZ Affine Solve Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.AffineSolve.Subtitle, Korean='XYZ 어파인 계산 Tool Lab', English='XYZ Affine Solve Tool Lab'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">

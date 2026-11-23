@@ -573,8 +573,10 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
+        // 선택 파라미터(두께의 기준면 RMS 상한)는 판정 한계가 아니라 계산 가능 조건이므로 최소 유효 샘플 수와 같이 제외한다.
         static string LimitSignature(ToolWorkbenchPipelineStepItem item) => string.Join("|", item.Parameters
-            .Where(parameter => !parameter.Name.Contains("SampleCount", StringComparison.Ordinal))
+            .Where(parameter => !parameter.Name.Contains("SampleCount", StringComparison.Ordinal)
+                && !ToolRecipeParameterContract.GetOptionalHeightMeasurementParameterNames(item.ToolId).Contains(parameter.Name, StringComparer.Ordinal))
             .Select(parameter => $"{parameter.Name}={parameter.Value}"));
         var before = CreateDocument();
         var limitsBefore = LimitSignature(step);
@@ -610,6 +612,10 @@ public sealed partial class ToolWorkbenchViewModel
         var previousParameters = before.Steps.First(item => item.Id == step.Id).Parameters;
         var changes = values.Where(pair => previousParameters.FirstOrDefault(parameter => parameter.Name == pair.Key)?.Value != pair.Value)
             .Select(pair => $"{ParameterChangeLabel(pair.Key)} {FormatParameterChangeValue(previousParameters.FirstOrDefault(parameter => parameter.Name == pair.Key)?.Value ?? Localize("미설정", "Unset"))} → {FormatParameterChangeValue(pair.Value)}").ToArray();
+        // 선택 파라미터를 비워 키를 지우는 변경도 되돌리기 요약에 남긴다.
+        changes = [.. changes, .. ToolRecipeParameterContract.GetOptionalHeightMeasurementParameterNames(step.ToolId)
+            .Where(name => !values.ContainsKey(name) && previousParameters.Any(parameter => parameter.Name == name))
+            .Select(name => $"{ParameterChangeLabel(name)} {FormatParameterChangeValue(previousParameters.First(parameter => parameter.Name == name).Value)} → {Localize("미설정", "Unset")}")];
         var changed = ApplyStepParameterValues(step, values);
         if (changed) RememberAppliedStepChange(step, before, string.Join(Environment.NewLine, changes));
         message = changed
@@ -634,6 +640,20 @@ public sealed partial class ToolWorkbenchViewModel
                     step.Parameters.RemoveAt(index);
                     changed = true;
                 }
+            }
+        }
+        else
+        {
+            // 편집 화면은 항상 전체 값 집합을 보낸다. 거기서 빠진 선택 파라미터는 사용자가 비운 것이므로 키를 지운다.
+            // (선택 파라미터가 아닌 이름은 이전처럼 건드리지 않는다.)
+            foreach (var optionalName in ToolRecipeParameterContract.GetOptionalHeightMeasurementParameterNames(step.ToolId))
+            {
+                if (values.ContainsKey(optionalName)) continue;
+                var existing = step.Parameters.FirstOrDefault(item => string.Equals(item.Name, optionalName, StringComparison.Ordinal));
+                if (existing is null) continue;
+                recipePartEventCoordinator.UnsubscribeParameter(existing);
+                step.Parameters.Remove(existing);
+                changed = true;
             }
         }
         foreach (var pair in values)

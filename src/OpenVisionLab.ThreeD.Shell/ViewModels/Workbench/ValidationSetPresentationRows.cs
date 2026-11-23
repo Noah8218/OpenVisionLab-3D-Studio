@@ -39,7 +39,7 @@ public sealed record ValidationSetSampleRow(
     public string ExpectedVerdictText => EffectiveExpectation switch
     {
         ToolRecipeValidationExpectation.Ok => "OK", ToolRecipeValidationExpectation.Ng => "NG",
-        _ => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.Unset", "정답 없음", "Unset")
+        _ => ThreeDLocalization.Shared.Resolve("ThreeD.Validation.Unset", "—", "Unset")
     };
     public string Agreement => Status == "Error" ? "Error" : !HasExpectation ? "Unset" : Status switch
     {

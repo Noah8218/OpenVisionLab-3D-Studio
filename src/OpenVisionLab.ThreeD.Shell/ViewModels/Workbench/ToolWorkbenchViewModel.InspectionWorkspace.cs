@@ -543,6 +543,8 @@ public sealed partial class ToolWorkbenchViewModel
             ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.WarpageWithinLimits", "평면 대비 편차가 모두 규격 안에 있습니다.", result.Message),
         var warpage when warpage.StartsWith("Warpage residuals are outside tolerance.", StringComparison.Ordinal) =>
             ThreeDLocalization.Shared.Resolve("ThreeD.Workspace.WarpageOutsideLimits", "평면 대비 편차가 규격을 벗어났습니다.", result.Message),
+        // 기준면 RMS 상한을 넘어 두께 대신 오류가 된 경우. 숫자는 원문에서 가져온다.
+        var flat when ThicknessReferenceFitMessage.IsReferenceFitExceeded(flat) => ThicknessReferenceFitMessage.Localize(result.Message),
         _ => result.Message
     };
 

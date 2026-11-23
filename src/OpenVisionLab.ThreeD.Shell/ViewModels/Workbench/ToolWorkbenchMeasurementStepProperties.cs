@@ -13,7 +13,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 public sealed class ThicknessStepProperties
 {
     internal static readonly HashSet<string> MappedNames =
-        ["MinimumThickness", "MaximumThickness", "MinimumValidSampleCount"];
+        ["MinimumThickness", "MaximumThickness", "MinimumValidSampleCount", ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms];
 
     [Category("Acceptance")]
     [DisplayName("Minimum thickness")]
@@ -33,6 +33,14 @@ public sealed class ThicknessStepProperties
     [PropertyOrder(2)]
     public int MinimumValidSampleCount { get; set; }
 
+    // 비워 두면 기준 영역이 평면인지 검사하지 않는다(기존 동작). 값을 넣으면 기준면 맞춤 RMS가 이 값을 넘을 때
+    // 두께 대신 오류를 낸다. 비어 있음과 0을 구분해야 해서 숫자 형식이 아닌 문자열로 두고, 적용할 때 형식을 검사한다.
+    [Category("Sampling")]
+    [DisplayName("Maximum reference-fit RMS")]
+    [Description("Optional upper limit for the reference ROI plane-fit RMS in the source field's declared unit. Leave empty to skip the check; when set, a reference ROI that is not flat enough returns an error instead of a thickness.")]
+    [PropertyOrder(3)]
+    public string MaximumReferenceFitRms { get; set; } = string.Empty;
+
     [Category("Compatibility")]
     [DisplayName("Unmapped parameters")]
     [ReadOnly(true)]
@@ -43,6 +51,7 @@ public sealed class ThicknessStepProperties
         MinimumThickness = ParseDouble(step, "MinimumThickness"),
         MaximumThickness = ParseDouble(step, "MaximumThickness"),
         MinimumValidSampleCount = ParseInt(step, "MinimumValidSampleCount"),
+        MaximumReferenceFitRms = ToolWorkbenchStepParameterAccess.GetParameter(step, ToolRecipeParameterContract.ThicknessMaximumReferenceFitRms),
         UnmappedParameters = ToolWorkbenchStepParameterAccess.GetUnmappedParameters(step, MappedNames)
     };
 
@@ -58,9 +67,49 @@ public sealed class ThicknessStepProperties
             message = "Minimum valid samples must be at least one.";
             return false;
         }
+        if (!TryReadMaximumReferenceFitRms(out _, out message))
+        {
+            return false;
+        }
         message = string.Empty;
         return true;
     }
+
+    // 빈 값(공백만 있는 값 포함)은 "검사 안 함"이라 null을 돌려주고 성공으로 본다. 값이 있으면 시안의 최솟값(0.001 이상)과
+    // 레시피 계약의 형식 규칙(공백·쉼표 없는 invariant 유한 수)을 함께 만족해야 한다.
+    internal bool TryReadMaximumReferenceFitRms(out double? limit, out string message)
+    {
+        limit = null;
+        message = string.Empty;
+        var text = (MaximumReferenceFitRms ?? string.Empty).Trim();
+        if (text.Length == 0) return true;
+        // 형식 오류와 최솟값 미달은 사용자가 고칠 방법이 달라 문구를 나눈다(0이나 음수는 숫자 형식은 맞다).
+        var parsed = double.NaN;
+        var isNumber = !text.Contains(',', StringComparison.Ordinal)
+            && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed)
+            && double.IsFinite(parsed);
+        if (!isNumber)
+        {
+            message = ReferenceFitFormatMessage;
+            return false;
+        }
+
+        if (parsed < MinimumReferenceFitRms)
+        {
+            message = ReferenceFitMinimumMessage;
+            return false;
+        }
+
+        limit = parsed;
+        return true;
+    }
+
+    /// <summary>편집 화면이 받는 기준면 RMS 상한의 최솟값(시안 v5 기준). 레시피 계약은 0 초과면 허용한다.</summary>
+    internal const double MinimumReferenceFitRms = 0.001;
+
+    // 화면 문구 변환(ThreeDLocalization.LocalizeStepParameterStatus)이 이 원문으로 한글 문장을 고른다.
+    internal const string ReferenceFitFormatMessage = "Maximum reference-fit RMS must be a finite number (no thousands separator) or empty.";
+    internal const string ReferenceFitMinimumMessage = "Maximum reference-fit RMS must be at least 0.001 or empty.";
 
     private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
         double.TryParse(ToolWorkbenchStepParameterAccess.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)

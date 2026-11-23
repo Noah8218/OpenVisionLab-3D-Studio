@@ -112,10 +112,10 @@ internal static class ShellSharedHeightHoverSmoke
             && heightImage.LinkedCursorColumn == requestedColumn
             && heightImage.HoverSummary.Contains("3D", StringComparison.Ordinal);
         var coordinatePassed = heightImage.CursorCoordinateSummary.Contains($"X {requestedColumn:N0}", StringComparison.Ordinal)
-            && heightImage.CursorCoordinateSummary.Contains($"Z {requestedRow:N0}", StringComparison.Ordinal)
+            && heightImage.CursorCoordinateSummary.Contains($"Y {requestedRow:N0}", StringComparison.Ordinal)
             && heightImage.CursorCoordinateSummary.Contains(requestedCell.RawHeight.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
         var viewerCoordinatePassed = viewerCoordinates.Text.Contains($"X {requestedColumn:N0}", StringComparison.Ordinal)
-            && viewerCoordinates.Text.Contains($"Z {requestedRow:N0}", StringComparison.Ordinal)
+            && viewerCoordinates.Text.Contains($"Y {requestedRow:N0}", StringComparison.Ordinal)
             && viewerCoordinates.Text.Contains(requestedCell.RawHeight.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
 
         var missingCell = FindFirstMissingCell(frame);
@@ -136,8 +136,8 @@ internal static class ShellSharedHeightHoverSmoke
                 && missingColumn == missing.Column
                 && heightImage.HasLinkedCursor
                 && !heightImage.LinkedCursorIsValid
-                && heightImage.CursorCoordinateSummary.Contains("Y —", StringComparison.Ordinal)
-                && viewerCoordinates.Text.Contains("Y —", StringComparison.Ordinal)
+                && heightImage.CursorCoordinateSummary.Contains("Z —", StringComparison.Ordinal)
+                && viewerCoordinates.Text.Contains("Z —", StringComparison.Ordinal)
                 && heightImage.HoverSummary.Contains(
                     workbench.Localization.HeightImageMissingValue,
                     StringComparison.Ordinal);

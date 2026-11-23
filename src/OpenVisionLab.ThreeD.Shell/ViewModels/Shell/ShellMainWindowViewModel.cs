@@ -452,6 +452,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged, IDisposab
                 return;
             }
 
+            // 탭을 바꾸면 여러 뷰어의 표시 속성이 연달아 바뀐다. 속성마다 그리지 않고 끝난 뒤 뷰어마다 한 번만 그린다.
+            using var renderBatch = OpenVisionLab.ThreeD.Viewer.ViewerRenderBatch.Begin();
             var restoredTeachingRun = Workbench.SetInspectionFileView(value == ShellWorkspaceMode.Inspect);
             Workbench.SetValidationSampleView(value == ShellWorkspaceMode.Validate);
             if (restoredTeachingRun && value is ShellWorkspaceMode.Teach or ShellWorkspaceMode.Workbench)

@@ -9,7 +9,7 @@
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
         xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
-        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.WindowTitle, Korean='높이 맵 재격자화 도구 실험실 | OpenVisionLab 3D Studio', English='Re-grid Height Map Tool Lab | OpenVisionLab 3D Studio'}"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.WindowTitle, Korean='높이 맵 재격자화 Tool Lab | OpenVisionLab 3D Studio', English='Re-grid Height Map Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1760" Height="980" MinWidth="1280" MinHeight="760"
         WindowStyle="None" ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -24,7 +24,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="260" />
         </Grid.RowDefinitions>
-        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Subtitle, Korean='높이 맵 재격자화 도구 실험실', English='Re-grid Height Map Tool Lab'}" />
+        <shell:StudioTitleBarView TitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Regrid.Subtitle, Korean='높이 맵 재격자화 Tool Lab', English='Re-grid Height Map Tool Lab'}" />
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
                 Background="{DynamicResource ThreeD.PanelHeaderBrush}"
                 BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">

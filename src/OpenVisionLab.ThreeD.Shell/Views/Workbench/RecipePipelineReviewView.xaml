@@ -116,7 +116,7 @@
         <DataTemplate x:Key="ValidationMatrixStatusTemplate"><Border Margin="10,0" Style="{StaticResource ValidationMatrixStatusPillStyle}" ToolTip="{Binding Message}"><TextBlock VerticalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding StatusText}" /><Style.Triggers><DataTrigger Binding="{Binding Status}" Value="Pass"><Setter Property="Text" Value="✓ OK" /></DataTrigger><DataTrigger Binding="{Binding Status}" Value="Fail"><Setter Property="Text" Value="× NG" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Border></DataTemplate>
         <workbench:HeightImageFrameConverter x:Key="ValidationSamplePreview" />
         <Style x:Key="ValidationAgreementTextStyle" TargetType="TextBlock">
-            <Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.NotRun, Korean='검증 전', English='Not run'}" />
+            <Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.NotRun, Korean='대기', English='Not run'}" />
             <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Agreement}" Value="Match"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Match, Korean='일치', English='Match'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
@@ -124,8 +124,8 @@
                 <DataTrigger Binding="{Binding Agreement}" Value="FalseAccept"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.FalseAccept, Korean='미검', English='False accept'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
                 <DataTrigger Binding="{Binding Agreement}" Value="Error"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Error, Korean='오류', English='Error'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
                 <DataTrigger Binding="{Binding Agreement}" Value="Warning"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Warning, Korean='경고', English='Warning'}" /><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding Agreement}" Value="Unset"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='정답 없음', English='Expectation unset'}" /></DataTrigger>
-                <DataTrigger Binding="{Binding Agreement}" Value="HeldOut"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='보류', English='Held-out'}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="Unset"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.Unset, Korean='—', English='Expectation unset'}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Agreement}" Value="HeldOut"><Setter Property="Text" Value="{shell:ThreeDText Key=ThreeD.Validation.HeldOut, Korean='Test', English='Held-out'}" /></DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="ValidationMatrixAgreementLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource ValidationAgreementTextStyle}">
@@ -1934,7 +1934,7 @@
                                 <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                     <StackPanel Margin="12,8">
                                         <TextBlock FontWeight="SemiBold" Text="{Binding SelectedValidationDistributionOutput.Label}" TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.DistributionLegend, Korean='정답 OK ○ · 정답 NG ◆ · 보류 Ⅱ · 노란 고리 = 불일치', English='Expected OK ○ · expected NG ◆ · held-out Ⅱ · yellow ring = mismatch'}" />
+                                        <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{shell:ThreeDText Key=ThreeD.Validation.DistributionLegend, Korean='정답 OK ○ · 정답 NG ◆ · Test Ⅱ · 노란 고리 = 불일치', English='Expected OK ○ · expected NG ◆ · held-out Ⅱ · yellow ring = mismatch'}" />
                                         <Border Padding="10,8" Margin="0,6,0,0" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.SoftDividerBrush}" BorderThickness="1" CornerRadius="6">
                                             <TextBlock x:Name="ValidationDistributionReadout" FontSize="13" TextWrapping="Wrap" Text="{Binding SelectedValidationDistributionReadout}"
                                                        AutomationProperties.AutomationId="ValidationDistributionReadout" AutomationProperties.Name="{Binding SelectedValidationDistributionReadout}" />
@@ -1993,7 +1993,7 @@
                                         <DataGridTextColumn Width="150" Header="{Binding ValidationSetMetric, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding MetricName}" />
                                         <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.GoodDevelopment, Korean='양품 · 조정용', English='Good · adjustment'}" Binding="{Binding Good}" />
                                         <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.BadDevelopment, Korean='불량 · 조정용', English='Bad · adjustment'}" Binding="{Binding Bad}" />
-                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.HeldOutExcluded, Korean='홀드아웃 · 제외', English='Held-out · excluded'}" Binding="{Binding HeldOut}" />
+                                        <DataGridTextColumn Width="1*" Header="{shell:ThreeDText Key=ThreeD.Validation.HeldOutExcluded, Korean='Test · 제외', English='Held-out · excluded'}" Binding="{Binding HeldOut}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </StackPanel>
@@ -2249,7 +2249,7 @@
                                           ItemsSource="{Binding ValidationThresholdDevelopmentSamples}"
                                           HeadersVisibility="Column"
                                           Visibility="{Binding HasValidationThresholdDevelopmentEvidence, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='조정 샘플 변경 전후', English='Adjustment samples before and after'}">
+                                          AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.Validation.DevelopmentCorrectionEvidenceAccessible, Korean='Tuning 변경 전후', English='Adjustment samples before and after'}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Width="58" Header="{shell:ThreeDText Key=ThreeD.Validation.Stage, Korean='단계', English='Stage'}" Binding="{Binding Stage}" />
                                         <DataGridTextColumn Width="32" Header="#" Binding="{Binding SampleOrder}" />
